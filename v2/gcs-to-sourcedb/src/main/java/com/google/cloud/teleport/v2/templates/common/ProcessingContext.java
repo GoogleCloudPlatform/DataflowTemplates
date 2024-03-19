@@ -94,11 +94,17 @@ public class ProcessingContext implements Serializable {
     return runId;
   }
 
-  public String getSourceDbType() { return  sourceDbType; }
+  public String getSourceDbType() {
+    return sourceDbType;
+  }
 
-  public Boolean getEnableSourceDbSsl() { return  enableSourceDbSsl; }
+  public Boolean getEnableSourceDbSsl() {
+    return enableSourceDbSsl;
+  }
 
-  public Boolean getEnableSourceDbSslValidation() {return enableSourceDbSslValidation; }
+  public Boolean getEnableSourceDbSslValidation() {
+    return enableSourceDbSslValidation;
+  }
 
   @Override
   public String toString() {

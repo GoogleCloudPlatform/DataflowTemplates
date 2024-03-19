@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 /** DaoFactory, currently only supports MySql. */
 public class DaoFactory {
 
-
   private static final Logger LOG = LoggerFactory.getLogger(DaoFactory.class);
 
   public static BaseDao getDao(ProcessingContext taskContext) throws IllegalArgumentException {

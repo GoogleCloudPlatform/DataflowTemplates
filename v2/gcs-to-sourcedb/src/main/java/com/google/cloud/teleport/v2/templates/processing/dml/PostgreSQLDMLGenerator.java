@@ -57,10 +57,10 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
     for (Map.Entry<String, String> entry : columnNameValues.entrySet()) {
       String colName = entry.getKey();
       String colValue = entry.getValue();
-      allColumns +=  "\"" + colName + "\"";
+      allColumns += "\"" + colName + "\"";
       allValues += colValue;
       if (!primaryKeys.contains(colName)) {
-        updateValues += " \"" + colName + "\" = " + "EXCLUDED.\"" + colName +  "\"";
+        updateValues += " \"" + colName + "\" = " + "EXCLUDED.\"" + colName + "\"";
       }
 
       if (index + 1 < columnNameValues.size()) {

@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.templates.processing.handler;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.dao.BaseDao;
-import com.google.cloud.teleport.v2.templates.dao.MySqlDao;
 import com.google.cloud.teleport.v2.templates.processing.dml.DMLGenerator;
 import com.google.cloud.teleport.v2.templates.processing.dml.DMLGeneratorFactory;
 import java.time.Instant;

@@ -56,6 +56,7 @@ public abstract class BaseDao implements Serializable {
     this.enableSslValidation = enableSslValidation;
     this.fullPoolName = fullPoolName;
   }
+
   protected ObjectPool getObjectPool(String sqlUrl, String sqlUser, String sqlPasswd) {
     ConnectionFactory driverManagerConnectionFactory =
         new DriverManagerConnectionFactory(sqlUrl, sqlUser, sqlPasswd);
@@ -66,6 +67,7 @@ public abstract class BaseDao implements Serializable {
     poolFactory.setPool(connectionPool);
     return connectionPool;
   }
+
   public void batchWrite(List<String> batchStatements) throws SQLException {
     Connection connObj = null;
     Statement statement = null;

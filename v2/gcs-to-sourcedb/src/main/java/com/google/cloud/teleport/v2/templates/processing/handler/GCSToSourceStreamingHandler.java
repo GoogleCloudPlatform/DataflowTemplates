@@ -21,7 +21,6 @@ import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRec
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dao.BaseDao;
 import com.google.cloud.teleport.v2.templates.dao.DaoFactory;
-import com.google.cloud.teleport.v2.templates.dao.MySqlDao;
 import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
 import com.google.cloud.teleport.v2.templates.utils.GCSReader;
 import com.google.cloud.teleport.v2.templates.utils.ShardProgressTracker;

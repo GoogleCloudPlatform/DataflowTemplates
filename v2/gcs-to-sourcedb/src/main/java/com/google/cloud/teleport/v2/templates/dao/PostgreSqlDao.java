@@ -31,7 +31,8 @@ public class PostgreSqlDao extends BaseDao {
 
   private static final String COMMONS_DBCP_DRIVER_URL = "jdbc:apache:commons:dbcp:";
 
-  private static final String COMMONS_DBCP_2_POOLING_DRIVER = "org.apache.commons.dbcp2.PoolingDriver";
+  private static final String COMMONS_DBCP_2_POOLING_DRIVER =
+      "org.apache.commons.dbcp2.PoolingDriver";
 
   private PoolingDriver driver;
   private final String poolName;

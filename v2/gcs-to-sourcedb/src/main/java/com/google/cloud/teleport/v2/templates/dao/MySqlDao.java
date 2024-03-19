@@ -15,19 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates.dao;
 
-import java.io.Serializable;
-import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.List;
-import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.commons.dbcp2.ConnectionFactory;
-import org.apache.commons.dbcp2.DriverManagerConnectionFactory;
-import org.apache.commons.dbcp2.PoolableConnectionFactory;
 import org.apache.commons.dbcp2.PoolingDriver;
 import org.apache.commons.pool2.ObjectPool;
-import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +32,8 @@ public class MySqlDao extends BaseDao {
   // TODO: Move to constants
   private static final String COMMONS_DBCP_DRIVER_URL = "jdbc:apache:commons:dbcp:";
 
-  private static final String COMMONS_DBCP_2_POOLING_DRIVER = "org.apache.commons.dbcp2.PoolingDriver";
+  private static final String COMMONS_DBCP_2_POOLING_DRIVER =
+      "org.apache.commons.dbcp2.PoolingDriver";
   private PoolingDriver driver;
   private final String poolName;
 
@@ -87,7 +80,6 @@ public class MySqlDao extends BaseDao {
     }
     return sqlUrl;
   }
-
 
   // frees up the pooling resources
   public void cleanup() throws Exception {

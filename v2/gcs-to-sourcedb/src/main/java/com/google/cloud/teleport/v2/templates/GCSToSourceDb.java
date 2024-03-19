@@ -103,7 +103,8 @@ public class GCSToSourceDb {
         optional = true,
         description = "Destination source database type",
         enumOptions = {@TemplateEnumOption("mysql"), @TemplateEnumOption("postgresql")},
-        helpText = "This is the type of source database. Currently either 'mysql' or 'postgresql' is supported.")
+        helpText =
+            "This is the type of source database. Currently either 'mysql' or 'postgresql' is supported.")
     @Default.String("mysql")
     String getSourceType();
 
