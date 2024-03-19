@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package com.google.cloud.teleport.v2.proto;
+
+option java_package = "com.google.cloud.teleport.v2.proto";
+option java_outer_classname = "BigtableProto";
+option java_multiple_files = true;
+
+// Protobuf schema for the content of a single Cell
+message BigtableCell {
+  // Bigtable row's Column Family Name
+  bytes column_family = 1;
+  // Bigtable row's Column Qualifier Name
+  bytes column_qualifier = 2;
+  // Timestamp of the cell in Microseconds
+  uint64 timestamp = 3;
+  // Value of the cell
+  bytes value = 4;
+}
+
+// Protobuf schema for an Entire Bigtable Row
+message BigtableRow {
+  // Bigtable's Row key
+  bytes row_key = 1;
+  // List of cells to be added in the row
+  repeated BigtableCell cells = 2;
+}

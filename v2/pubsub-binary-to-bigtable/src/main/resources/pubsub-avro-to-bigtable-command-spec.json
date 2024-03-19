@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.PubsubAvroToBigtable",
+  "classPath": "/template/pubsub-avro-to-bigtable/*:/template/pubsub-avro-to-bigtable/libs/*:/template/pubsub-avro-to-bigtable/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"pubsub_avro_to_bigtable\"}"
+  }
+}
