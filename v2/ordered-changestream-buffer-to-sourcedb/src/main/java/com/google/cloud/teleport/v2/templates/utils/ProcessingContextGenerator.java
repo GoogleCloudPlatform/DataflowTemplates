@@ -37,9 +37,7 @@ public class ProcessingContextGenerator {
       String sourceType,
       String kafkaClusterFilePath,
       String sessionFilePath,
-      String sourceDbTimezoneOffset,
-      Boolean enableSourceDbSsl,
-      Boolean enableSourceDbSslValidation) {
+      String sourceDbTimezoneOffset) {
 
     LOG.info(" In getProcessingContextForKafka");
 
@@ -59,14 +57,7 @@ public class ProcessingContextGenerator {
         kafkaConnectionProfile.setPartitionId(partitionId);
         partitionId++;
         ProcessingContext taskContext =
-            new ProcessingContext(
-                kafkaConnectionProfile,
-                shard,
-                schema,
-                sourceDbTimezoneOffset,
-                sourceType,
-                enableSourceDbSsl,
-                enableSourceDbSslValidation);
+            new ProcessingContext(kafkaConnectionProfile, shard, schema, sourceDbTimezoneOffset);
         response.put(shard.getLogicalShardId(), taskContext);
       }
     } catch (CloneNotSupportedException e) {
@@ -82,9 +73,7 @@ public class ProcessingContextGenerator {
       String projectId,
       String sessionFilePath,
       Integer pubsubMaxReadCount,
-      String sourceDbTimezoneOffset,
-      Boolean enableSourceDbSsl,
-      Boolean enableSourceDbSslValidation) {
+      String sourceDbTimezoneOffset) {
 
     LOG.info(" In getProcessingContextForPubSub");
 
@@ -97,14 +86,7 @@ public class ProcessingContextGenerator {
     for (Shard shard : shards) {
       LOG.info(" The sorted shard is: {}", shard);
       ProcessingContext taskContext =
-          new ProcessingContext(
-              shard,
-              schema,
-              pubSubConsumerProfile,
-              sourceDbTimezoneOffset,
-              sourceType,
-              enableSourceDbSsl,
-              enableSourceDbSslValidation);
+          new ProcessingContext(shard, schema, pubSubConsumerProfile, sourceDbTimezoneOffset);
       response.put(shard.getLogicalShardId(), taskContext);
     }
     return response;

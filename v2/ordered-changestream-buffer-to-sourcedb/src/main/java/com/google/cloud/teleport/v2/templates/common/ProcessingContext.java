@@ -33,48 +33,31 @@ public class ProcessingContext implements Serializable {
   private Schema schema;
   private String bufferType;
   private String sourceDbTimezoneOffset;
-  private String sourceDbType;
-
-  private Boolean enableSourceDbSsl;
-
-  private Boolean enableSourceDbSslValidation;
 
   public ProcessingContext(
       KafkaConnectionProfile kafkaConnectionProfile,
       Shard shard,
       Schema schema,
-      String sourceDbTimezoneOffset,
-      String sourceDbType,
-      Boolean enableSourceDbSsl,
-      Boolean enableSourceDbSslValidation) {
+      String sourceDbTimezoneOffset) {
     this.shard = shard;
     this.kafkaConnectionProfile = kafkaConnectionProfile;
     this.schema = schema;
     this.bufferType = "kafka";
-    this.sourceDbType = sourceDbType;
     this.pubSubConsumerProfile = null;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
-    this.enableSourceDbSsl = enableSourceDbSsl;
-    this.enableSourceDbSslValidation = enableSourceDbSslValidation;
   }
 
   public ProcessingContext(
       Shard shard,
       Schema schema,
       PubSubConsumerProfile pubSubConsumerProfile,
-      String sourceDbTimezoneOffset,
-      String sourceDbType,
-      Boolean enableSourceDbSsl,
-      Boolean enableSourceDbSslValidation) {
+      String sourceDbTimezoneOffset) {
     this.shard = shard;
     this.kafkaConnectionProfile = null;
     this.schema = schema;
     this.bufferType = "pubsub";
-    this.sourceDbType = sourceDbType;
     this.pubSubConsumerProfile = pubSubConsumerProfile;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
-    this.enableSourceDbSsl = enableSourceDbSsl;
-    this.enableSourceDbSslValidation = enableSourceDbSslValidation;
   }
 
   public KafkaConnectionProfile getKafkaConnectionProfile() {
@@ -99,18 +82,6 @@ public class ProcessingContext implements Serializable {
 
   public String getSourceDbTimezoneOffset() {
     return sourceDbTimezoneOffset;
-  }
-
-  public String getSourceDbType() {
-    return sourceDbType;
-  }
-
-  public Boolean getEnableSourceDbSsl() {
-    return enableSourceDbSsl;
-  }
-
-  public Boolean getEnableSourceDbSslValidation() {
-    return enableSourceDbSslValidation;
   }
 
   @Override

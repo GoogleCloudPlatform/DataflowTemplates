@@ -41,9 +41,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This pipeline ingests PubSub/Kafka data containing change stream records to source database -
- * currently MySQL, PostgreSQL.
+ * currently MySQL.
  *
- * <p>NOTE: Future versions will support: Oracle etc
+ * <p>NOTE: Future versions will support: Postgres,Oracle
  *
  * <p>Check out <a
  * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/kafka-to-source/README_Kafka_to_Source.md">README</a>
@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
     displayName = "Ordered change stream buffer to Source DB",
     description =
         "Streaming pipeline. Reads ordered Spanner change stream message from Pub/Sub to Kafka,"
-            + " transforms them, and writes them to a Source Database like MySQL/PostgreSQL.",
+            + " transforms them, and writes them to a Source Database like MySQL.",
     optionsClass = Options.class,
     flexContainerName = "ordered-changestream-buffer-to-sourcedb",
     contactInformation = "https://cloud.google.com/support",
@@ -99,9 +99,8 @@ public class OrderedChangestreamBufferToSourceDb {
         order = 3,
         optional = true,
         description = "Destination source type",
-        enumOptions = {@TemplateEnumOption("mysql"), @TemplateEnumOption("postgresql")},
-        helpText =
-            "This is the type of source database. Currently only mysql/postgresql are supported.")
+        enumOptions = {@TemplateEnumOption("mysql")},
+        helpText = "This is the type of source database. Currently only mysql is supported.")
     @Default.String("mysql")
     String getSourceType();
 
@@ -172,28 +171,6 @@ public class OrderedChangestreamBufferToSourceDb {
     Integer getTimerInterval();
 
     void setTimerInterval(Integer value);
-
-    @TemplateParameter.Boolean(
-        order = 10,
-        optional = true,
-        description = "Enable SSL connection for SourceDB",
-        helpText =
-            "This parameter is used to enable SSL connection for SourceDB. Please explicitly enable to use ssl by setting this parameter to true")
-    @Default.Boolean(false)
-    Boolean getEnableSourceDbSsl();
-
-    void setEnableSourceDbSsl(Boolean value);
-
-    @TemplateParameter.Boolean(
-        order = 11,
-        optional = true,
-        description = "Enable SSL validation for SourceDB",
-        helpText =
-            "This parameter is used to enable SSL validation for SourceDB. Please explicitly enable to use ssl by setting this parameter to true. Enabling this parameter requires that enableSourceDbSsl is also set to true")
-    @Default.Boolean(false)
-    Boolean getEnableSourceDbSslValidation();
-
-    void setEnableSourceDbSslValidation(Boolean value);
   }
 
   /**
@@ -232,9 +209,7 @@ public class OrderedChangestreamBufferToSourceDb {
               options.getPubSubProjectId(),
               options.getSessionFilePath(),
               options.getPubSubMaxReadCount(),
-              options.getSourceDbTimezoneOffset(),
-              options.getEnableSourceDbSsl(),
-              options.getEnableSourceDbSslValidation());
+              options.getSourceDbTimezoneOffset());
 
     } else if ("kafka".equals(options.getBufferType())) {
       processingContextMap =
@@ -243,9 +218,7 @@ public class OrderedChangestreamBufferToSourceDb {
               options.getSourceType(),
               options.getKafkaClusterFilePath(),
               options.getSessionFilePath(),
-              options.getSourceDbTimezoneOffset(),
-              options.getEnableSourceDbSsl(),
-              options.getEnableSourceDbSslValidation());
+              options.getSourceDbTimezoneOffset());
 
     } else {
       throw new RuntimeException("Unsupported buffer type: " + options.getBufferType());

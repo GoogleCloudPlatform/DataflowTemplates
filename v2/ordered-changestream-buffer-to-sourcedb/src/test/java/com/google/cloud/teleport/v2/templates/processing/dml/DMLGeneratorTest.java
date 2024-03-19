@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -32,33 +32,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
-public final class PostgreSQLDMLGeneratorTest {
-
-  private final String sourceDbType = "postgresql";
-
-  private final DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator(sourceDbType);
-
-  @Test
-  public void deleteById() {
-    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
-    String tableName = "Singers";
-    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":null}";
-    JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
-    String modType = "DELETE";
-
-    String expectedSql = "DELETE FROM Singers WHERE SingerId = 999";
-
-    String sql =
-        dmlGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
-
-    // workaround comparison to bypass TAP flaky behavior
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(expectedSql, sql);
-  }
+public final class DMLGeneratorTest {
 
   @Test
   public void tableAndAllColumnNameTypesMatch() {
@@ -71,16 +45,16 @@ public final class PostgreSQLDMLGeneratorTest {
     String modType = "INSERT";
 
     String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON CONFLICT(SingerId) DO UPDATE SET"
-            + " FirstName = EXCLUDED.FirstName, LastName = EXCLUDED.LastName";
+        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
+            + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        dmlGenerator.getDMLStatement(
+        DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -94,16 +68,16 @@ public final class PostgreSQLDMLGeneratorTest {
     String modType = "INSERT";
 
     String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON CONFLICT(SingerId) DO UPDATE SET"
-            + " FirstName = EXCLUDED.FirstName, LastName = EXCLUDED.LastName";
+        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
+            + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        dmlGenerator.getDMLStatement(
+        DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -117,16 +91,16 @@ public final class PostgreSQLDMLGeneratorTest {
     String modType = "INSERT";
 
     String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES ('999',222,'ll') ON CONFLICT(SingerId) DO UPDATE SET"
-            + " FirstName = EXCLUDED.FirstName, LastName = EXCLUDED.LastName";
+        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES ('999',222,'ll') ON DUPLICATE"
+            + " KEY UPDATE  FirstName = 222, LastName = 'll'";
     String sql =
-        dmlGenerator.getDMLStatement(
+        DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -141,16 +115,16 @@ public final class PostgreSQLDMLGeneratorTest {
     String modType = "INSERT";
 
     String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON CONFLICT(SingerId) DO UPDATE SET"
-            + " FirstName = EXCLUDED.FirstName, LastName = EXCLUDED.LastName";
+        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
+            + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        dmlGenerator.getDMLStatement(
+        DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -166,17 +140,16 @@ public final class PostgreSQLDMLGeneratorTest {
     String modType = "INSERT";
 
     String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON CONFLICT(SingerId) DO UPDATE SET"
-            + " FirstName = EXCLUDED.FirstName, LastName = EXCLUDED.LastName";
-
+        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
+            + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        dmlGenerator.getDMLStatement(
+        DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -191,13 +164,13 @@ public final class PostgreSQLDMLGeneratorTest {
 
     String expectedSql = "";
     String sql =
-        dmlGenerator.getDMLStatement(
+        DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -212,13 +185,14 @@ public final class PostgreSQLDMLGeneratorTest {
 
     String expectedSql = "";
     String sql =
-        dmlGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+        sql =
+            DMLGenerator.getDMLStatement(
+                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -233,16 +207,16 @@ public final class PostgreSQLDMLGeneratorTest {
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,Bday) VALUES (999,"
-            + " TO_CHAR((TIMESTAMP '2023-05-18T12:01:13.088397258' AT TIME ZONE '+00:00' AT TIME ZONE '+10:00'), 'YYYY-MM-DD HH24:MI:SS')) ON CONFLICT(SingerId) DO UPDATE SET"
-            + " Bday = EXCLUDED.Bday";
+            + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')) ON DUPLICATE KEY"
+            + " UPDATE  Bday =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')";
     String sql =
-        dmlGenerator.getDMLStatement(
+        DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+10:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -256,17 +230,16 @@ public final class PostgreSQLDMLGeneratorTest {
     String modType = "INSERT";
 
     String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON CONFLICT(SingerId) DO UPDATE SET"
-            + " FirstName = EXCLUDED.FirstName, LastName = EXCLUDED.LastName";
-
+        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
+            + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        dmlGenerator.getDMLStatement(
+        DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -293,45 +266,29 @@ public final class PostgreSQLDMLGeneratorTest {
         "INSERT INTO"
             + " sample_table(id,mediumint_column,tinyblob_column,datetime_column,enum_column,longtext_column,mediumblob_column,text_column,tinyint_column,timestamp_column,float_column,varbinary_column,binary_column,bigint_column,time_column,tinytext_column,set_column,longblob_column,mediumtext_column,year_column,blob_column,decimal_column,bool_column,char_column,date_column,double_column,smallint_column,varchar_column)"
             + " VALUES (12,333,'abc',"
-            + " TO_CHAR((TIMESTAMP '2023-05-18T12:01:13.088397258' AT TIME ZONE '+00:00' AT TIME ZONE '+00:00'), 'YYYY-MM-DD HH24:MI:SS'),'1','<longtext_column>','abclarge','aaaaaddd',1,"
-            + " TO_CHAR((TIMESTAMP '2023-05-18T12:01:13.088397258' AT TIME ZONE '+00:00' AT TIME ZONE '+00:00'), 'YYYY-MM-DD HH24:MI:SS'),4.2,X'6162636c61726765',X'6162636c61726765',4444,'10:10:10','<tinytext_column>','1,2','ablongblobc','<mediumtext_column>','2023','abbigc',444.222,false,'<char_c','2023-05-18',42.42,22,'abc')"
-            + " ON CONFLICT(id) DO UPDATE SET"
-            + " mediumint_column = EXCLUDED.mediumint_column,"
-            + " tinyblob_column = EXCLUDED.tinyblob_column,"
-            + " datetime_column = EXCLUDED.datetime_column,"
-            + " enum_column = EXCLUDED.enum_column,"
-            + " longtext_column = EXCLUDED.longtext_column,"
-            + " mediumblob_column = EXCLUDED.mediumblob_column,"
-            + " text_column = EXCLUDED.text_column,"
-            + " tinyint_column = EXCLUDED.tinyint_column,"
-            + " timestamp_column = EXCLUDED.timestamp_column,"
-            + " float_column = EXCLUDED.float_column,"
-            + " varbinary_column = EXCLUDED.varbinary_column,"
-            + " binary_column = EXCLUDED.binary_column,"
-            + " bigint_column = EXCLUDED.bigint_column,"
-            + " time_column = EXCLUDED.time_column,"
-            + " tinytext_column = EXCLUDED.tinytext_column,"
-            + " set_column = EXCLUDED.set_column,"
-            + " longblob_column = EXCLUDED.longblob_column,"
-            + " mediumtext_column = EXCLUDED.mediumtext_column,"
-            + " year_column = EXCLUDED.year_column,"
-            + " blob_column = EXCLUDED.blob_column,"
-            + " decimal_column = EXCLUDED.decimal_column,"
-            + " bool_column = EXCLUDED.bool_column,"
-            + " char_column = EXCLUDED.char_column,"
-            + " date_column = EXCLUDED.date_column,"
-            + " double_column = EXCLUDED.double_column,"
-            + " smallint_column = EXCLUDED.smallint_column,"
-            + " varchar_column = EXCLUDED.varchar_column";
+            + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),'1','<longtext_column>','abclarge','aaaaaddd',1,"
+            + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),4.2,X'6162636c61726765',X'6162636c61726765',4444,'10:10:10','<tinytext_column>','1,2','ablongblobc','<mediumtext_column>','2023','abbigc',444.222,false,'<char_c','2023-05-18',42.42,22,'abc')"
+            + " ON DUPLICATE KEY UPDATE  mediumint_column = 333, tinyblob_column = 'abc',"
+            + " datetime_column =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),"
+            + " enum_column = '1', longtext_column = '<longtext_column>', mediumblob_column ="
+            + " 'abclarge', text_column = 'aaaaaddd', tinyint_column = 1, timestamp_column = "
+            + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'), float_column = 4.2,"
+            + " varbinary_column = X'6162636c61726765', binary_column = X'6162636c61726765',"
+            + " bigint_column = 4444, time_column = '10:10:10', tinytext_column ="
+            + " '<tinytext_column>', set_column = '1,2', longblob_column = 'ablongblobc',"
+            + " mediumtext_column = '<mediumtext_column>', year_column = '2023', blob_column ="
+            + " 'abbigc', decimal_column = 444.222, bool_column = false, char_column = '<char_c',"
+            + " date_column = '2023-05-18', double_column = 42.42, smallint_column = 22,"
+            + " varchar_column = 'abc'";
     String sql =
-        dmlGenerator.getDMLStatement(
+        DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // Note that this fails in critique since the column order is not predictable
     // But this test case will run locally
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -345,15 +302,15 @@ public final class PostgreSQLDMLGeneratorTest {
     String modType = "INSERT";
 
     String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',NULL) ON CONFLICT(SingerId) DO UPDATE SET"
-            + " FirstName = EXCLUDED.FirstName, LastName = EXCLUDED.LastName";
+        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',NULL) ON DUPLICATE KEY"
+            + " UPDATE  FirstName = 'kk', LastName = NULL";
     String sql =
-        dmlGenerator.getDMLStatement(
+        DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 }

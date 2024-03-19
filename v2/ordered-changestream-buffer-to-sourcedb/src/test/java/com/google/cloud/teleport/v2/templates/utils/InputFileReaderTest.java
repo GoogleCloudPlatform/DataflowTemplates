@@ -31,18 +31,6 @@ import org.junit.runners.JUnit4;
 public final class InputFileReaderTest {
 
   @Test
-  public void pgsqlShardFileReading() {
-    List<Shard> shards =
-        InputFileReader.getOrderedShardDetails("src/test/resources/pgsqlShard.json", "postgresql");
-    List<Shard> expectedShards =
-        Arrays.asList(
-            new Shard("shardC", "hostShardC", "5432", "test", "test", "test"),
-            new Shard("shardD", "hostShardD", "5432", "test", "test", "test"));
-
-    assertEquals(shards, expectedShards);
-  }
-
-  @Test
   public void shardFileReading() {
     List<Shard> shards =
         InputFileReader.getOrderedShardDetails("src/test/resources/shard.json", "mysql");
@@ -55,17 +43,6 @@ public final class InputFileReaderTest {
   }
 
   @Test
-  public void pgsqlShardFileReadingSourceTypeException() {
-    RuntimeException thrown =
-        assertThrows(
-            RuntimeException.class,
-            () ->
-                InputFileReader.getOrderedShardDetails(
-                    "src/test/resources/pgsqlShard.json", "somejunk"));
-    assertTrue(thrown.getMessage().contains("Supported values are : mysql or postgresql"));
-  }
-
-  @Test
   public void shardFileReadingSourceTypeException() {
     RuntimeException thrown =
         assertThrows(
@@ -74,17 +51,6 @@ public final class InputFileReaderTest {
                 InputFileReader.getOrderedShardDetails(
                     "src/test/resources/shard.json", "somejunk"));
     assertTrue(thrown.getMessage().contains("Supported values are : mysql"));
-  }
-
-  @Test
-  public void pgsqlShardFileReadingFileNotExists() {
-    RuntimeException thrown =
-        assertThrows(
-            RuntimeException.class,
-            () ->
-                InputFileReader.getOrderedShardDetails(
-                    "src/test/resources/somemissingfile.json", "postgresql"));
-    assertTrue(thrown.getMessage().contains("Failed to read shard input file"));
   }
 
   @Test
