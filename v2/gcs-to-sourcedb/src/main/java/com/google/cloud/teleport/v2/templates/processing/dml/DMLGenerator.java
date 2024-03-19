@@ -34,10 +34,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Creates DML statements. */
-public class DMLGenerator {
+public abstract class DMLGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(DMLGenerator.class);
 
-  public static String getDMLStatement(
+  abstract String getUpsertStatement(
+      String tableName,
+      Set<String> primaryKeys,
+      Map<String, String> columnNameValues,
+      Map<String, String> pkcolumnNameValues);
+
+  abstract String getDeleteStatement(String tableName, Map<String, String> pkcolumnNameValues);
+
+  abstract String getColumnValueByType(
+      String columnType, String colValue, String sourceDbTimezoneOffset);
+
+  public String getDMLStatement(
       String modType,
       String spannerTableName,
       Schema schema,
@@ -111,7 +122,7 @@ public class DMLGenerator {
     }
   }
 
-  private static String getUpsertStatement(
+  /*private static String getUpsertStatement(
       String tableName,
       Set<String> primaryKeys,
       Map<String, String> columnNameValues,
@@ -189,9 +200,9 @@ public class DMLGenerator {
     String returnVal = "DELETE FROM " + tableName + " WHERE " + deleteValues;
 
     return returnVal;
-  }
+  }*/
 
-  private static Map<String, String> getColumnValues(
+  Map<String, String> getColumnValues(
       SpannerTable spannerTable,
       SourceTable sourceTable,
       JSONObject newValuesJson,
@@ -256,7 +267,7 @@ public class DMLGenerator {
     return response;
   }
 
-  private static Map<String, String> getPkColumnValues(
+  Map<String, String> getPkColumnValues(
       SpannerTable spannerTable,
       SourceTable sourceTable,
       JSONObject newValuesJson,
@@ -318,7 +329,7 @@ public class DMLGenerator {
     return response;
   }
 
-  private static String getMappedColumnValue(
+  String getMappedColumnValue(
       SpannerColumnDefinition spannerColDef,
       SourceColumnDefinition sourceColDef,
       JSONObject valuesJson,
@@ -359,7 +370,7 @@ public class DMLGenerator {
     return response;
   }
 
-  private static String getColumnValueByType(
+  /*private static String getColumnValueByType(
       String columnType, String colValue, String sourceDbTimezoneOffset) {
     String response = "";
     String cleanedNullBytes = "";
@@ -411,22 +422,22 @@ public class DMLGenerator {
         response = colValue;
     }
     return response;
-  }
+  }*/
 
-  private static String escapeString(String input) {
+  String escapeString(String input) {
     String cleanedNullBytes = StringUtils.replace(input, "\u0000", "");
     cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "'", "''");
     cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "\\", "\\\\");
     return cleanedNullBytes;
   }
 
-  private static String getQuotedEscapedString(String input) {
+  String getQuotedEscapedString(String input) {
     String cleanedString = escapeString(input);
     String response = "\'" + cleanedString + "\'";
     return response;
   }
 
-  private static String getHexString(String input) {
+  String getHexString(String input) {
     String cleanedString = escapeString(input);
     String hexString = Hex.encodeHexString(cleanedString.getBytes());
     String response = "X\'" + hexString + "\'";

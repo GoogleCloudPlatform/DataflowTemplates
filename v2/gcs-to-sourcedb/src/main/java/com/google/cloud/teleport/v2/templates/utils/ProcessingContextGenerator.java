@@ -52,16 +52,18 @@ public class ProcessingContextGenerator {
       String runMode,
       String tableSuffix,
       String runId,
-      boolean isMetadataDbPostgres) {
+      boolean isMetadataDbPostgres,
+      Boolean enableSourceDbSsl,
+      Boolean enableSourceDbSslValidation) {
 
     LOG.info(" In getProcessingContextForGCS");
 
-    if (!"mysql".equals(sourceType)) {
-      LOG.error("Only mysql source type is supported.");
+    if (!"mysql".equals(sourceType) || !"postgresql".equals(sourceType)) {
+      LOG.error("Only 'mysql' or 'postgresql' source type is supported.");
       throw new RuntimeException(
           "Input sourceType value : "
               + sourceType
-              + " is unsupported. Supported values are : mysql");
+              + " is unsupported. Supported values are : 'mysql' or 'postgresql'.");
     }
 
     Schema schema = SessionFileReader.read(sessionFilePath);
@@ -76,6 +78,7 @@ public class ProcessingContextGenerator {
             tableSuffix,
             runId,
             isMetadataDbPostgres);
+
     shardProgressTracker.init();
 
     Map<String, ProcessingContext> response = null;
@@ -94,7 +97,10 @@ public class ProcessingContextGenerator {
               runId,
               shards,
               schema,
-              isMetadataDbPostgres);
+              isMetadataDbPostgres,
+              sourceType,
+              enableSourceDbSsl,
+              enableSourceDbSslValidation);
     } else {
       response =
           getProcessingContextForReprocessOrResumeModes(
@@ -109,7 +115,10 @@ public class ProcessingContextGenerator {
               schema,
               shardProgressTracker,
               runMode,
-              isMetadataDbPostgres);
+              isMetadataDbPostgres,
+              sourceType,
+              enableSourceDbSsl,
+              enableSourceDbSslValidation);
     }
 
     shardProgressTracker.close();
@@ -128,7 +137,10 @@ public class ProcessingContextGenerator {
       String runId,
       List<Shard> shards,
       Schema schema,
-      boolean isMetadataDbPostgres) {
+      boolean isMetadataDbPostgres,
+      String sourceType,
+      Boolean enableSourceDbSsl,
+      Boolean enableSourceDbSslValidation) {
 
     Map<String, ProcessingContext> response = new HashMap<>();
     if (startTimestamp == null
@@ -167,7 +179,10 @@ public class ProcessingContextGenerator {
               startTimestamp,
               duration,
               gcsInputDirectoryPath,
-              runId);
+              runId,
+              sourceType,
+              enableSourceDbSsl,
+              enableSourceDbSslValidation);
       response.put(shard.getLogicalShardId(), taskContext);
     }
 
@@ -186,7 +201,10 @@ public class ProcessingContextGenerator {
       Schema schema,
       ShardProgressTracker shardProgressTracker,
       String runMode,
-      boolean isMetadataDbPostgres) {
+      boolean isMetadataDbPostgres,
+      String sourceType,
+      Boolean enableSourceDbSsl,
+      Boolean enableSourceDbSslValidation) {
 
     String status = "";
     switch (runMode) {
@@ -258,7 +276,10 @@ public class ProcessingContextGenerator {
               shardStartTime,
               duration,
               gcsInputDirectoryPath,
-              runId);
+              runId,
+              sourceType,
+              enableSourceDbSsl,
+              enableSourceDbSslValidation);
       response.put(shard.getLogicalShardId(), taskContext);
     }
     return response;

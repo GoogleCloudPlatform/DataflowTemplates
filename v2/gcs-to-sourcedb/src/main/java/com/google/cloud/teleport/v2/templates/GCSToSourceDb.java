@@ -57,7 +57,7 @@ import org.slf4j.LoggerFactory;
     displayName = "GCS to Source DB",
     description =
         "Streaming pipeline. Reads Spanner change stream messages from GCS, orders them,"
-            + " transforms them, and writes them to a Source Database like MySQL.",
+            + " transforms them, and writes them to a Source Database like MySQL and PostgreSQL.",
     optionsClass = Options.class,
     flexContainerName = "gcs-to-sourcedb",
     documentation =
@@ -101,9 +101,10 @@ public class GCSToSourceDb {
     @TemplateParameter.Enum(
         order = 3,
         optional = true,
-        description = "Destination source type",
-        enumOptions = {@TemplateEnumOption("mysql")},
-        helpText = "This is the type of source database. Currently only mysql is supported.")
+        description = "Destination source database type",
+        enumOptions = {@TemplateEnumOption("mysql"), @TemplateEnumOption("postgresql")},
+        helpText =
+            "This is the type of source database. Currently either 'mysql' or 'postgresql' is supported.")
     @Default.String("mysql")
     String getSourceType();
 
@@ -247,6 +248,28 @@ public class GCSToSourceDb {
     String getRunIdentifier();
 
     void setRunIdentifier(String value);
+
+    @TemplateParameter.Boolean(
+        order = 10,
+        optional = true,
+        description = "Enable SSL connection for SourceDB",
+        helpText =
+            "This parameter is used to enable SSL connection for SourceDB. Please explicitly enable to use ssl by setting this parameter to true")
+    @Default.Boolean(false)
+    Boolean getEnableSourceDbSsl();
+
+    void setEnableSourceDbSsl(Boolean value);
+
+    @TemplateParameter.Boolean(
+        order = 11,
+        optional = true,
+        description = "Enable SSL validation for SourceDB",
+        helpText =
+            "This parameter is used to enable SSL validation for SourceDB. Please explicitly enable to use ssl by setting this parameter to true. Enabling this parameter requires that enableSourceDbSsl is also set to true")
+    @Default.Boolean(false)
+    Boolean getEnableSourceDbSslValidation();
+
+    void setEnableSourceDbSslValidation(Boolean value);
   }
 
   /**
@@ -257,7 +280,7 @@ public class GCSToSourceDb {
   public static void main(String[] args) {
     UncaughtExceptionLogger.register();
 
-    LOG.info("Starting Ordered Changestream Buffer to SourceDb");
+    LOG.info("Starting Ordered Changestream Buffer from GCS to SourceDb");
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
@@ -316,7 +339,9 @@ public class GCSToSourceDb {
             options.getRunMode(),
             tableSuffix,
             options.getRunIdentifier(),
-            isMetadataDbPostgres);
+            isMetadataDbPostgres,
+            options.getEnableSourceDbSsl(),
+            options.getEnableSourceDbSslValidation());
 
     LOG.info("The size of  processing context is : " + processingContextMap.size());
 
