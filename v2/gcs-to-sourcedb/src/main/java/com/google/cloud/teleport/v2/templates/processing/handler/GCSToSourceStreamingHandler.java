@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.common.ShardProgress;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.dao.BaseDao;
 import com.google.cloud.teleport.v2.templates.dao.DaoFactory;
 import com.google.cloud.teleport.v2.templates.dao.MySqlDao;
 import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
@@ -35,8 +36,11 @@ public class GCSToSourceStreamingHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSToSourceStreamingHandler.class);
 
+  // TODO check if constructor is required to initialize ProcessingContext
+
   public static void process(ProcessingContext taskContext, SpannerDao spannerDao) {
     String shardId = taskContext.getShard().getLogicalShardId();
+    String sourceDbType = taskContext.getSourceDbType();
     GCSReader inputFileReader = new GCSReader(taskContext, spannerDao);
 
     try {
@@ -56,23 +60,15 @@ public class GCSToSourceStreamingHandler {
         return;
       }
 
-      String connectString =
-          "jdbc:mysql://"
-              + taskContext.getShard().getHost()
-              + ":"
-              + taskContext.getShard().getPort()
-              + "/"
-              + taskContext.getShard().getDbName();
-
-      MySqlDao dao =
-          new DaoFactory(
-                  connectString,
-                  taskContext.getShard().getUserName(),
-                  taskContext.getShard().getPassword())
-              .getMySqlDao(shardId);
+      BaseDao dao = DaoFactory.getDao(taskContext);
 
       InputRecordProcessor.processRecords(
-          records, taskContext.getSchema(), dao, shardId, taskContext.getSourceDbTimezoneOffset());
+          taskContext.getSourceDbType(),
+          records,
+          taskContext.getSchema(),
+          dao,
+          shardId,
+          taskContext.getSourceDbTimezoneOffset());
       markShardSuccess(taskContext, spannerDao);
       dao.cleanup();
       LOG.info(
