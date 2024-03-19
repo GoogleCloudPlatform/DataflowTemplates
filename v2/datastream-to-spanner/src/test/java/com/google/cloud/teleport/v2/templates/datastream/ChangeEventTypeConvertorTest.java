@@ -204,6 +204,81 @@ public final class ChangeEventTypeConvertorTest {
   }
 
   /*
+   * Tests for float conversion.
+   */
+  @Test
+  public void canConvertToFloat() throws Exception {
+
+    // Change Event with all valid forms of double values
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("field1", 123456789f);
+    changeEvent.put("field2", -123456789f);
+    changeEvent.put("field3", 123456.789f);
+    changeEvent.put("field4", -123456.789f);
+    changeEvent.put("field5", "123456789");
+    changeEvent.put("field6", "-123456789");
+    changeEvent.put("field7", "123456.789");
+    changeEvent.put("field8", "-123456.789");
+    changeEvent.put("field9", 123456789.012345678912f);
+    changeEvent.put("field10", true);
+    changeEvent.put("field11", false);
+    changeEvent.put("field12", JSONObject.NULL);
+    JsonNode ce = getJsonNode(changeEvent.toString());
+
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field1", /* requiredField= */ true),
+        new Float(123456789));
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field2", /* requiredField= */ true),
+        new Float(-123456789));
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field3", /* requiredField= */ true),
+        new Float(123456.789));
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field4", /* requiredField= */ true),
+        new Float(-123456.789));
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field5", /* requiredField= */ true),
+        new Float(123456789));
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field6", /* requiredField= */ true),
+        new Float(-123456789));
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field7", /* requiredField= */ true),
+        new Float(123456.789));
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field8", /* requiredField= */ true),
+        new Float(-123456.789));
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field9", /* requiredField= */ true),
+        new Float(123456789.012345678912));
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field10", /* requiredField= */ true), new Float(1));
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field11", /* requiredField= */ true), new Float(0));
+    assertNull(ChangeEventTypeConvertor.toFloat(ce, "field12", /* requiredField= */ false));
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertRandomStringToFloat() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("field1", "asd123456.789");
+    JsonNode ce = getJsonNode(changeEvent.toString());
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field1", /* requiredField= */ true),
+        new Long(123457));
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertNonExistentRequiredFieldToFloat() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    JsonNode ce = getJsonNode(changeEvent.toString());
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field1", /* requiredField= */ true),
+        new Long(123457));
+  }
+
+  /*
    * Tests for double conversion.
    */
   @Test

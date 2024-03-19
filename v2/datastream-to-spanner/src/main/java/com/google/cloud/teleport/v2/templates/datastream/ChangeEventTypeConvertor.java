@@ -87,6 +87,23 @@ public class ChangeEventTypeConvertor {
     }
   }
 
+  public static Float toFloat(JsonNode changeEvent, String key, boolean requiredField)
+      throws ChangeEventConvertorException {
+
+    if (!containsValue(changeEvent, key, requiredField)) {
+      return null;
+    }
+    try {
+      JsonNode node = changeEvent.get(key);
+      if (node.isTextual()) {
+        return Float.valueOf(node.asText());
+      }
+      return Float.valueOf(node.asFloat());
+    } catch (Exception e) {
+      throw new ChangeEventConvertorException("Unable to convert field " + key + " to float ", e);
+    }
+  }
+
   public static Double toDouble(JsonNode changeEvent, String key, boolean requiredField)
       throws ChangeEventConvertorException {
 
