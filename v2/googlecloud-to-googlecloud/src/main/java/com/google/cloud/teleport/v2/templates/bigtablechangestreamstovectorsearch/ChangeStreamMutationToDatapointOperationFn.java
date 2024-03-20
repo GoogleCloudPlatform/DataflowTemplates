@@ -109,11 +109,6 @@ public class ChangeStreamMutationToDatapointOperationFn
       if (col.equals(embeddingsColumn)) {
         var floats = Utils.bytesToFloats(m.getValue(), embeddingsByteSize == 8);
 
-        // TODO(meagar):Remove this
-        while (floats.size() != 768) {
-          floats.add(1.0f);
-        }
-
         datapointBuilder.addAllFeatureVector(floats);
       } else if (col.equals(crowdingTagColumn)) {
         datapointBuilder
