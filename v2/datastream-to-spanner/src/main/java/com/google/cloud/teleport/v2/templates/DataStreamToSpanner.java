@@ -48,6 +48,7 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Default;
@@ -60,6 +61,8 @@ import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.View;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -625,6 +628,15 @@ public class DataStreamToSpanner {
                 options.getTransformationCustomParameters(),
                 options.getTransformationJarPath(),
                 options.getTransformationClassName()));
+    spannerWriteResults
+        .filteredEvents()
+        .apply(Window.into(FixedWindows.of(Duration.standardMinutes(1))))
+        .apply(
+            "Write To GCS",
+            TextIO.write()
+                .to("gs://smt-job-b427-bbce/filter.json")
+                .withNumShards(1)
+                .withWindowedWrites());
     /*
      * Stage 3: Write failures to GCS Dead Letter Queue
      * a) Retryable errors are written to retry GCS Dead letter queue
