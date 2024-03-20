@@ -36,7 +36,7 @@ public class DaoFactory {
               + taskContext.getShard().getPort()
               + "/"
               + taskContext.getShard().getDbName();
-      return new MySqlDao(
+      return new MySQLDao(
           sqlUrl,
           taskContext.getShard().getUserName(),
           taskContext.getShard().getPassword(),
@@ -52,7 +52,7 @@ public class DaoFactory {
               + taskContext.getShard().getPort()
               + "/"
               + taskContext.getShard().getDbName();
-      return new PostgreSqlDao(
+      return new PostgreSQLDao(
           sqlUrl,
           taskContext.getShard().getUserName(),
           taskContext.getShard().getPassword(),

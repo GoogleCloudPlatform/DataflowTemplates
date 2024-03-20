@@ -24,8 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Writes data to MySQL. */
-public class MySqlDao extends BaseDao {
-  private static final Logger LOG = LoggerFactory.getLogger(MySqlDao.class);
+public class MySQLDao extends BaseDao {
+  private static final Logger LOG = LoggerFactory.getLogger(MySQLDao.class);
 
   static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
 
@@ -37,7 +37,7 @@ public class MySqlDao extends BaseDao {
   private PoolingDriver driver;
   private final String poolName;
 
-  public MySqlDao(
+  public MySQLDao(
       String sqlUrl,
       String sqlUser,
       String sqlPasswd,

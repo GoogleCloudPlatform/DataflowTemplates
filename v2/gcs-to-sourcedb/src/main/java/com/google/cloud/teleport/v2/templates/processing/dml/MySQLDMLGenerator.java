@@ -21,8 +21,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Creates DML statements. */
-public class MySqlDMLGenerator extends DMLGenerator {
-  private static final Logger LOG = LoggerFactory.getLogger(MySqlDMLGenerator.class);
+public class MySQLDMLGenerator extends DMLGenerator {
+  private static final Logger LOG = LoggerFactory.getLogger(MySQLDMLGenerator.class);
 
   @Override
   String getUpsertStatement(
