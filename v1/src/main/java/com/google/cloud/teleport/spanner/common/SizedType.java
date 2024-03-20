@@ -24,10 +24,19 @@ import com.google.common.collect.ImmutableList;
 public final class SizedType {
   public final Type type;
   public final Integer size;
+  // Describes the exact length for ARRAY types if needed. Used for embedding vectors.
+  public final Integer arrayLength;
 
   public SizedType(Type type, Integer size) {
     this.type = type;
     this.size = size;
+    this.arrayLength = null;
+  }
+
+  public SizedType(Type type, Integer size, Integer arrayLength) {
+    this.type = type;
+    this.size = size;
+    this.arrayLength = arrayLength;
   }
 
   public static String typeString(Type type, Integer size) {
@@ -99,8 +108,30 @@ public final class SizedType {
     throw new IllegalArgumentException("Unknown type " + type);
   }
 
+  public static String typeString(Type type, Integer size, Integer arrayLength) {
+    switch (type.getCode()) {
+      case ARRAY: {
+        if (arrayLength == null) {
+          return typeString(type, size);
+        }
+        return typeString(type, size) + "(vector_length=>" + arrayLength.toString() + ")";
+      }
+      case PG_ARRAY: {
+        if (arrayLength == null) {
+          return typeString(type, size);
+        }
+        return typeString(type, size) + " vector length " + arrayLength.toString();
+      }
+    }
+    throw new IllegalArgumentException("arrayLength not supported for " + type);
+  }
+
   private static SizedType t(Type type, Integer size) {
     return new SizedType(type, size);
+  }
+
+  private static SizedType t(Type type, Integer size, Integer arrayLength) {
+    return new SizedType(type, size, arrayLength);
   }
 
   public static SizedType parseSpannerType(String spannerType, Dialect dialect) {
@@ -140,9 +171,16 @@ public final class SizedType {
           }
           if (spannerType.startsWith("ARRAY<")) {
             // Substring "ARRAY<xxx>"
+            // Handle vector_length annotation
+            int annotationStart = spannerType.indexOf("(vector_length");
+            Integer arrayLength = null;
+            if (annotationStart != -1) {
+              arrayLength = Integer.parseInt(spannerType.substring(annotationStart+16, spannerType.length()-1));
+              spannerType = spannerType.substring(0,annotationStart);
+            }
             String spannerArrayType = spannerType.substring(6, spannerType.length() - 1);
             SizedType itemType = parseSpannerType(spannerArrayType, dialect);
-            return t(Type.array(itemType.type), itemType.size);
+            return t(Type.array(itemType.type), itemType.size, arrayLength);
           }
           if (spannerType.startsWith("STRUCT<")) {
             // Substring "STRUCT<xxx>"
@@ -196,6 +234,15 @@ public final class SizedType {
         }
       case POSTGRESQL:
         {
+          if (spannerType.contains("[] vector length")) {
+            // Substring "xxx[] vector length yyy"
+            // Handle vector_length annotation
+            int annotationStart = spannerType.indexOf("vector length");
+            Integer arrayLength = Integer.parseInt(spannerType.substring(annotationStart+14, spannerType.length()));
+            String spannerArrayType = spannerType.substring(0,annotationStart-3);
+            SizedType itemType = parseSpannerType(spannerArrayType, dialect);
+            return t(Type.pgArray(itemType.type), itemType.size, arrayLength);
+          }
           if (spannerType.endsWith("[]")) {
             // Substring "xxx[]"
             // Must check array type first
