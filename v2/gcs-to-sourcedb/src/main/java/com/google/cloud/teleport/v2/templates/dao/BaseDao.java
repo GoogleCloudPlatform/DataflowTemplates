@@ -36,24 +36,14 @@ public abstract class BaseDao implements Serializable {
   protected final String sqlUser;
   protected final String sqlPasswd;
   protected final String shardId;
-  protected final Boolean enableSsl;
-  protected final Boolean enableSslValidation;
   protected String fullPoolName;
 
   public BaseDao(
-      String sqlUrl,
-      String sqlUser,
-      String sqlPasswd,
-      String shardId,
-      Boolean enableSsl,
-      Boolean enableSslValidation,
-      String fullPoolName) {
+      String sqlUrl, String sqlUser, String sqlPasswd, String shardId, String fullPoolName) {
     this.sqlUrl = sqlUrl;
     this.sqlUser = sqlUser;
     this.sqlPasswd = sqlPasswd;
     this.shardId = shardId;
-    this.enableSsl = enableSsl;
-    this.enableSslValidation = enableSslValidation;
     this.fullPoolName = fullPoolName;
   }
 
@@ -106,9 +96,6 @@ public abstract class BaseDao implements Serializable {
       Class.forName(className);
     }
   }
-
-  abstract String getSslEnabledSqlUrl(
-      String sqlUrl, Boolean enableSsl, Boolean enableSslValidation);
 
   public abstract void cleanup() throws Exception;
 }

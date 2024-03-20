@@ -133,13 +133,9 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
 
       case "date":
       case "time":
-      case "time with time zone": // should be avoided as it cannot deal with DST rules
       case "time without time zone":
-      case "timetz": // should be avoided as it cannot deal with DST rules
       case "timestamp":
-      case "timestamp with time zone":
       case "timestamp without time zone":
-      case "timestamptz":
 
       case "interval":
 
@@ -163,6 +159,28 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
 
       case "bytea":
         response = getQuotedEscapedString(colValue);
+        break;
+      case "timetz": // this type should be avoided as it cannot deal with DST rules
+      case "time with time zone": // this should be avoided as it cannot deal with DST rules
+        colValue = colValue.substring(0, colValue.length() - 1); // trim the Z
+        response =
+            " TO_CHAR((TIMESTAMP "
+                + getQuotedEscapedString(colValue)
+                + " AT TIME ZONE '+00:00' AT TIME ZONE '"
+                + sourceDbTimezoneOffset
+                + "'), "
+                + "'HH24:MI:SS')";
+        break;
+      case "timestamp with time zone":
+      case "timestamptz":
+        colValue = colValue.substring(0, colValue.length() - 1); // trim the Z
+        response =
+            " TO_CHAR((TIMESTAMP "
+                + getQuotedEscapedString(colValue)
+                + " AT TIME ZONE '+00:00' AT TIME ZONE '"
+                + sourceDbTimezoneOffset
+                + "'), "
+                + "'YYYY-MM-DD HH24:MI:SS')";
         break;
       case "bit":
       case "bit varying":

@@ -248,28 +248,6 @@ public class GCSToSourceDb {
     String getRunIdentifier();
 
     void setRunIdentifier(String value);
-
-    @TemplateParameter.Boolean(
-        order = 10,
-        optional = true,
-        description = "Enable SSL connection for SourceDB",
-        helpText =
-            "This parameter is used to enable SSL connection for SourceDB. Please explicitly enable to use ssl by setting this parameter to true")
-    @Default.Boolean(false)
-    Boolean getEnableSourceDbSsl();
-
-    void setEnableSourceDbSsl(Boolean value);
-
-    @TemplateParameter.Boolean(
-        order = 11,
-        optional = true,
-        description = "Enable SSL validation for SourceDB",
-        helpText =
-            "This parameter is used to enable SSL validation for SourceDB. Please explicitly enable to use ssl by setting this parameter to true. Enabling this parameter requires that enableSourceDbSsl is also set to true")
-    @Default.Boolean(false)
-    Boolean getEnableSourceDbSslValidation();
-
-    void setEnableSourceDbSslValidation(Boolean value);
   }
 
   /**
@@ -339,9 +317,7 @@ public class GCSToSourceDb {
             options.getRunMode(),
             tableSuffix,
             options.getRunIdentifier(),
-            isMetadataDbPostgres,
-            options.getEnableSourceDbSsl(),
-            options.getEnableSourceDbSslValidation());
+            isMetadataDbPostgres);
 
     LOG.info("The size of  processing context is : " + processingContextMap.size());
 

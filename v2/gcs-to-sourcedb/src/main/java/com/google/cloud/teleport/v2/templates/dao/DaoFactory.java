@@ -41,8 +41,6 @@ public class DaoFactory {
           taskContext.getShard().getUserName(),
           taskContext.getShard().getPassword(),
           taskContext.getShard().getLogicalShardId(),
-          taskContext.getEnableSourceDbSsl(),
-          taskContext.getEnableSourceDbSslValidation(),
           "");
     } else if ("postgresql".equals(taskContext.getSourceDbType())) {
       String sqlUrl =
@@ -57,8 +55,6 @@ public class DaoFactory {
           taskContext.getShard().getUserName(),
           taskContext.getShard().getPassword(),
           taskContext.getShard().getLogicalShardId(),
-          taskContext.getEnableSourceDbSsl(),
-          taskContext.getEnableSourceDbSslValidation(),
           "");
     } else {
       throw new IllegalArgumentException(
