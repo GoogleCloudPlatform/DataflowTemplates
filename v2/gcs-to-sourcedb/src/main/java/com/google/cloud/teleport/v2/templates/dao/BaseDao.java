@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -21,59 +21,43 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
-import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.commons.dbcp2.ConnectionFactory;
 import org.apache.commons.dbcp2.DriverManagerConnectionFactory;
 import org.apache.commons.dbcp2.PoolableConnectionFactory;
-import org.apache.commons.dbcp2.PoolingDriver;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Writes data to MySQL. */
-public class MySqlDao implements Serializable {
-  private static final Logger LOG = LoggerFactory.getLogger(MySqlDao.class);
+public abstract class BaseDao implements Serializable {
 
-  static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
-  private PoolingDriver driver = null;
-  private String poolName = "";
-  private String fullPoolName = "";
-  private String shardId = "";
+  private static final Logger LOG = LoggerFactory.getLogger(BaseDao.class);
+  protected String sqlUrl;
+  protected final String sqlUser;
+  protected final String sqlPasswd;
+  protected final String shardId;
+  protected String fullPoolName;
 
-  public MySqlDao(String sqlUrl, String sqlUser, String sqlPasswd, String shardId) {
-    sqlUrl = sqlUrl + "?rewriteBatchedStatements=true";
-    try {
-      Class dirverClass = Class.forName(JDBC_DRIVER);
-    } catch (ClassNotFoundException e) {
-      LOG.error("There was not able to find the driver class");
-    }
+  public BaseDao(
+      String sqlUrl, String sqlUser, String sqlPasswd, String shardId, String fullPoolName) {
+    this.sqlUrl = sqlUrl;
+    this.sqlUser = sqlUser;
+    this.sqlPasswd = sqlPasswd;
+    this.shardId = shardId;
+    this.fullPoolName = fullPoolName;
+  }
 
+  protected ObjectPool getObjectPool(String sqlUrl, String sqlUser, String sqlPasswd) {
     ConnectionFactory driverManagerConnectionFactory =
         new DriverManagerConnectionFactory(sqlUrl, sqlUser, sqlPasswd);
 
-    PoolableConnectionFactory poolfactory =
+    PoolableConnectionFactory poolFactory =
         new PoolableConnectionFactory(driverManagerConnectionFactory, null);
-    ObjectPool connectionPool = new GenericObjectPool(poolfactory);
-
-    poolfactory.setPool(connectionPool);
-    try {
-      Class.forName("org.apache.commons.dbcp2.PoolingDriver");
-    } catch (ClassNotFoundException e) {
-      LOG.error("There was not able to find the driver class");
-    }
-    try {
-      driver = (PoolingDriver) DriverManager.getDriver("jdbc:apache:commons:dbcp:");
-    } catch (SQLException e) {
-      LOG.error("There was an error: " + e.getMessage());
-    }
-    this.shardId = shardId;
-    this.poolName = "gcs-to-source-" + shardId;
-    this.fullPoolName = "jdbc:apache:commons:dbcp:" + this.poolName;
-    driver.registerPool(this.poolName, connectionPool);
+    ObjectPool connectionPool = new GenericObjectPool(poolFactory);
+    poolFactory.setPool(connectionPool);
+    return connectionPool;
   }
 
-  // writes to database in a batch
   public void batchWrite(List<String> batchStatements) throws SQLException {
     Connection connObj = null;
     Statement statement = null;
@@ -88,13 +72,14 @@ public class MySqlDao implements Serializable {
         }
         statement.executeBatch();
         status = true;
+      } catch (org.postgresql.util.PSQLException e) {
+        // TODO: retry handling is configurable with retry count
+        LOG.warn(
+            "PostgreSQL Connection exception while executing SQL, will retry : " + e.getMessage());
       } catch (com.mysql.cj.jdbc.exceptions.CommunicationsException e) {
         // TODO: retry handling is configurable with retry count
-        LOG.warn("Connection exception while executing SQL, will retry : " + e.getMessage());
-        // gives indication that the shard is being retried
-        Metrics.counter(MySqlDao.class, "mySQL_retry_" + shardId).inc();
+        LOG.warn("MySQL Connection exception while executing SQL, will retry : " + e.getMessage());
       } finally {
-
         if (statement != null) {
           statement.close();
         }
@@ -105,8 +90,12 @@ public class MySqlDao implements Serializable {
     }
   }
 
-  // frees up the pooling resources
-  public void cleanup() throws Exception {
-    driver.closePool(this.poolName);
+  protected void validateClassDependencies(List<String> classDependencies)
+      throws ClassNotFoundException {
+    for (String className : classDependencies) {
+      Class.forName(className);
+    }
   }
+
+  public abstract void cleanup() throws Exception;
 }

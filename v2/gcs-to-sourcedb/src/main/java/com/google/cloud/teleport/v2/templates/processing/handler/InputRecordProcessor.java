@@ -17,8 +17,9 @@ package com.google.cloud.teleport.v2.templates.processing.handler;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
-import com.google.cloud.teleport.v2.templates.dao.MySqlDao;
+import com.google.cloud.teleport.v2.templates.dao.BaseDao;
 import com.google.cloud.teleport.v2.templates.processing.dml.DMLGenerator;
+import com.google.cloud.teleport.v2.templates.processing.dml.DMLGeneratorFactory;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -37,9 +38,10 @@ public class InputRecordProcessor {
   private static final Logger LOG = LoggerFactory.getLogger(InputRecordProcessor.class);
 
   public static void processRecords(
+      String sourceDbType,
       List<TrimmedShardedDataChangeRecord> recordList,
       Schema schema,
-      MySqlDao dao,
+      BaseDao dao,
       String shardId,
       String sourceDbTimezoneOffset) {
 
@@ -55,6 +57,7 @@ public class InputRecordProcessor {
           Metrics.distribution(shardId, "replication_lag_in_seconds_" + shardId);
 
       List<String> dmlBatch = new ArrayList<>();
+      DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator(sourceDbType);
       for (TrimmedShardedDataChangeRecord chrec : recordList) {
         String tableName = chrec.getTableName();
         String modType = chrec.getModType().name();
@@ -64,7 +67,7 @@ public class InputRecordProcessor {
         JSONObject keysJson = new JSONObject(keysJsonStr);
 
         String dmlStatement =
-            DMLGenerator.getDMLStatement(
+            dmlGenerator.getDMLStatement(
                 modType, tableName, schema, newValuesJson, keysJson, sourceDbTimezoneOffset);
         if (!dmlStatement.isEmpty()) {
           dmlBatch.add(dmlStatement);
@@ -87,7 +90,7 @@ public class InputRecordProcessor {
       LOG.info(
           "Shard "
               + shardId
-              + ": Write to mysql for "
+              + String.format(": Write to source for ", sourceDbType)
               + recordList.size()
               + " took : "
               + ChronoUnit.MILLIS.between(daoStartTime, daoEndTime)

@@ -33,6 +33,8 @@ public class ProcessingContext implements Serializable {
   private String gcsPath;
   private String runId;
 
+  private String sourceDbType;
+
   public ProcessingContext(
       Shard shard,
       Schema schema,
@@ -40,7 +42,8 @@ public class ProcessingContext implements Serializable {
       String startTimestamp,
       Duration windowDuration,
       String gcsPath,
-      String runId) {
+      String runId,
+      String sourceDbType) {
     this.shard = shard;
     this.schema = schema;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
@@ -48,6 +51,7 @@ public class ProcessingContext implements Serializable {
     this.windowDuration = windowDuration;
     this.gcsPath = gcsPath;
     this.runId = runId;
+    this.sourceDbType = sourceDbType;
   }
 
   public Shard getShard() {
@@ -82,6 +86,10 @@ public class ProcessingContext implements Serializable {
     return runId;
   }
 
+  public String getSourceDbType() {
+    return sourceDbType;
+  }
+
   @Override
   public String toString() {
 
@@ -97,6 +105,8 @@ public class ProcessingContext implements Serializable {
         + gcsPath
         + " runId: "
         + runId
+        + " sourceDbType: "
+        + sourceDbType
         + "}";
   }
 
@@ -115,7 +125,8 @@ public class ProcessingContext implements Serializable {
         && this.getStartTimestamp().equals(other.getStartTimestamp())
         && this.getGCSPath().equals(other.getGCSPath())
         && this.getWindowDuration().equals(other.getWindowDuration())
-        && this.getRunId().equals(other.getRunId());
+        && this.getRunId().equals(other.getRunId())
+        && this.getSourceDbType().equals(other.getSourceDbType());
   }
 
   @Override
@@ -127,6 +138,7 @@ public class ProcessingContext implements Serializable {
         getStartTimestamp(),
         getGCSPath(),
         getWindowDuration(),
-        getRunId());
+        getRunId(),
+        getSourceDbType());
   }
 }
