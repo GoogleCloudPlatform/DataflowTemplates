@@ -44,6 +44,6 @@ public class AdvancedTransformation implements IDatastreamToSpannerTransformatio
 
   @Override
   public boolean filterRecord(DatastreamToSpannerFilterRequest request) {
-    return false;
+    return true;
   }
 }

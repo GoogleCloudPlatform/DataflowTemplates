@@ -63,6 +63,9 @@ public class SpannerTransactionWriter
   /* The Tag for Successful mutations */
   public static final TupleTag<Timestamp> SUCCESSFUL_EVENT_TAG = new TupleTag<Timestamp>() {};
 
+  /* The Tag for filtered events */
+  public static final TupleTag<String> FILTERED_EVENT_TAG = new TupleTag<String>() {};
+
   /* The spanner config specifying the destination Cloud Spanner database to connect to */
   private final SpannerConfig spannerConfig;
 
@@ -141,12 +144,15 @@ public class SpannerTransactionWriter
                 .withSideInputs(ddlView)
                 .withOutputTags(
                     SUCCESSFUL_EVENT_TAG,
-                    TupleTagList.of(Arrays.asList(PERMANENT_ERROR_TAG, RETRYABLE_ERROR_TAG))));
+                    TupleTagList.of(
+                        Arrays.asList(
+                            PERMANENT_ERROR_TAG, RETRYABLE_ERROR_TAG, FILTERED_EVENT_TAG))));
 
     return Result.create(
         spannerWriteResults.get(SUCCESSFUL_EVENT_TAG),
         spannerWriteResults.get(PERMANENT_ERROR_TAG),
-        spannerWriteResults.get(RETRYABLE_ERROR_TAG));
+        spannerWriteResults.get(RETRYABLE_ERROR_TAG),
+        spannerWriteResults.get(FILTERED_EVENT_TAG));
   }
 
   /**
@@ -161,12 +167,14 @@ public class SpannerTransactionWriter
     private static Result create(
         PCollection<Timestamp> successfulSpannerWrites,
         PCollection<FailsafeElement<String, String>> permanentErrors,
-        PCollection<FailsafeElement<String, String>> retryableErrors) {
+        PCollection<FailsafeElement<String, String>> retryableErrors,
+        PCollection<String> filteredEvents) {
       Preconditions.checkNotNull(successfulSpannerWrites);
       Preconditions.checkNotNull(permanentErrors);
       Preconditions.checkNotNull(retryableErrors);
+      Preconditions.checkNotNull(filteredEvents);
       return new AutoValue_SpannerTransactionWriter_Result(
-          successfulSpannerWrites, permanentErrors, retryableErrors);
+          successfulSpannerWrites, permanentErrors, retryableErrors, filteredEvents);
     }
 
     public abstract PCollection<Timestamp> successfulSpannerWrites();
@@ -174,6 +182,8 @@ public class SpannerTransactionWriter
     public abstract PCollection<FailsafeElement<String, String>> permanentErrors();
 
     public abstract PCollection<FailsafeElement<String, String>> retryableErrors();
+
+    public abstract PCollection<String> filteredEvents();
 
     @Override
     public void finishSpecifyingOutput(
@@ -194,7 +204,9 @@ public class SpannerTransactionWriter
           PERMANENT_ERROR_TAG,
           permanentErrors(),
           RETRYABLE_ERROR_TAG,
-          retryableErrors());
+          retryableErrors(),
+          FILTERED_EVENT_TAG,
+          filteredEvents());
     }
   }
 }

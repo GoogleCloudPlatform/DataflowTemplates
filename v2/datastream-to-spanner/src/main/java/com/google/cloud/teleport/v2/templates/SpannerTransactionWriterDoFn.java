@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_CHANGE_TYPE_KEY;
+import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_METADATA_KEY_PREFIX;
+import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_SCHEMA_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_TABLE_NAME_KEY;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -46,6 +49,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.spanner.utils.DatastreamToSpannerFilterRequest;
 import com.google.cloud.teleport.v2.spanner.utils.DatastreamToSpannerTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.DatastreamToSpannerTransformationResponse;
 import com.google.cloud.teleport.v2.spanner.utils.IDatastreamToSpannerTransformation;
@@ -142,6 +146,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private final Counter failedEvents =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Other permanent errors");
 
+  private final Counter filteredEvents =
+      Metrics.counter(SpannerTransactionWriterDoFn.class, "Filtered events");
+
   private final Counter conversionErrors =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Conversion errors");
 
@@ -226,6 +233,20 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
       JsonNode retryCount = changeEvent.get("_metadata_retry_count");
       String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
+      Map<String, Object> sourceRecord;
+      sourceRecord = getSourceRecord(changeEvent, tableName);
+      if (datastreamToSpannerTransformation != null) {
+        DatastreamToSpannerFilterRequest datastreamToSpannerFilterRequest =
+            new DatastreamToSpannerFilterRequest(
+                tableName, sourceRecord, changeEvent.get(EVENT_CHANGE_TYPE_KEY).asText());
+        boolean filterRecord =
+            datastreamToSpannerTransformation.filterRecord(datastreamToSpannerFilterRequest);
+        if (filterRecord) {
+          filteredEvents.inc();
+          outputWithFilterTag(c, c.element());
+          return;
+        }
+      }
 
       if (retryCount != null) {
         isRetryRecord = true;
@@ -239,8 +260,6 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
           changeEventSessionConvertor.transformChangeEventData(
               changeEvent, spannerAccessor.getDatabaseClient(), ddl);
       if (datastreamToSpannerTransformation != null) {
-        Map<String, Object> sourceRecord = getSourceRecord(changeEvent, tableName);
-        LOG.info("Source record parsed: " + sourceRecord);
         DatastreamToSpannerTransformationRequest datastreamToSpannerTransformationRequest =
             new DatastreamToSpannerTransformationRequest(tableName, sourceRecord);
         DatastreamToSpannerTransformationResponse datastreamToSpannerTransformationResponse =
@@ -390,8 +409,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     Set<String> columnIds = sourceColumns.keySet();
     for (String columnId : columnIds) {
       SourceColumnType columnType =
-          schema.getSrcSchema().get(tableName).getColDefs().get(columnId).getType();
-      String columnName = schema.getSrcSchema().get(tableName).getColDefs().get(columnId).getName();
+          schema.getSrcSchema().get(tableId).getColDefs().get(columnId).getType();
+      String columnName = schema.getSrcSchema().get(tableId).getColDefs().get(columnId).getName();
       Object columnValue;
       switch (columnType.getName().toLowerCase()) {
         case "int":
@@ -433,11 +452,11 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         URLClassLoader urlClassLoader = new URLClassLoader(classLoaderUrls);
 
         // Load the target class
-        Class<?> shardFetcherClass = urlClassLoader.loadClass(customClassName);
+        Class<?> advancedTransformationClass = urlClassLoader.loadClass(customClassName);
 
         // Create a new instance from the loaded class
-        Constructor<?> constructor = shardFetcherClass.getConstructor();
-        IDatastreamToSpannerTransformation shardFetcher =
+        Constructor<?> constructor = advancedTransformationClass.getConstructor();
+        IDatastreamToSpannerTransformation datastreamToSpannerTransformation =
             (IDatastreamToSpannerTransformation) constructor.newInstance();
         // Get the end time of loading the custom class
         Instant endTime = Instant.now();
@@ -448,13 +467,12 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                 + (new Duration(startTime, endTime)).toString()
                 + " to load");
         LOG.info("Invoking init of the custom class with input as {}", advancedCustomParameters);
-        shardFetcher.init(advancedCustomParameters, null);
-        return shardFetcher;
+        datastreamToSpannerTransformation.init(advancedCustomParameters, null);
+        return datastreamToSpannerTransformation;
       } catch (Exception e) {
         throw new RuntimeException("Error loading custom class : " + e.getMessage());
       }
     }
-    // else return null
     return null;
   }
 
@@ -629,6 +647,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     FailsafeElement<String, String> output = FailsafeElement.of(changeEvent);
     output.setErrorMessage(e.getMessage());
     c.output(errorTag, output);
+  }
+
+  void outputWithFilterTag(ProcessContext c, FailsafeElement<String, String> changeEvent) {
+    c.output(SpannerTransactionWriter.FILTERED_EVENT_TAG, changeEvent.getPayload());
   }
 
   String getTxnTag(PipelineOptions options) {
