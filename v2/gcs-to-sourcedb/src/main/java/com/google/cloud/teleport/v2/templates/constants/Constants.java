@@ -41,4 +41,11 @@ public class Constants {
 
   /** Shard progress status - reprocess. */
   public static final String SHARD_PROGRESS_STATUS_REPROCESS = "REPROCESS";
+
+  /** Commons DBCP Driver URL prefix. */
+  public static final String COMMONS_DBCP_DRIVER_URL_PREFIX = "jdbc:apache:commons:dbcp:";
+
+  /** Commons DBCP2 Driver Name. */
+  public static final String COMMONS_DBCP_2_POOLING_DRIVER =
+      "org.apache.commons.dbcp2.PoolingDriver";
 }

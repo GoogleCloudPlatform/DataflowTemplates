@@ -90,7 +90,7 @@ public class InputRecordProcessor {
       LOG.info(
           "Shard "
               + shardId
-              + String.format(": Write to mysql for ", sourceDbType)
+              + String.format(": Write to source for ", sourceDbType)
               + recordList.size()
               + " took : "
               + ChronoUnit.MILLIS.between(daoStartTime, daoEndTime)

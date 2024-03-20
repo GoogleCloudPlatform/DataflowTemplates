@@ -35,10 +35,6 @@ public class ProcessingContext implements Serializable {
 
   private String sourceDbType;
 
-  private Boolean enableSourceDbSsl;
-
-  private Boolean enableSourceDbSslValidation;
-
   public ProcessingContext(
       Shard shard,
       Schema schema,
@@ -47,9 +43,7 @@ public class ProcessingContext implements Serializable {
       Duration windowDuration,
       String gcsPath,
       String runId,
-      String sourceDbType,
-      Boolean enableSourceDbSsl,
-      Boolean enableSourceDbSslValidation) {
+      String sourceDbType) {
     this.shard = shard;
     this.schema = schema;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
@@ -58,8 +52,6 @@ public class ProcessingContext implements Serializable {
     this.gcsPath = gcsPath;
     this.runId = runId;
     this.sourceDbType = sourceDbType;
-    this.enableSourceDbSsl = enableSourceDbSsl;
-    this.enableSourceDbSslValidation = enableSourceDbSslValidation;
   }
 
   public Shard getShard() {
@@ -98,14 +90,6 @@ public class ProcessingContext implements Serializable {
     return sourceDbType;
   }
 
-  public Boolean getEnableSourceDbSsl() {
-    return enableSourceDbSsl;
-  }
-
-  public Boolean getEnableSourceDbSslValidation() {
-    return enableSourceDbSslValidation;
-  }
-
   @Override
   public String toString() {
 
@@ -123,10 +107,6 @@ public class ProcessingContext implements Serializable {
         + runId
         + " sourceDbType: "
         + sourceDbType
-        + " enableSourceDbSsl: "
-        + enableSourceDbSsl
-        + " enableSourceDbSslValidation: "
-        + enableSourceDbSslValidation
         + "}";
   }
 
@@ -146,9 +126,7 @@ public class ProcessingContext implements Serializable {
         && this.getGCSPath().equals(other.getGCSPath())
         && this.getWindowDuration().equals(other.getWindowDuration())
         && this.getRunId().equals(other.getRunId())
-        && this.getSourceDbType().equals(other.getSourceDbType())
-        && this.getEnableSourceDbSsl().equals(other.getEnableSourceDbSsl())
-        && this.getEnableSourceDbSslValidation().equals(other.getEnableSourceDbSslValidation());
+        && this.getSourceDbType().equals(other.getSourceDbType());
   }
 
   @Override
@@ -161,8 +139,6 @@ public class ProcessingContext implements Serializable {
         getGCSPath(),
         getWindowDuration(),
         getRunId(),
-        getSourceDbType(),
-        getEnableSourceDbSsl(),
-        getEnableSourceDbSslValidation());
+        getSourceDbType());
   }
 }
