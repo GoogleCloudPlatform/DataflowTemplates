@@ -90,7 +90,11 @@ public class MySqlDao implements Serializable {
         status = true;
       } catch (com.mysql.cj.jdbc.exceptions.CommunicationsException e) {
         // TODO: retry handling is configurable with retry count
-        LOG.warn("Connection exception while executing SQL, will retry : " + e.getMessage());
+        LOG.warn(
+            "Connection exception while executing SQL for shard : "
+                + shardId
+                + ", will retry : "
+                + e.getMessage());
         // gives indication that the shard is being retried
         Metrics.counter(MySqlDao.class, "mySQL_retry_" + shardId).inc();
       } finally {
