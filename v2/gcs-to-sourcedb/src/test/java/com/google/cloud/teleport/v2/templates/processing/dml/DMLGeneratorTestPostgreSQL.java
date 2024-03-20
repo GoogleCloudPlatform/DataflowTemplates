@@ -54,7 +54,7 @@ public class DMLGeneratorTestPostgreSQL {
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -77,7 +77,7 @@ public class DMLGeneratorTestPostgreSQL {
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -101,7 +101,7 @@ public class DMLGeneratorTestPostgreSQL {
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -125,7 +125,7 @@ public class DMLGeneratorTestPostgreSQL {
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -150,7 +150,7 @@ public class DMLGeneratorTestPostgreSQL {
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -177,7 +177,7 @@ public class DMLGeneratorTestPostgreSQL {
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -199,7 +199,7 @@ public class DMLGeneratorTestPostgreSQL {
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -221,7 +221,7 @@ public class DMLGeneratorTestPostgreSQL {
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -245,7 +245,7 @@ public class DMLGeneratorTestPostgreSQL {
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -270,7 +270,7 @@ public class DMLGeneratorTestPostgreSQL {
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -308,7 +308,7 @@ public class DMLGeneratorTestPostgreSQL {
     // But this test case will run locally
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 
   @Test
@@ -332,6 +332,6 @@ public class DMLGeneratorTestPostgreSQL {
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 }

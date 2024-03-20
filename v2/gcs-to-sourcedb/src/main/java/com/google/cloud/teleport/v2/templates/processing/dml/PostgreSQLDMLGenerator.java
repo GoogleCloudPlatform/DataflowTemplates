@@ -118,6 +118,7 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
     String response = "";
     String cleanedNullBytes = "";
     String decodedString = "";
+    columnType = columnType.toLowerCase();
     switch (columnType) {
       case "varchar":
       case "char":
