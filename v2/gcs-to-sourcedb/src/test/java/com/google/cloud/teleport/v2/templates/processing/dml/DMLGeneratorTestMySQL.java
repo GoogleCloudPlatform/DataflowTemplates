@@ -35,7 +35,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
-public final class DMLGeneratorTest {
+public final class DMLGeneratorTestMySQL {
 
   @Test
   public void tableAndAllColumnNameTypesMatch() {
@@ -46,7 +46,7 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
-    DMLGenerator dmlGenerator = new MySqlDMLGenerator();
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'kk', LastName = 'll'";
@@ -69,7 +69,7 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
-    DMLGenerator dmlGenerator = new MySqlDMLGenerator();
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
@@ -93,7 +93,7 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
-    DMLGenerator dmlGenerator = new MySqlDMLGenerator();
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES ('999',222,'ll') ON DUPLICATE"
@@ -118,7 +118,7 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
-    DMLGenerator dmlGenerator = new MySqlDMLGenerator();
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
@@ -144,7 +144,7 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
-    DMLGenerator dmlGenerator = new MySqlDMLGenerator();
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
@@ -168,7 +168,7 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SomeRandomName\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
-    DMLGenerator dmlGenerator = new MySqlDMLGenerator();
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql = "";
     String sql =
@@ -190,7 +190,7 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
-    DMLGenerator dmlGenerator = new MySqlDMLGenerator();
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql = "";
     String sql =
@@ -213,7 +213,7 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
-    DMLGenerator dmlGenerator = new MySqlDMLGenerator();
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,Bday) VALUES (999,"
@@ -238,7 +238,7 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"FirstName\":\"kk\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
-    DMLGenerator dmlGenerator = new MySqlDMLGenerator();
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
@@ -277,7 +277,7 @@ public final class DMLGeneratorTest {
     String newValueJsonStr = chrec.getMods().get(0).getNewValuesJson();
     JSONObject newValuesJson = new JSONObject(newValueJsonStr);
     JSONObject keyValuesJson = new JSONObject(keysJsonStr);
-    DMLGenerator dmlGenerator = new MySqlDMLGenerator();
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO"
@@ -317,7 +317,7 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
-    DMLGenerator dmlGenerator = new MySqlDMLGenerator();
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',NULL) ON DUPLICATE KEY"

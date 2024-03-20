@@ -24,8 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Writes data to MySQL. */
-public class PostgreSqlDao extends BaseDao {
-  private static final Logger LOG = LoggerFactory.getLogger(PostgreSqlDao.class);
+public class PostgreSQLDao extends BaseDao {
+  private static final Logger LOG = LoggerFactory.getLogger(PostgreSQLDao.class);
 
   private static final String JDBC_DRIVER = "org.postgresql.Driver";
 
@@ -37,7 +37,7 @@ public class PostgreSqlDao extends BaseDao {
   private PoolingDriver driver;
   private final String poolName;
 
-  public PostgreSqlDao(
+  public PostgreSQLDao(
       String sqlUrl,
       String sqlUser,
       String sqlPasswd,

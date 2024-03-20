@@ -24,7 +24,7 @@ public class DMLGeneratorFactory {
   public static DMLGenerator getDMLGenerator(String sourceDbType) throws IllegalArgumentException {
     LOG.info(String.format("Getting DML generator for %s", sourceDbType));
     if ("mysql".equals(sourceDbType)) {
-      return new MySqlDMLGenerator();
+      return new MySQLDMLGenerator();
     } else if ("postgresql".equals(sourceDbType)) {
       return new PostgreSQLDMLGenerator();
     }
