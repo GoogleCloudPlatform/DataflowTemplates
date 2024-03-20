@@ -29,35 +29,23 @@ import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Base class for implementing various Dao implementations. */
-public abstract class Dao implements Serializable {
-  private static final long serialVersionUID = 1L;
-
-  private static final Logger LOG = LoggerFactory.getLogger(Dao.class);
+/** Base class for implementing various BaseDao implementations. */
+public abstract class BaseDao implements Serializable {
+  private static final Logger LOG = LoggerFactory.getLogger(BaseDao.class);
 
   protected String sqlUrl;
 
   protected final String sqlUser;
   protected final String sqlPasswd;
   protected final String shardId;
-  protected final Boolean enableSsl;
-  protected final Boolean enableSslValidation;
   protected String fullPoolName;
 
-  public Dao(
-      String sqlUrl,
-      String sqlUser,
-      String sqlPasswd,
-      String shardId,
-      Boolean enableSsl,
-      Boolean enableSslValidation,
-      String fullPoolName) {
+  public BaseDao(
+      String sqlUrl, String sqlUser, String sqlPasswd, String shardId, String fullPoolName) {
     this.sqlUrl = sqlUrl;
     this.sqlUser = sqlUser;
     this.sqlPasswd = sqlPasswd;
     this.shardId = shardId;
-    this.enableSsl = enableSsl;
-    this.enableSslValidation = enableSslValidation;
     this.fullPoolName = fullPoolName;
   }
 
@@ -111,9 +99,6 @@ public abstract class Dao implements Serializable {
       Class.forName(className);
     }
   }
-
-  abstract String getSslEnabledSqlUrl(
-      String sqlUrl, Boolean enableSsl, Boolean enableSslValidation);
 
   // frees up the pooling resources
   public abstract void cleanup() throws Exception;

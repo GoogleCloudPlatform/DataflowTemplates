@@ -24,7 +24,7 @@ public class DaoFactory {
 
   private static final Logger LOG = LoggerFactory.getLogger(DaoFactory.class);
 
-  public static Dao getDao(ProcessingContext taskContext) throws IllegalArgumentException {
+  public static BaseDao getDao(ProcessingContext taskContext) throws IllegalArgumentException {
     LOG.info(String.format("Getting the %s DAO", taskContext.getSourceDbType()));
     if ("mysql".equals(taskContext.getSourceDbType())) {
       String sqlUrl =
@@ -39,8 +39,6 @@ public class DaoFactory {
           taskContext.getShard().getUserName(),
           taskContext.getShard().getPassword(),
           taskContext.getShard().getLogicalShardId(),
-          taskContext.getEnableSourceDbSsl(),
-          taskContext.getEnableSourceDbSslValidation(),
           "");
     } else if ("postgresql".equals(taskContext.getSourceDbType())) {
       String sqlUrl =
@@ -55,11 +53,9 @@ public class DaoFactory {
           taskContext.getShard().getUserName(),
           taskContext.getShard().getPassword(),
           taskContext.getShard().getLogicalShardId(),
-          taskContext.getEnableSourceDbSsl(),
-          taskContext.getEnableSourceDbSslValidation(),
           "");
     }
     throw new IllegalArgumentException(
-        String.format("No DAO found for %s", taskContext.getSourceDbType()));
+        String.format("No DAO found for source type %s", taskContext.getSourceDbType()));
   }
 }

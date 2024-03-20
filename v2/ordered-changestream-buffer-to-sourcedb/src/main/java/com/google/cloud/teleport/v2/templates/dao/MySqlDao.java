@@ -24,9 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Writes data to MySQL. */
-public class MySqlDao extends Dao {
-
-  private static final long serialVersionUID = 3L;
+public class MySqlDao extends BaseDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(MySqlDao.class);
 
@@ -40,18 +38,11 @@ public class MySqlDao extends Dao {
   private final String poolName;
 
   public MySqlDao(
-      String sqlUrl,
-      String sqlUser,
-      String sqlPasswd,
-      String shardId,
-      Boolean enableSsl,
-      Boolean enableSslValidation,
-      String fullPoolName) {
-    super(sqlUrl, sqlUser, sqlPasswd, shardId, enableSsl, enableSslValidation, fullPoolName);
+      String sqlUrl, String sqlUser, String sqlPasswd, String shardId, String fullPoolName) {
+    super(sqlUrl, sqlUser, sqlPasswd, shardId, fullPoolName);
     this.poolName = "buffer-to-source-" + shardId;
     this.fullPoolName = COMMONS_DBCP_DRIVER_URL + this.poolName;
-    sqlUrl = getRewriteBatchedStatementsSqlUrl(sqlUrl);
-    sqlUrl = getSslEnabledSqlUrl(sqlUrl, enableSsl, enableSslValidation);
+    sqlUrl = sqlUrl + "?rewriteBatchedStatements=true";
     try {
       validateClassDependencies(List.of(JDBC_DRIVER, COMMONS_DBCP_2_POOLING_DRIVER));
     } catch (ClassNotFoundException e) {
@@ -64,23 +55,6 @@ public class MySqlDao extends Dao {
     }
     ObjectPool connectionPool = getObjectPool(sqlUrl, sqlUser, sqlPasswd);
     this.driver.registerPool(this.poolName, connectionPool);
-  }
-
-  String getRewriteBatchedStatementsSqlUrl(String sqlUrl) {
-    sqlUrl = sqlUrl + "?rewriteBatchedStatements=true";
-    return sqlUrl;
-  }
-
-  @Override
-  String getSslEnabledSqlUrl(String sqlUrl, Boolean enableSsl, Boolean enableSslValidation) {
-    if (enableSsl) {
-      if (enableSslValidation) {
-        sqlUrl = sqlUrl + "&useSSL=true&verifyServerCertificate=true";
-      } else {
-        sqlUrl = sqlUrl + "&useSSL=true&verifyServerCertificate=false";
-      }
-    }
-    return sqlUrl;
   }
 
   // frees up the pooling resources

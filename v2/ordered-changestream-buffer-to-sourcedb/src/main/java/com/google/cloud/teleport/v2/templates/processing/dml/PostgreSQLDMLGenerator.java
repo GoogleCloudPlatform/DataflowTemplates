@@ -39,7 +39,7 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
       String colName = entry.getKey();
       String colValue = entry.getValue();
 
-      allColumns += colName + ",";
+      allColumns += "\"" + colName + "\",";
       allValues += colValue + ",";
     }
 
@@ -49,7 +49,7 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
       allValues = allValues.substring(0, allValues.length() - 1);
 
       String returnVal =
-          "INSERT INTO " + tableName + "(" + allColumns + ")" + " VALUES (" + allValues + ")";
+          "INSERT INTO \"" + tableName + "\"(" + allColumns + ")" + " VALUES (" + allValues + ")";
       return returnVal;
     }
     int index = 0;
@@ -57,10 +57,10 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
     for (Map.Entry<String, String> entry : columnNameValues.entrySet()) {
       String colName = entry.getKey();
       String colValue = entry.getValue();
-      allColumns += colName;
+      allColumns += "\"" + colName + "\"";
       allValues += colValue;
       if (!primaryKeys.contains(colName)) {
-        updateValues += " " + colName + " = " + "EXCLUDED." + colName;
+        updateValues += " \"" + colName + "\" = " + "EXCLUDED.\"" + colName + "\"";
       }
 
       if (index + 1 < columnNameValues.size()) {
@@ -71,21 +71,22 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
       index++;
     }
 
-    String uniqueKeys = String.join(", ", pkcolumnNameValues.keySet());
+    String compositePrimaryKey = String.join("\",\"", primaryKeys);
 
     String returnVal =
-        "INSERT INTO "
+        "INSERT INTO \""
             + tableName
-            + "("
+            + "\"("
             + allColumns
             + ")"
             + " VALUES ("
             + allValues
             + ") "
-            + "ON CONFLICT("
-            + uniqueKeys
-            + ") DO UPDATE SET"
+            + "ON CONFLICT(\""
+            + compositePrimaryKey
+            + "\") DO UPDATE SET" // TODO for concurrent updates this need to be tested
             + updateValues;
+    // LOG.debug("Generated upsert query: " + returnVal);
 
     return returnVal;
   }
@@ -99,7 +100,7 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
       String colName = entry.getKey();
       String colValue = entry.getValue();
 
-      deleteValues += colName + " = " + colValue;
+      deleteValues += " \"" + colName + "\" = " + colValue;
       if (index + 1 < pkcolumnNameValues.size()) {
         deleteValues += " AND ";
       }
@@ -115,36 +116,63 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
     String response = "";
     String cleanedNullBytes = "";
     String decodedString = "";
+    columnType = columnType.toLowerCase();
     switch (columnType) {
       case "varchar":
       case "char":
+      case "bpchar":
+      case "character":
+      case "character varying":
       case "text":
-      case "tinytext":
-      case "mediumtext":
-      case "longtext":
-      case "enum":
+      case "tsvector":
+      case "tsquery":
+      case "uuid":
+
+      case "user-defined": // USER-DEFINED - for enum for certain versions
+
       case "date":
       case "time":
-      case "year":
-      case "set":
+      case "time without time zone":
+      case "timestamp":
+      case "timestamp without time zone":
+
+      case "interval":
+
       case "json":
-      case "geometry":
-      case "geometrycollection":
-      case "point":
-      case "multipoint":
-      case "linestring":
-      case "multilinestring":
+      case "jsonb":
+
+      case "path":
+
       case "polygon":
-      case "multipolygon":
-      case "tinyblob":
-      case "mediumblob":
-      case "blob":
-      case "longblob":
+      case "line":
+      case "lseg":
+      case "circle":
+      case "box":
+
+      case "macaddr":
+      case "macaddr8":
+      case "cidr":
+      case "inet":
+
+      case "money":
+
+      case "bytea":
         response = getQuotedEscapedString(colValue);
         break;
-      case "timestamp":
-      case "datetime":
-        colValue = colValue.substring(0, colValue.length() - 1); // trim the Z for mysql
+      case "timetz": // this type should be avoided as it cannot deal with DST rules
+      case "time with time zone": // this should be avoided as it cannot deal with DST rules
+        colValue = colValue.substring(0, colValue.length() - 1); // trim the Z
+        response =
+            " TO_CHAR((TIMESTAMP "
+                + getQuotedEscapedString(colValue)
+                + " AT TIME ZONE '+00:00' AT TIME ZONE '"
+                + sourceDbTimezoneOffset
+                + "'), "
+                + "'HH24:MI:SS')";
+        break;
+      case "timestamp with time zone":
+      case "timestamptz":
+        colValue = colValue.substring(0, colValue.length() - 1); // trim the Z
         response =
             " TO_CHAR((TIMESTAMP "
                 + getQuotedEscapedString(colValue)
@@ -153,10 +181,18 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
                 + "'), "
                 + "'YYYY-MM-DD HH24:MI:SS')";
         break;
-      case "binary":
-      case "varbinary":
+      case "bit":
+      case "bit varying":
         response = getHexString(colValue);
         break;
+      case "xml":
+        response = " XMLPARSE(" + getQuotedEscapedString(colValue) + ")";
+        break;
+
+      case "point":
+        response = " point (" + colValue + ")";
+        break;
+
       default:
         response = colValue;
     }

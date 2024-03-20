@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.templates.processing.handler;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
-import com.google.cloud.teleport.v2.templates.dao.Dao;
+import com.google.cloud.teleport.v2.templates.dao.BaseDao;
 import com.google.cloud.teleport.v2.templates.processing.dml.DMLGenerator;
 import com.google.cloud.teleport.v2.templates.processing.dml.DMLGeneratorFactory;
 import java.sql.SQLException;
@@ -41,7 +41,7 @@ public class InputRecordProcessor {
       String sourceDbType,
       List<String> recordList,
       Schema schema,
-      Dao dao,
+      BaseDao baseDao,
       String shardId,
       String sourceDbTimezoneOffset) {
     try {
@@ -82,7 +82,7 @@ public class InputRecordProcessor {
         }
 
         Instant daoStartTime = Instant.now();
-        dao.batchWrite(dmlBatch);
+        baseDao.batchWrite(dmlBatch);
         Instant daoEndTime = Instant.now();
         LOG.info(
             "Shard "
