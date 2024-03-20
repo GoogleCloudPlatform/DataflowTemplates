@@ -1,0 +1,9 @@
+comment:
+  layout: "header, diff, components, files" # show component info in the PR comment
+
+coverage:
+  status:
+    patch:
+      default:
+        target: 80%
+        informational: true 
