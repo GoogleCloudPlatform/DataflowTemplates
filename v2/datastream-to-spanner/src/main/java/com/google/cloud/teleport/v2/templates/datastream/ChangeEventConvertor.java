@@ -283,9 +283,8 @@ public class ChangeEventConvertor {
           break;
         case FLOAT32:
         case PG_FLOAT4:
-          // Replace `Value.float64` with `Value.float32` once client lib support float32.
           columnValue =
-              Value.float64(ChangeEventTypeConvertor.toFloat(changeEvent, colName, requiredField));
+              Value.float32(ChangeEventTypeConvertor.toFloat(changeEvent, colName, requiredField));
           break;
         case FLOAT64:
         case PG_FLOAT8:

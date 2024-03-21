@@ -211,10 +211,10 @@ public final class ChangeEventTypeConvertorTest {
 
     // Change Event with all valid forms of double values
     JSONObject changeEvent = new JSONObject();
-    changeEvent.put("field1", 123456789f);
-    changeEvent.put("field2", -123456789f);
-    changeEvent.put("field3", 123456.789f);
-    changeEvent.put("field4", -123456.789f);
+    changeEvent.put("field1", Float.MAX_VALUE);
+    changeEvent.put("field2", -Float.MAX_VALUE);
+    changeEvent.put("field3", Float.MIN_VALUE);
+    changeEvent.put("field4", -Float.MIN_VALUE);
     changeEvent.put("field5", "123456789");
     changeEvent.put("field6", "-123456789");
     changeEvent.put("field7", "123456.789");
@@ -223,20 +223,22 @@ public final class ChangeEventTypeConvertorTest {
     changeEvent.put("field10", true);
     changeEvent.put("field11", false);
     changeEvent.put("field12", JSONObject.NULL);
+    changeEvent.put("field13", Float.POSITIVE_INFINITY);
+    changeEvent.put("field14", Float.NEGATIVE_INFINITY);
     JsonNode ce = getJsonNode(changeEvent.toString());
 
     assertEquals(
         ChangeEventTypeConvertor.toFloat(ce, "field1", /* requiredField= */ true),
-        new Float(123456789));
+        Float.MAX_VALUE);
     assertEquals(
         ChangeEventTypeConvertor.toFloat(ce, "field2", /* requiredField= */ true),
-        new Float(-123456789));
+        -Float.MAX_VALUE);
     assertEquals(
         ChangeEventTypeConvertor.toFloat(ce, "field3", /* requiredField= */ true),
-        new Float(123456.789));
+        Float.MIN_VALUE);
     assertEquals(
         ChangeEventTypeConvertor.toFloat(ce, "field4", /* requiredField= */ true),
-        new Float(-123456.789));
+        -Float.MIN_VALUE);
     assertEquals(
         ChangeEventTypeConvertor.toFloat(ce, "field5", /* requiredField= */ true),
         new Float(123456789));
@@ -257,6 +259,12 @@ public final class ChangeEventTypeConvertorTest {
     assertEquals(
         ChangeEventTypeConvertor.toFloat(ce, "field11", /* requiredField= */ true), new Float(0));
     assertNull(ChangeEventTypeConvertor.toFloat(ce, "field12", /* requiredField= */ false));
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field13", /* requiredField= */ true),
+        Float.POSITIVE_INFINITY);
+    assertEquals(
+        ChangeEventTypeConvertor.toFloat(ce, "field14", /* requiredField= */ true),
+        Float.NEGATIVE_INFINITY);
   }
 
   @Test(expected = ChangeEventConvertorException.class)
