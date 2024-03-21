@@ -147,7 +147,8 @@ public class TemplateSpecsGenerator {
 
       String containerName = templateAnnotation.flexContainerName();
 
-      if (definition.getTemplateAnnotation().type() == TemplateType.JAVA) {
+      if (definition.getTemplateAnnotation().type() == TemplateType.JAVA
+          || definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
         writer.write(
             "{\n"
                 + "  \"mainClass\": \""
@@ -155,7 +156,7 @@ public class TemplateSpecsGenerator {
                 + "\",\n"
                 + "  \"classPath\": \"/template/"
                 + containerName
-                + "/libs/conscrypt-openjdk-uber-*.jar:/template/"
+                + "/libs/conscrypt-openjdk-uber.jar:/template/"
                 + containerName
                 + "/libs/*:/template/"
                 + containerName
