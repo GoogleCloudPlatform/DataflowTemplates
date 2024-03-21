@@ -1,4 +1,4 @@
-CREATE TABLE AllDatatypeColumns (
+CREATE TABLE IF NOT EXISTS AllDatatypeColumns (
   varchar_column STRING(20) NOT NULL,
   tinyint_column STRING(MAX),
   text_column BYTES(MAX),
@@ -30,7 +30,7 @@ CREATE TABLE AllDatatypeColumns (
   bit_column STRING(MAX),
 ) PRIMARY KEY(varchar_column);
 
-CREATE TABLE AllDatatypeColumns2 (
+CREATE TABLE IF NOT EXISTS AllDatatypeColumns2 (
   varchar_column STRING(20) NOT NULL,
   tinyint_column INT64,
   text_column STRING(MAX),
