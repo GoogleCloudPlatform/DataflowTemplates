@@ -321,4 +321,25 @@ public final class DMLGeneratorTest {
     // expected map of column names and values
     assertEquals(sql, sql);
   }
+
+  @Test
+  public void deleteMultiplePKColumns() {
+    Schema schema = SessionFileReader.read("src/test/resources/MultiColmPKSession.json");
+    String tableName = "Singers";
+    String newValuesString = "{\"LastName\":null}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SingerId\":\"999\",\"FirstName\":\"kk\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "DELETE";
+
+    String expectedSql = "DELETE FROM Singers WHERE  FirstName = 'kk' AND  SingerId = 999";
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    // workaround comparison to bypass TAP flaky behavior
+    // TODO: Parse the returned SQL to create map of column names and values and compare with
+    // expected map of column names and values
+    assertEquals(expectedSql, sql);
+  }
 }
