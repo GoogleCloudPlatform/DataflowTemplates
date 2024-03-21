@@ -61,7 +61,10 @@ public class Neo4jConnectionTest {
     neo4jConnection.resetDatabase();
 
     verify(session)
-        .run(eq("CREATE OR REPLACE DATABASE $db"), eq(Map.of("db", "a-database")), any());
+        .run(
+            eq("CREATE OR REPLACE DATABASE $db WAIT 60 SECONDS"),
+            eq(Map.of("db", "a-database")),
+            any());
     verify(session, never())
         .run(eq("MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS"), anyMap(), any());
     verify(session, never()).run(eq("CALL apoc.schema.assert({}, {}, true)"), anyMap(), any());
@@ -69,7 +72,10 @@ public class Neo4jConnectionTest {
 
   @Test
   public void resetsDatabaseWithDeletionQueriesWhenReplacementFails() {
-    when(session.run(eq("CREATE OR REPLACE DATABASE $db"), eq(Map.of("db", "a-database")), any()))
+    when(session.run(
+            eq("CREATE OR REPLACE DATABASE $db WAIT 60 SECONDS"),
+            eq(Map.of("db", "a-database")),
+            any()))
         .thenThrow(RuntimeException.class);
 
     neo4jConnection.resetDatabase();
@@ -77,7 +83,10 @@ public class Neo4jConnectionTest {
     InOrder inOrder = inOrder(session);
     inOrder
         .verify(session)
-        .run(eq("CREATE OR REPLACE DATABASE $db"), eq(Map.of("db", "a-database")), any());
+        .run(
+            eq("CREATE OR REPLACE DATABASE $db WAIT 60 SECONDS"),
+            eq(Map.of("db", "a-database")),
+            any());
     inOrder
         .verify(session)
         .run(eq("MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS"), eq(Map.of()), any());

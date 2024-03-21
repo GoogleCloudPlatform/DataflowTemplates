@@ -458,7 +458,6 @@ public class DataCastingUtilsTest {
             .build();
     Target target = new Target();
     target.setName("neo4j-target");
-    target.setFieldNames(ImmutableList.of("id", "salary", "hired"));
 
     Map<String, Object> stringObjectMap = DataCastingUtils.rowToNeo4jDataMap(row, target);
     assertThat(stringObjectMap)
@@ -509,20 +508,6 @@ public class DataCastingUtilsTest {
             .build();
     Target target = new Target();
     target.setName("neo4j-target");
-    target.setFieldNames(
-        ImmutableList.of(
-            "int64",
-            "string",
-            "double",
-            "boolean",
-            "localdate",
-            "localtime",
-            "localdatetime",
-            "offsettime",
-            "zoneddatetime",
-            "offsetdatetime",
-            "duration",
-            "bytes"));
     target.setMappings(
         ImmutableList.of(
             mapping("int64", PropertyType.Long),

@@ -54,14 +54,6 @@ public class JobSpec implements Serializable {
     return sourceList;
   }
 
-  public List<String> getAllFieldNames() {
-    ArrayList<String> fieldNameList = new ArrayList<>();
-    for (Target target : targets) {
-      fieldNameList.addAll(target.getFieldNames());
-    }
-    return fieldNameList;
-  }
-
   public List<Action> getPreloadActions() {
     List<Action> actions = new ArrayList<>();
     for (Action action : this.actions) {

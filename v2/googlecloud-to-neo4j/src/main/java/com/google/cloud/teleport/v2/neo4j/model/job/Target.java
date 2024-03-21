@@ -38,7 +38,6 @@ public class Target implements Serializable, Comparable<Target> {
 
   private EdgeNodesSaveMode edgeNodesSaveMode;
   private Map<String, Mapping> mappingByFieldMap = new HashMap<>();
-  private List<String> fieldNames = new ArrayList<>();
   private int sequence = 0;
   private ActionExecuteAfter executeAfter;
   private String executeAfterName = "";
@@ -123,14 +122,6 @@ public class Target implements Serializable, Comparable<Target> {
 
   public Map<String, Mapping> getMappingByFieldMap() {
     return mappingByFieldMap;
-  }
-
-  public List<String> getFieldNames() {
-    return fieldNames;
-  }
-
-  public void setFieldNames(List<String> fieldNames) {
-    this.fieldNames = fieldNames;
   }
 
   public int getSequence() {

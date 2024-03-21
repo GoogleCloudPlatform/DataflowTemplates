@@ -88,7 +88,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     LOG.info("Resetting database");
     try {
       String database = !StringUtils.isEmpty(this.database) ? this.database : "neo4j";
-      String cypher = "CREATE OR REPLACE DATABASE $db";
+      String cypher = "CREATE OR REPLACE DATABASE $db WAIT 60 SECONDS";
       LOG.info(
           "Executing CREATE OR REPLACE DATABASE Cypher query: {} against database {}",
           cypher,
