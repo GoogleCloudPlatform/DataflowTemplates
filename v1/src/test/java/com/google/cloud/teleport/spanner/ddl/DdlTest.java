@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
@@ -278,7 +279,7 @@ public class DdlTest {
                 + " `embedding_vector` ARRAY<FLOAT64>(vector_length=>128),"
                 + " ) PRIMARY KEY (`id` ASC)"
                 ));
-    assertNotNull(ddl.hashCode());
+    assertNotEquals(ddl.hashCode(), 0);
   }
 
   @Test
@@ -309,7 +310,7 @@ public class DdlTest {
                 + " \"embedding_vector\" double precision[] vector length 64,"
                 + " PRIMARY KEY (\"id\")"
                 + " ) "));
-    assertNotNull(ddl.hashCode());
+    assertNotEquals(ddl.hashCode(), 0);
   }
 
 

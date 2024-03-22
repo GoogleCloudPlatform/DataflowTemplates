@@ -126,7 +126,7 @@ public abstract class Column implements Serializable {
 
   public String typeString() {
     if (arrayLength() != null) {
-      return SizedType.typeString(type(), size(), arrayLength());
+      return SizedType.typeString(type(), size(), arrayLength().intValue());
     }
     return SizedType.typeString(type(), size());
   }

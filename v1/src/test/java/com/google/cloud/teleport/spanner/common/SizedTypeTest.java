@@ -79,16 +79,18 @@ public class SizedTypeTest {
 
     assertEquals(embeddingVector.type, Type.array(Type.float64()));
     assertEquals(embeddingVector.arrayLength, Integer.valueOf(128));
-
-    assertEquals(SizedType.typeString(embeddingVector.type, null, Integer.valueOf(128)),
+    assertEquals(SizedType.typeString(embeddingVector.type, null, 128),
         "ARRAY<FLOAT64>(vector_length=>128)");
+  }
 
+  @Test
+  public void testPgEmbeddingVector() {
     SizedType embeddingVectorPg =
         SizedType.parseSpannerType("double precision[] vector length 4", Dialect.POSTGRESQL);
 
     assertEquals(embeddingVectorPg.type, Type.pgArray(Type.pgFloat8()));
     assertEquals(embeddingVectorPg.arrayLength, Integer.valueOf(4));
-    assertEquals(SizedType.typeString(embeddingVectorPg.type, null, Integer.valueOf(4)),
+    assertEquals(SizedType.typeString(embeddingVectorPg.type, null, 4),
         "double precision[] vector length 4");
   }
 }
