@@ -72,7 +72,7 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
   }
 
   @Test
-  public void doesNotCreateExtraIndicesWhenImportingNodes() throws Exception {
+  public void does_not_create_extra_indices_when_importing_nodes() throws Exception {
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/constraints-indices/node-spec.json"));
     gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient));
@@ -110,7 +110,7 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
   }
 
   @Test
-  public void doesNotCreateExtraIndicesWhenImportingRelationships() throws Exception {
+  public void does_not_create_extra_indices_when_importing_relationships() throws Exception {
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/constraints-indices/edge-spec.json"));
     gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient));
@@ -160,7 +160,7 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
   }
 
   @Test
-  public void canResetDatabase() throws Exception {
+  public void can_reset_database() throws Exception {
     assertThat(
             neo4jClient.run(
                 "UNWIND range(1, 1000) AS id CREATE (n1:From {id: id})-[:CONNECTED_TO {id: id + 1000}]->(n2:To {id: id + 2000}) RETURN id"))

@@ -15,61 +15,45 @@
  */
 package com.google.cloud.teleport.v2.neo4j.actions.function;
 
+import static com.google.cloud.teleport.v2.neo4j.utils.HttpUtils.isPostRequest;
+
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import com.google.cloud.teleport.v2.neo4j.utils.HttpUtils;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.Row;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.neo4j.importer.v1.actions.HttpAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Http GET action handler. */
-public class HttpGetActionFn extends DoFn<Integer, Row> {
+public class HttpActionFn extends DoFn<Integer, Row> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(HttpGetActionFn.class);
+  private static final Logger LOG = LoggerFactory.getLogger(HttpActionFn.class);
 
-  private final ActionContext context;
-  private final String uri;
+  private final HttpAction action;
 
-  public HttpGetActionFn(ActionContext context) {
-    this.context = context;
-    this.uri = this.context.action.options.get("url");
-    if (StringUtils.isEmpty(uri)) {
-      throw new RuntimeException("Options 'url' not provided for preload http_get action.");
+  public HttpActionFn(ActionContext context) {
+    this.action = ((HttpAction) context.getAction());
+    if (StringUtils.isEmpty(action.getUrl())) {
+      throw new RuntimeException("URL not provided for HTTP action.");
     }
-  }
-
-  @Setup
-  public void setup() {
-    // Nothing to setup
   }
 
   @ProcessElement
   public void processElement(ProcessContext context) throws InterruptedException {
-    // executing http get *once*
-    // note: this is not guaranteed to execute just once.  if there are many input rows, it could be
-    // several times.  right now there are just a handful of rows.
-    try {
-      CloseableHttpResponse response =
-          HttpUtils.getHttpResponse(
-              false, uri, this.context.action.options, this.context.action.headers);
+    try (CloseableHttpResponse response =
+        HttpUtils.getHttpResponse(
+            isPostRequest(action.getMethod()), action.getUrl(), action.getHeaders())) {
       LOG.info(
-          "Executing http_get {} transform, returned: {}",
-          this.context.action.name,
+          "Executing HTTP {} transform, returned: {}",
+          action.getName(),
           HttpUtils.getResponseContent(response));
-
     } catch (Exception e) {
       throw new RuntimeException(
           String.format(
-              "Exception executing http_get %s transform: %s",
-              this.context.action.name, e.getMessage()),
+              "Exception executing HTTP %s transform: %s", action.getName(), e.getMessage()),
           e);
     }
-  }
-
-  @Teardown
-  public void tearDown() throws Exception {
-    // Nothing to tear down
   }
 }

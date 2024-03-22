@@ -30,8 +30,16 @@ public final class Neo4jCapabilities implements Serializable {
     this.versionString = String.format("Neo4j %s %s", version, edition);
   }
 
+  public boolean hasVectorIndexes() {
+    return version == Neo4jVersion.V5;
+  }
+
   public boolean hasConstraints() {
     return edition != Neo4jEdition.COMMUNITY;
+  }
+
+  public boolean hasNodeTypeConstraints() {
+    return hasConstraints() && version == Neo4jVersion.V5;
   }
 
   public boolean hasNodeKeyConstraints() {
@@ -40,6 +48,10 @@ public final class Neo4jCapabilities implements Serializable {
 
   public boolean hasNodeUniqueConstraints() {
     return hasConstraints();
+  }
+
+  public boolean hasRelationshipTypeConstraints() {
+    return hasConstraints() && version == Neo4jVersion.V5;
   }
 
   public boolean hasRelationshipKeyConstraints() {

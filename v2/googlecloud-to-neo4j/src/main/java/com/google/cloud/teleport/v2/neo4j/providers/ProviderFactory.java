@@ -15,9 +15,12 @@
  */
 package com.google.cloud.teleport.v2.neo4j.providers;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.SourceType;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
 import com.google.cloud.teleport.v2.neo4j.providers.bigquery.BigQueryImpl;
 import com.google.cloud.teleport.v2.neo4j.providers.text.TextImpl;
+import org.neo4j.importer.v1.sources.BigQuerySource;
+import org.neo4j.importer.v1.sources.Source;
+import org.neo4j.importer.v1.sources.TextSource;
 
 /**
  * Factory for binding implementation adapters into framework. Currently, supports two providers:
@@ -25,14 +28,15 @@ import com.google.cloud.teleport.v2.neo4j.providers.text.TextImpl;
  */
 public class ProviderFactory {
 
-  public static Provider of(SourceType sourceType) {
-    if (sourceType == SourceType.bigquery) {
-      return new BigQueryImpl();
-    } else if (sourceType == SourceType.text) {
-      return new TextImpl();
-    } else {
-      // TODO: support spanner sql, postgres, parquet, avro
-      throw new RuntimeException("Unhandled source type: " + sourceType);
+  public static Provider of(Source source, TargetSequence targetSequence) {
+    switch (source.getType()) {
+      case BIGQUERY:
+        return new BigQueryImpl((BigQuerySource) source, targetSequence);
+      case TEXT:
+        return new TextImpl((TextSource) source, targetSequence);
+      case JDBC:
+      default:
+        throw new RuntimeException("Unsupported source type: " + source);
     }
   }
 }

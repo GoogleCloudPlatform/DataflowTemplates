@@ -60,7 +60,7 @@ public class ValidationIT extends TemplateTestBase {
   }
 
   @Test
-  public void allowsSameKeyNamesAcrossRelationshipsAndNodes() throws IOException {
+  public void allows_same_key_names_across_relationships_and_nodes() throws IOException {
     gcsClient.createArtifact("spec.json", contentOf("/testing-specs/validation/spec.json"));
     gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient));
 

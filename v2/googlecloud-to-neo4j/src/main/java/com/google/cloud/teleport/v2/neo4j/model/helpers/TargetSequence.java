@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,29 +13,20 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.neo4j.model.job;
+package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.neo4j.importer.v1.targets.Target;
 
-/** Model to capture SQL aggregate expressions. */
-public class Aggregation implements Serializable {
+public class TargetSequence implements Serializable {
 
-  private String expression;
-  private String field;
+  private final Map<String, Integer> targetSequences = new HashMap<>();
+  private final AtomicInteger nextNumber = new AtomicInteger(0);
 
-  public String getExpression() {
-    return expression;
-  }
-
-  public void setExpression(String expression) {
-    this.expression = expression;
-  }
-
-  public String getField() {
-    return field;
-  }
-
-  public void setField(String field) {
-    this.field = field;
+  public int getSequenceNumber(Target target) {
+    return targetSequences.computeIfAbsent(target.getName(), (key) -> nextNumber.getAndIncrement());
   }
 }
