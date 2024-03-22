@@ -28,7 +28,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventCon
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SchemaHelper;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
@@ -122,7 +121,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     private final Boolean isRegularRunMode;
 
     // ChangeEventSessionConvertor utility object.
-    private ChangeEventSessionConvertor csc;
+    private ChangeEventSessionConvertor changeEventSessionConvertor;
 
     SpannerTransactionWriterDoFn(
             SpannerConfig spannerConfig,
@@ -153,7 +152,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
         mapper = new ObjectMapper();
         mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-        csc = new ChangeEventSessionConvertor(schema, transformationContext, sourceType, roundJsonDecimals);
+        changeEventSessionConvertor = new ChangeEventSessionConvertor(schema, transformationContext, sourceType, roundJsonDecimals);
     }
 
     /**
@@ -187,10 +186,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
             }
 
             if (!schema.isEmpty()) {
-                SchemaHelper.verifyTableInSession(schema, changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
-                changeEvent = csc.transformChangeEventViaSessionFile(changeEvent);
+                schema.verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
+                changeEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent);
             }
-            changeEvent = csc.transformChangeEventData(changeEvent, spannerAccessor.getDatabaseClient(), ddl);
+            changeEvent = changeEventSessionConvertor.transformChangeEventData(changeEvent, spannerAccessor.getDatabaseClient(), ddl);
             ChangeEventContext changeEventContext =
                     ChangeEventContextFactory.createChangeEventContext(
                             changeEvent, ddl, shadowTablePrefix, sourceType);

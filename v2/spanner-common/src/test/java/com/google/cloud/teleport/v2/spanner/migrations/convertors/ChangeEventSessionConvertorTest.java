@@ -90,7 +90,7 @@ public class ChangeEventSessionConvertorTest {
     @Test
     public void transformChangeEventViaSessionFileNamesTest() {
         Schema schema = getSchemaObject();
-        ChangeEventSessionConvertor csc = new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
+        ChangeEventSessionConvertor changeEventSessionConvertor = new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
 
         JSONObject changeEvent = new JSONObject();
         changeEvent.put("product_id", "A");
@@ -99,7 +99,7 @@ public class ChangeEventSessionConvertorTest {
         changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "cart");
         JsonNode ce = parseChangeEvent(changeEvent.toString());
 
-        JsonNode actualEvent = csc.transformChangeEventViaSessionFile(ce);
+        JsonNode actualEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
 
         JSONObject changeEventNew = new JSONObject();
         changeEventNew.put("new_product_id", "A");
@@ -113,7 +113,7 @@ public class ChangeEventSessionConvertorTest {
     @Test
     public void transformChangeEventViaSessionFileSynthPKTest() {
         Schema schema = getSchemaObject();
-        ChangeEventSessionConvertor csc = new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
+        ChangeEventSessionConvertor changeEventSessionConvertor = new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
 
         JSONObject changeEvent = new JSONObject();
         changeEvent.put("name", "A");
@@ -121,7 +121,7 @@ public class ChangeEventSessionConvertorTest {
         changeEvent.put(Constants.EVENT_UUID_KEY, "abc-123");
         JsonNode ce = parseChangeEvent(changeEvent.toString());
 
-        JsonNode actualEvent = csc.transformChangeEventViaSessionFile(ce);
+        JsonNode actualEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
 
         JSONObject changeEventNew = new JSONObject();
         changeEventNew.put("new_name", "A");
@@ -135,7 +135,7 @@ public class ChangeEventSessionConvertorTest {
     @Test
     public void transformChangeEventDataTest() throws Exception {
         Schema schema = getSchemaObject();
-        ChangeEventSessionConvertor csc = new ChangeEventSessionConvertor(schema, new TransformationContext(), "", true);
+        ChangeEventSessionConvertor changeEventSessionConvertor = new ChangeEventSessionConvertor(schema, new TransformationContext(), "", true);
 
         JSONObject changeEvent = new JSONObject();
         changeEvent.put("first_name", "A");
@@ -144,7 +144,7 @@ public class ChangeEventSessionConvertorTest {
         JsonNode ce = parseChangeEvent(changeEvent.toString());
 
         JsonNode actualEvent =
-                csc.transformChangeEventData(ce, databaseClient, getTestDdl());
+                changeEventSessionConvertor.transformChangeEventData(ce, databaseClient, getTestDdl());
 
         changeEvent = new JSONObject();
         changeEvent.put("first_name", "A");
@@ -174,15 +174,15 @@ public class ChangeEventSessionConvertorTest {
     private static Schema getSchemaObject() {
         // Add Synthetic PKs.
         Map<String, SyntheticPKey> syntheticPKeys = getSyntheticPks();
-        // Add SrcSchema.
-        Map<String, SourceTable> srcSchema = getSampleSrcSchema();
+        // Add SrchangeEventSessionConvertorhema.
+        Map<String, SourceTable> srchangeEventSessionConvertorhema = getSampleSrchangeEventSessionConvertorhema();
         // Add SpSchema.
         Map<String, SpannerTable> spSchema = getSampleSpSchema();
         // Add ToSpanner.
         Map<String, NameAndCols> toSpanner = getToSpanner();
         // Add SrcToID.
         Map<String, NameAndCols> srcToId = getSrcToId();
-        Schema expectedSchema = new Schema(spSchema, syntheticPKeys, srcSchema);
+        Schema expectedSchema = new Schema(spSchema, syntheticPKeys, srchangeEventSessionConvertorhema);
         expectedSchema.setToSpanner(toSpanner);
         expectedSchema.setToSource(new HashMap<String, NameAndCols>());
         expectedSchema.setSrcToID(srcToId);
@@ -196,8 +196,8 @@ public class ChangeEventSessionConvertorTest {
         return syntheticPKeys;
     }
 
-    private static Map<String, SourceTable> getSampleSrcSchema() {
-        Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
+    private static Map<String, SourceTable> getSampleSrchangeEventSessionConvertorhema() {
+        Map<String, SourceTable> srchangeEventSessionConvertorhema = new HashMap<String, SourceTable>();
         Map<String, SourceColumnDefinition> t1SrcColDefs =
                 new HashMap<String, SourceColumnDefinition>();
         t1SrcColDefs.put(
@@ -210,7 +210,7 @@ public class ChangeEventSessionConvertorTest {
                 "c3",
                 new SourceColumnDefinition(
                         "user_id", new SourceColumnType("varchar", new Long[]{20L}, null)));
-        srcSchema.put(
+        srchangeEventSessionConvertorhema.put(
                 "t1",
                 new SourceTable(
                         "cart",
@@ -224,9 +224,9 @@ public class ChangeEventSessionConvertorTest {
                 "c5",
                 new SourceColumnDefinition(
                         "name", new SourceColumnType("varchar", new Long[]{20L}, null)));
-        srcSchema.put(
+        srchangeEventSessionConvertorhema.put(
                 "t2", new SourceTable("people", "my_schema", new String[]{"c5"}, t2SrcColDefs, null));
-        return srcSchema;
+        return srchangeEventSessionConvertorhema;
     }
 
     private static Map<String, SpannerTable> getSampleSpSchema() {
@@ -303,7 +303,7 @@ public class ChangeEventSessionConvertorTest {
     @Test
     public void shardedConfigDataTest() throws Exception {
         Schema schema = getSchemaObject();
-        ChangeEventSessionConvertor csc = new ChangeEventSessionConvertor(schema, new TransformationContext(), "", true);
+        ChangeEventSessionConvertor changeEventSessionConvertor = new ChangeEventSessionConvertor(schema, new TransformationContext(), "", true);
 
         JSONObject changeEvent = new JSONObject();
         changeEvent.put("first_name", "A");
@@ -312,7 +312,7 @@ public class ChangeEventSessionConvertorTest {
         JsonNode ce = parseChangeEvent(changeEvent.toString());
 
         JsonNode actualEvent =
-                csc.transformChangeEventData(ce, databaseClient, getTestDdl());
+                changeEventSessionConvertor.transformChangeEventData(ce, databaseClient, getTestDdl());
 
         changeEvent = new JSONObject();
         changeEvent.put("first_name", "A");
@@ -327,7 +327,7 @@ public class ChangeEventSessionConvertorTest {
     public void transformChangeEventViaShardedSessionFileTest() {
         Schema schema = getShardedSchemaObject();
         TransformationContext transformationContext = getTransformationContext();
-        ChangeEventSessionConvertor csc = new ChangeEventSessionConvertor(schema, transformationContext, "mysql", false);
+        ChangeEventSessionConvertor changeEventSessionConvertor = new ChangeEventSessionConvertor(schema, transformationContext, "mysql", false);
 
         JSONObject changeEvent = new JSONObject();
         changeEvent.put("name", "A");
@@ -336,7 +336,7 @@ public class ChangeEventSessionConvertorTest {
         changeEvent.put(Constants.EVENT_UUID_KEY, "abc-123");
         JsonNode ce = parseChangeEvent(changeEvent.toString());
 
-        JsonNode actualEvent = csc.transformChangeEventViaSessionFile(ce);
+        JsonNode actualEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
 
         JSONObject changeEventNew = new JSONObject();
         changeEventNew.put("new_name", "A");
@@ -349,15 +349,15 @@ public class ChangeEventSessionConvertorTest {
     }
 
     public static Schema getShardedSchemaObject() {
-        // Add SrcSchema.
-        Map<String, SourceTable> srcSchema = getSampleSrcSchema();
+        // Add SrchangeEventSessionConvertorhema.
+        Map<String, SourceTable> srchangeEventSessionConvertorhema = getSampleSrchangeEventSessionConvertorhema();
         // Add SpSchema.
         Map<String, SpannerTable> spSchema = getSampleShardedSpSchema();
         // Add ToSpanner.
         Map<String, NameAndCols> toSpanner = getToSpanner();
         // Add SrcToID.
         Map<String, NameAndCols> srcToId = getSrcToId();
-        Schema expectedSchema = new Schema(spSchema, new HashMap<>(), srcSchema);
+        Schema expectedSchema = new Schema(spSchema, new HashMap<>(), srchangeEventSessionConvertorhema);
         expectedSchema.setToSpanner(toSpanner);
         expectedSchema.setToSource(new HashMap<String, NameAndCols>());
         expectedSchema.setSrcToID(srcToId);

@@ -13,20 +13,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.spanner.migrations.utils;
+package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -34,19 +23,14 @@ import java.util.Map;
 
 import static org.junit.Assert.fail;
 
-public class SchemaHelperTest {
-    private Schema schema;
-
-    @Before
-    public void setUp() {
-        this.schema = getSchemaObject();
-        schema.generateMappings();
-    }
+public class SchemaTest {
 
     @Test
     public void verifyTableInSessionTestCorrect() {
+        Schema schema = getSchemaObject();
+        schema.generateMappings();
         try {
-            SchemaHelper.verifyTableInSession(schema, "cart");
+            schema.verifyTableInSession("cart");
         } catch (Exception e) {
             fail("No exception should have been thrown for this case");
         }
@@ -54,12 +38,16 @@ public class SchemaHelperTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void verifyTableInSessionTestMissingSrcTable() throws Exception {
-        SchemaHelper.verifyTableInSession(schema, "abc");
+        Schema schema = getSchemaObject();
+        schema.generateMappings();
+        schema.verifyTableInSession("abc");
     }
 
     @Test(expected = DroppedTableException.class)
     public void verifyTableInSessionTestDroppedTable() throws Exception {
-        SchemaHelper.verifyTableInSession(schema, "droppedTableName");
+        Schema schema = getSchemaObject();
+        schema.generateMappings();
+        schema.verifyTableInSession("droppedTableName");
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -69,7 +57,7 @@ public class SchemaHelperTest {
 
         // Manually delete key to create invalid session file scenario.
         schema.getSpSchema().remove("t2");
-        SchemaHelper.verifyTableInSession(schema, "people");
+        schema.verifyTableInSession("people");
     }
 
     private static Schema getSchemaObject() {
