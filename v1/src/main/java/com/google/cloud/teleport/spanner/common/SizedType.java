@@ -22,7 +22,6 @@ import com.google.common.collect.ImmutableList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
 /** Describes a type with size. */
 public final class SizedType {
   public final Type type;
@@ -120,12 +119,14 @@ public final class SizedType {
 
   public static String typeString(Type type, Integer size, int arrayLength) {
     switch (type.getCode()) {
-      case ARRAY: {
-        return typeString(type, size) + "(vector_length=>" + Integer.toString(arrayLength) + ")";
-      }
-      case PG_ARRAY: {
-        return typeString(type, size) + " vector length " + Integer.toString(arrayLength);
-      }
+      case ARRAY:
+        {
+          return typeString(type, size) + "(vector_length=>" + Integer.toString(arrayLength) + ")";
+        }
+      case PG_ARRAY:
+        {
+          return typeString(type, size) + " vector length " + Integer.toString(arrayLength);
+        }
     }
     throw new IllegalArgumentException("arrayLength not supported for " + type);
   }

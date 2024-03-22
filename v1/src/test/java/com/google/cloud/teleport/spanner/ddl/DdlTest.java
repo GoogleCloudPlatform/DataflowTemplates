@@ -274,11 +274,11 @@ public class DdlTest {
     Ddl ddl = builder.build();
     assertThat(
         ddl.prettyPrint(),
-        equalToCompressingWhiteSpace("CREATE TABLE `Users` ("
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `Users` ("
                 + " `id` INT64 NOT NULL,"
                 + " `embedding_vector` ARRAY<FLOAT64>(vector_length=>128),"
-                + " ) PRIMARY KEY (`id` ASC)"
-                ));
+                + " ) PRIMARY KEY (`id` ASC)"));
     assertNotEquals(ddl.hashCode(), 0);
   }
 
@@ -305,14 +305,13 @@ public class DdlTest {
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
-                 " CREATE TABLE \"Users\" ("
+            " CREATE TABLE \"Users\" ("
                 + " \"id\" bigint NOT NULL,"
                 + " \"embedding_vector\" double precision[] vector length 64,"
                 + " PRIMARY KEY (\"id\")"
                 + " ) "));
     assertNotEquals(ddl.hashCode(), 0);
   }
-
 
   @Test
   public void interleaves() {
