@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.spanner.migrations.convertors;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -25,11 +40,8 @@ import java.util.Set;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class ChangeEventSpannerUtilsTest {
+public class ChangeEventSpannerConvertorTest {
     static Ddl getTestDdl() {
-        /* Creates DDL with 2 tables with the same fields but with different primary key
-         * columns and their associated shadow tables.
-         */
         Ddl ddl =
                 Ddl.builder()
                         .createTable("Users")
@@ -158,7 +170,7 @@ public class ChangeEventSpannerUtilsTest {
 
         List<String> colNames = Arrays.asList("first_name", "last_name", "age", "bool_field", "bool_field2", "int64_field", "float64_field", "string_field", "json_field", "bytes_field", "timestamp_field", "timestamp_field2", "date_field", "date_field2");
         Set<String> keyNames = new HashSet<>(Arrays.asList("first_name", "last_name"));
-        Mutation mutation = ChangeEventSpannerUtils.mutationFromEvent(table, ce, colNames, keyNames);
+        Mutation mutation = ChangeEventSpannerConvertor.mutationFromEvent(table, ce, colNames, keyNames);
         Map<String, Value> actual = mutation.asMap();
         Map<String, Value> expected = getExpectedMapForTestChangeEvent();
 

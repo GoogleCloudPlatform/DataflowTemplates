@@ -34,7 +34,7 @@ import java.util.Map;
 
 import static org.junit.Assert.fail;
 
-public class SchemaUtilsTest {
+public class SchemaHelperTest {
     private Schema schema;
 
     @Before
@@ -46,7 +46,7 @@ public class SchemaUtilsTest {
     @Test
     public void verifyTableInSessionTestCorrect() {
         try {
-            SchemaUtils.verifyTableInSession(schema, "cart");
+            SchemaHelper.verifyTableInSession(schema, "cart");
         } catch (Exception e) {
             fail("No exception should have been thrown for this case");
         }
@@ -54,12 +54,12 @@ public class SchemaUtilsTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void verifyTableInSessionTestMissingSrcTable() throws Exception {
-        SchemaUtils.verifyTableInSession(schema, "abc");
+        SchemaHelper.verifyTableInSession(schema, "abc");
     }
 
     @Test(expected = DroppedTableException.class)
     public void verifyTableInSessionTestDroppedTable() throws Exception {
-        SchemaUtils.verifyTableInSession(schema, "droppedTableName");
+        SchemaHelper.verifyTableInSession(schema, "droppedTableName");
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -69,7 +69,7 @@ public class SchemaUtilsTest {
 
         // Manually delete key to create invalid session file scenario.
         schema.getSpSchema().remove("t2");
-        SchemaUtils.verifyTableInSession(schema, "people");
+        SchemaHelper.verifyTableInSession(schema, "people");
     }
 
     private static Schema getSchemaObject() {

@@ -22,7 +22,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
-import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerUtils;
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.type.Type;
@@ -135,7 +135,7 @@ public class ChangeEventConvertor {
                             .collect(Collectors.toList());
             Set<String> requiredKeyColumnNames = new HashSet<>(keyColumnNames);
 
-            return ChangeEventSpannerUtils.mutationBuilderFromEvent(
+            return ChangeEventSpannerConvertor.mutationBuilderFromEvent(
                     table, changeEvent, keyColumnNames, requiredKeyColumnNames);
         } catch (Exception e) {
             throw new ChangeEventConvertorException(e);
@@ -235,7 +235,7 @@ public class ChangeEventConvertor {
                             .map(keyCol -> keyCol.name())
                             .map(colName -> colName.toLowerCase())
                             .collect(Collectors.toSet());
-            return ChangeEventSpannerUtils.mutationFromEvent(table, changeEvent, changeEventKeys, keyColumns);
+            return ChangeEventSpannerConvertor.mutationFromEvent(table, changeEvent, changeEventKeys, keyColumns);
         } catch (Exception e) {
             throw new ChangeEventConvertorException(e);
         }

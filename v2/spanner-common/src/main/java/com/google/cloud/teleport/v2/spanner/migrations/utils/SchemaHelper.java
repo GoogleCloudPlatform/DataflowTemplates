@@ -21,7 +21,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 /**
  * Class containing util methods that use the {@link com.google.cloud.teleport.v2.spanner.migrations.schema.Schema} object.
  */
-public class SchemaUtils {
+public class SchemaHelper {
 
     /**
      * Verify if given table name is valid in the session file.

@@ -28,7 +28,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventCon
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SchemaUtils;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SchemaHelper;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
@@ -187,7 +187,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
             }
 
             if (!schema.isEmpty()) {
-                SchemaUtils.verifyTableInSession(schema, changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
+                SchemaHelper.verifyTableInSession(schema, changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
                 changeEvent = csc.transformChangeEventViaSessionFile(changeEvent);
             }
             changeEvent = csc.transformChangeEventData(changeEvent, spannerAccessor.getDatabaseClient(), ddl);

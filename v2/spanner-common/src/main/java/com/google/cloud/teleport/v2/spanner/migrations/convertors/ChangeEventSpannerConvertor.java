@@ -29,7 +29,7 @@ import java.util.Set;
 /**
  * Class for util methods processing change events and Spanner structures (ex - {@link com.google.cloud.spanner.Mutation}, {@link com.google.cloud.spanner.Key}).
  */
-public class ChangeEventSpannerUtils {
+public class ChangeEventSpannerConvertor {
     public static Mutation mutationFromEvent(
             Table table,
             JsonNode changeEvent,
