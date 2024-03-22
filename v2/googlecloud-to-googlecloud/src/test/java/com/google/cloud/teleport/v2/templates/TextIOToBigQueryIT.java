@@ -49,13 +49,13 @@ import org.junit.runners.JUnit4;
  * <p>Example Usage:
  */
 @Category(TemplateIntegrationTest.class)
-@TemplateIntegrationTest(TextIOToBigQuery.class)
 @RunWith(JUnit4.class)
 public final class TextIOToBigQueryIT extends TemplateTestBase {
 
   private static final String SCHEMA_PATH = "TextIOToBigQueryTest/schema.json";
   private static final String INPUT_PATH = "TextIOToBigQueryTest/input.txt";
   private static final String UDF_PATH = "TextIOToBigQueryTest/udf.js";
+  private static final String PYUDF_PATH = "TextIOToBigQueryTest/pyudf.py";
   private BigQueryResourceManager bigQueryClient;
 
   @Before
@@ -69,13 +69,40 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  public void testTextIOToBigQuery() throws IOException {
-    testTextIOToBigQuery(Function.identity());
+  @TemplateIntegrationTest(value = TextIOToBigQuery.class, template = "GCS_Text_to_BigQuery_Flex")
+  public void testTextIOToBigQueryWithJavascriptUdf() throws IOException {
+    gcsClient.uploadArtifact("udf.js", Resources.getResource(UDF_PATH).getPath());
+    testTextIOToBigQuery(
+        b -> {
+          b.addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"));
+          b.addParameter("javascriptTextTransformFunctionName", "identity");
+          return b;
+        });
   }
 
   @Test
+  @TemplateIntegrationTest(value = TextIOToBigQuery.class, template = "GCS_Text_to_BigQuery_Flex")
   public void testTextIOToBigQueryWithStorageApi() throws IOException {
-    testTextIOToBigQuery(b -> b.addParameter("useStorageWriteApi", "true"));
+    gcsClient.uploadArtifact("udf.js", Resources.getResource(UDF_PATH).getPath());
+    testTextIOToBigQuery(
+        b -> {
+          b.addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"));
+          b.addParameter("javascriptTextTransformFunctionName", "identity");
+          b.addParameter("useStorageWriteApi", "true");
+          return b;
+        });
+  }
+
+  @Test
+  @TemplateIntegrationTest(value = TextIOToBigQuery.class, template = "GCS_Text_to_BigQuery_Xlang")
+  public void testTextIOToBigQueryWithPythonUdf() throws IOException {
+    gcsClient.uploadArtifact("pyudf.py", Resources.getResource(PYUDF_PATH).getPath());
+    testTextIOToBigQuery(
+        b -> {
+          b.addParameter("pythonExternalTextTransformGcsPath", getGcsPath("pyudf.py"));
+          b.addParameter("pythonExternalTextTransformFunctionName", "identity");
+          return b;
+        });
   }
 
   private void testTextIOToBigQuery(
@@ -83,7 +110,6 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
     // Arrange
     gcsClient.uploadArtifact("schema.json", Resources.getResource(SCHEMA_PATH).getPath());
     gcsClient.uploadArtifact("input.txt", Resources.getResource(INPUT_PATH).getPath());
-    gcsClient.uploadArtifact("udf.js", Resources.getResource(UDF_PATH).getPath());
 
     bigQueryClient.createDataset(REGION);
     TableId table =
@@ -107,8 +133,6 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
                 LaunchConfig.builder(testName, specPath)
                     .addParameter("JSONPath", getGcsPath("schema.json"))
                     .addParameter("inputFilePattern", getGcsPath("input.txt"))
-                    .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
-                    .addParameter("javascriptTextTransformFunctionName", "identity")
                     .addParameter("outputTable", toTableSpecLegacy(table))
                     .addParameter("bigQueryLoadingTemporaryDirectory", getGcsPath("bq-tmp"))));
     assertThatPipeline(info).isRunning();
