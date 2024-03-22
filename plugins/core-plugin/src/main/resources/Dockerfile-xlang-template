@@ -1,0 +1,48 @@
+#========================================================================#
+# Create build environment from base Python 3.11 template launcher image #
+#========================================================================#
+FROM gcr.io/dataflow-templates-base/java11-template-launcher-base-distroless as java-base
+
+
+#============================================================#
+# Create Distroless xlang image compatible with YamlTemplate #
+#============================================================#
+FROM gcr.io/dataflow-templates-base/python311-template-launcher-base:latest
+
+
+ARG REQUIREMENTS_FILE=requirements.txt
+
+COPY --from=busybox:1.35.0-uclibc /bin/sh /bin/sh
+# Copy template files to /template
+ARG WORKDIR=/template
+RUN mkdir -p $WORKDIR
+COPY $REQUIREMENTS_FILE /template
+COPY ${containerName}/ /template/${containerName}/
+COPY ${containerName}-generated-metadata.json /template
+
+WORKDIR $WORKDIR
+
+# Set environment variables
+ENV DATAFLOW_JAVA_COMMAND_SPEC=${commandSpec}
+ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=requirements.txt
+
+ENV SITE_PACKAGES=/root/.apache_beam/cache/venvs/py-3.11-beam-2.54.0-da39a3ee5e6b4b0d3255bfef95601890afd80709
+RUN python -m venv $SITE_PACKAGES
+
+# pip install dependencies and cache wheels
+RUN source $SITE_PACKAGES/bin/activate \
+    && pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir --upgrade setuptools \
+    && pip install --no-cache-dir pyparsing==2.4.2 \
+    && pip install --no-cache-dir -U -r $REQUIREMENTS_FILE \
+    && pip download --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE
+
+COPY --from=java-base /usr/local/jdk-11.0.20+8 /usr/local/jdk-11.0.20+8
+RUN ln -s /usr/local/jdk-11.0.20+8/bin/java /usr/local/bin/java
+COPY --from=java-base /opt/google/dataflow/java_template_launcher /opt/google/dataflow/java_template_launcher
+COPY --from=java-base /usr/licenses/LICENSE-java11 /usr/licenses/LICENSE-java11
+
+WORKDIR /template
+
+ENV PIP_NO_DEPS=True
+ENTRYPOINT ["/opt/google/dataflow/java_template_launcher"]

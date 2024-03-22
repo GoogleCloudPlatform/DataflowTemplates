@@ -26,6 +26,7 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -63,6 +64,79 @@ public final class PythonDockerfileGenerator {
           baos.toString(StandardCharsets.UTF_8).getBytes());
     } catch (Exception e) {
       LOG.warning("Unable to generate Dockerfile for " + containerName);
+      throw e;
+    }
+  }
+
+  public static void generateXlangDockerfile(
+      String basePythonContainerImage,
+      String containerName,
+      File targetDirectory,
+      File artifactFile,
+      String commandSpec)
+      throws IOException, TemplateException {
+    Configuration freemarkerConfig = new Configuration(Configuration.VERSION_2_3_32);
+    freemarkerConfig.setDefaultEncoding("UTF-8");
+    freemarkerConfig.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
+    freemarkerConfig.setLogTemplateExceptions(true);
+    freemarkerConfig.setClassForTemplateLoading(PythonDockerfileGenerator.class, "/");
+
+    String classesDirectory = targetDirectory.getPath() + "/classes";
+    Map<String, Object> parameters = new HashMap<>();
+    parameters.put("baseContainerImage", basePythonContainerImage);
+    parameters.put("commandSpec", commandSpec);
+    parameters.put("containerName", containerName);
+
+    Template template = freemarkerConfig.getTemplate("Dockerfile-xlang-template");
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    OutputStreamWriter writer = new OutputStreamWriter(baos);
+
+    try {
+      template.process(parameters, writer);
+      writer.flush();
+
+      Files.createDirectories(Path.of(classesDirectory + "/" + containerName));
+
+      Files.write(
+          Path.of(classesDirectory + "/" + containerName + "/Dockerfile"),
+          baos.toString(StandardCharsets.UTF_8).getBytes());
+
+    } catch (Exception e) {
+      LOG.warning("Unable to generate Dockerfile for " + containerName);
+      throw e;
+    }
+
+    try {
+      Files.createDirectories(Path.of(classesDirectory + "/" + containerName + "/classpath"));
+      Files.createDirectories(Path.of(classesDirectory + "/" + containerName + "/libs"));
+
+      String artifactPath = artifactFile.getPath();
+      String targetArtifactPath =
+          artifactPath.substring(artifactPath.lastIndexOf("/"), artifactPath.length());
+
+      Files.copy(
+          Path.of(targetDirectory.getPath() + targetArtifactPath),
+          Path.of(classesDirectory + "/" + containerName + "/classpath" + targetArtifactPath));
+      String sourceLibsDirectory = targetDirectory.getPath() + "/extra_libs";
+      String destLibsDirectory = classesDirectory + "/" + containerName + "/libs/";
+      Files.walk(Paths.get(sourceLibsDirectory))
+          .forEach(
+              source -> {
+                LOG.warning("current source: " + source.toString());
+                LOG.warning("current source libs directory: " + sourceLibsDirectory);
+                Path dest =
+                    Paths.get(
+                        destLibsDirectory,
+                        source.toString().substring(sourceLibsDirectory.length()));
+                try {
+                  Files.copy(source, dest);
+                } catch (IOException e) {
+                  LOG.warning("Unable to copy contents of " + sourceLibsDirectory);
+                }
+              });
+    } catch (Exception e) {
+      LOG.warning("unable to copy jar files");
       throw e;
     }
   }

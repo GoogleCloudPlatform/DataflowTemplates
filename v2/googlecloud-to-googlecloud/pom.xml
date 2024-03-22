@@ -253,5 +253,9 @@
       <version>${mysql-connector-java.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-extensions-python</artifactId>
+    </dependency>
   </dependencies>
 </project>

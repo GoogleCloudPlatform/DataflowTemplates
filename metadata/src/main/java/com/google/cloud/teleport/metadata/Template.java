@@ -43,6 +43,8 @@ public @interface Template {
 
   String yamlTemplateName() default "";
 
+  String xlangContainerName() default "";
+
   /** The category of the template. */
   TemplateCategory category();
 
@@ -104,7 +106,8 @@ public @interface Template {
   enum TemplateType {
     JAVA,
     PYTHON,
-    YAML
+    YAML,
+    XLANG
   }
 
   /** Marker if the template is still in preview / pre-GA. */
