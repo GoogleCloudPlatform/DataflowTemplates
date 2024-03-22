@@ -209,7 +209,7 @@ public final class ChangeEventTypeConvertorTest {
   @Test
   public void canConvertToFloat() throws Exception {
 
-    // Change Event with all valid forms of double values
+    // Change Event with all valid forms of float values
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", Float.MAX_VALUE);
     changeEvent.put("field2", -Float.MAX_VALUE);
