@@ -183,7 +183,7 @@ public final class ChangeEventTypeConvertorTest {
         assertNull(ChangeEventTypeConvertor.toLong(ce, "field9", /* requiredField= */ false));
     }
 
-    @Test(expected = ChangeEventTypeConvertorException.class)
+    @Test(expected = ChangeEventConvertorException.class)
     public void cannotConvertFloatingPointWithoutLossOfPrecision() throws Exception {
         JSONObject changeEvent = new JSONObject();
         changeEvent.put("field1", "123456.789");

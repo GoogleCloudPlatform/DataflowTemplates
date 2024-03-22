@@ -174,15 +174,15 @@ public class ChangeEventSessionConvertorTest {
     private static Schema getSchemaObject() {
         // Add Synthetic PKs.
         Map<String, SyntheticPKey> syntheticPKeys = getSyntheticPks();
-        // Add SrchangeEventSessionConvertorhema.
-        Map<String, SourceTable> srchangeEventSessionConvertorhema = getSampleSrchangeEventSessionConvertorhema();
+        // Add SrcSchema.
+        Map<String, SourceTable> srcSchema = getSampleSrcSchema();
         // Add SpSchema.
         Map<String, SpannerTable> spSchema = getSampleSpSchema();
         // Add ToSpanner.
         Map<String, NameAndCols> toSpanner = getToSpanner();
         // Add SrcToID.
         Map<String, NameAndCols> srcToId = getSrcToId();
-        Schema expectedSchema = new Schema(spSchema, syntheticPKeys, srchangeEventSessionConvertorhema);
+        Schema expectedSchema = new Schema(spSchema, syntheticPKeys, srcSchema);
         expectedSchema.setToSpanner(toSpanner);
         expectedSchema.setToSource(new HashMap<String, NameAndCols>());
         expectedSchema.setSrcToID(srcToId);
@@ -196,8 +196,8 @@ public class ChangeEventSessionConvertorTest {
         return syntheticPKeys;
     }
 
-    private static Map<String, SourceTable> getSampleSrchangeEventSessionConvertorhema() {
-        Map<String, SourceTable> srchangeEventSessionConvertorhema = new HashMap<String, SourceTable>();
+    private static Map<String, SourceTable> getSampleSrcSchema() {
+        Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
         Map<String, SourceColumnDefinition> t1SrcColDefs =
                 new HashMap<String, SourceColumnDefinition>();
         t1SrcColDefs.put(
@@ -210,7 +210,7 @@ public class ChangeEventSessionConvertorTest {
                 "c3",
                 new SourceColumnDefinition(
                         "user_id", new SourceColumnType("varchar", new Long[]{20L}, null)));
-        srchangeEventSessionConvertorhema.put(
+        srcSchema.put(
                 "t1",
                 new SourceTable(
                         "cart",
@@ -224,9 +224,9 @@ public class ChangeEventSessionConvertorTest {
                 "c5",
                 new SourceColumnDefinition(
                         "name", new SourceColumnType("varchar", new Long[]{20L}, null)));
-        srchangeEventSessionConvertorhema.put(
+        srcSchema.put(
                 "t2", new SourceTable("people", "my_schema", new String[]{"c5"}, t2SrcColDefs, null));
-        return srchangeEventSessionConvertorhema;
+        return srcSchema;
     }
 
     private static Map<String, SpannerTable> getSampleSpSchema() {
@@ -349,15 +349,15 @@ public class ChangeEventSessionConvertorTest {
     }
 
     public static Schema getShardedSchemaObject() {
-        // Add SrchangeEventSessionConvertorhema.
-        Map<String, SourceTable> srchangeEventSessionConvertorhema = getSampleSrchangeEventSessionConvertorhema();
+        // Add SrcSchema.
+        Map<String, SourceTable> srcSchema = getSampleSrcSchema();
         // Add SpSchema.
         Map<String, SpannerTable> spSchema = getSampleShardedSpSchema();
         // Add ToSpanner.
         Map<String, NameAndCols> toSpanner = getToSpanner();
         // Add SrcToID.
         Map<String, NameAndCols> srcToId = getSrcToId();
-        Schema expectedSchema = new Schema(spSchema, new HashMap<>(), srchangeEventSessionConvertorhema);
+        Schema expectedSchema = new Schema(spSchema, new HashMap<>(), srcSchema);
         expectedSchema.setToSpanner(toSpanner);
         expectedSchema.setToSource(new HashMap<String, NameAndCols>());
         expectedSchema.setSrcToID(srcToId);
