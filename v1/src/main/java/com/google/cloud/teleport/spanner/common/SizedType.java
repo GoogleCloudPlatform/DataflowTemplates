@@ -19,8 +19,9 @@ import static java.lang.Character.isWhitespace;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
-import java.util.regex.Pattern;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 
 /** Describes a type with size. */
 public final class SizedType {
