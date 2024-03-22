@@ -13,7 +13,5 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-/**
- * Package to store all constants common to migrations.
- */
+/** Package to store all constants common to migrations. */
 package com.google.cloud.teleport.v2.spanner.migrations.constants;

@@ -28,48 +28,47 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventCon
  */
 class PostgresChangeEventContext extends ChangeEventContext {
 
-    public PostgresChangeEventContext(JsonNode changeEvent, Ddl ddl, String shadowTablePrefix)
-            throws ChangeEventConvertorException, InvalidChangeEventException {
-        this.changeEvent = changeEvent;
-        this.shadowTablePrefix = shadowTablePrefix;
-        this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
-        this.shadowTable = shadowTablePrefix + this.dataTable;
-        convertChangeEventToMutation(ddl);
-    }
+  public PostgresChangeEventContext(JsonNode changeEvent, Ddl ddl, String shadowTablePrefix)
+      throws ChangeEventConvertorException, InvalidChangeEventException {
+    this.changeEvent = changeEvent;
+    this.shadowTablePrefix = shadowTablePrefix;
+    this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
+    this.shadowTable = shadowTablePrefix + this.dataTable;
+    convertChangeEventToMutation(ddl);
+  }
 
-    /*
-     * Creates shadow table mutation for Postgres.
+  /*
+   * Creates shadow table mutation for Postgres.
+   */
+  @Override
+  Mutation generateShadowTableMutation(Ddl ddl) throws ChangeEventConvertorException {
+    // Get shadow information from change event mutation context
+    Mutation.WriteBuilder builder =
+        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(
+            ddl, changeEvent, shadowTablePrefix);
+
+    // Add timestamp information to shadow table mutation
+    Long changeEventTimestamp =
+        ChangeEventTypeConvertor.toLong(
+            changeEvent, DatastreamConstants.POSTGRES_TIMESTAMP_KEY, /* requiredField= */ true);
+    builder
+        .set(DatastreamConstants.POSTGRES_TIMESTAMP_SHADOW_INFO.getLeft())
+        .to(Value.int64(changeEventTimestamp));
+
+    /* Postgres backfill events "can" have LSN value as null.
+     * Set the value to a value smaller than any real value.
      */
-    @Override
-    Mutation generateShadowTableMutation(Ddl ddl)
-            throws ChangeEventConvertorException {
-        // Get shadow information from change event mutation context
-        Mutation.WriteBuilder builder =
-                ChangeEventConvertor.changeEventToShadowTableMutationBuilder(
-                        ddl, changeEvent, shadowTablePrefix);
-
-        // Add timestamp information to shadow table mutation
-        Long changeEventTimestamp =
-                ChangeEventTypeConvertor.toLong(
-                        changeEvent, DatastreamConstants.POSTGRES_TIMESTAMP_KEY, /* requiredField= */ true);
-        builder
-                .set(DatastreamConstants.POSTGRES_TIMESTAMP_SHADOW_INFO.getLeft())
-                .to(Value.int64(changeEventTimestamp));
-
-        /* Postgres backfill events "can" have LSN value as null.
-         * Set the value to a value smaller than any real value.
-         */
-        String changeEventLSN =
-                ChangeEventTypeConvertor.toString(
-                        changeEvent, DatastreamConstants.POSTGRES_LSN_KEY, /* requiredField= */ false);
-        if (changeEventLSN == null) {
-            changeEventLSN = "";
-        }
-        // Add lsn information to shadow table mutation
-        builder
-                .set(DatastreamConstants.POSTGRES_LSN_SHADOW_INFO.getLeft())
-                .to(Value.string(changeEventLSN));
-
-        return builder.build();
+    String changeEventLSN =
+        ChangeEventTypeConvertor.toString(
+            changeEvent, DatastreamConstants.POSTGRES_LSN_KEY, /* requiredField= */ false);
+    if (changeEventLSN == null) {
+      changeEventLSN = "";
     }
+    // Add lsn information to shadow table mutation
+    builder
+        .set(DatastreamConstants.POSTGRES_LSN_SHADOW_INFO.getLeft())
+        .to(Value.string(changeEventLSN));
+
+    return builder.build();
+  }
 }

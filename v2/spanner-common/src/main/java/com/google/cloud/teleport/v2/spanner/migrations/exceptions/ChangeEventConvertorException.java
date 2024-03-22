@@ -15,19 +15,17 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.exceptions;
 
-/**
- * Exceptions thrown during Change Event conversions.
- */
+/** Exceptions thrown during Change Event conversions. */
 public class ChangeEventConvertorException extends Exception {
-    public ChangeEventConvertorException(Exception e) {
-        super(e);
-    }
+  public ChangeEventConvertorException(Exception e) {
+    super(e);
+  }
 
-    public ChangeEventConvertorException(String message) {
-        super(message);
-    }
+  public ChangeEventConvertorException(String message) {
+    super(message);
+  }
 
-    public ChangeEventConvertorException(String message, Exception e) {
-        super(message, e);
-    }
+  public ChangeEventConvertorException(String message, Exception e) {
+    super(message, e);
+  }
 }

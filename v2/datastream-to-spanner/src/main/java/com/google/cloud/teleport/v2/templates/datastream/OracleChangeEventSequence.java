@@ -20,7 +20,6 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,92 +29,92 @@ import java.util.stream.Collectors;
  */
 class OracleChangeEventSequence extends ChangeEventSequence {
 
-    // Timestamp for change event
-    private final Long timestamp;
+  // Timestamp for change event
+  private final Long timestamp;
 
-    // Oracle SCN for change event
-    private final Long scn;
+  // Oracle SCN for change event
+  private final Long scn;
 
-    OracleChangeEventSequence(Long timestamp, Long scn) {
-        super(DatastreamConstants.ORACLE_SOURCE_TYPE);
-        this.timestamp = timestamp;
-        this.scn = scn;
-    }
+  OracleChangeEventSequence(Long timestamp, Long scn) {
+    super(DatastreamConstants.ORACLE_SOURCE_TYPE);
+    this.timestamp = timestamp;
+    this.scn = scn;
+  }
 
-    /*
-     * Creates OracleChangeEventSequence from change event
+  /*
+   * Creates OracleChangeEventSequence from change event
+   */
+  public static OracleChangeEventSequence createFromChangeEvent(ChangeEventContext ctx)
+      throws ChangeEventConvertorException, InvalidChangeEventException {
+
+    /* Backfill events from Oracle "can" have only timestamp metadata filled in.
+     * Set SCN to a smaller value than any real value
      */
-    public static OracleChangeEventSequence createFromChangeEvent(ChangeEventContext ctx)
-            throws ChangeEventConvertorException, InvalidChangeEventException {
+    Long scn;
 
-        /* Backfill events from Oracle "can" have only timestamp metadata filled in.
-         * Set SCN to a smaller value than any real value
-         */
-        Long scn;
-
-        scn =
-                ChangeEventTypeConvertor.toLong(
-                        ctx.getChangeEvent(), DatastreamConstants.ORACLE_SCN_KEY, /* requiredField= */ false);
-        if (scn == null) {
-            scn = new Long(-1);
-        }
-
-        // Change events from Oracle have timestamp and SCN filled in always.
-        return new OracleChangeEventSequence(
-                ChangeEventTypeConvertor.toLong(
-                        ctx.getChangeEvent(),
-                        DatastreamConstants.ORACLE_TIMESTAMP_KEY,
-                        /* requiredField= */ true),
-                scn);
+    scn =
+        ChangeEventTypeConvertor.toLong(
+            ctx.getChangeEvent(), DatastreamConstants.ORACLE_SCN_KEY, /* requiredField= */ false);
+    if (scn == null) {
+      scn = new Long(-1);
     }
 
-    /*
-     * Creates a OracleChangeEventSequence by reading from a shadow table.
-     */
-    public static OracleChangeEventSequence createFromShadowTable(
-            final TransactionContext transactionContext, String shadowTable, Key primaryKey)
-            throws ChangeEventSequenceCreationException {
+    // Change events from Oracle have timestamp and SCN filled in always.
+    return new OracleChangeEventSequence(
+        ChangeEventTypeConvertor.toLong(
+            ctx.getChangeEvent(),
+            DatastreamConstants.ORACLE_TIMESTAMP_KEY,
+            /* requiredField= */ true),
+        scn);
+  }
 
-        try {
-            // Read columns from shadow table
-            List<String> readColumnList =
-                    DatastreamConstants.ORACLE_SORT_ORDER.values().stream()
-                            .map(p -> p.getLeft())
-                            .collect(Collectors.toList());
-            Struct row = transactionContext.readRow(shadowTable, primaryKey, readColumnList);
+  /*
+   * Creates a OracleChangeEventSequence by reading from a shadow table.
+   */
+  public static OracleChangeEventSequence createFromShadowTable(
+      final TransactionContext transactionContext, String shadowTable, Key primaryKey)
+      throws ChangeEventSequenceCreationException {
 
-            // This is the first event for the primary key and hence the latest event.
-            if (row == null) {
-                return null;
-            }
+    try {
+      // Read columns from shadow table
+      List<String> readColumnList =
+          DatastreamConstants.ORACLE_SORT_ORDER.values().stream()
+              .map(p -> p.getLeft())
+              .collect(Collectors.toList());
+      Struct row = transactionContext.readRow(shadowTable, primaryKey, readColumnList);
 
-            return new OracleChangeEventSequence(
-                    row.getLong(readColumnList.get(0)), row.getLong(readColumnList.get(1)));
-        } catch (Exception e) {
-            throw new ChangeEventSequenceCreationException(e);
-        }
+      // This is the first event for the primary key and hence the latest event.
+      if (row == null) {
+        return null;
+      }
+
+      return new OracleChangeEventSequence(
+          row.getLong(readColumnList.get(0)), row.getLong(readColumnList.get(1)));
+    } catch (Exception e) {
+      throw new ChangeEventSequenceCreationException(e);
     }
+  }
 
-    Long getTimestamp() {
-        return timestamp;
+  Long getTimestamp() {
+    return timestamp;
+  }
+
+  Long getSCN() {
+    return scn;
+  }
+
+  @Override
+  public int compareTo(ChangeEventSequence o) {
+    if (!(o instanceof OracleChangeEventSequence)) {
+      throw new ChangeEventSequenceComparisonException(
+          "Expected: OracleChangeEventSequence; Received: " + o.getClass().getSimpleName());
     }
+    OracleChangeEventSequence other = (OracleChangeEventSequence) o;
 
-    Long getSCN() {
-        return scn;
-    }
+    int timestampComparisonResult = this.timestamp.compareTo(other.getTimestamp());
 
-    @Override
-    public int compareTo(ChangeEventSequence o) {
-        if (!(o instanceof OracleChangeEventSequence)) {
-            throw new ChangeEventSequenceComparisonException(
-                    "Expected: OracleChangeEventSequence; Received: " + o.getClass().getSimpleName());
-        }
-        OracleChangeEventSequence other = (OracleChangeEventSequence) o;
-
-        int timestampComparisonResult = this.timestamp.compareTo(other.getTimestamp());
-
-        return (timestampComparisonResult != 0)
-                ? timestampComparisonResult
-                : (scn.compareTo(other.getSCN()));
-    }
+    return (timestampComparisonResult != 0)
+        ? timestampComparisonResult
+        : (scn.compareTo(other.getSCN()));
+  }
 }

@@ -26,63 +26,62 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventCon
  */
 public class ChangeEventSequenceFactory {
 
-    private ChangeEventSequenceFactory() {
+  private ChangeEventSequenceFactory() {}
+
+  private static String getSourceType(JsonNode changeEvent) throws InvalidChangeEventException {
+    try {
+      return changeEvent.get(DatastreamConstants.EVENT_SOURCE_TYPE_KEY).asText();
+    } catch (Exception e) {
+      throw new InvalidChangeEventException(e);
     }
+  }
 
-    private static String getSourceType(JsonNode changeEvent) throws InvalidChangeEventException {
-        try {
-            return changeEvent.get(DatastreamConstants.EVENT_SOURCE_TYPE_KEY).asText();
-        } catch (Exception e) {
-            throw new InvalidChangeEventException(e);
-        }
+  /*
+   * Creates a ChangeEventSequence from the current ChangeEvent from ChangeEventContext.
+   */
+  public static ChangeEventSequence createChangeEventSequenceFromChangeEventContext(
+      ChangeEventContext changeEventContext)
+      throws ChangeEventConvertorException, InvalidChangeEventException {
+
+    String sourceType = getSourceType(changeEventContext.getChangeEvent());
+
+    // Create ChangeEventSequence from change event JSON.
+    if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {
+      return MySqlChangeEventSequence.createFromChangeEvent(changeEventContext);
+    } else if (DatastreamConstants.ORACLE_SOURCE_TYPE.equals(sourceType)) {
+      return OracleChangeEventSequence.createFromChangeEvent(changeEventContext);
+    } else if (DatastreamConstants.POSTGRES_SOURCE_TYPE.equals(sourceType)) {
+      return PostgresChangeEventSequence.createFromChangeEvent(changeEventContext);
     }
+    throw new InvalidChangeEventException("Unsupported source database: " + sourceType);
+  }
 
-    /*
-     * Creates a ChangeEventSequence from the current ChangeEvent from ChangeEventContext.
-     */
-    public static ChangeEventSequence createChangeEventSequenceFromChangeEventContext(
-            ChangeEventContext changeEventContext)
-            throws ChangeEventConvertorException, InvalidChangeEventException {
+  /*
+   * Create a ChangeEventSequence object for an earlier event by reading
+   * from shadow tables.
+   */
+  public static ChangeEventSequence createChangeEventSequenceFromShadowTable(
+      final TransactionContext transactionContext, final ChangeEventContext changeEventContext)
+      throws ChangeEventSequenceCreationException, InvalidChangeEventException {
 
-        String sourceType = getSourceType(changeEventContext.getChangeEvent());
+    String sourceType = getSourceType(changeEventContext.getChangeEvent());
 
-        // Create ChangeEventSequence from change event JSON.
-        if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {
-            return MySqlChangeEventSequence.createFromChangeEvent(changeEventContext);
-        } else if (DatastreamConstants.ORACLE_SOURCE_TYPE.equals(sourceType)) {
-            return OracleChangeEventSequence.createFromChangeEvent(changeEventContext);
-        } else if (DatastreamConstants.POSTGRES_SOURCE_TYPE.equals(sourceType)) {
-            return PostgresChangeEventSequence.createFromChangeEvent(changeEventContext);
-        }
-        throw new InvalidChangeEventException("Unsupported source database: " + sourceType);
+    if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {
+      return MySqlChangeEventSequence.createFromShadowTable(
+          transactionContext,
+          changeEventContext.getShadowTable(),
+          changeEventContext.getPrimaryKey());
+    } else if (DatastreamConstants.ORACLE_SOURCE_TYPE.equals(sourceType)) {
+      return OracleChangeEventSequence.createFromShadowTable(
+          transactionContext,
+          changeEventContext.getShadowTable(),
+          changeEventContext.getPrimaryKey());
+    } else if (DatastreamConstants.POSTGRES_SOURCE_TYPE.equals(sourceType)) {
+      return PostgresChangeEventSequence.createFromShadowTable(
+          transactionContext,
+          changeEventContext.getShadowTable(),
+          changeEventContext.getPrimaryKey());
     }
-
-    /*
-     * Create a ChangeEventSequence object for an earlier event by reading
-     * from shadow tables.
-     */
-    public static ChangeEventSequence createChangeEventSequenceFromShadowTable(
-            final TransactionContext transactionContext, final ChangeEventContext changeEventContext)
-            throws ChangeEventSequenceCreationException, InvalidChangeEventException {
-
-        String sourceType = getSourceType(changeEventContext.getChangeEvent());
-
-        if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {
-            return MySqlChangeEventSequence.createFromShadowTable(
-                    transactionContext,
-                    changeEventContext.getShadowTable(),
-                    changeEventContext.getPrimaryKey());
-        } else if (DatastreamConstants.ORACLE_SOURCE_TYPE.equals(sourceType)) {
-            return OracleChangeEventSequence.createFromShadowTable(
-                    transactionContext,
-                    changeEventContext.getShadowTable(),
-                    changeEventContext.getPrimaryKey());
-        } else if (DatastreamConstants.POSTGRES_SOURCE_TYPE.equals(sourceType)) {
-            return PostgresChangeEventSequence.createFromShadowTable(
-                    transactionContext,
-                    changeEventContext.getShadowTable(),
-                    changeEventContext.getPrimaryKey());
-        }
-        throw new InvalidChangeEventException("Unsupported source database: " + sourceType);
-    }
+    throw new InvalidChangeEventException("Unsupported source database: " + sourceType);
+  }
 }

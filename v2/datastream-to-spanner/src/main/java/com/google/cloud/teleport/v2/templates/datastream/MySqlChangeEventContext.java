@@ -28,57 +28,56 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventCon
  */
 class MySqlChangeEventContext extends ChangeEventContext {
 
-    public MySqlChangeEventContext(JsonNode changeEvent, Ddl ddl, String shadowTablePrefix)
-            throws ChangeEventConvertorException, InvalidChangeEventException {
-        this.changeEvent = changeEvent;
-        this.shadowTablePrefix = shadowTablePrefix;
-        this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
-        this.shadowTable = shadowTablePrefix + this.dataTable;
-        convertChangeEventToMutation(ddl);
-    }
+  public MySqlChangeEventContext(JsonNode changeEvent, Ddl ddl, String shadowTablePrefix)
+      throws ChangeEventConvertorException, InvalidChangeEventException {
+    this.changeEvent = changeEvent;
+    this.shadowTablePrefix = shadowTablePrefix;
+    this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
+    this.shadowTable = shadowTablePrefix + this.dataTable;
+    convertChangeEventToMutation(ddl);
+  }
 
-    /*
-     * Creates shadow table mutation for MySql.
+  /*
+   * Creates shadow table mutation for MySql.
+   */
+  @Override
+  Mutation generateShadowTableMutation(Ddl ddl) throws ChangeEventConvertorException {
+    // Get shadow information from change event mutation context
+    Mutation.WriteBuilder builder =
+        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(
+            ddl, changeEvent, shadowTablePrefix);
+
+    // Add timestamp information to shadow table mutation
+    Long changeEventTimestamp =
+        ChangeEventTypeConvertor.toLong(
+            changeEvent, DatastreamConstants.MYSQL_TIMESTAMP_KEY, /* requiredField= */ true);
+    builder
+        .set(DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft())
+        .to(Value.int64(changeEventTimestamp));
+
+    /* MySql backfill events "can" have log file and log file position as null.
+     * Set their value to a value (lexicographically) smaller than any real value.
      */
-    @Override
-    Mutation generateShadowTableMutation(Ddl ddl)
-            throws ChangeEventConvertorException {
-        // Get shadow information from change event mutation context
-        Mutation.WriteBuilder builder =
-                ChangeEventConvertor.changeEventToShadowTableMutationBuilder(
-                        ddl, changeEvent, shadowTablePrefix);
-
-        // Add timestamp information to shadow table mutation
-        Long changeEventTimestamp =
-                ChangeEventTypeConvertor.toLong(
-                        changeEvent, DatastreamConstants.MYSQL_TIMESTAMP_KEY, /* requiredField= */ true);
-        builder
-                .set(DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft())
-                .to(Value.int64(changeEventTimestamp));
-
-        /* MySql backfill events "can" have log file and log file position as null.
-         * Set their value to a value (lexicographically) smaller than any real value.
-         */
-        String logFile =
-                ChangeEventTypeConvertor.toString(
-                        changeEvent, DatastreamConstants.MYSQL_LOGFILE_KEY, /* requiredField= */ false);
-        if (logFile == null) {
-            logFile = "";
-        }
-        // Add log file information to shadow table mutation
-        builder.set(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft()).to(logFile);
-
-        Long logPosition =
-                ChangeEventTypeConvertor.toLong(
-                        changeEvent, DatastreamConstants.MYSQL_LOGPOSITION_KEY, /* requiredField= */ false);
-        if (logPosition == null) {
-            logPosition = new Long(-1);
-        }
-        // Add logfile position information to shadow table mutation
-        builder
-                .set(DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft())
-                .to(Value.int64(logPosition));
-
-        return builder.build();
+    String logFile =
+        ChangeEventTypeConvertor.toString(
+            changeEvent, DatastreamConstants.MYSQL_LOGFILE_KEY, /* requiredField= */ false);
+    if (logFile == null) {
+      logFile = "";
     }
+    // Add log file information to shadow table mutation
+    builder.set(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft()).to(logFile);
+
+    Long logPosition =
+        ChangeEventTypeConvertor.toLong(
+            changeEvent, DatastreamConstants.MYSQL_LOGPOSITION_KEY, /* requiredField= */ false);
+    if (logPosition == null) {
+      logPosition = new Long(-1);
+    }
+    // Add logfile position information to shadow table mutation
+    builder
+        .set(DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft())
+        .to(Value.int64(logPosition));
+
+    return builder.build();
+  }
 }
