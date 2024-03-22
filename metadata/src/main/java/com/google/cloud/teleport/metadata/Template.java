@@ -112,4 +112,11 @@ public @interface Template {
 
   /** Marker if the template is still in preview / pre-GA. */
   boolean preview() default false;
+
+  StreamingMode defaultStreamingMode() default StreamingMode.EXACTLY_ONCE;
+
+  enum StreamingMode {
+    EXACTLY_ONCE,
+    AT_LEAST_ONCE
+  }
 }
