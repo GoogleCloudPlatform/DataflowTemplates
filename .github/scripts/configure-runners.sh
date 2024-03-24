@@ -16,13 +16,12 @@
 # For running the script, see go/templates-gitactions-script
 
 # Defaults
-NAME_SUFFIX="it"
-SIZE=3
-BASE_NAME="gitactions-runner"
-REPO_NAME="DataflowTemplates"
-REPO_OWNER="GoogleCloudPlatform"
-GH_RUNNER_VERSION="2.299.1"
-VERBOSE=0
+DEFAULT_NAME_SUFFIX="it"
+DEFAULT_SIZE=3
+DEFAULT_BASE_NAME="gitactions-runner"
+DEFAULT_REPO_NAME="DataflowTemplates"
+DEFAULT_REPO_OWNER="GoogleCloudPlatform"
+DEFAULT_GH_RUNNER_VERSION="2.299.1"
 
 ############################################################
 # Help                                                     #
@@ -38,12 +37,12 @@ Help()
    echo "p     Set the name of the Google Cloud project to use."
    echo "a     Set the service account email for the Google Cloud project."
    echo "t     Set the token used to authenticate the runners with the repo."
-   echo "n     (optional) Set the name of the gitactions runner. Default '$BASE_NAME'"
-   echo "S     (optional) Set the suffix of the gitactions runner. Default '$NAME_SUFFIX'"
-   echo "r     (optional) Set the name of the GitHub repo. Default '$REPO_NAME'"
-   echo "o     (optional) Set the owner of the GitHub repo. Default '$REPO_OWNER'"
-   echo "s     (optional) Set the number of runners. Default $SIZE"
-   echo "v     (optional) Set the gitactions runner version. Default $GH_RUNNER_VERSION"
+   echo "n     (optional) Set the name of the gitactions runner. Default '$DEFAULT_BASE_NAME'"
+   echo "S     (optional) Set the suffix of the gitactions runner. Default '$DEFAULT_NAME_SUFFIX'"
+   echo "r     (optional) Set the name of the GitHub repo. Default '$DEFAULT_REPO_NAME'"
+   echo "o     (optional) Set the owner of the GitHub repo. Default '$DEFAULT_REPO_OWNER'"
+   echo "s     (optional) Set the number of runners. Default $DEFAULT_SIZE"
+   echo "v     (optional) Set the gitactions runner version. Default $DEFAULT_GH_RUNNER_VERSION"
    echo "V     Verbose mode."
    echo "h     Print this Help."
    echo
@@ -54,6 +53,14 @@ Help()
 # Main program                                             #
 ############################################################
 ############################################################
+
+NAME_SUFFIX=$DEFAULT_NAME_SUFFIX
+SIZE=$DEFAULT_SIZE
+BASE_NAME=$DEFAULT_BASE_NAME
+REPO_NAME=$DEFAULT_REPO_NAME
+REPO_OWNER=$DEFAULT_REPO_OWNER
+GH_RUNNER_VERSION=$DEFAULT_GH_RUNNER_VERSION
+VERBOSE=0
 
 # Get the options
 while getopts ":h:Vp:a:t:n:S:r:o:s:v:" option; do
@@ -119,7 +126,6 @@ SECRET_NAME="${RUNNER_NAME}-secret"
 echo "Running script with following configuration:"
 echo "  PROJECT=$PROJECT"
 echo "  SERVICE_ACCOUNT=$SA_EMAIL"
-echo "  GITHUB_TOKEN=******"
 echo "  RUNNER_NAME=$RUNNER_NAME"
 echo "  NUM_RUNNERS=$SIZE"
 echo "  REPO_URL=$REPO_URL"
@@ -181,7 +187,7 @@ gcloud compute instance-templates create $INSTANCE_TEMPLATE_NAME \
   --image-project=$IMAGE_PROJECT \
   --boot-disk-type=$BOOT_DISK_TYPE \
   --boot-disk-size=$BOOT_DISK_SIZE \
-  --machine-type="MACHINE_TYPE" \
+  --machine-type="$MACHINE_TYPE" \
   --scopes=$SCOPE \
   --service-account=${SA_EMAIL} \
   --metadata-from-file=startup-script=startup-script-${NAME_SUFFIX}.sh,shutdown-script=shutdown-script-${NAME_SUFFIX}.sh
