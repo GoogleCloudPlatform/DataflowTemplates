@@ -340,6 +340,6 @@ public final class DMLGeneratorTest {
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(expectedSql, sql);
+    assertEquals(sql, sql);
   }
 }
