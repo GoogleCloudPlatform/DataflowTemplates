@@ -147,13 +147,11 @@ public final class ChangeEventTypeConvertorTest {
     changeEvent.put("field2", -123456789);
     changeEvent.put("field3", 123456.789);
     changeEvent.put("field4", -123456.789);
-    changeEvent.put("field5", "123456789");
-    changeEvent.put("field6", "-123456789");
-    changeEvent.put("field7", "123456.789");
-    changeEvent.put("field8", "-123456.789");
-    changeEvent.put("field9", true); // Interpreted as 1
-    changeEvent.put("field10", false); // Interpreted as 0
-    changeEvent.put("field11", JSONObject.NULL);
+    changeEvent.put("field5", "3123556554908346902");
+    changeEvent.put("field6", "-3123556554908346902");
+    changeEvent.put("field7", true); // Interpreted as 1
+    changeEvent.put("field8", false); // Interpreted as 0
+    changeEvent.put("field9", JSONObject.NULL);
 
     JsonNode ce = getJsonNode(changeEvent.toString());
 
@@ -170,20 +168,23 @@ public final class ChangeEventTypeConvertorTest {
         new Long(-123456));
     assertEquals(
         ChangeEventTypeConvertor.toLong(ce, "field5", /* requiredField= */ true),
-        new Long(123456789));
+        new Long("3123556554908346902"));
     assertEquals(
         ChangeEventTypeConvertor.toLong(ce, "field6", /* requiredField= */ true),
-        new Long(-123456789));
+        new Long("-3123556554908346902"));
     assertEquals(
-        ChangeEventTypeConvertor.toLong(ce, "field7", /* requiredField= */ true), new Long(123456));
+        ChangeEventTypeConvertor.toLong(ce, "field7", /* requiredField= */ true), new Long(1));
     assertEquals(
-        ChangeEventTypeConvertor.toLong(ce, "field8", /* requiredField= */ true),
-        new Long(-123456));
-    assertEquals(
-        ChangeEventTypeConvertor.toLong(ce, "field9", /* requiredField= */ true), new Long(1));
-    assertEquals(
-        ChangeEventTypeConvertor.toLong(ce, "field10", /* requiredField= */ true), new Long(0));
-    assertNull(ChangeEventTypeConvertor.toLong(ce, "field11", /* requiredField= */ false));
+        ChangeEventTypeConvertor.toLong(ce, "field8", /* requiredField= */ true), new Long(0));
+    assertNull(ChangeEventTypeConvertor.toLong(ce, "field9", /* requiredField= */ false));
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertFloatingPointWithoutLossOfPrecision() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("field1", "123456.789");
+    JsonNode ce = getJsonNode(changeEvent.toString());
+    ChangeEventTypeConvertor.toLong(ce, "field1", /* requiredField= */ true);
   }
 
   @Test(expected = ChangeEventConvertorException.class)

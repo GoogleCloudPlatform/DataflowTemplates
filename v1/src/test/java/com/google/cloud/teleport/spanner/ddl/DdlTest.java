@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
@@ -250,6 +251,66 @@ public class DdlTest {
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odc\" FOREIGN KEY (\"last_name\")"
                 + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"));
     assertNotNull(ddl.hashCode());
+  }
+
+  @Test
+  public void embeddingVector() {
+    Ddl.Builder builder = Ddl.builder();
+    builder
+        .createTable("Users")
+        .column("id")
+        .int64()
+        .notNull()
+        .endColumn()
+        .column("embedding_vector")
+        .type(Type.array(Type.float64()))
+        .arrayLength(Integer.valueOf(128))
+        .endColumn()
+        .primaryKey()
+        .asc("id")
+        .end()
+        .endTable();
+
+    Ddl ddl = builder.build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `Users` ("
+                + " `id` INT64 NOT NULL,"
+                + " `embedding_vector` ARRAY<FLOAT64>(vector_length=>128),"
+                + " ) PRIMARY KEY (`id` ASC)"));
+    assertNotEquals(ddl.hashCode(), 0);
+  }
+
+  @Test
+  public void pgEmbeddingVector() {
+    Ddl.Builder builder = Ddl.builder(Dialect.POSTGRESQL);
+    builder
+        .createTable("Users")
+        .column("id")
+        .pgInt8()
+        .notNull()
+        .endColumn()
+        .column("embedding_vector")
+        .type(Type.pgArray(Type.pgFloat8()))
+        .arrayLength(Integer.valueOf(64))
+        .endColumn()
+        .primaryKey()
+        .asc("id")
+        .end()
+        .endTable();
+
+    Ddl ddl = builder.build();
+
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            " CREATE TABLE \"Users\" ("
+                + " \"id\" bigint NOT NULL,"
+                + " \"embedding_vector\" double precision[] vector length 64,"
+                + " PRIMARY KEY (\"id\")"
+                + " ) "));
+    assertNotEquals(ddl.hashCode(), 0);
   }
 
   @Test
