@@ -203,7 +203,7 @@ public class PubSubToElasticsearch {
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
-                .setTemplateName("dataflow-pubsub-to-elasticsearch-template/v2")
+                .setUserAgent("dataflow-pubsub-to-elasticsearch-template/v2")
                 .setOptions(options.as(PubSubToElasticsearchOptions.class))
                 .build());
 
