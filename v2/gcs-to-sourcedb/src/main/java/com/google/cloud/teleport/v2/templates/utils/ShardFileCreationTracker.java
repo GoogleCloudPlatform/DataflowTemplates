@@ -72,7 +72,10 @@ public class ShardFileCreationTracker {
         response = spannerDao.doesIdExist(id);
         retry = false;
       } catch (SpannerException e) {
-        if (e.getMessage().contains("DEADLINE_EXCEEDED")) {
+        // It is better to retry than throw exception for stability
+        // Else the Dataflow retry takes longer and more side effects to other stages
+        if (e.getMessage().contains("DEADLINE_EXCEEDED")
+            || (e.getMessage().contains("UNAVAILABLE"))) {
           try {
             Thread.sleep(500);
           } catch (java.lang.InterruptedException ex) {
