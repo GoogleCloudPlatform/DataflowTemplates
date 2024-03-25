@@ -430,7 +430,7 @@ public class ElasticsearchIO {
      */
     protected Header[] configureDefaultHeaders() {
       final ArrayList<Header> headerList = new ArrayList<Header>();
-      
+
       headerList.add(new BasicHeader("user-agent", getUserAgent()));
 
       if (getApiKey() != null) {
@@ -504,7 +504,6 @@ public class ElasticsearchIO {
         i++;
       }
       RestClientBuilder restClientBuilder = RestClient.builder(hosts);
-
       if (getUsername() != null) {
         final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(
