@@ -115,6 +115,7 @@ public class BigQueryToElasticsearch {
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
+                .setTemplateName("dataflow-bigquery-to-elasticsearch-template/v2")
                 .setOptions(options.as(BigQueryToElasticsearchOptions.class))
                 .build());
 

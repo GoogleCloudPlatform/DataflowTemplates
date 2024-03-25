@@ -100,6 +100,8 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
 
   public abstract ElasticsearchWriteOptions options();
 
+  abstract String templateName();
+
   /**
    * Types have been removed in ES 7.0. Default will be _doc. See
    * https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html"
@@ -115,7 +117,8 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
         ElasticsearchIO.ConnectionConfiguration.create(
             new String[] {connectionInformation.getElasticsearchURL().toString()},
             options().getIndex(),
-            DOCUMENT_TYPE);
+            DOCUMENT_TYPE,
+            templateName());
 
     // If username and password are not blank, use them instead of ApiKey
     if (StringUtils.isNotBlank(options().getElasticsearchUsername())
@@ -241,6 +244,9 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
     public abstract Builder setOptions(ElasticsearchWriteOptions options);
 
     abstract ElasticsearchWriteOptions options();
+
+    public abstract Builder setTemplateName(String name);
+    abstract String templateName();
 
     abstract WriteToElasticsearch autoBuild();
 
