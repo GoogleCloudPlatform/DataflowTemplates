@@ -270,6 +270,8 @@ public class ElasticsearchIO {
 
     public abstract boolean isDisableCertificateValidation();
 
+    public abstract String getUserAgent();
+
     abstract Builder builder();
 
     @AutoValue.Builder
@@ -300,6 +302,8 @@ public class ElasticsearchIO {
 
       abstract Builder setDisableCertificateValidation(boolean disableCertificateValidation);
 
+      abstract Builder setUserAgent(String userAgent);
+
       abstract ConnectionConfiguration build();
     }
 
@@ -309,19 +313,22 @@ public class ElasticsearchIO {
      * @param addresses list of addresses of Elasticsearch nodes
      * @param index the index toward which the requests will be issued
      * @param type the document type toward which the requests will be issued
+     * @param userAgent identifies the template user-agent string
      * @return the connection configuration object
      */
-    public static ConnectionConfiguration create(String[] addresses, String index, String type) {
+    public static ConnectionConfiguration create(String[] addresses, String index, String type, String userAgent) {
       checkArgument(addresses != null, "addresses can not be null");
       checkArgument(addresses.length > 0, "addresses can not be empty");
       checkArgument(index != null, "index can not be null");
       checkArgument(type != null, "type can not be null");
+      checkArgument(userAgent != null, "userAgent can not be null");
       return new AutoValue_ElasticsearchIO_ConnectionConfiguration.Builder()
           .setAddresses(Arrays.asList(addresses))
           .setIndex(index)
           .setType(type)
           .setTrustSelfSignedCerts(false)
           .setDisableCertificateValidation(false)
+          .setUserAgent(userAgent)
           .build();
     }
 
@@ -415,6 +422,28 @@ public class ElasticsearchIO {
     }
 
     /**
+     * Sets User-Agent headers.
+     *
+     * Sets Authorization: ApiKey if ApiKey is present
+     * Sets Authorization: Bearer if BearerToken is present
+     * @return an array of {@link Header} that apply to all HTTP requests
+     */
+    protected Header[] configureDefaultHeaders() {
+      final ArrayList<Header> headerList = new ArrayList<Header>();
+      
+      headerList.add(new BasicHeader("user-agent", getUserAgent()));
+
+      if (getApiKey() != null) {
+        headerList.add(new BasicHeader("Authorization", "ApiKey " + getApiKey()));
+      }
+      if (getBearerToken() != null) {
+        headerList.add(new BasicHeader("Authorization", "Bearer " + getBearerToken()));
+      }
+
+      return headerList.toArray(new Header[headerList.size()]);
+    }
+
+    /**
      * If Elasticsearch uses SSL/TLS then configure whether to ignore any certificate validation or
      * not. The default is false.
      *
@@ -475,6 +504,7 @@ public class ElasticsearchIO {
         i++;
       }
       RestClientBuilder restClientBuilder = RestClient.builder(hosts);
+
       if (getUsername() != null) {
         final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(
@@ -483,14 +513,8 @@ public class ElasticsearchIO {
             httpAsyncClientBuilder ->
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
       }
-      if (getApiKey() != null) {
-        restClientBuilder.setDefaultHeaders(
-            new Header[] {new BasicHeader("Authorization", "ApiKey " + getApiKey())});
-      }
-      if (getBearerToken() != null) {
-        restClientBuilder.setDefaultHeaders(
-            new Header[] {new BasicHeader("Authorization", "Bearer " + getBearerToken())});
-      }
+
+      restClientBuilder.setDefaultHeaders(this.configureDefaultHeaders());
 
       if (isDisableCertificateValidation()) {
         try {
@@ -1566,7 +1590,7 @@ public class ElasticsearchIO {
           request.setEntity(requestBody);
           response = restClient.performRequest(request);
           responseEntity = new BufferedHttpEntity(response.getEntity());
-        } catch (java.io.IOException ex) {
+        } catch (IOException ex) {
           if (spec.getRetryConfiguration() == null || !isRetryableClientException(ex)) {
             throw ex;
           }
@@ -1603,7 +1627,7 @@ public class ElasticsearchIO {
             request.setEntity(requestBody);
             response = restClient.performRequest(request);
             responseEntity = new BufferedHttpEntity(response.getEntity());
-          } catch (java.io.IOException ex) {
+          } catch (IOException ex) {
             if (isRetryableClientException(ex)) {
               LOG.error("Caught ES timeout, retrying", ex);
               continue;
