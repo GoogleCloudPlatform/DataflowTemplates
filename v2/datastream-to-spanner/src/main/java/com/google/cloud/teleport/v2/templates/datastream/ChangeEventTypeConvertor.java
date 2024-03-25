@@ -78,7 +78,7 @@ public class ChangeEventTypeConvertor {
     try {
       JsonNode node = changeEvent.get(key);
       if (node.isTextual()) {
-        return Double.valueOf(node.asText()).longValue();
+        return Long.valueOf(node.asText());
       }
       return node.asLong();
 

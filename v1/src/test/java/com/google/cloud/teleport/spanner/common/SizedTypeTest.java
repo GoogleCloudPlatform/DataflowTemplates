@@ -70,4 +70,29 @@ public class SizedTypeTest {
         SizedType.typeString(complexStruct.type, null),
         "STRUCT<a BOOL, b ARRAY<STRUCT<c STRING(MAX), d ARRAY<FLOAT64>>>, e STRUCT<f STRUCT<g INT64>>>");
   }
+
+  @Test
+  public void testEmbeddingVector() {
+    SizedType embeddingVector =
+        SizedType.parseSpannerType(
+            "ARRAY<FLOAT64>(vector_length=>128)", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertEquals(embeddingVector.type, Type.array(Type.float64()));
+    assertEquals(embeddingVector.arrayLength, Integer.valueOf(128));
+    assertEquals(
+        SizedType.typeString(embeddingVector.type, null, 128),
+        "ARRAY<FLOAT64>(vector_length=>128)");
+  }
+
+  @Test
+  public void testPgEmbeddingVector() {
+    SizedType embeddingVectorPg =
+        SizedType.parseSpannerType("double precision[] vector length 4", Dialect.POSTGRESQL);
+
+    assertEquals(embeddingVectorPg.type, Type.pgArray(Type.pgFloat8()));
+    assertEquals(embeddingVectorPg.arrayLength, Integer.valueOf(4));
+    assertEquals(
+        SizedType.typeString(embeddingVectorPg.type, null, 4),
+        "double precision[] vector length 4");
+  }
 }
