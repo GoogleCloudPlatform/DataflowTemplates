@@ -28,6 +28,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.joda.time.Duration;
 
 /**
  * Dataflow template which reads data from Mqtt Topic and writes it to Cloud PubSub.
@@ -80,6 +81,7 @@ public class MqttToPubsub {
   }
 
   public static PipelineResult run(MqttToPubsubOptions options) {
+    Duration tenHours = Duration.standardHours(10);
     validate(options);
     Pipeline pipeline = Pipeline.create(options);
     MqttIO.Read mqttIo;
@@ -90,13 +92,15 @@ public class MqttToPubsub {
                   MqttIO.ConnectionConfiguration.create(
                           options.getBrokerServer(), options.getInputTopic())
                       .withUsername(options.getUsername())
-                      .withPassword(options.getPassword()));
+                      .withPassword(options.getPassword()))
+                      .withMaxReadTime(tenHours);
     } else {
       mqttIo =
           MqttIO.read()
               .withConnectionConfiguration(
                   MqttIO.ConnectionConfiguration.create(
-                      options.getBrokerServer(), options.getInputTopic()));
+                      options.getBrokerServer(), options.getInputTopic()))
+                      .withMaxReadTime(tenHours);
     }
 
     return pipeline

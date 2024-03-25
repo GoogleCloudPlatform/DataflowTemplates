@@ -29,6 +29,11 @@
     </properties>
     <dependencies>
         <dependency>
+        <groupId>joda-time</groupId>
+        <artifactId>joda-time</artifactId>
+        <version>2.10.14</version> 
+        </dependency>
+        <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-mqtt</artifactId>
             <version>${beam.version}</version>
