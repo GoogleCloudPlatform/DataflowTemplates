@@ -20,7 +20,6 @@ package org.apache.beam.sdk.io.gcp.spanner;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Type;
-import com.google.cloud.teleport.spanner.common.SizedType;
 import java.io.Serializable;
 import java.util.List;
 import java.util.regex.Matcher;
