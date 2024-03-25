@@ -41,7 +41,8 @@ public class SpannerServerResource extends ExternalResource {
   private static final String EMULATOR_HOST = System.getenv("SPANNER_EMULATOR_HOST");
   private static final String DEFAULT_PROJECT_ID = "span-cloud-testing";
   private static final String DEFAULT_INSTANCE_ID = "test-instance";
-  private final String host = "https://spanner.googleapis.com";
+  // private final String host = "https://spanner.googleapis.com";
+  private final String host = "https://staging-wrenchworks.sandbox.googleapis.com/";
   private final String projectId;
   private final String instanceId;
 
