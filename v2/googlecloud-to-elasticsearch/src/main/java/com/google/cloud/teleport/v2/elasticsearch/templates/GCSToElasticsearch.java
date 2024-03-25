@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.elasticsearch.templates;
 
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
+import com.google.cloud.teleport.metadata.MultiTemplate;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
@@ -50,30 +51,57 @@ import org.slf4j.LoggerFactory;
  * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-elasticsearch/README_GCS_to_Elasticsearch.md">README</a>
  * for instructions on how to use or modify this template.
  */
-@Template(
-    name = "GCS_to_Elasticsearch",
-    category = TemplateCategory.BATCH,
-    displayName = "Cloud Storage to Elasticsearch",
-    description = {
-      "The Cloud Storage to Elasticsearch template is a batch pipeline that reads data from CSV files stored in a Cloud Storage bucket and writes the data into Elasticsearch as JSON documents.",
-      "If the CSV files contain headers, set the <code>containsHeaders</code> template parameter to <code>true</code>.\n"
-          + "Otherwise, create a JSON schema file that describes the data. Specify the Cloud Storage URI of the schema file in the jsonSchemaPath template parameter. "
-          + "The following example shows a JSON schema:\n"
-          + "<code>[{\"name\":\"id\", \"type\":\"text\"}, {\"name\":\"age\", \"type\":\"integer\"}]</code>\n"
-          + "Alternatively, you can provide a user-defined function (UDF) that parses the CSV text and outputs Elasticsearch documents."
-    },
-    optionsClass = GCSToElasticsearchOptions.class,
-    skipOptions = {"javascriptTextTransformReloadIntervalMinutes"},
-    flexContainerName = "gcs-to-elasticsearch",
-    documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-elasticsearch",
-    contactInformation = "https://cloud.google.com/support",
-    preview = true,
-    requirements = {
-      "The Cloud Storage bucket must exist.",
-      "A Elasticsearch host on a Google Cloud instance or on Elasticsearch Cloud that is accessible from Dataflow must exist.",
-      "A BigQuery table for error output must exist."
-    })
+@MultiTemplate({
+  @Template(
+      name = "GCS_to_Elasticsearch",
+      category = TemplateCategory.BATCH,
+      displayName = "Cloud Storage to Elasticsearch",
+      description = {
+        "The Cloud Storage to Elasticsearch template is a batch pipeline that reads data from CSV files stored in a Cloud Storage bucket and writes the data into Elasticsearch as JSON documents.",
+        "If the CSV files contain headers, set the <code>containsHeaders</code> template parameter to <code>true</code>.\n"
+            + "Otherwise, create a JSON schema file that describes the data. Specify the Cloud Storage URI of the schema file in the jsonSchemaPath template parameter. "
+            + "The following example shows a JSON schema:\n"
+            + "<code>[{\"name\":\"id\", \"type\":\"text\"}, {\"name\":\"age\", \"type\":\"integer\"}]</code>\n"
+            + "Alternatively, you can provide a Javascript user-defined function (UDF) that parses the CSV text and outputs Elasticsearch documents."
+      },
+      optionsClass = GCSToElasticsearchOptions.class,
+      skipOptions = {"javascriptTextTransformReloadIntervalMinutes"},
+      flexContainerName = "gcs-to-elasticsearch",
+      documentation =
+          "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-elasticsearch",
+      contactInformation = "https://cloud.google.com/support",
+      preview = true,
+      requirements = {
+        "The Cloud Storage bucket must exist.",
+        "A Elasticsearch host on a Google Cloud instance or on Elasticsearch Cloud that is accessible from Dataflow must exist.",
+        "A BigQuery table for error output must exist."
+      }),
+  @Template(
+      name = "GCS_to_Elasticsearch_Xlang",
+      category = TemplateCategory.BATCH,
+      displayName = "Cloud Storage to Elasticsearch with Python UDFs",
+      type = Template.TemplateType.XLANG,
+      description = {
+        "The Cloud Storage to Elasticsearch template is a batch pipeline that reads data from CSV files stored in a Cloud Storage bucket and writes the data into Elasticsearch as JSON documents.",
+        "If the CSV files contain headers, set the <code>containsHeaders</code> template parameter to <code>true</code>.\n"
+            + "Otherwise, create a JSON schema file that describes the data. Specify the Cloud Storage URI of the schema file in the jsonSchemaPath template parameter. "
+            + "The following example shows a JSON schema:\n"
+            + "<code>[{\"name\":\"id\", \"type\":\"text\"}, {\"name\":\"age\", \"type\":\"integer\"}]</code>\n"
+            + "Alternatively, you can provide a Python user-defined function (UDF) that parses the CSV text and outputs Elasticsearch documents."
+      },
+      optionsClass = GCSToElasticsearchOptions.class,
+      skipOptions = {"javascriptTextTransformReloadIntervalMinutes"},
+      flexContainerName = "gcs-to-elasticsearch",
+      documentation =
+          "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-elasticsearch",
+      contactInformation = "https://cloud.google.com/support",
+      preview = true,
+      requirements = {
+        "The Cloud Storage bucket must exist.",
+        "A Elasticsearch host on a Google Cloud instance or on Elasticsearch Cloud that is accessible from Dataflow must exist.",
+        "A BigQuery table for error output must exist."
+      })
+})
 public class GCSToElasticsearch {
 
   /** The tag for the headers of the CSV if required. */
@@ -131,7 +159,8 @@ public class GCSToElasticsearch {
     if (options.getContainsHeaders()) {
       checkArgument(
           options.getJavascriptTextTransformGcsPath() == null
-              && options.getJsonSchemaPath() == null,
+              && options.getJsonSchemaPath() == null
+              && options.getPythonExternalTextTransformGcsPath() == null,
           "Cannot parse file containing headers with UDF or Json schema.");
     }
 
@@ -141,43 +170,68 @@ public class GCSToElasticsearch {
             || (options.getMaxRetryAttempts() != null && options.getMaxRetryDuration() != null),
         "To specify retry configuration both max attempts and max duration must be set.");
 
+    // Throw error if both Javascript UDF and Python UDF are set. We can only apply one or the
+    // other.
+    checkArgument(
+        !(options.getJavascriptTextTransformGcsPath() != null
+            && options.getPythonExternalTextTransformGcsPath() != null),
+        "Either javascript or Python gcs path must be provided, but not both.");
+
     /*
      * Steps: 1) Read records from CSV(s) via {@link CsvConverters.ReadCsv}.
      *        2) Convert lines to JSON strings via {@link CsvConverters.LineToFailsafeJson}.
      *        3a) Write JSON strings as documents to Elasticsearch via {@link ElasticsearchIO}.
      *        3b) Write elements that failed processing to {@link org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO}.
      */
-    PCollectionTuple convertedCsvLines =
+    PCollectionTuple readCsvLines =
         pipeline
             /*
              * Step 1: Read CSV file(s) from Cloud Storage using {@link CsvConverters.ReadCsv}.
              */
             .apply(
-                "ReadCsv",
-                CsvConverters.ReadCsv.newBuilder()
-                    .setCsvFormat(options.getCsvFormat())
-                    .setDelimiter(options.getDelimiter())
-                    .setHasHeaders(options.getContainsHeaders())
-                    .setInputFileSpec(options.getInputFileSpec())
-                    .setHeaderTag(CSV_HEADERS)
-                    .setLineTag(CSV_LINES)
-                    .setFileEncoding(options.getCsvFileEncoding())
-                    .build())
-            /*
-             * Step 2: Convert lines to Elasticsearch document.
-             */
-            .apply(
-                "ConvertLine",
-                CsvConverters.LineToFailsafeJson.newBuilder()
-                    .setDelimiter(options.getDelimiter())
-                    .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                    .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
-                    .setJsonSchemaPath(options.getJsonSchemaPath())
-                    .setHeaderTag(CSV_HEADERS)
-                    .setLineTag(CSV_LINES)
-                    .setUdfOutputTag(PROCESSING_OUT)
-                    .setUdfDeadletterTag(PROCESSING_DEADLETTER_OUT)
-                    .build());
+            "ReadCsv",
+            CsvConverters.ReadCsv.newBuilder()
+                .setCsvFormat(options.getCsvFormat())
+                .setDelimiter(options.getDelimiter())
+                .setHasHeaders(options.getContainsHeaders())
+                .setInputFileSpec(options.getInputFileSpec())
+                .setHeaderTag(CSV_HEADERS)
+                .setLineTag(CSV_LINES)
+                .setFileEncoding(options.getCsvFileEncoding())
+                .build());
+    /*
+     * Step 2: Convert lines to Elasticsearch document.
+     */
+    PCollectionTuple convertedCsvLines;
+    if (options.getPythonExternalTextTransformGcsPath() != null) {
+      convertedCsvLines =
+          readCsvLines.apply(
+              "ConvertLine",
+              CsvConverters.LineToFailsafeJson.newBuilder()
+                  .setDelimiter(options.getDelimiter())
+                  .setPythonUdfFileSystemPath(options.getPythonExternalTextTransformGcsPath())
+                  .setPythonUdfFunctionName(options.getPythonExternalTextTransformFunctionName())
+                  .setJsonSchemaPath(options.getJsonSchemaPath())
+                  .setHeaderTag(CSV_HEADERS)
+                  .setLineTag(CSV_LINES)
+                  .setUdfOutputTag(PROCESSING_OUT)
+                  .setUdfDeadletterTag(PROCESSING_DEADLETTER_OUT)
+                  .build());
+    } else {
+      convertedCsvLines =
+          readCsvLines.apply(
+              "ConvertLine",
+              CsvConverters.LineToFailsafeJson.newBuilder()
+                  .setDelimiter(options.getDelimiter())
+                  .setJavascriptUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                  .setJavascriptUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                  .setJsonSchemaPath(options.getJsonSchemaPath())
+                  .setHeaderTag(CSV_HEADERS)
+                  .setLineTag(CSV_LINES)
+                  .setUdfOutputTag(PROCESSING_OUT)
+                  .setUdfDeadletterTag(PROCESSING_DEADLETTER_OUT)
+                  .build());
+    }
     /*
      * Step 3a: Write elements that were successfully processed to Elasticsearch using {@link WriteToElasticsearch}.
      */

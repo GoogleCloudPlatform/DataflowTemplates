@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.elasticsearch.options;
 
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.PythonExternalTextTransformerOptions;
 
 /**
  * The {@link BigQueryToElasticsearchOptions} class provides the custom execution options passed by
@@ -25,4 +25,4 @@ import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.Javascr
 public interface BigQueryToElasticsearchOptions
     extends BigQueryConverters.BigQueryReadOptions,
         ElasticsearchWriteOptions,
-        JavascriptTextTransformerOptions {}
+        PythonExternalTextTransformerOptions {}
