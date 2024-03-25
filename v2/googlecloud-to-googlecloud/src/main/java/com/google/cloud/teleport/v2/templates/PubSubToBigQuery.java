@@ -31,18 +31,17 @@ import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer;
 import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.PythonExternalTextTransformerOptions;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.RowToPubSubFailsafeElementFn;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.ResourceUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
-import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
@@ -430,26 +429,18 @@ public class PubSubToBigQuery {
                     PythonExternalTextTransformer.FailsafeRowPythonExternalUdf
                         .pubSubMappingFunction())
                 .setRowSchema(PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.ROW_SCHEMA)
-                .setCoder(
-                    RowCoder.of(
-                        PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.ROW_SCHEMA))
                 .apply(
                     "InvokeUDF",
-                    PythonExternalTextTransformer.FailsafePythonExternalUdf
-                        .<PubsubMessage>newBuilder()
+                    PythonExternalTextTransformer.FailsafePythonExternalUdf.newBuilder()
                         .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
                         .setFunctionName(options.getPythonExternalTextTransformFunctionName())
                         .build())
                 .setRowSchema(
-                    PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA)
-                .setCoder(
-                    RowCoder.of(
-                        PythonExternalTextTransformer.FailsafeRowPythonExternalUdf
-                            .FAILSAFE_SCHEMA));
+                    PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA);
         udfOut =
             udfRowsOut.apply(
                 "MapRowsToFailsafeElements",
-                ParDo.of(new TableRowToFailsafeElementFn())
+                ParDo.of(new RowToPubSubFailsafeElementFn(UDF_OUT, UDF_DEADLETTER_OUT))
                     .withOutputTags(UDF_OUT, TupleTagList.of(UDF_DEADLETTER_OUT)));
       } else {
         udfOut =
@@ -500,44 +491,6 @@ public class PubSubToBigQuery {
       PubsubMessage message = context.element();
       context.output(
           FailsafeElement.of(message, new String(message.getPayload(), StandardCharsets.UTF_8)));
-    }
-  }
-
-  static class TableRowToFailsafeElementFn
-      extends DoFn<Row, FailsafeElement<PubsubMessage, String>> {
-    @ProcessElement
-    public void processElement(ProcessContext context) {
-      Row element = context.element();
-      assert element != null;
-      PubsubMessage originalMessage = rowToPubSubMessage(element.getValue("original"));
-
-      if (!Strings.isNullOrEmpty(element.getValue("error_message"))
-          || !Strings.isNullOrEmpty(element.getValue("stack_trace"))) {
-        FailsafeElement failsafeObj =
-            FailsafeElement.of(
-                    originalMessage,
-                    new String(originalMessage.getPayload(), StandardCharsets.UTF_8))
-                .setStacktrace(element.getValue("stack_trace"))
-                .setErrorMessage(element.getValue("error_message"));
-        context.output(UDF_DEADLETTER_OUT, failsafeObj);
-      } else {
-        PubsubMessage transformedMessage = rowToPubSubMessage(element.getValue("transformed"));
-        FailsafeElement failsafeObj =
-            FailsafeElement.of(
-                originalMessage,
-                new String(transformedMessage.getPayload(), StandardCharsets.UTF_8));
-        context.output(UDF_OUT, failsafeObj);
-      }
-    }
-
-    public PubsubMessage rowToPubSubMessage(Row row) {
-      assert row != null;
-      String messageId = row.getValue("messageId");
-      String payload = row.getValue("message");
-      Map<String, String> attributeMap = row.getValue("attributes");
-
-      assert payload != null;
-      return new PubsubMessage(payload.getBytes(), attributeMap, messageId);
     }
   }
 }
