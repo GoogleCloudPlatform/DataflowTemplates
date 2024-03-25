@@ -44,6 +44,9 @@ public class GCSToElasticsearchTest {
   private static final String CSV_RESOURCES_DIR = "GCSToElasticsearch/";
   private static final String TRANSFORM_FILE_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "elasticUdf.js").getPath();
+
+  private static final String TRANSFORM_PY_FILE_PATH =
+      Resources.getResource(CSV_RESOURCES_DIR + "elasticPyUdf.py").getPath();
   private static final String NO_HEADER_CSV_FILE_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "no_header.csv").getPath();
   private static final String HEADER_CSV_FILE_PATH =
@@ -52,7 +55,7 @@ public class GCSToElasticsearchTest {
       Resources.getResource(CSV_RESOURCES_DIR + "testSchema.json").getPath();
   @Rule public ExpectedException exceptionRule = ExpectedException.none();
 
-  /** Tests the {@link GCSToElasticsearch} pipeline using a Udf to parse the Csv. */
+  /** Tests the {@link GCSToElasticsearch} pipeline using a JavaScript Udf to parse the Csv. */
   @Test
   public void testGCSToElasticsearchUdfE2E() {
 
@@ -95,10 +98,75 @@ public class GCSToElasticsearchTest {
                 "ConvertLine",
                 CsvConverters.LineToFailsafeJson.newBuilder()
                     .setDelimiter(options.getDelimiter())
-                    .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                    .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setJavascriptUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                    .setJavascriptUdfFunctionName(options.getJavascriptTextTransformFunctionName())
                     .setUdfReloadIntervalMinutes(
                         options.getJavascriptTextTransformReloadIntervalMinutes())
+                    .setJsonSchemaPath(options.getJsonSchemaPath())
+                    .setHeaderTag(GCSToElasticsearch.CSV_HEADERS)
+                    .setLineTag(GCSToElasticsearch.CSV_LINES)
+                    .setUdfOutputTag(GCSToElasticsearch.PROCESSING_OUT)
+                    .setUdfDeadletterTag(GCSToElasticsearch.PROCESSING_DEADLETTER_OUT)
+                    .build());
+
+    // Assert
+    PAssert.that(readCsvOut.get(GCSToElasticsearch.PROCESSING_OUT))
+        .satisfies(
+            collection -> {
+              FailsafeElement element = collection.iterator().next();
+              assertThat(element.getOriginalPayload(), is(equalTo(record)));
+              assertThat(element.getPayload(), is(equalTo(stringifiedJsonRecord)));
+              return null;
+            });
+
+    //  Execute pipeline
+    pipeline.run();
+  }
+
+  /** Tests the {@link GCSToElasticsearch} pipeline using a Python Udf to parse the Csv. */
+  @Test
+  public void testGCSToElasticsearchPythonUdfE2E() {
+
+    final String record = "007,CA,26.23";
+    final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
+
+    final FailsafeElementCoder<String, String> coder =
+        FailsafeElementCoder.of(
+            NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
+
+    Pipeline pipeline = Pipeline.create();
+    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+    coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
+
+    GCSToElasticsearchOptions options =
+        PipelineOptionsFactory.create().as(GCSToElasticsearchOptions.class);
+
+    options.setPythonExternalTextTransformGcsPath(TRANSFORM_PY_FILE_PATH);
+    options.setPythonExternalTextTransformFunctionName("transform");
+    options.setContainsHeaders(false);
+    options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
+    options.setApiKey("key");
+
+    // Build pipeline with no headers.
+    PCollectionTuple readCsvOut =
+        pipeline
+            .apply(
+                "ReadCsv",
+                CsvConverters.ReadCsv.newBuilder()
+                    .setCsvFormat(options.getCsvFormat())
+                    .setDelimiter(options.getDelimiter())
+                    .setHasHeaders(options.getContainsHeaders())
+                    .setInputFileSpec(options.getInputFileSpec())
+                    .setHeaderTag(GCSToElasticsearch.CSV_HEADERS)
+                    .setLineTag(GCSToElasticsearch.CSV_LINES)
+                    .setFileEncoding(options.getCsvFileEncoding())
+                    .build())
+            .apply(
+                "ConvertLine",
+                CsvConverters.LineToFailsafeJson.newBuilder()
+                    .setDelimiter(options.getDelimiter())
+                    .setPythonUdfFileSystemPath(options.getPythonExternalTextTransformGcsPath())
+                    .setPythonUdfFunctionName(options.getPythonExternalTextTransformFunctionName())
                     .setJsonSchemaPath(options.getJsonSchemaPath())
                     .setHeaderTag(GCSToElasticsearch.CSV_HEADERS)
                     .setLineTag(GCSToElasticsearch.CSV_LINES)
@@ -160,8 +228,8 @@ public class GCSToElasticsearchTest {
                 "ConvertLine",
                 CsvConverters.LineToFailsafeJson.newBuilder()
                     .setDelimiter(options.getDelimiter())
-                    .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                    .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setJavascriptUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                    .setJavascriptUdfFunctionName(options.getJavascriptTextTransformFunctionName())
                     .setJsonSchemaPath(options.getJsonSchemaPath())
                     .setHeaderTag(GCSToElasticsearch.CSV_HEADERS)
                     .setLineTag(GCSToElasticsearch.CSV_LINES)
@@ -224,8 +292,8 @@ public class GCSToElasticsearchTest {
                 "ConvertLine",
                 CsvConverters.LineToFailsafeJson.newBuilder()
                     .setDelimiter(options.getDelimiter())
-                    .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                    .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setJavascriptUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                    .setJavascriptUdfFunctionName(options.getJavascriptTextTransformFunctionName())
                     .setJsonSchemaPath(options.getJsonSchemaPath())
                     .setHeaderTag(GCSToElasticsearch.CSV_HEADERS)
                     .setLineTag(GCSToElasticsearch.CSV_LINES)

@@ -308,10 +308,16 @@ public class CsvConverters {
     public abstract String delimiter();
 
     @Nullable
-    public abstract String udfFileSystemPath();
+    public abstract String javascriptUdfFileSystemPath();
 
     @Nullable
-    public abstract String udfFunctionName();
+    public abstract String javascriptUdfFunctionName();
+
+    @Nullable
+    public abstract String pythonUdfFileSystemPath();
+
+    @Nullable
+    public abstract String pythonUdfFunctionName();
 
     @Nullable
     public abstract Integer udfReloadIntervalMinutes();
@@ -335,6 +341,28 @@ public class CsvConverters {
 
       PCollectionView<String> headersView = null;
 
+      // Python UDFs have a slightly different failsafe mechanism, so we check it first before
+      // executing
+      // normal code path.
+      if (pythonUdfFileSystemPath() != null) {
+        return lines
+            .get(lineTag())
+            .apply(
+                "MapLineToRow",
+                PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.stringMappingFunction())
+            .setRowSchema(PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.ROW_SCHEMA)
+            .apply(
+                "InvokeUDF",
+                PythonExternalTextTransformer.FailsafePythonExternalUdf.newBuilder()
+                    .setFileSystemPath(pythonUdfFileSystemPath())
+                    .setFunctionName(pythonUdfFunctionName())
+                    .build())
+            .apply(
+                ParDo.of(
+                        new PythonExternalTextTransformer.RowToStringFailsafeElementFn(
+                            udfOutputTag(), udfDeadletterTag()))
+                    .withOutputTags(udfOutputTag(), TupleTagList.of(udfDeadletterTag())));
+      }
       // Convert csv lines into Failsafe elements so that we can recover over multiple transforms.
       PCollection<FailsafeElement<String, String>> lineFailsafeElements =
           lines
@@ -342,13 +370,13 @@ public class CsvConverters {
               .apply("LineToFailsafeElement", ParDo.of(new LineToFailsafeElementFn()));
 
       // If UDF is specified then use that to parse csv lines.
-      if (udfFileSystemPath() != null) {
+      if (javascriptUdfFileSystemPath() != null) {
 
         return lineFailsafeElements.apply(
             "LineToDocumentUsingUdf",
             FailsafeJavascriptUdf.<String>newBuilder()
-                .setFileSystemPath(udfFileSystemPath())
-                .setFunctionName(udfFunctionName())
+                .setFileSystemPath(javascriptUdfFileSystemPath())
+                .setFunctionName(javascriptUdfFunctionName())
                 .setReloadIntervalMinutes(udfReloadIntervalMinutes())
                 .setSuccessTag(udfOutputTag())
                 .setFailureTag(udfDeadletterTag())
@@ -408,9 +436,13 @@ public class CsvConverters {
     public abstract static class Builder {
       public abstract Builder setDelimiter(String delimiter);
 
-      public abstract Builder setUdfFileSystemPath(String udfFileSystemPath);
+      public abstract Builder setJavascriptUdfFileSystemPath(String javascriptUdfFileSystemPath);
 
-      public abstract Builder setUdfFunctionName(String udfFunctionName);
+      public abstract Builder setJavascriptUdfFunctionName(String javascriptUdfFunctionName);
+
+      public abstract Builder setPythonUdfFileSystemPath(String pythonUdfFileSystemPath);
+
+      public abstract Builder setPythonUdfFunctionName(String pythonUdfFunctionName);
 
       public abstract Builder setUdfReloadIntervalMinutes(int udfReloadIntervalMinutes);
 

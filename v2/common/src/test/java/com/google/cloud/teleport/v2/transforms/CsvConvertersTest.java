@@ -21,7 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.PythonExternalTextTransformerOptions;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.io.Resources;
@@ -97,6 +97,9 @@ public class CsvConvertersTest {
 
   private static final String TRANSFORM_FILE_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "elasticUdf.js").getPath();
+
+  private static final String TRANSFORM_PY_FILE_PATH =
+      Resources.getResource(CSV_RESOURCES_DIR + "elasticPyUdf.py").getPath();
 
   private static final String SCRIPT_PARSE_EXCEPTION_FILE_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "elasticUdfBad.js").getPath();
@@ -250,8 +253,8 @@ public class CsvConvertersTest {
             "TestLineToFailsafeJson",
             CsvConverters.LineToFailsafeJson.newBuilder()
                 .setDelimiter(",")
-                .setUdfFileSystemPath(null)
-                .setUdfFunctionName(null)
+                .setJavascriptUdfFileSystemPath(null)
+                .setJavascriptUdfFunctionName(null)
                 .setJsonSchemaPath(TEST_JSON_SCHEMA_PATH)
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
@@ -299,10 +302,55 @@ public class CsvConvertersTest {
             "TestLineToFailsafeJsonNoHeadersUdf",
             CsvConverters.LineToFailsafeJson.newBuilder()
                 .setDelimiter(options.getDelimiter())
-                .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setJavascriptUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                .setJavascriptUdfFunctionName(options.getJavascriptTextTransformFunctionName())
                 .setUdfReloadIntervalMinutes(
                     options.getJavascriptTextTransformReloadIntervalMinutes())
+                .setJsonSchemaPath(options.getJsonSchemaPath())
+                .setHeaderTag(CSV_HEADERS)
+                .setLineTag(CSV_LINES)
+                .setUdfOutputTag(PROCESSING_OUT)
+                .setUdfDeadletterTag(PROCESSING_DEADLETTER_OUT)
+                .build());
+
+    PAssert.that(failsafe.get(PROCESSING_OUT))
+        .satisfies(
+            collection -> {
+              FailsafeElement<String, String> result = collection.iterator().next();
+              assertThat(result.getPayload(), is(equalTo(JSON_STRING_RECORD)));
+              return null;
+            });
+
+    PAssert.that(failsafe.get(PROCESSING_DEADLETTER_OUT)).empty();
+
+    pipeline.run();
+  }
+
+  @Test
+  public void testLineToFailsafeJsonNoHeadersPythonUdf() {
+    FailsafeElementCoder<String, String> coder = FAILSAFE_ELEMENT_CODER;
+
+    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+    coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
+
+    PCollection<String> lines =
+        pipeline.apply(Create.of(RECORD_STRING).withCoder(StringUtf8Coder.of()));
+
+    PCollectionTuple linesTuple = PCollectionTuple.of(CSV_LINES, lines);
+
+    TestOptions options = PipelineOptionsFactory.create().as(TestOptions.class);
+
+    options.setDelimiter(",");
+    options.setPythonExternalTextTransformGcsPath(TRANSFORM_PY_FILE_PATH);
+    options.setPythonExternalTextTransformFunctionName("transform");
+
+    PCollectionTuple failsafe =
+        linesTuple.apply(
+            "TestLineToFailsafeJsonNoHeadersUdf",
+            CsvConverters.LineToFailsafeJson.newBuilder()
+                .setDelimiter(options.getDelimiter())
+                .setPythonUdfFileSystemPath(options.getPythonExternalTextTransformGcsPath())
+                .setPythonUdfFunctionName(options.getPythonExternalTextTransformFunctionName())
                 .setJsonSchemaPath(options.getJsonSchemaPath())
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
@@ -351,8 +399,8 @@ public class CsvConvertersTest {
             "TestLineToFailsafeJsonNoHeadersUdfBad",
             CsvConverters.LineToFailsafeJson.newBuilder()
                 .setDelimiter(options.getDelimiter())
-                .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setJavascriptUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                .setJavascriptUdfFunctionName(options.getJavascriptTextTransformFunctionName())
                 .setJsonSchemaPath(options.getJsonSchemaPath())
                 .setJsonSchemaPath(null)
                 .setHeaderTag(CSV_HEADERS)
@@ -404,8 +452,8 @@ public class CsvConvertersTest {
             "TestLineToFailsafeJsonHeaders",
             CsvConverters.LineToFailsafeJson.newBuilder()
                 .setDelimiter(options.getDelimiter())
-                .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setJavascriptUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                .setJavascriptUdfFunctionName(options.getJavascriptTextTransformFunctionName())
                 .setJsonSchemaPath(options.getJsonSchemaPath())
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
@@ -477,8 +525,8 @@ public class CsvConvertersTest {
             "TestDifferentHeaders",
             CsvConverters.LineToFailsafeJson.newBuilder()
                 .setDelimiter(",")
-                .setUdfFileSystemPath(null)
-                .setUdfFunctionName(null)
+                .setJavascriptUdfFileSystemPath(null)
+                .setJavascriptUdfFunctionName(null)
                 .setJsonSchemaPath(null)
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
@@ -620,5 +668,5 @@ public class CsvConvertersTest {
 
   /** Test Options of CSV with Javascript UDF. */
   public interface TestOptions
-      extends CsvConverters.CsvPipelineOptions, JavascriptTextTransformerOptions {}
+      extends CsvConverters.CsvPipelineOptions, PythonExternalTextTransformerOptions {}
 }
