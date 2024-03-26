@@ -13,8 +13,4 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
-/**
- * Package for processing related to Spanner.
- */
-package com.google.cloud.teleport.v2.spanner;
+package com.google.cloud.teleport.v2.transformer;

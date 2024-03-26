@@ -1,53 +1,135 @@
-/*
- * Copyright (C) 2024 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
- */
-package com.google.cloud.teleport.v2.spanner.migrations.schema;
+package com.google.cloud.teleport.v2.transformer;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.spanner.Mutation;
+import com.google.cloud.teleport.v2.coders.JsonNodeCoder;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
+import com.google.common.collect.ImmutableList;
+import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.metrics.MetricResult;
+import org.apache.beam.sdk.metrics.MetricsFilter;
+import org.apache.beam.sdk.testing.PAssert;
+import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.PCollection;
+import org.junit.Rule;
 import org.junit.Test;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-/**
- * Tests for Schema class.
- */
-public class SchemaTest {
+public class JsonNodeToMutationDoFnTest {
+    @Rule
+    public final transient TestPipeline pipeline = TestPipeline.create();
 
     @Test
-    public void getSpannerColumnNamesBasic() {
+    public void testNodeToMutation_basic() throws Exception {
         Schema schema = getSchemaObject();
-        schema.generateMappings();
-        List<String> actualColNames = schema.getSpannerColumnNames("new_cart");
-        List<String> expectedColNames = Arrays.asList("new_product_id", "new_quantity", "new_user_id");
-        assertThat(actualColNames, is(expectedColNames));
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode changeEvent =
+                mapper.readTree(
+                        String.format("{\"%s\":\"cart\", \"product_id\":\"product1\", \"quantity\": 5, \"user_id\": \"user1\"}", Constants.EVENT_TABLE_NAME_KEY));
+        List<JsonNode> inputList = ImmutableList.of(changeEvent);
+        PCollection<JsonNode> input =
+                pipeline.apply(
+                        "input",
+                        Create.of(inputList)
+                                .withCoder(JsonNodeCoder.of()));
+        PCollection<Mutation> mutations =
+                input.apply(
+                        "Map JsonNode to Mutations",
+                        ParDo.of(
+                                new JsonNodeToMutationDoFn(
+                                        schema, "cart", getTestDdl())));
+        PAssert.that(mutations).containsInAnyOrder(
+                Mutation.newInsertOrUpdateBuilder("new_cart")
+                        .set("new_product_id")
+                        .to("product1")
+                        .set("new_quantity")
+                        .to(5)
+                        .set("new_user_id")
+                        .to("user1")
+                        .build());
+
+        pipeline.run();
     }
 
     @Test
-    public void getPrimaryKeySetBasic() {
+    public void testNodeToMutation_exception() throws Exception {
         Schema schema = getSchemaObject();
-        schema.generateMappings();
-        Set<String> actualKeys = schema.getPrimaryKeySet("new_cart");
-        Set<String> expectedKeys = new HashSet<>(Arrays.asList("new_user_id", "new_product_id"));
-        assertThat(actualKeys, is(expectedKeys));
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode changeEvent =
+                mapper.readTree(
+                        String.format("{\"%s\":\"cart\",\"quantity\": \"hello\"}", Constants.EVENT_TABLE_NAME_KEY));
+        List<JsonNode> inputList = ImmutableList.of(changeEvent);
+        PCollection<JsonNode> input =
+                pipeline.apply(
+                        "input",
+                        Create.of(inputList)
+                                .withCoder(JsonNodeCoder.of()));
+        PCollection<Mutation> mutations =
+                input.apply(
+                        "Map JsonNode to Mutations",
+                        ParDo.of(
+                                new JsonNodeToMutationDoFn(
+                                        schema, "cart", getTestDdl())));
+
+        PipelineResult result = pipeline.run();
+        result.waitUntilFinish();
+
+        Map<String, Long> expectedCounters = new HashMap<>();
+        expectedCounters.put("mutationBuildErrors", 1L);
+        for (MetricResult c :
+                result.metrics().queryMetrics(MetricsFilter.builder().build()).getCounters()) {
+            String name = c.getName().getName();
+            if (expectedCounters.containsKey(name)) {
+                assertEquals(expectedCounters.get(name), c.getCommitted());
+                expectedCounters.remove(name);
+            }
+        }
+        assertTrue(expectedCounters.isEmpty());
+    }
+
+    private static Ddl getTestDdl() {
+        Ddl ddl =
+                Ddl.builder()
+                        .createTable("new_cart")
+                        .column("new_quantity")
+                        .int64()
+                        .notNull()
+                        .endColumn()
+                        .column("new_user_id")
+                        .string()
+                        .max()
+                        .endColumn()
+                        .column("new_product_id")
+                        .string()
+                        .max()
+                        .endColumn()
+                        .primaryKey()
+                        .asc("new_user_id")
+                        .asc("new_product_id")
+                        .end()
+                        .endTable()
+                        .build();
+        return ddl;
     }
 
     private static Schema getSchemaObject() {
@@ -66,6 +148,7 @@ public class SchemaTest {
         expectedSchema.setToSource(new HashMap<String, NameAndCols>());
         expectedSchema.setSrcToID(srcToId);
         expectedSchema.setSpannerToID(new HashMap<String, NameAndCols>());
+        expectedSchema.generateMappings();
         return expectedSchema;
     }
 
@@ -169,5 +252,4 @@ public class SchemaTest {
         srcToId.put("people", new NameAndCols("t2", t2ColIds));
         return srcToId;
     }
-
 }

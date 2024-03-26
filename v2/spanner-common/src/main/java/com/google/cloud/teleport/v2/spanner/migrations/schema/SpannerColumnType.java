@@ -18,46 +18,52 @@ package com.google.cloud.teleport.v2.spanner.migrations.schema;
 import java.io.Serializable;
 import java.util.Objects;
 
-/** SpannerColumnType object to store Source column type. */
+/**
+ * SpannerColumnType object to store Spanner column type.
+ */
 public class SpannerColumnType implements Serializable {
 
-  /** Represents the name of the Spanner column. */
-  private final String name;
+    /**
+     * Represents the name of the Spanner type.
+     */
+    private final String name;
 
-  /** Represents if the column is an array. */
-  private final Boolean isArray;
+    /**
+     * Represents if the column is an array.
+     */
+    private final Boolean isArray;
 
-  public SpannerColumnType(String name, Boolean isArray) {
-    this.name = name;
-    this.isArray = isArray;
-  }
-
-  public String getName() {
-    return name;
-  }
-
-  public Boolean getIsArray() {
-    return isArray;
-  }
-
-  public String toString() {
-    return String.format("{ 'name': '%s' , 'isArray' :  '%s' }", name, isArray);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (o == this) {
-      return true;
+    public SpannerColumnType(String name, Boolean isArray) {
+        this.name = name;
+        this.isArray = isArray;
     }
-    if (!(o instanceof SpannerColumnType)) {
-      return false;
-    }
-    final SpannerColumnType other = (SpannerColumnType) o;
-    return this.name.equals(other.name) && this.isArray.equals(other.isArray);
-  }
 
-  @Override
-  public int hashCode() {
-    return Objects.hash(name, isArray);
-  }
+    public String getName() {
+        return name;
+    }
+
+    public Boolean getIsArray() {
+        return isArray;
+    }
+
+    public String toString() {
+        return String.format("{ 'name': '%s' , 'isArray' :  '%s' }", name, isArray);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+        if (!(o instanceof SpannerColumnType)) {
+            return false;
+        }
+        final SpannerColumnType other = (SpannerColumnType) o;
+        return this.name.equals(other.name) && this.isArray.equals(other.isArray);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, isArray);
+    }
 }
