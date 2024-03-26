@@ -375,7 +375,7 @@ public final class PubsubProtoToBigQuery {
       throw new IllegalArgumentException(
           "Python function name cannot be null or empty if file is set");
     }
-    if (usePythonUdf == useJavascriptUdf) {
+    if (usePythonUdf && useJavascriptUdf) {
       throw new IllegalArgumentException(
           "Either javascript or Python gcs path must be provided, but not both.");
     }

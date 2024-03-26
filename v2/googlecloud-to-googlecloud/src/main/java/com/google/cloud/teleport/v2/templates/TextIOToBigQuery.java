@@ -311,7 +311,7 @@ public class TextIOToBigQuery {
 
     boolean useJavascriptUdf = !Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath());
     boolean usePythonUdf = !Strings.isNullOrEmpty(options.getPythonExternalTextTransformGcsPath());
-    if (useJavascriptUdf == usePythonUdf) {
+    if (useJavascriptUdf && usePythonUdf) {
       throw new IllegalArgumentException(
           "Either javascript or Python gcs path must be provided, but not both.");
     }
