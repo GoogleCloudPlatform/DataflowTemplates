@@ -18,17 +18,22 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Strings;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.extensions.python.PythonExternalTransform;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.util.PythonCallableSource;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -204,6 +209,91 @@ public abstract class PythonExternalTextTransformer {
       Map<String, Object> rowValuesMap = new HashMap<>();
       rowValuesMap.put("message", message);
       return Row.withSchema(ROW_SCHEMA).withFieldValues(rowValuesMap).build();
+    }
+  }
+
+  public static class RowToStringFailsafeElementFn
+      extends DoFn<Row, FailsafeElement<String, String>> {
+    TupleTag udfSuccessTag;
+    TupleTag udfFailureTag;
+
+    public RowToStringFailsafeElementFn(
+        TupleTag<FailsafeElement<String, String>> udfSuccessTag,
+        TupleTag<FailsafeElement<String, String>> udfFailureTag) {
+      this.udfSuccessTag = udfSuccessTag;
+      this.udfFailureTag = udfFailureTag;
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      Row element = context.element();
+      assert element != null;
+      Row originalMessageRow = element.getValue("original");
+      String originalMsg = originalMessageRow.getValue("message");
+      if (!Strings.isNullOrEmpty(element.getValue("error_message"))
+          || !Strings.isNullOrEmpty(element.getValue("stack_trace"))) {
+        FailsafeElement failsafeObj =
+            FailsafeElement.of(
+                    originalMsg, new String(originalMsg.getBytes(), StandardCharsets.UTF_8))
+                .setStacktrace(element.getValue("stack_trace"))
+                .setErrorMessage(element.getValue("error_message"));
+        context.output(udfFailureTag, failsafeObj);
+      } else {
+        Row transformedMessageRow = element.getValue("transformed");
+        String transformedMsg = transformedMessageRow.getValue("message");
+        FailsafeElement failsafeObj =
+            FailsafeElement.of(
+                originalMsg, new String(transformedMsg.getBytes(), StandardCharsets.UTF_8));
+        context.output(udfSuccessTag, failsafeObj);
+      }
+    }
+  }
+
+  public static class RowToPubSubFailsafeElementFn
+      extends DoFn<Row, FailsafeElement<PubsubMessage, String>> {
+    TupleTag udfSuccessTag;
+    TupleTag udfFailureTag;
+
+    public RowToPubSubFailsafeElementFn(
+        TupleTag<FailsafeElement<PubsubMessage, String>> udfSuccessTag,
+        TupleTag<FailsafeElement<PubsubMessage, String>> udfFailureTag) {
+      this.udfSuccessTag = udfSuccessTag;
+      this.udfFailureTag = udfFailureTag;
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      Row element = context.element();
+      assert element != null;
+      PubsubMessage originalMessage = rowToPubSubMessage(element.getValue("original"));
+
+      if (!Strings.isNullOrEmpty(element.getValue("error_message"))
+          || !Strings.isNullOrEmpty(element.getValue("stack_trace"))) {
+        FailsafeElement failsafeObj =
+            FailsafeElement.of(
+                    originalMessage,
+                    new String(originalMessage.getPayload(), StandardCharsets.UTF_8))
+                .setStacktrace(element.getValue("stack_trace"))
+                .setErrorMessage(element.getValue("error_message"));
+        context.output(udfFailureTag, failsafeObj);
+      } else {
+        PubsubMessage transformedMessage = rowToPubSubMessage(element.getValue("transformed"));
+        FailsafeElement failsafeObj =
+            FailsafeElement.of(
+                originalMessage,
+                new String(transformedMessage.getPayload(), StandardCharsets.UTF_8));
+        context.output(udfSuccessTag, failsafeObj);
+      }
+    }
+
+    public PubsubMessage rowToPubSubMessage(Row row) {
+      assert row != null;
+      String messageId = row.getValue("messageId");
+      String payload = row.getValue("message");
+      Map<String, String> attributeMap = row.getValue("attributes");
+
+      assert payload != null;
+      return new PubsubMessage(payload.getBytes(), attributeMap, messageId);
     }
   }
 }

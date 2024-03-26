@@ -46,6 +46,7 @@
     <jacoco.version>0.8.8</jacoco.version>
 
     <!-- Beam and linked versions -->
+    <!-- Also update YamlTemplate - python/src/main/python/yaml-template/requirements.txt -->
     <beam.version>2.54.0</beam.version>
     <jackson.version>2.14.1</jackson.version>
 

@@ -40,7 +40,6 @@ import java.util.function.Supplier;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -328,18 +327,15 @@ public class TextIOToBigQuery {
                   "MapToRecord",
                   PythonExternalTextTransformer.FailsafeRowPythonExternalUdf
                       .stringMappingFunction())
-              .setCoder(
-                  RowCoder.of(
-                      PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.ROW_SCHEMA))
+              .setRowSchema(PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.ROW_SCHEMA)
               .apply(
                   "InvokeUDF",
                   PythonExternalTextTransformer.FailsafePythonExternalUdf.newBuilder()
                       .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
                       .setFunctionName(options.getPythonExternalTextTransformFunctionName())
                       .build())
-              .setCoder(
-                  RowCoder.of(
-                      PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA))
+              .setRowSchema(
+                  PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA)
               .apply(
                   MapElements.via(
                       new SimpleFunction<Row, TableRow>() {
