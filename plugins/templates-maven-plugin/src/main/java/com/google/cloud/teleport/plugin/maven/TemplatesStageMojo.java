@@ -33,6 +33,7 @@ import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.YamlDockerfileGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
+import com.google.common.base.Strings;
 import freemarker.template.TemplateException;
 import java.io.File;
 import java.io.FileWriter;
@@ -333,8 +334,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     TemplateSpecsGenerator generator = new TemplateSpecsGenerator();
 
     String containerName = definition.getTemplateAnnotation().flexContainerName();
-    String yamlTemplateName =
-        definition.getTemplateAnnotation().yamlTemplateName().replace(".yaml", "");
+    String yamlTemplateFile = definition.getTemplateAnnotation().yamlTemplateFile();
     String imagePath = imageSpec.getImage();
     LOG.info("Stage image to GCR: {}", imagePath);
 
@@ -387,7 +387,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           definition, currentTemplateName, imagePath, metadataFile, containerName, templatePath);
     } else if (definition.getTemplateAnnotation().type() == TemplateType.YAML) {
       stageFlexYamlTemplate(
-          definition, currentTemplateName, imagePath, metadataFile, yamlTemplateName, templatePath);
+          definition, currentTemplateName, imagePath, metadataFile, yamlTemplateFile, templatePath);
     } else {
       throw new IllegalArgumentException(
           "Type not known: " + definition.getTemplateAnnotation().type());
@@ -560,15 +560,40 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String currentTemplateName,
       String imagePath,
       File metadataFile,
-      String yamlTemplateName,
+      String yamlTemplateFile,
       String templatePath)
       throws IOException, InterruptedException, TemplateException {
 
-    // TODO(polber) Use basePythonContainerImage once plugin can parse metadata from YAML Templates
-    String containerImage = "gcr.io/" + projectId + "/beam-yaml/yaml-template-base:latest";
+    String beamVersion = project.getProperties().getProperty("beam.version");
+    String yamlTemplateName = yamlTemplateFile.replace(".yaml", "");
+    List<String> otherFiles = new ArrayList<>();
+    String filesToCopy = definition.getTemplateAnnotation().filesToCopy();
+    if (!Strings.isNullOrEmpty(filesToCopy)) {
+      otherFiles.addAll(List.of(filesToCopy.split(",")));
+    }
+    if (!Strings.isNullOrEmpty(yamlTemplateFile)) {
+      otherFiles.add(yamlTemplateFile);
+    }
     YamlDockerfileGenerator.generateDockerfile(
-        containerImage, yamlTemplateName, outputClassesDirectory);
-    stageYamlUsingDockerfile(imagePath, yamlTemplateName + "/Dockerfile");
+        basePythonContainerImage,
+        baseContainerImage,
+        beamVersion,
+        yamlTemplateName,
+        otherFiles,
+        outputClassesDirectory);
+
+    boolean useRootDirectory = true;
+    if (new File(outputClassesDirectory.getPath() + "/" + yamlTemplateName + "/main.py").exists()) {
+      useRootDirectory = false;
+    } else if (!new File(outputClassesDirectory.getPath() + "/main.py").exists()) {
+      throw new IllegalStateException(
+          String.format(
+              "main.py not found in %s or %s.",
+              outputClassesDirectory.getPath(),
+              outputClassesDirectory.getPath() + "/" + yamlTemplateName + "/main.py"));
+    }
+
+    stageYamlUsingDockerfile(imagePath, yamlTemplateName, useRootDirectory);
 
     String[] flexTemplateBuildCmd =
         new String[] {
@@ -657,9 +682,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
   }
 
-  private void stageYamlUsingDockerfile(String imagePath, String dockerfile)
+  private void stageYamlUsingDockerfile(
+      String imagePath, String yamlTemplateName, boolean useRootDirectory)
       throws IOException, InterruptedException {
-    File directory = new File(outputClassesDirectory.getAbsolutePath());
+    File directory =
+        new File(
+            outputClassesDirectory.getAbsolutePath()
+                + (useRootDirectory ? "" : "/" + yamlTemplateName));
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
@@ -672,8 +701,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + imagePath
               + "\n"
               + "  - --dockerfile="
-              + dockerfile
-              + "\n"
+              + (useRootDirectory ? yamlTemplateName + "/" : "")
+              + "Dockerfile\n"
               + "  - --cache=true\n"
               + "  - --cache-ttl=6h\n"
               + "  - --compressed-caching=false\n"

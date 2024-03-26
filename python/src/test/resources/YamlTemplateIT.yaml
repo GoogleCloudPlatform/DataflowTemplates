@@ -42,13 +42,21 @@ pipeline:
         fields:
           sum:
             expression: num + inverse
-    - type: WriteToJson
+    - type: WriteToJsonPython
       name: WriteGoodFiles
       input: Sum
       config:
         path: "OUTPUT_PATH/good"
-    - type: WriteToJson
+    - type: WriteToJsonPython
       name: WriteBadFiles
       input: TrimErrors
       config:
         path: "OUTPUT_PATH/bad"
+
+# TODO(polber) - remove with https://github.com/apache/beam/pull/30777
+providers:
+  - type: python
+    config:
+      packages: []
+    transforms:
+      'WriteToJsonPython': 'apache_beam.io.WriteToJson'

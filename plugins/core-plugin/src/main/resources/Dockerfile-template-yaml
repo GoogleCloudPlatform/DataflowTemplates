@@ -1,15 +1,69 @@
-FROM ${baseContainerImage}
+#===================================================================#
+# Create build environment from base Python template launcher image #
+#===================================================================#
+FROM ${basePythonContainerImage} as python-base
+
+# Build args
+ARG WORKDIR=/template
+ARG REQUIREMENTS_FILE=requirements.txt
+ARG BEAM_VERSION=${beamVersion}
+ARG BEAM_PACKAGE=apache-beam[dataframe,gcp,test,yaml]==$BEAM_VERSION
 
 # Copy template files to /template
-ARG WORKDIR=/template
-COPY main.py /template
-COPY requirements.txt /template
-COPY ${yamlTemplateName} /template/template.yaml
+RUN mkdir -p $WORKDIR
+COPY main.py* requirements.txt* ${otherFiles} /template/
 WORKDIR $WORKDIR
 
+# Create requirements.txt file if not provided
+RUN if ! [ -f requirements.txt ] ; then echo "$BEAM_PACKAGE" > requirements.txt ; fi
+
+# Install dependencies to launch the pipeline and download to reduce startup time
+RUN python -m venv /venv \
+    && /venv/bin/pip install --no-cache-dir --upgrade pip setuptools \
+    && /venv/bin/pip install --no-cache-dir -U -r $REQUIREMENTS_FILE \
+    && /venv/bin/pip download --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE \
+    && rm -rf /usr/local/lib/python3.11/site-packages  \
+    && mv /venv/lib/python3.11/site-packages /usr/local/lib/python3.11/
+
+
+#============================================================#
+# Create Distroless xlang image compatible with YamlTemplate #
+#============================================================#
+FROM ${baseJavaContainerImage}
+
+# Build args
+ARG CHIPSET_ARCH=x86_64-linux-gnu
+ARG PYTHON_VERSION=3.11
+
+# Set python environment variables
 ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=requirements.txt
 ENV FLEX_TEMPLATE_PYTHON_PY_FILE=main.py
 ENV PIP_NO_DEPS=True
+
+# Copy template, python wheels and python launcher script from python-base
+COPY --from=python-base /template /template
+COPY --from=python-base /tmp/dataflow-requirements-cache /tmp/dataflow-requirements-cache
+COPY --from=python-base /opt/google/dataflow/python_template_launcher /opt/google/dataflow/python_template_launcher
+
+# Copy python and installed packages from python-base
+COPY --from=python-base /usr/local/bin/python$PYTHON_VERSION /usr/local/bin/python
+COPY --from=python-base /usr/local/lib/python$PYTHON_VERSION /usr/local/lib/python$PYTHON_VERSION
+
+# Copy required shared libraries from python-base
+COPY --from=python-base /lib/$CHIPSET_ARCH/libbz2* /lib/$CHIPSET_ARCH/
+COPY --from=python-base /lib/$CHIPSET_ARCH/libexpat* /lib/$CHIPSET_ARCH/
+COPY --from=python-base /lib/$CHIPSET_ARCH/liblzma* /lib/$CHIPSET_ARCH/
+COPY --from=python-base /usr/lib/$CHIPSET_ARCH/libffi* /usr/lib/$CHIPSET_ARCH/
+COPY --from=python-base /usr/local/lib/libpython$PYTHON_VERSION* /usr/local/lib/
+
+# Copy minimal commands from python-base needed to execute template
+COPY --from=python-base /bin/dash /bin/sh
+COPY --from=python-base /usr/bin/which /usr/bin/which
+
+# Copy licenses
+COPY --from=python-base /usr/licenses/ /usr/licenses/
+
+COPY --from=busybox:1.35.0-uclibc /bin/ls /bin/ls
 
 WORKDIR /template
 
