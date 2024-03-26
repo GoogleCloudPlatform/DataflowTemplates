@@ -126,9 +126,9 @@ public class SpannerDao {
               .to(inputStatus)
               .build();
     }
-
-    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
-      ResultSet resultSet = tx.executeQuery(statement);
+    ResultSet resultSet = null;
+    try (ReadOnlyTransaction tx = databaseClient.singleUseReadOnlyTransaction()) {
+      resultSet = tx.executeQuery(statement);
 
       while (resultSet.next()) {
         String shard = resultSet.getString(0);
@@ -144,6 +144,10 @@ public class SpannerDao {
               + shardFileProcessProgressTableName
               + " table could not be read. "
               + e.getMessage());
+    } finally {
+      if (resultSet != null) {
+        resultSet.close();
+      }
     }
     return shardProgress;
   }
@@ -165,9 +169,9 @@ public class SpannerDao {
               + " where run_id=@runId ";
       statement = Statement.newBuilder(statementStr).bind("runId").to(runId).build();
     }
-
-    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
-      ResultSet resultSet = tx.executeQuery(statement);
+    ResultSet resultSet = null;
+    try (ReadOnlyTransaction tx = databaseClient.singleUseReadOnlyTransaction()) {
+      resultSet = tx.executeQuery(statement);
 
       while (resultSet.next()) {
         String shard = resultSet.getString(0);
@@ -183,6 +187,10 @@ public class SpannerDao {
               + shardFileProcessProgressTableName
               + " table could not be read. "
               + e.getMessage());
+    } finally {
+      if (resultSet != null) {
+        resultSet.close();
+      }
     }
     return shardProgress;
   }
@@ -216,8 +224,9 @@ public class SpannerDao {
             + shardFileProcessProgressTableName
             + "' and"
             + " table_type='BASE TABLE'";
-    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
-      ResultSet resultSet = tx.executeQuery(Statement.of(statement));
+    ResultSet resultSet = null;
+    try (ReadOnlyTransaction tx = databaseClient.singleUseReadOnlyTransaction()) {
+      resultSet = tx.executeQuery(Statement.of(statement));
       if (!resultSet.next()) {
         DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
         String createTable = "";
@@ -251,6 +260,10 @@ public class SpannerDao {
     } catch (Exception e) {
 
       throw new RuntimeException(e);
+    } finally {
+      if (resultSet != null) {
+        resultSet.close();
+      }
     }
   }
 
@@ -270,9 +283,9 @@ public class SpannerDao {
               + " where run_id = @runId";
       statement = Statement.newBuilder(statementStr).bind("runId").to(runId).build();
     }
-
-    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
-      ResultSet resultSet = tx.executeQuery(statement);
+    ResultSet resultSet = null;
+    try (ReadOnlyTransaction tx = databaseClient.singleUseReadOnlyTransaction()) {
+      resultSet = tx.executeQuery(statement);
 
       if (resultSet.next()) {
         String startTime = resultSet.getString(0);
@@ -287,6 +300,10 @@ public class SpannerDao {
       } else {
         throw new RuntimeException(
             "The " + spannerToGcsMetadataTableName + " table could not be read. ", e);
+      }
+    } finally {
+      if (resultSet != null) {
+        resultSet.close();
       }
     }
 
@@ -317,10 +334,9 @@ public class SpannerDao {
               .to(shardId)
               .build();
     }
-
-    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
-      ResultSet resultSet = tx.executeQuery(statement);
-
+    ResultSet resultSet = null;
+    try (ReadOnlyTransaction tx = databaseClient.singleUseReadOnlyTransaction()) {
+      resultSet = tx.executeQuery(statement);
       if (resultSet.next()) {
 
         Timestamp response = resultSet.getTimestamp(0);
@@ -331,6 +347,10 @@ public class SpannerDao {
       LOG.info("The " + shardFileCreateProgressTableName + " table could not be read.");
       // throw original exception for caller to make decision
       throw e;
+    } finally {
+      if (resultSet != null) {
+        resultSet.close();
+      }
     }
 
     return null;
@@ -348,9 +368,9 @@ public class SpannerDao {
       String statementStr = "SELECT window_seen from " + dataSeenTableName + " where id=@id";
       statement = Statement.newBuilder(statementStr).bind("id").to(id).build();
     }
-
-    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
-      ResultSet resultSet = tx.executeQuery(statement);
+    ResultSet resultSet = null;
+    try (ReadOnlyTransaction tx = databaseClient.singleUseReadOnlyTransaction()) {
+      resultSet = tx.executeQuery(statement);
 
       if (resultSet.next()) {
         return true;
@@ -359,6 +379,10 @@ public class SpannerDao {
       LOG.info("The " + dataSeenTableName + " table could not be read.");
       // throw original exception for caller to make decision
       throw e;
+    } finally {
+      if (resultSet != null) {
+        resultSet.close();
+      }
     }
 
     return false;
