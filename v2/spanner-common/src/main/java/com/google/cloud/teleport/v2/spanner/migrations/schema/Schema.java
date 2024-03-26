@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
@@ -185,6 +186,26 @@ public class Schema implements Serializable {
       }
       NameAndCols nameAndCols = new NameAndCols(tableId, cols);
       this.spannerToID.put(spTable.getName(), nameAndCols);
+    }
+  }
+
+  /** Verify if given table name is valid in the session file. */
+  public void verifyTableInSession(String tableName)
+      throws IllegalArgumentException, DroppedTableException {
+    if (!this.srcToID.containsKey(tableName)) {
+      throw new IllegalArgumentException(
+          "Missing entry for " + tableName + " in srcToId map, provide a valid session file.");
+    }
+    if (!this.toSpanner.containsKey(tableName)) {
+      throw new DroppedTableException(
+          "Cannot find entry for "
+              + tableName
+              + " in toSpanner map, it is likely this table was dropped");
+    }
+    String tableId = this.srcToID.get(tableName).getName();
+    if (!this.spSchema.containsKey(tableId)) {
+      throw new IllegalArgumentException(
+          "Missing entry for " + tableId + " in spSchema, provide a valid session file.");
     }
   }
 

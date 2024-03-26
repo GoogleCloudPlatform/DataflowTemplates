@@ -19,15 +19,33 @@ import static java.lang.Character.isWhitespace;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Describes a type with size. */
 public final class SizedType {
   public final Type type;
   public final Integer size;
+  // Describes the exact length for ARRAY types if needed. Used for embedding vectors.
+  public final Integer arrayLength;
+
+  private static final Pattern EMBEDDING_VECTOR_PATTERN =
+      Pattern.compile(
+          "^ARRAY<([a-zA-Z0-9]+)>\\(vector_length=>(\\d+)\\)$", Pattern.CASE_INSENSITIVE);
+
+  private static final Pattern PG_EMBEDDING_VECTOR_PATTERN =
+      Pattern.compile("^(\\D+)\\[\\]\\svector\\slength\\s(\\d+)$", Pattern.CASE_INSENSITIVE);
 
   public SizedType(Type type, Integer size) {
     this.type = type;
     this.size = size;
+    this.arrayLength = null;
+  }
+
+  public SizedType(Type type, Integer size, Integer arrayLength) {
+    this.type = type;
+    this.size = size;
+    this.arrayLength = arrayLength;
   }
 
   public static String typeString(Type type, Integer size) {
@@ -99,8 +117,26 @@ public final class SizedType {
     throw new IllegalArgumentException("Unknown type " + type);
   }
 
+  public static String typeString(Type type, Integer size, int arrayLength) {
+    switch (type.getCode()) {
+      case ARRAY:
+        {
+          return typeString(type, size) + "(vector_length=>" + Integer.toString(arrayLength) + ")";
+        }
+      case PG_ARRAY:
+        {
+          return typeString(type, size) + " vector length " + Integer.toString(arrayLength);
+        }
+    }
+    throw new IllegalArgumentException("arrayLength not supported for " + type);
+  }
+
   private static SizedType t(Type type, Integer size) {
     return new SizedType(type, size);
+  }
+
+  private static SizedType t(Type type, Integer size, Integer arrayLength) {
+    return new SizedType(type, size, arrayLength);
   }
 
   public static SizedType parseSpannerType(String spannerType, Dialect dialect) {
@@ -139,7 +175,17 @@ public final class SizedType {
             return t(Type.json(), null);
           }
           if (spannerType.startsWith("ARRAY<")) {
-            // Substring "ARRAY<xxx>"
+            // Substring "ARRAY<xxx> or ARRAY<xxx>(vector_length)"
+
+            // Handle vector_length annotation
+            Matcher m = EMBEDDING_VECTOR_PATTERN.matcher(spannerType);
+            if (m.find()) {
+              String spannerArrayType = m.group(1);
+              Integer arrayLength = Integer.parseInt(m.group(2));
+              SizedType itemType = parseSpannerType(spannerArrayType, dialect);
+              return t(Type.array(itemType.type), itemType.size, arrayLength);
+            }
+
             String spannerArrayType = spannerType.substring(6, spannerType.length() - 1);
             SizedType itemType = parseSpannerType(spannerArrayType, dialect);
             return t(Type.array(itemType.type), itemType.size);
@@ -196,6 +242,15 @@ public final class SizedType {
         }
       case POSTGRESQL:
         {
+          // Handle vector_length annotation
+          Matcher m = PG_EMBEDDING_VECTOR_PATTERN.matcher(spannerType);
+          if (m.find()) {
+            // Substring "xxx[] vector length yyy"
+            String spannerArrayType = m.group(1);
+            Integer arrayLength = Integer.parseInt(m.group(2));
+            SizedType itemType = parseSpannerType(spannerArrayType, dialect);
+            return t(Type.pgArray(itemType.type), itemType.size, arrayLength);
+          }
           if (spannerType.endsWith("[]")) {
             // Substring "xxx[]"
             // Must check array type first

@@ -39,6 +39,10 @@ public abstract class Column implements Serializable {
   @Nullable
   public abstract Integer size();
 
+  @Nullable
+  // Used to specify exact length requirements for array type columns.
+  public abstract Integer arrayLength();
+
   public abstract boolean notNull();
 
   public abstract boolean isGenerated();
@@ -121,6 +125,9 @@ public abstract class Column implements Serializable {
   }
 
   public String typeString() {
+    if (arrayLength() != null) {
+      return SizedType.typeString(type(), size(), arrayLength().intValue());
+    }
     return SizedType.typeString(type(), size());
   }
 
@@ -140,6 +147,8 @@ public abstract class Column implements Serializable {
     public abstract Builder type(Type type);
 
     public abstract Builder size(Integer size);
+
+    public abstract Builder arrayLength(Integer size);
 
     public abstract Builder notNull(boolean nullable);
 
@@ -255,6 +264,9 @@ public abstract class Column implements Serializable {
 
     public Builder parseType(String spannerType) {
       SizedType sizedType = SizedType.parseSpannerType(spannerType, dialect());
+      if (sizedType.arrayLength != null) {
+        return type(sizedType.type).size(sizedType.size).arrayLength(sizedType.arrayLength);
+      }
       return type(sizedType.type).size(sizedType.size);
     }
 
