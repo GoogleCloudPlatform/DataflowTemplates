@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.datastream;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.TransactionContext;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 
 /**
  * Factory classes for ChangeEventSequence classes which provides methods for 1) creating

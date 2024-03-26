@@ -55,7 +55,10 @@ public class DataSeenTracker {
         if (e.getMessage().contains("Already exists")
             || e.getMessage().contains("ALREADY_EXISTS")) {
           return;
-        } else if (e.getMessage().contains("DEADLINE_EXCEEDED")) {
+        } else if (e.getMessage().contains("DEADLINE_EXCEEDED")
+            || (e.getMessage().contains("UNAVAILABLE"))) {
+          // It is better to retry than throw exception for stability
+          // Else the Dataflow retry takes longer and more side effects to other stages
           try {
             Thread.sleep(500);
           } catch (java.lang.InterruptedException ex) {

@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.templates.utils.ShardProgressTracker;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +79,7 @@ public class GCSToSourceStreamingHandler {
       LOG.info(
           "Shard " + shardId + ": Successfully processed batch of " + records.size() + " records.");
     } catch (Exception e) {
+      Metrics.counter(GCSToSourceStreamingHandler.class, "shard_failed_" + shardId).inc();
       markShardFailure(taskContext, spannerDao);
       throw new RuntimeException("Failure when processing records", e);
     }
