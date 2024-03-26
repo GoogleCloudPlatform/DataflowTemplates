@@ -217,6 +217,10 @@ public abstract class Column implements Serializable {
       return type(Type.int64());
     }
 
+    public Builder float32() {
+      return type(Type.float32());
+    }
+
     public Builder float64() {
 
       return type(Type.float64());

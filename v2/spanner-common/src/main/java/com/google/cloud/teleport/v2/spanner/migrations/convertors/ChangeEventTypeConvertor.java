@@ -99,7 +99,7 @@ public class ChangeEventTypeConvertor {
       if (node.isTextual()) {
         return Float.valueOf(node.asText());
       }
-      return Float.valueOf(node.asFloat());
+      return new Float(node.asDouble());
     } catch (Exception e) {
       throw new ChangeEventConvertorException("Unable to convert field " + key + " to float ", e);
     }
