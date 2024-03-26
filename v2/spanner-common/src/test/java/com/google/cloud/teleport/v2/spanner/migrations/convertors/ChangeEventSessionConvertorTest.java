@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.spanner.migrations.convertors;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,6 +28,7 @@ import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
@@ -39,18 +40,16 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 
-/** Unit tests SpannerTransactionWriterDoFn class. */
-public class SpannerTransactionWriterDoFnTest {
+/** Unit tests ChangeEventSessionConvertor class. */
+public class ChangeEventSessionConvertorTest {
   @Mock private DatabaseClient databaseClient;
   @Mock private ReadContext queryReadContext;
   @Mock private ResultSet queryResultSet;
@@ -85,23 +84,23 @@ public class SpannerTransactionWriterDoFnTest {
   @Test
   public void transformChangeEventViaSessionFileNamesTest() {
     Schema schema = getSchemaObject();
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, schema, new TransformationContext(), "", "", false, true);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
+
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("product_id", "A");
     changeEvent.put("quantity", 1);
     changeEvent.put("user_id", "B");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "cart");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "cart");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
 
-    JsonNode actualEvent = spannerTransactionWriterDoFn.transformChangeEventViaSessionFile(ce);
+    JsonNode actualEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
 
     JSONObject changeEventNew = new JSONObject();
     changeEventNew.put("new_product_id", "A");
     changeEventNew.put("new_quantity", 1);
     changeEventNew.put("new_user_id", "B");
-    changeEventNew.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "new_cart");
+    changeEventNew.put(Constants.EVENT_TABLE_NAME_KEY, "new_cart");
     JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
     assertEquals(expectedEvent, actualEvent);
   }
@@ -109,21 +108,21 @@ public class SpannerTransactionWriterDoFnTest {
   @Test
   public void transformChangeEventViaSessionFileSynthPKTest() {
     Schema schema = getSchemaObject();
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, schema, new TransformationContext(), "", "", false, true);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
+
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "people");
-    changeEvent.put(DatastreamConstants.EVENT_UUID_KEY, "abc-123");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    changeEvent.put(Constants.EVENT_UUID_KEY, "abc-123");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
 
-    JsonNode actualEvent = spannerTransactionWriterDoFn.transformChangeEventViaSessionFile(ce);
+    JsonNode actualEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
 
     JSONObject changeEventNew = new JSONObject();
     changeEventNew.put("new_name", "A");
-    changeEventNew.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "new_people");
-    changeEventNew.put(DatastreamConstants.EVENT_UUID_KEY, "abc-123");
+    changeEventNew.put(Constants.EVENT_TABLE_NAME_KEY, "new_people");
+    changeEventNew.put(Constants.EVENT_UUID_KEY, "abc-123");
     changeEventNew.put("synth_id", "abc-123");
     JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
     assertEquals(expectedEvent, actualEvent);
@@ -131,22 +130,23 @@ public class SpannerTransactionWriterDoFnTest {
 
   @Test
   public void transformChangeEventDataTest() throws Exception {
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, null, new TransformationContext(), "", "", true, true);
+    Schema schema = getSchemaObject();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", true);
+
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
 
     JsonNode actualEvent =
-        spannerTransactionWriterDoFn.transformChangeEventData(ce, databaseClient, getTestDdl());
+        changeEventSessionConvertor.transformChangeEventData(ce, databaseClient, getTestDdl());
 
     changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.198136676310106}}");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     JsonNode expectedEvent = parseChangeEvent(changeEvent.toString());
 
     assertEquals(expectedEvent, actualEvent);
@@ -299,23 +299,23 @@ public class SpannerTransactionWriterDoFnTest {
 
   @Test
   public void shardedConfigDataTest() throws Exception {
-    TransformationContext transformationContext = getTransformationContext();
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, null, transformationContext, "", "", true, true);
+    Schema schema = getSchemaObject();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", true);
+
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
 
     JsonNode actualEvent =
-        spannerTransactionWriterDoFn.transformChangeEventData(ce, databaseClient, getTestDdl());
+        changeEventSessionConvertor.transformChangeEventData(ce, databaseClient, getTestDdl());
 
     changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.198136676310106}}");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     JsonNode expectedEvent = parseChangeEvent(changeEvent.toString());
 
     assertEquals(expectedEvent, actualEvent);
@@ -325,23 +325,23 @@ public class SpannerTransactionWriterDoFnTest {
   public void transformChangeEventViaShardedSessionFileTest() {
     Schema schema = getShardedSchemaObject();
     TransformationContext transformationContext = getTransformationContext();
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, schema, transformationContext, "", "mysql", false, true);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(schema, transformationContext, "mysql", false);
+
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");
-    changeEvent.put(DatastreamConstants.EVENT_SCHEMA_KEY, "db_01");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "people");
-    changeEvent.put(DatastreamConstants.EVENT_UUID_KEY, "abc-123");
+    changeEvent.put(Constants.EVENT_SCHEMA_KEY, "db_01");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    changeEvent.put(Constants.EVENT_UUID_KEY, "abc-123");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
 
-    JsonNode actualEvent = spannerTransactionWriterDoFn.transformChangeEventViaSessionFile(ce);
+    JsonNode actualEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
 
     JSONObject changeEventNew = new JSONObject();
     changeEventNew.put("new_name", "A");
-    changeEventNew.put(DatastreamConstants.EVENT_SCHEMA_KEY, "db_01");
-    changeEventNew.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "new_people");
-    changeEventNew.put(DatastreamConstants.EVENT_UUID_KEY, "abc-123");
+    changeEventNew.put(Constants.EVENT_SCHEMA_KEY, "db_01");
+    changeEventNew.put(Constants.EVENT_TABLE_NAME_KEY, "new_people");
+    changeEventNew.put(Constants.EVENT_UUID_KEY, "abc-123");
     changeEventNew.put("migration_shard_id", "1");
     JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
     assertEquals(expectedEvent, actualEvent);

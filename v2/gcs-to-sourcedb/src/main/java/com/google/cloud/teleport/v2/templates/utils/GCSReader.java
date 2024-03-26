@@ -193,26 +193,22 @@ public class GCSReader {
         Metrics.counter(GCSReader.class, "metadata_file_create_lag_retry_" + shardId).inc();
       }
 
-      if (firstPipelineProgress.compareTo(currentEndTimestamp) > 0) {
-        // the Spanner to GCS job has progressed past the current interval end timestamp
-        // search for file again, if it exists process, else skip the file not found
-        if (shardFileCreationTracker.doesDataExistForTimestamp(currentEndTimestamp)) {
-          LOG.info("Data exists for shard {} and time end {} ", shardId, currentEndTimestamp);
-          shouldRetryWhenFileNotFound =
-              true; // can happen due to out of order writes or the write to GCS was very slow
-          shouldFailWhenFileNotFound = true;
-          queriedDataSeenTable = true;
-        } else {
-          shouldRetryWhenFileNotFound = false;
-          shouldFailWhenFileNotFound = false;
-        }
-        return getRecords();
-      } else {
-        // the progress matches exactly,file should exist, if it is not found return error
-        shouldRetryWhenFileNotFound = false;
+      // the Spanner to GCS job has progressed past the current interval end timestamp
+      // search for file again, if it exists process, else skip the file not found
+      // if the file is expected to be present - retry until found
+      if (shardFileCreationTracker.doesDataExistForTimestamp(currentEndTimestamp)) {
+        LOG.info("Data exists for shard {} and time end {} ", shardId, currentEndTimestamp);
+        shouldRetryWhenFileNotFound =
+            true; // can happen due to out of order writes or the write to GCS was very slow
         shouldFailWhenFileNotFound = true;
-        return getRecords();
+
+      } else {
+        shouldRetryWhenFileNotFound = false;
+        shouldFailWhenFileNotFound = false;
       }
+      queriedDataSeenTable = true;
+      return getRecords();
+
     } catch (Exception e) {
       throw new RuntimeException(
           " Cannot determine file creation progress for shard : " + shardId, e);

@@ -19,6 +19,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 
 /**
  * Postgres implementation of ChangeEventContext that provides implementation of the
@@ -39,8 +41,7 @@ class PostgresChangeEventContext extends ChangeEventContext {
    * Creates shadow table mutation for Postgres.
    */
   @Override
-  Mutation generateShadowTableMutation(Ddl ddl)
-      throws ChangeEventConvertorException, InvalidChangeEventException {
+  Mutation generateShadowTableMutation(Ddl ddl) throws ChangeEventConvertorException {
     // Get shadow information from change event mutation context
     Mutation.WriteBuilder builder =
         ChangeEventConvertor.changeEventToShadowTableMutationBuilder(

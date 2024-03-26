@@ -13,8 +13,12 @@ v1/src/test/java/com/google/cloud/teleport/templates/common/SpannerConverterTest
 # Datastream To spanner template
 v2/datastream-to-spanner/ @GoogleCloudPlatform/spanner-migrations-team
 v2/spanner-common/ @GoogleCloudPlatform/spanner-migrations-team
-v2/spanner-migrations-sdk/ @GoogleCloudPlatform/spanner-migrations-team
 
 # Spanner To other database reverse replication templates
 v2/spanner-change-streams-to-sharded-file-sink/ @GoogleCloudPlatform/spanner-migrations-team
 v2/gcs-to-sourcedb/ @GoogleCloudPlatform/spanner-migrations-team
+v2/spanner-migrations-sdk/ @GoogleCloudPlatform/spanner-migrations-team
+v2/spanner-custom-shard/ @GoogleCloudPlatform/spanner-migrations-team
+
+# Spanner Bulk migration template
+v2/sourcedb-to-spanner/ @GoogleCloudPlatform/spanner-migrations-team

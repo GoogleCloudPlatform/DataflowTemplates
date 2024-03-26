@@ -43,6 +43,7 @@
     <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
     <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
+    <jacoco.version>0.8.8</jacoco.version>
 
     <!-- Beam and linked versions -->
     <beam.version>2.54.0</beam.version>
@@ -329,6 +330,39 @@
             <phase>test-compile</phase>
             <goals>
               <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <configuration>
+          <excludes>
+            <!-- Excluding auto-generated classes. -->
+            <exclude>**/*AutoValue_*</exclude>
+          </excludes>
+        </configuration>
+        <executions>
+          <execution>
+            <id>default-prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>default-report</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report-aggregate</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report-aggregate</goal>
             </goals>
           </execution>
         </executions>
