@@ -230,7 +230,9 @@ public class CypherGenerator {
 
     if (capabilities.hasNodeKeyConstraints()) {
       cyphers.addAll(getEntityKeyConstraintStatements(labels, keyProperties));
+    }
 
+    if (capabilities.hasNodeUniqueConstraints()) {
       for (String uniqueProperty : uniqueProperties) {
         cyphers.add(
             "CREATE CONSTRAINT IF NOT EXISTS FOR (n:"
@@ -315,7 +317,9 @@ public class CypherGenerator {
                 + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(relKeyProperty)
                 + " IS RELATIONSHIP KEY");
       }
+    }
 
+    if (capabilities.hasRelationshipUniqueConstraints()) {
       for (String uniqueProperty : uniqueProperties) {
         cyphers.add(
             "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"

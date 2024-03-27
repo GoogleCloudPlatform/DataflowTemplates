@@ -154,8 +154,8 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
           LOG.info("Dropping constraint {}", constraint);
 
           executeCypher(
-              "DROP CONSTRAINT $name",
-              Map.of("name", constraint),
+              String.format("DROP CONSTRAINT `%s`", constraint),
+              Map.of(),
               databaseResetMetadata("drop-constraint"));
         }
       }
@@ -172,7 +172,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
         LOG.info("Dropping index {}", index);
 
         executeCypher(
-            "DROP INDEX $name", Map.of("name", index), databaseResetMetadata("drop-index"));
+            String.format("DROP INDEX `%s`", index), Map.of(), databaseResetMetadata("drop-index"));
       }
     }
   }

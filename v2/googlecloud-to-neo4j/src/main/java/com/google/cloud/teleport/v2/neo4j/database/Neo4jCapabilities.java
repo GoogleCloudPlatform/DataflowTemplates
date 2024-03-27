@@ -38,8 +38,16 @@ public final class Neo4jCapabilities implements Serializable {
     return hasConstraints();
   }
 
+  public boolean hasNodeUniqueConstraints() {
+    return hasConstraints();
+  }
+
   public boolean hasRelationshipKeyConstraints() {
     return hasConstraints() && version == Neo4jVersion.V5;
+  }
+
+  public boolean hasRelationshipUniqueConstraints() {
+    return hasRelationshipKeyConstraints();
   }
 
   public boolean hasNodeExistenceConstraints() {

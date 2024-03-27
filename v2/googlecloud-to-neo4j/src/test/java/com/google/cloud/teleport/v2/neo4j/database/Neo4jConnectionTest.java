@@ -76,7 +76,8 @@ public class Neo4jConnectionTest {
             any());
     verify(session, never())
         .run(eq("MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS"), anyMap(), any());
-    verify(session, never()).run(eq("CALL apoc.schema.assert({}, {}, true)"), anyMap(), any());
+    verify(session, never()).run(contains("CONSTRAINT"), anyMap(), any());
+    verify(session, never()).run(contains("INDEX"), anyMap(), any());
   }
 
   @Test
@@ -92,16 +93,16 @@ public class Neo4jConnectionTest {
         .verify(session)
         .run(eq("MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS"), eq(Map.of()), any());
     inOrder.verify(session).run(eq("SHOW CONSTRAINTS YIELD name"), eq(Map.of()), any());
-    inOrder.verify(session).run(eq("DROP CONSTRAINT $name"), eq(Map.of("name", "a")), any());
-    inOrder.verify(session).run(eq("DROP CONSTRAINT $name"), eq(Map.of("name", "b")), any());
+    inOrder.verify(session).run(eq("DROP CONSTRAINT `a`"), eq(Map.of()), any());
+    inOrder.verify(session).run(eq("DROP CONSTRAINT `b`"), eq(Map.of()), any());
     inOrder
         .verify(session)
         .run(
             eq("SHOW INDEXES YIELD name, type WHERE type <> 'LOOKUP' RETURN name"),
             eq(Map.of()),
             any());
-    inOrder.verify(session).run(eq("DROP INDEX $name"), eq(Map.of("name", "c")), any());
-    inOrder.verify(session).run(eq("DROP INDEX $name"), eq(Map.of("name", "d")), any());
+    inOrder.verify(session).run(eq("DROP INDEX `c`"), eq(Map.of()), any());
+    inOrder.verify(session).run(eq("DROP INDEX `d`"), eq(Map.of()), any());
   }
 
   @Test
@@ -121,8 +122,8 @@ public class Neo4jConnectionTest {
             eq("SHOW INDEXES YIELD name, type WHERE type <> 'LOOKUP' RETURN name"),
             eq(Map.of()),
             any());
-    inOrder.verify(session).run(eq("DROP INDEX $name"), eq(Map.of("name", "c")), any());
-    inOrder.verify(session).run(eq("DROP INDEX $name"), eq(Map.of("name", "d")), any());
+    inOrder.verify(session).run(eq("DROP INDEX `c`"), eq(Map.of()), any());
+    inOrder.verify(session).run(eq("DROP INDEX `d`"), eq(Map.of()), any());
 
     verify(session, never()).run(contains("CONSTRAINT"), anyMap(), any());
   }
@@ -146,16 +147,16 @@ public class Neo4jConnectionTest {
         .verify(session)
         .run(eq("MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS"), eq(Map.of()), any());
     inOrder.verify(session).run(eq("SHOW CONSTRAINTS YIELD name"), eq(Map.of()), any());
-    inOrder.verify(session).run(eq("DROP CONSTRAINT $name"), eq(Map.of("name", "a")), any());
-    inOrder.verify(session).run(eq("DROP CONSTRAINT $name"), eq(Map.of("name", "b")), any());
+    inOrder.verify(session).run(eq("DROP CONSTRAINT `a`"), eq(Map.of()), any());
+    inOrder.verify(session).run(eq("DROP CONSTRAINT `b`"), eq(Map.of()), any());
     inOrder
         .verify(session)
         .run(
             eq("SHOW INDEXES YIELD name, type WHERE type <> 'LOOKUP' RETURN name"),
             eq(Map.of()),
             any());
-    inOrder.verify(session).run(eq("DROP INDEX $name"), eq(Map.of("name", "c")), any());
-    inOrder.verify(session).run(eq("DROP INDEX $name"), eq(Map.of("name", "d")), any());
+    inOrder.verify(session).run(eq("DROP INDEX `c`"), eq(Map.of()), any());
+    inOrder.verify(session).run(eq("DROP INDEX `d`"), eq(Map.of()), any());
   }
 
   private void setVersionEdition(String version, String edition) {
