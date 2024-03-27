@@ -191,7 +191,9 @@ public class ExportPipelineIT extends TemplateTestBase {
             .addParameter("spannerProjectId", PROJECT)
             .addParameter("instanceId", googleSqlResourceManager.getInstanceId())
             .addParameter("databaseId", googleSqlResourceManager.getDatabaseId())
-            .addParameter("outputDir", getGcsPath("output/"));
+            //.addParameter("outputDir", getGcsPath("output/"))
+            .addParameter("outputDir", "gs://djagaluru-teleport-integration-test/exported-data/gsql/")
+            .addParameter("spannerHost", "https://staging-wrenchworks.sandbox.googleapis.com");
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
@@ -251,7 +253,9 @@ public class ExportPipelineIT extends TemplateTestBase {
             .addParameter("spannerProjectId", PROJECT)
             .addParameter("instanceId", postgresResourceManager.getInstanceId())
             .addParameter("databaseId", postgresResourceManager.getDatabaseId())
-            .addParameter("outputDir", getGcsPath("output/"));
+            //.addParameter("outputDir", getGcsPath("output/"))
+            .addParameter("outputDir", "gs://djagaluru-teleport-integration-test/exported-data/postgres/")
+            .addParameter("spannerHost", "https://staging-wrenchworks.sandbox.googleapis.com");
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

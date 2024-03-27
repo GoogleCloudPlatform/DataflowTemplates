@@ -105,6 +105,7 @@ public final class SpannerResourceManager implements ResourceManager {
                   if (builder.credentials != null) {
                     optionsBuilder.setCredentials(builder.credentials);
                   }
+                  optionsBuilder.setHost("https://staging-wrenchworks.sandbox.googleapis.com");
                   return optionsBuilder.build().getService();
                 })
             .get());

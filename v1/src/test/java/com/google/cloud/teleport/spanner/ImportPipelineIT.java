@@ -131,7 +131,8 @@ public class ImportPipelineIT extends TemplateTestBase {
             .addParameter("spannerProjectId", PROJECT)
             .addParameter("instanceId", googleSqlResourceManager.getInstanceId())
             .addParameter("databaseId", googleSqlResourceManager.getDatabaseId())
-            .addParameter("inputDir", getGcsPath("input/"));
+            .addParameter("inputDir", getGcsPath("input/"))
+            .addParameter("spannerHost", "https://staging-wrenchworks.sandbox.googleapis.com");
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
@@ -173,7 +174,8 @@ public class ImportPipelineIT extends TemplateTestBase {
             .addParameter("spannerProjectId", PROJECT)
             .addParameter("instanceId", postgresResourceManager.getInstanceId())
             .addParameter("databaseId", postgresResourceManager.getDatabaseId())
-            .addParameter("inputDir", getGcsPath("input/"));
+            .addParameter("inputDir", getGcsPath("input/"))
+            .addParameter("spannerHost", "https://staging-wrenchworks.sandbox.googleapis.com");
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
