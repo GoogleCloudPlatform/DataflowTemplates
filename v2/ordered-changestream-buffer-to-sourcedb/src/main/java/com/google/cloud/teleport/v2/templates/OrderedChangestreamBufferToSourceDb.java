@@ -172,28 +172,6 @@ public class OrderedChangestreamBufferToSourceDb {
     Integer getTimerInterval();
 
     void setTimerInterval(Integer value);
-
-    @TemplateParameter.Boolean(
-        order = 10,
-        optional = true,
-        description = "Enable SSL connection for SourceDB",
-        helpText =
-            "This parameter is used to enable SSL connection for SourceDB. Please explicitly enable to use ssl by setting this parameter to true")
-    @Default.Boolean(false)
-    Boolean getEnableSourceDbSsl();
-
-    void setEnableSourceDbSsl(Boolean value);
-
-    @TemplateParameter.Boolean(
-        order = 11,
-        optional = true,
-        description = "Enable SSL validation for SourceDB",
-        helpText =
-            "This parameter is used to enable SSL validation for SourceDB. Please explicitly enable to use ssl by setting this parameter to true. Enabling this parameter requires that enableSourceDbSsl is also set to true")
-    @Default.Boolean(false)
-    Boolean getEnableSourceDbSslValidation();
-
-    void setEnableSourceDbSslValidation(Boolean value);
   }
 
   /**
@@ -232,9 +210,7 @@ public class OrderedChangestreamBufferToSourceDb {
               options.getPubSubProjectId(),
               options.getSessionFilePath(),
               options.getPubSubMaxReadCount(),
-              options.getSourceDbTimezoneOffset(),
-              options.getEnableSourceDbSsl(),
-              options.getEnableSourceDbSslValidation());
+              options.getSourceDbTimezoneOffset());
 
     } else if ("kafka".equals(options.getBufferType())) {
       processingContextMap =
@@ -243,9 +219,7 @@ public class OrderedChangestreamBufferToSourceDb {
               options.getSourceType(),
               options.getKafkaClusterFilePath(),
               options.getSessionFilePath(),
-              options.getSourceDbTimezoneOffset(),
-              options.getEnableSourceDbSsl(),
-              options.getEnableSourceDbSslValidation());
+              options.getSourceDbTimezoneOffset());
 
     } else {
       throw new RuntimeException("Unsupported buffer type: " + options.getBufferType());

@@ -24,9 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Writes data to PostgreSQL. */
-public class PostgreSqlDao extends Dao {
-
-  private static final long serialVersionUID = 2L;
+public class PostgreSqlDao extends BaseDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(PostgreSqlDao.class);
 
@@ -41,17 +39,10 @@ public class PostgreSqlDao extends Dao {
   private final String poolName;
 
   public PostgreSqlDao(
-      String sqlUrl,
-      String sqlUser,
-      String sqlPasswd,
-      String shardId,
-      Boolean enableSsl,
-      Boolean enableSslValidation,
-      String fullPoolName) {
-    super(sqlUrl, sqlUser, sqlPasswd, shardId, enableSsl, enableSslValidation, fullPoolName);
+      String sqlUrl, String sqlUser, String sqlPasswd, String shardId, String fullPoolName) {
+    super(sqlUrl, sqlUser, sqlPasswd, shardId, fullPoolName);
     this.poolName = "buffer-to-source-" + shardId;
     this.fullPoolName = COMMONS_DBCP_DRIVER_URL + this.poolName;
-    sqlUrl = getSslEnabledSqlUrl(sqlUrl, enableSsl, enableSslValidation);
     try {
       validateClassDependencies(List.of(JDBC_DRIVER, COMMONS_DBCP_2_POOLING_DRIVER));
     } catch (ClassNotFoundException e) {
@@ -64,17 +55,6 @@ public class PostgreSqlDao extends Dao {
     }
     ObjectPool connectionPool = getObjectPool(sqlUrl, sqlUser, sqlPasswd);
     this.driver.registerPool(this.poolName, connectionPool);
-  }
-
-  @Override
-  String getSslEnabledSqlUrl(String sqlUrl, Boolean enableSsl, Boolean enableSslValidation) {
-    if (enableSsl) {
-      sqlUrl = sqlUrl + "?ssl=verify-ca";
-      if (!enableSslValidation) {
-        sqlUrl = sqlUrl + "&sslfactory=org.postgresql.ssl.NonValidatingFactory";
-      }
-    }
-    return sqlUrl;
   }
 
   // frees up the pooling resources

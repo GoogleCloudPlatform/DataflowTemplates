@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.templates.processing.handler;
 
 import com.google.cloud.teleport.v2.templates.common.InputBufferReader;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
-import com.google.cloud.teleport.v2.templates.dao.Dao;
+import com.google.cloud.teleport.v2.templates.dao.BaseDao;
 import com.google.cloud.teleport.v2.templates.dao.DaoFactory;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -55,17 +55,17 @@ public abstract class StreamingHandler {
         inputBufferReader.acknowledge();
         return;
       }
-      Dao dao = DaoFactory.getDao(taskContext);
+      BaseDao baseDao = DaoFactory.getDao(taskContext);
 
       InputRecordProcessor.processRecords(
           sourceDbType,
           records,
           taskContext.getSchema(),
-          dao,
+          baseDao,
           shardId,
           taskContext.getSourceDbTimezoneOffset());
       inputBufferReader.acknowledge();
-      dao.cleanup();
+      baseDao.cleanup();
       LOG.info(
           "Shard " + shardId + ": Successfully processed batch of " + records.size() + " records.");
     } catch (Exception e) {

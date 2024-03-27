@@ -35,9 +35,7 @@ public final class ProcessingContextGeneratorTest {
             "postgresql",
             "src/test/resources/kafkaConnectionProfile.json",
             "src/test/resources/allMatchSession.json",
-            "+00:00",
-            true,
-            true);
+            "+00:00");
 
     assertEquals(response.size(), 2);
     assertEquals(response.get("shardC").getBufferType(), "kafka");
@@ -52,9 +50,7 @@ public final class ProcessingContextGeneratorTest {
             "mysql",
             "src/test/resources/kafkaConnectionProfile.json",
             "src/test/resources/allMatchSession.json",
-            "+00:00",
-            true,
-            true);
+            "+00:00");
 
     assertEquals(response.size(), 2);
     assertEquals(response.get("shardA").getBufferType(), "kafka");
@@ -69,9 +65,7 @@ public final class ProcessingContextGeneratorTest {
             "tada",
             "src/test/resources/allMatchSession.json",
             42,
-            "+00:00",
-            true,
-            true);
+            "+00:00");
 
     assertEquals(response.size(), 2);
     assertEquals(response.get("shardC").getBufferType(), "pubsub");
@@ -86,9 +80,7 @@ public final class ProcessingContextGeneratorTest {
             "tada",
             "src/test/resources/allMatchSession.json",
             42,
-            "+00:00",
-            true,
-            true);
+            "+00:00");
 
     assertEquals(response.size(), 2);
     assertEquals(response.get("shardA").getBufferType(), "pubsub");
