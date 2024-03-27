@@ -18,13 +18,16 @@ package com.google.cloud.teleport.v2.neo4j.model.helpers;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
-import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesSaveMode;
-import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
-import com.google.cloud.teleport.v2.neo4j.model.job.Target;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.neo4j.importer.v1.targets.NodeMatchMode;
+import org.neo4j.importer.v1.targets.Order;
+import org.neo4j.importer.v1.targets.OrderBy;
+import org.neo4j.importer.v1.targets.Targets;
 
 public class TargetMapperTest {
 
@@ -40,14 +43,13 @@ public class TargetMapperTest {
     transform.put("group", true);
     customObject.put("transform", transform); // ignored
 
-    Target target = TargetMapper.fromJson(jsonTarget);
+    Targets targets = TargetMapper.fromJson(arrayOf(jsonTarget));
 
-    assertThat(target.getType()).isEqualTo(TargetType.custom_query);
-    assertThat(target.getCustomQuery())
-        .isEqualTo("UNWIND $rows AS row CREATE (:Node {prop: row.prop})");
-    assertThat(target.getExecuteAfter()).isEqualTo(ActionExecuteAfter.edges);
-    assertThat(target.getMappings()).isEmpty();
-    assertThat(target.getTransform().isDefault()).isTrue();
+    assertThat(targets.getNodes()).isEmpty();
+    assertThat(targets.getRelationships()).isEmpty();
+    assertThat(targets.getCustomQueries()).hasSize(1);
+    var target = targets.getCustomQueries().get(0);
+    assertThat(target.getQuery()).isEqualTo("UNWIND $rows AS row CREATE (:Node {prop: row.prop})");
   }
 
   @Test
@@ -57,9 +59,10 @@ public class TargetMapperTest {
     edgeObject.put("mode", "merge");
     edgeObject.put("edge_nodes_match_mode", "merge");
 
-    Target target = TargetMapper.fromJson(object);
+    Targets targets = TargetMapper.fromJson(arrayOf(object));
 
-    assertThat(target.getEdgeNodesMatchMode()).isEqualTo(EdgeNodesSaveMode.merge);
+    assertThat(targets.getRelationships()).hasSize(1);
+    assertThat(targets.getRelationships().get(0).getNodeMatchMode()).isEqualTo(NodeMatchMode.MERGE);
   }
 
   @Test
@@ -69,21 +72,10 @@ public class TargetMapperTest {
     edgeObject.put("mode", "append");
     edgeObject.put("edge_nodes_match_mode", "merge");
 
-    Target target = TargetMapper.fromJson(object);
+    Targets targets = TargetMapper.fromJson(arrayOf(object));
 
-    assertThat(target.getEdgeNodesMatchMode()).isEqualTo(EdgeNodesSaveMode.merge);
-  }
-
-  @Test
-  public void ignoresSpecifiedMatchModeForNodeTargets() {
-    JSONObject object = jsonTargetOfType("node");
-    JSONObject nodeObject = object.getJSONObject("node");
-    nodeObject.put("mode", "merge");
-    nodeObject.put("edge_nodes_match_mode", "match");
-
-    Target target = TargetMapper.fromJson(object);
-
-    assertThat(target.getEdgeNodesMatchMode()).isNull();
+    assertThat(targets.getRelationships()).hasSize(1);
+    assertThat(targets.getRelationships().get(0).getNodeMatchMode()).isEqualTo(NodeMatchMode.MERGE);
   }
 
   @Test
@@ -91,9 +83,10 @@ public class TargetMapperTest {
     JSONObject object = jsonTargetOfType("edge");
     object.getJSONObject("edge").put("mode", "merge");
 
-    Target target = TargetMapper.fromJson(object);
+    Targets targets = TargetMapper.fromJson(arrayOf(object));
 
-    assertThat(target.getEdgeNodesMatchMode()).isEqualTo(EdgeNodesSaveMode.match);
+    assertThat(targets.getRelationships()).hasSize(1);
+    assertThat(targets.getRelationships().get(0).getNodeMatchMode()).isEqualTo(NodeMatchMode.MATCH);
   }
 
   @Test
@@ -101,19 +94,11 @@ public class TargetMapperTest {
     JSONObject object = jsonTargetOfType("edge");
     object.getJSONObject("edge").put("mode", "append");
 
-    Target target = TargetMapper.fromJson(object);
+    Targets targets = TargetMapper.fromJson(arrayOf(object));
 
-    assertThat(target.getEdgeNodesMatchMode()).isEqualTo(EdgeNodesSaveMode.create);
-  }
-
-  @Test
-  public void doesNotSetDefaultMatchModeForNodeTargets() {
-    JSONObject object = jsonTargetOfType("node");
-    object.getJSONObject("node").put("mode", "merge");
-
-    Target target = TargetMapper.fromJson(object);
-
-    assertThat(target.getEdgeNodesMatchMode()).isNull();
+    assertThat(targets.getRelationships()).hasSize(1);
+    assertThat(targets.getRelationships().get(0).getNodeMatchMode())
+        .isEqualTo(NodeMatchMode.CREATE);
   }
 
   @Test
@@ -121,11 +106,49 @@ public class TargetMapperTest {
     JSONObject invalidObject = jsonTargetOfType("invalid");
 
     Exception exception =
-        assertThrows(IllegalArgumentException.class, () -> TargetMapper.fromJson(invalidObject));
+        assertThrows(
+            IllegalArgumentException.class, () -> TargetMapper.fromJson(arrayOf(invalidObject)));
     assertThat(exception)
         .hasMessageThat()
         .isEqualTo(
             "Expected target JSON to have one of: \"node\", \"edge\", \"custom_query\" as top-level field, but only found fields: \"invalid\"");
+  }
+
+  @Test
+  public void parsesSimpleOrderBy() {
+    JSONObject orderBy = new JSONObject(Map.of("order_by", "col"));
+
+    List<OrderBy> clauses = TargetMapper.parseOrderBy(orderBy);
+
+    assertThat(clauses).isEqualTo(List.of(new OrderBy("col", null)));
+  }
+
+  @Test
+  public void parsesSimpleListOfOrderBy() {
+    JSONObject orderBy = new JSONObject(Map.of("order_by", "col, col2"));
+
+    List<OrderBy> clauses = TargetMapper.parseOrderBy(orderBy);
+
+    assertThat(clauses).isEqualTo(List.of(new OrderBy("col", null), new OrderBy("col2", null)));
+  }
+
+  @Test
+  public void parsesOrderByWithDirection() {
+    JSONObject orderBy = new JSONObject(Map.of("order_by", "col DESC"));
+
+    List<OrderBy> clauses = TargetMapper.parseOrderBy(orderBy);
+
+    assertThat(clauses).isEqualTo(List.of(new OrderBy("col", Order.DESC)));
+  }
+
+  @Test
+  public void parsesOrderByListWithDirection() {
+    JSONObject orderBy = new JSONObject(Map.of("order_by", "col DESC, col2 ASC"));
+
+    List<OrderBy> clauses = TargetMapper.parseOrderBy(orderBy);
+
+    assertThat(clauses)
+        .isEqualTo(List.of(new OrderBy("col", Order.DESC), new OrderBy("col2", Order.ASC)));
   }
 
   private static JSONObject jsonTargetOfType(String type) {
@@ -135,5 +158,9 @@ public class TargetMapperTest {
     JSONObject topLevelObject = new JSONObject();
     topLevelObject.put(type, target);
     return topLevelObject;
+  }
+
+  private static JSONArray arrayOf(JSONObject jsonTarget) {
+    return new JSONArray(List.of(jsonTarget));
   }
 }

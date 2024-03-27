@@ -185,9 +185,6 @@ public class CypherGenerator {
   /**
    * Generates the Cypher schema statements for the given target.
    *
-   * @param target a target validated by {@link
-   *     com.google.cloud.teleport.v2.neo4j.model.InputValidator} and transformed by {@link
-   *     com.google.cloud.teleport.v2.neo4j.model.InputRefactoring}
    * @return a list of Cypher schema statements
    */
   public static Set<String> getIndexAndConstraintsCypherStatements(Target target) {

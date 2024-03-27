@@ -15,136 +15,218 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
-import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesSaveMode;
-import com.google.cloud.teleport.v2.neo4j.model.enums.SaveMode;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getBooleanOrDefault;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getIntegerOrNull;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getStringOrDefault;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.MappingMapper.parseEdgeNode;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.MappingMapper.parseEdgeSchema;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.MappingMapper.parseLabels;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.MappingMapper.parseMappings;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.MappingMapper.parseNodeSchema;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.MappingMapper.parseType;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.SourceMapper.DEFAULT_SOURCE_NAME;
+
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
-import com.google.cloud.teleport.v2.neo4j.model.job.Aggregation;
-import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
-import com.google.cloud.teleport.v2.neo4j.model.job.Target;
-import com.google.cloud.teleport.v2.neo4j.model.job.Transform;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.neo4j.importer.v1.targets.Aggregation;
+import org.neo4j.importer.v1.targets.CustomQueryTarget;
+import org.neo4j.importer.v1.targets.NodeMatchMode;
+import org.neo4j.importer.v1.targets.NodeTarget;
+import org.neo4j.importer.v1.targets.Order;
+import org.neo4j.importer.v1.targets.OrderBy;
+import org.neo4j.importer.v1.targets.RelationshipTarget;
+import org.neo4j.importer.v1.targets.SourceTransformations;
+import org.neo4j.importer.v1.targets.Targets;
+import org.neo4j.importer.v1.targets.WriteMode;
 
-/** Helper class for parsing json into Target model object. */
+/**
+ * Helper class for parsing legacy json into an {@link org.neo4j.importer.v1.ImportSpecification}'s
+ * {@link Targets}.
+ *
+ * @deprecated use the current JSON format instead
+ */
+@Deprecated
 public class TargetMapper {
+  private static final Pattern ORDER_PATTERN = Pattern.compile("\\basc|desc\\b");
 
-  public static Target fromJson(JSONObject targetObj) {
-    Target target = new Target();
-    if (targetObj.has("node")) {
-      target.setType(TargetType.node);
-      parseNodeMappingsObject(target, targetObj.getJSONObject("node"));
-      return target;
+  public static Targets fromJson(JSONArray json) {
+    // TODO: inject default name if (active) target name is empty (see InputRefactoring)
+    List<NodeTarget> nodes = new ArrayList<>();
+    List<RelationshipTarget> relationshipTargets = new ArrayList<>();
+    List<CustomQueryTarget> queryTargets = new ArrayList<>();
+    for (int i = 0; i < json.length(); i++) {
+      var target = json.getJSONObject(i);
+      if (target.has("node")) {
+        nodes.add(parseNode(target.getJSONObject("node")));
+        continue;
+      }
+      if (target.has("edge")) {
+        relationshipTargets.add(parseRelationship(target.getJSONObject("edge")));
+        continue;
+      }
+      if (target.has("custom_query")) {
+        queryTargets.add(parseCustomQuery(target.getJSONObject("custom_query")));
+        continue;
+      }
+      throw invalidTargetException(target);
     }
-    if (targetObj.has("edge")) {
-      target.setType(TargetType.edge);
-      parseEdgeMappingsObject(target, targetObj.getJSONObject("edge"));
-      return target;
+    return new Targets(nodes, relationshipTargets, queryTargets);
+  }
+
+  private static NodeTarget parseNode(JSONObject node) {
+    JSONObject mappings = node.getJSONObject("mappings");
+    List<String> labels = parseLabels(mappings);
+    String targetName = node.getString("name");
+    return new NodeTarget(
+        getBooleanOrDefault(node, "active", true),
+        targetName,
+        getStringOrDefault(node, "source", DEFAULT_SOURCE_NAME),
+        null, // TODO: process dependencies
+        asWriteMode(node.getString("mode")),
+        parseSourceTransformations(node),
+        labels,
+        parseMappings(mappings),
+        parseNodeSchema(targetName, labels, mappings));
+  }
+
+  private static RelationshipTarget parseRelationship(JSONObject edge) {
+    JSONObject mappings = edge.getJSONObject("mappings");
+    WriteMode writeMode = asWriteMode(edge.getString("mode"));
+    String targetName = edge.getString("name");
+    String type = parseType(mappings);
+    return new RelationshipTarget(
+        getBooleanOrDefault(edge, "active", true),
+        targetName,
+        getStringOrDefault(edge, "source", DEFAULT_SOURCE_NAME),
+        null, // TODO: process dependencies
+        type,
+        writeMode,
+        asNodeMatchMode(edge, writeMode),
+        parseSourceTransformations(edge),
+        parseEdgeNode(mappings, "source"),
+        null,
+        parseEdgeNode(mappings, "target"),
+        null,
+        parseMappings(mappings),
+        parseEdgeSchema(targetName, type, mappings));
+  }
+
+  private static CustomQueryTarget parseCustomQuery(JSONObject query) {
+    return new CustomQueryTarget(
+        getBooleanOrDefault(query, "active", true),
+        query.getString("name"),
+        getStringOrDefault(query, "source", DEFAULT_SOURCE_NAME),
+        null, // TODO: process dependencies
+        query.getString("query"));
+  }
+
+  private static SourceTransformations parseSourceTransformations(JSONObject json) {
+    if (!json.has("transform")) {
+      return null;
     }
-    if (targetObj.has("custom_query")) {
-      target.setType(TargetType.custom_query);
-      parseCustomQueryMappingsObject(target, targetObj.getJSONObject("custom_query"));
-      return target;
+    var transform = json.getJSONObject("transform");
+    return new SourceTransformations(
+        getBooleanOrDefault(transform, "group", false),
+        parseAggregations(transform),
+        getStringOrDefault(transform, "where", ""),
+        parseOrderBy(transform),
+        getIntegerOrNull(transform, "limit"));
+  }
+
+  private static List<Aggregation> parseAggregations(JSONObject json) {
+    if (!json.has("aggregations")) {
+      return null;
     }
+    JSONArray aggregations = json.getJSONArray("aggregations");
+    List<Aggregation> results = new ArrayList<>(aggregations.length());
+    for (int i = 0; i < aggregations.length(); i++) {
+      var aggregation = aggregations.getJSONObject(i);
+      results.add(new Aggregation(aggregation.getString("expr"), aggregation.getString("field")));
+    }
+    return results;
+  }
+
+  // visible for testing
+  static List<OrderBy> parseOrderBy(JSONObject json) {
+    if (!json.has("order_by")) {
+      return null;
+    }
+    var orderBy = json.getString("order_by");
+    String[] rawClauses = StringUtils.stripAll(orderBy.split(","));
+    return Arrays.stream(rawClauses)
+        .map(
+            clause -> {
+              String clauseLowerCase = clause.toLowerCase(Locale.ROOT);
+              int lastPosition = findLastIndexOfMatch(ORDER_PATTERN, clauseLowerCase);
+              if (lastPosition == -1) {
+                return new OrderBy(clause, null);
+              }
+              String expression = clause.substring(0, lastPosition).trim();
+              Order order = clauseLowerCase.charAt(lastPosition) == 'a' ? Order.ASC : Order.DESC;
+              return new OrderBy(expression, order);
+            })
+        .collect(Collectors.toList());
+  }
+
+  private static IllegalArgumentException invalidTargetException(JSONObject target) {
     String error =
         String.format(
             "Expected target JSON to have one of: \"%s\" as top-level field, but only found fields: \"%s\"",
             Arrays.stream(TargetType.values())
                 .map(TargetType::name)
                 .collect(Collectors.joining("\", \"")),
-            String.join("\", \"", targetObj.keySet()));
-    throw new IllegalArgumentException(error);
+            String.join("\", \"", target.keySet()));
+    return new IllegalArgumentException(error);
   }
 
-  private static void parseNodeMappingsObject(Target target, JSONObject json) {
-    parseCommonHeader(target, json);
-    parseAggregations(target, json);
-    target.setExecuteAfter(
-        !json.has("execute_after")
-            ? ActionExecuteAfter.sources
-            : ActionExecuteAfter.valueOf(json.getString("execute_after")));
-    target.setSaveMode(SaveMode.valueOf(json.getString("mode")));
-    addMappings(target, json.getJSONObject("mappings"));
-  }
-
-  private static void parseEdgeMappingsObject(Target target, JSONObject json) {
-    parseCommonHeader(target, json);
-    parseAggregations(target, json);
-    target.setExecuteAfter(
-        !json.has("execute_after")
-            ? ActionExecuteAfter.nodes
-            : ActionExecuteAfter.valueOf(json.getString("execute_after")));
-    SaveMode saveMode = SaveMode.valueOf(json.getString("mode"));
-    target.setSaveMode(saveMode);
-    if (!json.has("edge_nodes_match_mode")) {
-      target.setEdgeNodesMatchMode(EdgeNodesSaveMode.defaultFor(saveMode));
-    } else {
-      target.setEdgeNodesMatchMode(
-          EdgeNodesSaveMode.valueOf(json.getString("edge_nodes_match_mode")));
-    }
-    addMappings(target, json.getJSONObject("mappings"));
-  }
-
-  private static void parseCustomQueryMappingsObject(Target target, JSONObject json) {
-    parseCommonHeader(target, json);
-    target.setExecuteAfter(
-        !json.has("execute_after")
-            ? ActionExecuteAfter.edges
-            : ActionExecuteAfter.valueOf(json.getString("execute_after")));
-    if (json.has("execute_after_name")) {
-      target.setExecuteAfterName(json.getString("execute_after_name"));
-    }
-    target.setCustomQuery(json.getString("query"));
-  }
-
-  private static void addMappings(Target target, JSONObject jsonMappings) {
-    List<Mapping> mappings = MappingMapper.parseMappings(target, jsonMappings);
-    for (Mapping mapping : mappings) {
-      addMapping(target, mapping);
+  private static WriteMode asWriteMode(String mode) {
+    switch (mode) {
+      case "append":
+        return WriteMode.CREATE;
+      case "merge":
+        return WriteMode.MERGE;
+      default:
+        throw new IllegalArgumentException(
+            "Unsupported node \"%s\": expected one of \"append\", \"merge\"");
     }
   }
 
-  private static void addMapping(Target target, Mapping mapping) {
-    target.getMappings().add(mapping);
-    if (mapping.getField() != null) {
-      target.getMappingByFieldMap().put(mapping.getField(), mapping);
+  private static NodeMatchMode asNodeMatchMode(JSONObject edge, WriteMode writeMode) {
+    if (!edge.has("edge_nodes_match_mode")) {
+      return defaultNodeMatchModeFor(writeMode);
+    }
+    return NodeMatchMode.valueOf(edge.getString("edge_nodes_match_mode").toUpperCase(Locale.ROOT));
+  }
+
+  @NotNull
+  private static NodeMatchMode defaultNodeMatchModeFor(WriteMode writeMode) {
+    switch (writeMode) {
+      case CREATE:
+        return NodeMatchMode.CREATE;
+      case MERGE:
+        return NodeMatchMode.MATCH;
+      default:
+        throw new IllegalArgumentException(
+            String.format(
+                "Cannot determine default node match mode: unsupported write mode %s", writeMode));
     }
   }
 
-  private static void parseCommonHeader(Target target, JSONObject json) {
-    target.setName(json.getString("name"));
-    target.setActive(!json.has("active") || json.getBoolean("active"));
-    target.setSource(json.has("source") ? json.getString("source") : "");
-    target.setExecuteAfterName(
-        json.has("execute_after_name") ? json.getString("execute_after_name") : "");
-  }
-
-  private static void parseAggregations(Target target, JSONObject json) {
-    if (!json.has("transform")) {
-      return;
+  private static int findLastIndexOfMatch(Pattern pattern, String input) {
+    int lastPosition = -1;
+    var matcher = pattern.matcher(input);
+    while (matcher.find()) {
+      lastPosition = matcher.start();
     }
-    JSONObject jsonTransform = json.getJSONObject("transform");
-    Transform transform = target.getTransform();
-    transform.setGroup(jsonTransform.has("group") && jsonTransform.getBoolean("group"));
-    transform.setOrderBy(jsonTransform.has("order_by") ? jsonTransform.getString("order_by") : "");
-    transform.setLimit(jsonTransform.has("limit") ? jsonTransform.getInt("limit") : -1);
-    transform.setWhere(jsonTransform.has("where") ? jsonTransform.getString("where") : "");
-    if (!jsonTransform.has("aggregations")) {
-      return;
-    }
-    List<Aggregation> aggregations = new ArrayList<>();
-    JSONArray aggregationsArray = jsonTransform.getJSONArray("aggregations");
-    for (int i = 0; i < aggregationsArray.length(); i++) {
-      JSONObject aggregationObj = aggregationsArray.getJSONObject(i);
-      Aggregation agg = new Aggregation();
-      agg.setExpression(aggregationObj.getString("expr"));
-      agg.setField(aggregationObj.getString("field"));
-      aggregations.add(agg);
-    }
-    transform.setAggregations(aggregations);
+    return lastPosition;
   }
 }

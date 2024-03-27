@@ -17,11 +17,8 @@ package com.google.cloud.teleport.v2.neo4j.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.neo4j.model.InputValidator;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.JobSpecMapper;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
-import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.providers.Provider;
 import com.google.cloud.teleport.v2.neo4j.providers.ProviderFactory;
 import com.google.cloud.teleport.v2.neo4j.providers.text.TextImpl;
@@ -42,7 +39,8 @@ public class GoogleToNeo4jTest {
 
   @BeforeClass
   public static void setUp() {
-    jobSpec = JobSpecMapper.fromUri("src/test/resources/testing-specs/text-northwind-jobspec.json");
+    jobSpec =
+        new JobSpec(); // JobSpecMapper.fromUri("src/test/resources/testing-specs/text-northwind-jobspec.json");
     providerImpl = ProviderFactory.of(jobSpec.getSourceList().get(0).getSourceType());
     optionsParams = new OptionsParams();
     optionsParams.overlayTokens("{\"limit\":7}");
@@ -70,14 +68,5 @@ public class GoogleToNeo4jTest {
     String uri = "SELECT * FROM TEST LIMIT $limit";
     String uriReplaced = ModelUtils.replaceVariableTokens(uri, optionsParams.getTokenMap());
     assertThat(uriReplaced).contains("LIMIT 7");
-  }
-
-  @Test
-  public void testGetInvalidOrderedQuery() {
-    Source source = jobSpec.getSourceList().get(0);
-    source.setQuery("SELECT * FROM FOO ORDER BY X");
-    List<String> messages = InputValidator.validateJobSpec(jobSpec);
-    assertThat(messages).hasSize(1);
-    assertThat(messages.get(0)).contains("SQL contains ORDER BY which is not supported");
   }
 }

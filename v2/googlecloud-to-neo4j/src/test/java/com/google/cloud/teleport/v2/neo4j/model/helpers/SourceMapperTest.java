@@ -17,10 +17,10 @@ package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.Source;
-import java.util.Map;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.neo4j.importer.v1.sources.InlineTextSource;
+import org.neo4j.importer.v1.sources.Source;
 
 public class SourceMapperTest {
 
@@ -28,11 +28,14 @@ public class SourceMapperTest {
   public void trimsSourceFields() {
     JSONObject json = new JSONObject();
     json.put("name", "placeholder");
+    json.put("type", "text");
     json.put("ordered_field_names", "foo, bar,   qix\t\r");
+    json.put("data", "foovalue,barvalue,qixvalue");
 
     Source source = SourceMapper.fromJson(json);
 
-    assertThat(source.getFieldNames()).isEqualTo(new String[] {"foo", "bar", "qix"});
-    assertThat(source.getFieldPosByName()).isEqualTo(Map.of("foo", 1, "bar", 2, "qix", 3));
+    assertThat(source).isInstanceOf(InlineTextSource.class);
+    InlineTextSource inlineTextSource = (InlineTextSource) source;
+    assertThat(inlineTextSource.getHeader()).isEqualTo(new String[] {"foo", "bar", "qix"});
   }
 }

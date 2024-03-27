@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.commons.csv.CSVFormat;
-import org.json.JSONArray;
 
 /** Source query metadata. */
 public class Source implements Serializable {
@@ -41,43 +40,6 @@ public class Source implements Serializable {
   private String[] fieldNames = new String[0];
   private Map<String, Integer> fieldPosByName = new HashMap<>();
   private List<List<Object>> inline = new ArrayList<>();
-
-  public static List<List<Object>> jsonToListOfListsArray(JSONArray lines) {
-    if (lines == null) {
-      return new ArrayList<>();
-    }
-
-    List<List<Object>> rows = new ArrayList<>();
-    for (int i = 0; i < lines.length(); i++) {
-      JSONArray rowArr = lines.getJSONArray(i);
-      List<Object> tuples = new ArrayList<>();
-      for (int j = 0; j < rowArr.length(); j++) {
-        tuples.add(rowArr.optString(j));
-      }
-      rows.add(tuples);
-    }
-    return rows;
-  }
-
-  public static String[] jsonToListOfStringArray(JSONArray lines, String delimiter) {
-    if (lines == null) {
-      return new String[0];
-    }
-
-    String[] rows = new String[lines.length()];
-    for (int i = 0; i < lines.length(); i++) {
-      JSONArray rowArr = lines.getJSONArray(i);
-      StringBuilder sb = new StringBuilder();
-      for (int j = 0; j < rowArr.length(); j++) {
-        if (j > 0) {
-          sb.append(delimiter);
-        }
-        sb.append(rowArr.optString(j));
-      }
-      rows[i] = sb.toString();
-    }
-    return rows;
-  }
 
   public Schema getTextFileSchema() {
     return BeamUtils.textToBeamSchema(fieldNames);

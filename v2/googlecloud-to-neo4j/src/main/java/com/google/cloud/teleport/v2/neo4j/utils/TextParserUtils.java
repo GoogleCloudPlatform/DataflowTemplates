@@ -22,6 +22,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringUtils;
+import org.json.JSONArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +54,43 @@ public class TextParserUtils {
     List<List<Object>> rows = new ArrayList<>();
     for (String line : lines) {
       rows.add(parseDelimitedLine(csvFormat, line));
+    }
+    return rows;
+  }
+
+  public static List<List<Object>> jsonToListOfListsArray(JSONArray lines) {
+    if (lines == null) {
+      return new ArrayList<>();
+    }
+
+    List<List<Object>> rows = new ArrayList<>();
+    for (int i = 0; i < lines.length(); i++) {
+      JSONArray rowArr = lines.getJSONArray(i);
+      List<Object> tuples = new ArrayList<>();
+      for (int j = 0; j < rowArr.length(); j++) {
+        tuples.add(rowArr.optString(j));
+      }
+      rows.add(tuples);
+    }
+    return rows;
+  }
+
+  public static String[] jsonToListOfStringArray(JSONArray lines, String delimiter) {
+    if (lines == null) {
+      return new String[0];
+    }
+
+    String[] rows = new String[lines.length()];
+    for (int i = 0; i < lines.length(); i++) {
+      JSONArray rowArr = lines.getJSONArray(i);
+      StringBuilder sb = new StringBuilder();
+      for (int j = 0; j < rowArr.length(); j++) {
+        if (j > 0) {
+          sb.append(delimiter);
+        }
+        sb.append(rowArr.optString(j));
+      }
+      rows[i] = sb.toString();
     }
     return rows;
   }

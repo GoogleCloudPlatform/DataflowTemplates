@@ -15,51 +15,89 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
-import com.google.cloud.teleport.v2.neo4j.model.enums.ActionType;
-import com.google.cloud.teleport.v2.neo4j.model.job.Action;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.neo4j.importer.v1.actions.Action;
+import org.neo4j.importer.v1.actions.BigQueryAction;
+import org.neo4j.importer.v1.actions.CypherAction;
+import org.neo4j.importer.v1.actions.CypherExecutionMode;
+import org.neo4j.importer.v1.actions.HttpAction;
+import org.neo4j.importer.v1.actions.HttpMethod;
 
-/** Helper class for parsing json into Action model object. */
+/**
+ * Helper class for parsing legacy json into {@link Action}.
+ *
+ * @deprecated use the current JSON format instead
+ */
+@Deprecated
 public class ActionMapper {
 
-  public static Action fromJson(JSONObject actionObj) {
-    Action action = new Action();
-    action.name = actionObj.getString("name");
-    action.type = ActionType.valueOf(actionObj.getString("type"));
-    if (actionObj.has("description")) {
-      action.description = actionObj.getString("description");
+  public static List<Action> fromJson(JSONArray json) {
+    List<Action> actions = new ArrayList<>(json.length());
+    for (int i = 0; i < json.length(); i++) {
+      actions.add(fromJson(json.getJSONObject(i)));
     }
-    if (actionObj.has("execute_after")) {
-      action.executeAfter = ActionExecuteAfter.valueOf(actionObj.getString("execute_after"));
-    } else {
-      action.executeAfter = ActionExecuteAfter.loads;
-    }
-    action.executeAfterName =
-        actionObj.has("execute_after_name") ? actionObj.getString("execute_after_name") : "";
-    if (actionObj.has("options")) {
-      action.options = parseMapObj(actionObj.getJSONArray("options"));
-    }
-    if (actionObj.has("headers")) {
-      action.headers = parseMapObj(actionObj.getJSONArray("headers"));
-    }
-
-    return action;
+    return actions;
   }
 
-  private static HashMap<String, String> parseMapObj(JSONArray mapArrayJson) {
-    HashMap<String, String> obj = new HashMap<>();
-    for (int i = 0; i < mapArrayJson.length(); i++) {
-      JSONObject mapObj = mapArrayJson.getJSONObject(i);
-      Iterator<String> keys = mapObj.keys();
-      while (keys.hasNext()) {
-        String key = keys.next();
-        obj.put(key, String.valueOf(mapObj.opt(key)));
-      }
+  private static Action fromJson(JSONObject json) {
+    String type = json.getString("type").toLowerCase(Locale.ROOT);
+    boolean active = JsonObjects.getBooleanOrDefault(json, "active", true);
+    String name = json.getString("name");
+    var options = json.getJSONArray("options");
+    if (options.length() != 1) {
+      throw new IllegalArgumentException(
+          String.format("Expected a single option for Cypher query, got %d", options.length()));
     }
-    return obj;
+    var option = options.getJSONObject(0);
+    switch (type) {
+      case "cypher":
+        return new CypherAction(
+            active,
+            name,
+            null, // TODO: stage
+            option.getString("cypher"),
+            CypherExecutionMode.AUTOCOMMIT);
+      case "bigquery":
+        return new BigQueryAction(
+            active,
+            name,
+            null, // TODO: stage
+            option.getString("sql"));
+      case "http_get":
+        return new HttpAction(
+            active,
+            name,
+            null, // TODO: stage
+            option.getString("url"),
+            HttpMethod.GET,
+            ensureStringValues(json.getJSONObject("headers").toMap()));
+      case "http_post":
+        return new HttpAction(
+            active,
+            name,
+            null, // TODO: stage
+            option.getString("url"),
+            HttpMethod.POST,
+            ensureStringValues(json.getJSONObject("headers").toMap()));
+      default:
+        throw new IllegalArgumentException(
+            String.format(
+                "Unsupported action type %s, expected one of: cypher, bigquery, http_get, http_post",
+                type));
+    }
+  }
+
+  private static Map<String, String> ensureStringValues(Map<String, Object> map) {
+    Map<String, String> result = new HashMap<>(map.size());
+    for (String key : map.keySet()) {
+      result.put(key, (String) map.get("key"));
+    }
+    return result;
   }
 }

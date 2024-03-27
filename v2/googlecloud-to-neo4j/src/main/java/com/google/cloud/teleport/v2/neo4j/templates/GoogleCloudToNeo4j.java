@@ -23,7 +23,6 @@ import com.google.cloud.teleport.v2.neo4j.actions.ActionDoFnFactory;
 import com.google.cloud.teleport.v2.neo4j.actions.ActionPreloadFactory;
 import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadAction;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
-import com.google.cloud.teleport.v2.neo4j.model.InputRefactoring;
 import com.google.cloud.teleport.v2.neo4j.model.InputValidator;
 import com.google.cloud.teleport.v2.neo4j.model.Json;
 import com.google.cloud.teleport.v2.neo4j.model.Json.ParsingResult;
@@ -31,7 +30,6 @@ import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ArtifactType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.JobSpecMapper;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.OptionsParamsMapper;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.SourceQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.SourceQuerySpec.SourceQuerySpecBuilder;
@@ -122,7 +120,7 @@ public class GoogleCloudToNeo4j {
 
   private final OptionsParams optionsParams;
   private final ConnectionParams neo4jConnection;
-  private final JobSpec jobSpec;
+  private final JobSpec jobSpec = null;
   private final Pipeline pipeline;
   private final String templateVersion;
 
@@ -159,22 +157,10 @@ public class GoogleCloudToNeo4j {
     }
     this.neo4jConnection = Json.map(parsingResult, ConnectionParams.class);
 
-    this.jobSpec = JobSpecMapper.fromUri(pipelineOptions.getJobSpecUri());
-
-    // Validate job spec
-    processValidations(
-        "Errors found validating job specification: ",
-        InputValidator.validateJobSpec(this.jobSpec));
+    // TODO: migrate
+    //    this.jobSpec = JobSpecMapper.parse(pipelineOptions.getJobSpecUri());
 
     ///////////////////////////////////
-    // Refactor job spec
-    InputRefactoring inputRefactoring = new InputRefactoring(this.optionsParams);
-
-    // Variable substitution
-    inputRefactoring.refactorJobSpec(this.jobSpec);
-
-    // Optimizations
-    inputRefactoring.optimizeJobSpec(this.jobSpec);
 
     // Source specific validations
     for (Source source : jobSpec.getSourceList()) {
