@@ -24,7 +24,7 @@ public final class Neo4jCapabilities implements Serializable {
   private final Neo4jVersion version;
   private final Neo4jEdition edition;
 
-  Neo4jCapabilities(String version, String edition) {
+  public Neo4jCapabilities(String version, String edition) {
     this.version = Neo4jVersion.of(version);
     this.edition = Neo4jEdition.of(version, edition);
     this.versionString = String.format("Neo4j %s %s", version, edition);
