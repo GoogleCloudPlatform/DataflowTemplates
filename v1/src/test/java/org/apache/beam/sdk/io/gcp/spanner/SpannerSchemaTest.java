@@ -38,18 +38,16 @@ public class SpannerSchemaTest {
             .addColumn("test", "maxKey", "STRING(MAX)")
             .addColumn("test", "numericVal", "NUMERIC")
             .addColumn("test", "jsonVal", "JSON")
-            .addColumn("test", "protoVal", "PROTO<customer.app.TestMessage>")
-            .addColumn("test", "enumVal", "ENUM<customer.app.TestEnum>")
+            .addColumn("test", "arrayVal", "ARRAY<FLOAT64>")
+            .addColumn("test", "embeddingVectorVal", "ARRAY<FLOAT64>(VECTOR_LENGTH=>128)")
             .build();
 
     assertEquals(1, schema.getTables().size());
     assertEquals(6, schema.getColumns("test").size());
     assertEquals(1, schema.getKeyParts("test").size());
     assertEquals(Type.json(), schema.getColumns("test").get(3).getType());
-    assertEquals(
-        Type.proto("customer.app.TestMessage"), schema.getColumns("test").get(4).getType());
-    assertEquals(
-        Type.protoEnum("customer.app.TestEnum"), schema.getColumns("test").get(5).getType());
+    assertEquals(Type.array(Type.float64()), schema.getColumns("test").get(4).getType());
+    assertEquals(Type.array(Type.float64()), schema.getColumns("test").get(5).getType());
   }
 
   @Test
@@ -82,12 +80,16 @@ public class SpannerSchemaTest {
             .addColumn("test", "numericVal", "numeric")
             .addColumn("test", "commitTime", "spanner.commit_timestamp")
             .addColumn("test", "jsonbCol", "jsonb")
+            .addColumn("test", "arrayCol", "DOUBLE PRECISION[]")
+            .addColumn("test", "embeddingVectorCol", "DOUBLE PRECISION[] VECTOR LENGTH 16")
             .build();
 
     assertEquals(1, schema.getTables().size());
-    assertEquals(5, schema.getColumns("test").size());
+    assertEquals(7, schema.getColumns("test").size());
     assertEquals(1, schema.getKeyParts("test").size());
     assertEquals(Type.timestamp(), schema.getColumns("test").get(3).getType());
+    assertEquals(Type.array(Type.float64()), schema.getColumns("test").get(5).getType());
+    assertEquals(Type.array(Type.float64()), schema.getColumns("test").get(6).getType());
   }
 
   @Test
