@@ -24,7 +24,7 @@ public interface MySQLToBigQueryOptions extends JdbcToBigQueryOptions {
   @TemplateParameter.Text(
       optional = false,
       regexes = {
-        "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
+        "(^jdbc:[a-zA-Z0-9 /:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
       },
       groupName = "Source",
       description = "JDBC connection URL string.",
