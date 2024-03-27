@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.transforms;
 
 import com.google.cloud.teleport.v2.neo4j.database.CypherGenerator;
+import com.google.cloud.teleport.v2.neo4j.database.Neo4jCapabilities;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
@@ -116,11 +117,14 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   }
 
   private void createIndicesAndConstraints(ReportedSourceType reportedSourceType) {
-    Set<String> cyphers = generateIndexAndConstraints();
-    if (cyphers.isEmpty()) {
-      return;
-    }
     try (Neo4jConnection neo4jDirectConnect = connectionSupplier.get()) {
+      var capabilities = neo4jDirectConnect.capabilities();
+
+      Set<String> cyphers = generateIndexAndConstraints(capabilities);
+      if (cyphers.isEmpty()) {
+        return;
+      }
+
       LOG.info("Adding {} indices and constraints", cyphers.size());
       for (String cypher : cyphers) {
         LOG.info("Executing cypher: {}", cypher);
@@ -158,8 +162,8 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
     return unwindCypher;
   }
 
-  private Set<String> generateIndexAndConstraints() {
-    return CypherGenerator.getIndexAndConstraintsCypherStatements(target);
+  private Set<String> generateIndexAndConstraints(Neo4jCapabilities capabilities) {
+    return CypherGenerator.getIndexAndConstraintsCypherStatements(target, capabilities);
   }
 
   private SerializableFunction<Row, Map<String, Object>> getRowCastingFunction() {

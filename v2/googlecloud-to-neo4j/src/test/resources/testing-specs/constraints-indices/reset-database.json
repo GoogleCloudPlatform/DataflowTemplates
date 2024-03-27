@@ -1,0 +1,51 @@
+{
+  "config": {
+    "reset_db": true,
+    "index_all_properties": false
+  },
+  "sources": [
+    {
+      "type": "text",
+      "format": "EXCEL",
+      "name": "persons",
+      "ordered_field_names": "id,person",
+      "data": [
+        ["0","person0"],
+        ["1","person1"],
+        ["2","person2"],
+        ["3","person3"],
+        ["4","person4"]
+      ]
+    }
+  ],
+  "targets": [
+    {
+      "edge": {
+        "source": "persons",
+        "name": "person import",
+        "mode": "merge",
+        "edge_nodes_match_mode": "merge",
+        "mappings": {
+          "type": "\"SELF_LINKS_TO\"",
+          "source": {
+            "label": "\"Person\"",
+            "key": {
+              "person": "personId"
+            }
+          },
+          "target": {
+            "label": "\"Person\"",
+            "key": {
+              "person": "personId"
+            }
+          },
+          "properties": {
+            "keys": [
+              {"id": "id"}
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

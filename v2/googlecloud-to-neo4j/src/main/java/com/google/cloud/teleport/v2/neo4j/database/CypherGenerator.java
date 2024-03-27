@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -190,19 +191,21 @@ public class CypherGenerator {
    *     com.google.cloud.teleport.v2.neo4j.model.InputRefactoring}
    * @return a list of Cypher schema statements
    */
-  public static Set<String> getIndexAndConstraintsCypherStatements(Target target) {
+  public static Set<String> getIndexAndConstraintsCypherStatements(
+      Target target, Neo4jCapabilities capabilities) {
     TargetType type = target.getType();
     switch (type) {
       case node:
-        return getNodeIndexAndConstraintsCypherStatements(target);
+        return getNodeIndexAndConstraintsCypherStatements(target, capabilities);
       case edge:
-        return getRelationshipIndexAndConstraintsCypherStatements(target);
+        return getRelationshipIndexAndConstraintsCypherStatements(target, capabilities);
       default:
-        throw new IllegalArgumentException(String.format("unexpected target type: %s", type));
+        return Collections.emptySet();
     }
   }
 
-  private static Set<String> getNodeIndexAndConstraintsCypherStatements(Target target) {
+  private static Set<String> getNodeIndexAndConstraintsCypherStatements(
+      Target target, Neo4jCapabilities capabilities) {
     List<String> labels = ModelUtils.getStaticLabels(FragmentType.node, target);
     Set<String> keyProperties =
         filterProperties(
@@ -223,24 +226,34 @@ public class CypherGenerator {
             target,
             (mapping) -> isEntityProperty(mapping, FragmentType.node) && mapping.isIndexed());
 
-    Set<String> cyphers =
-        new LinkedHashSet<>(getEntityKeyConstraintStatements(labels, keyProperties));
-    for (String uniqueProperty : uniqueProperties) {
-      cyphers.add(
-          "CREATE CONSTRAINT IF NOT EXISTS FOR (n:"
-              + StringUtils.join(ModelUtils.makeSpaceSafeValidNeo4jIdentifiers(labels), ":")
-              + ") REQUIRE n."
-              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(uniqueProperty)
-              + " IS UNIQUE");
+    Set<String> cyphers = new LinkedHashSet<>();
+
+    if (capabilities.hasNodeKeyConstraints()) {
+      cyphers.addAll(getEntityKeyConstraintStatements(labels, keyProperties));
     }
-    for (String mandatoryProperty : mandatoryProperties) {
-      cyphers.add(
-          "CREATE CONSTRAINT IF NOT EXISTS FOR (n:"
-              + StringUtils.join(ModelUtils.makeSpaceSafeValidNeo4jIdentifiers(labels), ":")
-              + ") REQUIRE n."
-              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(mandatoryProperty)
-              + " IS NOT NULL");
+
+    if (capabilities.hasNodeUniqueConstraints()) {
+      for (String uniqueProperty : uniqueProperties) {
+        cyphers.add(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:"
+                + StringUtils.join(ModelUtils.makeSpaceSafeValidNeo4jIdentifiers(labels), ":")
+                + ") REQUIRE n."
+                + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(uniqueProperty)
+                + " IS UNIQUE");
+      }
     }
+
+    if (capabilities.hasNodeExistenceConstraints()) {
+      for (String mandatoryProperty : mandatoryProperties) {
+        cyphers.add(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:"
+                + StringUtils.join(ModelUtils.makeSpaceSafeValidNeo4jIdentifiers(labels), ":")
+                + ") REQUIRE n."
+                + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(mandatoryProperty)
+                + " IS NOT NULL");
+      }
+    }
+
     for (String indexedProperty : indexedProperties) {
       cyphers.add(
           "CREATE INDEX IF NOT EXISTS FOR (t:"
@@ -253,12 +266,11 @@ public class CypherGenerator {
     return cyphers;
   }
 
-  // TODO: no-op if < 5.7 || not EE for some or all
-
-  private static Set<String> getRelationshipIndexAndConstraintsCypherStatements(Target target) {
-
+  private static Set<String> getRelationshipIndexAndConstraintsCypherStatements(
+      Target target, Neo4jCapabilities capabilities) {
     Set<String> cyphers = new LinkedHashSet<>();
-    if (target.getEdgeNodesMatchMode() == EdgeNodesSaveMode.merge) {
+    if (capabilities.hasNodeKeyConstraints()
+        && target.getEdgeNodesMatchMode() == EdgeNodesSaveMode.merge) {
       cyphers.addAll(
           getEntityKeyConstraintStatements(
               ModelUtils.getStaticLabels(FragmentType.source, target),
@@ -276,6 +288,7 @@ public class CypherGenerator {
                       mapping.getFragmentType() == FragmentType.target
                           && mapping.getRole() == RoleType.key)));
     }
+
     String type = ModelUtils.getStaticType(target);
     Set<String> keyProperties =
         filterProperties(
@@ -295,30 +308,39 @@ public class CypherGenerator {
             (mapping) -> isEntityProperty(mapping, FragmentType.rel) && mapping.isIndexed());
 
     String escapedType = ModelUtils.makeSpaceSafeValidNeo4jIdentifier(type);
-    for (String relKeyProperty : keyProperties) {
-      cyphers.add(
-          "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
-              + escapedType
-              + "]-() REQUIRE r."
-              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(relKeyProperty)
-              + " IS RELATIONSHIP KEY");
+    if (capabilities.hasRelationshipKeyConstraints()) {
+      for (String relKeyProperty : keyProperties) {
+        cyphers.add(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
+                + escapedType
+                + "]-() REQUIRE r."
+                + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(relKeyProperty)
+                + " IS RELATIONSHIP KEY");
+      }
     }
-    for (String uniqueProperty : uniqueProperties) {
-      cyphers.add(
-          "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
-              + escapedType
-              + "]-() REQUIRE r."
-              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(uniqueProperty)
-              + " IS UNIQUE");
+
+    if (capabilities.hasRelationshipUniqueConstraints()) {
+      for (String uniqueProperty : uniqueProperties) {
+        cyphers.add(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
+                + escapedType
+                + "]-() REQUIRE r."
+                + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(uniqueProperty)
+                + " IS UNIQUE");
+      }
     }
-    for (String mandatoryProperty : mandatoryProperties) {
-      cyphers.add(
-          "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
-              + escapedType
-              + "]-() REQUIRE r."
-              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(mandatoryProperty)
-              + " IS NOT NULL");
+
+    if (capabilities.hasRelationshipExistenceConstraints()) {
+      for (String mandatoryProperty : mandatoryProperties) {
+        cyphers.add(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
+                + escapedType
+                + "]-() REQUIRE r."
+                + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(mandatoryProperty)
+                + " IS NOT NULL");
+      }
     }
+
     for (String indexedProperty : indexedProperties) {
       cyphers.add(
           "CREATE INDEX IF NOT EXISTS FOR ()-[r:"
