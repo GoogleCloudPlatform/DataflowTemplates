@@ -435,9 +435,7 @@ public class PubSubToBigQuery {
                     PythonExternalTextTransformer.FailsafePythonExternalUdf.newBuilder()
                         .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
                         .setFunctionName(options.getPythonExternalTextTransformFunctionName())
-                        .build())
-                .setRowSchema(
-                    PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA);
+                        .build());
         udfOut =
             udfRowsOut.apply(
                 "MapRowsToFailsafeElements",

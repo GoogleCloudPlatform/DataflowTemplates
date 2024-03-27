@@ -176,6 +176,15 @@ public final class PubsubProtoToBigQueryIT extends TemplateTestBase {
         false);
   }
 
+  @Test
+  @TemplateIntegrationTest(
+      value = PubsubProtoToBigQuery.class,
+      template = "PubSub_Proto_to_BigQuery_Flex")
+  @Category(DirectRunnerTest.class)
+  public void pubSubProtoToBigQueryWithNoUdf() throws IOException {
+    pubSubProtoToBigQueryNoUdf(Function.identity(), false);
+  }
+
   private void basePubSubProtoToBigQuery(
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder, boolean preserved)
       throws IOException {
@@ -276,6 +285,99 @@ public final class PubsubProtoToBigQueryIT extends TemplateTestBase {
                 bigQueryTableCheck,
                 pubSubBadProtoTopicCheck,
                 pubSubBadUdfTopicCheck);
+
+    // Assert
+    assertThatResult(result).meetsConditions();
+
+    TableResult records = bigQueryResourceManager.readTable(table);
+
+    // Make sure record can be read and UDF changed name to uppercase
+    assertThatBigQueryRecords(records).hasRecordsUnordered(expectedMessages);
+  }
+
+  private void pubSubProtoToBigQueryNoUdf(
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder, boolean preserved)
+      throws IOException {
+
+    // Arrange
+    // Create BigQuery dataset and table
+    bigQueryResourceManager.createDataset(REGION);
+    Schema bqSchema = generateBigQuerySchema(preserved);
+    TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
+
+    // Create PubSub topics and subscriptions
+    TopicName inputTopic = pubsubResourceManager.createTopic("input");
+    TopicName badProtoOutputTopic = pubsubResourceManager.createTopic("proto-output");
+    TopicName badUdfOutputTopic = pubsubResourceManager.createTopic("udf-output");
+    SubscriptionName inputSubscription =
+        pubsubResourceManager.createSubscription(inputTopic, "sub-1");
+    SubscriptionName badProtoOutputSubscription =
+        pubsubResourceManager.createSubscription(badProtoOutputTopic, "sub-2");
+    SubscriptionName badUdfOutputSubscription =
+        pubsubResourceManager.createSubscription(badUdfOutputTopic, "sub-3");
+
+    // Act
+    LaunchInfo info =
+        launchTemplate(
+            paramsAdder.apply(
+                LaunchConfig.builder(testName, specPath)
+                    .addParameter("protoSchemaPath", getGcsPath(PROTO_SCHEMA))
+                    .addParameter("fullMessageName", User.class.getName())
+                    .addParameter("inputSubscription", inputSubscription.toString())
+                    .addParameter("outputTopic", badProtoOutputTopic.toString())
+                    .addParameter("udfOutputTopic", badUdfOutputTopic.toString())
+                    .addParameter("outputTableSpec", toTableSpecLegacy(table))));
+    assertThatPipeline(info).isRunning();
+
+    // Generate good proto messages
+    List<Map<String, Object>> expectedMessages = new ArrayList<>();
+    for (User user : generateUserMessages(GOOD_MESSAGES_COUNT)) {
+      pubsubResourceManager.publish(inputTopic, ImmutableMap.of(), user.toByteString());
+      Map<String, Object> expectedMessage =
+          new HashMap<>(
+              Map.of(
+                  "name",
+                  user.getName(),
+                  "tier",
+                  user.getTier().name(),
+                  "email",
+                  user.getEmail(),
+                  "address",
+                  Map.of(
+                      "street",
+                      user.getAddress().getStreet(),
+                      preserved ? "apartment_number" : "apartmentNumber",
+                      user.getAddress().getApartmentNumber(),
+                      "city",
+                      user.getAddress().getCity(),
+                      "state",
+                      user.getAddress().getState(),
+                      preserved ? "zip_code" : "zipCode",
+                      user.getAddress().getZipCode())));
+      expectedMessage.put(preserved ? "phone_number" : "phoneNumber", null);
+      expectedMessages.add(expectedMessage);
+    }
+
+    // Generate proto messages that cannot be parsed
+    for (int i = 0; i < BAD_PUB_SUB_MESSAGES_COUNT; i++) {
+      pubsubResourceManager.publish(
+          inputTopic, ImmutableMap.of(), ByteString.copyFromUtf8("bad id " + i));
+    }
+
+    // Generate proto messages that will fail at UDF step
+    for (User user : generateUserMessages(BAD_UDF_MESSAGES_COUNT)) {
+      user = user.toBuilder().setName("INVALID").build();
+      pubsubResourceManager.publish(inputTopic, ImmutableMap.of(), user.toByteString());
+    }
+
+    // Checks for BigQuery output table
+    ConditionCheck bigQueryTableCheck =
+        BigQueryRowsCheck.builder(bigQueryResourceManager, table)
+            .setMinRows(GOOD_MESSAGES_COUNT + BAD_UDF_MESSAGES_COUNT)
+            .build();
+
+    Result result =
+        pipelineOperator().waitForConditionsAndFinish(createConfig(info), bigQueryTableCheck);
 
     // Assert
     assertThatResult(result).meetsConditions();
