@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.neo4j.database;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Throwables;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
@@ -60,6 +59,19 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     this.driverSupplier = driverSupplier;
   }
 
+  public Neo4jCapabilities capabilities() {
+    try (var session = getSession()) {
+      var result =
+          session
+              .run(
+                  "CALL dbms.components() YIELD name, versions, edition WHERE name = $kernel RETURN versions[0], edition",
+                  Map.of("kernel", "Neo4j Kernel"))
+              .single();
+
+      return new Neo4jCapabilities(result.get(0).asString(), result.get(1).asString());
+    }
+  }
+
   /** Helper method to get the Neo4j session. */
   public Session getSession() {
     if (driver == null) {
@@ -87,6 +99,26 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     // Direct connect utility...
     LOG.info("Resetting database");
     try {
+      var capabilities = capabilities();
+
+      if (capabilities.hasCreateOrReplaceDatabase()) {
+        recreateDatabase(capabilities);
+      } else {
+        deleteData();
+        dropSchema(capabilities);
+      }
+    } catch (Exception exception) {
+      LOG.error(
+          "Error resetting database: "
+              + "make sure the configured Neo4j user is allowed to run 'CREATE OR REPLACE DATABASE', "
+              + "'SHOW CONSTRAINTS', 'DROP CONSTRAINT', 'SHOW INDEXES' and 'DROP INDEXES'.\n"
+              + "Alternatively, disable database reset by setting 'reset_db' to false in the job specification.",
+          exception);
+    }
+  }
+
+  private void recreateDatabase(Neo4jCapabilities capabilities) {
+    try {
       String database = !StringUtils.isEmpty(this.database) ? this.database : "neo4j";
       String cypher = "CREATE OR REPLACE DATABASE $db WAIT 60 SECONDS";
       LOG.info(
@@ -96,7 +128,52 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
       executeCypher(
           cypher, Map.of("db", database), databaseResetMetadata("create-replace-database"));
     } catch (Exception ex) {
-      fallbackResetDatabase(ex);
+      deleteData();
+      dropSchema(capabilities);
+    }
+  }
+
+  private void deleteData() {
+    String ddeCypher = "MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS";
+    LOG.info("Executing delete Cypher query: {}", ddeCypher);
+    executeCypher(ddeCypher, databaseResetMetadata("cit-detach-delete"));
+  }
+
+  private void dropSchema(Neo4jCapabilities capabilities) {
+    try (var session = getSession()) {
+      if (capabilities.hasConstraints()) {
+        LOG.info("Dropping constraints");
+        var constraints =
+            session
+                .run(
+                    "SHOW CONSTRAINTS YIELD name",
+                    Map.of(),
+                    databaseResetMetadata("show-constraints"))
+                .list(r -> r.get(0).asString());
+        for (var constraint : constraints) {
+          LOG.info("Dropping constraint {}", constraint);
+
+          executeCypher(
+              "DROP CONSTRAINT $name",
+              Map.of("name", constraint),
+              databaseResetMetadata("drop-constraint"));
+        }
+      }
+
+      LOG.info("Dropping indexes");
+      var indexes =
+          session
+              .run(
+                  "SHOW INDEXES YIELD name, type WHERE type <> 'LOOKUP' RETURN name",
+                  Map.of(),
+                  databaseResetMetadata("show-indexes"))
+              .list(r -> r.get(0).asString());
+      for (var index : indexes) {
+        LOG.info("Dropping index {}", index);
+
+        executeCypher(
+            "DROP INDEX $name", Map.of("name", index), databaseResetMetadata("drop-index"));
+      }
     }
   }
 
@@ -143,27 +220,6 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
   /** Helper method to get the Neo4j driver. */
   private Driver getDriver() {
     return driverSupplier.get();
-  }
-
-  private void fallbackResetDatabase(Exception initialException) {
-    try {
-      String ddeCypher = "MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS";
-      LOG.info("Executing alternative delete Cypher query: {}", ddeCypher);
-      executeCypher(ddeCypher, databaseResetMetadata("cit-detach-delete"));
-      String constraintsDeleteCypher = "CALL apoc.schema.assert({}, {}, true)";
-      LOG.info("Dropping indices & constraints with APOC: {}", constraintsDeleteCypher);
-      executeCypher(constraintsDeleteCypher, databaseResetMetadata("apoc-schema-assert"));
-    } catch (Exception exception) {
-      exception.addSuppressed(initialException);
-      LOG.error(
-          "Error resetting database: "
-              + "make sure the configured Neo4j user is allowed to run 'CREATE OR REPLACE DATABASE'"
-              + " or APOC is installed.\n"
-              + "Alternatively, disable database reset by setting 'reset_db' to false in the job specification.",
-          exception);
-      Throwables.throwIfUnchecked(exception);
-      throw new RuntimeException(exception);
-    }
   }
 
   private static TransactionConfig databaseResetMetadata(String resetMethod) {
