@@ -189,6 +189,7 @@ public class GCSToElasticsearch {
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
+                .setUserAgent("dataflow-gcs-to-elasticsearch-template/v2")
                 .setOptions(options.as(GCSToElasticsearchOptions.class))
                 .build());
 
