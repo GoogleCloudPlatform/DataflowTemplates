@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,9 +13,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
+package com.google.cloud.teleport.v2.spanner.migrations.exceptions;
 
-/** Exceptions thrown during Datastream Change Event conversions. */
+/** Exceptions thrown during Change Event conversions. */
 public class ChangeEventConvertorException extends Exception {
   public ChangeEventConvertorException(Exception e) {
     super(e);

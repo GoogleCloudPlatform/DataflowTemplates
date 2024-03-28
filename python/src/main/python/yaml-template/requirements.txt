@@ -1,1 +1,1 @@
-apache-beam[gcp,yaml]
+apache-beam[dataframe,gcp,test,yaml]==2.54.0

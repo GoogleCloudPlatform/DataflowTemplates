@@ -99,6 +99,16 @@ public final class PubsubProtoToBigQueryIT extends TemplateTestBase {
             + "  data.name = data.name.toUpperCase();\n"
             + "  return JSON.stringify(data);\n"
             + "}");
+
+    gcsClient.createArtifact(
+        "pyudf.py",
+        "import json\n"
+            + "def uppercaseName(value):\n"
+            + "  data = json.loads(value)\n"
+            + "  if data['name'] == \"INVALID\":\n"
+            + "    raise RuntimeError(\"Invalid name!\")\n"
+            + "  data['name'] = data['name'].upper()\n"
+            + "  return json.dumps(data)");
   }
 
   @After
@@ -107,12 +117,22 @@ public final class PubsubProtoToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
+  @TemplateIntegrationTest(
+      value = PubsubProtoToBigQuery.class,
+      template = "PubSub_Proto_to_BigQuery_Flex")
   @Category(DirectRunnerTest.class)
   public void pubSubProtoToBigQueryInferredSchema() throws IOException {
-    basePubSubProtoToBigQuery(Function.identity(), false);
+    basePubSubProtoToBigQuery(
+        b ->
+            b.addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
+                .addParameter("javascriptTextTransformFunctionName", "uppercaseName"),
+        false);
   }
 
   @Test
+  @TemplateIntegrationTest(
+      value = PubsubProtoToBigQuery.class,
+      template = "PubSub_Proto_to_BigQuery_Flex")
   @Category(DirectRunnerTest.class)
   public void pubSubProtoToBigQueryPreserveProtoNames() throws IOException {
     gcsClient.uploadArtifact(
@@ -122,17 +142,38 @@ public final class PubsubProtoToBigQueryIT extends TemplateTestBase {
     basePubSubProtoToBigQuery(
         b ->
             b.addParameter("preserveProtoFieldNames", "true")
-                .addParameter("bigQueryTableSchemaPath", getGcsPath(BIGQUERY_PRESERVED_SCHEMA)),
+                .addParameter("bigQueryTableSchemaPath", getGcsPath(BIGQUERY_PRESERVED_SCHEMA))
+                .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
+                .addParameter("javascriptTextTransformFunctionName", "uppercaseName"),
         true);
   }
 
   @Test
+  @TemplateIntegrationTest(
+      value = PubsubProtoToBigQuery.class,
+      template = "PubSub_Proto_to_BigQuery_Flex")
   public void pubSubProtoToBigQueryUdfCustomOutputTopic() throws IOException {
     gcsClient.uploadArtifact(
         BIGQUERY_SCHEMA, Resources.getResource(TEST_DIR_PREFIX + BIGQUERY_SCHEMA).getPath());
 
     basePubSubProtoToBigQuery(
-        b -> b.addParameter("bigQueryTableSchemaPath", getGcsPath(BIGQUERY_SCHEMA)), false);
+        b ->
+            b.addParameter("bigQueryTableSchemaPath", getGcsPath(BIGQUERY_SCHEMA))
+                .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
+                .addParameter("javascriptTextTransformFunctionName", "uppercaseName"),
+        false);
+  }
+
+  @Test
+  @TemplateIntegrationTest(
+      value = PubsubProtoToBigQuery.class,
+      template = "PubSub_Proto_to_BigQuery_Xlang")
+  public void pubSubProtoToBigQueryWithPythonUdf() throws IOException {
+    basePubSubProtoToBigQuery(
+        b ->
+            b.addParameter("pythonExternalTextTransformGcsPath", getGcsPath("pyudf.py"))
+                .addParameter("pythonExternalTextTransformFunctionName", "uppercaseName"),
+        false);
   }
 
   private void basePubSubProtoToBigQuery(
@@ -166,8 +207,6 @@ public final class PubsubProtoToBigQueryIT extends TemplateTestBase {
                     .addParameter("inputSubscription", inputSubscription.toString())
                     .addParameter("outputTopic", badProtoOutputTopic.toString())
                     .addParameter("udfOutputTopic", badUdfOutputTopic.toString())
-                    .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
-                    .addParameter("javascriptTextTransformFunctionName", "uppercaseName")
                     .addParameter("outputTableSpec", toTableSpecLegacy(table))));
     assertThatPipeline(info).isRunning();
 

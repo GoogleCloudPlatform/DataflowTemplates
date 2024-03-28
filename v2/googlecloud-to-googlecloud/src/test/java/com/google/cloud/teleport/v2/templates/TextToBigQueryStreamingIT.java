@@ -52,6 +52,7 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
   private static final String SCHEMA_PATH = "TextToBigQueryStreamingIT/schema.json";
   private static final String INPUT_PATH = "TextToBigQueryStreamingIT/input.txt";
   private static final String UDF_PATH = "TextToBigQueryStreamingIT/udf.js";
+  private static final String PYUDF_PATH = "TextToBigQueryStreamingIT/pyudf.py";
   private static final Map<String, Object> EXPECTED = ImmutableMap.of("BOOK_ID", 1, "TITLE", "ABC");
 
   private BigQueryResourceManager bigQueryClient;
@@ -67,17 +68,41 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
   }
 
   @Test
+  @TemplateIntegrationTest(
+      value = TextToBigQueryStreaming.class,
+      template = "Stream_GCS_Text_to_BigQuery_Flex")
   public void testTextToBigQuery() throws IOException {
-    testTextToBigQuery(Function.identity()); // no extra parameters to set
+    gcsClient.uploadArtifact("udf.js", Resources.getResource(UDF_PATH).getPath());
+    testTextToBigQuery(
+        b ->
+            b.addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
+                .addParameter("javascriptTextTransformFunctionName", "identity"));
   }
 
   @Test
+  @TemplateIntegrationTest(
+      value = TextToBigQueryStreaming.class,
+      template = "Stream_GCS_Text_to_BigQuery_Flex")
   public void testTextToBigQueryWithStorageApi() throws IOException {
     testTextToBigQuery(
         b ->
             b.addParameter("useStorageWriteApi", "true")
                 .addParameter("numStorageWriteApiStreams", "1")
-                .addParameter("storageWriteApiTriggeringFrequencySec", "5"));
+                .addParameter("storageWriteApiTriggeringFrequencySec", "5")
+                .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
+                .addParameter("javascriptTextTransformFunctionName", "identity"));
+  }
+
+  @Test
+  @TemplateIntegrationTest(
+      value = TextToBigQueryStreaming.class,
+      template = "Stream_GCS_Text_to_BigQuery_Xlang")
+  public void testTextToBigQueryWithPythonUDFs() throws IOException {
+    gcsClient.uploadArtifact("pyudf.py", Resources.getResource(PYUDF_PATH).getPath());
+    testTextToBigQuery(
+        b ->
+            b.addParameter("pythonExternalTextTransformGcsPath", getGcsPath("pyudf.py"))
+                .addParameter("pythonExternalTextTransformFunctionName", "identity"));
   }
 
   private void testTextToBigQuery(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
@@ -102,8 +127,6 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
                 LaunchConfig.builder(testName, specPath)
                     .addParameter("JSONPath", getGcsPath("schema.json"))
                     .addParameter("inputFilePattern", getGcsPath("input.txt"))
-                    .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
-                    .addParameter("javascriptTextTransformFunctionName", "identity")
                     .addParameter("outputTable", toTableSpecLegacy(tableId))
                     .addParameter("bigQueryLoadingTemporaryDirectory", getGcsPath("bq-tmp"))));
     assertThatPipeline(info).isRunning();

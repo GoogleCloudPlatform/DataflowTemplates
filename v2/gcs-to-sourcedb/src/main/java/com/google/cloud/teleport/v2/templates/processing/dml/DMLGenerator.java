@@ -182,7 +182,7 @@ public class DMLGenerator {
 
       deleteValues += " " + colName + " = " + colValue;
       if (index + 1 < pkcolumnNameValues.size()) {
-        deleteValues += ",";
+        deleteValues += " AND ";
       }
       index++;
     }

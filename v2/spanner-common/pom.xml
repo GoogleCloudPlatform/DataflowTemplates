@@ -33,6 +33,11 @@
             <artifactId>common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-truthmatchers</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
