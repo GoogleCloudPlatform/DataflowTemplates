@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * Package for processing related to Spanner.
- */
+/** Package for processing related to Spanner. */
 package com.google.cloud.teleport.v2.spanner;

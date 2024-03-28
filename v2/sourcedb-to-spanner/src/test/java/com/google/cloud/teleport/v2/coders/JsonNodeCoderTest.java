@@ -15,40 +15,37 @@
  */
 package com.google.cloud.teleport.v2.coders;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.Test;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
-/**
- * Unit tests for {@link com.google.cloud.teleport.v2.coders.JsonNodeCoder} class.
- */
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import org.junit.Test;
+
+/** Unit tests for {@link com.google.cloud.teleport.v2.coders.JsonNodeCoder} class. */
 public class JsonNodeCoderTest {
 
-    /**
-     * Test whether {@link JsonNodeCoder} is able to encode/decode a {@link JsonNode} correctly.
-     *
-     * @throws IOException
-     */
-    @Test
-    public void jsonNodeCoderTestBasic() throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode originalEvent = mapper.readTree("{\"col1\":1, \"col2\": \"value\"}");
+  /**
+   * Test whether {@link JsonNodeCoder} is able to encode/decode a {@link JsonNode} correctly.
+   *
+   * @throws IOException
+   */
+  @Test
+  public void jsonNodeCoderTestBasic() throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode originalEvent = mapper.readTree("{\"col1\":1, \"col2\": \"value\"}");
 
-        JsonNodeCoder coder = JsonNodeCoder.of();
-        try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
-            coder.encode(originalEvent, bos);
-            try (ByteArrayInputStream bin = new ByteArrayInputStream(bos.toByteArray())) {
-                JsonNode decodedEvent = coder.decode(bin);
-                assertThat(decodedEvent, is(equalTo(originalEvent)));
-            }
-        }
+    JsonNodeCoder coder = JsonNodeCoder.of();
+    try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+      coder.encode(originalEvent, bos);
+      try (ByteArrayInputStream bin = new ByteArrayInputStream(bos.toByteArray())) {
+        JsonNode decodedEvent = coder.decode(bin);
+        assertThat(decodedEvent, is(equalTo(originalEvent)));
+      }
     }
+  }
 }

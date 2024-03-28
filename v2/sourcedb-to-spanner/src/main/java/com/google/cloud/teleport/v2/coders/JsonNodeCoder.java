@@ -17,34 +17,31 @@ package com.google.cloud.teleport.v2.coders;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.beam.sdk.coders.CustomCoder;
-import org.apache.commons.io.IOUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import org.apache.beam.sdk.coders.CustomCoder;
+import org.apache.commons.io.IOUtils;
 
-/**
- * Coder Class for {@link JsonNode} class.
- */
+/** Coder Class for {@link JsonNode} class. */
 public class JsonNodeCoder extends CustomCoder<JsonNode> {
 
-    public static JsonNodeCoder of() {
-        return new JsonNodeCoder();
-    }
+  public static JsonNodeCoder of() {
+    return new JsonNodeCoder();
+  }
 
-    @Override
-    public void encode(JsonNode node, OutputStream outStream) throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        String nodeString = mapper.writeValueAsString(node);
-        outStream.write(nodeString.getBytes());
-    }
+  @Override
+  public void encode(JsonNode node, OutputStream outStream) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    String nodeString = mapper.writeValueAsString(node);
+    outStream.write(nodeString.getBytes());
+  }
 
-    @Override
-    public JsonNode decode(InputStream inStream) throws IOException {
-        byte[] bytes = IOUtils.toByteArray(inStream);
-        ObjectMapper mapper = new ObjectMapper();
-        String json = new String(bytes);
-        return mapper.readTree(json);
-    }
+  @Override
+  public JsonNode decode(InputStream inStream) throws IOException {
+    byte[] bytes = IOUtils.toByteArray(inStream);
+    ObjectMapper mapper = new ObjectMapper();
+    String json = new String(bytes);
+    return mapper.readTree(json);
+  }
 }

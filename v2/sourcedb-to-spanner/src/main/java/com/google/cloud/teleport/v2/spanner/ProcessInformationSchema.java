@@ -32,19 +32,19 @@ import org.slf4j.LoggerFactory;
  * the updated information schema.
  */
 public class ProcessInformationSchema {
-    private static final Logger LOG = LoggerFactory.getLogger(ProcessInformationSchema.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ProcessInformationSchema.class);
 
-    public static Ddl getInformationSchemaAsDdl(SpannerConfig spannerConfig) {
-        SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-        DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
-        Dialect dialect =
-                databaseAdminClient
-                        .getDatabase(spannerConfig.getInstanceId().get(), spannerConfig.getDatabaseId().get())
-                        .getDialect();
-        BatchClient batchClient = spannerAccessor.getBatchClient();
-        BatchReadOnlyTransaction context =
-                batchClient.batchReadOnlyTransaction(TimestampBound.strong());
-        InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
-        return scanner.scan();
-    }
+  public static Ddl getInformationSchemaAsDdl(SpannerConfig spannerConfig) {
+    SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+    DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
+    Dialect dialect =
+        databaseAdminClient
+            .getDatabase(spannerConfig.getInstanceId().get(), spannerConfig.getDatabaseId().get())
+            .getDialect();
+    BatchClient batchClient = spannerAccessor.getBatchClient();
+    BatchReadOnlyTransaction context =
+        batchClient.batchReadOnlyTransaction(TimestampBound.strong());
+    InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
+    return scanner.scan();
+  }
 }
