@@ -2,110 +2,66 @@
   "SessionName": "NewSession",
   "EditorName": "",
   "DatabaseType": "mysql",
-  "DatabaseName": "l1",
+  "DatabaseName": "simpleit",
   "Dialect": "google_standard_sql",
   "Notes": null,
   "Tags": null,
   "SpSchema": {
-    "t77": {
-      "Name": "Articles",
+    "t136": {
+      "Name": "Category",
       "ColIds": [
-        "c83",
-        "c84",
-        "c85",
-        "c86"
+        "c142",
+        "c143"
       ],
       "ShardIdColumn": "",
       "ColDefs": {
-        "c83": {
-          "Name": "id",
+        "c142": {
+          "Name": "category_id",
           "T": {
             "Name": "INT64",
             "Len": 0,
             "IsArray": false
           },
           "NotNull": true,
-          "Comment": "From: id int(10)",
-          "Id": "c83"
+          "Comment": "From: category_id tinyint(3)",
+          "Id": "c142"
         },
-        "c84": {
-          "Name": "name",
+        "c143": {
+          "Name": "full_name",
           "T": {
             "Name": "STRING",
-            "Len": 200,
+            "Len": 25,
             "IsArray": false
           },
           "NotNull": false,
-          "Comment": "From: name varchar(200)",
-          "Id": "c84"
-        },
-        "c85": {
-          "Name": "published_date",
-          "T": {
-            "Name": "DATE",
-            "Len": 0,
-            "IsArray": false
-          },
-          "NotNull": false,
-          "Comment": "From: published_date date",
-          "Id": "c85"
-        },
-        "c86": {
-          "Name": "author_id",
-          "T": {
-            "Name": "INT64",
-            "Len": 0,
-            "IsArray": false
-          },
-          "NotNull": false,
-          "Comment": "From: author_id int(10)",
-          "Id": "c86"
+          "Comment": "From: name varchar(25)",
+          "Id": "c143"
         }
       },
       "PrimaryKeys": [
         {
-          "ColId": "c83",
-          "Desc": false,
-          "Order": 2
-        },
-        {
-          "ColId": "c86",
+          "ColId": "c142",
           "Desc": false,
           "Order": 1
         }
       ],
-      "ForeignKeys": [],
-      "Indexes": [
-        {
-          "Name": "author_id",
-          "TableId": "t77",
-          "Unique": false,
-          "Keys": [
-            {
-              "ColId": "c86",
-              "Desc": false,
-              "Order": 1
-            }
-          ],
-          "Id": "i88",
-          "StoredColumnIds": null
-        }
-      ],
-      "ParentId": "t81",
-      "Comment": "Spanner schema for source table Articles",
-      "Id": "t77"
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table Category",
+      "Id": "t136"
     },
-    "t78": {
+    "t137": {
       "Name": "Movie",
       "ColIds": [
-        "c100",
-        "c101",
-        "c102",
-        "c103"
+        "c156",
+        "c157",
+        "c158",
+        "c159"
       ],
       "ShardIdColumn": "",
       "ColDefs": {
-        "c100": {
+        "c156": {
           "Name": "id",
           "T": {
             "Name": "INT64",
@@ -114,9 +70,9 @@
           },
           "NotNull": true,
           "Comment": "From: id int(10)",
-          "Id": "c100"
+          "Id": "c156"
         },
-        "c101": {
+        "c157": {
           "Name": "name",
           "T": {
             "Name": "STRING",
@@ -125,9 +81,9 @@
           },
           "NotNull": false,
           "Comment": "From: name varchar(200)",
-          "Id": "c101"
+          "Id": "c157"
         },
-        "c102": {
+        "c158": {
           "Name": "actor",
           "T": {
             "Name": "NUMERIC",
@@ -136,9 +92,9 @@
           },
           "NotNull": false,
           "Comment": "From: actor decimal(65,30)",
-          "Id": "c102"
+          "Id": "c158"
         },
-        "c103": {
+        "c159": {
           "Name": "startTime",
           "T": {
             "Name": "TIMESTAMP",
@@ -147,12 +103,12 @@
           },
           "NotNull": false,
           "Comment": "From: startTime timestamp",
-          "Id": "c103"
+          "Id": "c159"
         }
       },
       "PrimaryKeys": [
         {
-          "ColId": "c100",
+          "ColId": "c156",
           "Desc": false,
           "Order": 1
         }
@@ -161,192 +117,17 @@
       "Indexes": null,
       "ParentId": "",
       "Comment": "Spanner schema for source table Movie",
-      "Id": "t78"
+      "Id": "t137"
     },
-    "t79": {
-      "Name": "Books",
-      "ColIds": [
-        "c89",
-        "c90",
-        "c91"
-      ],
-      "ShardIdColumn": "",
-      "ColDefs": {
-        "c89": {
-          "Name": "id",
-          "T": {
-            "Name": "INT64",
-            "Len": 0,
-            "IsArray": false
-          },
-          "NotNull": true,
-          "Comment": "From: id int(10)",
-          "Id": "c89"
-        },
-        "c90": {
-          "Name": "title",
-          "T": {
-            "Name": "STRING",
-            "Len": 200,
-            "IsArray": false
-          },
-          "NotNull": false,
-          "Comment": "From: title varchar(200)",
-          "Id": "c90"
-        },
-        "c91": {
-          "Name": "author_id",
-          "T": {
-            "Name": "INT64",
-            "Len": 0,
-            "IsArray": false
-          },
-          "NotNull": false,
-          "Comment": "From: author_id int(10)",
-          "Id": "c91"
-        }
-      },
-      "PrimaryKeys": [
-        {
-          "ColId": "c89",
-          "Desc": false,
-          "Order": 1
-        }
-      ],
-      "ForeignKeys": [
-        {
-          "Name": "Books_ibfk_1",
-          "ColIds": [
-            "c91"
-          ],
-          "ReferTableId": "t81",
-          "ReferColumnIds": [
-            "c98"
-          ],
-          "Id": "f87"
-        }
-      ],
-      "Indexes": [
-        {
-          "Name": "author_id_6",
-          "TableId": "t79",
-          "Unique": false,
-          "Keys": [
-            {
-              "ColId": "c91",
-              "Desc": false,
-              "Order": 1
-            }
-          ],
-          "Id": "i104",
-          "StoredColumnIds": null
-        }
-      ],
-      "ParentId": "",
-      "Comment": "Spanner schema for source table Books",
-      "Id": "t79"
-    },
-    "t80": {
-      "Name": "Users",
-      "ColIds": [
-        "c92",
-        "c93",
-        "c94",
-        "c95",
-        "c96",
-        "c97"
-      ],
-      "ShardIdColumn": "",
-      "ColDefs": {
-        "c92": {
-          "Name": "id",
-          "T": {
-            "Name": "INT64",
-            "Len": 0,
-            "IsArray": false
-          },
-          "NotNull": true,
-          "Comment": "From: id int(10)",
-          "Id": "c92"
-        },
-        "c93": {
-          "Name": "name",
-          "T": {
-            "Name": "STRING",
-            "Len": 200,
-            "IsArray": false
-          },
-          "NotNull": false,
-          "Comment": "From: name varchar(200)",
-          "Id": "c93"
-        },
-        "c94": {
-          "Name": "age_spanner",
-          "T": {
-            "Name": "INT64",
-            "Len": 0,
-            "IsArray": false
-          },
-          "NotNull": false,
-          "Comment": "From: age bigint(19)",
-          "Id": "c94"
-        },
-        "c95": {
-          "Name": "subscribed",
-          "T": {
-            "Name": "BOOL",
-            "Len": 0,
-            "IsArray": false
-          },
-          "NotNull": false,
-          "Comment": "From: subscribed bit(1)",
-          "Id": "c95"
-        },
-        "c96": {
-          "Name": "plan",
-          "T": {
-            "Name": "STRING",
-            "Len": 1,
-            "IsArray": false
-          },
-          "NotNull": false,
-          "Comment": "From: plan char(1)",
-          "Id": "c96"
-        },
-        "c97": {
-          "Name": "startDate",
-          "T": {
-            "Name": "DATE",
-            "Len": 0,
-            "IsArray": false
-          },
-          "NotNull": false,
-          "Comment": "From: startDate date",
-          "Id": "c97"
-        }
-      },
-      "PrimaryKeys": [
-        {
-          "ColId": "c92",
-          "Desc": false,
-          "Order": 1
-        }
-      ],
-      "ForeignKeys": null,
-      "Indexes": null,
-      "ParentId": "",
-      "Comment": "Spanner schema for source table Users",
-      "Id": "t80"
-    },
-    "t81": {
+    "t138": {
       "Name": "Authors",
       "ColIds": [
-        "c98",
-        "c99"
+        "c147",
+        "c148"
       ],
       "ShardIdColumn": "",
       "ColDefs": {
-        "c98": {
+        "c147": {
           "Name": "author_id",
           "T": {
             "Name": "INT64",
@@ -355,9 +136,9 @@
           },
           "NotNull": true,
           "Comment": "From: author_id int(10)",
-          "Id": "c98"
+          "Id": "c147"
         },
-        "c99": {
+        "c148": {
           "Name": "name",
           "T": {
             "Name": "STRING",
@@ -366,12 +147,12 @@
           },
           "NotNull": false,
           "Comment": "From: name varchar(200)",
-          "Id": "c99"
+          "Id": "c148"
         }
       },
       "PrimaryKeys": [
         {
-          "ColId": "c98",
+          "ColId": "c147",
           "Desc": false,
           "Order": 1
         }
@@ -380,27 +161,289 @@
       "Indexes": null,
       "ParentId": "",
       "Comment": "Spanner schema for source table Authors",
-      "Id": "t81"
+      "Id": "t138"
+    },
+    "t139": {
+      "Name": "Articles",
+      "ColIds": [
+        "c152",
+        "c153",
+        "c154",
+        "c155"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c152": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c152"
+        },
+        "c153": {
+          "Name": "name",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: name varchar(200)",
+          "Id": "c153"
+        },
+        "c154": {
+          "Name": "published_date",
+          "T": {
+            "Name": "DATE",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: published_date date",
+          "Id": "c154"
+        },
+        "c155": {
+          "Name": "author_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: author_id int(10)",
+          "Id": "c155"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c152",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c155",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [],
+      "Indexes": [
+        {
+          "Name": "author_id",
+          "TableId": "t139",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c155",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i167",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentId": "t138",
+      "Comment": "Spanner schema for source table Articles",
+      "Id": "t139"
+    },
+    "t140": {
+      "Name": "Books",
+      "ColIds": [
+        "c149",
+        "c150",
+        "c151"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c149": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c149"
+        },
+        "c150": {
+          "Name": "title",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: title varchar(200)",
+          "Id": "c150"
+        },
+        "c151": {
+          "Name": "author_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: author_id int(10)",
+          "Id": "c151"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c149",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "Books_ibfk_1",
+          "ColIds": [
+            "c151"
+          ],
+          "ReferTableId": "t138",
+          "ReferColumnIds": [
+            "c147"
+          ],
+          "Id": "f145"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "author_id_6",
+          "TableId": "t140",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c151",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i166",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentId": "",
+      "Comment": "Spanner schema for source table Books",
+      "Id": "t140"
+    },
+    "t141": {
+      "Name": "Users",
+      "ColIds": [
+        "c160",
+        "c161",
+        "c162",
+        "c163",
+        "c164",
+        "c165"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c160": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c160"
+        },
+        "c161": {
+          "Name": "name",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: name varchar(200)",
+          "Id": "c161"
+        },
+        "c162": {
+          "Name": "age_spanner",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: age bigint(19)",
+          "Id": "c162"
+        },
+        "c163": {
+          "Name": "subscribed",
+          "T": {
+            "Name": "BOOL",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: subscribed bit(1)",
+          "Id": "c163"
+        },
+        "c164": {
+          "Name": "plan",
+          "T": {
+            "Name": "STRING",
+            "Len": 1,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: plan char(1)",
+          "Id": "c164"
+        },
+        "c165": {
+          "Name": "startDate",
+          "T": {
+            "Name": "DATE",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: startDate date",
+          "Id": "c165"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c160",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table Users",
+      "Id": "t141"
     }
   },
   "SyntheticPKeys": {},
   "SrcSchema": {
-    "t77": {
-      "Name": "Articles",
-      "Schema": "l1",
+    "t136": {
+      "Name": "Category",
+      "Schema": "simpleit",
       "ColIds": [
-        "c83",
-        "c84",
-        "c85",
-        "c86"
+        "c142",
+        "c143",
+        "c144"
       ],
       "ColDefs": {
-        "c83": {
-          "Name": "id",
+        "c142": {
+          "Name": "category_id",
           "Type": {
-            "Name": "int",
+            "Name": "tinyint",
             "Mods": [
-              10
+              3
             ],
             "ArrayBounds": null
           },
@@ -413,14 +456,14 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c83"
+          "Id": "c142"
         },
-        "c84": {
+        "c143": {
           "Name": "name",
           "Type": {
             "Name": "varchar",
             "Mods": [
-              200
+              25
             ],
             "ArrayBounds": null
           },
@@ -433,12 +476,12 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c84"
+          "Id": "c143"
         },
-        "c85": {
-          "Name": "published_date",
+        "c144": {
+          "Name": "last_update",
           "Type": {
-            "Name": "date",
+            "Name": "timestamp",
             "Mods": null,
             "ArrayBounds": null
           },
@@ -451,79 +494,31 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c85"
-        },
-        "c86": {
-          "Name": "author_id",
-          "Type": {
-            "Name": "int",
-            "Mods": [
-              10
-            ],
-            "ArrayBounds": null
-          },
-          "NotNull": false,
-          "Ignored": {
-            "Check": false,
-            "Identity": false,
-            "Default": false,
-            "Exclusion": false,
-            "ForeignKey": false,
-            "AutoIncrement": false
-          },
-          "Id": "c86"
+          "Id": "c144"
         }
       },
       "PrimaryKeys": [
         {
-          "ColId": "c83",
+          "ColId": "c142",
           "Desc": false,
           "Order": 1
         }
       ],
-      "ForeignKeys": [
-        {
-          "Name": "Articles_ibfk_1",
-          "ColIds": [
-            "c86"
-          ],
-          "ReferTableId": "t81",
-          "ReferColumnIds": [
-            "c98"
-          ],
-          "OnDelete": "",
-          "OnUpdate": "",
-          "Id": "f82"
-        }
-      ],
-      "Indexes": [
-        {
-          "Name": "author_id",
-          "Unique": false,
-          "Keys": [
-            {
-              "ColId": "c86",
-              "Desc": false,
-              "Order": 1
-            }
-          ],
-          "Id": "i88",
-          "StoredColumnIds": null
-        }
-      ],
-      "Id": "t77"
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t136"
     },
-    "t78": {
+    "t137": {
       "Name": "Movie",
-      "Schema": "l1",
+      "Schema": "simpleit",
       "ColIds": [
-        "c100",
-        "c101",
-        "c102",
-        "c103"
+        "c156",
+        "c157",
+        "c158",
+        "c159"
       ],
       "ColDefs": {
-        "c100": {
+        "c156": {
           "Name": "id",
           "Type": {
             "Name": "int",
@@ -541,9 +536,9 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c100"
+          "Id": "c156"
         },
-        "c101": {
+        "c157": {
           "Name": "name",
           "Type": {
             "Name": "varchar",
@@ -561,9 +556,9 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c101"
+          "Id": "c157"
         },
-        "c102": {
+        "c158": {
           "Name": "actor",
           "Type": {
             "Name": "decimal",
@@ -582,9 +577,9 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c102"
+          "Id": "c158"
         },
-        "c103": {
+        "c159": {
           "Name": "startTime",
           "Type": {
             "Name": "timestamp",
@@ -600,30 +595,91 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c103"
+          "Id": "c159"
         }
       },
       "PrimaryKeys": [
         {
-          "ColId": "c100",
+          "ColId": "c156",
           "Desc": false,
           "Order": 1
         }
       ],
       "ForeignKeys": null,
       "Indexes": null,
-      "Id": "t78"
+      "Id": "t137"
     },
-    "t79": {
-      "Name": "Books",
-      "Schema": "l1",
+    "t138": {
+      "Name": "Authors",
+      "Schema": "simpleit",
       "ColIds": [
-        "c89",
-        "c90",
-        "c91"
+        "c147",
+        "c148"
       ],
       "ColDefs": {
-        "c89": {
+        "c147": {
+          "Name": "author_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c147"
+        },
+        "c148": {
+          "Name": "name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c148"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c147",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t138"
+    },
+    "t139": {
+      "Name": "Articles",
+      "Schema": "simpleit",
+      "ColIds": [
+        "c152",
+        "c153",
+        "c154",
+        "c155"
+      ],
+      "ColDefs": {
+        "c152": {
           "Name": "id",
           "Type": {
             "Name": "int",
@@ -641,9 +697,136 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c89"
+          "Id": "c152"
         },
-        "c90": {
+        "c153": {
+          "Name": "name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c153"
+        },
+        "c154": {
+          "Name": "published_date",
+          "Type": {
+            "Name": "date",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c154"
+        },
+        "c155": {
+          "Name": "author_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c155"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c152",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "Articles_ibfk_1",
+          "ColIds": [
+            "c155"
+          ],
+          "ReferTableId": "t138",
+          "ReferColumnIds": [
+            "c147"
+          ],
+          "OnDelete": "",
+          "OnUpdate": "",
+          "Id": "f146"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "author_id",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c155",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i167",
+          "StoredColumnIds": null
+        }
+      ],
+      "Id": "t139"
+    },
+    "t140": {
+      "Name": "Books",
+      "Schema": "simpleit",
+      "ColIds": [
+        "c149",
+        "c150",
+        "c151"
+      ],
+      "ColDefs": {
+        "c149": {
+          "Name": "id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c149"
+        },
+        "c150": {
           "Name": "title",
           "Type": {
             "Name": "varchar",
@@ -661,9 +844,9 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c90"
+          "Id": "c150"
         },
-        "c91": {
+        "c151": {
           "Name": "author_id",
           "Type": {
             "Name": "int",
@@ -681,12 +864,12 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c91"
+          "Id": "c151"
         }
       },
       "PrimaryKeys": [
         {
-          "ColId": "c89",
+          "ColId": "c149",
           "Desc": false,
           "Order": 1
         }
@@ -695,47 +878,47 @@
         {
           "Name": "Books_ibfk_1",
           "ColIds": [
-            "c91"
+            "c151"
           ],
-          "ReferTableId": "t81",
+          "ReferTableId": "t138",
           "ReferColumnIds": [
-            "c98"
+            "c147"
           ],
           "OnDelete": "",
           "OnUpdate": "",
-          "Id": "f87"
+          "Id": "f145"
         }
       ],
       "Indexes": [
         {
-          "Name": "author_id",
+          "Name": "author_id_6",
           "Unique": false,
           "Keys": [
             {
-              "ColId": "c91",
+              "ColId": "c151",
               "Desc": false,
               "Order": 1
             }
           ],
-          "Id": "i104",
+          "Id": "i166",
           "StoredColumnIds": null
         }
       ],
-      "Id": "t79"
+      "Id": "t140"
     },
-    "t80": {
+    "t141": {
       "Name": "Users",
-      "Schema": "l1",
+      "Schema": "simpleit",
       "ColIds": [
-        "c92",
-        "c93",
-        "c94",
-        "c95",
-        "c96",
-        "c97"
+        "c160",
+        "c161",
+        "c162",
+        "c163",
+        "c164",
+        "c165"
       ],
       "ColDefs": {
-        "c92": {
+        "c160": {
           "Name": "id",
           "Type": {
             "Name": "int",
@@ -753,9 +936,9 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c92"
+          "Id": "c160"
         },
-        "c93": {
+        "c161": {
           "Name": "name",
           "Type": {
             "Name": "varchar",
@@ -773,9 +956,9 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c93"
+          "Id": "c161"
         },
-        "c94": {
+        "c162": {
           "Name": "age",
           "Type": {
             "Name": "bigint",
@@ -793,9 +976,9 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c94"
+          "Id": "c162"
         },
-        "c95": {
+        "c163": {
           "Name": "subscribed",
           "Type": {
             "Name": "bit",
@@ -813,9 +996,9 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c95"
+          "Id": "c163"
         },
-        "c96": {
+        "c164": {
           "Name": "plan",
           "Type": {
             "Name": "char",
@@ -833,9 +1016,9 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c96"
+          "Id": "c164"
         },
-        "c97": {
+        "c165": {
           "Name": "startDate",
           "Type": {
             "Name": "date",
@@ -851,86 +1034,99 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c97"
+          "Id": "c165"
         }
       },
       "PrimaryKeys": [
         {
-          "ColId": "c92",
+          "ColId": "c160",
           "Desc": false,
           "Order": 1
         }
       ],
       "ForeignKeys": null,
       "Indexes": null,
-      "Id": "t80"
-    },
-    "t81": {
-      "Name": "Authors",
-      "Schema": "l1",
-      "ColIds": [
-        "c98",
-        "c99"
-      ],
-      "ColDefs": {
-        "c98": {
-          "Name": "author_id",
-          "Type": {
-            "Name": "int",
-            "Mods": [
-              10
-            ],
-            "ArrayBounds": null
-          },
-          "NotNull": true,
-          "Ignored": {
-            "Check": false,
-            "Identity": false,
-            "Default": false,
-            "Exclusion": false,
-            "ForeignKey": false,
-            "AutoIncrement": false
-          },
-          "Id": "c98"
-        },
-        "c99": {
-          "Name": "name",
-          "Type": {
-            "Name": "varchar",
-            "Mods": [
-              200
-            ],
-            "ArrayBounds": null
-          },
-          "NotNull": false,
-          "Ignored": {
-            "Check": false,
-            "Identity": false,
-            "Default": false,
-            "Exclusion": false,
-            "ForeignKey": false,
-            "AutoIncrement": false
-          },
-          "Id": "c99"
-        }
-      },
-      "PrimaryKeys": [
-        {
-          "ColId": "c98",
-          "Desc": false,
-          "Order": 1
-        }
-      ],
-      "ForeignKeys": null,
-      "Indexes": null,
-      "Id": "t81"
+      "Id": "t141"
     }
   },
-  "SchemaIssues": {},
+  "SchemaIssues": {
+    "t136": {
+      "ColumnLevelIssues": {
+        "c142": [
+          14
+        ],
+        "c143": []
+      },
+      "TableLevelIssues": null
+    },
+    "t137": {
+      "ColumnLevelIssues": {
+        "c156": [
+          14
+        ],
+        "c157": [],
+        "c158": [],
+        "c159": []
+      },
+      "TableLevelIssues": null
+    },
+    "t138": {
+      "ColumnLevelIssues": {
+        "c147": [
+          14
+        ],
+        "c148": []
+      },
+      "TableLevelIssues": null
+    },
+    "t139": {
+      "ColumnLevelIssues": {
+        "c152": [
+          14
+        ],
+        "c153": [],
+        "c154": [],
+        "c155": [
+          14,
+          19,
+          19,
+          19
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t140": {
+      "ColumnLevelIssues": {
+        "c149": [
+          14
+        ],
+        "c151": [
+          14
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t141": {
+      "ColumnLevelIssues": {
+        "c160": [
+          14
+        ],
+        "c161": [],
+        "c162": [],
+        "c163": [],
+        "c164": [],
+        "c165": []
+      },
+      "TableLevelIssues": null
+    }
+  },
   "Location": {},
   "TimezoneOffset": "+00:00",
   "SpDialect": "google_standard_sql",
   "UniquePKey": {},
   "Rules": [],
-  "IsSharded": false
+  "IsSharded": false,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false
 }

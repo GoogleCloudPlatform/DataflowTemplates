@@ -1,9 +1,14 @@
+CREATE TABLE IF NOT EXISTS Category (
+  category_id INT64 NOT NULL,
+  full_name STRING(25),
+) PRIMARY KEY(category_id);
+
 CREATE TABLE IF NOT EXISTS Movie (
-    id INT64 NOT NULL,
-    name STRING(200),
-    actor NUMERIC,
-    startTime TIMESTAMP
-) PRIMARY KEY (id);
+  id INT64 NOT NULL,
+  name STRING(200),
+  actor NUMERIC,
+  startTime TIMESTAMP,
+) PRIMARY KEY(id);
 
 CREATE TABLE IF NOT EXISTS Users (
     id INT64 NOT NULL,
