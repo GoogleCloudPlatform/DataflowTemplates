@@ -78,6 +78,13 @@ public class ImportPipelineIT extends TemplateTestBase {
         "input/Singers-manifest.json",
         Resources.getResource("ImportPipelineIT/" + subdirectory + "/Singers-manifest.json")
             .getPath());
+    gcsClient.uploadArtifact(
+        "input/Float32Table.avro-00000-of-00001",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/Float32Table.avro").getPath());
+    gcsClient.uploadArtifact(
+        "input/Float32Table-manifest.json",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/Float32Table-manifest.json")
+            .getPath());
 
     if (Objects.equals(subdirectory, "googlesql")) {
       gcsClient.uploadArtifact(
@@ -105,6 +112,23 @@ public class ImportPipelineIT extends TemplateTestBase {
     return expectedRows;
   }
 
+  private List<Map<String, Object>> getFloat32TableExpectedRows() {
+    List<Map<String, Object>> expectedRows = new ArrayList<>();
+    expectedRows.add(ImmutableMap.of("Key", "1", "Float32Value", 3.14f));
+    expectedRows.add(ImmutableMap.of("Key", "2", "Float32Value", 1.1f));
+    expectedRows.add(ImmutableMap.of("Key", "3", "Float32Value", 3.402823E38f));
+    expectedRows.add(ImmutableMap.of("Key", "4", "Float32Value", Float.NaN));
+    expectedRows.add(ImmutableMap.of("Key", "5", "Float32Value", Float.POSITIVE_INFINITY));
+    expectedRows.add(ImmutableMap.of("Key", "6", "Float32Value", Float.NEGATIVE_INFINITY));
+    expectedRows.add(ImmutableMap.of("Key", "7", "Float32Value", 1.175493E-38));
+    expectedRows.add(ImmutableMap.of("Key", "8", "Float32Value", -3.402823E38f));
+    // The custom assertions in Beam do not seem to support null values.
+    // Using the string NULL to match the string representation created in
+    // assertThatStructs. The actual value in avro is a plain `null`.
+    expectedRows.add(ImmutableMap.of("Key", "9", "Float32Value", "NULL"));
+    return expectedRows;
+  }
+
   @After
   public void tearDown() {
     ResourceManagerUtils.cleanResources(googleSqlResourceManager, postgresResourceManager);
@@ -125,6 +149,13 @@ public class ImportPipelineIT extends TemplateTestBase {
             + "  LastName STRING(MAX),\n"
             + ") PRIMARY KEY(Id)";
     googleSqlResourceManager.executeDdlStatement(createSingersTableStatement);
+
+    String createFloat32TableStatement =
+        "CREATE TABLE Float32Table (\n"
+            + "  Key STRING(MAX) NOT NULL,\n"
+            + "  Float32Value FLOAT32,\n"
+            + ") PRIMARY KEY(Key)";
+    googleSqlResourceManager.executeDdlStatement(createFloat32TableStatement);
 
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
@@ -150,6 +181,13 @@ public class ImportPipelineIT extends TemplateTestBase {
             "Singers", ImmutableList.of("Id", "FirstName", "LastName"));
     assertThat(singersRecords).hasSize(4);
     assertThatStructs(singersRecords).hasRecordsUnordered(getExpectedRows());
+
+    List<Struct> float32Records =
+        googleSqlResourceManager.readTableRecords(
+            "Float32Table", ImmutableList.of("Key", "Float32Value"));
+
+    assertThat(float32Records).hasSize(9);
+    assertThatStructs(float32Records).hasRecordsUnordered(getFloat32TableExpectedRows());
   }
 
   @Test
@@ -167,6 +205,13 @@ public class ImportPipelineIT extends TemplateTestBase {
             + "  \"LastName\" character varying(256),\n"
             + "PRIMARY KEY(\"Id\"))";
     postgresResourceManager.executeDdlStatement(createSingersTableStatement);
+
+    String createFloat32TableStatement =
+        "CREATE TABLE \"Float32Table\" (\n"
+            + "  \"Key\" character varying NOT NULL,\n"
+            + "  \"Float32Value\" real,\n"
+            + "PRIMARY KEY(\"Key\"))";
+    postgresResourceManager.executeDdlStatement(createFloat32TableStatement);
 
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
@@ -192,5 +237,12 @@ public class ImportPipelineIT extends TemplateTestBase {
             "Singers", ImmutableList.of("Id", "FirstName", "LastName"));
     assertThat(singersRecords).hasSize(4);
     assertThatStructs(singersRecords).hasRecordsUnordered(getExpectedRows());
+
+    List<Struct> float32Records =
+        postgresResourceManager.readTableRecords(
+            "Float32Table", ImmutableList.of("Key", "Float32Value"));
+
+    assertThat(float32Records).hasSize(9);
+    assertThatStructs(float32Records).hasRecordsUnordered(getFloat32TableExpectedRows());
   }
 }

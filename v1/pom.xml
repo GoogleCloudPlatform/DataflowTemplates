@@ -63,9 +63,10 @@
   <dependencyManagement>
       <dependencies>
         <dependency>
+            <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam is updated to 2.56. -->
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-spanner-bom</artifactId>
-            <version>6.45.3</version>
+            <version>6.61.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>

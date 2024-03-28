@@ -72,7 +72,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Schema file must have all column and type definition in one line. Schema file must use the
  * data type names of Cloud Spanner. We currently support the following Cloud Spanner data types: -
- * BOOL - DATE - FLOAT64 - INT64 - STRING - TIMESTAMP
+ * BOOL - DATE - FLOAT32 - FLOAT64 - INT64 - STRING - TIMESTAMP
  *
  * <p>Input format properties: - \\N in the source column will be considered as NULL value when
  * writing to Cloud Spanner. - If you need to escape characters, you can use the "fieldQualifier"
@@ -167,7 +167,7 @@ public class TextToSpanner {
 
   private static final Logger LOG = LoggerFactory.getLogger(TextToSpanner.class);
   private static final ImmutableSet<String> SUPPORTED_DATA_TYPES =
-      ImmutableSet.of("INT64", "FLOAT64", "BOOL", "DATE", "TIMESTAMP", "STRING");
+      ImmutableSet.of("INT64", "FLOAT32", "FLOAT64", "BOOL", "DATE", "TIMESTAMP", "STRING");
 
   public static Set<String> getSupportDataTypes() {
     return SUPPORTED_DATA_TYPES;
@@ -333,6 +333,9 @@ public class TextToSpanner {
             case STRING:
               builder.set(columnName).to(cellValue.trim());
               break;
+            case FLOAT32:
+              builder.set(columnName).to(Float.valueOf(cellValue.trim()));
+              break;
             case FLOAT64:
               builder.set(columnName).to(Float.valueOf(cellValue.trim()));
               break;
@@ -436,6 +439,7 @@ public class TextToSpanner {
  */
 enum SpannerDataTypes {
   INT64,
+  FLOAT32,
   FLOAT64,
   BOOL,
   DATE,
@@ -465,6 +469,8 @@ class SpannerSchema {
   public static SpannerDataTypes parseSpannerDataType(String columnType) {
     if (STRING_PATTERN.matcher(columnType).matches()) {
       return SpannerDataTypes.STRING;
+    } else if (columnType.equalsIgnoreCase("FLOAT32")) {
+      return SpannerDataTypes.FLOAT32;
     } else if (columnType.equalsIgnoreCase("FLOAT64")) {
       return SpannerDataTypes.FLOAT64;
     } else if (columnType.equalsIgnoreCase("INT64")) {

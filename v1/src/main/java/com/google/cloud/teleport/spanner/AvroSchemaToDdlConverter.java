@@ -365,6 +365,9 @@ public class AvroSchemaToDdlConverter {
             ? com.google.cloud.teleport.spanner.common.Type.int64()
             : com.google.cloud.teleport.spanner.common.Type.pgInt8();
       case FLOAT:
+        return (dialect == Dialect.GOOGLE_STANDARD_SQL)
+            ? com.google.cloud.teleport.spanner.common.Type.float32()
+            : com.google.cloud.teleport.spanner.common.Type.pgFloat4();
       case DOUBLE:
         return (dialect == Dialect.GOOGLE_STANDARD_SQL)
             ? com.google.cloud.teleport.spanner.common.Type.float64()
@@ -424,6 +427,10 @@ public class AvroSchemaToDdlConverter {
         return "INT64";
       case PG_INT8:
         return "bigint";
+      case FLOAT32:
+        return "FLOAT32";
+      case PG_FLOAT4:
+        return "real";
       case FLOAT64:
         return "FLOAT64";
       case PG_FLOAT8:

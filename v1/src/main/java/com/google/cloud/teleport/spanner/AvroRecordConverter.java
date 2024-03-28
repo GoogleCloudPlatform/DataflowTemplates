@@ -84,6 +84,10 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
         case PG_INT8:
           builder.set(column.name()).to(readInt64(record, avroType, fieldName).orElse(null));
           break;
+        case FLOAT32:
+        case PG_FLOAT4:
+          builder.set(column.name()).to(readFloat32(record, avroType, fieldName).orElse(null));
+          break;
         case FLOAT64:
         case PG_FLOAT8:
           builder.set(column.name()).to(readFloat64(record, avroType, fieldName).orElse(null));
@@ -144,6 +148,12 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
                 builder
                     .set(column.name())
                     .toInt64Array(readInt64Array(record, arrayType, fieldName).orElse(null));
+                break;
+              case FLOAT32:
+              case PG_FLOAT4:
+                builder
+                    .set(column.name())
+                    .toFloat32Array(readFloat32Array(record, arrayType, fieldName).orElse(null));
                 break;
               case FLOAT64:
               case PG_FLOAT8:
@@ -376,6 +386,37 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
 
   @VisibleForTesting
   @SuppressWarnings("unchecked")
+  static Optional<List<Float>> readFloat32Array(
+      GenericRecord record, Schema.Type avroType, String fieldName) {
+    Object fieldValue = record.get(fieldName);
+    if (fieldValue == null) {
+      return Optional.empty();
+    }
+    switch (avroType) {
+        // For type check at compile time, the type of x has to be specified (as cast) so that
+        // convertability to float can be verified.
+      case FLOAT:
+        return Optional.of((List<Float>) fieldValue);
+      case STRING:
+        {
+          List<Utf8> value = (List<Utf8>) record.get(fieldName);
+          return Optional.of(
+              value.stream()
+                  .map(x -> x == null ? null : Float.valueOf(x.toString()))
+                  .collect(Collectors.toList()));
+        }
+        // Avoid decoding integers as not all 32 bit integers can be represented in float32.
+      case INT:
+        // Avoid decoding 64 bit values into 32 bit space as this will cause a precision loss.
+      case LONG:
+      case DOUBLE:
+      default:
+        throw new IllegalArgumentException("Cannot interpret " + avroType + " as FLOAT32");
+    }
+  }
+
+  @VisibleForTesting
+  @SuppressWarnings("unchecked")
   static Optional<List<Double>> readFloat64Array(
       GenericRecord record, Schema.Type avroType, String fieldName) {
     Object fieldValue = record.get(fieldName);
@@ -576,6 +617,25 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
             .map(Boolean::parseBoolean);
       default:
         throw new IllegalArgumentException("Cannot interpret " + avroType + " as BOOL");
+    }
+  }
+
+  private static Optional<Float> readFloat32(
+      GenericRecord record, Schema.Type avroType, String fieldName) {
+    switch (avroType) {
+      case FLOAT:
+        return Optional.ofNullable((Float) record.get(fieldName));
+      case STRING:
+        return Optional.ofNullable((Utf8) record.get(fieldName))
+            .map(Utf8::toString)
+            .map(Float::valueOf);
+        // Avoid decoding integers as not all 32 bit integers can be represented in float32.
+      case INT:
+        // Avoid decoding 64 bit values into 32 bit space as this will cause a precision loss.
+      case LONG:
+      case DOUBLE:
+      default:
+        throw new IllegalArgumentException("Cannot interpret " + avroType + " as FLOAT32");
     }
   }
 

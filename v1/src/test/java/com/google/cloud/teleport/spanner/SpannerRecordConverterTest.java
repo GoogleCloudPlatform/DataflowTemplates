@@ -71,6 +71,9 @@ public class SpannerRecordConverterTest {
             .column("bool")
             .bool()
             .endColumn()
+            .column("float")
+            .float32()
+            .endColumn()
             .column("double")
             .float64()
             .endColumn()
@@ -91,6 +94,8 @@ public class SpannerRecordConverterTest {
             .to("John Doe")
             .set("bool")
             .to(true)
+            .set("float")
+            .to(3.2f)
             .set("double")
             .to(30.2)
             .build();
@@ -101,6 +106,7 @@ public class SpannerRecordConverterTest {
     assertThat(avroRecord.get("email"), equalTo("abc@google.com"));
     assertThat(avroRecord.get("name"), equalTo("John Doe"));
     assertEquals(true, avroRecord.get("bool"));
+    assertEquals(3.2f, avroRecord.get("float"));
     assertEquals(30.2, avroRecord.get("double"));
   }
 
@@ -133,6 +139,9 @@ public class SpannerRecordConverterTest {
             .column("bool")
             .bool()
             .endColumn()
+            .column("float")
+            .float32()
+            .endColumn()
             .column("double")
             .float64()
             .endColumn()
@@ -159,6 +168,8 @@ public class SpannerRecordConverterTest {
             .to((Timestamp) null)
             .set("bool")
             .to((Boolean) null)
+            .set("float")
+            .to((Float) null)
             .set("double")
             .to((Double) null)
             .build();
@@ -172,6 +183,7 @@ public class SpannerRecordConverterTest {
     assertThat(avroRecord.get("date"), is((String) null));
     assertThat(avroRecord.get("ts"), is((String) null));
     assertThat(avroRecord.get("bool"), is((Boolean) null));
+    assertThat(avroRecord.get("float"), is((Float) null));
     assertThat(avroRecord.get("double"), is((Double) null));
   }
 
@@ -296,6 +308,9 @@ public class SpannerRecordConverterTest {
             .column("bool")
             .type(Type.array(Type.bool()))
             .endColumn()
+            .column("float")
+            .type(Type.array(Type.float32()))
+            .endColumn()
             .column("double")
             .type(Type.array(Type.float64()))
             .endColumn()
@@ -324,6 +339,8 @@ public class SpannerRecordConverterTest {
             .toDateArray(Lists.newArrayList(null, null, Date.fromYearMonthDay(2018, 2, 2)))
             .set("bool")
             .toBoolArray(Lists.newArrayList(true, false, null))
+            .set("float")
+            .toFloat32Array(Lists.newArrayList(1.0f, 2.1f, 3.3f, null))
             .set("double")
             .toFloat64Array(Lists.newArrayList(1.0, 2.1, 3.3, null))
             .set("bytes")
@@ -340,6 +357,7 @@ public class SpannerRecordConverterTest {
     assertThat(
         avroRecord.get("ts"), equalTo(Arrays.asList(null, null, "1970-01-01T00:00:00.000010000Z")));
     assertThat(avroRecord.get("bool"), equalTo(Arrays.asList(true, false, null)));
+    assertThat(avroRecord.get("float"), equalTo(Arrays.asList(1.0f, 2.1f, 3.3f, null)));
     assertThat(avroRecord.get("double"), equalTo(Arrays.asList(1.0, 2.1, 3.3, null)));
     assertEquals(ByteBuffer.wrap("1234".getBytes()), ((List) avroRecord.get("bytes")).get(0));
     assertEquals(ByteBuffer.wrap("5678".getBytes()), ((List) avroRecord.get("bytes")).get(1));

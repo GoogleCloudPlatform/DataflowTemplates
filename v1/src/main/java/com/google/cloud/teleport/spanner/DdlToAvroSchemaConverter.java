@@ -290,6 +290,9 @@ public class DdlToAvroSchemaConverter {
       case INT64:
       case PG_INT8:
         return SchemaBuilder.builder().longType();
+      case FLOAT32:
+      case PG_FLOAT4:
+        return SchemaBuilder.builder().floatType();
       case FLOAT64:
       case PG_FLOAT8:
         return SchemaBuilder.builder().doubleType();
