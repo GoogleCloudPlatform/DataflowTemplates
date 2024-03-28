@@ -36,7 +36,7 @@ public interface PubSubToElasticsearchOptions
       order = 1,
       description = "Pub/Sub input subscription",
       helpText =
-          "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
+          "Pub/Sub subscription to consume the input from. Name should be in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
       example = "projects/your-project-id/subscriptions/your-subscription-name")
   @Validation.Required
   String getInputSubscription();
@@ -48,9 +48,8 @@ public interface PubSubToElasticsearchOptions
       optional = true,
       description = "Dataset, the type of logs that are sent to Pub/Sub",
       helpText =
-          "The type of logs sent via Pub/Sub for which we have out of the box dashboard. Known "
-              + "log types values are audit, vpcflow, and firewall. If no known log type is "
-              + "detected, we default to 'pubsub'")
+          "The type of logs sent using Pub/Sub, for which we have an out-of-the-box dashboard. Known "
+              + "log types values are audit, vpcflow and firewall. Default 'pubsub'")
   @Default.Enum("PUBSUB")
   Dataset getDataset();
 
@@ -60,7 +59,7 @@ public interface PubSubToElasticsearchOptions
       order = 3,
       optional = true,
       description = "The namespace for dataset.",
-      helpText = "The namespace for dataset. Default is default")
+      helpText = "An arbitrary grouping, such as an environment (dev, prod, or qa), a team, or a strategic business unit. Default: 'default'")
   @Default.String("default")
   String getNamespace();
 
@@ -70,7 +69,7 @@ public interface PubSubToElasticsearchOptions
       order = 4,
       description = "Output deadletter Pub/Sub topic",
       helpText =
-          "The Pub/Sub topic to publish deadletter records to. The name should be in the format of `projects/your-project-id/topics/your-topic-name`.")
+          "Pub/Sub output topic for publishing failed records in the format of 'projects/your-project-id/topics/your-topic-name'.")
   @Validation.Required
   String getErrorOutputTopic();
 
