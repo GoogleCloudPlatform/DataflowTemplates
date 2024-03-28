@@ -90,6 +90,7 @@ public class TemplateSpecsGenerator {
     m.setStreaming(imageSpec.getMetadata().isStreaming());
     m.setSupportsAtLeastOnce(imageSpec.getMetadata().isSupportsAtLeastOnce());
     m.setSupportsExactlyOnce(imageSpec.getMetadata().isSupportsExactlyOnce());
+    m.setDefaultStreamingMode(imageSpec.getMetadata().getDefaultStreamingMode());
     is.setMetadata(m);
 
     try (FileWriter writer = new FileWriter(file)) {
