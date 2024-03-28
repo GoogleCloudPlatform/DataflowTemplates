@@ -41,7 +41,7 @@ public @interface Template {
   /** Container name to stage (required for Flex templates). */
   String flexContainerName() default "";
 
-  String yamlTemplateName() default "";
+  String yamlTemplateFile() default "";
 
   String xlangContainerName() default "";
 
@@ -112,4 +112,10 @@ public @interface Template {
 
   /** Marker if the template is still in preview / pre-GA. */
   boolean preview() default false;
+
+  /**
+   * Comma-separated list of files to include in Template image when building with Dockerfile. Only
+   * works for YAML and XLANG types.
+   */
+  String filesToCopy() default "";
 }

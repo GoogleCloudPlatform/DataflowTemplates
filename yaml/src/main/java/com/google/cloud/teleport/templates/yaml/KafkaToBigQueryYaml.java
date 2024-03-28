@@ -31,7 +31,7 @@ import org.apache.beam.sdk.options.Validation;
             + "Any errors which occur in the transformation of the data, execution of the UDF, or inserting into the output table are inserted into a separate errors table in BigQuery. "
             + "If the errors table does not exist prior to execution, then it is created.",
     flexContainerName = "kafka-to-bigquery-yaml",
-    yamlTemplateName = "KafkaToBigQuery.yaml",
+    yamlTemplateFile = "KafkaToBigQuery.yaml",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery",
     contactInformation = "https://cloud.google.com/support",
