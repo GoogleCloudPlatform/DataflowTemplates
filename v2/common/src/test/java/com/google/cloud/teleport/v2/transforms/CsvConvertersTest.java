@@ -250,8 +250,8 @@ public class CsvConvertersTest {
             "TestLineToFailsafeJson",
             CsvConverters.LineToFailsafeJson.newBuilder()
                 .setDelimiter(",")
-                .setUdfFileSystemPath(null)
-                .setUdfFunctionName(null)
+                .setJavascriptUdfFileSystemPath(null)
+                .setJavascriptUdfFunctionName(null)
                 .setJsonSchemaPath(TEST_JSON_SCHEMA_PATH)
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
@@ -299,8 +299,8 @@ public class CsvConvertersTest {
             "TestLineToFailsafeJsonNoHeadersUdf",
             CsvConverters.LineToFailsafeJson.newBuilder()
                 .setDelimiter(options.getDelimiter())
-                .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setJavascriptUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                .setJavascriptUdfFunctionName(options.getJavascriptTextTransformFunctionName())
                 .setUdfReloadIntervalMinutes(
                     options.getJavascriptTextTransformReloadIntervalMinutes())
                 .setJsonSchemaPath(options.getJsonSchemaPath())
@@ -351,8 +351,8 @@ public class CsvConvertersTest {
             "TestLineToFailsafeJsonNoHeadersUdfBad",
             CsvConverters.LineToFailsafeJson.newBuilder()
                 .setDelimiter(options.getDelimiter())
-                .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setJavascriptUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                .setJavascriptUdfFunctionName(options.getJavascriptTextTransformFunctionName())
                 .setJsonSchemaPath(options.getJsonSchemaPath())
                 .setJsonSchemaPath(null)
                 .setHeaderTag(CSV_HEADERS)
@@ -404,8 +404,8 @@ public class CsvConvertersTest {
             "TestLineToFailsafeJsonHeaders",
             CsvConverters.LineToFailsafeJson.newBuilder()
                 .setDelimiter(options.getDelimiter())
-                .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setJavascriptUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                .setJavascriptUdfFunctionName(options.getJavascriptTextTransformFunctionName())
                 .setJsonSchemaPath(options.getJsonSchemaPath())
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
@@ -477,8 +477,8 @@ public class CsvConvertersTest {
             "TestDifferentHeaders",
             CsvConverters.LineToFailsafeJson.newBuilder()
                 .setDelimiter(",")
-                .setUdfFileSystemPath(null)
-                .setUdfFunctionName(null)
+                .setJavascriptUdfFileSystemPath(null)
+                .setJavascriptUdfFunctionName(null)
                 .setJsonSchemaPath(null)
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)

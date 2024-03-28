@@ -80,6 +80,9 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   }
 
   @Test
+  @TemplateIntegrationTest(
+      value = BigQueryToElasticsearch.class,
+      template = "BigQuery_to_Elasticsearch")
   public void testBigQueryToElasticsearch() throws IOException {
     // Arrange
     Tuple<Schema, List<RowToInsert>> generatedTable =
@@ -114,6 +117,9 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   }
 
   @Test
+  @TemplateIntegrationTest(
+      value = BigQueryToElasticsearch.class,
+      template = "BigQuery_to_Elasticsearch")
   public void testBigQueryToElasticsearchQuery() throws IOException {
     // Arrange
     Tuple<Schema, List<RowToInsert>> generatedTable =
@@ -151,6 +157,9 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   }
 
   @Test
+  @TemplateIntegrationTest(
+      value = BigQueryToElasticsearch.class,
+      template = "BigQuery_to_Elasticsearch")
   public void testBigQueryToElasticsearchUdf() throws IOException {
     // Arrange
     gcsClient.createArtifact(
@@ -184,6 +193,56 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
                 .addParameter("apiKey", "elastic")
                 .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
                 .addParameter("javascriptTextTransformFunctionName", "uppercaseName"));
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(2);
+    assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
+        .hasRecordsUnordered(
+            List.of(Map.of("id", 1, "name", "DATAFLOW"), Map.of("id", 2, "name", "PUB/SUB")));
+  }
+
+  @Test
+  @TemplateIntegrationTest(
+      value = BigQueryToElasticsearch.class,
+      template = "BigQuery_to_Elasticsearch_Xlang")
+  public void testBigQueryToElasticsearchWithPythonUdf() throws IOException {
+    // Arrange
+    gcsClient.createArtifact(
+        "pyudf.py",
+        "import json\n"
+            + "def uppercaseName(value):\n"
+            + "  data = json.loads(value)\n"
+            + "  data['name'] = data['name'].upper()\n"
+            + "  return json.dumps(data)");
+    Schema bigQuerySchema =
+        Schema.of(
+            Field.of("id", StandardSQLTypeName.INT64),
+            Field.of("name", StandardSQLTypeName.STRING));
+    List<RowToInsert> bigQueryRows =
+        List.of(
+            RowToInsert.of(Map.of("id", 1, "name", "Dataflow")),
+            RowToInsert.of(Map.of("id", 2, "name", "Pub/Sub")));
+    TableId table = bigQueryClient.createTable(testName, bigQuerySchema);
+    bigQueryClient.write(testName, bigQueryRows);
+    String indexName = createJobName(testName);
+    elasticsearchResourceManager.createIndex(indexName);
+
+    // Act
+    LaunchInfo info =
+        launchTemplate(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("inputTableSpec", toTableSpecLegacy(table))
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(table) + "_dlq")
+                .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
+                .addParameter("index", indexName)
+                .addParameter("apiKey", "elastic")
+                .addParameter("pythonExternalTextTransformGcsPath", getGcsPath("pyudf.py"))
+                .addParameter("pythonExternalTextTransformFunctionName", "uppercaseName"));
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info));
