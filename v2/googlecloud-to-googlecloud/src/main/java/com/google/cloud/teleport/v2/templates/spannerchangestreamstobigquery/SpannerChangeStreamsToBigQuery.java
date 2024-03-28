@@ -202,6 +202,14 @@ public final class SpannerChangeStreamsToBigQuery {
     if (options.getDlqRetryMinutes() <= 0) {
       throw new IllegalArgumentException("dlqRetryMinutes must be positive.");
     }
+    if (options
+        .getBigQueryChangelogTableNameTemplate()
+        .equals(BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_TABLE_NAME)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "bigQueryChangelogTableNameTemplate cannot be set to '{%s}'. This value is reserved for the Cloud Spanner table name.",
+              BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_TABLE_NAME));
+    }
 
     BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
   }
