@@ -44,7 +44,8 @@ public class BuildReadFromTableOperationsTest {
         "t.`colName`",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
     assertEquals(
-        "(SELECT ARRAY_AGG(CAST(num AS STRING)) FROM UNNEST(t.`colName1`) AS num) AS colName1",
+        "CASE WHEN t.`colName1` IS NULL THEN NULL ELSE IFNULL((SELECT ARRAY_AGG(CAST(num AS STRING)) FROM "
+            + "UNNEST(t.`colName1`) AS num), []) END AS colName1",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName1")));
   }
 
@@ -67,8 +68,8 @@ public class BuildReadFromTableOperationsTest {
         "TO_JSON_STRING(t.`colName`) AS colName",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
     assertEquals(
-        "(SELECT ARRAY_AGG(TO_JSON_STRING(element)) FROM UNNEST(t.`colName1`) AS element) AS"
-            + " colName1",
+        "CASE WHEN t.`colName1` IS NULL THEN NULL ELSE IFNULL((SELECT ARRAY_AGG(TO_JSON_STRING(element)) FROM "
+            + "UNNEST(t.`colName1`) AS element), []) END AS colName1",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName1")));
   }
 
