@@ -81,6 +81,9 @@ public class ChangeEventConvertorTest {
             .column("int64_field")
             .int64()
             .endColumn()
+            .column("float32_field")
+            .float32()
+            .endColumn()
             .column("float64_field")
             .float64()
             .endColumn()
@@ -150,6 +153,9 @@ public class ChangeEventConvertorTest {
             .column("int64_field")
             .int64()
             .endColumn()
+            .column("float32_field")
+            .float32()
+            .endColumn()
             .column("float64_field")
             .float64()
             .endColumn()
@@ -183,6 +189,7 @@ public class ChangeEventConvertorTest {
             .asc("bool_field")
             .asc("bool_field2")
             .asc("int64_field")
+            .asc("float32_field")
             .asc("float64_field")
             .asc("string_field")
             .asc("bytes_field")
@@ -212,6 +219,9 @@ public class ChangeEventConvertorTest {
             .endColumn()
             .column("int64_field")
             .int64()
+            .endColumn()
+            .column("float32_field")
+            .float32()
             .endColumn()
             .column("float64_field")
             .float64()
@@ -246,6 +256,7 @@ public class ChangeEventConvertorTest {
             .asc("bool_field")
             .asc("bool_field2")
             .asc("int64_field")
+            .asc("float32_field")
             .asc("float64_field")
             .asc("string_field")
             .asc("bytes_field")
@@ -268,6 +279,7 @@ public class ChangeEventConvertorTest {
     changeEvent.put("bool_field", "true");
     changeEvent.put("bool_field2", true);
     changeEvent.put("int64_field", "2344");
+    changeEvent.put("float32_field", "-137.81");
     changeEvent.put("float64_field", "2344.34");
     changeEvent.put("string_field", "testtest");
     changeEvent.put("json_field", "{\"key1\": \"value1\", \"key2\": \"value2\"}");
@@ -293,6 +305,7 @@ public class ChangeEventConvertorTest {
             put("bool_field", Value.bool(true));
             put("bool_field2", Value.bool(true));
             put("int64_field", Value.int64(2344));
+            put("float32_field", Value.float32(-137.81f));
             put("float64_field", Value.float64(2344.34));
             put("string_field", Value.string("testtest"));
             put("json_field", Value.string("{\"key1\": \"value1\", \"key2\": \"value2\"}"));
@@ -322,6 +335,7 @@ public class ChangeEventConvertorTest {
             put("bool_field", Value.bool(true));
             put("bool_field2", Value.bool(true));
             put("int64_field", Value.int64(2344));
+            put("float32_field", Value.float32(-137.81f));
             put("float64_field", Value.float64(2344.34));
             put("string_field", Value.string("testtest"));
             put("bytes_field", Value.bytes(ByteArray.copyFrom(new byte[] {120, 53, 56, 48, 48})));
@@ -425,6 +439,15 @@ public class ChangeEventConvertorTest {
   }
 
   @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertChangeEventWithInvalidFloat32ToMutation() throws Exception {
+    Ddl ddl = getTestDdl();
+    JSONObject changeEvent = getTestChangeEvent("Users");
+    changeEvent.put("float32_field", "asdfasdf");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
   public void cannotConvertChangeEventWithInvalidFloat64ToMutation() throws Exception {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users");
@@ -491,6 +514,16 @@ public class ChangeEventConvertorTest {
     Mutation mutation =
         ChangeEventConvertor.changeEventToShadowTableMutationBuilder(ddl, ce, "shadow_").build();
     // Expect an Exception to be thrown with Invalid int64
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertChangeEventWithInvalidFloat32ToShadowMutation() throws Exception {
+    Ddl ddl = getTestDdl();
+    JSONObject changeEvent = getTestChangeEvent("Users2");
+    changeEvent.put("float32_field", "asdfas");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Mutation mutation =
+        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(ddl, ce, "shadow_").build();
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -567,6 +600,15 @@ public class ChangeEventConvertorTest {
     JsonNode ce = parseChangeEvent(changeEvent.toString());
     Key key = ChangeEventConvertor.changeEventToPrimaryKey(ddl, ce);
     // Expect an exception since the event has invalid timestamp
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void cannotConvertChangeEventWithValidFloat32ToPrimaryKey() throws Exception {
+    Ddl ddl = getTestDdl();
+    JSONObject changeEvent = getTestChangeEvent("Users2");
+    changeEvent.put("float32_field", "123.456");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Key key = ChangeEventConvertor.changeEventToPrimaryKey(ddl, ce);
   }
 
   @Test(expected = ChangeEventConvertorException.class)
