@@ -31,9 +31,9 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -169,7 +169,7 @@ public class SpannerToText {
             // these parameters at the pipeline execution time.
             .apply(
                 "Read all records",
-                LocalSpannerIO.readAll().withTransaction(tx).withSpannerConfig(spannerConfig))
+                SpannerIO.readAll().withTransaction(tx).withSpannerConfig(spannerConfig))
             .apply(
                 "Struct To Csv",
                 MapElements.into(TypeDescriptors.strings())
