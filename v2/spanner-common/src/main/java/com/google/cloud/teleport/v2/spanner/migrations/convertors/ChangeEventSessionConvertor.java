@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -53,13 +54,17 @@ public class ChangeEventSessionConvertor {
   private final Schema schema;
 
   /* The context used to populate transformation information */
-  private final TransformationContext transformationContext;
+  private TransformationContext transformationContext = null;
 
   // The source database type.
-  private final String sourceType;
+  private String sourceType = null;
 
   // If set to true, round decimals inside jsons.
-  private final Boolean roundJsonDecimals;
+  private Boolean roundJsonDecimals = false;
+
+  // If set to true, generate a UUID instead of using the one inside change event. Valid for
+  // synthetic PK use cases.
+  private Boolean generateUUID = false;
 
   public ChangeEventSessionConvertor(
       Schema schema,
@@ -70,6 +75,14 @@ public class ChangeEventSessionConvertor {
     this.transformationContext = transformationContext;
     this.sourceType = sourceType;
     this.roundJsonDecimals = roundJsonDecimals;
+  }
+
+  public ChangeEventSessionConvertor(Schema schema) {
+    this.schema = schema;
+  }
+
+  public void shouldGenerateUUID(boolean generateUUID) {
+    this.generateUUID = generateUUID;
   }
 
   /**
@@ -90,8 +103,10 @@ public class ChangeEventSessionConvertor {
     // Remove columns present in change event that were dropped in Spanner.
     changeEvent = removeDroppedColumns(changeEvent, tableId);
 
-    // Add shard id to change event.
-    changeEvent = populateShardId(changeEvent, tableId);
+    if (transformationContext != null) {
+      // Add shard id to change event.
+      changeEvent = populateShardId(changeEvent, tableId);
+    }
 
     return changeEvent;
   }
@@ -150,8 +165,13 @@ public class ChangeEventSessionConvertor {
                 + tableId
                 + ", provide a valid session file.");
       }
-      ((ObjectNode) changeEvent)
-          .put(spCols.get(colID).getName(), changeEvent.get(EVENT_UUID_KEY).asText());
+      String uuid = "";
+      if (generateUUID) {
+        uuid = UUID.randomUUID().toString();
+      } else {
+        uuid = changeEvent.get(EVENT_UUID_KEY).asText();
+      }
+      ((ObjectNode) changeEvent).put(spCols.get(colID).getName(), uuid);
     }
     return changeEvent;
   }

@@ -176,17 +176,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   @TemplateParameter.Text(
       order = 14,
       optional = true,
-      description = "Source database columns to ignore",
-      helpText =
-          "A comma separated list of (table:column1;column2) to exclude from writing to Spanner",
-      example = "table1:column1;column2,table2:column1")
-  String getIgnoreColumns();
-
-  void setIgnoreColumns(String value);
-
-  @TemplateParameter.Text(
-      order = 15,
-      optional = true,
       description = "Maximum number of connections to Source database per worker",
       helpText =
           "Configures the JDBC connection pool on each worker with maximum number of connections. Use a negative number for no limit. Default value is 100.",
@@ -195,4 +184,30 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   Integer getMaxConnections();
 
   void setMaxConnections(Integer value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 15,
+      optional = false,
+      description = "SMT Session File Path in Cloud Storage",
+      helpText =
+          "Session file path in Cloud Storage that contains mapping information from"
+              + " HarbourBridge",
+      example = "gs://bucket-name/path/to/session-file.json")
+  String getSessionFilePath();
+
+  void setSessionFilePath(String value);
+
+  @TemplateParameter.Boolean(
+      order = 16,
+      optional = true,
+      description =
+          "If true, rounds the decimal values in json columns to a number that can be stored"
+              + " without loss of precision.",
+      helpText =
+          "This flag if set, rounds the decimal values in json columns to a number that can be"
+              + " stored without loss of precision.")
+  @Default.Boolean(false)
+  Boolean getRoundJsonDecimals();
+
+  void setRoundJsonDecimals(Boolean value);
 }

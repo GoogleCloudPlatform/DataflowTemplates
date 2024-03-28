@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.convertors;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -23,6 +24,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
@@ -106,7 +108,7 @@ public class ChangeEventSessionConvertorTest {
   }
 
   @Test
-  public void transformChangeEventViaSessionFileSynthPKTest() {
+  public void transformChangeEventViaSessionFileSynthPKTestDefault() {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
         new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
@@ -125,6 +127,30 @@ public class ChangeEventSessionConvertorTest {
     changeEventNew.put(Constants.EVENT_UUID_KEY, "abc-123");
     changeEventNew.put("synth_id", "abc-123");
     JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
+    assertEquals(expectedEvent, actualEvent);
+  }
+
+  @Test
+  public void transformChangeEventViaSessionFileSynthPKTest_GeneratePK() {
+    Schema schema = getSchemaObject();
+    ChangeEventSessionConvertor csc =
+        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
+    csc.shouldGenerateUUID(true);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("name", "A");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    JsonNode actualEvent = csc.transformChangeEventViaSessionFile(ce);
+    assertTrue(actualEvent.has("synth_id"));
+    ((ObjectNode) actualEvent).remove("synth_id");
+
+    JSONObject changeEventNew = new JSONObject();
+    changeEventNew.put("new_name", "A");
+    changeEventNew.put(Constants.EVENT_TABLE_NAME_KEY, "new_people");
+    JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
+
     assertEquals(expectedEvent, actualEvent);
   }
 

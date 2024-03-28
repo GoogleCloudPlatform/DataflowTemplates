@@ -15,26 +15,32 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.coders.JsonNodeCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.reader.ResultSetToJsonNode;
 import com.google.cloud.teleport.v2.source.DataSourceProvider;
-import com.google.cloud.teleport.v2.spanner.ResultSetToMutation;
+import com.google.cloud.teleport.v2.spanner.ProcessInformationSchema;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.transformer.JsonNodeToMutationDoFn;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO.Write;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 
 /**
@@ -101,14 +107,28 @@ public class SourceDbToSpanner {
   @VisibleForTesting
   static PipelineResult run(SourceDbToSpannerOptions options) {
     Pipeline pipeline = Pipeline.create(options);
-    Map<String, Set<String>> columnsToIgnore = getColumnsToIgnore(options);
     Map<String, String> tableVsPartitionMap = getTablesVsPartitionColumn(options);
+    // Ingest session file into schema object.
+    Schema schema = SessionFileReader.read(options.getSessionFilePath());
+
+    SpannerConfig spannerConfig =
+        SpannerConfig.create()
+            .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
+            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+            .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+
+    Ddl ddl = ProcessInformationSchema.getInformationSchemaAsDdl(spannerConfig);
     for (String table : getTablesVsPartitionColumn(options).keySet()) {
       PCollection<Mutation> rows =
-          pipeline.apply(
-              "ReadPartitions_" + table,
-              getJdbcReader(
-                  table, tableVsPartitionMap.get(table), columnsToIgnore.get(table), options));
+          pipeline
+              .apply(
+                  "ReadPartitions_" + table,
+                  getJdbcReader(table, tableVsPartitionMap.get(table), options))
+              .setCoder(JsonNodeCoder.of())
+              .apply(
+                  "Map JsonNode to Mutations",
+                  ParDo.of(new JsonNodeToMutationDoFn(schema, table, ddl)));
       rows.apply("Write_" + table, getSpannerWrite(options));
     }
     return pipeline.run();
@@ -128,35 +148,14 @@ public class SourceDbToSpanner {
     return tableVsPartitionColumn;
   }
 
-  private static Map<String, Set<String>> getColumnsToIgnore(SourceDbToSpannerOptions options) {
-    String ignoreStr = options.getIgnoreColumns();
-    if (ignoreStr == null || ignoreStr.isEmpty()) {
-      return Collections.emptyMap();
-    }
-    Map<String, Set<String>> ignore = new HashMap<>();
-    for (String tableColumns : ignoreStr.split(",")) {
-      int tableNameIndex = tableColumns.indexOf(':');
-      if (tableNameIndex == -1) {
-        continue;
-      }
-      String table = tableColumns.substring(0, tableNameIndex);
-      String columnStr = tableColumns.substring(tableNameIndex + 1);
-      Set<String> columns = new HashSet<>(Arrays.asList(columnStr.split(";")));
-      ignore.put(table, columns);
-    }
-    return ignore;
-  }
-
-  private static JdbcIO.ReadWithPartitions<Mutation, Long> getJdbcReader(
-      String table,
-      String partitionColumn,
-      Set<String> columnsToIgnore,
-      SourceDbToSpannerOptions options) {
-    return JdbcIO.<Mutation>readWithPartitions()
+  private static JdbcIO.ReadWithPartitions<JsonNode, Long> getJdbcReader(
+      String table, String partitionColumn, SourceDbToSpannerOptions options) {
+    return JdbcIO.<JsonNode>readWithPartitions()
         .withDataSourceProviderFn(new DataSourceProvider(options))
         .withTable(table)
         .withPartitionColumn(partitionColumn)
-        .withRowMapper(ResultSetToMutation.create(table, columnsToIgnore))
+        .withRowMapper(ResultSetToJsonNode.create(table))
+        .withCoder(JsonNodeCoder.of())
         .withNumPartitions(options.getNumPartitions());
   }
 

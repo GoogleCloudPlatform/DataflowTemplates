@@ -50,6 +50,7 @@ public class ChangeEventSpannerConvertor {
       Type columnType = table.column(columnName).type();
       Value columnValue = null;
 
+      // TODO: verify if this can be removed.
       String colName = columnName.toLowerCase();
       boolean requiredField = keyColumnNames.contains(columnName);
       switch (columnType.getCode()) {
