@@ -42,15 +42,6 @@ export APP_ROOT=/template/${TEMPLATE_MODULE}
 export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
 
-export INPUT_FILE_SPEC=<my-file-spec>
-export CONNECTION_URL=<url-or-cloud_id>
-export INDEX=<my-index>
-export HEADERS=false
-export DEADLETTER_TABLE=<my-project:my-dataset.my-deadletter-table>
-export DELIMITER=","
-export ELASTICSEARCH_USERNAME=<username>
-export ELASTICSEARCH_PASSWORD=<password>
-
 gcloud config set project ${PROJECT}
 ```
 * Build and push image to Google Container Repository
@@ -347,8 +338,23 @@ The template has the following optional parameters:
 Template can be executed using the following gcloud command:
 ```sh
 export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
-gcloud beta dataflow flex-template run ${JOB_NAME} \
+export PROJECT=<my-project>
+export BUCKET_NAME=gs://<bucket-name>
+export TEMPLATE_MODULE=GCS-to-elasticsearch
+export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
+
+export INPUT_FILE_SPEC=<my-file-spec>
+export CONNECTION_URL=<url-or-cloud_id>
+export INDEX=<my-index>
+export HEADERS=false
+export DEADLETTER_TABLE=<my-project:my-dataset.my-deadletter-table>
+export DELIMITER=","
+export ELASTICSEARCH_USERNAME=<username>
+export ELASTICSEARCH_PASSWORD=<password>
+export ELASTICSEARCH_API_KEY=<api-key>
+
+gcloud dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputFileSpec=${INPUT_FILE_SPEC},connectionUrl=${CONNECTION_URL},index=${INDEX},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},containsHeaders=${HEADERS},deadletterTable=${DEADLETTER_TABLE},delimiter=${DELIMITER}
+        --parameters inputFileSpec=${INPUT_FILE_SPEC},connectionUrl=${CONNECTION_URL},index=${INDEX},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},apiKey=${ELASTICSEARCH_API_KEY},containsHeaders=${HEADERS},deadletterTable=${DEADLETTER_TABLE},delimiter=${DELIMITER}
 ```

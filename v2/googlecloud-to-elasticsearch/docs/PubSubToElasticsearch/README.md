@@ -75,14 +75,7 @@ export APP_ROOT=/template/${TEMPLATE_MODULE}
 export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
 
-export CONNECTION_URL=<url-or-cloud_id>
-export SUBSCRIPTION=<my-subscription>
-export DATASET=<dataset>
-export NAMESPACE=<namespace>
-export ERROR_OUTPUT_TOPIC=<error-output-topic>
-export API_KEY=<api-key>
-export ELASTICSEARCH_USERNAME=<username>
-export ELASTICSEARCH_PASSWORD=<password>
+gcloud config set project ${PROJECT}
 ```
 
 * Build and push image to Google Container Repository
@@ -295,8 +288,22 @@ mvn test
 Template can be executed using the following gcloud command.
 ```sh
 export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
-gcloud beta dataflow flex-template run ${JOB_NAME} \
+export PROJECT=<my-project>
+export BUCKET_NAME=gs://<bucket-name>
+export TEMPLATE_MODULE=pubsub-to-elasticsearch
+export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
+
+export CONNECTION_URL=<url-or-cloud_id>
+export SUBSCRIPTION=<my-subscription>
+export DATASET=<dataset>
+export NAMESPACE=<namespace>
+export ERROR_OUTPUT_TOPIC=<error-output-topic>
+export API_KEY=<api-key>
+export ELASTICSEARCH_USERNAME=<username>
+export ELASTICSEARCH_PASSWORD=<password>
+
+gcloud dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputSubscription=${SUBSCRIPTION},connectionUrl=${CONNECTION_URL},dataset=${DATASET},namespace=${NAMESPACE},apiKey=${API_KEY},errorOutputTopic=${ERROR_OUTPUT_TOPIC}
+        --parameters inputSubscription=${SUBSCRIPTION},connectionUrl=${CONNECTION_URL},dataset=${DATASET},namespace=${NAMESPACE},apiKey=${API_KEY},errorOutputTopic=${ERROR_OUTPUT_TOPIC},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD}
 ```
