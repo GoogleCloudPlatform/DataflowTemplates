@@ -19,7 +19,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.v2.neo4j.database.Neo4jCapabilities;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
@@ -35,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 import org.neo4j.driver.TransactionConfig;
 
@@ -42,7 +45,8 @@ public class Neo4jRowWriterTransformTest {
 
   @Test
   public void sendsTransactionMetadataForSchemaInit() {
-    Neo4jConnection connection = mock(Neo4jConnection.class);
+    Neo4jConnection connection = createNeo4j5EnterpriseConnection();
+
     JobSpec jobSpec = new JobSpec();
     Source source = new Source();
     source.setSourceType(SourceType.text);
@@ -72,6 +76,13 @@ public class Neo4jRowWriterTransformTest {
             .withMetadata(Map.of("app", "dataflow", "metadata", expectedTxMetadata))
             .build();
     verify(connection).executeCypher(any(), eq(expectedTransactionConfig));
+  }
+
+  @NotNull
+  private static Neo4jConnection createNeo4j5EnterpriseConnection() {
+    Neo4jConnection connection = mock(Neo4jConnection.class);
+    when(connection.capabilities()).thenReturn(new Neo4jCapabilities("5.1.0", "enterprise"));
+    return connection;
   }
 
   private static Mapping aLabelMapping() {

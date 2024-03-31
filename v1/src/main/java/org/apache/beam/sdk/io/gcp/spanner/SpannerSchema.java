@@ -22,6 +22,8 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Type;
 import java.io.Serializable;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableListMultimap;
@@ -148,6 +150,14 @@ abstract class SpannerSchema implements Serializable {
   @AutoValue
   abstract static class Column implements Serializable {
 
+    private static final Pattern EMBEDDING_VECTOR_PATTERN =
+        Pattern.compile(
+            "^ARRAY<([a-zA-Z0-9]+)>\\(vector_length=>\\d+\\)$", Pattern.CASE_INSENSITIVE);
+
+    private static final Pattern PG_EMBEDDING_VECTOR_PATTERN =
+        Pattern.compile("^(\\D+)\\[\\]\\svector\\slength\\s\\d+$", Pattern.CASE_INSENSITIVE);
+
+
     static Column create(String name, Type type) {
       return new AutoValue_SpannerSchema_Column(name, type);
     }
@@ -192,13 +202,30 @@ abstract class SpannerSchema implements Serializable {
             return Type.json();
           }
           if (spannerType.startsWith("ARRAY")) {
-            // Substring "ARRAY<xxx>"
-            String spannerArrayType = spannerType.substring(6, spannerType.length() - 1);
-            Type itemType = parseSpannerType(spannerArrayType, dialect);
+            // Substring "ARRAY<xxx>" or substring "ARRAY<xxx>(vector_length=>yyy)"
+
+            String arrayElementType;
+            // Handle vector_length annotation
+            Matcher m = EMBEDDING_VECTOR_PATTERN.matcher(spannerType);
+            if (m.find()) {
+              arrayElementType = m.group(1);
+            }
+            else {
+              arrayElementType = spannerType.substring(6, spannerType.length() - 1);
+            }
+            Type itemType = parseSpannerType(arrayElementType, dialect);
             return Type.array(itemType);
           }
           throw new IllegalArgumentException("Unknown spanner type " + spannerType);
         case POSTGRESQL:
+          // Handle vector_length annotation
+          Matcher m = PG_EMBEDDING_VECTOR_PATTERN.matcher(spannerType);
+          if (m.find()) {
+            // Substring "xxx[] vector length yyy"
+            String arrayElementType = m.group(1);
+            Type itemType = parseSpannerType(arrayElementType, dialect);
+            return Type.array(itemType);
+          }
           if (spannerType.endsWith("[]")) {
             // Substring "xxx[]"
             // Must check array type first

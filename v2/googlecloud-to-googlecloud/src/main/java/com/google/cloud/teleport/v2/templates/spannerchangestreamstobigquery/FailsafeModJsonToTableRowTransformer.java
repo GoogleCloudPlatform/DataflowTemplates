@@ -198,7 +198,8 @@ public final class FailsafeModJsonToTableRowTransformer {
           if (!seenException) {
             LOG.error(
                 String.format(
-                    "Caught exception when processing element and storing into dead letter queue, message: %s, cause: %s",
+                    "Caught exception when processing element and storing into dead letter queue,"
+                        + " message: %s, cause: %s",
                     Optional.ofNullable(e.getMessage()), e.getCause()));
             seenException = true;
           }
@@ -280,8 +281,10 @@ public final class FailsafeModJsonToTableRowTransformer {
           return tableRow;
         }
 
-        // For "NEW_ROW" value capture type, we can get all columns from mod.
-        if (mod.getValueCaptureType() == ValueCaptureType.NEW_ROW) {
+        // For "NEW_ROW" and "NEW_ROW_AND_OLD_VALUES" value capture types, we can get all columns
+        // from mod.
+        if (mod.getValueCaptureType() == ValueCaptureType.NEW_ROW
+            || mod.getValueCaptureType() == ValueCaptureType.NEW_ROW_AND_OLD_VALUES) {
           return tableRow;
         }
 
