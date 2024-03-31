@@ -15,14 +15,13 @@
  */
 package com.google.cloud.teleport.v2.spanner.utils;
 
-import java.util.List;
 import java.util.Map;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
-public interface IDatastreamToSpannerTransformation {
-  void init(String customParameters, Map<String, List<String>> transformColumns);
-
-  DatastreamToSpannerTransformationResponse applyAdvancedTransformation(
-      DatastreamToSpannerTransformationRequest request);
-
-  boolean filterRecord(DatastreamToSpannerFilterRequest request);
+@Data
+@AllArgsConstructor
+public class MigrationTransformationResponse {
+  Map<String, Object> responseRow;
+  boolean isEventFiltered;
 }

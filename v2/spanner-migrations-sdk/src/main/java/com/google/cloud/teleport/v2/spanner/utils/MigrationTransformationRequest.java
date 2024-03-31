@@ -21,6 +21,9 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class DatastreamToSpannerTransformationResponse {
-  Map<String, Object> transformColumnValues;
+public class MigrationTransformationRequest {
+  String tableName;
+  Map<String, Object> requestRow;
+  String shardId;
+  String eventType;
 }

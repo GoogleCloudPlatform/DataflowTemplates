@@ -15,35 +15,37 @@
  */
 package com.custom;
 
-import com.google.cloud.teleport.v2.spanner.utils.DatastreamToSpannerFilterRequest;
-import com.google.cloud.teleport.v2.spanner.utils.DatastreamToSpannerTransformationRequest;
-import com.google.cloud.teleport.v2.spanner.utils.DatastreamToSpannerTransformationResponse;
-import com.google.cloud.teleport.v2.spanner.utils.IDatastreamToSpannerTransformation;
+import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
+import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
+import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class AdvancedTransformation implements IDatastreamToSpannerTransformation {
+public class AdvancedTransformation implements ISpannerMigrationTransformer {
   private static final Logger LOG = LoggerFactory.getLogger(AdvancedTransformation.class);
 
   @Override
-  public void init(String customParameters, Map<String, List<String>> transformColumns) {
+  public void init(String customParameters) {
     LOG.info("init called with {}", customParameters);
   }
 
   @Override
-  public DatastreamToSpannerTransformationResponse applyAdvancedTransformation(
-      DatastreamToSpannerTransformationRequest request) {
-    Map<String, Object> sourceRecord = request.getSourceRecord();
+  public MigrationTransformationResponse toSpannerRow(MigrationTransformationRequest request) {
     Map<String, Object> transformedRecord = new HashMap<>();
-    transformedRecord.put("name", sourceRecord.get("name") + "123");
-    return new DatastreamToSpannerTransformationResponse(transformedRecord);
+    if (request.getTableName().equals("sample_table")) {
+      Map<String, Object> sourceRecord = request.getRequestRow();
+      Double a = (Double) sourceRecord.get("double_column");
+      Integer b = (Integer) sourceRecord.get("int_column");
+      Double c = a+b;
+      transformedRecord.put("sum", c);
+    }
+    return new MigrationTransformationResponse(transformedRecord, false);
   }
 
   @Override
-  public boolean filterRecord(DatastreamToSpannerFilterRequest request) {
-    return true;
+  public MigrationTransformationResponse toSourceRow(MigrationTransformationRequest request) {
+    return new MigrationTransformationResponse(null, false);
   }
 }

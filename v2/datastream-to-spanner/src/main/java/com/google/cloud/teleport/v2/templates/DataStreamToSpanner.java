@@ -623,7 +623,6 @@ public class DataStreamToSpanner {
                 transformationContext,
                 options.getShadowTablePrefix(),
                 options.getDatastreamSourceType(),
-                options.getRoundJsonDecimals(),
                 isRegularMode,
                 options.getTransformationCustomParameters(),
                 options.getTransformationJarPath(),

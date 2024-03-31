@@ -37,6 +37,8 @@ public class CustomShardIdFetcher implements IShardIdFetcher {
   @Override
   public ShardIdResponse getShardId(ShardIdRequest shardIdRequest) {
     LOG.info("Returning custom sharding function");
-    return new ShardIdResponse();
+    ShardIdResponse shardIdResponse = new ShardIdResponse();
+    shardIdResponse.setLogicalShardId("xyz");
+    return shardIdResponse;
   }
 }

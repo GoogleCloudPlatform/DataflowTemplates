@@ -93,7 +93,6 @@ public class SpannerTransactionWriterDoFnTest {
             new TransformationContext(),
             "",
             "",
-            false,
             true,
             "",
             "",
@@ -127,7 +126,6 @@ public class SpannerTransactionWriterDoFnTest {
             new TransformationContext(),
             "",
             "",
-            false,
             true,
             "",
             "",
@@ -146,39 +144,6 @@ public class SpannerTransactionWriterDoFnTest {
     changeEventNew.put(DatastreamConstants.EVENT_UUID_KEY, "abc-123");
     changeEventNew.put("synth_id", "abc-123");
     JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
-    assertEquals(expectedEvent, actualEvent);
-  }
-
-  @Test
-  public void transformChangeEventDataTest() throws Exception {
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(),
-            null,
-            null,
-            new TransformationContext(),
-            "",
-            "",
-            true,
-            true,
-            "",
-            "",
-            "");
-    JSONObject changeEvent = new JSONObject();
-    changeEvent.put("first_name", "A");
-    changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    JsonNode ce = parseChangeEvent(changeEvent.toString());
-
-    JsonNode actualEvent =
-        spannerTransactionWriterDoFn.transformChangeEventData(ce, databaseClient, getTestDdl());
-
-    changeEvent = new JSONObject();
-    changeEvent.put("first_name", "A");
-    changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.198136676310106}}");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    JsonNode expectedEvent = parseChangeEvent(changeEvent.toString());
-
     assertEquals(expectedEvent, actualEvent);
   }
 
@@ -328,40 +293,6 @@ public class SpannerTransactionWriterDoFnTest {
   }
 
   @Test
-  public void shardedConfigDataTest() throws Exception {
-    TransformationContext transformationContext = getTransformationContext();
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(),
-            null,
-            null,
-            transformationContext,
-            "",
-            "",
-            true,
-            true,
-            "",
-            "",
-            "");
-    JSONObject changeEvent = new JSONObject();
-    changeEvent.put("first_name", "A");
-    changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    JsonNode ce = parseChangeEvent(changeEvent.toString());
-
-    JsonNode actualEvent =
-        spannerTransactionWriterDoFn.transformChangeEventData(ce, databaseClient, getTestDdl());
-
-    changeEvent = new JSONObject();
-    changeEvent.put("first_name", "A");
-    changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.198136676310106}}");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    JsonNode expectedEvent = parseChangeEvent(changeEvent.toString());
-
-    assertEquals(expectedEvent, actualEvent);
-  }
-
-  @Test
   public void transformChangeEventViaShardedSessionFileTest() {
     Schema schema = getShardedSchemaObject();
     TransformationContext transformationContext = getTransformationContext();
@@ -373,7 +304,6 @@ public class SpannerTransactionWriterDoFnTest {
             transformationContext,
             "",
             "mysql",
-            false,
             true,
             "",
             "",
