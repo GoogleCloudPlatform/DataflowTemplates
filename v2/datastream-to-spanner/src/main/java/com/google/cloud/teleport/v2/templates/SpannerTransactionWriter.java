@@ -84,9 +84,6 @@ public class SpannerTransactionWriter
   /* The datastream source database type. Eg, MySql or Oracle etc. */
   private final String sourceType;
 
-  // If set to true, round decimals inside jsons.
-  private final Boolean roundJsonDecimals;
-
   /* The run mode, whether it is regular or retry. */
   private final Boolean isRegularRunMode;
 
@@ -103,7 +100,6 @@ public class SpannerTransactionWriter
       TransformationContext transformationContext,
       String shadowTablePrefix,
       String sourceType,
-      Boolean roundJsonDecimals,
       Boolean isRegularRunMode,
       String customParameters,
       String transformationJarPath,
@@ -115,7 +111,6 @@ public class SpannerTransactionWriter
     this.transformationContext = transformationContext;
     this.shadowTablePrefix = shadowTablePrefix;
     this.sourceType = sourceType;
-    this.roundJsonDecimals = roundJsonDecimals;
     this.isRegularRunMode = isRegularRunMode;
     this.customParameters = customParameters;
     this.transformationJarPath = transformationJarPath;
@@ -136,7 +131,6 @@ public class SpannerTransactionWriter
                         transformationContext,
                         shadowTablePrefix,
                         sourceType,
-                        roundJsonDecimals,
                         isRegularRunMode,
                         customParameters,
                         transformationJarPath,

@@ -30,6 +30,7 @@ public class CustomShardIdFetcherTest {
     ShardIdResponse actual =
         customShardIdFetcher.getShardId(new ShardIdRequest("table1", new HashMap<>()));
     ShardIdResponse expected = new ShardIdResponse();
+    expected.setLogicalShardId("xyz");
     assertEquals(actual.getLogicalShardId(), expected.getLogicalShardId());
   }
 }
