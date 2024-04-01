@@ -108,7 +108,6 @@ public class FormatDatastreamRecordToJson
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode outputObject = mapper.createObjectNode();
     Schema schema = record.getSchema();
-    schema.
     UnifiedTypesFormatter.payloadToJson(getPayload(record), outputObject);
     if (this.lowercaseSourceColumns) {
       outputObject = getLowerCaseObject(outputObject);
