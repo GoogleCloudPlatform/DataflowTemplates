@@ -26,6 +26,7 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.avro.Schema;
@@ -38,6 +39,7 @@ import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.artifacts.utils.AvroTestUtil;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.RandomUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -77,6 +79,19 @@ public class ExportPipelineIT extends TemplateTestBase {
                   + "    { \"name\": \"Id\", \"type\": \"long\", \"sqlType\": \"INT64\" },\n"
                   + "    { \"name\": \"FirstName\", \"type\": \"string\" },\n"
                   + "    { \"name\": \"LastName\", \"type\": \"string\" }\n"
+                  + "  ]\n"
+                  + "}");
+
+  private static final Schema EMBEDDING_VECTORS_SCHEMA =
+      new Schema.Parser()
+          .parse(
+              "{\n"
+                  + "  \"type\": \"record\",\n"
+                  + "  \"name\": \"EmbeddingVectors\",\n"
+                  + "  \"namespace\": \"com.google.cloud.teleport.spanner\",\n"
+                  + "  \"fields\": [\n"
+                  + "    { \"name\": \"Id\", \"type\": \"long\", \"sqlType\": \"INT64\" },\n"
+                  + "    { \"name\": \"Embeddings\", \"type\": \"array\" ,\"sqlType\": \"ARRAY<FLOAT64>(vector_length=>4)\"},\n"
                   + "  ]\n"
                   + "}");
 
@@ -173,6 +188,13 @@ public class ExportPipelineIT extends TemplateTestBase {
                 + "  LastName String(1024),\n"
                 + ") PRIMARY KEY(Id)",
             testName);
+    String createEmbeddingVectorsTableStatement =
+        String.format(
+            "CREATE TABLE `%s_EmbeddingVectors` (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  Embeddings ARRAY<FLOAT64>(vector_length=>4),\n"
+                + ") PRIMARY KEY(Id)",
+            testName);
     String createModelStructStatement =
         String.format(
             "CREATE MODEL `%s_ModelStruct`\n"
@@ -183,16 +205,20 @@ public class ExportPipelineIT extends TemplateTestBase {
 
     googleSqlResourceManager.executeDdlStatement(createEmptyTableStatement);
     googleSqlResourceManager.executeDdlStatement(createSingersTableStatement);
+    googleSqlResourceManager.executeDdlStatement(createEmbeddingVectorsTableStatement);
     googleSqlResourceManager.executeDdlStatement(createModelStructStatement);
-    List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
+
+    List<Mutation> expectedData = generateTableRows(testName);
     googleSqlResourceManager.write(expectedData);
+
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
             .addParameter("spannerProjectId", PROJECT)
             .addParameter("instanceId", googleSqlResourceManager.getInstanceId())
             .addParameter("databaseId", googleSqlResourceManager.getDatabaseId())
-            //.addParameter("outputDir", getGcsPath("output/"))
-            .addParameter("outputDir", "gs://djagaluru-teleport-integration-test/exported-data/gsql/")
+            .addParameter("outputDir", getGcsPath("output/"))
+            // .addParameter("outputDir",
+            // "gs://djagaluru-teleport-integration-test/exported-data/gsql/")
             .addParameter("spannerHost", "https://staging-wrenchworks.sandbox.googleapis.com");
 
     // Act
@@ -206,6 +232,9 @@ public class ExportPipelineIT extends TemplateTestBase {
     List<Artifact> singersArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Singers")));
+    List<Artifact> embeddingsArtifacts =
+        gcsClient.listArtifacts(
+            "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "EmbeddingVectors")));
     List<Artifact> emptyArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Empty")));
@@ -214,16 +243,20 @@ public class ExportPipelineIT extends TemplateTestBase {
             "output/",
             Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "ModelStruct")));
     assertThat(singersArtifacts).isNotEmpty();
+    assertThat(embeddingsArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(modelStructArtifacts).isNotEmpty();
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
+    List<GenericRecord> embeddingsRecords = extractArtifacts(embeddingsArtifacts, EMBEDDING_VECTORS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
     List<GenericRecord> modelStructRecords =
         extractArtifacts(modelStructArtifacts, MODEL_STRUCT_SCHEMA);
 
     assertThatGenericRecords(singersRecords)
-        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData));
+        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData.subList(0,MESSAGES_COUNT)));
+    assertThatGenericRecords(embeddingsRecords)
+        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData.subList(MESSAGES_COUNT,expectedData.size())));
     assertThatGenericRecords(emptyRecords).hasRows(0);
     assertThatGenericRecords(modelStructRecords).hasRows(0);
   }
@@ -243,18 +276,26 @@ public class ExportPipelineIT extends TemplateTestBase {
                 + "  \"LastName\" character varying(256),\n"
                 + "PRIMARY KEY(\"Id\"))",
             testName);
-
+    String createEmbeddingVectorsTableStatement =
+        String.format(
+            "CREATE TABLE \"%s_EmbeddingVectors\" (\n"
+                + "  \"Id\" bigint,\n"
+                + "  \"Embeddings\" double precision[] vector length 4,\n"
+                + "PRIMARY KEY(\"Id\"))",
+            testName);
     postgresResourceManager.executeDdlStatement(createEmptyTableStatement);
     postgresResourceManager.executeDdlStatement(createSingersTableStatement);
-    List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
+    postgresResourceManager.executeDdlStatement(createEmbeddingVectorsTableStatement);
+    List<Mutation> expectedData = generateTableRows(testName);
     postgresResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
             .addParameter("spannerProjectId", PROJECT)
             .addParameter("instanceId", postgresResourceManager.getInstanceId())
             .addParameter("databaseId", postgresResourceManager.getDatabaseId())
-            //.addParameter("outputDir", getGcsPath("output/"))
-            .addParameter("outputDir", "gs://djagaluru-teleport-integration-test/exported-data/postgres/")
+            .addParameter("outputDir", getGcsPath("output/"))
+            // .addParameter("outputDir",
+            // "gs://djagaluru-teleport-integration-test/exported-data/postgres/")
             .addParameter("spannerHost", "https://staging-wrenchworks.sandbox.googleapis.com");
 
     // Act
@@ -268,27 +309,52 @@ public class ExportPipelineIT extends TemplateTestBase {
     List<Artifact> singersArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Singers")));
+    List<Artifact> embeddingsArtifacts =
+        gcsClient.listArtifacts(
+            "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "EmbeddingVectors")));
     List<Artifact> emptyArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Empty")));
     assertThat(singersArtifacts).isNotEmpty();
+    assertThat(embeddingsArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
+    List<GenericRecord> embeddingsRecords = extractArtifacts(embeddingsArtifacts, EMBEDDING_VECTORS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
 
     assertThatGenericRecords(singersRecords)
-        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData));
+        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData.subList(0,MESSAGES_COUNT)));
+    assertThatGenericRecords(embeddingsRecords)
+        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData.subList(MESSAGES_COUNT, expectedData.size())));
     assertThatGenericRecords(emptyRecords).hasRows(0);
   }
 
-  private static List<Mutation> generateTableRows(String tableId) {
+  private static List<Mutation> generateTableRows(String testName) {
     List<Mutation> mutations = new ArrayList<>();
     for (int i = 0; i < MESSAGES_COUNT; i++) {
+      String tableId = String.format("%s_Singers", testName);
       Mutation.WriteBuilder mutation = Mutation.newInsertBuilder(tableId);
       mutation.set("Id").to(i);
       mutation.set("FirstName").to(RandomStringUtils.randomAlphanumeric(1, 20));
       mutation.set("LastName").to(RandomStringUtils.randomAlphanumeric(1, 20));
+      mutations.add(mutation.build());
+    }
+
+    for (int i = 0; i < MESSAGES_COUNT; i++) {
+      String tableId = String.format("%s_EmbeddingVectors", testName);
+      Mutation.WriteBuilder mutation = Mutation.newInsertBuilder(tableId);
+      mutation.set("Id").to(i);
+
+      ArrayList<Double> embeddings =
+          new ArrayList<>(
+              Arrays.asList(
+                  RandomUtils.nextDouble(),
+                  RandomUtils.nextDouble(),
+                  RandomUtils.nextDouble(),
+                  RandomUtils.nextDouble()));
+
+      mutation.set("Embeddings").to(embeddings.toString());
       mutations.add(mutation.build());
     }
 
