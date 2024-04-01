@@ -18,6 +18,9 @@ package com.custom;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -38,8 +41,20 @@ public class AdvancedTransformation implements ISpannerMigrationTransformer {
       Map<String, Object> sourceRecord = request.getRequestRow();
       Double a = (Double) sourceRecord.get("double_column");
       Integer b = (Integer) sourceRecord.get("int_column");
+      String d = (String) sourceRecord.get("date_column");
+      DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+      // Parse the date
+      LocalDate date = LocalDate.parse(d, formatter);
+
+      // Add one day
+      LocalDate newDate = date.plusDays(1);
+
+      // Format the result
+      String formattedDate = newDate.format(formatter);
       Double c = a+b;
       transformedRecord.put("sum", c);
+      transformedRecord.put("date_column", formattedDate);
     }
     return new MigrationTransformationResponse(transformedRecord, false);
   }
