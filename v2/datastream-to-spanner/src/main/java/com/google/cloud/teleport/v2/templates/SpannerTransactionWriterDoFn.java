@@ -352,7 +352,6 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       JsonNode changeEvent, Map<String, Object> spannerRecord, String tableName, Ddl ddl)
       throws Exception {
     Table table = ddl.table(tableName);
-    GenericRecord record = new GenericData.Record();
     for (Map.Entry<String, Object> entry : spannerRecord.entrySet()) {
       String columnName = entry.getKey();
       if (!changeEvent.has(columnName)) {
