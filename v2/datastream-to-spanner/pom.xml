@@ -80,6 +80,13 @@
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
+<!--        TODO - Remove after https://github.com/apache/beam/issues/30700 is fixed. -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-spanner</artifactId>
+            <version>6.62.0</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>
