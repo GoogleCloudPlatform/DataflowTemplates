@@ -152,7 +152,7 @@
         "float_column": {
           "Name": "float_column",
           "T": {
-            "Name": "FLOAT64",
+            "Name": "FLOAT32",
             "Len": 0,
             "IsArray": false
           },
@@ -984,7 +984,6 @@
         0
       ],
       "float_column": [
-        13,
         0
       ],
       "id": [

@@ -327,7 +327,7 @@ public class DMLGenerator {
     String colInputValue = "";
     String colType = spannerColDef.getType().getName();
     String colName = spannerColDef.getName();
-    if ("FLOAT64".equals(colType)) {
+    if ("FLOAT64".equals(colType) || "FLOAT32".equals(colType)) {
       colInputValue = valuesJson.getBigDecimal(colName).toString();
     } else if ("BOOL".equals(colType)) {
       colInputValue = (new Boolean(valuesJson.getBoolean(colName))).toString();
