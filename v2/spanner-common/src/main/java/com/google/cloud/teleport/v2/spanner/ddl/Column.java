@@ -336,6 +336,9 @@ public abstract class Column implements Serializable {
           if (spannerType.equals(Type.Code.INT64.getName())) {
             return t(Type.int64(), null);
           }
+          if (spannerType.equals(Type.Code.FLOAT32.getName())) {
+            return t(Type.float32(), null);
+          }
           if (spannerType.equals(Type.Code.FLOAT64.getName())) {
             return t(Type.float64(), null);
           }
@@ -383,6 +386,9 @@ public abstract class Column implements Serializable {
           }
           if (spannerType.equals(Type.Code.PG_INT8.getName())) {
             return t(Type.pgInt8(), null);
+          }
+          if (spannerType.equals(Type.Code.PG_FLOAT4.getName())) {
+            return t(Type.pgFloat4(), null);
           }
           if (spannerType.equals(Type.Code.PG_FLOAT8.getName())) {
             return t(Type.pgFloat8(), null);
