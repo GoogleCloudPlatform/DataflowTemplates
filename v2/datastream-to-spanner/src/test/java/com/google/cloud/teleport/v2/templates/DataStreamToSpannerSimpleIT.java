@@ -58,6 +58,7 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
 
   private static final String TABLE1 = "Users";
   private static final String TABLE2 = "Movie";
+  private static final String TABLE3 = "Category";
 
   private static final String SESSION_FILE_RESOURCE =
       "DataStreamToSpannerSimpleIT/mysql-session.json";
@@ -237,6 +238,59 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
     assertArticlesTable();
   }
 
+  @Test
+  public void migrationTestWithRenameAndDropColumn() {
+    // Construct a ChainedConditionCheck with 4 stages.
+    // 1. Send initial wave of events
+    // 2. Wait on Spanner to have events
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    uploadDataStreamFile(
+                        jobInfo,
+                        TABLE3,
+                        "backfill.jsonl",
+                        "DataStreamToSpannerSimpleIT/mysql-backfill-Category.jsonl"),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE3)
+                        .setMinRows(2)
+                        .setMaxRows(2)
+                        .build()))
+            .build();
+
+    // Wait for conditions
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    assertCategoryTableBackfillContents();
+
+    conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    uploadDataStreamFile(
+                        jobInfo,
+                        TABLE3,
+                        "cdc1.jsonl",
+                        "DataStreamToSpannerSimpleIT/mysql-cdc-Category.jsonl"),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE3)
+                        .setMinRows(3)
+                        .setMaxRows(3)
+                        .build()))
+            .build();
+
+    result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    assertCategoryTableCdcContents();
+  }
+
   private void assertUsersTableContents() {
     List<Map<String, Object>> events = new ArrayList<>();
 
@@ -297,6 +351,47 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
         spannerResourceManager.runQuery("select actor from Movie order by id");
     Assert.assertEquals(123.098, numericVals.get(0).getBigDecimal(0).doubleValue(), 0.001);
     Assert.assertEquals(931.512, numericVals.get(1).getBigDecimal(0).doubleValue(), 0.001);
+  }
+
+  private void assertCategoryTableBackfillContents() {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("category_id", 1);
+    row1.put("full_name", "xyz");
+
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("category_id", 2);
+    row2.put("full_name", "abc");
+
+    events.add(row1);
+    events.add(row2);
+
+    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Category"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
+  }
+
+  private void assertCategoryTableCdcContents() {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("category_id", 2);
+    row1.put("full_name", "abc1");
+
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("category_id", 3);
+    row2.put("full_name", "def");
+
+    Map<String, Object> row3 = new HashMap<>();
+    row3.put("category_id", 4);
+    row3.put("full_name", "ghi");
+
+    events.add(row1);
+    events.add(row2);
+    events.add(row3);
+
+    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Category"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
   private void assertAuthorsTable() {
