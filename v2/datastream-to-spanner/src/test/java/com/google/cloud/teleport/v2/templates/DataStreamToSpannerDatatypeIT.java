@@ -50,9 +50,6 @@ import org.slf4j.LoggerFactory;
 public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerDatatypeIT.class);
 
-  private static final String SESSION_FILE_RESOURCE =
-      "DataStreamToSpannerDatatypeIT/mysql-session.json";
-
   private static final String SPANNER_DDL_RESOURCE =
       "DataStreamToSpannerDatatypeIT/spanner-schema.sql";
 
@@ -83,7 +80,7 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
         jobInfo =
             launchDataflowJob(
                 getClass().getSimpleName(),
-                SESSION_FILE_RESOURCE,
+                null,
                 null,
                 "DatatypeIT",
                 spannerResourceManager,
