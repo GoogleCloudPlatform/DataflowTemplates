@@ -11,17 +11,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **secretId1** (First Secret ID): First Secret ID containing aws key id.
-* **secretId2** (Second Secret ID): Second Secret ID containing aws key id.
-* **awsRegion** (AWS Region): AWS Region.
-* **kinesisDataStream** (Name of the Kinesis Data stream to read from): Name of the Kinesis Data stream to read from. Enter the full name of the Kinesis Data stream.
-* **outputPubsubTopic** (Output Pub/Sub topic): The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
+* **secretId1** : First Secret ID containing aws key id.
+* **secretId2** : Second Secret ID containing aws key id.
+* **awsRegion** : AWS Region.
+* **kinesisDataStream** : Name of the Kinesis Data stream to read from. Enter the full name of the Kinesis Data stream.
+* **outputPubsubTopic** : The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
 
-### Optional Parameters
+### Optional parameters
 
-* **awsDataFormat** (Data format of input): Data format of input.
+* **awsDataFormat** : Data format of input.
 
 
 

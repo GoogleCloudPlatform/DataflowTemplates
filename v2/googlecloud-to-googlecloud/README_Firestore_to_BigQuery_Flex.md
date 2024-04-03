@@ -1,5 +1,5 @@
 
-Firestore (Datastore mode) to BigQuery template
+Firestore (Datastore mode) to BigQuery with Python UDF template
 ---
 Batch pipeline. Reads Firestore entities and writes them to BigQuery.
 
@@ -11,34 +11,24 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
-* **bigQueryLoadingTemporaryDirectory** (Temporary directory for BigQuery loading process): Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir).
-* **firestoreReadGqlQuery** (GQL Query): Specifies which Firestore entities to read. Ex: ‘SELECT * FROM MyKind’.
-* **firestoreReadProjectId** (Project ID): The Google Cloud project ID of the Firestore instance to read from.
+* **outputTableSpec** : BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
+* **bigQueryLoadingTemporaryDirectory** : Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir).
+* **firestoreReadGqlQuery** : Specifies which Firestore entities to read. Ex: ‘SELECT * FROM MyKind’.
+* **firestoreReadProjectId** : The Google Cloud project ID of the Firestore instance to read from.
 
-### Optional Parameters
+### Optional parameters
 
-* **bigQuerySchemaPath** (Cloud Storage path to BigQuery JSON schema): The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is not set, or set to CREATE_IF_NEEDED, this parameter must be specified. (Example: gs://your-bucket/your-schema.json).
-* **firestoreReadNamespace** (Namespace): Namespace of requested Firestore entities. Leave blank to use default namespace.
-* **javascriptTextTransformGcsPath** (Cloud Storage path to Javascript UDF source): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
-* **javascriptTextTransformFunctionName** (UDF Javascript Function Name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
-* **useStorageWriteApi** (Use BigQuery Storage Write API): If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
-* **useStorageWriteApiAtLeastOnce** (Use at at-least-once semantics in BigQuery Storage Write API): This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-* **writeDisposition** (Write Disposition to use for BigQuery): BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
-* **createDisposition** (Create Disposition to use for BigQuery): BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED.
+* **bigQuerySchemaPath** : The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is not set, or set to CREATE_IF_NEEDED, this parameter must be specified. (Example: gs://your-bucket/your-schema.json).
+* **firestoreReadNamespace** : Namespace of requested Firestore entities. Leave blank to use default namespace.
+* **pythonExternalTextTransformGcsPath** : The Cloud Storage path pattern for the Python code containing your user-defined functions. (Example: gs://your-bucket/your-function.py).
+* **pythonExternalTextTransformFunctionName** : The name of the function to call from your Python file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
+* **useStorageWriteApi** : If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
+* **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
+* **writeDisposition** : BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
+* **createDisposition** : BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED.
 
-
-## User-Defined functions (UDFs)
-
-The Firestore (Datastore mode) to BigQuery Template supports User-Defined functions (UDFs).
-UDFs allow you to customize functionality by providing a JavaScript function
-without having to maintain or build the entire template code.
-
-Check [Create user-defined functions for Dataflow templates](https://cloud.google.com/dataflow/docs/guides/templates/create-template-udf)
-and [Using UDFs](https://github.com/GoogleCloudPlatform/DataflowTemplates#using-udfs)
-for more information about how to create and test those functions.
 
 
 ## Getting Started
@@ -124,8 +114,8 @@ export FIRESTORE_READ_PROJECT_ID=<firestoreReadProjectId>
 ### Optional
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 export FIRESTORE_READ_NAMESPACE=<firestoreReadNamespace>
-export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
-export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH=<pythonExternalTextTransformGcsPath>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME=<pythonExternalTextTransformFunctionName>
 export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export WRITE_DISPOSITION=WRITE_APPEND
@@ -141,8 +131,8 @@ gcloud dataflow flex-template run "firestore-to-bigquery-flex-job" \
   --parameters "firestoreReadGqlQuery=$FIRESTORE_READ_GQL_QUERY" \
   --parameters "firestoreReadProjectId=$FIRESTORE_READ_PROJECT_ID" \
   --parameters "firestoreReadNamespace=$FIRESTORE_READ_NAMESPACE" \
-  --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
-  --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
+  --parameters "pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH" \
+  --parameters "pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
   --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
   --parameters "writeDisposition=$WRITE_DISPOSITION" \
@@ -173,8 +163,8 @@ export FIRESTORE_READ_PROJECT_ID=<firestoreReadProjectId>
 ### Optional
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 export FIRESTORE_READ_NAMESPACE=<firestoreReadNamespace>
-export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
-export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH=<pythonExternalTextTransformGcsPath>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME=<pythonExternalTextTransformFunctionName>
 export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export WRITE_DISPOSITION=WRITE_APPEND
@@ -187,7 +177,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="firestore-to-bigquery-flex-job" \
 -DtemplateName="Firestore_to_BigQuery_Flex" \
--Dparameters="outputTableSpec=$OUTPUT_TABLE_SPEC,bigQueryLoadingTemporaryDirectory=$BIG_QUERY_LOADING_TEMPORARY_DIRECTORY,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,firestoreReadGqlQuery=$FIRESTORE_READ_GQL_QUERY,firestoreReadProjectId=$FIRESTORE_READ_PROJECT_ID,firestoreReadNamespace=$FIRESTORE_READ_NAMESPACE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,writeDisposition=$WRITE_DISPOSITION,createDisposition=$CREATE_DISPOSITION" \
+-Dparameters="outputTableSpec=$OUTPUT_TABLE_SPEC,bigQueryLoadingTemporaryDirectory=$BIG_QUERY_LOADING_TEMPORARY_DIRECTORY,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,firestoreReadGqlQuery=$FIRESTORE_READ_GQL_QUERY,firestoreReadProjectId=$FIRESTORE_READ_PROJECT_ID,firestoreReadNamespace=$FIRESTORE_READ_NAMESPACE,pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH,pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,writeDisposition=$WRITE_DISPOSITION,createDisposition=$CREATE_DISPOSITION" \
 -f v2/googlecloud-to-googlecloud
 ```
 
@@ -238,8 +228,8 @@ resource "google_dataflow_flex_template_job" "firestore_to_bigquery_flex" {
     firestoreReadProjectId = "<firestoreReadProjectId>"
     # bigQuerySchemaPath = "gs://your-bucket/your-schema.json"
     # firestoreReadNamespace = "<firestoreReadNamespace>"
-    # javascriptTextTransformGcsPath = "gs://your-bucket/your-function.js"
-    # javascriptTextTransformFunctionName = "'transform' or 'transform_udf1'"
+    # pythonExternalTextTransformGcsPath = "gs://your-bucket/your-function.py"
+    # pythonExternalTextTransformFunctionName = "'transform' or 'transform_udf1'"
     # useStorageWriteApi = "false"
     # useStorageWriteApiAtLeastOnce = "false"
     # writeDisposition = "WRITE_APPEND"

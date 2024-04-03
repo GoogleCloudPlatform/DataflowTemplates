@@ -12,18 +12,18 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **bootstrapServers** (Kafka Bootstrap Server list): Kafka Bootstrap Server list, separated by commas. (Example: localhost:9092,127.0.0.1:9093).
-* **inputTopics** (Kafka topic(s) to read the input from): Kafka topic(s) to read the input from. (Example: topic1,topic2).
-* **outputFileFormat** (File format of the desired output files. (TEXT, AVRO or PARQUET)): The file format of the desired output files. Can be TEXT, AVRO or PARQUET. Defaults to TEXT.
-* **outputDirectory** (Output file directory in Cloud Storage): The path and filename prefix for writing output files. Must end with a slash. (Example: gs://your-bucket/your-path).
-* **numShards** (Number of file shards): The maximum number of output shards produced when writing. Default number is runner-dependent.
+* **bootstrapServers** : Kafka Bootstrap Server list, separated by commas. (Example: localhost:9092,127.0.0.1:9093).
+* **inputTopics** : Kafka topic(s) to read the input from. (Example: topic1,topic2).
+* **outputFileFormat** : The file format of the desired output files. Can be TEXT, AVRO or PARQUET. Defaults to TEXT.
+* **outputDirectory** : The path and filename prefix for writing output files. Must end with a slash. (Example: gs://your-bucket/your-path).
+* **numShards** : The maximum number of output shards produced when writing. Default number is runner-dependent.
 
-### Optional Parameters
+### Optional parameters
 
-* **windowDuration** (Window duration): The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 5m.
-* **outputFilenamePrefix** (Output filename prefix of the files to write): The prefix to place on each windowed file. (Example: output-). Defaults to: output.
+* **windowDuration** : The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 5m.
+* **outputFilenamePrefix** : The prefix to place on each windowed file. (Example: output-). Defaults to: output.
 
 
 

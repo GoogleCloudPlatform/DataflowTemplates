@@ -15,33 +15,33 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **bigQueryDataset** (BigQuery dataset): The BigQuery dataset for change streams output.
-* **bigtableChangeStreamAppProfile** (Cloud Bigtable application profile ID): The application profile is used to distinguish workload in Cloud Bigtable.
-* **bigtableReadInstanceId** (Source Bigtable Instance ID): The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableReadTableId** (Source Cloud Bigtable table ID): The Cloud Bigtable table to read from.
+* **bigQueryDataset** : The BigQuery dataset for change streams output.
+* **bigtableChangeStreamAppProfile** : The application profile is used to distinguish workload in Cloud Bigtable.
+* **bigtableReadInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
+* **bigtableReadTableId** : The Cloud Bigtable table to read from.
 
-### Optional Parameters
+### Optional parameters
 
-* **writeRowkeyAsBytes** (Write rowkeys as BigQuery BYTES): When set true rowkeys are written to BYTES column, otherwise to STRING column. Defaults to false.
-* **writeValuesAsBytes** (Write values as BigQuery BYTES): When set true values are written to BYTES column, otherwise to STRING column. Defaults to false.
-* **writeNumericTimestamps** (Write Bigtable timestamp as BigQuery INT): When set true values are written to INT column, otherwise to TIMESTAMP column. Columns affected: `timestamp`, `timestamp_from`, `timestamp_to`. Defaults to false. When set to true the value is a number of microseconds since midnight of 01-JAN-1970.
-* **bigQueryProjectId** (BigQuery project ID): The BigQuery Project. Default is the project for the Dataflow job.
-* **bigQueryChangelogTableName** (BigQuery changelog table name): The BigQuery table name that contains the changelog records. Default: {bigtableTableId}_changelog.
-* **bigQueryChangelogTablePartitionGranularity** (Changelog table will be partitioned at specified granularity): When set, table partitioning will be in effect. Accepted values: `HOUR`, `DAY`, `MONTH`, `YEAR`. Default is no partitioning.
-* **bigQueryChangelogTablePartitionExpirationMs** (Sets partition expiration time in milliseconds): When set true partitions older than specified number of milliseconds will be deleted. Default is no expiration.
-* **bigQueryChangelogTableFieldsToIgnore** (Optional changelog table columns to be disabled): A comma-separated list of the changelog columns which will not be created and populated if specified. Supported values should be from the following list: `is_gc`, `source_instance`, `source_cluster`, `source_table`, `tiebreaker`, `big_query_commit_timestamp`. Defaults to all columns to be populated.
-* **dlqDirectory** (Dead letter queue directory): The file path to store any unprocessed records with the reason they failed to be processed. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
-* **bigtableChangeStreamMetadataInstanceId** (Cloud Bigtable change streams metadata instance ID): The Cloud Bigtable instance to use for the change streams connector metadata table. Defaults to empty.
-* **bigtableChangeStreamMetadataTableTableId** (Cloud Bigtable change streams metadata table ID): The Cloud Bigtable change streams connector metadata table ID to use. If not provided, a Cloud Bigtable change streams connector metadata table will automatically be created during the pipeline flow. Defaults to empty.
-* **bigtableChangeStreamCharset** (Bigtable change streams charset name when reading values and column qualifiers): Bigtable change streams charset name when reading values and column qualifiers. Default is UTF-8.
-* **bigtableChangeStreamStartTimestamp** (The timestamp to read change streams from): The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts.
-* **bigtableChangeStreamIgnoreColumnFamilies** (Cloud Bigtable change streams column families to ignore): A comma-separated list of column family names changes to which won't be captured. Defaults to empty.
-* **bigtableChangeStreamIgnoreColumns** (Cloud Bigtable change streams columns to ignore): A comma-separated list of column names changes to which won't be captured. Defaults to empty.
-* **bigtableChangeStreamName** (A unique name of the client pipeline): Allows to resume processing from the point where a previously running pipeline stopped.
-* **bigtableChangeStreamResume** (Resume streaming with the same change stream name): When set to true< a new pipeline will resume processing from the point at which a previously running pipeline with the same bigtableChangeStreamName stopped. If pipeline with the given bigtableChangeStreamName never ran in the past, a new pipeline will fail to start. When set to false a new pipeline will be started. If pipeline with the same bigtableChangeStreamName already ran in the past for the given source, a new pipeline will fail to start. Defaults to false.
-* **bigtableReadProjectId** (Source Cloud Bigtable Project ID): Project to read Cloud Bigtable data from. The default for this parameter is the project where the Dataflow pipeline is running.
+* **writeRowkeyAsBytes** : When set true rowkeys are written to BYTES column, otherwise to STRING column. Defaults to false.
+* **writeValuesAsBytes** : When set true values are written to BYTES column, otherwise to STRING column. Defaults to false.
+* **writeNumericTimestamps** : When set true values are written to INT column, otherwise to TIMESTAMP column. Columns affected: `timestamp`, `timestamp_from`, `timestamp_to`. Defaults to false. When set to true the value is a number of microseconds since midnight of 01-JAN-1970.
+* **bigQueryProjectId** : The BigQuery Project. Default is the project for the Dataflow job.
+* **bigQueryChangelogTableName** : The BigQuery table name that contains the changelog records. Default: {bigtableTableId}_changelog.
+* **bigQueryChangelogTablePartitionGranularity** : When set, table partitioning will be in effect. Accepted values: `HOUR`, `DAY`, `MONTH`, `YEAR`. Default is no partitioning.
+* **bigQueryChangelogTablePartitionExpirationMs** : When set true partitions older than specified number of milliseconds will be deleted. Default is no expiration.
+* **bigQueryChangelogTableFieldsToIgnore** : A comma-separated list of the changelog columns which will not be created and populated if specified. Supported values should be from the following list: `is_gc`, `source_instance`, `source_cluster`, `source_table`, `tiebreaker`, `big_query_commit_timestamp`. Defaults to all columns to be populated.
+* **dlqDirectory** : The file path to store any unprocessed records with the reason they failed to be processed. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
+* **bigtableChangeStreamMetadataInstanceId** : The Cloud Bigtable instance to use for the change streams connector metadata table. Defaults to empty.
+* **bigtableChangeStreamMetadataTableTableId** : The Cloud Bigtable change streams connector metadata table ID to use. If not provided, a Cloud Bigtable change streams connector metadata table will automatically be created during the pipeline flow. Defaults to empty.
+* **bigtableChangeStreamCharset** : Bigtable change streams charset name when reading values and column qualifiers. Default is UTF-8.
+* **bigtableChangeStreamStartTimestamp** : The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts.
+* **bigtableChangeStreamIgnoreColumnFamilies** : A comma-separated list of column family names changes to which won't be captured. Defaults to empty.
+* **bigtableChangeStreamIgnoreColumns** : A comma-separated list of column names changes to which won't be captured. Defaults to empty.
+* **bigtableChangeStreamName** : Allows to resume processing from the point where a previously running pipeline stopped.
+* **bigtableChangeStreamResume** : When set to true< a new pipeline will resume processing from the point at which a previously running pipeline with the same bigtableChangeStreamName stopped. If pipeline with the given bigtableChangeStreamName never ran in the past, a new pipeline will fail to start. When set to false a new pipeline will be started. If pipeline with the same bigtableChangeStreamName already ran in the past for the given source, a new pipeline will fail to start. Defaults to false.
+* **bigtableReadProjectId** : Project to read Cloud Bigtable data from. The default for this parameter is the project where the Dataflow pipeline is running.
 
 
 
