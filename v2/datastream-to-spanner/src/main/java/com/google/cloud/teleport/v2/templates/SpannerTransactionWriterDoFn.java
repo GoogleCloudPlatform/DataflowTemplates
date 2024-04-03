@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_CHANGE_TYPE_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_SCHEMA_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_TABLE_NAME_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_UUID_KEY;
@@ -29,13 +28,11 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
-import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
@@ -51,7 +48,6 @@ import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFacto
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
-import com.google.cloud.teleport.v2.templates.datastream.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.templates.datastream.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
@@ -60,17 +56,8 @@ import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -220,8 +207,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
       JsonNode retryCount = changeEvent.get("_metadata_retry_count");
       String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
-      Map<String, Object> sourceRecord;
-      sourceRecord = getSourceRecord(changeEvent, tableName);
+      Map<String, Object> sourceRecord = convertJsonNodeToMap(changeEvent);
+      LOG.info("Source record", sourceRecord);
 
       if (retryCount != null) {
         isRetryRecord = true;
@@ -232,38 +219,18 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       }
       if (datastreamToSpannerTransformation != null) {
         MigrationTransformationRequest migrationTransformationRequest =
-            new MigrationTransformationRequest(
-                tableName, sourceRecord, "");
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        Future<MigrationTransformationResponse> jarCallFuture =
-            executor.submit(
-                new Callable<MigrationTransformationResponse>() {
-                  @Override
-                  public MigrationTransformationResponse call() {
-                    return datastreamToSpannerTransformation.toSpannerRow(
-                        migrationTransformationRequest);
-                  }
-                });
-        try {
-          MigrationTransformationResponse migrationTransformationResponse =
-              jarCallFuture.get(1, TimeUnit.SECONDS); // Timeout of 1 second
-          if (migrationTransformationResponse.isEventFiltered()) {
-            filteredEvents.inc();
-            outputWithFilterTag(c, c.element());
-            return;
-          }
-          LOG.info(
-              "Spanner transformed record: " + migrationTransformationResponse.getResponseRow());
-          changeEvent =
-              transformChangeEventViaAdvancedTransformation(
-                  changeEvent, migrationTransformationResponse.getResponseRow(), tableName, ddl);
-        } catch (TimeoutException e) {
-          throw new TimeoutException("JAR method timed out for input: ");
-        } catch (Exception e) {
-          throw new RuntimeException("Error calling JAR method", e);
-        } finally {
-          executor.shutdownNow();
+            new MigrationTransformationRequest(tableName, sourceRecord, "");
+        MigrationTransformationResponse migrationTransformationResponse =
+            datastreamToSpannerTransformation.toSpannerRow(migrationTransformationRequest);
+        if (migrationTransformationResponse.isEventFiltered()) {
+          filteredEvents.inc();
+          outputWithFilterTag(c, c.element());
+          return;
         }
+        LOG.info("Spanner transformed record: " + migrationTransformationResponse.getResponseRow());
+        changeEvent =
+            transformChangeEventViaAdvancedTransformation(
+                changeEvent, migrationTransformationResponse.getResponseRow(), tableName, ddl);
       }
       ChangeEventContext changeEventContext =
           ChangeEventContextFactory.createChangeEventContext(
@@ -390,44 +357,32 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     return changeEvent;
   }
 
-  private Map<String, Object> getSourceRecord(JsonNode changeEvent, String tableName)
+  private Map<String, Object> convertJsonNodeToMap(JsonNode changeEvent)
       throws ChangeEventConvertorException {
 
-    LOG.info("Table name: " + tableName);
-    String tableId = schema.getSrcToID().get(tableName).getName();
-    LOG.info("Table id: " + tableId);
     Map<String, Object> sourceRecord = new HashMap<>();
-    Map<String, SourceColumnDefinition> sourceColumns =
-        schema.getSrcSchema().get(tableId).getColDefs();
-    LOG.info("Source columns: " + sourceColumns);
-    Set<String> columnIds = sourceColumns.keySet();
-    LOG.info("Column ids: " + columnIds);
-    for (String columnId : columnIds) {
-      SourceColumnType columnType =
-          schema.getSrcSchema().get(tableId).getColDefs().get(columnId).getType();
-      String columnName = schema.getSrcSchema().get(tableId).getColDefs().get(columnId).getName();
-      Object columnValue;
-      LOG.info("Source Column type: " + columnType);
-      switch (columnType.getName().toLowerCase()) {
-        case "int":
-          columnValue =
-              Value.int64(ChangeEventTypeConvertor.toLong(changeEvent, columnName, false));
-          break;
-        case "string":
-        case "varchar":
-          columnValue =
-              Value.string(ChangeEventTypeConvertor.toString(changeEvent, columnName, false));
-          break;
-          // TODO - Add support for other data types.
-        default:
-          throw new IllegalArgumentException(
-              "Column name("
-                  + columnName
-                  + ") has unsupported column type("
-                  + columnType.getName()
-                  + ")");
+    Iterator<Map.Entry<String, JsonNode>> fields = changeEvent.fields();
+    while (fields.hasNext()) {
+      Map.Entry<String, JsonNode> field = fields.next();
+      String key = field.getKey();
+      JsonNode value = field.getValue();
+
+      // Recursively convert nested JSONNodes
+      if (value.isObject()) {
+        sourceRecord.put(key, convertJsonNodeToMap(value));
+      } else if (value.isArray()) {
+        sourceRecord.put(key, value.toString());
+      } else if (value.isTextual()) {
+        sourceRecord.put(key, value.asText());
+      } else if (value.isBoolean()) {
+        sourceRecord.put(key, value.asBoolean());
+      } else if (value.isDouble()) {
+        sourceRecord.put(key, value.asDouble());
+      } else if (value.isLong()) {
+        sourceRecord.put(key, value.asLong());
+      } else if (value.isNull()) {
+        sourceRecord.put(key, null);
       }
-      sourceRecord.put(columnName, columnValue);
     }
     return sourceRecord;
   }
