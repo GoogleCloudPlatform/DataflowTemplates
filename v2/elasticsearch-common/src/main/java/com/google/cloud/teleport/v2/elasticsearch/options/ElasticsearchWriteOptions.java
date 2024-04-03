@@ -50,7 +50,8 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 3,
       optional = true,
       description = "Username for Elasticsearch endpoint",
-      helpText = "The Elasticsearch username to authenticate with. If specified, the value of 'apiKey' is ignored")
+      helpText =
+          "The Elasticsearch username to authenticate with. If specified, the value of 'apiKey' is ignored")
   String getElasticsearchUsername();
 
   void setElasticsearchUsername(String elasticsearchUsername);
@@ -59,7 +60,8 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 4,
       optional = true,
       description = "Password for Elasticsearch endpoint",
-      helpText = "The Elasticsearch password to authenticate with. If specified, the value of 'apiKey' is ignored.")
+      helpText =
+          "The Elasticsearch password to authenticate with. If specified, the value of 'apiKey' is ignored.")
   String getElasticsearchPassword();
 
   void setElasticsearchPassword(String elasticsearchPassword);

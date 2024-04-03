@@ -59,7 +59,8 @@ public interface PubSubToElasticsearchOptions
       order = 3,
       optional = true,
       description = "The namespace for dataset.",
-      helpText = "An arbitrary grouping, such as an environment (dev, prod, or qa), a team, or a strategic business unit. Default: 'default'")
+      helpText =
+          "An arbitrary grouping, such as an environment (dev, prod, or qa), a team, or a strategic business unit. Default: 'default'")
   @Default.String("default")
   String getNamespace();
 
