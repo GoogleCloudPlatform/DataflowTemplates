@@ -191,7 +191,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "UDF JavaScript Function Name for _type metadata",
       helpText =
-          "UDF JavaScript unction Name for function that will specify '_type' metadata to be included with document in bulk request. Default: none")
+          "UDF JavaScript function Name for function that will specify '_type' metadata to be included with document in bulk request. Default: none")
   String getJavaScriptTypeFnName();
 
   void setJavaScriptTypeFnName(String javaScriptTextTransformFunctionName);
