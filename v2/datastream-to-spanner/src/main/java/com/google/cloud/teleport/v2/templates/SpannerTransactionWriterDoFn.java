@@ -233,7 +233,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       if (datastreamToSpannerTransformation != null) {
         MigrationTransformationRequest migrationTransformationRequest =
             new MigrationTransformationRequest(
-                tableName, sourceRecord, "", changeEvent.get(EVENT_CHANGE_TYPE_KEY).asText());
+                tableName, sourceRecord, "");
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Future<MigrationTransformationResponse> jarCallFuture =
             executor.submit(
@@ -392,6 +392,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   private Map<String, Object> getSourceRecord(JsonNode changeEvent, String tableName)
       throws ChangeEventConvertorException {
+
     LOG.info("Table name: " + tableName);
     String tableId = schema.getSrcToID().get(tableName).getName();
     LOG.info("Table id: " + tableId);

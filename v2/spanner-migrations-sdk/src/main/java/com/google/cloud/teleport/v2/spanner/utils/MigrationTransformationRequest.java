@@ -25,5 +25,4 @@ public class MigrationTransformationRequest {
   String tableName;
   Map<String, Object> requestRow;
   String shardId;
-  String eventType;
 }
