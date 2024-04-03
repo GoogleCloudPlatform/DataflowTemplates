@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_METADATA_KEY_PREFIX;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_SCHEMA_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_TABLE_NAME_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_UUID_KEY;
@@ -25,11 +26,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
@@ -38,26 +41,24 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefin
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader;
 import com.google.cloud.teleport.v2.spanner.type.Type;
-import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
-import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
-import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.templates.datastream.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
-import java.lang.reflect.Constructor;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -67,8 +68,6 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
-import org.joda.time.Duration;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -149,6 +148,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   private ISpannerMigrationTransformer datastreamToSpannerTransformation;
 
+  // ChangeEventSessionConvertor utility object.
+  private ChangeEventSessionConvertor changeEventSessionConvertor;
+
   SpannerTransactionWriterDoFn(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
@@ -181,6 +183,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     datastreamToSpannerTransformation = getApplyTransformationImpl(customJarPath, customClassName);
+    changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, transformationContext, sourceType, roundJsonDecimals);
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
@@ -213,10 +218,14 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       if (retryCount != null) {
         isRetryRecord = true;
       }
+
       if (!schema.isEmpty()) {
-        verifyTableInSession(tableName);
-        changeEvent = transformChangeEventViaSessionFile(changeEvent);
+        schema.verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
+        changeEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent);
       }
+      changeEvent =
+          changeEventSessionConvertor.transformChangeEventData(
+              changeEvent, spannerAccessor.getDatabaseClient(), ddl);
       if (datastreamToSpannerTransformation != null) {
         MigrationTransformationRequest migrationTransformationRequest =
             new MigrationTransformationRequest(tableName, sourceRecord, "");
@@ -308,7 +317,6 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         retryableErrors.inc();
       }
     } catch (Exception e) {
-      LOG.info("Exception " + e);
       // Any other errors are considered severe and not retryable.
       outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
       failedEvents.inc();

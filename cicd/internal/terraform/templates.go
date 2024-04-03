@@ -79,6 +79,20 @@ var (
 		key:   "template_path",
 		value: freemarkerTemplatePathFlex,
 	}
+
+	// ProviderAttributeExtra applies Extra attribute assignment to the resource block 'provider' attribute for
+	// the generally available terraform provider.
+	ProviderAttributeExtra Extra = &extraImpl{
+		key:   "provider_attribute",
+		value: "provider = google",
+	}
+
+	// ProviderBetaAttributeExtra applies Extra attribute assignment to the resource block 'provider' attribute for
+	// the beta terraform provider.
+	ProviderBetaAttributeExtra Extra = &extraImpl{
+		key:   "provider_attribute",
+		value: "provider = google-beta",
+	}
 )
 
 //go:embed header.tmpl module.tmpl variable.tmpl

@@ -19,7 +19,6 @@ import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
@@ -37,9 +36,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Read and writes the shard process to shard_progress table. */
 public class SpannerDao {
+
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerDao.class);
 
   private SpannerAccessor spannerAccessor;
   private SpannerConfig spannerConfig;
@@ -52,38 +55,45 @@ public class SpannerDao {
   // spanner to gcs job
   private String
       shardFileProcessProgressTableName; // stores the window until which shard has progressed
-  private String skippedFileTableName; // stores the skipped file names
   private String
       dataSeenTableName; // stores the window end time for every window that has non-zero change
   // data records seen
   private boolean isPostgres;
 
-  public SpannerDao(String projectId, String instanceId, String databaseId, String tableSuffix) {
+  public SpannerDao(SpannerConfig spannerConfig, String tableSuffix, boolean isPostgres) {
+    this.spannerConfig = spannerConfig;
+    this.spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+    this.isPostgres = isPostgres;
+    createInternal(tableSuffix);
+  }
+
+  public SpannerDao(
+      String projectId,
+      String instanceId,
+      String databaseId,
+      String tableSuffix,
+      boolean isPostgres) {
     this.spannerConfig =
         SpannerConfig.create()
             .withProjectId(projectId)
             .withInstanceId(instanceId)
             .withDatabaseId(databaseId);
     this.spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+    this.isPostgres = isPostgres;
+    createInternal(tableSuffix);
+  }
+
+  public void createInternal(String tableSuffix) {
     spannerToGcsMetadataTableName = "spanner_to_gcs_metadata";
     shardFileCreateProgressTableName = "shard_file_create_progress";
     shardFileProcessProgressTableName = "shard_file_process_progress";
     dataSeenTableName = "data_seen";
-    skippedFileTableName = "shard_skipped_files";
     if (!tableSuffix.isEmpty()) {
       spannerToGcsMetadataTableName += "_" + tableSuffix;
       shardFileCreateProgressTableName += "_" + tableSuffix;
       shardFileProcessProgressTableName += "_" + tableSuffix;
       dataSeenTableName += "_" + tableSuffix;
-      skippedFileTableName += "_" + tableSuffix;
     }
-    isPostgres =
-        Dialect.POSTGRESQL
-            == spannerAccessor
-                .getDatabaseAdminClient()
-                .getDatabase(
-                    spannerConfig.getInstanceId().get(), spannerConfig.getDatabaseId().get())
-                .getDialect();
   }
 
   public Map<String, ShardProgress> getShardProgressByRunIdAndStatus(
@@ -116,9 +126,9 @@ public class SpannerDao {
               .to(inputStatus)
               .build();
     }
-
-    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
-      ResultSet resultSet = tx.executeQuery(statement);
+    ResultSet resultSet = null;
+    try (ReadOnlyTransaction tx = databaseClient.singleUseReadOnlyTransaction()) {
+      resultSet = tx.executeQuery(statement);
 
       while (resultSet.next()) {
         String shard = resultSet.getString(0);
@@ -134,6 +144,10 @@ public class SpannerDao {
               + shardFileProcessProgressTableName
               + " table could not be read. "
               + e.getMessage());
+    } finally {
+      if (resultSet != null) {
+        resultSet.close();
+      }
     }
     return shardProgress;
   }
@@ -155,9 +169,9 @@ public class SpannerDao {
               + " where run_id=@runId ";
       statement = Statement.newBuilder(statementStr).bind("runId").to(runId).build();
     }
-
-    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
-      ResultSet resultSet = tx.executeQuery(statement);
+    ResultSet resultSet = null;
+    try (ReadOnlyTransaction tx = databaseClient.singleUseReadOnlyTransaction()) {
+      resultSet = tx.executeQuery(statement);
 
       while (resultSet.next()) {
         String shard = resultSet.getString(0);
@@ -173,6 +187,10 @@ public class SpannerDao {
               + shardFileProcessProgressTableName
               + " table could not be read. "
               + e.getMessage());
+    } finally {
+      if (resultSet != null) {
+        resultSet.close();
+      }
     }
     return shardProgress;
   }
@@ -206,8 +224,9 @@ public class SpannerDao {
             + shardFileProcessProgressTableName
             + "' and"
             + " table_type='BASE TABLE'";
-    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
-      ResultSet resultSet = tx.executeQuery(Statement.of(statement));
+    ResultSet resultSet = null;
+    try (ReadOnlyTransaction tx = databaseClient.singleUseReadOnlyTransaction()) {
+      resultSet = tx.executeQuery(Statement.of(statement));
       if (!resultSet.next()) {
         DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
         String createTable = "";
@@ -241,61 +260,10 @@ public class SpannerDao {
     } catch (Exception e) {
 
       throw new RuntimeException(e);
-    }
-  }
-
-  /*
-  This method creates the table to track the skipped files.
-  */
-  public void checkAndCreateSkippedFileTable() {
-
-    DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
-    String statement =
-        "select * from information_schema.tables where table_name='"
-            + skippedFileTableName
-            + "' and"
-            + " table_type='BASE TABLE'";
-    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
-      ResultSet resultSet = tx.executeQuery(Statement.of(statement));
-      if (!resultSet.next()) {
-        DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
-        String createTable = "";
-        if (isPostgres) {
-          createTable =
-              "create table "
-                  + skippedFileTableName
-                  + " (id varchar(36) DEFAULT spanner.generate_uuid(), run_id character varying NOT"
-                  + " NULL, shard character varying NOT NULL, file_name character varying NOT"
-                  + " NULL, insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP, PRIMARY"
-                  + " KEY(id))";
-
-        } else {
-          createTable =
-              "create table "
-                  + skippedFileTableName
-                  + "( id STRING(36) DEFAULT(GENERATE_UUID()),"
-                  + "run_id STRING(MAX) NOT NULL,"
-                  + "shard STRING(MAX) NOT NULL,"
-                  + "file_name STRING(MAX) NOT NULL,"
-                  + "insert_ts TIMESTAMP DEFAULT (CURRENT_TIMESTAMP),"
-                  + ") PRIMARY KEY(id)";
-        }
-        OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
-            databaseAdminClient.updateDatabaseDdl(
-                spannerConfig.getInstanceId().get(),
-                spannerConfig.getDatabaseId().get(),
-                Arrays.asList(createTable),
-                null);
-
-        try {
-          op.get(SCHEMA_UPDATE_WAIT_MIN, TimeUnit.MINUTES);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-          throw new RuntimeException(e);
-        }
+    } finally {
+      if (resultSet != null) {
+        resultSet.close();
       }
-    } catch (Exception e) {
-
-      throw new RuntimeException(e);
     }
   }
 
@@ -315,9 +283,9 @@ public class SpannerDao {
               + " where run_id = @runId";
       statement = Statement.newBuilder(statementStr).bind("runId").to(runId).build();
     }
-
-    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
-      ResultSet resultSet = tx.executeQuery(statement);
+    ResultSet resultSet = null;
+    try (ReadOnlyTransaction tx = databaseClient.singleUseReadOnlyTransaction()) {
+      resultSet = tx.executeQuery(statement);
 
       if (resultSet.next()) {
         String startTime = resultSet.getString(0);
@@ -332,6 +300,10 @@ public class SpannerDao {
       } else {
         throw new RuntimeException(
             "The " + spannerToGcsMetadataTableName + " table could not be read. ", e);
+      }
+    } finally {
+      if (resultSet != null) {
+        resultSet.close();
       }
     }
 
@@ -362,10 +334,9 @@ public class SpannerDao {
               .to(shardId)
               .build();
     }
-
-    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
-      ResultSet resultSet = tx.executeQuery(statement);
-
+    ResultSet resultSet = null;
+    try (ReadOnlyTransaction tx = databaseClient.singleUseReadOnlyTransaction()) {
+      resultSet = tx.executeQuery(statement);
       if (resultSet.next()) {
 
         Timestamp response = resultSet.getTimestamp(0);
@@ -373,9 +344,13 @@ public class SpannerDao {
         return response;
       }
     } catch (Exception e) {
-
-      throw new RuntimeException(
-          "The " + shardFileCreateProgressTableName + " table could not be read.", e);
+      LOG.info("The " + shardFileCreateProgressTableName + " table could not be read.");
+      // throw original exception for caller to make decision
+      throw e;
+    } finally {
+      if (resultSet != null) {
+        resultSet.close();
+      }
     }
 
     return null;
@@ -393,33 +368,24 @@ public class SpannerDao {
       String statementStr = "SELECT window_seen from " + dataSeenTableName + " where id=@id";
       statement = Statement.newBuilder(statementStr).bind("id").to(id).build();
     }
-
-    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
-      ResultSet resultSet = tx.executeQuery(statement);
+    ResultSet resultSet = null;
+    try (ReadOnlyTransaction tx = databaseClient.singleUseReadOnlyTransaction()) {
+      resultSet = tx.executeQuery(statement);
 
       if (resultSet.next()) {
         return true;
       }
     } catch (Exception e) {
-
-      throw new RuntimeException("The " + dataSeenTableName + " table could not be read. ", e);
+      LOG.info("The " + dataSeenTableName + " table could not be read.");
+      // throw original exception for caller to make decision
+      throw e;
+    } finally {
+      if (resultSet != null) {
+        resultSet.close();
+      }
     }
 
     return false;
-  }
-
-  public void writeSkippedFile(String shardId, String runId, String fileName) {
-    List<Mutation> mutations = new ArrayList<>();
-    mutations.add(
-        Mutation.newInsertOrUpdateBuilder(skippedFileTableName)
-            .set("run_id")
-            .to(runId)
-            .set("shard")
-            .to(shardId)
-            .set("file_name")
-            .to(fileName)
-            .build());
-    spannerAccessor.getDatabaseClient().write(mutations);
   }
 
   public void close() {

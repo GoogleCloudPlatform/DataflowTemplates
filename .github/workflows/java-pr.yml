@@ -94,6 +94,12 @@ jobs:
           name: surefire-test-results
           path: '**/surefire-reports/TEST-*.xml'
           retention-days: 1
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.0.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: GoogleCloudPlatform/DataflowTemplates
+          files: 'target/site/jacoco-aggregate/jacoco.xml'
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
   java_integration_smoke_tests_templates:

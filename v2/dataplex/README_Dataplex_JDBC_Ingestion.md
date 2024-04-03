@@ -40,6 +40,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **writeDisposition** (BigQuery write disposition type): Strategy to employ if the target file/table exists. If the table exists - should it overwrite/append or fail the load. Format: WRITE_APPEND or WRITE_TRUNCATE or WRITE_EMPTY. Only supported for writing to BigQuery. Defaults to: WRITE_EMPTY.
 * **fileFormat** (Output file format in Cloud Storage.): Output file format in Cloud Storage. Format: PARQUET or AVRO. Defaults to: PARQUET.
 * **useColumnAlias** (Whether to use column alias to map the rows.): If enabled (set to true) the pipeline will consider column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to false.
+* **fetchSize** (Set the data size going to be fetched and loaded in memory per Jdbc call.): It should ONLY be used if the default value throws memory errors. If not set, using Beam's default fetch size.
 * **updateDataplexMetadata** (Update Dataplex metadata.): Whether to update Dataplex metadata for the newly created entities. Only supported for Cloud Storage destination. If enabled, the pipeline will automatically copy the schema from source to the destination Dataplex entities, and the automated Dataplex Discovery won't run for them. Use this flag in cases where you have managed schema at the source. Defaults to: false.
 * **useStorageWriteApi** (Use BigQuery Storage Write API): If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
 * **useStorageWriteApiAtLeastOnce** (Use at at-least-once semantics in BigQuery Storage Write API): This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
@@ -138,6 +139,7 @@ export PARITION_COLUMN=<paritionColumn>
 export WRITE_DISPOSITION=WRITE_EMPTY
 export FILE_FORMAT=PARQUET
 export USE_COLUMN_ALIAS=false
+export FETCH_SIZE=<fetchSize>
 export UPDATE_DATAPLEX_METADATA=false
 export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
@@ -161,6 +163,7 @@ gcloud dataflow flex-template run "dataplex-jdbc-ingestion-job" \
   --parameters "writeDisposition=$WRITE_DISPOSITION" \
   --parameters "fileFormat=$FILE_FORMAT" \
   --parameters "useColumnAlias=$USE_COLUMN_ALIAS" \
+  --parameters "fetchSize=$FETCH_SIZE" \
   --parameters "updateDataplexMetadata=$UPDATE_DATAPLEX_METADATA" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
   --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE"
@@ -199,6 +202,7 @@ export PARITION_COLUMN=<paritionColumn>
 export WRITE_DISPOSITION=WRITE_EMPTY
 export FILE_FORMAT=PARQUET
 export USE_COLUMN_ALIAS=false
+export FETCH_SIZE=<fetchSize>
 export UPDATE_DATAPLEX_METADATA=false
 export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
@@ -210,7 +214,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="dataplex-jdbc-ingestion-job" \
 -DtemplateName="Dataplex_JDBC_Ingestion" \
--Dparameters="connectionURL=$CONNECTION_URL,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,query=$QUERY,outputTable=$OUTPUT_TABLE,KMSEncryptionKey=$KMSENCRYPTION_KEY,outputAsset=$OUTPUT_ASSET,partitioningScheme=$PARTITIONING_SCHEME,paritionColumn=$PARITION_COLUMN,writeDisposition=$WRITE_DISPOSITION,fileFormat=$FILE_FORMAT,useColumnAlias=$USE_COLUMN_ALIAS,updateDataplexMetadata=$UPDATE_DATAPLEX_METADATA,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
+-Dparameters="connectionURL=$CONNECTION_URL,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,query=$QUERY,outputTable=$OUTPUT_TABLE,KMSEncryptionKey=$KMSENCRYPTION_KEY,outputAsset=$OUTPUT_ASSET,partitioningScheme=$PARTITIONING_SCHEME,paritionColumn=$PARITION_COLUMN,writeDisposition=$WRITE_DISPOSITION,fileFormat=$FILE_FORMAT,useColumnAlias=$USE_COLUMN_ALIAS,fetchSize=$FETCH_SIZE,updateDataplexMetadata=$UPDATE_DATAPLEX_METADATA,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
 -f v2/dataplex
 ```
 
@@ -219,8 +223,23 @@ mvn clean package -PtemplatesRun \
 Dataflow supports the utilization of Terraform to manage template jobs,
 see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
 
-Here is an example of Terraform configuration:
+Terraform modules have been generated for most templates in this repository. This includes the relevant parameters
+specific to the template. If available, they may be used instead of
+[dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job)
+directly.
 
+To use the autogenerated module, execute the standard
+[terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
+
+```shell
+cd v2/dataplex/terraform/Dataplex_JDBC_Ingestion
+terraform init
+terraform apply
+```
+
+To use
+[dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job)
+directly:
 
 ```terraform
 provider "google-beta" {
@@ -255,6 +274,7 @@ resource "google_dataflow_flex_template_job" "dataplex_jdbc_ingestion" {
     # writeDisposition = "WRITE_EMPTY"
     # fileFormat = "PARQUET"
     # useColumnAlias = "false"
+    # fetchSize = "<fetchSize>"
     # updateDataplexMetadata = "false"
     # useStorageWriteApi = "false"
     # useStorageWriteApiAtLeastOnce = "false"

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import static com.google.cloud.teleport.v2.templates.TextToBigQueryStreaming.wrapBigQueryInsertError;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.metadata.MultiTemplate;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -28,7 +29,9 @@ import com.google.cloud.teleport.v2.templates.PubSubToBigQuery.Options;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.PythonExternalTextTransformerOptions;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.RowToPubSubFailsafeElementFn;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.ResourceUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -60,7 +63,9 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,26 +87,57 @@ import org.slf4j.LoggerFactory;
  * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_PubSub_to_BigQuery_Flex.md">README</a>
  * for instructions on how to use or modify this template.
  */
-@Template(
-    name = "PubSub_to_BigQuery_Flex",
-    category = TemplateCategory.STREAMING,
-    displayName = "Pub/Sub to BigQuery",
-    description =
-        "The Pub/Sub to BigQuery template is a streaming pipeline that reads JSON-formatted messages from a Pub/Sub topic or subscription, and writes them to a BigQuery table. "
-            + "You can use the template as a quick solution to move Pub/Sub data to BigQuery. "
-            + "The template reads JSON-formatted messages from Pub/Sub and converts them to BigQuery elements.",
-    optionsClass = Options.class,
-    flexContainerName = "pubsub-to-bigquery",
-    documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-bigquery",
-    contactInformation = "https://cloud.google.com/support",
-    requirements = {
-      "The <a href=\"https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage\">`data` field</a> of Pub/Sub messages must use the JSON format, described in this <a href=\"https://developers.google.com/api-client-library/java/google-http-java-client/json\">JSON guide</a>. For example, messages with values in the `data` field formatted as `{\"k1\":\"v1\", \"k2\":\"v2\"}` can be inserted into a BigQuery table with two columns, named `k1` and `k2`, with a string data type.",
-      "The output table must exist prior to running the pipeline. The table schema must match the input JSON objects."
-    },
-    streaming = true,
-    supportsAtLeastOnce = true,
-    supportsExactlyOnce = true)
+@MultiTemplate({
+  @Template(
+      name = "PubSub_to_BigQuery_Flex",
+      category = TemplateCategory.STREAMING,
+      displayName = "Pub/Sub to BigQuery",
+      description =
+          "The Pub/Sub to BigQuery template is a streaming pipeline that reads JSON-formatted messages from a Pub/Sub topic or subscription, and writes them to a BigQuery table. "
+              + "You can use the template as a quick solution to move Pub/Sub data to BigQuery. "
+              + "The template reads JSON-formatted messages from Pub/Sub and converts them to BigQuery elements.",
+      optionsClass = Options.class,
+      skipOptions = {
+        "pythonExternalTextTransformGcsPath",
+        "pythonExternalTextTransformFunctionName",
+      },
+      flexContainerName = "pubsub-to-bigquery",
+      documentation =
+          "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-bigquery",
+      contactInformation = "https://cloud.google.com/support",
+      requirements = {
+        "The <a href=\"https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage\">`data` field</a> of Pub/Sub messages must use the JSON format, described in this <a href=\"https://developers.google.com/api-client-library/java/google-http-java-client/json\">JSON guide</a>. For example, messages with values in the `data` field formatted as `{\"k1\":\"v1\", \"k2\":\"v2\"}` can be inserted into a BigQuery table with two columns, named `k1` and `k2`, with a string data type.",
+        "The output table must exist prior to running the pipeline. The table schema must match the input JSON objects."
+      },
+      streaming = true,
+      supportsAtLeastOnce = true,
+      supportsExactlyOnce = true),
+  @Template(
+      name = "PubSub_to_BigQuery_Xlang",
+      category = TemplateCategory.STREAMING,
+      displayName = "Pub/Sub to BigQuery with Python UDFs",
+      type = Template.TemplateType.XLANG,
+      description =
+          "The Pub/Sub to BigQuery template is a streaming pipeline that reads JSON-formatted messages from a Pub/Sub topic or subscription, and writes them to a BigQuery table. "
+              + "You can use the template as a quick solution to move Pub/Sub data to BigQuery. "
+              + "The template reads JSON-formatted messages from Pub/Sub and converts them to BigQuery elements.",
+      optionsClass = Options.class,
+      skipOptions = {
+        "javascriptTextTransformGcsPath",
+        "javascriptTextTransformFunctionName",
+      },
+      flexContainerName = "pubsub-to-bigquery",
+      documentation =
+          "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-bigquery",
+      contactInformation = "https://cloud.google.com/support",
+      requirements = {
+        "The <a href=\"https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage\">`data` field</a> of Pub/Sub messages must use the JSON format, described in this <a href=\"https://developers.google.com/api-client-library/java/google-http-java-client/json\">JSON guide</a>. For example, messages with values in the `data` field formatted as `{\"k1\":\"v1\", \"k2\":\"v2\"}` can be inserted into a BigQuery table with two columns, named `k1` and `k2`, with a string data type.",
+        "The output table must exist prior to running the pipeline. The table schema must match the input JSON objects."
+      },
+      streaming = true,
+      supportsAtLeastOnce = true,
+      supportsExactlyOnce = true)
+})
 public class PubSubToBigQuery {
 
   /** The log to output status messages to. */
@@ -139,8 +175,8 @@ public class PubSubToBigQuery {
    */
   public interface Options
       extends PipelineOptions,
-          JavascriptTextTransformerOptions,
           BigQueryStorageApiStreamingOptions,
+          PythonExternalTextTransformerOptions,
           DataflowPipelineWorkerPoolOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
@@ -374,22 +410,55 @@ public class PubSubToBigQuery {
 
     @Override
     public PCollectionTuple expand(PCollection<PubsubMessage> input) {
-
-      PCollectionTuple udfOut =
-          input
-              // Map the incoming messages into FailsafeElements so we can recover from failures
-              // across multiple transforms.
-              .apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()))
-              .apply(
-                  "InvokeUDF",
-                  FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
-                      .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                      .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                      .setReloadIntervalMinutes(
-                          options.getJavascriptTextTransformReloadIntervalMinutes())
-                      .setSuccessTag(UDF_OUT)
-                      .setFailureTag(UDF_DEADLETTER_OUT)
-                      .build());
+      boolean useJavascriptUdf =
+          !Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath());
+      boolean usePythonUdf =
+          !Strings.isNullOrEmpty(options.getPythonExternalTextTransformGcsPath());
+      if (useJavascriptUdf && usePythonUdf) {
+        throw new IllegalArgumentException(
+            "Either javascript or Python gcs path must be provided, but not both.");
+      }
+      PCollectionTuple udfOut;
+      if (usePythonUdf) {
+        PCollection<Row> udfRowsOut =
+            input
+                // Map the incoming messages into FailsafeElements so we can recover from failures
+                // across multiple transforms.
+                .apply(
+                    "MapToRecord",
+                    PythonExternalTextTransformer.FailsafeRowPythonExternalUdf
+                        .pubSubMappingFunction())
+                .setRowSchema(PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.ROW_SCHEMA)
+                .apply(
+                    "InvokeUDF",
+                    PythonExternalTextTransformer.FailsafePythonExternalUdf.newBuilder()
+                        .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
+                        .setFunctionName(options.getPythonExternalTextTransformFunctionName())
+                        .build())
+                .setRowSchema(
+                    PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA);
+        udfOut =
+            udfRowsOut.apply(
+                "MapRowsToFailsafeElements",
+                ParDo.of(new RowToPubSubFailsafeElementFn(UDF_OUT, UDF_DEADLETTER_OUT))
+                    .withOutputTags(UDF_OUT, TupleTagList.of(UDF_DEADLETTER_OUT)));
+      } else {
+        udfOut =
+            input
+                // Map the incoming messages into FailsafeElements so we can recover from failures
+                // across multiple transforms.
+                .apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()))
+                .apply(
+                    "InvokeUDF",
+                    FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
+                        .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                        .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                        .setReloadIntervalMinutes(
+                            options.getJavascriptTextTransformReloadIntervalMinutes())
+                        .setSuccessTag(UDF_OUT)
+                        .setFailureTag(UDF_DEADLETTER_OUT)
+                        .build());
+      }
 
       // Convert the records which were successfully processed by the UDF into TableRow objects.
       PCollectionTuple jsonToTableRowOut =

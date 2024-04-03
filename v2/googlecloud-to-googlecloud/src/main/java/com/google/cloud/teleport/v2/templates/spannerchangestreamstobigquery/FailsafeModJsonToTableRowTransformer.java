@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery;
 
+import static org.apache.beam.sdk.util.Preconditions.checkStateNotNull;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.api.gax.grpc.GrpcCallContext;
@@ -47,6 +50,7 @@ import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
@@ -193,8 +197,10 @@ public final class FailsafeModJsonToTableRowTransformer {
         } catch (Exception e) {
           if (!seenException) {
             LOG.error(
-                "Caught exception when processing element , storing into dead letter queue. "
-                    + e.getMessage());
+                String.format(
+                    "Caught exception when processing element and storing into dead letter queue,"
+                        + " message: %s, cause: %s",
+                    Optional.ofNullable(e.getMessage()), e.getCause()));
             seenException = true;
           }
           context.output(
@@ -205,17 +211,37 @@ public final class FailsafeModJsonToTableRowTransformer {
         }
       }
 
-      private TableRow modJsonStringToTableRow(String modJsonString) throws Exception {
-        ObjectNode modObjectNode = (ObjectNode) new ObjectMapper().readTree(modJsonString);
+      private TableRow modJsonStringToTableRow(String modJsonString) {
+        String deadLetterMessage =
+            "check dead letter queue for unprocessed records that failed to be processed";
+        ObjectNode modObjectNode = null;
+        try {
+          modObjectNode = (ObjectNode) new ObjectMapper().readTree(modJsonString);
+        } catch (JsonProcessingException e) {
+          String errorMessage =
+              String.format(
+                  "error parsing modJsonString input into %s; %s",
+                  ObjectNode.class, deadLetterMessage);
+          throw new RuntimeException(errorMessage, e);
+        }
         for (String excludeFieldName : BigQueryUtils.getBigQueryIntermediateMetadataFieldNames()) {
           if (modObjectNode.has(excludeFieldName)) {
             modObjectNode.remove(excludeFieldName);
           }
         }
 
-        Mod mod = Mod.fromJson(modObjectNode.toString());
+        Mod mod = null;
+        try {
+          mod = Mod.fromJson(modObjectNode.toString());
+        } catch (IOException e) {
+          String errorMessage =
+              String.format(
+                  "error converting %s to %s; %s", ObjectNode.class, Mod.class, deadLetterMessage);
+          throw new RuntimeException(errorMessage, e);
+        }
         String spannerTableName = mod.getTableName();
-        TrackedSpannerTable spannerTable = spannerTableByName.get(spannerTableName);
+        TrackedSpannerTable spannerTable =
+            checkStateNotNull(spannerTableByName.get(spannerTableName));
         com.google.cloud.Timestamp spannerCommitTimestamp =
             com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
                 mod.getCommitTimestampSeconds(), mod.getCommitTimestampNanos());
@@ -255,8 +281,10 @@ public final class FailsafeModJsonToTableRowTransformer {
           return tableRow;
         }
 
-        // For "NEW_ROW" value capture type, we can get all columns from mod.
-        if (mod.getValueCaptureType() == ValueCaptureType.NEW_ROW) {
+        // For "NEW_ROW" and "NEW_ROW_AND_OLD_VALUES" value capture types, we can get all columns
+        // from mod.
+        if (mod.getValueCaptureType() == ValueCaptureType.NEW_ROW
+            || mod.getValueCaptureType() == ValueCaptureType.NEW_ROW_AND_OLD_VALUES) {
           return tableRow;
         }
 
@@ -311,7 +339,12 @@ public final class FailsafeModJsonToTableRowTransformer {
                   e.getStackTrace(),
                   retryCount);
               // Wait for 1 seconds before next retry.
-              TimeUnit.SECONDS.sleep(1);
+              try {
+                TimeUnit.SECONDS.sleep(1);
+              } catch (InterruptedException ex) {
+                LOG.warn(
+                    String.format("Caught %s during retry: %s", InterruptedException.class, ex));
+              }
               retryCount++;
             }
           }

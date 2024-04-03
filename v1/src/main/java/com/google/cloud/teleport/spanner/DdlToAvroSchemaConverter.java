@@ -282,7 +282,7 @@ public class DdlToAvroSchemaConverter {
    */
   private Schema avroType(
       com.google.cloud.teleport.spanner.common.Type spannerType, String structSuffix) {
-    LOG.error("avroType type={} suffix={}", spannerType.toString(), structSuffix);
+    LOG.info("avroType type={} suffix={}", spannerType.toString(), structSuffix);
     switch (spannerType.getCode()) {
       case BOOL:
       case PG_BOOL:

@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.api.client.json.JsonFactory;
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.metadata.MultiTemplate;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -27,10 +28,13 @@ import com.google.cloud.teleport.v2.templates.TextToBigQueryStreaming.TextToBigQ
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteStringMessageErrors;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.RowToStringFailsafeElementFn;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.utils.ResourceUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import org.apache.beam.sdk.Pipeline;
@@ -45,15 +49,18 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Watch.Growth;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
@@ -69,79 +76,168 @@ import org.slf4j.LoggerFactory;
  * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Stream_GCS_Text_to_BigQuery_Flex.md">README</a>
  * for instructions on how to use or modify this template.
  */
-@Template(
-    name = "Stream_GCS_Text_to_BigQuery_Flex",
-    category = TemplateCategory.STREAMING,
-    displayName = "Cloud Storage Text to BigQuery (Stream)",
-    description = {
-      "The Text Files on Cloud Storage to BigQuery pipeline is a streaming pipeline that allows you to stream text files stored in Cloud Storage, transform them using a JavaScript User Defined Function (UDF) that you provide, and append the result to BigQuery.\n",
-      "The pipeline runs indefinitely and needs to be terminated manually via a\n"
-          + "    <a href=\"https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#cancel\">cancel</a> and not a\n"
-          + "    <a href=\"https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#drain\">drain</a>, due to its use of the\n"
-          + "    <code>Watch</code> transform, which is a splittable <code>DoFn</code> that does not support\n"
-          + "    draining."
-    },
-    optionsClass = TextToBigQueryStreamingOptions.class,
-    flexContainerName = "text-to-bigquery-streaming",
-    documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-bigquery-stream",
-    contactInformation = "https://cloud.google.com/support",
-    requirements = {
-      "Create a JSON file that describes the schema of your output table in BigQuery.\n"
-          + "    <p>\n"
-          + "      Ensure that there is a top-level JSON array titled <code>fields</code> and that its\n"
-          + "      contents follow the pattern <code>{\"name\": \"COLUMN_NAME\", \"type\": \"DATA_TYPE\"}</code>.\n"
-          + "      For example:\n"
-          + "    </p>\n"
-          + "<pre class=\"prettyprint lang-json\">\n"
-          + "{\n"
-          + "  \"fields\": [\n"
-          + "    {\n"
-          + "      \"name\": \"location\",\n"
-          + "      \"type\": \"STRING\"\n"
-          + "    },\n"
-          + "    {\n"
-          + "      \"name\": \"name\",\n"
-          + "      \"type\": \"STRING\"\n"
-          + "    },\n"
-          + "    {\n"
-          + "      \"name\": \"age\",\n"
-          + "      \"type\": \"STRING\"\n"
-          + "    },\n"
-          + "    {\n"
-          + "      \"name\": \"color\",\n"
-          + "      \"type\": \"STRING\",\n"
-          + "      \"mode\": \"REQUIRED\"\n"
-          + "    },\n"
-          + "    {\n"
-          + "      \"name\": \"coffee\",\n"
-          + "      \"type\": \"STRING\",\n"
-          + "      \"mode\": \"REQUIRED\"\n"
-          + "    }\n"
-          + "  ]\n"
-          + "}\n"
-          + "</pre>",
-      "Create a JavaScript (<code>.js</code>) file with your UDF function that supplies the logic\n"
-          + "    to transform the lines of text. Note that your function must return a JSON string.\n"
-          + "    <p>For example, this function splits each line of a CSV file and returns a JSON string after\n"
-          + "      transforming the values.</p>\n"
-          + "<pre class=\"prettyprint\" suppresswarning>\n"
-          + "function transform(line) {\n"
-          + "var values = line.split(',');\n"
-          + "\n"
-          + "var obj = new Object();\n"
-          + "obj.location = values[0];\n"
-          + "obj.name = values[1];\n"
-          + "obj.age = values[2];\n"
-          + "obj.color = values[3];\n"
-          + "obj.coffee = values[4];\n"
-          + "var jsonString = JSON.stringify(obj);\n"
-          + "\n"
-          + "return jsonString;\n"
-          + "}\n"
-          + "</pre>"
-    },
-    streaming = true)
+@MultiTemplate({
+  @Template(
+      name = "Stream_GCS_Text_to_BigQuery_Flex",
+      category = TemplateCategory.STREAMING,
+      displayName = "Cloud Storage Text to BigQuery (Stream)",
+      description = {
+        "The Text Files on Cloud Storage to BigQuery pipeline is a streaming pipeline that allows you to stream text files stored in Cloud Storage, transform them using a JavaScript User Defined Function (UDF) that you provide, and append the result to BigQuery.\n",
+        "The pipeline runs indefinitely and needs to be terminated manually via a\n"
+            + "    <a href=\"https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#cancel\">cancel</a> and not a\n"
+            + "    <a href=\"https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#drain\">drain</a>, due to its use of the\n"
+            + "    <code>Watch</code> transform, which is a splittable <code>DoFn</code> that does not support\n"
+            + "    draining."
+      },
+      skipOptions = {
+        "pythonExternalTextTransfromGcsPath",
+        "pythonExternalTextTransformFunctionName"
+      },
+      optionsClass = TextToBigQueryStreamingOptions.class,
+      flexContainerName = "text-to-bigquery-streaming",
+      documentation =
+          "https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-bigquery-stream",
+      contactInformation = "https://cloud.google.com/support",
+      requirements = {
+        "Create a JSON file that describes the schema of your output table in BigQuery.\n"
+            + "    <p>\n"
+            + "      Ensure that there is a top-level JSON array titled <code>fields</code> and that its\n"
+            + "      contents follow the pattern <code>{\"name\": \"COLUMN_NAME\", \"type\": \"DATA_TYPE\"}</code>.\n"
+            + "      For example:\n"
+            + "    </p>\n"
+            + "<pre class=\"prettyprint lang-json\">\n"
+            + "{\n"
+            + "  \"fields\": [\n"
+            + "    {\n"
+            + "      \"name\": \"location\",\n"
+            + "      \"type\": \"STRING\"\n"
+            + "    },\n"
+            + "    {\n"
+            + "      \"name\": \"name\",\n"
+            + "      \"type\": \"STRING\"\n"
+            + "    },\n"
+            + "    {\n"
+            + "      \"name\": \"age\",\n"
+            + "      \"type\": \"STRING\"\n"
+            + "    },\n"
+            + "    {\n"
+            + "      \"name\": \"color\",\n"
+            + "      \"type\": \"STRING\",\n"
+            + "      \"mode\": \"REQUIRED\"\n"
+            + "    },\n"
+            + "    {\n"
+            + "      \"name\": \"coffee\",\n"
+            + "      \"type\": \"STRING\",\n"
+            + "      \"mode\": \"REQUIRED\"\n"
+            + "    }\n"
+            + "  ]\n"
+            + "}\n"
+            + "</pre>",
+        "Create a JavaScript (<code>.js</code>) file with your UDF function that supplies the logic\n"
+            + "    to transform the lines of text. Note that your function must return a JSON string.\n"
+            + "    <p>For example, this function splits each line of a CSV file and returns a JSON string after\n"
+            + "      transforming the values.</p>\n"
+            + "<pre class=\"prettyprint\" suppresswarning>\n"
+            + "function transform(line) {\n"
+            + "var values = line.split(',');\n"
+            + "\n"
+            + "var obj = new Object();\n"
+            + "obj.location = values[0];\n"
+            + "obj.name = values[1];\n"
+            + "obj.age = values[2];\n"
+            + "obj.color = values[3];\n"
+            + "obj.coffee = values[4];\n"
+            + "var jsonString = JSON.stringify(obj);\n"
+            + "\n"
+            + "return jsonString;\n"
+            + "}\n"
+            + "</pre>"
+      },
+      streaming = true,
+      supportsAtLeastOnce = true),
+  @Template(
+      name = "Stream_GCS_Text_to_BigQuery_Xlang",
+      category = TemplateCategory.STREAMING,
+      displayName = "Cloud Storage Text to BigQuery (Stream) with Python UDF",
+      type = Template.TemplateType.XLANG,
+      description = {
+        "The Text Files on Cloud Storage to BigQuery pipeline is a streaming pipeline that allows you to stream text files stored in Cloud Storage, transform them using a Python User Defined Function (UDF) that you provide, and append the result to BigQuery.\n",
+        "The pipeline runs indefinitely and needs to be terminated manually via a\n"
+            + "    <a href=\"https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#cancel\">cancel</a> and not a\n"
+            + "    <a href=\"https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#drain\">drain</a>, due to its use of the\n"
+            + "    <code>Watch</code> transform, which is a splittable <code>DoFn</code> that does not support\n"
+            + "    draining."
+      },
+      skipOptions = {
+        "javascriptTextTransformGcsPath",
+        "javascriptTextTransformFunctionName",
+        "javascriptTextTransformReloadIntervalMinutes"
+      },
+      optionsClass = TextToBigQueryStreamingOptions.class,
+      flexContainerName = "text-to-bigquery-streaming",
+      documentation =
+          "https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-bigquery-stream",
+      contactInformation = "https://cloud.google.com/support",
+      requirements = {
+        "Create a JSON file that describes the schema of your output table in BigQuery.\n"
+            + "    <p>\n"
+            + "      Ensure that there is a top-level JSON array titled <code>fields</code> and that its\n"
+            + "      contents follow the pattern <code>{\"name\": \"COLUMN_NAME\", \"type\": \"DATA_TYPE\"}</code>.\n"
+            + "      For example:\n"
+            + "    </p>\n"
+            + "<pre class=\"prettyprint lang-json\">\n"
+            + "{\n"
+            + "  \"fields\": [\n"
+            + "    {\n"
+            + "      \"name\": \"location\",\n"
+            + "      \"type\": \"STRING\"\n"
+            + "    },\n"
+            + "    {\n"
+            + "      \"name\": \"name\",\n"
+            + "      \"type\": \"STRING\"\n"
+            + "    },\n"
+            + "    {\n"
+            + "      \"name\": \"age\",\n"
+            + "      \"type\": \"STRING\"\n"
+            + "    },\n"
+            + "    {\n"
+            + "      \"name\": \"color\",\n"
+            + "      \"type\": \"STRING\",\n"
+            + "      \"mode\": \"REQUIRED\"\n"
+            + "    },\n"
+            + "    {\n"
+            + "      \"name\": \"coffee\",\n"
+            + "      \"type\": \"STRING\",\n"
+            + "      \"mode\": \"REQUIRED\"\n"
+            + "    }\n"
+            + "  ]\n"
+            + "}\n"
+            + "</pre>",
+        "Create a Python (<code>.js</code>) file with your UDF function that supplies the logic\n"
+            + "    to transform the lines of text. Note that your function must return a JSON string.\n"
+            + "    <p>For example, this function splits each line of a CSV file and returns a JSON string after\n"
+            + "      transforming the values.</p>\n"
+            + "<pre class=\"prettyprint\" suppresswarning>\n"
+            + "import json\n"
+            + "def transform(line): \n"
+            + "  values = line.split(',')\n"
+            + "\n"
+            + "  obj = {\n"
+            + "     'location' : values[0],\n"
+            + "     'name' : values[1],\n"
+            + "     'age' : values[2],\n"
+            + "     'color' : values[3],\n"
+            + "     'coffee' : values[4]\n"
+            + "  }\n"
+            + "  jsonString = JSON.dumps(obj);\n"
+            + "\n"
+            + "  return jsonString;\n"
+            + "\n"
+            + "</pre>"
+      },
+      streaming = true,
+      supportsAtLeastOnce = true)
+})
 public class TextToBigQueryStreaming {
 
   private static final Logger LOG = LoggerFactory.getLogger(TextToBigQueryStreaming.class);
@@ -212,6 +308,14 @@ public class TextToBigQueryStreaming {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
+    // Determine if we are using Python UDFs or JS UDFs based on the provided options.
+    boolean useJavascriptUdf = !Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath());
+    boolean usePythonUdf = !Strings.isNullOrEmpty(options.getPythonExternalTextTransformGcsPath());
+    if (useJavascriptUdf && usePythonUdf) {
+      throw new IllegalArgumentException(
+          "Either javascript or Python gcs path must be provided, but not both.");
+    }
+
     /*
      * Steps:
      *  1) Read from the text source continuously.
@@ -227,33 +331,61 @@ public class TextToBigQueryStreaming {
      *  6) Insert records that failed into deadletter table.
      */
 
-    PCollectionTuple transformedOutput =
-        pipeline
+    PCollection<String> sourceRead =
+        pipeline.apply(
+            TextIO.read()
+                .from(options.getInputFilePattern())
+                .watchForNewFiles(DEFAULT_POLL_INTERVAL, Growth.never()));
+    PCollectionTuple transformedOutput;
+    if (usePythonUdf) {
+      transformedOutput =
+          sourceRead
+              .apply(
+                  "MapToRecord",
+                  PythonExternalTextTransformer.FailsafeRowPythonExternalUdf
+                      .stringMappingFunction())
+              .setRowSchema(PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.ROW_SCHEMA)
+              .apply(
+                  "InvokeUDF",
+                  PythonExternalTextTransformer.FailsafePythonExternalUdf.newBuilder()
+                      .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
+                      .setFunctionName(options.getPythonExternalTextTransformFunctionName())
+                      .build())
+              .setRowSchema(
+                  PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA)
+              .apply(
+                  ParDo.of(new RowToStringFailsafeElementFn(UDF_OUT, UDF_DEADLETTER_OUT))
+                      .withOutputTags(UDF_OUT, TupleTagList.of(UDF_DEADLETTER_OUT)));
 
-            // 1) Read from the text source continuously.
-            .apply(
-                "ReadFromSource",
-                TextIO.read()
-                    .from(options.getInputFilePattern())
-                    .watchForNewFiles(DEFAULT_POLL_INTERVAL, Growth.never()))
+    } else {
+      transformedOutput =
+          pipeline
 
-            // 2) Convert to FailsafeElement.
-            .apply(
-                "ConvertToFailsafeElement",
-                MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-                    .via(input -> FailsafeElement.of(input, input)))
+              // 1) Read from the text source continuously.
+              .apply(
+                  "ReadFromSource",
+                  TextIO.read()
+                      .from(options.getInputFilePattern())
+                      .watchForNewFiles(DEFAULT_POLL_INTERVAL, Growth.never()))
 
-            // 3) Apply Javascript udf transformation.
-            .apply(
-                "ApplyUDFTransformation",
-                FailsafeJavascriptUdf.<String>newBuilder()
-                    .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                    .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                    .setReloadIntervalMinutes(
-                        options.getJavascriptTextTransformReloadIntervalMinutes())
-                    .setSuccessTag(UDF_OUT)
-                    .setFailureTag(UDF_DEADLETTER_OUT)
-                    .build());
+              // 2) Convert to FailsafeElement.
+              .apply(
+                  "ConvertToFailsafeElement",
+                  MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                      .via(input -> FailsafeElement.of(input, input)))
+
+              // 3) Apply Javascript udf transformation.
+              .apply(
+                  "ApplyUDFTransformation",
+                  FailsafeJavascriptUdf.<String>newBuilder()
+                      .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                      .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                      .setReloadIntervalMinutes(
+                          options.getJavascriptTextTransformReloadIntervalMinutes())
+                      .setSuccessTag(UDF_OUT)
+                      .setFailureTag(UDF_DEADLETTER_OUT)
+                      .build());
+    }
 
     PCollectionTuple convertedTableRows =
         transformedOutput
@@ -356,5 +488,22 @@ public class TextToBigQueryStreaming {
     String getOutputDeadletterTable();
 
     void setOutputDeadletterTable(String value);
+
+    // Hide the UseStorageWriteApiAtLeastOnce in the UI, because it will automatically be turned
+    // on when pipeline is running on ALO mode and using the Storage Write API
+    @TemplateParameter.Boolean(
+        order = 2,
+        optional = true,
+        description = "Use at at-least-once semantics in BigQuery Storage Write API",
+        helpText =
+            "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"
+                + " enabled the at-least-once semantics will be used for Storage Write API, otherwise"
+                + " exactly-once semantics will be used.",
+        hiddenUi = true)
+    @Default.Boolean(false)
+    @Override
+    Boolean getUseStorageWriteApiAtLeastOnce();
+
+    void setUseStorageWriteApiAtLeastOnce(Boolean value);
   }
 }

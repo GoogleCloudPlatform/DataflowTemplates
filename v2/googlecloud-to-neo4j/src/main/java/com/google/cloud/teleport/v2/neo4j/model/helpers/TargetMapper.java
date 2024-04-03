@@ -112,7 +112,6 @@ public class TargetMapper {
     target.getMappings().add(mapping);
     if (mapping.getField() != null) {
       target.getMappingByFieldMap().put(mapping.getField(), mapping);
-      target.getFieldNames().add(mapping.getField());
     }
   }
 

@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Hanles the core processing. */
+/** Handles the core processing. */
 package com.google.cloud.teleport.v2.templates.processing;

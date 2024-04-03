@@ -17,7 +17,9 @@
 name: Java PR Report
 on:
   workflow_run:
-    workflows: [ Java PR ]
+    workflows:
+      - Java PR
+      - Release
     types: [ completed ]
 
 permissions:

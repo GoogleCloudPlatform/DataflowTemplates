@@ -1,0 +1,36 @@
+{
+  "source": {
+    "type": "bigquery",
+    "name": "data",
+    "query": "SELECT `select`, `age` FROM $bqtable"
+  },
+  "targets": [
+    {
+      "node": {
+        "name": "Node",
+        "source": "data",
+        "mode": "append",
+        "mappings": {
+          "label": "\"Node\"",
+          "properties": {
+            "keys": [
+              "select"
+            ],
+            "integers": [
+              "where"
+            ]
+          }
+        },
+        "transform": {
+          "group": true,
+          "aggregations": [
+            {
+              "expr": "COUNT(age)",
+              "field": "where"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

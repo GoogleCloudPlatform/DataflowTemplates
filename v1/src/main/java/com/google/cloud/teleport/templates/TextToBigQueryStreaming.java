@@ -148,7 +148,8 @@ import org.slf4j.LoggerFactory;
           + "}\n"
           + "</pre>"
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class TextToBigQueryStreaming {
 
   private static final Logger LOG = LoggerFactory.getLogger(TextToBigQueryStreaming.class);
@@ -254,6 +255,8 @@ public class TextToBigQueryStreaming {
                 FailsafeJavascriptUdf.<String>newBuilder()
                     .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                     .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setReloadIntervalMinutes(
+                        options.getJavascriptTextTransformReloadIntervalMinutes())
                     .setSuccessTag(UDF_OUT)
                     .setFailureTag(UDF_DEADLETTER_OUT)
                     .build());

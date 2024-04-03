@@ -108,7 +108,8 @@ import org.slf4j.LoggerFactory;
       "The Datadog URL must be accessible from the network of the Dataflow workers.",
       "The Datadog API key must be generated and available."
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class PubSubToDatadog {
 
   /** String/String Coder for FailsafeElement. */

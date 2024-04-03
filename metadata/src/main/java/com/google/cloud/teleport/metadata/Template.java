@@ -41,6 +41,10 @@ public @interface Template {
   /** Container name to stage (required for Flex templates). */
   String flexContainerName() default "";
 
+  String yamlTemplateName() default "";
+
+  String xlangContainerName() default "";
+
   /** The category of the template. */
   TemplateCategory category();
 
@@ -101,7 +105,9 @@ public @interface Template {
   /** Languages that are supported by templates. */
   enum TemplateType {
     JAVA,
-    PYTHON
+    PYTHON,
+    YAML,
+    XLANG
   }
 
   /** Marker if the template is still in preview / pre-GA. */

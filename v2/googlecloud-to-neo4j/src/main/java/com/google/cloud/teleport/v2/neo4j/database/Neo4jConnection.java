@@ -16,17 +16,19 @@
 package com.google.cloud.teleport.v2.neo4j.database;
 
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
+import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Throwables;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
+import org.neo4j.driver.Config;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.SessionConfig;
+import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.TransactionWork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,16 +43,33 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
   private Session session;
 
   /** Constructor. */
-  public Neo4jConnection(ConnectionParams settings) {
+  public Neo4jConnection(ConnectionParams settings, String templateVersion) {
     this(
         settings.getDatabase(),
-        () -> GraphDatabase.driver(settings.getServerUrl(), settings.asAuthToken()));
+        () ->
+            GraphDatabase.driver(
+                settings.getServerUrl(),
+                settings.asAuthToken(),
+                Config.builder().withUserAgent(Neo4jTelemetry.userAgent(templateVersion)).build()));
   }
 
   @VisibleForTesting
   Neo4jConnection(String database, Supplier<Driver> driverSupplier) {
     this.database = database;
     this.driverSupplier = driverSupplier;
+  }
+
+  public Neo4jCapabilities capabilities() {
+    try (var session = getSession()) {
+      var result =
+          session
+              .run(
+                  "CALL dbms.components() YIELD name, versions, edition WHERE name = $kernel RETURN versions[0], edition",
+                  Map.of("kernel", "Neo4j Kernel"))
+              .single();
+
+      return new Neo4jCapabilities(result.get(0).asString(), result.get(1).asString());
+    }
   }
 
   /** Helper method to get the Neo4j session. */
@@ -69,9 +88,9 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
   }
 
   /** Write transaction. */
-  public <T> T writeTransaction(TransactionWork<T> transactionWork) {
+  public <T> T writeTransaction(TransactionWork<T> transactionWork, TransactionConfig txConfig) {
     try (Session session = getSession()) {
-      return session.writeTransaction(transactionWork);
+      return session.writeTransaction(transactionWork, txConfig);
     }
   }
 
@@ -80,15 +99,81 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     // Direct connect utility...
     LOG.info("Resetting database");
     try {
+      var capabilities = capabilities();
+
+      if (capabilities.hasCreateOrReplaceDatabase()) {
+        recreateDatabase(capabilities);
+      } else {
+        deleteData();
+        dropSchema(capabilities);
+      }
+    } catch (Exception exception) {
+      LOG.error(
+          "Error resetting database: "
+              + "make sure the configured Neo4j user is allowed to run 'CREATE OR REPLACE DATABASE', "
+              + "'SHOW CONSTRAINTS', 'DROP CONSTRAINT', 'SHOW INDEXES' and 'DROP INDEXES'.\n"
+              + "Alternatively, disable database reset by setting 'reset_db' to false in the job specification.",
+          exception);
+    }
+  }
+
+  private void recreateDatabase(Neo4jCapabilities capabilities) {
+    try {
       String database = !StringUtils.isEmpty(this.database) ? this.database : "neo4j";
-      String cypher = "CREATE OR REPLACE DATABASE $db";
+      String cypher = "CREATE OR REPLACE DATABASE $db WAIT 60 SECONDS";
       LOG.info(
           "Executing CREATE OR REPLACE DATABASE Cypher query: {} against database {}",
           cypher,
           database);
-      executeCypher(cypher, Map.of("db", database));
+      executeCypher(
+          cypher, Map.of("db", database), databaseResetMetadata("create-replace-database"));
     } catch (Exception ex) {
-      fallbackResetDatabase(ex);
+      deleteData();
+      dropSchema(capabilities);
+    }
+  }
+
+  private void deleteData() {
+    String ddeCypher = "MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS";
+    LOG.info("Executing delete Cypher query: {}", ddeCypher);
+    executeCypher(ddeCypher, databaseResetMetadata("cit-detach-delete"));
+  }
+
+  private void dropSchema(Neo4jCapabilities capabilities) {
+    try (var session = getSession()) {
+      if (capabilities.hasConstraints()) {
+        LOG.info("Dropping constraints");
+        var constraints =
+            session
+                .run(
+                    "SHOW CONSTRAINTS YIELD name",
+                    Map.of(),
+                    databaseResetMetadata("show-constraints"))
+                .list(r -> r.get(0).asString());
+        for (var constraint : constraints) {
+          LOG.info("Dropping constraint {}", constraint);
+
+          executeCypher(
+              String.format("DROP CONSTRAINT `%s`", constraint),
+              Map.of(),
+              databaseResetMetadata("drop-constraint"));
+        }
+      }
+
+      LOG.info("Dropping indexes");
+      var indexes =
+          session
+              .run(
+                  "SHOW INDEXES YIELD name, type WHERE type <> 'LOOKUP' RETURN name",
+                  Map.of(),
+                  databaseResetMetadata("show-indexes"))
+              .list(r -> r.get(0).asString());
+      for (var index : indexes) {
+        LOG.info("Dropping index {}", index);
+
+        executeCypher(
+            String.format("DROP INDEX `%s`", index), Map.of(), databaseResetMetadata("drop-index"));
+      }
     }
   }
 
@@ -97,8 +182,8 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
    *
    * @param cypher statement
    */
-  public void executeCypher(String cypher) {
-    executeCypher(cypher, Collections.emptyMap());
+  public void executeCypher(String cypher, TransactionConfig transactionConfig) {
+    executeCypher(cypher, Collections.emptyMap(), transactionConfig);
   }
 
   /**
@@ -106,9 +191,10 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
    *
    * @param cypher statement
    */
-  public void executeCypher(String cypher, Map<String, Object> parameters) {
+  public void executeCypher(
+      String cypher, Map<String, Object> parameters, TransactionConfig transactionConfig) {
     try (Session session = getSession()) {
-      session.run(cypher, parameters).consume();
+      session.run(cypher, parameters, transactionConfig).consume();
     }
   }
 
@@ -136,24 +222,10 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     return driverSupplier.get();
   }
 
-  private void fallbackResetDatabase(Exception initialException) {
-    try {
-      String ddeCypher = "MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS";
-      LOG.info("Executing alternative delete Cypher query: {}", ddeCypher);
-      executeCypher(ddeCypher);
-      String constraintsDeleteCypher = "CALL apoc.schema.assert({}, {}, true)";
-      LOG.info("Dropping indices & constraints with APOC: {}", constraintsDeleteCypher);
-      executeCypher(constraintsDeleteCypher);
-    } catch (Exception exception) {
-      exception.addSuppressed(initialException);
-      LOG.error(
-          "Error resetting database: "
-              + "make sure the configured Neo4j user is allowed to run 'CREATE OR REPLACE DATABASE'"
-              + " or APOC is installed.\n"
-              + "Alternatively, disable database reset by setting 'reset_db' to false in the job specification.",
-          exception);
-      Throwables.throwIfUnchecked(exception);
-      throw new RuntimeException(exception);
-    }
+  private static TransactionConfig databaseResetMetadata(String resetMethod) {
+    return TransactionConfig.builder()
+        .withMetadata(
+            Neo4jTelemetry.transactionMetadata(Map.of("sink", "neo4j", "step", resetMethod)))
+        .build();
   }
 }

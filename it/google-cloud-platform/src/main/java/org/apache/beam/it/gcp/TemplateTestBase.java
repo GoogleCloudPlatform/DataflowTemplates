@@ -25,6 +25,7 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.MultiTemplateIntegrationTest;
 import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.Template.TemplateType;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateCreationParameters;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -377,6 +378,11 @@ public abstract class TemplateTestBase {
       moduleBuild = ".";
     }
 
+    // Skip shading for now due to flakiness / slowness in the process, except for XLANG
+    // templates, which MUST use shading because they're built using a custom Dockerfile
+    // that will copy only the shaded jar to the docker image.
+    boolean skipShade = templateMetadata.type() != TemplateType.XLANG;
+
     return new String[] {
       "mvn",
       "compile",
@@ -390,7 +396,7 @@ public abstract class TemplateTestBase {
       "-PtemplatesStage,pluginOutputDir,splunkDeps",
       "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(16),
       // Skip shading for now due to flakiness / slowness in the process.
-      "-DskipShade",
+      "-DskipShade=" + skipShade,
       "-DskipTests",
       "-Dmaven.test.skip",
       "-Dcheckstyle.skip",

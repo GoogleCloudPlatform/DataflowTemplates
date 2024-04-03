@@ -189,6 +189,54 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
     assertMovieTableContents();
   }
 
+  @Test
+  public void interleavedAndFKAndIndexTest() {
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    uploadDataStreamFile(
+                        jobInfo,
+                        "Articles",
+                        "mysql-Articles.jsonl",
+                        "DataStreamToSpannerSimpleIT/mysql-Articles.jsonl"),
+                    uploadDataStreamFile(
+                        jobInfo,
+                        "Authors",
+                        "mysql-Authors.jsonl",
+                        "DataStreamToSpannerSimpleIT/mysql-Authors.jsonl"),
+                    uploadDataStreamFile(
+                        jobInfo,
+                        "Books",
+                        "mysql-Books.jsonl",
+                        "DataStreamToSpannerSimpleIT/mysql-Books.jsonl"),
+                    SpannerRowsCheck.builder(spannerResourceManager, "Articles")
+                        .setMinRows(3)
+                        .setMaxRows(3)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, "Books")
+                        .setMinRows(3)
+                        .setMaxRows(3)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, "Authors")
+                        .setMinRows(3)
+                        .setMaxRows(3)
+                        .build()))
+            .build();
+
+    // Wait for conditions
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(12)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    // Assert specific rows
+    assertAuthorsTable();
+    assertBooksTable();
+    assertArticlesTable();
+  }
+
   private void assertUsersTableContents() {
     List<Map<String, Object>> events = new ArrayList<>();
 
@@ -249,5 +297,82 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
         spannerResourceManager.runQuery("select actor from Movie order by id");
     Assert.assertEquals(123.098, numericVals.get(0).getBigDecimal(0).doubleValue(), 0.001);
     Assert.assertEquals(931.512, numericVals.get(1).getBigDecimal(0).doubleValue(), 0.001);
+  }
+
+  private void assertAuthorsTable() {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    Map<String, Object> row = new HashMap<>();
+    row.put("author_id", 1);
+    row.put("name", "a1");
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("author_id", 3);
+    row.put("name", "a003");
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("author_id", 4);
+    row.put("name", "a4");
+    events.add(row);
+
+    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Authors"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
+  }
+
+  private void assertBooksTable() {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    Map<String, Object> row = new HashMap<>();
+    row.put("id", 1);
+    row.put("title", "Book005");
+    row.put("author_id", 3);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 2);
+    row.put("title", "Book002");
+    row.put("author_id", 3);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 3);
+    row.put("title", "Book004");
+    row.put("author_id", 4);
+    events.add(row);
+
+    SpannerAsserts.assertThatStructs(
+            spannerResourceManager.runQuery("select * from Books@{FORCE_INDEX=author_id_6}"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
+  }
+
+  private void assertArticlesTable() {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    Map<String, Object> row = new HashMap<>();
+    row.put("id", 1);
+    row.put("name", "Article001");
+    row.put("published_date", Date.parseDate("2024-01-01"));
+    row.put("author_id", 1);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 2);
+    row.put("name", "Article002");
+    row.put("published_date", Date.parseDate("2024-01-01"));
+    row.put("author_id", 1);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 3);
+    row.put("name", "Article003");
+    row.put("published_date", Date.parseDate("2024-01-01"));
+    row.put("author_id", 4);
+    events.add(row);
+
+    SpannerAsserts.assertThatStructs(
+            spannerResourceManager.runQuery("select * from Articles@{FORCE_INDEX=author_id}"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 }
