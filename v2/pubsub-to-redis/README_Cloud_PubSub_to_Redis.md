@@ -24,22 +24,22 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **inputSubscription** (Pub/Sub input subscription): Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **redisHost** (Redis DB Host): Redis database host. (Example: your.cloud.db.redislabs.com). Defaults to: 127.0.0.1.
-* **redisPort** (Redis DB Port): Redis database port. (Example: 12345). Defaults to: 6379.
-* **redisPassword** (Redis DB Password): Redis database password. Defaults to empty.
+* **inputSubscription** : Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
+* **redisHost** : Redis database host. (Example: your.cloud.db.redislabs.com). Defaults to: 127.0.0.1.
+* **redisPort** : Redis database port. (Example: 12345). Defaults to: 6379.
+* **redisPassword** : Redis database password. Defaults to empty.
 
-### Optional Parameters
+### Optional parameters
 
-* **sslEnabled** (Redis ssl enabled): Redis database ssl parameter. Defaults to: false.
-* **redisSinkType** (Redis sink to write): Supported Redis sinks are STRING_SINK, HASH_SINK, STREAMS_SINK and LOGGING_SINK (Example: STRING_SINK). Defaults to: STRING_SINK.
-* **connectionTimeout** (Redis connection timeout in milliseconds): Redis connection timeout in milliseconds. (Example: 2000). Defaults to: 2000.
-* **ttl** (Hash key expiration time in sec (ttl)): Key expiration time in sec (ttl, default for HASH_SINK is -1 i.e. no expiration).
-* **javascriptTextTransformGcsPath** (Cloud Storage path to Javascript UDF source): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
-* **javascriptTextTransformFunctionName** (UDF Javascript Function Name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
-* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
+* **sslEnabled** : Redis database ssl parameter. Defaults to: false.
+* **redisSinkType** : Supported Redis sinks are STRING_SINK, HASH_SINK, STREAMS_SINK and LOGGING_SINK (Example: STRING_SINK). Defaults to: STRING_SINK.
+* **connectionTimeout** : Redis connection timeout in milliseconds. (Example: 2000). Defaults to: 2000.
+* **ttl** : Key expiration time in sec (ttl, default for HASH_SINK is -1 i.e. no expiration).
+* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
+* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
+* **javascriptTextTransformReloadIntervalMinutes** : Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
 
 
 ## User-Defined functions (UDFs)

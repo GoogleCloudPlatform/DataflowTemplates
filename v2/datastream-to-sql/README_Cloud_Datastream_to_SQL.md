@@ -35,25 +35,25 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **inputFilePattern** (File location for Datastream file input in Cloud Storage.): This is the file location for Datastream file input in Cloud Storage. Normally, this will be gs://${BUCKET}/${ROOT_PATH}/.
-* **databaseHost** (Database Host to connect on.): Database Host to connect on.
-* **databaseUser** (Database User to connect with.): Database User to connect with.
-* **databasePassword** (Database Password for given user.): Database Password for given user.
+* **inputFilePattern** : This is the file location for Datastream file input in Cloud Storage. Normally, this will be gs://${BUCKET}/${ROOT_PATH}/.
+* **databaseHost** : Database Host to connect on.
+* **databaseUser** : Database User to connect with.
+* **databasePassword** : Database Password for given user.
 
-### Optional Parameters
+### Optional parameters
 
-* **gcsPubSubSubscription** (The Pub/Sub subscription being used in a Cloud Storage notification policy.): The Pub/Sub subscription being used in a Cloud Storage notification policy. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>.
-* **inputFileFormat** (Datastream output file format (avro/json).): This is the format of the output file produced by Datastream. by default this will be avro.
-* **streamName** (Name or template for the stream to poll for schema information.): This is the name or template for the stream to poll for schema information. Default is {_metadata_stream}. The default value is enough under most conditions.
-* **rfcStartDateTime** (The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339).): The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z.
-* **dataStreamRootUrl** (Datastream API Root URL (only required for testing)): Datastream API Root URL. Defaults to: https://datastream.googleapis.com/.
-* **databaseType** (SQL Database Type (postgres or mysql).): The database type to write to (for example, Postgres). Defaults to: postgres.
-* **databasePort** (Database Port to connect on.): Database Port to connect on (default 5432).
-* **databaseName** (SQL Database Name.): The database name to connect to. Defaults to: postgres.
-* **schemaMap** (A map of key/values used to dictate schema name changes): A map of key/values used to dictate schema name changes (ie. old_name:new_name,CaseError:case_error). Defaults to empty.
-* **customConnectionString** (Custom connection string.): Optional connection string which will be used instead of the default database string.
+* **gcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>.
+* **inputFileFormat** : This is the format of the output file produced by Datastream. by default this will be avro.
+* **streamName** : This is the name or template for the stream to poll for schema information. Default is {_metadata_stream}. The default value is enough under most conditions.
+* **rfcStartDateTime** : The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z.
+* **dataStreamRootUrl** : Datastream API Root URL. Defaults to: https://datastream.googleapis.com/.
+* **databaseType** : The database type to write to (for example, Postgres). Defaults to: postgres.
+* **databasePort** : Database Port to connect on (default 5432).
+* **databaseName** : The database name to connect to. Defaults to: postgres.
+* **schemaMap** : A map of key/values used to dictate schema name changes (ie. old_name:new_name,CaseError:case_error). Defaults to empty.
+* **customConnectionString** : Optional connection string which will be used instead of the default database string.
 
 
 

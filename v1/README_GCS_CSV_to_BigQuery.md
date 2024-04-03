@@ -14,10 +14,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **inputFilePattern** (Cloud Storage Input File(s)): Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.csv).
-* **schemaJSONPath** (Cloud Storage location of your BigQuery schema file, described as a JSON): JSON file with BigQuery Schema description. JSON Example: {
+* **inputFilePattern** : Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.csv).
+* **schemaJSONPath** : JSON file with BigQuery Schema description. JSON Example: {
 	"BigQuery Schema": [
 		{
 			"name": "location",
@@ -41,16 +41,16 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 		}
 	]
 }.
-* **outputTable** (BigQuery output table): BigQuery table location to write the output to. The table's schema must match the input objects.
-* **bigQueryLoadingTemporaryDirectory** (Temporary directory for BigQuery loading process): Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir).
-* **badRecordsOutputTable** (BigQuery output table for bad records): BigQuery table location to write the bad record. The table's schema must match the {RawContent: STRING, ErrorMsg:STRING}.
-* **delimiter** (Column delimiter of the data files.): The column delimiter of the input text files. Default: use delimiter provided in csvFormat (Example: ,).
-* **csvFormat** (CSV Format to use for parsing records.): CSV format specification to use for parsing records. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html.
+* **outputTable** : BigQuery table location to write the output to. The table's schema must match the input objects.
+* **bigQueryLoadingTemporaryDirectory** : Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir).
+* **badRecordsOutputTable** : BigQuery table location to write the bad record. The table's schema must match the {RawContent: STRING, ErrorMsg:STRING}.
+* **delimiter** : The column delimiter of the input text files. Default: use delimiter provided in csvFormat (Example: ,).
+* **csvFormat** : CSV format specification to use for parsing records. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html.
 
-### Optional Parameters
+### Optional parameters
 
-* **containsHeaders** (Whether input CSV files contain a header record.): Input CSV files contain a header record (true/false). Defaults to: false.
-* **csvFileEncoding** (CSV file encoding): CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, UTF-16. Defaults to: UTF-8.
+* **containsHeaders** : Input CSV files contain a header record (true/false). Defaults to: false.
+* **csvFileEncoding** : CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, UTF-16. Defaults to: UTF-8.
 
 
 

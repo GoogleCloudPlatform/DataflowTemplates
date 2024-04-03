@@ -12,13 +12,13 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
 
-### Optional Parameters
+### Optional parameters
 
-* **yaml_pipeline** (Input YAML pipeline spec.): A yaml description of the pipeline to run.
-* **yaml_pipeline_file** (Input YAML pipeline spec file in Cloud Storage.): A file in Cloud Storage containing a yaml description of the pipeline to run.
+* **yaml_pipeline** : A yaml description of the pipeline to run.
+* **yaml_pipeline_file** : A file in Cloud Storage containing a yaml description of the pipeline to run.
 
 
 

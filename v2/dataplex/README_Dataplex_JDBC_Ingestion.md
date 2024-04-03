@@ -20,30 +20,30 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **connectionURL** (JDBC connection URL string.): Url connection string to connect to the JDBC source. Connection string can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS. (Example: jdbc:mysql://some-host:3306/sampledb).
-* **driverClassName** (JDBC driver class name.): JDBC driver class name to use. (Example: com.mysql.jdbc.Driver).
-* **driverJars** (Cloud Storage paths for JDBC drivers): Comma separated Cloud Storage paths for JDBC drivers. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
-* **query** (JDBC source SQL query.): Query to be executed on the source to extract the data. (Example: select * from sampledb.sample_table).
-* **outputTable** (BigQuery output table or Cloud Storage top folder name): BigQuery table location or Cloud Storage top folder name to write the output to. If it's a BigQuery table location, the table’s schema must match the source query schema and should in the format of some-project-id:somedataset.sometable. If it's a Cloud Storage top folder, just provide the top folder name.
-* **outputAsset** (Dataplex output asset ID): Dataplex output asset ID to which the results are stored to. Should be in the format of projects/your-project/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset-name>.
+* **connectionURL** : Url connection string to connect to the JDBC source. Connection string can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS. (Example: jdbc:mysql://some-host:3306/sampledb).
+* **driverClassName** : JDBC driver class name to use. (Example: com.mysql.jdbc.Driver).
+* **driverJars** : Comma separated Cloud Storage paths for JDBC drivers. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
+* **query** : Query to be executed on the source to extract the data. (Example: select * from sampledb.sample_table).
+* **outputTable** : BigQuery table location or Cloud Storage top folder name to write the output to. If it's a BigQuery table location, the table’s schema must match the source query schema and should in the format of some-project-id:somedataset.sometable. If it's a Cloud Storage top folder, just provide the top folder name.
+* **outputAsset** : Dataplex output asset ID to which the results are stored to. Should be in the format of projects/your-project/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset-name>.
 
-### Optional Parameters
+### Optional parameters
 
-* **connectionProperties** (JDBC connection property string.): Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8).
-* **username** (JDBC connection username.): User name to be used for the JDBC connection. User name can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
-* **password** (JDBC connection password.): Password to be used for the JDBC connection. Password can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
-* **KMSEncryptionKey** (Google Cloud KMS key): If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key).
-* **partitioningScheme** (The partition scheme when writing the file.): The partition scheme when writing the file. Format: DAILY or MONTHLY or HOURLY. Defaults to: DAILY.
-* **paritionColumn** (The partition column on which the partition is based.): The partition column on which the partition is based. The column type must be of timestamp/date format.
-* **writeDisposition** (BigQuery write disposition type): Strategy to employ if the target file/table exists. If the table exists - should it overwrite/append or fail the load. Format: WRITE_APPEND or WRITE_TRUNCATE or WRITE_EMPTY. Only supported for writing to BigQuery. Defaults to: WRITE_EMPTY.
-* **fileFormat** (Output file format in Cloud Storage.): Output file format in Cloud Storage. Format: PARQUET or AVRO. Defaults to: PARQUET.
-* **useColumnAlias** (Whether to use column alias to map the rows.): If enabled (set to true) the pipeline will consider column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to false.
-* **fetchSize** (Set the data size going to be fetched and loaded in memory per Jdbc call.): It should ONLY be used if the default value throws memory errors. If not set, using Beam's default fetch size.
-* **updateDataplexMetadata** (Update Dataplex metadata.): Whether to update Dataplex metadata for the newly created entities. Only supported for Cloud Storage destination. If enabled, the pipeline will automatically copy the schema from source to the destination Dataplex entities, and the automated Dataplex Discovery won't run for them. Use this flag in cases where you have managed schema at the source. Defaults to: false.
-* **useStorageWriteApi** (Use BigQuery Storage Write API): If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
-* **useStorageWriteApiAtLeastOnce** (Use at at-least-once semantics in BigQuery Storage Write API): This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
+* **connectionProperties** : Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8).
+* **username** : User name to be used for the JDBC connection. User name can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
+* **password** : Password to be used for the JDBC connection. Password can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
+* **KMSEncryptionKey** : If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key).
+* **partitioningScheme** : The partition scheme when writing the file. Format: DAILY or MONTHLY or HOURLY. Defaults to: DAILY.
+* **paritionColumn** : The partition column on which the partition is based. The column type must be of timestamp/date format.
+* **writeDisposition** : Strategy to employ if the target file/table exists. If the table exists - should it overwrite/append or fail the load. Format: WRITE_APPEND or WRITE_TRUNCATE or WRITE_EMPTY. Only supported for writing to BigQuery. Defaults to: WRITE_EMPTY.
+* **fileFormat** : Output file format in Cloud Storage. Format: PARQUET or AVRO. Defaults to: PARQUET.
+* **useColumnAlias** : If enabled (set to true) the pipeline will consider column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to false.
+* **fetchSize** : It should ONLY be used if the default value throws memory errors. If not set, using Beam's default fetch size.
+* **updateDataplexMetadata** : Whether to update Dataplex metadata for the newly created entities. Only supported for Cloud Storage destination. If enabled, the pipeline will automatically copy the schema from source to the destination Dataplex entities, and the automated Dataplex Discovery won't run for them. Use this flag in cases where you have managed schema at the source. Defaults to: false.
+* **useStorageWriteApi** : If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
+* **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
 
 
 

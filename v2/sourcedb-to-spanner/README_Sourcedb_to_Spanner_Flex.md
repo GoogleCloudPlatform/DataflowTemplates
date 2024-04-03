@@ -25,27 +25,28 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
-* **databaseId** (Cloud Spanner Database Id.): The destination Cloud Spanner database.
-* **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
+* **instanceId** : The destination Cloud Spanner instance.
+* **databaseId** : The destination Cloud Spanner database.
+* **projectId** : This is the name of the Cloud Spanner project.
 
-### Optional Parameters
+### Optional parameters
 
-* **jdbcDriverJars** (Comma-separated Cloud Storage path(s) of the JDBC driver(s)): The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
-* **jdbcDriverClassName** (JDBC driver class name): The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
-* **sourceConnectionURL** (Connection URL to connect to the source database.): The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. Currently supported sources: MySQL (Example: jdbc:mysql://some-host:3306/sampledb).
-* **sourceConnectionProperties** (JDBC connection property string.): Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8).
-* **username** (JDBC connection username.): The username to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key.
-* **password** (JDBC connection password.): The password to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key.
-* **partitionColumns** (The name of a column of numeric type that will be used for partitioning.): If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported. The partition columns are expected to be the same in number as the tables.
-* **tables** (Comma-separated names of the tables in the source database.): Tables to read from using partitions.
-* **numPartitions** (The number of partitions.): The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1.
-* **spannerHost** (Cloud Spanner Endpoint to call): The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
-* **ignoreColumns** (Source database columns to ignore): A comma separated list of (table:column1;column2) to exclude from writing to Spanner (Example: table1:column1;column2,table2:column1).
-* **disabledAlgorithms** (Disabled algorithms to override jdk.tls.disabledAlgorithms): Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, because the algorithms that are disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4).
-* **extraFilesToStage** (Extra files to stage in the workers): Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id).
+* **jdbcDriverJars** : The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
+* **jdbcDriverClassName** : The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
+* **sourceConnectionURL** : The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. Currently supported sources: MySQL (Example: jdbc:mysql://some-host:3306/sampledb).
+* **sourceConnectionProperties** : Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8).
+* **username** : The username to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key.
+* **password** : The password to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key.
+* **partitionColumns** : If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported. The partition columns are expected to be the same in number as the tables.
+* **tables** : Tables to read from using partitions.
+* **numPartitions** : The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1.
+* **spannerHost** : The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
+* **ignoreColumns** : A comma separated list of (table:column1;column2) to exclude from writing to Spanner (Example: table1:column1;column2,table2:column1).
+* **maxConnections** : Configures the JDBC connection pool on each worker with maximum number of connections. Use a negative number for no limit. Default value is 100. (Example: -1).
+* **disabledAlgorithms** : Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, because the algorithms that are disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4).
+* **extraFilesToStage** : Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id).
 
 
 
@@ -140,6 +141,7 @@ export TABLES=<tables>
 export NUM_PARTITIONS=<numPartitions>
 export SPANNER_HOST=https://batch-spanner.googleapis.com
 export IGNORE_COLUMNS=<ignoreColumns>
+export MAX_CONNECTIONS=100
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
@@ -161,6 +163,7 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "projectId=$PROJECT_ID" \
   --parameters "spannerHost=$SPANNER_HOST" \
   --parameters "ignoreColumns=$IGNORE_COLUMNS" \
+  --parameters "maxConnections=$MAX_CONNECTIONS" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
   --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE"
 ```
@@ -197,6 +200,7 @@ export TABLES=<tables>
 export NUM_PARTITIONS=<numPartitions>
 export SPANNER_HOST=https://batch-spanner.googleapis.com
 export IGNORE_COLUMNS=<ignoreColumns>
+export MAX_CONNECTIONS=100
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
@@ -207,7 +211,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConnectionURL=$SOURCE_CONNECTION_URL,sourceConnectionProperties=$SOURCE_CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,partitionColumns=$PARTITION_COLUMNS,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,ignoreColumns=$IGNORE_COLUMNS,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConnectionURL=$SOURCE_CONNECTION_URL,sourceConnectionProperties=$SOURCE_CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,partitionColumns=$PARTITION_COLUMNS,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,ignoreColumns=$IGNORE_COLUMNS,maxConnections=$MAX_CONNECTIONS,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
 -f v2/sourcedb-to-spanner
 ```
 
@@ -266,6 +270,7 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     # numPartitions = "<numPartitions>"
     # spannerHost = "https://batch-spanner.googleapis.com"
     # ignoreColumns = "table1:column1;column2,table2:column1"
+    # maxConnections = "-1"
     # disabledAlgorithms = "SSLv3, RC4"
     # extraFilesToStage = "gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id"
   }

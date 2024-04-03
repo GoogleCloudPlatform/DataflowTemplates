@@ -16,23 +16,23 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **instanceId** (Cloud Spanner instance ID): The instance ID of the Cloud Spanner database that you want to import to.
-* **databaseId** (Cloud Spanner database ID): The database ID of the Cloud Spanner database that you want to import into (must already exist).
-* **inputDir** (Cloud storage input directory): The Cloud Storage path where the Avro files should be imported from.
+* **instanceId** : The instance ID of the Cloud Spanner database that you want to import to.
+* **databaseId** : The database ID of the Cloud Spanner database that you want to import into (must already exist).
+* **inputDir** : The Cloud Storage path where the Avro files should be imported from.
 
-### Optional Parameters
+### Optional parameters
 
-* **spannerHost** (Cloud Spanner Endpoint to call): The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
-* **waitForIndexes** (Wait for Indexes): By default the import pipeline is not blocked on index creation, and it may complete with indexes still being created in the background. If true, the pipeline waits until indexes are created.
-* **waitForForeignKeys** (Wait for Foreign Keys): By default the import pipeline is not blocked on foreign key creation, and it may complete with foreign keys still being created in the background. If true, the pipeline waits until foreign keys are created.
-* **waitForChangeStreams** (Wait for Change Streams): By default the import pipeline is blocked on change stream creation. If false, it may complete with change streams still being created in the background.
-* **waitForSequences** (Wait for Sequences): By default the import pipeline is blocked on sequence creation. If false, it may complete with sequences still being created in the background.
-* **earlyIndexCreateFlag** (Create Indexes early): Flag to turn off early index creation if there are many indexes. Indexes and Foreign keys are created after dataload. If there are more than 40 DDL statements to be executed after dataload, it is preferable to create the indexes before dataload. This is the flag to turn the feature off. Defaults to: true.
-* **spannerProjectId** (Cloud Spanner Project Id): The project ID of the Cloud Spanner instance.
-* **ddlCreationTimeoutInMinutes** (DDL Creation timeout in minutes): DDL Creation timeout in minutes. Defaults to: 30.
-* **spannerPriority** (Priority for Spanner RPC invocations): The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].
+* **spannerHost** : The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
+* **waitForIndexes** : By default the import pipeline is not blocked on index creation, and it may complete with indexes still being created in the background. If true, the pipeline waits until indexes are created.
+* **waitForForeignKeys** : By default the import pipeline is not blocked on foreign key creation, and it may complete with foreign keys still being created in the background. If true, the pipeline waits until foreign keys are created.
+* **waitForChangeStreams** : By default the import pipeline is blocked on change stream creation. If false, it may complete with change streams still being created in the background.
+* **waitForSequences** : By default the import pipeline is blocked on sequence creation. If false, it may complete with sequences still being created in the background.
+* **earlyIndexCreateFlag** : Flag to turn off early index creation if there are many indexes. Indexes and Foreign keys are created after dataload. If there are more than 40 DDL statements to be executed after dataload, it is preferable to create the indexes before dataload. This is the flag to turn the feature off. Defaults to: true.
+* **spannerProjectId** : The project ID of the Cloud Spanner instance.
+* **ddlCreationTimeoutInMinutes** : DDL Creation timeout in minutes. Defaults to: 30.
+* **spannerPriority** : The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].
 
 
 

@@ -13,19 +13,19 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **readQuery** (Input SQL query): SQL query in standard SQL to pull data from BigQuery.
-* **datastoreWriteProjectId** (Project ID): The Google Cloud project ID of where to write Datastore entities.
-* **errorWritePath** (Output failure file): The error log output folder to use for write failures that occur during processing. (Example: gs://your-bucket/errors/).
+* **readQuery** : SQL query in standard SQL to pull data from BigQuery.
+* **datastoreWriteProjectId** : The Google Cloud project ID of where to write Datastore entities.
+* **errorWritePath** : The error log output folder to use for write failures that occur during processing. (Example: gs://your-bucket/errors/).
 
-### Optional Parameters
+### Optional parameters
 
-* **readIdColumn** (Unique identifier column): Name of the BigQuery column storing the unique identifier of the row.
-* **invalidOutputPath** (Invalid rows output path): Cloud Storage path where to write BigQuery rows that cannot be converted to target entities. (Example: gs://your-bucket/your-path).
-* **datastoreWriteEntityKind** (Datastore entity kind): Datastore kind under which entities will be written in the output Google Cloud project.
-* **datastoreWriteNamespace** (Datastore namespace): Datastore namespace under which entities will be written in the output Google Cloud project.
-* **datastoreHintNumWorkers** (Expected number of workers): Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to: 500.
+* **readIdColumn** : Name of the BigQuery column storing the unique identifier of the row.
+* **invalidOutputPath** : Cloud Storage path where to write BigQuery rows that cannot be converted to target entities. (Example: gs://your-bucket/your-path).
+* **datastoreWriteEntityKind** : Datastore kind under which entities will be written in the output Google Cloud project.
+* **datastoreWriteNamespace** : Datastore namespace under which entities will be written in the output Google Cloud project.
+* **datastoreHintNumWorkers** : Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to: 500.
 
 
 

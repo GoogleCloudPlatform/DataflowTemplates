@@ -1,16 +1,26 @@
 
-Pub/Sub to BigQuery template
+Cloud Storage Text to BigQuery (Stream) with Python UDF template
 ---
-The Pub/Sub to BigQuery template is a streaming pipeline that reads
-JSON-formatted messages from a Pub/Sub topic or subscription, and writes them to
-a BigQuery table. You can use the template as a quick solution to move Pub/Sub
-data to BigQuery. The template reads JSON-formatted messages from Pub/Sub and
-converts them to BigQuery elements.
+The Text Files on Cloud Storage to BigQuery pipeline is a streaming pipeline that
+allows you to stream text files stored in Cloud Storage, transform them using a
+Python User Defined Function (UDF) that you provide, and append the result to
+BigQuery.
+
+The pipeline runs indefinitely and needs to be terminated manually via a
+<a
+href="https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#cancel">cancel</a>
+and not a
+<a
+href="https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#drain">drain</a>,
+due to its use of the
+<code>Watch</code> transform, which is a splittable <code>DoFn</code> that does
+not support
+draining.
 
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-bigquery)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=PubSub_to_BigQuery_Flex).
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-bigquery-stream)
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Stream_GCS_Text_to_BigQuery_Xlang).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -20,31 +30,21 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **outputTableSpec** : BigQuery table location to write the output to. The table’s schema must match the input JSON objects.
+* **inputFilePattern** : The path to the Cloud Storage text to read. (Example: gs://your-bucket/your-file.txt).
+* **JSONPath** : The Cloud Storage path to the JSON file that defines your BigQuery schema. (Example: gs://your-bucket/your-schema.json).
+* **outputTable** : The location of the BigQuery table in which to store your processed data. If you reuse an existing table, it will be overwritten. (Example: your-project:your-dataset.your-table).
+* **bigQueryLoadingTemporaryDirectory** : Temporary directory for the BigQuery loading process. (Example: gs://your-bucket/your-files/temp-dir).
 
 ### Optional parameters
 
-* **inputTopic** : The Pub/Sub topic to read the input from.
-* **inputSubscription** : Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'.
-* **outputDeadletterTable** : BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead.
+* **outputDeadletterTable** : BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
 * **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-* **useStorageWriteApi** : If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). The default value is false. When using Storage Write API in exactly-once mode, you must set the following parameters: "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API". If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter to true, then you don't need to set the number of streams or the triggering frequency.
+* **useStorageWriteApi** : If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
 * **numStorageWriteApiStreams** : Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0.
 * **storageWriteApiTriggeringFrequencySec** : Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values.
-* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
-* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
-* **javascriptTextTransformReloadIntervalMinutes** : Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
+* **pythonExternalTextTransformGcsPath** : The Cloud Storage path pattern for the Python code containing your user-defined functions. (Example: gs://your-bucket/your-function.py).
+* **pythonExternalTextTransformFunctionName** : The name of the function to call from your Python file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
 
-
-## User-Defined functions (UDFs)
-
-The Pub/Sub to BigQuery Template supports User-Defined functions (UDFs).
-UDFs allow you to customize functionality by providing a JavaScript function
-without having to maintain or build the entire template code.
-
-Check [Create user-defined functions for Dataflow templates](https://cloud.google.com/dataflow/docs/guides/templates/create-template-udf)
-and [Using UDFs](https://github.com/GoogleCloudPlatform/DataflowTemplates#using-udfs)
-for more information about how to create and test those functions.
 
 
 ## Getting Started
@@ -60,7 +60,7 @@ for more information about how to create and test those functions.
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/PubSubToBigQuery.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/TextToBigQueryStreaming.java)
 
 ### Templates Plugin
 
@@ -90,7 +90,7 @@ mvn clean package -PtemplatesStage  \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
--DtemplateName="PubSub_to_BigQuery_Flex" \
+-DtemplateName="Stream_GCS_Text_to_BigQuery_Xlang" \
 -f v2/googlecloud-to-googlecloud
 ```
 
@@ -99,7 +99,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/PubSub_to_BigQuery_Flex
+Flex Template was staged! gs://<bucket-name>/templates/flex/Stream_GCS_Text_to_BigQuery_Xlang
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -119,38 +119,38 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_to_BigQuery_Flex"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Stream_GCS_Text_to_BigQuery_Xlang"
 
 ### Required
-export OUTPUT_TABLE_SPEC=<outputTableSpec>
+export INPUT_FILE_PATTERN=<inputFilePattern>
+export JSONPATH=<JSONPath>
+export OUTPUT_TABLE=<outputTable>
+export BIG_QUERY_LOADING_TEMPORARY_DIRECTORY=<bigQueryLoadingTemporaryDirectory>
 
 ### Optional
-export INPUT_TOPIC=<inputTopic>
-export INPUT_SUBSCRIPTION=<inputSubscription>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export USE_STORAGE_WRITE_API=false
 export NUM_STORAGE_WRITE_API_STREAMS=0
 export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=<storageWriteApiTriggeringFrequencySec>
-export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
-export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH=<pythonExternalTextTransformGcsPath>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME=<pythonExternalTextTransformFunctionName>
 
-gcloud dataflow flex-template run "pubsub-to-bigquery-flex-job" \
+gcloud dataflow flex-template run "stream-gcs-text-to-bigquery-xlang-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "outputTableSpec=$OUTPUT_TABLE_SPEC" \
-  --parameters "inputTopic=$INPUT_TOPIC" \
-  --parameters "inputSubscription=$INPUT_SUBSCRIPTION" \
   --parameters "outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
   --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
+  --parameters "inputFilePattern=$INPUT_FILE_PATTERN" \
+  --parameters "JSONPath=$JSONPATH" \
+  --parameters "outputTable=$OUTPUT_TABLE" \
+  --parameters "bigQueryLoadingTemporaryDirectory=$BIG_QUERY_LOADING_TEMPORARY_DIRECTORY" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
   --parameters "numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS" \
   --parameters "storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
-  --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
-  --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
-  --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES"
+  --parameters "pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH" \
+  --parameters "pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME"
 ```
 
 For more information about the command, please check:
@@ -169,28 +169,28 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export OUTPUT_TABLE_SPEC=<outputTableSpec>
+export INPUT_FILE_PATTERN=<inputFilePattern>
+export JSONPATH=<JSONPath>
+export OUTPUT_TABLE=<outputTable>
+export BIG_QUERY_LOADING_TEMPORARY_DIRECTORY=<bigQueryLoadingTemporaryDirectory>
 
 ### Optional
-export INPUT_TOPIC=<inputTopic>
-export INPUT_SUBSCRIPTION=<inputSubscription>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export USE_STORAGE_WRITE_API=false
 export NUM_STORAGE_WRITE_API_STREAMS=0
 export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=<storageWriteApiTriggeringFrequencySec>
-export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
-export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH=<pythonExternalTextTransformGcsPath>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME=<pythonExternalTextTransformFunctionName>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="pubsub-to-bigquery-flex-job" \
--DtemplateName="PubSub_to_BigQuery_Flex" \
--Dparameters="outputTableSpec=$OUTPUT_TABLE_SPEC,inputTopic=$INPUT_TOPIC,inputSubscription=$INPUT_SUBSCRIPTION,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
+-DjobName="stream-gcs-text-to-bigquery-xlang-job" \
+-DtemplateName="Stream_GCS_Text_to_BigQuery_Xlang" \
+-Dparameters="outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,inputFilePattern=$INPUT_FILE_PATTERN,JSONPath=$JSONPATH,outputTable=$OUTPUT_TABLE,bigQueryLoadingTemporaryDirectory=$BIG_QUERY_LOADING_TEMPORARY_DIRECTORY,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC,pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH,pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME" \
 -f v2/googlecloud-to-googlecloud
 ```
 
@@ -208,7 +208,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd v2/googlecloud-to-googlecloud/terraform/PubSub_to_BigQuery_Flex
+cd v2/googlecloud-to-googlecloud/terraform/Stream_GCS_Text_to_BigQuery_Xlang
 terraform init
 terraform apply
 ```
@@ -228,24 +228,24 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "pubsub_to_bigquery_flex" {
+resource "google_dataflow_flex_template_job" "stream_gcs_text_to_bigquery_xlang" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PubSub_to_BigQuery_Flex"
-  name              = "pubsub-to-bigquery-flex"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Stream_GCS_Text_to_BigQuery_Xlang"
+  name              = "stream-gcs-text-to-bigquery-xlang"
   region            = var.region
   parameters        = {
-    outputTableSpec = "<outputTableSpec>"
-    # inputTopic = "<inputTopic>"
-    # inputSubscription = "<inputSubscription>"
-    # outputDeadletterTable = "<outputDeadletterTable>"
+    inputFilePattern = "gs://your-bucket/your-file.txt"
+    JSONPath = "gs://your-bucket/your-schema.json"
+    outputTable = "your-project:your-dataset.your-table"
+    bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp-dir"
+    # outputDeadletterTable = "your-project-id:your-dataset.your-table-name"
     # useStorageWriteApiAtLeastOnce = "false"
     # useStorageWriteApi = "false"
     # numStorageWriteApiStreams = "0"
     # storageWriteApiTriggeringFrequencySec = "<storageWriteApiTriggeringFrequencySec>"
-    # javascriptTextTransformGcsPath = "gs://your-bucket/your-function.js"
-    # javascriptTextTransformFunctionName = "'transform' or 'transform_udf1'"
-    # javascriptTextTransformReloadIntervalMinutes = "0"
+    # pythonExternalTextTransformGcsPath = "gs://your-bucket/your-function.py"
+    # pythonExternalTextTransformFunctionName = "'transform' or 'transform_udf1'"
   }
 }
 ```

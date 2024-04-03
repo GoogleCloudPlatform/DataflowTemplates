@@ -21,21 +21,21 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **cassandraHosts** (Cassandra Hosts): Comma separated value list of hostnames or ips of the Cassandra nodes.
-* **cassandraKeyspace** (Cassandra Keyspace): Cassandra Keyspace where the table to be migrated can be located.
-* **cassandraTable** (Cassandra Table): The name of the Cassandra table to Migrate.
-* **bigtableProjectId** (Bigtable Project ID): The Project ID where the target Bigtable Instance is running.
-* **bigtableInstanceId** (Target Bigtable Instance): The target Bigtable Instance where you want to write the data.
-* **bigtableTableId** (Target Bigtable Table): The target Bigtable table where you want to write the data.
+* **cassandraHosts** : Comma separated value list of hostnames or ips of the Cassandra nodes.
+* **cassandraKeyspace** : Cassandra Keyspace where the table to be migrated can be located.
+* **cassandraTable** : The name of the Cassandra table to Migrate.
+* **bigtableProjectId** : The Project ID where the target Bigtable Instance is running.
+* **bigtableInstanceId** : The target Bigtable Instance where you want to write the data.
+* **bigtableTableId** : The target Bigtable table where you want to write the data.
 
-### Optional Parameters
+### Optional parameters
 
-* **cassandraPort** (Cassandra Port): The port where cassandra can be reached. Defaults to 9042.
-* **defaultColumnFamily** (The Default Bigtable Column Family): This specifies the default column family to write data into. If no columnFamilyMapping is specified all Columns will be written into this column family. Default value is "default".
-* **rowKeySeparator** (The Row Key Separator): All primary key fields will be appended to form your Bigtable Row Key. The rowKeySeparator allows you to specify a character separator. Default separator is '#'.
-* **splitLargeRows** (If true, large rows will be split into multiple MutateRows requests): The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. .
+* **cassandraPort** : The port where cassandra can be reached. Defaults to 9042.
+* **defaultColumnFamily** : This specifies the default column family to write data into. If no columnFamilyMapping is specified all Columns will be written into this column family. Default value is "default".
+* **rowKeySeparator** : All primary key fields will be appended to form your Bigtable Row Key. The rowKeySeparator allows you to specify a character separator. Default separator is '#'.
+* **splitLargeRows** : The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. .
 
 
 

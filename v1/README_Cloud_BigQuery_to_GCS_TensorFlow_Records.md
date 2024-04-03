@@ -20,19 +20,19 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **readQuery** (Input SQL query): SQL query in standard SQL to pull data from BigQuery.
-* **outputDirectory** (Output Cloud Storage directory.): Cloud Storage directory to store output TFRecord files. (Example: gs://your-bucket/your-path).
+* **readQuery** : SQL query in standard SQL to pull data from BigQuery.
+* **outputDirectory** : Cloud Storage directory to store output TFRecord files. (Example: gs://your-bucket/your-path).
 
-### Optional Parameters
+### Optional parameters
 
-* **readIdColumn** (Unique identifier column): Name of the BigQuery column storing the unique identifier of the row.
-* **invalidOutputPath** (Invalid rows output path): Cloud Storage path where to write BigQuery rows that cannot be converted to target entities. (Example: gs://your-bucket/your-path).
-* **outputSuffix** (The output suffix for TFRecord files): File suffix to append to TFRecord files. Defaults to .tfrecord.
-* **trainingPercentage** (Percentage of data to be in the training set ): Defaults to 1 or 100%. Should be decimal between 0 and 1 inclusive.
-* **testingPercentage** (Percentage of data to be in the testing set ): Defaults to 0 or 0%. Should be decimal between 0 and 1 inclusive.
-* **validationPercentage** (Percentage of data to be in the validation set ): Defaults to 0 or 0%. Should be decimal between 0 and 1 inclusive.
+* **readIdColumn** : Name of the BigQuery column storing the unique identifier of the row.
+* **invalidOutputPath** : Cloud Storage path where to write BigQuery rows that cannot be converted to target entities. (Example: gs://your-bucket/your-path).
+* **outputSuffix** : File suffix to append to TFRecord files. Defaults to .tfrecord.
+* **trainingPercentage** : Defaults to 1 or 100%. Should be decimal between 0 and 1 inclusive.
+* **testingPercentage** : Defaults to 0 or 0%. Should be decimal between 0 and 1 inclusive.
+* **validationPercentage** : Defaults to 0 or 0%. Should be decimal between 0 and 1 inclusive.
 
 
 
