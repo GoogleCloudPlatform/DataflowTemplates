@@ -1,14 +1,15 @@
 
-MongoDB to BigQuery template
+Text Files on Cloud Storage to BigQuery with BigQuery Storage API & Python UDF support template
 ---
-The MongoDB to BigQuery template is a batch pipeline that reads documents from
-MongoDB and writes them to BigQuery as specified by the <code>userOption</code>
-parameter.
+The Cloud Storage Text to BigQuery pipeline is a batch pipeline that allows you
+to read text files stored in Cloud Storage, transform them using a Python User
+Defined Function (UDF) that you provide, and append the result to a BigQuery
+table.
 
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/mongodb-to-bigquery)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=MongoDB_to_BigQuery).
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-bigquery)
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_Text_to_BigQuery_Xlang).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -18,19 +19,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **mongoDbUri** : MongoDB connection URI in the format `mongodb+srv://:@`.
-* **database** : Database in MongoDB to read the collection from. (Example: my-db).
-* **collection** : Name of the collection inside MongoDB database. (Example: my-collection).
-* **userOption** : User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the documents to the single level. `NONE` stores the whole document as a JSON string. Defaults to: NONE.
-* **outputTableSpec** : BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
+* **inputFilePattern** : The path to the Cloud Storage text to read. (Example: gs://your-bucket/your-file.txt).
+* **JSONPath** : The Cloud Storage path to the JSON file that defines your BigQuery schema. (Example: gs://your-bucket/your-schema.json).
+* **outputTable** : The location of the BigQuery table in which to store your processed data. If you reuse an existing table, it will be overwritten. (Example: your-project:your-dataset.your-table).
+* **bigQueryLoadingTemporaryDirectory** : Temporary directory for the BigQuery loading process. (Example: gs://your-bucket/your-files/temp-dir).
 
 ### Optional parameters
 
-* **KMSEncryptionKey** : Cloud KMS Encryption Key to decrypt the mongodb uri connection string. If Cloud KMS key is passed in, the mongodb uri connection string must all be passed in encrypted. (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key).
 * **useStorageWriteApi** : If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
 * **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-* **javascriptDocumentTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-transforms/*.js).
-* **javascriptDocumentTransformFunctionName** : The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'. (Example: transform).
+* **pythonExternalTextTransformGcsPath** : The Cloud Storage path pattern for the Python code containing your user-defined functions. (Example: gs://your-bucket/your-function.py).
+* **pythonExternalTextTransformFunctionName** : The name of the function to call from your Python file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
 
 
 
@@ -47,7 +46,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/mongodb-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/mongodb/templates/MongoDbToBigQuery.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/TextIOToBigQuery.java)
 
 ### Templates Plugin
 
@@ -77,8 +76,8 @@ mvn clean package -PtemplatesStage  \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
--DtemplateName="MongoDB_to_BigQuery" \
--f v2/mongodb-to-googlecloud
+-DtemplateName="GCS_Text_to_BigQuery_Xlang" \
+-f v2/googlecloud-to-googlecloud
 ```
 
 
@@ -86,7 +85,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/MongoDB_to_BigQuery
+Flex Template was staged! gs://<bucket-name>/templates/flex/GCS_Text_to_BigQuery_Xlang
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -106,36 +105,32 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/MongoDB_to_BigQuery"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/GCS_Text_to_BigQuery_Xlang"
 
 ### Required
-export MONGO_DB_URI=<mongoDbUri>
-export DATABASE=<database>
-export COLLECTION=<collection>
-export USER_OPTION=NONE
-export OUTPUT_TABLE_SPEC=<outputTableSpec>
+export INPUT_FILE_PATTERN=<inputFilePattern>
+export JSONPATH=<JSONPath>
+export OUTPUT_TABLE=<outputTable>
+export BIG_QUERY_LOADING_TEMPORARY_DIRECTORY=<bigQueryLoadingTemporaryDirectory>
 
 ### Optional
-export KMSENCRYPTION_KEY=<KMSEncryptionKey>
 export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
-export JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH=<javascriptDocumentTransformGcsPath>
-export JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME=<javascriptDocumentTransformFunctionName>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH=<pythonExternalTextTransformGcsPath>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME=<pythonExternalTextTransformFunctionName>
 
-gcloud dataflow flex-template run "mongodb-to-bigquery-job" \
+gcloud dataflow flex-template run "gcs-text-to-bigquery-xlang-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "mongoDbUri=$MONGO_DB_URI" \
-  --parameters "database=$DATABASE" \
-  --parameters "collection=$COLLECTION" \
-  --parameters "userOption=$USER_OPTION" \
-  --parameters "KMSEncryptionKey=$KMSENCRYPTION_KEY" \
+  --parameters "inputFilePattern=$INPUT_FILE_PATTERN" \
+  --parameters "JSONPath=$JSONPATH" \
+  --parameters "outputTable=$OUTPUT_TABLE" \
+  --parameters "bigQueryLoadingTemporaryDirectory=$BIG_QUERY_LOADING_TEMPORARY_DIRECTORY" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
   --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
-  --parameters "outputTableSpec=$OUTPUT_TABLE_SPEC" \
-  --parameters "javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH" \
-  --parameters "javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME"
+  --parameters "pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH" \
+  --parameters "pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME"
 ```
 
 For more information about the command, please check:
@@ -154,28 +149,26 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export MONGO_DB_URI=<mongoDbUri>
-export DATABASE=<database>
-export COLLECTION=<collection>
-export USER_OPTION=NONE
-export OUTPUT_TABLE_SPEC=<outputTableSpec>
+export INPUT_FILE_PATTERN=<inputFilePattern>
+export JSONPATH=<JSONPath>
+export OUTPUT_TABLE=<outputTable>
+export BIG_QUERY_LOADING_TEMPORARY_DIRECTORY=<bigQueryLoadingTemporaryDirectory>
 
 ### Optional
-export KMSENCRYPTION_KEY=<KMSEncryptionKey>
 export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
-export JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH=<javascriptDocumentTransformGcsPath>
-export JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME=<javascriptDocumentTransformFunctionName>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH=<pythonExternalTextTransformGcsPath>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME=<pythonExternalTextTransformFunctionName>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="mongodb-to-bigquery-job" \
--DtemplateName="MongoDB_to_BigQuery" \
--Dparameters="mongoDbUri=$MONGO_DB_URI,database=$DATABASE,collection=$COLLECTION,userOption=$USER_OPTION,KMSEncryptionKey=$KMSENCRYPTION_KEY,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,outputTableSpec=$OUTPUT_TABLE_SPEC,javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH,javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME" \
--f v2/mongodb-to-googlecloud
+-DjobName="gcs-text-to-bigquery-xlang-job" \
+-DtemplateName="GCS_Text_to_BigQuery_Xlang" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,JSONPath=$JSONPATH,outputTable=$OUTPUT_TABLE,bigQueryLoadingTemporaryDirectory=$BIG_QUERY_LOADING_TEMPORARY_DIRECTORY,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH,pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME" \
+-f v2/googlecloud-to-googlecloud
 ```
 
 ## Terraform
@@ -192,7 +185,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd v2/mongodb-to-googlecloud/terraform/MongoDB_to_BigQuery
+cd v2/googlecloud-to-googlecloud/terraform/GCS_Text_to_BigQuery_Xlang
 terraform init
 terraform apply
 ```
@@ -212,23 +205,21 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "mongodb_to_bigquery" {
+resource "google_dataflow_flex_template_job" "gcs_text_to_bigquery_xlang" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/MongoDB_to_BigQuery"
-  name              = "mongodb-to-bigquery"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/GCS_Text_to_BigQuery_Xlang"
+  name              = "gcs-text-to-bigquery-xlang"
   region            = var.region
   parameters        = {
-    mongoDbUri = "<mongoDbUri>"
-    database = "my-db"
-    collection = "my-collection"
-    userOption = "NONE"
-    outputTableSpec = "<outputTableSpec>"
-    # KMSEncryptionKey = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key"
+    inputFilePattern = "gs://your-bucket/your-file.txt"
+    JSONPath = "gs://your-bucket/your-schema.json"
+    outputTable = "your-project:your-dataset.your-table"
+    bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp-dir"
     # useStorageWriteApi = "false"
     # useStorageWriteApiAtLeastOnce = "false"
-    # javascriptDocumentTransformGcsPath = "gs://your-bucket/your-transforms/*.js"
-    # javascriptDocumentTransformFunctionName = "transform"
+    # pythonExternalTextTransformGcsPath = "gs://your-bucket/your-function.py"
+    # pythonExternalTextTransformFunctionName = "'transform' or 'transform_udf1'"
   }
 }
 ```

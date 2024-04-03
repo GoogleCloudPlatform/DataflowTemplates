@@ -14,14 +14,14 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **brokerServer** (Azure Event Hub endpoint): Server IP or DNS for Azure Eventhub Endpoint (Example: mynamespace.servicebus.windows.net:9093).
-* **inputTopic** (Azure Eventhub topic(s) to read the input from): Azure Eventhub topic(s) to read the input from (Example: topic).
-* **outputTopic** (Output Pub/Sub topic): The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
-* **secret** (Secret Version): Secret Version, it can be a number like 1,2 or 3 or can be 'latest' (Example: projects/{project}/secrets/{secret}/versions/{secret_version}).
+* **brokerServer** : Server IP or DNS for Azure Eventhub Endpoint (Example: mynamespace.servicebus.windows.net:9093).
+* **inputTopic** : Azure Eventhub topic(s) to read the input from (Example: topic).
+* **outputTopic** : The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
+* **secret** : Secret Version, it can be a number like 1,2 or 3 or can be 'latest' (Example: projects/{project}/secrets/{secret}/versions/{secret_version}).
 
-### Optional Parameters
+### Optional parameters
 
 
 
