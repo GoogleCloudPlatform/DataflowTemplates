@@ -44,6 +44,7 @@ public class ImageSpecMetadata {
   private Boolean streaming;
   private Boolean supportsAtLeastOnce;
   private Boolean supportsExactlyOnce;
+  private String defaultStreamingMode;
 
   public String getDescription() {
     return description;
@@ -210,6 +211,14 @@ public class ImageSpecMetadata {
 
   public void setSupportsExactlyOnce(boolean supportsExactlyOnce) {
     this.supportsExactlyOnce = supportsExactlyOnce;
+  }
+
+  public String getDefaultStreamingMode() {
+    return defaultStreamingMode;
+  }
+
+  public void setDefaultStreamingMode(String defaultStreamingMode) {
+    this.defaultStreamingMode = defaultStreamingMode;
   }
 
   public Optional<ImageSpecParameter> getParameter(String name) {
