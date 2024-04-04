@@ -708,7 +708,6 @@
         <module>mqtt-to-pubsub</module>
         <module>mysql-to-googlecloud</module>
         <module>oracle-to-googlecloud</module>
-        <module>ordered-changestream-buffer-to-sourcedb</module>
         <module>postgresql-to-googlecloud</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
@@ -717,7 +716,6 @@
         <module>pubsub-to-mongodb</module>
         <module>pubsub-to-redis</module>
         <module>sourcedb-to-spanner</module>
-        <module>spanner-change-streams-to-sharded-file-sink</module>
         <module>spanner-change-streams-to-sink</module>
         <module>spanner-common</module>
         <module>spanner-custom-shard</module>
