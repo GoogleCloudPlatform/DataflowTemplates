@@ -19,56 +19,53 @@ import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.type.Type;
-
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 public class LazyMapper implements SchemaMapperIface {
 
-    Ddl ddl;
+  Ddl ddl;
 
-    public LazyMapper(Ddl ddl) {
-        this.ddl = ddl;
+  public LazyMapper(Ddl ddl) {
+    this.ddl = ddl;
+  }
+
+  @Override
+  public String getSpannerTableName(String srcTable) {
+    return srcTable;
+  }
+
+  @Override
+  public String getSpannerColumnName(String srcTable, String srcColumn) {
+    return srcColumn;
+  }
+
+  @Override
+  public String getSourceColumnName(String spannerTable, String spannerColumn) {
+    return spannerColumn;
+  }
+
+  @Override
+  public Type getSpannerColumnType(String spannerTable, String spannerColumn)
+      throws NoSuchElementException {
+    Table spTable = ddl.table(spannerTable);
+    if (spTable == null) {
+      throw new NoSuchElementException(String.format("Spanner table %s not found", spannerTable));
     }
-
-
-    @Override
-    public String getSpannerTableName(String srcTable) {
-        return srcTable;
+    Column col = spTable.column(spannerColumn);
+    if (col == null) {
+      throw new NoSuchElementException(String.format("Spanner column %s not found", spannerColumn));
     }
+    return col.type();
+  }
 
-    @Override
-    public String getSpannerColumnName(String srcTable, String srcColumn) {
-        return srcColumn;
+  @Override
+  public List<String> getSpannerColumns(String spannerTable) throws NoSuchElementException {
+    Table spTable = ddl.table(spannerTable);
+    if (spTable == null) {
+      throw new NoSuchElementException(String.format("Spanner table %s not found", spannerTable));
     }
-
-    @Override
-    public String getSourceColumnName(String spannerTable, String spannerColumn) {
-        return spannerColumn;
-    }
-
-    @Override
-    public Type getSpannerColumnType(String spannerTable, String spannerColumn) throws NoSuchElementException {
-        Table spTable = ddl.table(spannerTable);
-        if (spTable == null) {
-            throw new NoSuchElementException(String.format("Spanner table %s not found", spannerTable));
-        }
-        Column col = spTable.column(spannerColumn);
-        if (col == null) {
-            throw new NoSuchElementException(String.format("Spanner column %s not found", spannerColumn));
-        }
-        return col.type();
-    }
-
-    @Override
-    public List<String> getSpannerColumns(String spannerTable) throws NoSuchElementException {
-        Table spTable = ddl.table(spannerTable);
-        if (spTable == null) {
-            throw new NoSuchElementException(String.format("Spanner table %s not found", spannerTable));
-        }
-        return spTable.columns().stream()
-                .map(column -> column.name())
-                .collect(Collectors.toList());
-    }
+    return spTable.columns().stream().map(column -> column.name()).collect(Collectors.toList());
+  }
 }
