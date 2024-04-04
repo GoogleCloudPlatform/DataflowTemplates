@@ -18,19 +18,19 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **jobSpecUri** (Path to the job specification file): The path to the job specification file, which contains the configuration for source and target metadata.
+* **jobSpecUri** : The path to the job specification file, which contains the configuration for source and target metadata.
 
-### Optional Parameters
+### Optional parameters
 
-* **neo4jConnectionUri** (Path to the Neo4j connection metadata): The path to Neo4j connection metadata JSON file. This is an alternative to the secret option.
-* **neo4jConnectionSecretId** (Secret ID for the Neo4j connection metadata): The secret ID for the Neo4j connection metadata. This is an alternative to the GCS path option.
-* **optionsJson** (Options JSON): Options JSON. Use runtime tokens. (Example: {token1:value1,token2:value2}). Defaults to empty.
-* **readQuery** (Query SQL): Override SQL query. Defaults to empty.
-* **inputFilePattern** (Path to Text File): Override text file pattern (Example: gs://your-bucket/path/*.json). Defaults to empty.
-* **disabledAlgorithms** (Disabled algorithms to override jdk.tls.disabledAlgorithms): Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, because the algorithms that are disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4).
-* **extraFilesToStage** (Extra files to stage in the workers): Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id).
+* **neo4jConnectionUri** : The path to Neo4j connection metadata JSON file. This is an alternative to the secret option.
+* **neo4jConnectionSecretId** : The secret ID for the Neo4j connection metadata. This is an alternative to the GCS path option.
+* **optionsJson** : Options JSON. Use runtime tokens. (Example: {token1:value1,token2:value2}). Defaults to empty.
+* **readQuery** : Override SQL query. Defaults to empty.
+* **inputFilePattern** : Override text file pattern (Example: gs://your-bucket/path/*.json). Defaults to empty.
+* **disabledAlgorithms** : Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, because the algorithms that are disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4).
+* **extraFilesToStage** : Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id).
 
 
 

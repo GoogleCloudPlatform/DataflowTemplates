@@ -2,7 +2,8 @@
 Ordered change stream buffer to Source DB template
 ---
 Streaming pipeline. Reads ordered Spanner change stream message from Pub/Sub to
-Kafka, transforms them, and writes them to a Source Database like MySQL.
+Kafka, transforms them, and writes them to a Source Database like
+MySQL/PostgreSQL.
 
 
 
@@ -12,20 +13,22 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **sourceShardsFilePath** (Source shard details file path in Cloud Storage): Source shard details file path in Cloud Storage that contains connection profile of source shards.
-* **sessionFilePath** (Session File Path in Cloud Storage): Session file path in Cloud Storage that contains mapping information from HarbourBridge.
+* **sourceShardsFilePath** : Source shard details file path in Cloud Storage that contains connection profile of source shards.
+* **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from HarbourBridge.
 
-### Optional Parameters
+### Optional parameters
 
-* **sourceType** (Destination source type): This is the type of source database. Currently only mysql is supported. Defaults to: mysql.
-* **bufferType** (Input buffer type): This is the type of input buffer read from. Supported values - PubSub/Kafka. Defaults to: pubsub.
-* **pubSubProjectId** (Project id for the PubSub subscriber): This is the project containing the pubsub subscribers. Required when the buffer is PubSub.
-* **pubSubMaxReadCount** (Max messages to read from PubSub subscriber): Tuning parameter, to control the throughput. Defaults to: 2000.
-* **kafkaClusterFilePath** (File location for Kafka cluster details file in Cloud Storage.): This is the file location for Kafka cluster details file in Cloud Storage.Required when the buffer is Kafka.
-* **sourceDbTimezoneOffset** (SourceDB timezone offset): This is the timezone offset from UTC for the source database. Example value: +10:00. Defaults to: +00:00.
-* **timerInterval** (Duration in seconds between calls to stateful timer processing. ): Controls the time between successive polls to buffer and processing of the resultant records. Defaults to: 1.
+* **sourceType** : This is the type of source database. Currently only mysql/postgresql are supported. Defaults to: mysql.
+* **bufferType** : This is the type of input buffer read from. Supported values - PubSub/Kafka. Defaults to: pubsub.
+* **pubSubProjectId** : This is the project containing the pubsub subscribers. Required when the buffer is PubSub.
+* **pubSubMaxReadCount** : Tuning parameter, to control the throughput. Defaults to: 2000.
+* **kafkaClusterFilePath** : This is the file location for Kafka cluster details file in Cloud Storage.Required when the buffer is Kafka.
+* **sourceDbTimezoneOffset** : This is the timezone offset from UTC for the source database. Example value: +10:00. Defaults to: +00:00.
+* **timerInterval** : Controls the time between successive polls to buffer and processing of the resultant records. Defaults to: 1.
+* **enableSourceDbSsl** : This parameter is used to enable SSL connection for SourceDB. Please explicitly enable to use ssl by setting this parameter to true. Defaults to: false.
+* **enableSourceDbSslValidation** : This parameter is used to enable SSL validation for SourceDB. Please explicitly enable to use ssl by setting this parameter to true. Enabling this parameter requires that enableSourceDbSsl is also set to true. Defaults to: false.
 
 
 
@@ -115,6 +118,8 @@ export PUB_SUB_MAX_READ_COUNT=2000
 export KAFKA_CLUSTER_FILE_PATH=<kafkaClusterFilePath>
 export SOURCE_DB_TIMEZONE_OFFSET=+00:00
 export TIMER_INTERVAL=1
+export ENABLE_SOURCE_DB_SSL=false
+export ENABLE_SOURCE_DB_SSL_VALIDATION=false
 
 gcloud dataflow flex-template run "ordered-changestream-buffer-to-sourcedb-job" \
   --project "$PROJECT" \
@@ -128,7 +133,9 @@ gcloud dataflow flex-template run "ordered-changestream-buffer-to-sourcedb-job" 
   --parameters "pubSubMaxReadCount=$PUB_SUB_MAX_READ_COUNT" \
   --parameters "kafkaClusterFilePath=$KAFKA_CLUSTER_FILE_PATH" \
   --parameters "sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET" \
-  --parameters "timerInterval=$TIMER_INTERVAL"
+  --parameters "timerInterval=$TIMER_INTERVAL" \
+  --parameters "enableSourceDbSsl=$ENABLE_SOURCE_DB_SSL" \
+  --parameters "enableSourceDbSslValidation=$ENABLE_SOURCE_DB_SSL_VALIDATION"
 ```
 
 For more information about the command, please check:
@@ -158,6 +165,8 @@ export PUB_SUB_MAX_READ_COUNT=2000
 export KAFKA_CLUSTER_FILE_PATH=<kafkaClusterFilePath>
 export SOURCE_DB_TIMEZONE_OFFSET=+00:00
 export TIMER_INTERVAL=1
+export ENABLE_SOURCE_DB_SSL=false
+export ENABLE_SOURCE_DB_SSL_VALIDATION=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -166,7 +175,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="ordered-changestream-buffer-to-sourcedb-job" \
 -DtemplateName="Ordered_Changestream_Buffer_to_Sourcedb" \
--Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,bufferType=$BUFFER_TYPE,pubSubProjectId=$PUB_SUB_PROJECT_ID,pubSubMaxReadCount=$PUB_SUB_MAX_READ_COUNT,kafkaClusterFilePath=$KAFKA_CLUSTER_FILE_PATH,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerInterval=$TIMER_INTERVAL" \
+-Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,bufferType=$BUFFER_TYPE,pubSubProjectId=$PUB_SUB_PROJECT_ID,pubSubMaxReadCount=$PUB_SUB_MAX_READ_COUNT,kafkaClusterFilePath=$KAFKA_CLUSTER_FILE_PATH,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerInterval=$TIMER_INTERVAL,enableSourceDbSsl=$ENABLE_SOURCE_DB_SSL,enableSourceDbSslValidation=$ENABLE_SOURCE_DB_SSL_VALIDATION" \
 -f v2/ordered-changestream-buffer-to-sourcedb
 ```
 
@@ -220,6 +229,8 @@ resource "google_dataflow_flex_template_job" "ordered_changestream_buffer_to_sou
     # kafkaClusterFilePath = "<kafkaClusterFilePath>"
     # sourceDbTimezoneOffset = "+00:00"
     # timerInterval = "1"
+    # enableSourceDbSsl = "false"
+    # enableSourceDbSslValidation = "false"
   }
 }
 ```

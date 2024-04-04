@@ -17,21 +17,21 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **bigtableProject** (Project ID): The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from. Defaults to job project.
-* **bigtableInstanceId** (Instance ID): The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableTableId** (Table ID): The ID of the Cloud Bigtable table to export.
-* **destinationPath** (Destination path): Cloud Storage path where data should be written. (Example: gs://your-bucket/your-path/).
-* **filenamePrefix** (SequenceFile prefix): The prefix for each shard in destinationPath. (Example: output-). Defaults to: part.
+* **bigtableProject** : The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from. Defaults to job project.
+* **bigtableInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
+* **bigtableTableId** : The ID of the Cloud Bigtable table to export.
+* **destinationPath** : Cloud Storage path where data should be written. (Example: gs://your-bucket/your-path/).
+* **filenamePrefix** : The prefix for each shard in destinationPath. (Example: output-). Defaults to: part.
 
-### Optional Parameters
+### Optional parameters
 
-* **bigtableAppProfileId** (Application profile ID): The ID of the Cloud Bigtable application profile to be used for the export.
-* **bigtableStartRow** (Bigtable Start Row): The row where to start the export from, defaults to the first row.
-* **bigtableStopRow** (Bigtable Stop Row): The row where to stop the export, defaults to the last row.
-* **bigtableMaxVersions** (Bigtable Max Versions): Maximum number of cell versions. Defaults to: 2147483647.
-* **bigtableFilter** (Bigtable Filter): Filter string. See: http://hbase.apache.org/book.html#thrift. Defaults to empty.
+* **bigtableAppProfileId** : The ID of the Cloud Bigtable application profile to be used for the export.
+* **bigtableStartRow** : The row where to start the export from, defaults to the first row.
+* **bigtableStopRow** : The row where to stop the export, defaults to the last row.
+* **bigtableMaxVersions** : Maximum number of cell versions. Defaults to: 2147483647.
+* **bigtableFilter** : Filter string. See: http://hbase.apache.org/book.html#thrift. Defaults to empty.
 
 
 

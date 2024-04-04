@@ -15,23 +15,23 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **spannerInstanceId** (Spanner instance ID): The Spanner instance to read from.
-* **spannerDatabaseId** (Spanner database ID): The Spanner database to read from.
-* **spannerTableId** (Spanner table name): The Spanner table to read from.
-* **sqlQuery** (Spanner query): Query used to read Spanner table.
-* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
+* **spannerInstanceId** : The Spanner instance to read from.
+* **spannerDatabaseId** : The Spanner database to read from.
+* **spannerTableId** : The Spanner table to read from.
+* **sqlQuery** : Query used to read Spanner table.
+* **outputTableSpec** : BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
 
-### Optional Parameters
+### Optional parameters
 
-* **spannerProjectId** (Spanner Project ID): The project where the Spanner instance to read from is located. The default for this parameter is the project where the Dataflow pipeline is running.
-* **spannerRpcPriority** (Priority for Spanner RPC invocations): The priority of Spanner job. Must be one of the following: [HIGH, MEDIUM, LOW]. Default is HIGH.
-* **bigQuerySchemaPath** (Cloud Storage path to BigQuery JSON schema): The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is not set, or set to CREATE_IF_NEEDED, this parameter must be specified. (Example: gs://your-bucket/your-schema.json).
-* **writeDisposition** (Write Disposition to use for BigQuery): BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
-* **createDisposition** (Create Disposition to use for BigQuery): BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED.
-* **useStorageWriteApi** (Use BigQuery Storage Write API): If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
-* **useStorageWriteApiAtLeastOnce** (Use at at-least-once semantics in BigQuery Storage Write API): This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
+* **spannerProjectId** : The project where the Spanner instance to read from is located. The default for this parameter is the project where the Dataflow pipeline is running.
+* **spannerRpcPriority** : The priority of Spanner job. Must be one of the following: [HIGH, MEDIUM, LOW]. Default is HIGH.
+* **bigQuerySchemaPath** : The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is not set, or set to CREATE_IF_NEEDED, this parameter must be specified. (Example: gs://your-bucket/your-schema.json).
+* **writeDisposition** : BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
+* **createDisposition** : BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED.
+* **useStorageWriteApi** : If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
+* **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
 
 
 
