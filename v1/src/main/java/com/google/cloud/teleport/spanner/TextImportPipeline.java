@@ -51,7 +51,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
  *
  * <p>Schema file must have all column and type definition in one line. Schema file must use the
  * data type names of Cloud Spanner. We currently support the following Cloud Spanner data types: -
- * BOOL - DATE - FLOAT64 - INT64 - STRING - TIMESTAMP
+ * BOOL - DATE - FLOAT32 - FLOAT64 - INT64 - STRING - TIMESTAMP
  *
  * <p>Input format properties: - \\N in the source column will be considered as NULL value when
  * writing to Cloud Spanner. - If you need to escape characters, you can use the "fieldQualifier"

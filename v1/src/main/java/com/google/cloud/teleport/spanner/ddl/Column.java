@@ -186,6 +186,14 @@ public abstract class Column implements Serializable {
       return type(Type.pgInt8());
     }
 
+    public Builder float32() {
+      return type(Type.float32());
+    }
+
+    public Builder pgFloat4() {
+      return type(Type.pgFloat4());
+    }
+
     public Builder float64() {
       return type(Type.float64());
     }
