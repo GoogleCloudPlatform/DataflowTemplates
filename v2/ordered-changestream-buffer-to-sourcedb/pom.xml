@@ -85,5 +85,21 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+        <!-- Remove after https://github.com/apache/beam/issues/30700 is fixed. -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-spanner</artifactId>
+            <version>6.62.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.api</groupId>
+            <artifactId>gax-grpc</artifactId>
+            <version>2.46.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.api</groupId>
+            <artifactId>gax</artifactId>
+            <version>2.46.1</version>
+        </dependency>
     </dependencies>
 </project>
