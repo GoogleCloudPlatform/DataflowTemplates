@@ -254,7 +254,8 @@ public class PubSubToSplunkIT extends TemplateTestBase {
             .addParameter("token", splunkResourceManager.getHecToken())
             .addParameter("batchCount", "1")
             .addEnvironment("additionalExperiments", experiments)
-            .addEnvironment("enableStreamingEngine", true);
+            .addEnvironment("enableStreamingEngine", true)
+            .addEnvironment("maxWorkers", 10);
     testPubSubToSplunkMain(parameters, false);
   }
 }
