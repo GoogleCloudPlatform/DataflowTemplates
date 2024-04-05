@@ -316,7 +316,8 @@ public class ElasticsearchIO {
      * @param userAgent identifies the template user-agent string
      * @return the connection configuration object
      */
-    public static ConnectionConfiguration create(String[] addresses, String index, String type, String userAgent) {
+    public static ConnectionConfiguration create(
+        String[] addresses, String index, String type, String userAgent) {
       checkArgument(addresses != null, "addresses can not be null");
       checkArgument(addresses.length > 0, "addresses can not be empty");
       checkArgument(index != null, "index can not be null");
@@ -424,8 +425,9 @@ public class ElasticsearchIO {
     /**
      * Sets User-Agent headers.
      *
-     * Sets Authorization: ApiKey if ApiKey is present
-     * Sets Authorization: Bearer if BearerToken is present
+     * <p>Sets Authorization: ApiKey if ApiKey is present Sets Authorization: Bearer if BearerToken
+     * is present
+     *
      * @return an array of {@link Header} that apply to all HTTP requests
      */
     protected Header[] configureDefaultHeaders() {

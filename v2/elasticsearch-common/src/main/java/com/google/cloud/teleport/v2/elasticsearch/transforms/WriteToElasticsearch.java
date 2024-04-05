@@ -246,6 +246,7 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
     abstract ElasticsearchWriteOptions options();
 
     public abstract Builder setUserAgent(String name);
+
     abstract String userAgent();
 
     abstract WriteToElasticsearch autoBuild();
