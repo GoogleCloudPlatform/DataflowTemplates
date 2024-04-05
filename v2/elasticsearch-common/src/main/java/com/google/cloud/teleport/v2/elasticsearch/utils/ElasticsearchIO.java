@@ -433,7 +433,7 @@ public class ElasticsearchIO {
     protected Header[] configureDefaultHeaders() {
       final ArrayList<Header> headerList = new ArrayList<Header>();
 
-      headerList.add(new BasicHeader("user-agent", getUserAgent()));
+      headerList.add(new BasicHeader("User-Agent", getUserAgent()));
 
       if (getApiKey() != null) {
         headerList.add(new BasicHeader("Authorization", "ApiKey " + getApiKey()));
