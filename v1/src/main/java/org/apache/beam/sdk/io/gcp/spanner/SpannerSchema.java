@@ -180,6 +180,9 @@ abstract class SpannerSchema implements Serializable {
           if ("INT64".equals(spannerType)) {
             return Type.int64();
           }
+          if ("FLOAT32".equals(spannerType)) {
+            return Type.float32();
+          }
           if ("FLOAT64".equals(spannerType)) {
             return Type.float64();
           }
@@ -238,6 +241,9 @@ abstract class SpannerSchema implements Serializable {
           }
           if ("BIGINT".equals(spannerType)) {
             return Type.int64();
+          }
+          if ("REAL".equals(spannerType)) {
+            return Type.float32();
           }
           if ("DOUBLE PRECISION".equals(spannerType)) {
             return Type.float64();

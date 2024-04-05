@@ -230,7 +230,14 @@ public class SpannerConverterTest implements Serializable {
   }
 
   @Test
-  public void testFloat() {
+  public void testFloat32() {
+    assertEquals(
+        "\"0.1\"",
+        structCsvPrinter.print(Struct.newBuilder().set("col").to(Value.float32(0.1f)).build()));
+  }
+
+  @Test
+  public void testFloat64() {
     assertEquals(
         "\"0.1\"",
         structCsvPrinter.print(Struct.newBuilder().set("col").to(Value.float64(0.1)).build()));
@@ -334,7 +341,15 @@ public class SpannerConverterTest implements Serializable {
   }
 
   @Test
-  public void testFloatArray() {
+  public void testFloat32Array() {
+    assertEquals(
+        "\"[0.1]\"",
+        structCsvPrinter.print(
+            Struct.newBuilder().set("col").to(Value.float32Array(new float[] {0.1f})).build()));
+  }
+
+  @Test
+  public void testFloat64Array() {
     assertEquals(
         "\"[0.1]\"",
         structCsvPrinter.print(
@@ -404,7 +419,14 @@ public class SpannerConverterTest implements Serializable {
   }
 
   @Test
-  public void testFloatWithJSONPrinter() {
+  public void testFloat32WithJSONPrinter() {
+    assertEquals(
+        "{\"col\":\"0.1\"}",
+        structJSONPrinter.print(Struct.newBuilder().set("col").to(Value.float32(0.1f)).build()));
+  }
+
+  @Test
+  public void testFloat64WithJSONPrinter() {
     assertEquals(
         "{\"col\":\"0.1\"}",
         structJSONPrinter.print(Struct.newBuilder().set("col").to(Value.float64(0.1)).build()));
@@ -512,7 +534,15 @@ public class SpannerConverterTest implements Serializable {
   }
 
   @Test
-  public void testFloatArrayWithJSONPrinter() {
+  public void testFloat32ArrayWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":[\"0.1\"]}",
+        structJSONPrinter.print(
+            Struct.newBuilder().set("col").to(Value.float32Array(new float[] {0.1f})).build()));
+  }
+
+  @Test
+  public void testFloat64ArrayWithJSONPrinter() {
     assertEquals(
         "{\"col\":[\"0.1\"]}",
         structJSONPrinter.print(

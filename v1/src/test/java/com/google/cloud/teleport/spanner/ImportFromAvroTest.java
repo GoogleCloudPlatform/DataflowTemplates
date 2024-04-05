@@ -270,8 +270,8 @@ public class ImportFromAvroTest {
   }
 
   @Test
-  public void floats() throws Exception {
-    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("floats");
+  public void float64s() throws Exception {
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("float64s");
     SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
 
     fieldAssembler
@@ -338,8 +338,8 @@ public class ImportFromAvroTest {
   }
 
   @Test
-  public void pgFloats() throws Exception {
-    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("floats");
+  public void pgFloat64s() throws Exception {
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("float64s");
     SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
 
     fieldAssembler
@@ -402,6 +402,111 @@ public class ImportFromAvroTest {
                 .set("required_double", 3.16)
                 .set("optional_string_double", "100.301")
                 .set("required_string_double", "1.1e-3")
+                .build()),
+        Dialect.POSTGRESQL);
+  }
+
+  @Test
+  public void float32s() throws Exception {
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("float32s");
+    SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
+
+    fieldAssembler
+        // Primary key.
+        .requiredLong("id")
+        // Integer columns.
+        .optionalInt("optional_int")
+        .requiredInt("required_int")
+        // Floating columns
+        .optionalFloat("optional_float")
+        .requiredFloat("required_float")
+        .optionalString("optional_string_float")
+        .requiredString("required_string_float");
+    Schema schema = fieldAssembler.endRecord();
+    String spannerSchema =
+        "CREATE TABLE `AvroTable` ("
+            + "`id`                                    INT64 NOT NULL,"
+            + "`optional_int`                          FLOAT32,"
+            + "`required_int`                          FLOAT32 NOT NULL,"
+            + "`optional_float`                        FLOAT32,"
+            + "`required_float`                        FLOAT32 NOT NULL,"
+            + "`optional_string_float`                 FLOAT32,"
+            + "`required_string_float`                 FLOAT32 NOT NULL,"
+            + ") PRIMARY KEY (`id`)";
+
+    runTest(
+        schema,
+        spannerSchema,
+        Arrays.asList(
+            new GenericRecordBuilder(schema)
+                .set("id", 1L)
+                .set("optional_int", 1)
+                .set("required_int", 4)
+                .set("optional_float", 2.3f)
+                .set("required_float", 3.4f)
+                .set("optional_string_float", "100.30")
+                .set("required_string_float", "0.1e-3")
+                .build(),
+            new GenericRecordBuilder(schema)
+                .set("id", 2L)
+                .set("optional_int", 10)
+                .set("required_int", 40)
+                .set("optional_float", 2.03f)
+                .set("required_float", 3.14f)
+                .set("optional_string_float", "100.301")
+                .set("required_string_float", "1.1e-3")
+                .build()));
+  }
+
+  @Test
+  public void pgFloat32s() throws Exception {
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("float32s");
+    SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
+
+    fieldAssembler
+        // Primary key.
+        .requiredLong("id")
+        // Integer columns.
+        .optionalInt("optional_int")
+        .requiredInt("required_int")
+        // Floating columns
+        .optionalFloat("optional_float")
+        .requiredFloat("required_float")
+        .optionalString("optional_string_float")
+        .requiredString("required_string_float");
+    Schema schema = fieldAssembler.endRecord();
+    String spannerSchema =
+        "CREATE TABLE \"AvroTable\" ("
+            + "\"id\"                                    bigint NOT NULL,"
+            + "\"optional_int\"                          real,"
+            + "\"required_int\"                          real NOT NULL,"
+            + "\"optional_float\"                        real,"
+            + "\"required_float\"                        real NOT NULL,"
+            + "\"optional_string_float\"                 real,"
+            + "\"required_string_float\"                 real NOT NULL,"
+            + " PRIMARY KEY (\"id\"))";
+
+    runTest(
+        schema,
+        spannerSchema,
+        Arrays.asList(
+            new GenericRecordBuilder(schema)
+                .set("id", 1L)
+                .set("optional_int", 1)
+                .set("required_int", 4)
+                .set("optional_float", 2.3f)
+                .set("required_float", 3.4f)
+                .set("optional_string_float", "100.30")
+                .set("required_string_float", "0.1e-3")
+                .build(),
+            new GenericRecordBuilder(schema)
+                .set("id", 2L)
+                .set("optional_int", 10)
+                .set("required_int", 40)
+                .set("optional_float", 2.03f)
+                .set("required_float", 3.14f)
+                .set("optional_string_float", "100.301")
+                .set("required_string_float", "1.1e-3")
                 .build()),
         Dialect.POSTGRESQL);
   }
