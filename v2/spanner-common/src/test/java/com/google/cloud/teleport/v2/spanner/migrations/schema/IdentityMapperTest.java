@@ -77,21 +77,21 @@ public class IdentityMapperTest {
     @Test
     public void testGetSpannerTableName() {
         String srcTableName = "Users";
-        String result = mapper.getSpannerTableName(srcTableName);
+        String result = mapper.getSpannerTableName("", srcTableName);
         assertEquals(srcTableName, result);
     }
 
     @Test(expected = NoSuchElementException.class)
     public void testGetSpannerTableNameMissingTable() {
         String srcTableName = "abc";
-        mapper.getSpannerTableName(srcTableName);
+        mapper.getSpannerTableName("", srcTableName);
     }
 
     @Test
     public void testGetSpannerColumnName() {
         String srcTable = "Users";
         String srcColumn = "id";
-        String result = mapper.getSpannerColumnName(srcTable, srcColumn);
+        String result = mapper.getSpannerColumnName("", srcTable, srcColumn);
         assertEquals(srcColumn, result);
     }
 
@@ -99,21 +99,21 @@ public class IdentityMapperTest {
     public void testGetSpannerColumnNameMissingTable() {
         String srcTable = "MySourceTable";
         String srcColumn = "id";
-        mapper.getSpannerColumnName(srcTable, srcColumn);
+        mapper.getSpannerColumnName("", srcTable, srcColumn);
     }
 
     @Test(expected = NoSuchElementException.class)
     public void testGetSpannerColumnNameMissingColumn() {
         String srcTable = "Users";
         String srcColumn = "MySourceColumn";
-        mapper.getSpannerColumnName(srcTable, srcColumn);
+        mapper.getSpannerColumnName("", srcTable, srcColumn);
     }
 
     @Test
     public void testGetSourceColumnName() {
         String spannerTable = "MySpannerTable";
         String spannerColumn = "MySpannerColumn";
-        String result = mapper.getSourceColumnName(spannerTable, spannerColumn);
+        String result = mapper.getSourceColumnName("", spannerTable, spannerColumn);
         assertEquals(spannerColumn, result);
     }
 
@@ -122,12 +122,12 @@ public class IdentityMapperTest {
         String spannerTable = "Users";
         String spannerColumn = "id";
         Type expectedType = Type.int64();
-        Type result = mapper.getSpannerColumnType(spannerTable, spannerColumn);
+        Type result = mapper.getSpannerColumnType("", spannerTable, spannerColumn);
         assertEquals(expectedType, result);
 
         spannerColumn = "first_name";
         expectedType = Type.string();
-        result = mapper.getSpannerColumnType(spannerTable, spannerColumn);
+        result = mapper.getSpannerColumnType("", spannerTable, spannerColumn);
         assertEquals(expectedType, result);
     }
 
@@ -135,27 +135,27 @@ public class IdentityMapperTest {
     public void testGetSpannerColumnTypeMissingTable() {
         String spannerTable = "wrongTableName";
         String spannerColumn = "id";
-        mapper.getSpannerColumnType(spannerTable, spannerColumn);
+        mapper.getSpannerColumnType("", spannerTable, spannerColumn);
     }
 
     @Test(expected = NoSuchElementException.class)
     public void testGetSpannerColumnTypeMissingColumn() {
         String spannerTable = "Users";
         String spannerColumn = "wrongColumn";
-        mapper.getSpannerColumnType(spannerTable, spannerColumn);
+        mapper.getSpannerColumnType("", spannerTable, spannerColumn);
     }
 
     @Test
     public void testGetSpannerColumns() {
         String spannerTable = "Users";
         List<String> expectedColumns = Arrays.asList("id", "first_name", "last_name");
-        List<String> result = mapper.getSpannerColumns(spannerTable);
+        List<String> result = mapper.getSpannerColumns("", spannerTable);
         assertEquals(expectedColumns, result);
     }
 
     @Test(expected = NoSuchElementException.class)
     public void testGetSpannerColumnsMissingTable() {
         String spannerTable = "wrongTableName";
-        mapper.getSpannerColumns(spannerTable);
+        mapper.getSpannerColumns("", spannerTable);
     }
 }

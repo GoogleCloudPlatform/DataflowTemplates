@@ -23,26 +23,36 @@ import java.util.NoSuchElementException;
 public interface ISchemaMapper {
     /**
      * Retrieves the corresponding Spanner table name given a source table name.
+     *
+     * @param namespace is currently not operational.
      */
-    String getSpannerTableName(String srcTable) throws NoSuchElementException;
+    String getSpannerTableName(String namespace, String srcTable) throws NoSuchElementException;
 
     /**
      * Retrieves the corresponding Spanner column name given a source table and source column.
+     *
+     * @param namespace is currently not operational.
      */
-    String getSpannerColumnName(String srcTable, String srcColumn) throws NoSuchElementException;
+    String getSpannerColumnName(String namespace, String srcTable, String srcColumn) throws NoSuchElementException;
 
     /**
      * Retrieves the corresponding source column name given a Spanner table and Spanner column.
+     *
+     * @param namespace is currently not operational.
      */
-    String getSourceColumnName(String spannerTable, String spannerColumn) throws NoSuchElementException;
+    String getSourceColumnName(String namespace, String spannerTable, String spannerColumn) throws NoSuchElementException;
 
     /**
      * Retrieves the Spanner column data type given a spanner table and spanner column.
+     *
+     * @param namespace is currently not operational.
      */
-    Type getSpannerColumnType(String spannerTable, String spannerColumn) throws NoSuchElementException;
+    Type getSpannerColumnType(String namespace, String spannerTable, String spannerColumn) throws NoSuchElementException;
 
     /**
      * Retrieves a list of all column names within a Spanner table.
+     *
+     * @param namespace is currently not operational.
      */
-    List<String> getSpannerColumns(String spannerTable) throws NoSuchElementException;
+    List<String> getSpannerColumns(String namespace, String spannerTable) throws NoSuchElementException;
 }

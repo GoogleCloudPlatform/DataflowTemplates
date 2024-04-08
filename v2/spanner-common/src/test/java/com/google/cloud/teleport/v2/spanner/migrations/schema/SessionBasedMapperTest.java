@@ -168,12 +168,12 @@ public class SessionBasedMapperTest {
     @Test
     public void testGetSpannerTableName() {
         String srcTableName = "cart";
-        String result = mapper.getSpannerTableName(srcTableName);
+        String result = mapper.getSpannerTableName("", srcTableName);
         String expectedTableName = "new_cart";
         assertEquals(expectedTableName, result);
 
         srcTableName = "people";
-        result = mapper.getSpannerTableName(srcTableName);
+        result = mapper.getSpannerTableName("", srcTableName);
         expectedTableName = "new_people";
         assertEquals(expectedTableName, result);
     }
@@ -181,27 +181,27 @@ public class SessionBasedMapperTest {
     @Test(expected = NoSuchElementException.class)
     public void testGetSpannerTableNameMissingTable() {
         String srcTable = "wrongTableName";
-        mapper.getSpannerTableName(srcTable);
+        mapper.getSpannerTableName("", srcTable);
     }
 
     @Test
     public void testGetSpannerColumnName() {
         String srcTable = "cart";
         String srcColumn = "user_id";
-        String result = mapper.getSpannerColumnName(srcTable, srcColumn);
+        String result = mapper.getSpannerColumnName("", srcTable, srcColumn);
         String expectedColumn = "new_user_id";
         assertEquals(expectedColumn, result);
 
         srcTable = "cart";
         srcColumn = "quantity";
-        result = mapper.getSpannerColumnName(srcTable, srcColumn);
+        result = mapper.getSpannerColumnName("", srcTable, srcColumn);
         expectedColumn = "new_quantity";
         assertEquals(expectedColumn, result);
 
 
         srcTable = "people";
         srcColumn = "name";
-        result = mapper.getSpannerColumnName(srcTable, srcColumn);
+        result = mapper.getSpannerColumnName("", srcTable, srcColumn);
         expectedColumn = "new_name";
         assertEquals(expectedColumn, result);
     }
@@ -210,21 +210,21 @@ public class SessionBasedMapperTest {
     public void testGetSpannerColumnNameMissingTable() {
         String srcTable = "wrongTableName";
         String srcColumn = "user_id";
-        mapper.getSpannerColumnName(srcTable, srcColumn);
+        mapper.getSpannerColumnName("", srcTable, srcColumn);
     }
 
     @Test(expected = NoSuchElementException.class)
     public void testGetSpannerColumnNameMissingColumn() {
         String srcTable = "cart";
         String srcColumn = "wrongColumn";
-        mapper.getSpannerColumnName(srcTable, srcColumn);
+        mapper.getSpannerColumnName("", srcTable, srcColumn);
     }
 
     @Test
     public void testGetSourceColumnName() {
         String spannerTable = "new_cart";
         String spannerColumn = "new_quantity";
-        String result = mapper.getSourceColumnName(spannerTable, spannerColumn);
+        String result = mapper.getSourceColumnName("", spannerTable, spannerColumn);
         String srcColumn = "quantity";
         assertEquals(srcColumn, result);
     }
@@ -233,14 +233,14 @@ public class SessionBasedMapperTest {
     public void testGetSourceColumnNameMissingTable() {
         String spannerTable = "wrongTableName";
         String spannerColumn = "new_quantity";
-        mapper.getSourceColumnName(spannerTable, spannerColumn);
+        mapper.getSourceColumnName("", spannerTable, spannerColumn);
     }
 
     @Test(expected = NoSuchElementException.class)
     public void testGetSourceColumnNameMissingColumn() {
         String spannerTable = "new_cart";
         String spannerColumn = "wrongColumn";
-        mapper.getSourceColumnName(spannerTable, spannerColumn);
+        mapper.getSourceColumnName("", spannerTable, spannerColumn);
     }
 
     @Test
@@ -250,12 +250,12 @@ public class SessionBasedMapperTest {
 
         spannerColumn = "new_quantity";
         Type expectedType = Type.int64();
-        Type result = mapper.getSpannerColumnType(spannerTable, spannerColumn);
+        Type result = mapper.getSpannerColumnType("", spannerTable, spannerColumn);
         assertEquals(expectedType, result);
 
         spannerColumn = "new_user_id";
         expectedType = Type.string();
-        result = mapper.getSpannerColumnType(spannerTable, spannerColumn);
+        result = mapper.getSpannerColumnType("", spannerTable, spannerColumn);
         assertEquals(expectedType, result);
     }
 
@@ -263,21 +263,21 @@ public class SessionBasedMapperTest {
     public void testGetSpannerColumnTypeMissingTable() {
         String spannerTable = "wrongTableName";
         String spannerColumn = "new_quantity";
-        mapper.getSpannerColumnType(spannerTable, spannerColumn);
+        mapper.getSpannerColumnType("", spannerTable, spannerColumn);
     }
 
     @Test(expected = NoSuchElementException.class)
     public void testGetSpannerColumnTypeMissingColumn() {
         String spannerTable = "new_cart";
         String spannerColumn = "wrongColumn";
-        mapper.getSpannerColumnType(spannerTable, spannerColumn);
+        mapper.getSpannerColumnType("", spannerTable, spannerColumn);
     }
 
     @Test
     public void testGetSpannerColumns() {
         String spannerTable = "new_cart";
         List<String> expectedColumns = Arrays.asList("new_quantity", "new_user_id");
-        List<String> result = mapper.getSpannerColumns(spannerTable);
+        List<String> result = mapper.getSpannerColumns("", spannerTable);
         Collections.sort(result);
         Collections.sort(expectedColumns);
         assertEquals(expectedColumns, result);
@@ -286,7 +286,7 @@ public class SessionBasedMapperTest {
     @Test(expected = NoSuchElementException.class)
     public void testGetSpannerColumnsMissingTable() {
         String spannerTable = "WrongTableName";
-        List<String> result = mapper.getSpannerColumns(spannerTable);
+        List<String> result = mapper.getSpannerColumns("", spannerTable);
     }
 
     @Test

@@ -66,7 +66,7 @@ public class SessionBasedMapper implements ISchemaMapper {
     }
 
     @Override
-    public String getSpannerTableName(String srcTable) throws NoSuchElementException {
+    public String getSpannerTableName(String namespace, String srcTable) throws NoSuchElementException {
         Map<String, NameAndCols> toSpanner = schema.getToSpanner();
         if (!toSpanner.containsKey(srcTable)) {
             throw new NoSuchElementException(String.format("Source table '%s' not found", srcTable));
@@ -75,7 +75,7 @@ public class SessionBasedMapper implements ISchemaMapper {
     }
 
     @Override
-    public String getSpannerColumnName(String srcTable, String srcColumn) throws NoSuchElementException {
+    public String getSpannerColumnName(String namespace, String srcTable, String srcColumn) throws NoSuchElementException {
         Map<String, NameAndCols> toSpanner = schema.getToSpanner();
         if (!toSpanner.containsKey(srcTable)) {
             throw new NoSuchElementException(String.format("Source table '%s' not found", srcTable));
@@ -88,7 +88,7 @@ public class SessionBasedMapper implements ISchemaMapper {
     }
 
     @Override
-    public String getSourceColumnName(String spannerTable, String spannerColumn) throws NoSuchElementException {
+    public String getSourceColumnName(String namespace, String spannerTable, String spannerColumn) throws NoSuchElementException {
         Map<String, NameAndCols> toSource = schema.getToSource();
         if (!toSource.containsKey(spannerTable)) {
             throw new NoSuchElementException(String.format("Spanner table '%s' not found", spannerTable));
@@ -101,7 +101,7 @@ public class SessionBasedMapper implements ISchemaMapper {
     }
 
     @Override
-    public Type getSpannerColumnType(String spannerTable, String spannerColumn) throws NoSuchElementException {
+    public Type getSpannerColumnType(String namespace, String spannerTable, String spannerColumn) throws NoSuchElementException {
         Table spTable = ddl.table(spannerTable);
         if (spTable == null) {
             throw new NoSuchElementException(String.format("Spanner table '%s' not found", spannerTable));
@@ -114,7 +114,7 @@ public class SessionBasedMapper implements ISchemaMapper {
     }
 
     @Override
-    public List<String> getSpannerColumns(String spannerTable) throws NoSuchElementException {
+    public List<String> getSpannerColumns(String namespace, String spannerTable) throws NoSuchElementException {
         return schema.getSpannerColumnNames(spannerTable);
     }
 }
