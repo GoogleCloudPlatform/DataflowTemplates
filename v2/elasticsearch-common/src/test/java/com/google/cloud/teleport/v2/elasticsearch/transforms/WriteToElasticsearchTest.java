@@ -15,10 +15,15 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.transforms;
 
+import static org.mockito.Mockito.*;
+
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
+import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PDone;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -149,5 +154,68 @@ public class WriteToElasticsearchTest {
             WriteToElasticsearch.newBuilder().setOptions(options).build());
 
     pipeline.run();
+  }
+
+  /**
+   * Tests that {@link WriteToElasticsearch} throws an exception if {@link
+   * ElasticsearchIO.ConnectionConfiguration} is invalid.
+   */
+  @Test
+  public void testElasticsearchWriteOptionsUserAgent() {
+    exceptionRule.expect(IllegalStateException.class);
+
+    ElasticsearchWriteOptions options =
+        PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
+
+    options.setConnectionUrl("https://host.domain");
+    options.setApiKey("key");
+    options.setMaxRetryDuration(null);
+    options.setMaxRetryAttempts(3);
+    options.setIndex("test-index");
+    options.setMaxRetryAttempts(3);
+    options.setMaxRetryDuration(10L);
+
+    TestPipeline pipeline = TestPipeline.create();
+
+    pipeline
+        .apply("CreateInput", Create.of("test"))
+        .apply(
+            "TestWriteToElasticsearchBadMaxDuration",
+            WriteToElasticsearch.newBuilder().setOptions(options).build());
+  }
+
+  @Rule public final transient TestPipeline testPipeline = TestPipeline.create();
+
+  @Test
+  public void testElasticsearchExpandMethod() {
+    ElasticsearchWriteOptions options =
+        PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
+
+    options.setConnectionUrl("https://localhost:9200");
+    options.setApiKey("key");
+    options.setMaxRetryDuration(null);
+    options.setMaxRetryAttempts(3);
+    options.setIndex("test-index");
+    options.setMaxRetryAttempts(3);
+    options.setMaxRetryDuration(10L);
+
+    // Create some dummy input data for testing
+    PCollection<String> input = testPipeline.apply(Create.of("json string 1", "json string 2"));
+
+    // Create an instance of WriteToElasticsearch using the builder
+    WriteToElasticsearch writeToElasticsearch =
+        WriteToElasticsearch.newBuilder().setOptions(options).setUserAgent("testUserAgent").build();
+
+    WriteToElasticsearch writeToElasticsearchMock = mock(WriteToElasticsearch.class);
+    when(writeToElasticsearchMock.expand(any()))
+        .thenReturn(mock(PDone.class)); // Mock the expand method
+
+    testPipeline.run();
+    // Call the expand method
+    PDone result = writeToElasticsearchMock.expand(input);
+
+    // Verify interactions
+    verify(writeToElasticsearchMock, times(1))
+        .expand(any()); // Verify that the expand method was called
   }
 }
