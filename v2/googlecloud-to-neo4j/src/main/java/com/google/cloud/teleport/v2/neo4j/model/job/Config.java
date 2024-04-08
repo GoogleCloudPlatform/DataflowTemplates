@@ -58,7 +58,7 @@ public class Config implements Serializable {
     customQueryBatchSize =
         jsonObject.has("custom_query_batch_size")
             ? jsonObject.getInt("custom_query_batch_size")
-            : edgeBatchSize;
+            : customQueryBatchSize;
     indexAllProperties =
         jsonObject.has("index_all_properties")
             ? jsonObject.getBoolean("index_all_properties")
