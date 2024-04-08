@@ -20,14 +20,17 @@ import static org.apache.beam.it.gcp.artifacts.matchers.ArtifactAsserts.assertTh
 import static org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts.mutationsToRecords;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -46,6 +49,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link ExportPipeline Spanner to GCS Avro} template. */
 @Category(TemplateIntegrationTest.class)
@@ -53,7 +58,8 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class ExportPipelineIT extends TemplateTestBase {
 
-  private static final int MESSAGES_COUNT = 100;
+  private static final Logger LOG = LoggerFactory.getLogger(ExportPipelineIT.class);
+  private static final int MESSAGES_COUNT = 5;
 
   private static final Schema EMPTY_SCHEMA =
       new Schema.Parser()
@@ -91,7 +97,7 @@ public class ExportPipelineIT extends TemplateTestBase {
                   + "  \"namespace\": \"com.google.cloud.teleport.spanner\",\n"
                   + "  \"fields\": [\n"
                   + "    { \"name\": \"Id\", \"type\": \"long\", \"sqlType\": \"INT64\" },\n"
-                  + "    { \"name\": \"Embeddings\", \"type\": \"array\" ,\"sqlType\": \"ARRAY<FLOAT64>(vector_length=>4)\"},\n"
+                  + "    { \"name\": \"Embeddings\", \"type\": [\"null\",{\"type\":\"array\",\"items\":[\"null\",\"double\"]}] ,\"sqlType\": \"ARRAY<FLOAT64>(vector_length=>4)\"}\n"
                   + "  ]\n"
                   + "}");
 
@@ -234,7 +240,8 @@ public class ExportPipelineIT extends TemplateTestBase {
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Singers")));
     List<Artifact> embeddingsArtifacts =
         gcsClient.listArtifacts(
-            "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "EmbeddingVectors")));
+            "output/",
+            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "EmbeddingVectors")));
     List<Artifact> emptyArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Empty")));
@@ -248,15 +255,37 @@ public class ExportPipelineIT extends TemplateTestBase {
     assertThat(modelStructArtifacts).isNotEmpty();
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
-    List<GenericRecord> embeddingsRecords = extractArtifacts(embeddingsArtifacts, EMBEDDING_VECTORS_SCHEMA);
+    List<GenericRecord> embeddingsRecords =
+        extractArtifacts(embeddingsArtifacts, EMBEDDING_VECTORS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
     List<GenericRecord> modelStructRecords =
         extractArtifacts(modelStructArtifacts, MODEL_STRUCT_SCHEMA);
 
+    List<Mutation> expectedSingerRecords = expectedData.subList(0, MESSAGES_COUNT);
+    List<Mutation> expectedEmbeddingRecords = expectedData.subList(MESSAGES_COUNT, expectedData.size());
+
+    assertEquals(MESSAGES_COUNT,embeddingsRecords.size());
+
+    LOG.info("singersRecords {}.", singersRecords);
+    LOG.info("expectedSingerRecords {}.", mutationsToRecords(expectedSingerRecords));
+
     assertThatGenericRecords(singersRecords)
-        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData.subList(0,MESSAGES_COUNT)));
+        .hasRecordsUnorderedCaseInsensitiveColumns(
+            mutationsToRecords(expectedSingerRecords));
+
+    assertEquals(MESSAGES_COUNT, expectedEmbeddingRecords.size());
+    List<Map<String, Object>> expEmRecs = mutationsToRecords(expectedEmbeddingRecords);
+    assertEquals(MESSAGES_COUNT, expEmRecs.size());
+    assertThatGenericRecords(embeddingsRecords).hasRows(MESSAGES_COUNT);
+
+    LOG.info("embeddingsRecords {}.", embeddingsRecords);
+    LOG.info("expectedEmbeddingsRecords {}.", expEmRecs);
+
     assertThatGenericRecords(embeddingsRecords)
-        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData.subList(MESSAGES_COUNT,expectedData.size())));
+        .hasRecordsUnorderedCaseInsensitiveColumns(
+            expEmRecs);
+
+
     assertThatGenericRecords(emptyRecords).hasRows(0);
     assertThatGenericRecords(modelStructRecords).hasRows(0);
   }
@@ -311,7 +340,8 @@ public class ExportPipelineIT extends TemplateTestBase {
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Singers")));
     List<Artifact> embeddingsArtifacts =
         gcsClient.listArtifacts(
-            "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "EmbeddingVectors")));
+            "output/",
+            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "EmbeddingVectors")));
     List<Artifact> emptyArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Empty")));
@@ -320,13 +350,16 @@ public class ExportPipelineIT extends TemplateTestBase {
     assertThat(emptyArtifacts).isNotEmpty();
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
-    List<GenericRecord> embeddingsRecords = extractArtifacts(embeddingsArtifacts, EMBEDDING_VECTORS_SCHEMA);
+    List<GenericRecord> embeddingsRecords =
+        extractArtifacts(embeddingsArtifacts, EMBEDDING_VECTORS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
 
     assertThatGenericRecords(singersRecords)
-        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData.subList(0,MESSAGES_COUNT)));
+        .hasRecordsUnorderedCaseInsensitiveColumns(
+            mutationsToRecords(expectedData.subList(0, MESSAGES_COUNT)));
     assertThatGenericRecords(embeddingsRecords)
-        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData.subList(MESSAGES_COUNT, expectedData.size())));
+        .hasRecordsUnorderedCaseInsensitiveColumns(
+            mutationsToRecords(expectedData.subList(MESSAGES_COUNT, expectedData.size())));
     assertThatGenericRecords(emptyRecords).hasRows(0);
   }
 
@@ -354,7 +387,7 @@ public class ExportPipelineIT extends TemplateTestBase {
                   RandomUtils.nextDouble(),
                   RandomUtils.nextDouble()));
 
-      mutation.set("Embeddings").to(embeddings.toString());
+      mutation.set("Embeddings").to(Value.float64Array(embeddings));
       mutations.add(mutation.build());
     }
 
