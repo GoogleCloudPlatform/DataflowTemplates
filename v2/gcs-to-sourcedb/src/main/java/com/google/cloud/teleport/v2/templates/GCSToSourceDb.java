@@ -134,7 +134,7 @@ public class GCSToSourceDb {
 
     void setTimerIntervalInMilliSec(Integer value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.DateTime(
         order = 6,
         optional = true,
         description =
@@ -165,7 +165,7 @@ public class GCSToSourceDb {
 
     void setWindowDuration(String windowDuration);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFolder(
         order = 8,
         optional = false,
         description = "GCS input directory path",

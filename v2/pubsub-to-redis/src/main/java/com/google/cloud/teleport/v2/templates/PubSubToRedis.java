@@ -164,7 +164,7 @@ public class PubSubToRedis {
 
     void setRedisPort(int redisPort);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Password(
         order = 4,
         description = "Redis DB Password",
         helpText = "Redis database password.")

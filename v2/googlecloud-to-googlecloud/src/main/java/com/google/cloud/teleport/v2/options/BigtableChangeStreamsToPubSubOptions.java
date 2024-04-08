@@ -31,7 +31,7 @@ import org.apache.beam.sdk.options.Validation;
 public interface BigtableChangeStreamsToPubSubOptions
     extends DataflowPipelineOptions, BigtableCommonOptions.ReadChangeStreamOptions {
 
-  @TemplateParameter.Text(
+  @TemplateParameter.PubsubTopic(
       order = 1,
       description = "The output Pub/Sub topic name",
       helpText = "The name of the destination Pub/Sub topic.")

@@ -144,7 +144,7 @@ public class DataStreamToBigQuery {
           InputUDFOptions,
           BigQueryStorageApiStreamingOptions {
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 1,
         description = "File location for Datastream file output in Cloud Storage.",
         helpText =
@@ -273,7 +273,7 @@ public class DataStreamToBigQuery {
 
     void setIgnoreFields(String value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Integer(
         order = 13,
         optional = true,
         description = "The number of minutes between merges for a given table",
@@ -293,7 +293,7 @@ public class DataStreamToBigQuery {
 
     void setDeadLetterQueueDirectory(String value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Integer(
         order = 15,
         optional = true,
         description = "The number of minutes between DLQ Retries.",

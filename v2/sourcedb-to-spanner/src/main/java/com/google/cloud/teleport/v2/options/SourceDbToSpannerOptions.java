@@ -218,7 +218,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   void setIgnoreColumns(String value);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Integer(
       order = 18,
       optional = true,
       description = "Maximum number of connections to Source database per worker",
@@ -230,7 +230,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   void setMaxConnections(Integer value);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Boolean(
       order = 19,
       optional = true,
       description = "enable connection reconnects",
@@ -241,7 +241,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   void setReconnectsEnabled(Boolean value);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Integer(
       order = 20,
       optional = true,
       description = "Maximum number of connection reconnect attempts, if reconnects are enabled",

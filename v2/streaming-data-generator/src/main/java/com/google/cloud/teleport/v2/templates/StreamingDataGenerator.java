@@ -95,7 +95,7 @@ public class StreamingDataGenerator {
    * the executor at the command-line.
    */
   public interface StreamingDataGeneratorOptions extends PipelineOptions {
-    @TemplateParameter.Text(
+    @TemplateParameter.Long(
         order = 1,
         regexes = {"^[1-9][0-9]*$"},
         description = "Required output rate",
@@ -361,7 +361,7 @@ public class StreamingDataGenerator {
 
     void setStatement(String statement);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.ProjectId(
         order = 22,
         optional = true,
         parentName = "sinkType",
@@ -409,7 +409,7 @@ public class StreamingDataGenerator {
 
     void setSpannerTableName(String spannerTableName);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Long(
         order = 26,
         optional = true,
         parentName = "sinkType",
@@ -422,7 +422,7 @@ public class StreamingDataGenerator {
 
     void setMaxNumMutations(Long value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Long(
         order = 27,
         optional = true,
         parentName = "sinkType",
@@ -435,7 +435,7 @@ public class StreamingDataGenerator {
 
     void setMaxNumRows(Long value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Long(
         order = 28,
         optional = true,
         parentName = "sinkType",
@@ -448,7 +448,7 @@ public class StreamingDataGenerator {
 
     void setBatchSizeBytes(Long value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Long(
         order = 29,
         optional = true,
         parentName = "sinkType",

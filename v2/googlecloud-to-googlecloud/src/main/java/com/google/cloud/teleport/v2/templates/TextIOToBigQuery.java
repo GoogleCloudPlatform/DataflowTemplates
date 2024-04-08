@@ -210,10 +210,9 @@ public class TextIOToBigQuery {
       extends DataflowPipelineOptions,
           PythonExternalTextTransformerOptions,
           BigQueryStorageApiBatchOptions {
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 1,
         optional = false,
-        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         description = "The GCS location of the text you'd like to process",
         helpText = "The gs:// path to the text in Cloud Storage you'd like to process.",
         example = "gs://your-bucket/your-file.txt")
@@ -232,10 +231,9 @@ public class TextIOToBigQuery {
 
     void setJSONPath(String value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.BigQueryTable(
         order = 3,
         optional = false,
-        regexes = {".+:.+\\..+"},
         description = "Output table to write to",
         helpText =
             "The BigQuery table name you want to create to store your processed data in. If you reuse an existing BigQuery table, the data is appended to the destination table.",
@@ -244,10 +242,9 @@ public class TextIOToBigQuery {
 
     void setOutputTable(String value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsWriteFile(
         order = 4,
         optional = false,
-        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         description = "GCS path to javascript fn for transforming output",
         helpText =
             "The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) you want to use.",

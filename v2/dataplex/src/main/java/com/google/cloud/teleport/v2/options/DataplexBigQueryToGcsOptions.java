@@ -75,12 +75,9 @@ public interface DataplexBigQueryToGcsOptions
 
   void setDestinationStorageBucketAssetName(String destinationStorageBucketAssetName);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.DateTime(
       order = 4,
       optional = true,
-      regexes = {
-        "^([0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})?)?|-[pP]([0-9]+(\\.[0-9]+)?Y)?([0-9]+(\\.[0-9]+)?M)?([0-9]+(\\.[0-9]+)?W)?([0-9]+(\\.[0-9]+)?D)?(T([0-9]+(\\.[0-9]+)?H)?([0-9]+(\\.[0-9]+)?M)?([0-9]+(\\.[0-9]+)?S)?)?)$"
-      },
       description = "Move data older than the date.",
       helpText =
           "Move data older than this date (and optional time). For partitioned tables, move partitions last modified before this date/time. For non-partitioned tables, move if the table was last modified before this date/time. If not specified, move all tables / partitions. The date/time is parsed in the default time zone by default, but optional suffixes Z and +HH:mm are supported. Format: YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss or YYYY-MM-DDTHH:mm:ss+03:00. Relative date/time (https://en.wikipedia.org/wiki/ISO_8601#Durations) is also supported. Format: -PnDTnHnMn.nS (must start with -P meaning time in the past).")
