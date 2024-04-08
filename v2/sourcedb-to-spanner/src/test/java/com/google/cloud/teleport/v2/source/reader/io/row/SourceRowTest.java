@@ -29,7 +29,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 public class SourceRowTest extends TestCase {
   @Test
   public void testSourceRowBuilds() {
-    final String testTableUUID = "fa14a160-2841-42f2-91ee-7929d791f367";
     final String testTable = "testTable";
     final long testReadTime = 1712751118L;
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
@@ -47,20 +46,17 @@ public class SourceRowTest extends TestCase {
 
   @Test
   public void testSourceRowBuildWithInvalidFieldThrowsNPE() {
-    final String testTableUUID = "fa14a160-2841-42f2-91ee-7929d791f367";
     final String testTable = "testTable";
     final long testReadTime = 1712751118L;
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
 
     Assert.assertThrows(
         java.lang.NullPointerException.class,
-        () -> {
-          SourceRow sourceRow =
-              SourceRow.builder(schema, testReadTime)
-                  /* Invalid Field */
-                  .setField("middleName", "abc")
-                  .setField("lastName", "def")
-                  .build();
-        });
+        () ->
+            SourceRow.builder(schema, testReadTime)
+                /* Invalid Field */
+                .setField("middleName", "abc")
+                .setField("lastName", "def")
+                .build());
   }
 }

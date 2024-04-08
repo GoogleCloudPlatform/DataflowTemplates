@@ -50,6 +50,19 @@ public class ReaderTransformTestUtils implements Serializable {
             .collect(ImmutableList.toImmutableList());
   }
 
+  public ImmutableList<SourceTableReference> getSourceTableReferences() {
+    return this.sourceTableSchemas.stream()
+        .map(
+            table ->
+                SourceTableReference.builder()
+                    .setSourceSchemaReference(this.sourceSchemaReference)
+                    .setSourceTableName(table.tableName())
+                    .setSourceTableSchemaUUID(table.tableSchemaUUID())
+                    .setRecordCount(rowCountPerTable)
+                    .build())
+        .collect(ImmutableList.toImmutableList());
+  }
+
   public AccumulatingTableReader getTestAccumulatingReader(
       TupleTag<SourceRow> sourceRowTag, TupleTag<SourceTableReference> sourceTableReferenceTag) {
     AccumulatingTableReader.Builder builder =
