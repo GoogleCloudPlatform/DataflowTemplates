@@ -12,20 +12,20 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **inputTopic** (Input Pub/Sub topic): The name of the topic from which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
-* **outputTopic** (Kafka topic to write the input from pubsub): Kafka topic to write the input from pubsub. (Example: topic).
-* **outputDeadLetterTopic** (Output deadletter Pub/Sub topic): The Pub/Sub topic to publish deadletter records to. The name should be in the format of projects/your-project-id/topics/your-topic-name.
+* **inputTopic** : The name of the topic from which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
+* **outputTopic** : Kafka topic to write the input from pubsub. (Example: topic).
+* **outputDeadLetterTopic** : The Pub/Sub topic to publish deadletter records to. The name should be in the format of projects/your-project-id/topics/your-topic-name.
 
-### Optional Parameters
+### Optional parameters
 
-* **bootstrapServer** (Output Kafka Bootstrap Server): Kafka Bootstrap Server  (Example: localhost:9092).
-* **secretStoreUrl** (Secret Store URL): URL to credentials in Vault.
-* **vaultToken** (Vault token): Token to use for Vault.
-* **javascriptTextTransformGcsPath** (Cloud Storage path to Javascript UDF source): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
-* **javascriptTextTransformFunctionName** (UDF Javascript Function Name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
-* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
+* **bootstrapServer** : Kafka Bootstrap Server  (Example: localhost:9092).
+* **secretStoreUrl** : URL to credentials in Vault.
+* **vaultToken** : Token to use for Vault.
+* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
+* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
+* **javascriptTextTransformReloadIntervalMinutes** : Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
 
 
 ## User-Defined functions (UDFs)

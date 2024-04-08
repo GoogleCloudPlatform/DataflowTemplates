@@ -32,17 +32,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **inputFilePattern** (Input Cloud Storage File(s)): The Cloud Storage location of the files you'd like to process. (Example: gs://your-bucket/your-files/*.csv).
-* **deidentifyTemplateName** (Cloud DLP deidentify template name): Cloud DLP template to deidentify contents. Must be created here: https://console.cloud.google.com/security/dlp/create/template. (Example: projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id).
-* **datasetName** (BigQuery Dataset): BigQuery Dataset to be used. Dataset must exist prior to execution. Ex. pii_dataset.
-* **dlpProjectId** (Cloud DLP project ID): Cloud DLP project ID to be used for data masking/tokenization. Ex. your-dlp-project.
+* **inputFilePattern** : The Cloud Storage location of the files you'd like to process. (Example: gs://your-bucket/your-files/*.csv).
+* **deidentifyTemplateName** : Cloud DLP template to deidentify contents. Must be created here: https://console.cloud.google.com/security/dlp/create/template. (Example: projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id).
+* **datasetName** : BigQuery Dataset to be used. Dataset must exist prior to execution. Ex. pii_dataset.
+* **dlpProjectId** : Cloud DLP project ID to be used for data masking/tokenization. Ex. your-dlp-project.
 
-### Optional Parameters
+### Optional parameters
 
-* **inspectTemplateName** (Cloud DLP inspect template name): Cloud DLP template to inspect contents. (Example: projects/your-project-id/locations/global/inspectTemplates/generated_template_id).
-* **batchSize** (Batch size): Batch size contents (number of rows) to optimize DLP API call. Total size of the rows must not exceed 512 KB and total cell count must not exceed 50,000. Default batch size is set to 100. Ex. 1000.
+* **inspectTemplateName** : Cloud DLP template to inspect contents. (Example: projects/your-project-id/locations/global/inspectTemplates/generated_template_id).
+* **batchSize** : Batch size contents (number of rows) to optimize DLP API call. Total size of the rows must not exceed 512 KB and total cell count must not exceed 50,000. Default batch size is set to 100. Ex. 1000.
 
 
 

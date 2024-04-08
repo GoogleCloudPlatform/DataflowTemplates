@@ -21,26 +21,26 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **inputSubscription** (Pub/Sub input subscription): Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **mongoDBUri** (MongoDB Connection URI): Comma separated list of MongoDB servers. (Example: host1:port,host2:port,host3:port).
-* **database** (MongoDB Database): Database in MongoDB to store the collection. (Example: my-db).
-* **collection** (MongoDB collection): Name of the collection inside MongoDB database to insert the documents. (Example: my-collection).
-* **deadletterTable** (The dead-letter table name to output failed messages to BigQuery): BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
+* **inputSubscription** : Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
+* **mongoDBUri** : Comma separated list of MongoDB servers. (Example: host1:port,host2:port,host3:port).
+* **database** : Database in MongoDB to store the collection. (Example: my-db).
+* **collection** : Name of the collection inside MongoDB database to insert the documents. (Example: my-collection).
+* **deadletterTable** : BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
 
-### Optional Parameters
+### Optional parameters
 
-* **batchSize** (Batch Size): Batch Size used for batch insertion of documents into MongoDB. Defaults to: 1000.
-* **batchSizeBytes** (Batch Size in Bytes): Batch Size in bytes used for batch insertion of documents into MongoDB. Defaults to: 5242880.
-* **maxConnectionIdleTime** (Max Connection idle time): Maximum idle time allowed in seconds before connection timeout occurs. Defaults to: 60000.
-* **sslEnabled** (SSL Enabled): Indicates whether connection to MongoDB is ssl enabled. Defaults to: true.
-* **ignoreSSLCertificate** (Ignore SSL Certificate): Indicates whether SSL certificate should be ignored. Defaults to: true.
-* **withOrdered** (withOrdered): Enables ordered bulk insertions into MongoDB. Defaults to: true.
-* **withSSLInvalidHostNameAllowed** (withSSLInvalidHostNameAllowed): Indicates whether invalid host name is allowed for ssl connection. Defaults to: true.
-* **javascriptTextTransformGcsPath** (Cloud Storage path to Javascript UDF source): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
-* **javascriptTextTransformFunctionName** (UDF Javascript Function Name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
-* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
+* **batchSize** : Batch Size used for batch insertion of documents into MongoDB. Defaults to: 1000.
+* **batchSizeBytes** : Batch Size in bytes used for batch insertion of documents into MongoDB. Defaults to: 5242880.
+* **maxConnectionIdleTime** : Maximum idle time allowed in seconds before connection timeout occurs. Defaults to: 60000.
+* **sslEnabled** : Indicates whether connection to MongoDB is ssl enabled. Defaults to: true.
+* **ignoreSSLCertificate** : Indicates whether SSL certificate should be ignored. Defaults to: true.
+* **withOrdered** : Enables ordered bulk insertions into MongoDB. Defaults to: true.
+* **withSSLInvalidHostNameAllowed** : Indicates whether invalid host name is allowed for ssl connection. Defaults to: true.
+* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
+* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
+* **javascriptTextTransformReloadIntervalMinutes** : Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
 
 
 ## User-Defined functions (UDFs)
