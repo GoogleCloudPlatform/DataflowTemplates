@@ -75,10 +75,10 @@ public final class TextImportPipelineIT extends TemplateTestBase {
     // Arrange
     gcsClient.createArtifact(
         "input/singers1.csv",
-        "1,John,Doe,TRUE,1.5,2023-02-01,2023-01-01T17:22:00\n"
-            + "2,Jane,Doe,TRUE,2.1,2021-02-03,2023-01-01T17:23:01\n");
+        "1,John,Doe,TRUE,3.5,1.5,2023-02-01,2023-01-01T17:22:00\n"
+            + "2,Jane,Doe,TRUE,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n");
     gcsClient.createArtifact(
-        "input/singers2.csv", "3,Elvis,Presley,FALSE,3.99,2020-03-05,2023-01-01T17:24:02\n");
+        "input/singers2.csv", "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,2023-01-01T17:24:02\n");
 
     String statement =
         "CREATE TABLE Singers (\n"
@@ -86,6 +86,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "  FirstName     STRING(1024),\n"
             + "  LastName      STRING(1024),\n"
             + "  Active        BOOL,\n"
+            + "  Rating        FLOAT32,\n"
             + "  Score         FLOAT64,\n"
             + "  BirthDate     DATE,\n"
             + "  LastModified  TIMESTAMP,\n"
@@ -107,6 +108,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "        {\"column_name\": \"FirstName\", \"type_name\": \"STRING\"},\n"
             + "        {\"column_name\": \"LastName\", \"type_name\": \"STRING\"},\n"
             + "        {\"column_name\": \"Active\", \"type_name\": \"BOOL\"},\n"
+            + "        {\"column_name\": \"Rating\", \"type_name\": \"FLOAT32\"},\n"
             + "        {\"column_name\": \"Score\", \"type_name\": \"FLOAT64\"},\n"
             + "        {\"column_name\": \"BirthDate\", \"type_name\": \"DATE\"},\n"
             + "        {\"column_name\": \"LastModified\", \"type_name\": \"TIMESTAMP\"}\n"
@@ -143,6 +145,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
                 "FirstName",
                 "LastName",
                 "Active",
+                "Rating",
                 "Score",
                 "BirthDate",
                 "LastModified"));
@@ -151,14 +154,15 @@ public final class TextImportPipelineIT extends TemplateTestBase {
         .hasRecordsUnordered(
             List.of(
                 createRecordMap(
-                    "1", "John", "Doe", "true", "1.5", "2023-02-01", "2023-01-01T17:22:00Z"),
+                    "1", "John", "Doe", "true", "3.5", "1.5", "2023-02-01", "2023-01-01T17:22:00Z"),
                 createRecordMap(
-                    "2", "Jane", "Doe", "true", "2.1", "2021-02-03", "2023-01-01T17:23:01Z"),
+                    "2", "Jane", "Doe", "true", "4.1", "2.1", "2021-02-03", "2023-01-01T17:23:01Z"),
                 createRecordMap(
                     "3",
                     "Elvis",
                     "Presley",
                     "false",
+                    "5.0",
                     "3.99",
                     "2020-03-05",
                     "2023-01-01T17:24:02Z")));
@@ -169,7 +173,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
     // Arrange
     gcsClient.createArtifact(
         "input/singers1.csv",
-        "1,John,Doe,TRUE,1.5,2023-02-01,2023-01-01T17:22:00\n" + "2,Jane,Doe,5,A\n");
+        "1,John,Doe,TRUE,4.0,1.5,2023-02-01,2023-01-01T17:22:00\n" + "2,Jane,Doe,5,A\n");
 
     String statement =
         "CREATE TABLE Singers (\n"
@@ -177,6 +181,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "  FirstName     STRING(1024),\n"
             + "  LastName      STRING(1024),\n"
             + "  Active        BOOL,\n"
+            + "  Rating        FLOAT32,\n"
             + "  Score         FLOAT64,\n"
             + "  BirthDate     DATE,\n"
             + "  LastModified  TIMESTAMP,\n"
@@ -198,6 +203,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "        {\"column_name\": \"FirstName\", \"type_name\": \"STRING\"},\n"
             + "        {\"column_name\": \"LastName\", \"type_name\": \"STRING\"},\n"
             + "        {\"column_name\": \"Active\", \"type_name\": \"BOOL\"},\n"
+            + "        {\"column_name\": \"Rating\", \"type_name\": \"FLOAT32\"},\n"
             + "        {\"column_name\": \"Score\", \"type_name\": \"FLOAT64\"},\n"
             + "        {\"column_name\": \"BirthDate\", \"type_name\": \"DATE\"},\n"
             + "        {\"column_name\": \"LastModified\", \"type_name\": \"TIMESTAMP\"}\n"
@@ -235,6 +241,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
                 "FirstName",
                 "LastName",
                 "Active",
+                "Rating",
                 "Score",
                 "BirthDate",
                 "LastModified"));
@@ -243,7 +250,14 @@ public final class TextImportPipelineIT extends TemplateTestBase {
         .hasRecordsUnordered(
             List.of(
                 createRecordMap(
-                    "1", "John", "Doe", "true", "1.5", "2023-02-01", "2023-01-01T17:22:00Z")));
+                    "1",
+                    "John",
+                    "Doe",
+                    "true",
+                    "4.0",
+                    "1.5",
+                    "2023-02-01",
+                    "2023-01-01T17:22:00Z")));
 
     List<Artifact> artifacts = gcsClient.listArtifacts("invalid/", Pattern.compile(".*bad.*"));
     assertThat(artifacts).hasSize(1);
@@ -255,10 +269,10 @@ public final class TextImportPipelineIT extends TemplateTestBase {
     // Arrange
     gcsClient.createArtifact(
         "input/singers1.csv",
-        "1,John,Doe,TRUE,1.5,2023-02-01,2023-01-01T17:22:00\n"
-            + "2,Jane,Doe,TRUE,2.1,2021-02-03,2023-01-01T17:23:01\n");
+        "1,John,Doe,TRUE,3.5,1.5,2023-02-01,2023-01-01T17:22:00\n"
+            + "2,Jane,Doe,TRUE,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n");
     gcsClient.createArtifact(
-        "input/singers2.csv", "3,Elvis,Presley,FALSE,3.99,2020-03-05,2023-01-01T17:24:02\n");
+        "input/singers2.csv", "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,2023-01-01T17:24:02\n");
 
     String statement =
         "CREATE TABLE \"Singers\" (\n"
@@ -266,6 +280,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "  \"FirstName\"     character varying(256),\n"
             + "  \"LastName\"      character varying(256),\n"
             + "  \"Active\"        boolean,\n"
+            + "  \"Rating\"        real,\n"
             + "  \"Score\"         double precision,\n"
             + "  \"BirthDate\"     date,\n"
             + "  \"LastModified\"  timestamp with time zone,\n"
@@ -287,6 +302,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "        {\"column_name\": \"FirstName\", \"type_name\": \"character varying(256)\"},\n"
             + "        {\"column_name\": \"LastName\", \"type_name\": \"character varying(256)\"},\n"
             + "        {\"column_name\": \"Active\", \"type_name\": \"boolean\"},\n"
+            + "        {\"column_name\": \"Rating\", \"type_name\": \"real\"},\n"
             + "        {\"column_name\": \"Score\", \"type_name\": \"double precision\"},\n"
             + "        {\"column_name\": \"BirthDate\", \"type_name\": \"date\"},\n"
             + "        {\"column_name\": \"LastModified\", \"type_name\": \"timestamp with time zone\"}\n"
@@ -324,6 +340,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
                 "FirstName",
                 "LastName",
                 "Active",
+                "Rating",
                 "Score",
                 "BirthDate",
                 "LastModified"));
@@ -332,14 +349,15 @@ public final class TextImportPipelineIT extends TemplateTestBase {
         .hasRecordsUnordered(
             List.of(
                 createRecordMap(
-                    "1", "John", "Doe", "true", "1.5", "2023-02-01", "2023-01-01T17:22:00Z"),
+                    "1", "John", "Doe", "true", "3.5", "1.5", "2023-02-01", "2023-01-01T17:22:00Z"),
                 createRecordMap(
-                    "2", "Jane", "Doe", "true", "2.1", "2021-02-03", "2023-01-01T17:23:01Z"),
+                    "2", "Jane", "Doe", "true", "4.1", "2.1", "2021-02-03", "2023-01-01T17:23:01Z"),
                 createRecordMap(
                     "3",
                     "Elvis",
                     "Presley",
                     "false",
+                    "5.0",
                     "3.99",
                     "2020-03-05",
                     "2023-01-01T17:24:02Z")));
@@ -350,6 +368,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
       String firstName,
       String lastName,
       String active,
+      String rating,
       String score,
       String birthDate,
       String lastModified) {
@@ -362,6 +381,8 @@ public final class TextImportPipelineIT extends TemplateTestBase {
         lastName,
         "Active",
         active,
+        "Rating",
+        rating,
         "Score",
         score,
         "BirthDate",
