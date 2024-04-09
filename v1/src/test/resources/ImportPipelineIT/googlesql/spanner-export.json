@@ -6,6 +6,9 @@
     "name": "EmptyTable",
     "manifestFile": "EmptyTable-manifest.json"
   }, {
+    "name": "Float32Table",
+    "manifestFile": "Float32Table-manifest.json"
+  }, {
     "name": "ModelStruct",
     "manifestFile": "ModelStruct-manifest.json"
   }]
