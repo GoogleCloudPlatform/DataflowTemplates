@@ -22,6 +22,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.OrderedSpannerChangeStreamsToPubSubOptions;
 import com.google.cloud.teleport.v2.transforms.OrderedSpannerChangeStreamsToKV;
+import com.google.cloud.teleport.v2.transforms.PublishOrderedDataChangeRecordsKVToPubSub;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
@@ -175,13 +176,20 @@ public class OrderedSpannerChangeStreamsToPubSub {
                 .withRpcPriority(rpcPriority)
                 .withMetadataTable(metadataTableName))
         .apply(
-            "Orders change records and logs the output",
+            "Orders change records and return KV",
             OrderedSpannerChangeStreamsToKV.newBuilder()
                 .setOrderingPartitionKey(options.getOrderingPartitionKey())
                 .setOrderingPartitionBucketCount(options.getOrderingPartitionBucketCount())
                 .setBufferTimerInterval(options.getBufferTimerInterval())
+                .build())
+        .apply(
+            "Publish to Pub/Sub",
+            PublishOrderedDataChangeRecordsKVToPubSub.newBuilder()
+                .setOutputDataFormat(options.getOutputDataFormat())
+                .setProjectId(pubsubProjectId)
+                .setPubsubAPI(pubsubAPI)
+                .setPubsubTopicName(pubsubTopicName)
                 .build());
-        // TODO: Add pub/sub publish code here
     return pipeline.run();
   }
 }
