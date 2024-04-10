@@ -17,17 +17,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **datastoreReadGqlQuery** (GQL Query): Specifies which Datastore entities to read. Ex: ‘SELECT * FROM MyKind’.
-* **datastoreReadProjectId** (Project ID): The Google Cloud project ID of the Datastore instance to read from.
-* **textWritePrefix** (Output file directory in Cloud Storage): The path and filename prefix for writing output files. (Example: gs://your-bucket/your-path).
+* **datastoreReadGqlQuery** : Specifies which Datastore entities to read. Ex: ‘SELECT * FROM MyKind’.
+* **datastoreReadProjectId** : The Google Cloud project ID of the Datastore instance to read from.
+* **textWritePrefix** : The path and filename prefix for writing output files. (Example: gs://your-bucket/your-path).
 
-### Optional Parameters
+### Optional parameters
 
-* **datastoreReadNamespace** (Namespace): Namespace of requested Datastore entities. Leave blank to use default namespace.
-* **javascriptTextTransformGcsPath** (JavaScript UDF path in Cloud Storage): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
-* **javascriptTextTransformFunctionName** (JavaScript UDF name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
+* **datastoreReadNamespace** : Namespace of requested Datastore entities. Leave blank to use default namespace.
+* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
+* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
 
 
 ## User-Defined functions (UDFs)

@@ -258,6 +258,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     arguments.add(element("argument", "--templateLocation=" + templatePath));
     arguments.add(element("argument", "--project=" + projectId));
     arguments.add(element("argument", "--region=" + region));
+    if (imageSpec.getMetadata().isStreaming()) {
+      // Default to THROUGHPUT_BASED autoscaling for streaming classic templates
+      arguments.add(element("argument", "--autoscalingAlgorithm=THROUGHPUT_BASED"));
+      arguments.add(element("argument", "--maxNumWorkers=5"));
+    }
 
     if (gcpTempLocation != null) {
       String gcpTempLocationPath = "gs://" + bucketNameOnly(gcpTempLocation) + "/temp/";

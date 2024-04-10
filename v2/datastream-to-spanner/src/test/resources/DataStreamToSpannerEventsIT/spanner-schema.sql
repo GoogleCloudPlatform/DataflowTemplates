@@ -1,8 +1,3 @@
-CREATE TABLE IF NOT EXISTS Category (
-  category_id INT64 NOT NULL,
-  full_name STRING(25),
-) PRIMARY KEY(category_id);
-
 CREATE TABLE IF NOT EXISTS Movie (
   id INT64 NOT NULL,
   name STRING(200),
@@ -13,7 +8,7 @@ CREATE TABLE IF NOT EXISTS Movie (
 CREATE TABLE IF NOT EXISTS Users (
     id INT64 NOT NULL,
     name STRING(200),
-    age_spanner INT64,
+    age INT64,
     subscribed BOOL,
     plan STRING(1),
     startDate DATE

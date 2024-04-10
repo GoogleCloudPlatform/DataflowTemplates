@@ -16,21 +16,21 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **mongoDbUri** (MongoDB Connection URI): MongoDB connection URI in the format `mongodb+srv://:@`.
-* **database** (MongoDB database): Database in MongoDB to read the collection from. (Example: my-db).
-* **collection** (MongoDB collection): Name of the collection inside MongoDB database. (Example: my-collection).
-* **userOption** (User option): User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the documents to the single level. `NONE` stores the whole document as a JSON string. Defaults to: NONE.
-* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
+* **mongoDbUri** : MongoDB connection URI in the format `mongodb+srv://:@`.
+* **database** : Database in MongoDB to read the collection from. (Example: my-db).
+* **collection** : Name of the collection inside MongoDB database. (Example: my-collection).
+* **userOption** : User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the documents to the single level. `NONE` stores the whole document as a JSON string. Defaults to: NONE.
+* **outputTableSpec** : BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
 
-### Optional Parameters
+### Optional parameters
 
-* **KMSEncryptionKey** (Google Cloud KMS key): Cloud KMS Encryption Key to decrypt the mongodb uri connection string. If Cloud KMS key is passed in, the mongodb uri connection string must all be passed in encrypted. (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key).
-* **useStorageWriteApi** (Use BigQuery Storage Write API): If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
-* **useStorageWriteApiAtLeastOnce** (Use at at-least-once semantics in BigQuery Storage Write API): This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-* **javascriptDocumentTransformGcsPath** (JavaScript UDF path in Cloud Storage.): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-transforms/*.js).
-* **javascriptDocumentTransformFunctionName** (The name of the JavaScript function to call as your UDF.): The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'. (Example: transform).
+* **KMSEncryptionKey** : Cloud KMS Encryption Key to decrypt the mongodb uri connection string. If Cloud KMS key is passed in, the mongodb uri connection string must all be passed in encrypted. (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key).
+* **useStorageWriteApi** : If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
+* **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
+* **javascriptDocumentTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-transforms/*.js).
+* **javascriptDocumentTransformFunctionName** : The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'. (Example: transform).
 
 
 

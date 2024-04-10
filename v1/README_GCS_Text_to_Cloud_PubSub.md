@@ -22,12 +22,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **inputFilePattern** (Cloud Storage Input File(s)): Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.txt).
-* **outputTopic** (Output Pub/Sub topic): The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
+* **inputFilePattern** : Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.txt).
+* **outputTopic** : The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
 
-### Optional Parameters
+### Optional parameters
 
 
 

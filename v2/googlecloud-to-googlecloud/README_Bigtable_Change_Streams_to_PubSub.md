@@ -15,35 +15,35 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **pubSubTopic** (The output Pub/Sub topic name): The Pub/Sub topic to publish changelog entry messages.
-* **bigtableChangeStreamAppProfile** (Cloud Bigtable application profile ID): The application profile is used to distinguish workload in Cloud Bigtable.
-* **bigtableReadInstanceId** (Source Bigtable Instance ID): The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableReadTableId** (Source Cloud Bigtable table ID): The Cloud Bigtable table to read from.
+* **pubSubTopic** : The Pub/Sub topic to publish changelog entry messages.
+* **bigtableChangeStreamAppProfile** : The application profile is used to distinguish workload in Cloud Bigtable.
+* **bigtableReadInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
+* **bigtableReadTableId** : The Cloud Bigtable table to read from.
 
-### Optional Parameters
+### Optional parameters
 
-* **messageEncoding** (The encoding of the message written into PubSub): The format of the message to be written into PubSub. Allowed formats are BINARY and JSON. If topic has no encoding configured, default value is JSON.
-* **messageFormat** (The format of the message written into PubSub): The message format chosen for outputting data to PubSub. Allowed formats are AVRO, PROTOCOL_BUFFERS and JSON. If topic has no schema configured, defaults to JSON.
-* **stripValues** (Strip values for SetCell mutation): Strip values for SetCell mutation. If true the SetCell mutation message won’t include the values written. Defaults to: false.
-* **dlqDirectory** (Dead letter queue directory to store any unpublished change record.): The file path to store any unprocessed records with the reason they failed to be processed. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
-* **dlqRetryMinutes** (Dead letter queue retry minutes): The number of minutes between dead letter queue retries. Defaults to 10.
-* **dlqMaxRetries** (Dead letter maximum retries): The number of attempts to process change stream mutations. Defaults to 5.
-* **useBase64Rowkeys** (Write Base64-encoded row keys): Only supported for the JSON messageFormat. When set to true, row keys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String row keysDefaults to false.
-* **pubSubProjectId** (PubSub project ID): The PubSub Project. Default is the project for the Dataflow job.
-* **useBase64ColumnQualifiers** (Write Base64-encoded column qualifiers): Only supported for the JSON messageFormat. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiersDefaults to false.
-* **useBase64Values** (Write Base64-encoded values): Only supported for the JSON messageFormat. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String valuesDefaults to false.
-* **disableDlqRetries** (Whether or not to disable retries for the DLQ): Whether or not to disable retries for the DLQ. Defaults to: false.
-* **bigtableChangeStreamMetadataInstanceId** (Cloud Bigtable change streams metadata instance ID): The Cloud Bigtable instance to use for the change streams connector metadata table. Defaults to empty.
-* **bigtableChangeStreamMetadataTableTableId** (Cloud Bigtable change streams metadata table ID): The Cloud Bigtable change streams connector metadata table ID to use. If not provided, a Cloud Bigtable change streams connector metadata table will automatically be created during the pipeline flow. Defaults to empty.
-* **bigtableChangeStreamCharset** (Bigtable change streams charset name when reading values and column qualifiers): Bigtable change streams charset name when reading values and column qualifiers. Default is UTF-8.
-* **bigtableChangeStreamStartTimestamp** (The timestamp to read change streams from): The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts.
-* **bigtableChangeStreamIgnoreColumnFamilies** (Cloud Bigtable change streams column families to ignore): A comma-separated list of column family names changes to which won't be captured. Defaults to empty.
-* **bigtableChangeStreamIgnoreColumns** (Cloud Bigtable change streams columns to ignore): A comma-separated list of column names changes to which won't be captured. Defaults to empty.
-* **bigtableChangeStreamName** (A unique name of the client pipeline): Allows to resume processing from the point where a previously running pipeline stopped.
-* **bigtableChangeStreamResume** (Resume streaming with the same change stream name): When set to true< a new pipeline will resume processing from the point at which a previously running pipeline with the same bigtableChangeStreamName stopped. If pipeline with the given bigtableChangeStreamName never ran in the past, a new pipeline will fail to start. When set to false a new pipeline will be started. If pipeline with the same bigtableChangeStreamName already ran in the past for the given source, a new pipeline will fail to start. Defaults to false.
-* **bigtableReadProjectId** (Source Cloud Bigtable Project ID): Project to read Cloud Bigtable data from. The default for this parameter is the project where the Dataflow pipeline is running.
+* **messageEncoding** : The format of the message to be written into PubSub. Allowed formats are BINARY and JSON. If topic has no encoding configured, default value is JSON.
+* **messageFormat** : The message format chosen for outputting data to PubSub. Allowed formats are AVRO, PROTOCOL_BUFFERS and JSON. If topic has no schema configured, defaults to JSON.
+* **stripValues** : Strip values for SetCell mutation. If true the SetCell mutation message won’t include the values written. Defaults to: false.
+* **dlqDirectory** : The file path to store any unprocessed records with the reason they failed to be processed. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
+* **dlqRetryMinutes** : The number of minutes between dead letter queue retries. Defaults to 10.
+* **dlqMaxRetries** : The number of attempts to process change stream mutations. Defaults to 5.
+* **useBase64Rowkeys** : Only supported for the JSON messageFormat. When set to true, row keys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String row keysDefaults to false.
+* **pubSubProjectId** : The PubSub Project. Default is the project for the Dataflow job.
+* **useBase64ColumnQualifiers** : Only supported for the JSON messageFormat. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiersDefaults to false.
+* **useBase64Values** : Only supported for the JSON messageFormat. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String valuesDefaults to false.
+* **disableDlqRetries** : Whether or not to disable retries for the DLQ. Defaults to: false.
+* **bigtableChangeStreamMetadataInstanceId** : The Cloud Bigtable instance to use for the change streams connector metadata table. Defaults to empty.
+* **bigtableChangeStreamMetadataTableTableId** : The Cloud Bigtable change streams connector metadata table ID to use. If not provided, a Cloud Bigtable change streams connector metadata table will automatically be created during the pipeline flow. Defaults to empty.
+* **bigtableChangeStreamCharset** : Bigtable change streams charset name when reading values and column qualifiers. Default is UTF-8.
+* **bigtableChangeStreamStartTimestamp** : The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts.
+* **bigtableChangeStreamIgnoreColumnFamilies** : A comma-separated list of column family names changes to which won't be captured. Defaults to empty.
+* **bigtableChangeStreamIgnoreColumns** : A comma-separated list of column names changes to which won't be captured. Defaults to empty.
+* **bigtableChangeStreamName** : Allows to resume processing from the point where a previously running pipeline stopped.
+* **bigtableChangeStreamResume** : When set to true< a new pipeline will resume processing from the point at which a previously running pipeline with the same bigtableChangeStreamName stopped. If pipeline with the given bigtableChangeStreamName never ran in the past, a new pipeline will fail to start. When set to false a new pipeline will be started. If pipeline with the same bigtableChangeStreamName already ran in the past for the given source, a new pipeline will fail to start. Defaults to false.
+* **bigtableReadProjectId** : Project to read Cloud Bigtable data from. The default for this parameter is the project where the Dataflow pipeline is running.
 
 
 

@@ -380,7 +380,8 @@ public class TextImportTransformTest {
               "{\"tables\": [{\"table_name\": \"table1\",\"file_patterns\": [\"%s\"],\"columns\":"
                   + " [{\"column_name\": \"int_col\", \"type_name\": \"bigint\"},"
                   + " {\"column_name\":\"str_10_col\", \"type_name\": \"character varying(10)\"},"
-                  + " {\"column_name\":\"float_col\", \"type_name\": \"double precision\"},"
+                  + " {\"column_name\":\"float32_col\", \"type_name\": \"real\"},"
+                  + " {\"column_name\":\"float64_col\", \"type_name\": \"double precision\"},"
                   + " {\"column_name\":\"bool_col\", \"type_name\": \"boolean\"}, {\"column_name\":"
                   + " \"byte_col\", \"type_name\": \"bytea\"}, {\"column_name\": \"timestamp_col\","
                   + " \"type_name\":\"timestamp with time zone\"}, {\"column_name\":"
@@ -451,7 +452,10 @@ public class TextImportTransformTest {
             .string()
             .size(10)
             .endColumn()
-            .column("float_col")
+            .column("float32_col")
+            .float32()
+            .endColumn()
+            .column("float64_col")
             .float64()
             .endColumn()
             .column("bool_col")
@@ -517,7 +521,10 @@ public class TextImportTransformTest {
             .pgVarchar()
             .size(10)
             .endColumn()
-            .column("float_col")
+            .column("float32_col")
+            .pgFloat4()
+            .endColumn()
+            .column("float64_col")
             .pgFloat8()
             .endColumn()
             .column("bool_col")
@@ -557,6 +564,9 @@ public class TextImportTransformTest {
         ResolveDataFiles.parseSpannerDataType("STRING(MAX)", Dialect.GOOGLE_STANDARD_SQL));
     assertEquals(
         Code.INT64, ResolveDataFiles.parseSpannerDataType("INT64", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.FLOAT32,
+        ResolveDataFiles.parseSpannerDataType("FLOAT32", Dialect.GOOGLE_STANDARD_SQL));
     assertEquals(
         Code.FLOAT64,
         ResolveDataFiles.parseSpannerDataType("FLOAT64", Dialect.GOOGLE_STANDARD_SQL));

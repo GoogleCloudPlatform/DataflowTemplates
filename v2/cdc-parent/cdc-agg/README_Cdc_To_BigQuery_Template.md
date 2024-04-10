@@ -14,21 +14,21 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **inputSubscriptions** (Input subscriptions to the template): Comma-separated list of Pub/Sub subscriptions where CDC data is available.
-* **changeLogDataset** (Output BigQuery dataset for Changelog tables): Name of the BigQuery dataset where Staging / Change Log tables are to be kept.
-* **replicaDataset** (Output BigQuery dataset for replica tables): Name of the BigQuery dataset where the Replica tables are to be kept.
+* **inputSubscriptions** : Comma-separated list of Pub/Sub subscriptions where CDC data is available.
+* **changeLogDataset** : Name of the BigQuery dataset where Staging / Change Log tables are to be kept.
+* **replicaDataset** : Name of the BigQuery dataset where the Replica tables are to be kept.
 
-### Optional Parameters
+### Optional parameters
 
-* **inputTopics** (Pub/Sub topic(s) to read from): Comma-separated list of PubSub topics to where CDC data is being pushed.
-* **updateFrequencySecs** (Frequency to issue updates to BigQuery tables (seconds).): How often the pipeline will issue updates to the BigQuery replica table.
-* **useSingleTopic** (Whether to use a single topic for all MySQL table changes.): Set this to true if you have configured your Debezium connector to publish all table updates to a single topic. Defaults to: false.
-* **useStorageWriteApi** (Use BigQuery Storage Write API): If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). The default value is false. When using Storage Write API in exactly-once mode, you must set the following parameters: "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API". If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter to true, then you don't need to set the number of streams or the triggering frequency.
-* **useStorageWriteApiAtLeastOnce** (Use at at-least-once semantics in BigQuery Storage Write API): This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-* **numStorageWriteApiStreams** (Number of streams for BigQuery Storage Write API): Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0.
-* **storageWriteApiTriggeringFrequencySec** (Triggering frequency in seconds for BigQuery Storage Write API): Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values.
+* **inputTopics** : Comma-separated list of PubSub topics to where CDC data is being pushed.
+* **updateFrequencySecs** : How often the pipeline will issue updates to the BigQuery replica table.
+* **useSingleTopic** : Set this to true if you have configured your Debezium connector to publish all table updates to a single topic. Defaults to: false.
+* **useStorageWriteApi** : If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). The default value is false. When using Storage Write API in exactly-once mode, you must set the following parameters: "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API". If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter to true, then you don't need to set the number of streams or the triggering frequency.
+* **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
+* **numStorageWriteApiStreams** : Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0.
+* **storageWriteApiTriggeringFrequencySec** : Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values.
 
 
 

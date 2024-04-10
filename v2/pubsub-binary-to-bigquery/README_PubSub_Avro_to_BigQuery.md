@@ -17,21 +17,21 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **schemaPath** (Cloud Storage path to the Avro schema file): Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.
-* **inputSubscription** (Pub/Sub input subscription): Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
-* **outputTopic** (Output Pub/Sub topic): The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
+* **schemaPath** : Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.
+* **inputSubscription** : Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
+* **outputTableSpec** : BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
+* **outputTopic** : The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
 
-### Optional Parameters
+### Optional parameters
 
-* **writeDisposition** (Write Disposition to use for BigQuery): BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
-* **createDisposition** (Create Disposition to use for BigQuery): BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED.
-* **useStorageWriteApi** (Use BigQuery Storage Write API): If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). The default value is false. When using Storage Write API in exactly-once mode, you must set the following parameters: "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API". If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter to true, then you don't need to set the number of streams or the triggering frequency.
-* **useStorageWriteApiAtLeastOnce** (Use at at-least-once semantics in BigQuery Storage Write API): This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-* **numStorageWriteApiStreams** (Number of streams for BigQuery Storage Write API): Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0.
-* **storageWriteApiTriggeringFrequencySec** (Triggering frequency in seconds for BigQuery Storage Write API): Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values.
+* **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
+* **writeDisposition** : BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
+* **createDisposition** : BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED.
+* **useStorageWriteApi** : If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). The default value is false. When using Storage Write API in exactly-once mode, you must set the following parameters: "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API". If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter to true, then you don't need to set the number of streams or the triggering frequency.
+* **numStorageWriteApiStreams** : Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0.
+* **storageWriteApiTriggeringFrequencySec** : Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values.
 
 
 
@@ -116,10 +116,10 @@ export OUTPUT_TABLE_SPEC=<outputTableSpec>
 export OUTPUT_TOPIC=<outputTopic>
 
 ### Optional
+export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export WRITE_DISPOSITION=WRITE_APPEND
 export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export USE_STORAGE_WRITE_API=false
-export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export NUM_STORAGE_WRITE_API_STREAMS=0
 export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=<storageWriteApiTriggeringFrequencySec>
 
@@ -128,13 +128,13 @@ gcloud dataflow flex-template run "pubsub-avro-to-bigquery-job" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "schemaPath=$SCHEMA_PATH" \
+  --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
   --parameters "inputSubscription=$INPUT_SUBSCRIPTION" \
   --parameters "outputTableSpec=$OUTPUT_TABLE_SPEC" \
   --parameters "writeDisposition=$WRITE_DISPOSITION" \
   --parameters "createDisposition=$CREATE_DISPOSITION" \
   --parameters "outputTopic=$OUTPUT_TOPIC" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
-  --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
   --parameters "numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS" \
   --parameters "storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC"
 ```
@@ -161,10 +161,10 @@ export OUTPUT_TABLE_SPEC=<outputTableSpec>
 export OUTPUT_TOPIC=<outputTopic>
 
 ### Optional
+export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export WRITE_DISPOSITION=WRITE_APPEND
 export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export USE_STORAGE_WRITE_API=false
-export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export NUM_STORAGE_WRITE_API_STREAMS=0
 export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=<storageWriteApiTriggeringFrequencySec>
 
@@ -175,7 +175,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-avro-to-bigquery-job" \
 -DtemplateName="PubSub_Avro_to_BigQuery" \
--Dparameters="schemaPath=$SCHEMA_PATH,inputSubscription=$INPUT_SUBSCRIPTION,outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,createDisposition=$CREATE_DISPOSITION,outputTopic=$OUTPUT_TOPIC,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
+-Dparameters="schemaPath=$SCHEMA_PATH,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,inputSubscription=$INPUT_SUBSCRIPTION,outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,createDisposition=$CREATE_DISPOSITION,outputTopic=$OUTPUT_TOPIC,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
 -f v2/pubsub-binary-to-bigquery
 ```
 
@@ -224,10 +224,10 @@ resource "google_dataflow_flex_template_job" "pubsub_avro_to_bigquery" {
     inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
     outputTableSpec = "<outputTableSpec>"
     outputTopic = "projects/your-project-id/topics/your-topic-name"
+    # useStorageWriteApiAtLeastOnce = "false"
     # writeDisposition = "WRITE_APPEND"
     # createDisposition = "CREATE_IF_NEEDED"
     # useStorageWriteApi = "false"
-    # useStorageWriteApiAtLeastOnce = "false"
     # numStorageWriteApiStreams = "0"
     # storageWriteApiTriggeringFrequencySec = "<storageWriteApiTriggeringFrequencySec>"
   }

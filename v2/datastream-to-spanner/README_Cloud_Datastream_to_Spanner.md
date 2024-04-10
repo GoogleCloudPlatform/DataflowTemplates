@@ -40,35 +40,35 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **inputFilePattern** (File location for Datastream file output in Cloud Storage.): This is the file location for Datastream file output in Cloud Storage. Normally, this will be gs://${BUCKET}/${ROOT_PATH}/.
-* **instanceId** (Cloud Spanner Instance Id.): This is the name of the Cloud Spanner instance where the changes are replicated.
-* **databaseId** (Cloud Spanner Database Id.): This is the name of the Cloud Spanner database where the changes are replicated.
-* **streamName** (Datastream stream name.): This is the Datastream stream name used to get information.
+* **inputFilePattern** : This is the file location for Datastream file output in Cloud Storage. Normally, this will be gs://${BUCKET}/${ROOT_PATH}/.
+* **instanceId** : This is the name of the Cloud Spanner instance where the changes are replicated.
+* **databaseId** : This is the name of the Cloud Spanner database where the changes are replicated.
+* **streamName** : This is the Datastream stream name used to get information.
 
-### Optional Parameters
+### Optional parameters
 
-* **inputFileFormat** (Datastream output file format (avro/json).): This is the format of the output file produced by Datastream. By default this will be avro.
-* **sessionFilePath** (Session File Path in Cloud Storage): Session file path in Cloud Storage that contains mapping information from HarbourBridge.
-* **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
-* **spannerHost** (The Cloud Spanner Endpoint to call): The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
-* **gcsPubSubSubscription** (The Pub/Sub subscription being used in a Cloud Storage notification policy.): The Pub/Sub subscription being used in a Cloud Storage notification policy. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>.
-* **shadowTablePrefix** (Cloud Spanner shadow table prefix.): The prefix used for the shadow table. Defaults to: shadow_.
-* **shouldCreateShadowTables** (If true, create shadow tables in Cloud Spanner.): This flag indicates whether shadow tables must be created in Cloud Spanner database. Defaults to: true.
-* **rfcStartDateTime** (The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339).): The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z.
-* **fileReadConcurrency** (File read concurrency): The number of concurrent DataStream files to read. Defaults to: 30.
-* **deadLetterQueueDirectory** (Dead letter queue directory.): This is the file path to store the deadletter queue output. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
-* **dlqRetryMinutes** (Dead letter queue retry minutes): The number of minutes between dead letter queue retries. Defaults to 10.
-* **dlqMaxRetryCount** (Dead letter queue maximum retry count): The max number of times temporary errors can be retried through DLQ. Defaults to 500.
-* **dataStreamRootUrl** (Datastream API Root URL (only required for testing)): Datastream API Root URL. Defaults to: https://datastream.googleapis.com/.
-* **datastreamSourceType** (Datastream source type (only required for testing)): This is the type of source database that Datastream connects to. Example - mysql/oracle. Need to be set when testing without an actual running Datastream.
-* **roundJsonDecimals** (If true, rounds the decimal values in json columns to a number that can be stored without loss of precision.): This flag if set, rounds the decimal values in json columns to a number that can be stored without loss of precision. Defaults to: false.
-* **runMode** (Run mode - currently supported are : regular or retryDLQ): This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
-* **transformationContextFilePath** (Transformation context file path in cloud storage): Transformation context file path in cloud storage used to populate data used in transformations performed during migrations   Eg: The shard id to db name to identify the db from which a row was migrated.
-* **directoryWatchDurationInMinutes** (Directory watch duration in minutes. Default: 10 minutes): The Duration for which the pipeline should keep polling a directory in GCS. Datastreamoutput files are arranged in a directory structure which depicts the timestamp of the event grouped by minutes. This parameter should be approximately equal tomaximum delay which could occur between event occurring in source database and the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes. Defaults to: 10.
-* **spannerPriority** (Priority for Spanner RPC invocations): The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]. Defaults to HIGH.
-* **dlqGcsPubSubSubscription** (The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode.): The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored.
+* **inputFileFormat** : This is the format of the output file produced by Datastream. By default this will be avro.
+* **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from HarbourBridge.
+* **projectId** : This is the name of the Cloud Spanner project.
+* **spannerHost** : The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
+* **gcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>.
+* **shadowTablePrefix** : The prefix used for the shadow table. Defaults to: shadow_.
+* **shouldCreateShadowTables** : This flag indicates whether shadow tables must be created in Cloud Spanner database. Defaults to: true.
+* **rfcStartDateTime** : The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z.
+* **fileReadConcurrency** : The number of concurrent DataStream files to read. Defaults to: 30.
+* **deadLetterQueueDirectory** : This is the file path to store the deadletter queue output. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
+* **dlqRetryMinutes** : The number of minutes between dead letter queue retries. Defaults to 10.
+* **dlqMaxRetryCount** : The max number of times temporary errors can be retried through DLQ. Defaults to 500.
+* **dataStreamRootUrl** : Datastream API Root URL. Defaults to: https://datastream.googleapis.com/.
+* **datastreamSourceType** : This is the type of source database that Datastream connects to. Example - mysql/oracle. Need to be set when testing without an actual running Datastream.
+* **roundJsonDecimals** : This flag if set, rounds the decimal values in json columns to a number that can be stored without loss of precision. Defaults to: false.
+* **runMode** : This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
+* **transformationContextFilePath** : Transformation context file path in cloud storage used to populate data used in transformations performed during migrations   Eg: The shard id to db name to identify the db from which a row was migrated.
+* **directoryWatchDurationInMinutes** : The Duration for which the pipeline should keep polling a directory in GCS. Datastreamoutput files are arranged in a directory structure which depicts the timestamp of the event grouped by minutes. This parameter should be approximately equal tomaximum delay which could occur between event occurring in source database and the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes. Defaults to: 10.
+* **spannerPriority** : The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]. Defaults to HIGH.
+* **dlqGcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored.
 
 
 

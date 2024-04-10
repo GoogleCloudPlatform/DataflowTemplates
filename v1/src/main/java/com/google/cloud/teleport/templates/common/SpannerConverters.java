@@ -623,6 +623,8 @@ public class SpannerConverters {
         return currentRow.getBooleanList(columnName);
       case INT64:
         return currentRow.getLongList(columnName);
+      case FLOAT32:
+        return currentRow.getFloatList(columnName);
       case FLOAT64:
         return currentRow.getDoubleList(columnName);
       case STRING:
@@ -682,6 +684,9 @@ public class SpannerConverters {
       case INT64:
         return nullSafeColumnParser(
             (currentRow, columnName) -> Long.toString(currentRow.getLong(columnName)));
+      case FLOAT32:
+        return nullSafeColumnParser(
+            ((currentRow, columnName) -> Float.toString(currentRow.getFloat(columnName))));
       case FLOAT64:
         return nullSafeColumnParser(
             ((currentRow, columnName) -> Double.toString(currentRow.getDouble(columnName))));
@@ -721,6 +726,8 @@ public class SpannerConverters {
         return GSON.toJson(currentRow.getBooleanArray(columnName));
       case INT64:
         return GSON.toJson(currentRow.getLongArray(columnName));
+      case FLOAT32:
+        return GSON.toJson(currentRow.getFloatArray(columnName));
       case FLOAT64:
         return GSON.toJson(currentRow.getDoubleArray(columnName));
       case STRING:

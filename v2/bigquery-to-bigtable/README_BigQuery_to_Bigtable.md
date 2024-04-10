@@ -14,28 +14,28 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **readIdColumn** (Unique identifier column): Name of the BigQuery column storing the unique identifier of the row.
-* **bigtableWriteInstanceId** (Bigtable Instance ID): The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableWriteTableId** (Bigtable Table ID): The ID of the Cloud Bigtable table to write.
-* **bigtableWriteColumnFamily** (The Bigtable Column Family): This specifies the column family to write data into.
+* **readIdColumn** : Name of the BigQuery column storing the unique identifier of the row.
+* **bigtableWriteInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
+* **bigtableWriteTableId** : The ID of the Cloud Bigtable table to write.
+* **bigtableWriteColumnFamily** : This specifies the column family to write data into.
 
-### Optional Parameters
+### Optional parameters
 
-* **inputTableSpec** (BigQuery source table): BigQuery source table spec. (Example: bigquery-project:dataset.input_table).
-* **outputDeadletterTable** (The dead-letter table name to output failed messages to BigQuery): Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. (Example: your-project-id:your-dataset.your-table-name).
-* **query** (Input SQL query.): Query to be executed on the source to extract the data. (Example: select * from sampledb.sample_table).
-* **useLegacySql** (Set to true to use legacy SQL): Set to true to use legacy SQL (only applicable if supplying query). Defaults to: false.
-* **queryLocation** (BigQuery geographic location where the query job will be executed.): Needed when reading from an authorized view without underlying table's permission. (Example: US).
-* **bigtableRpcAttemptTimeoutMs** (The timeout for an RPC attempt in milliseconds): This sets the timeout for an RPC attempt in milliseconds.
-* **bigtableRpcTimeoutMs** (The total timeout for an RPC operation in milliseconds): This sets the total timeout for an RPC operation in milliseconds.
-* **bigtableAdditionalRetryCodes** (The additional retry codes): This sets the additional retry codes, separated by ',' (Example: RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED).
-* **bigtableWriteAppProfile** (Bigtable App Profile): Bigtable App Profile to use for the export. The default for this parameter is the Bigtable instance's default app profile.
-* **bigtableWriteProjectId** (Bigtable Project ID): The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to.
-* **bigtableBulkWriteLatencyTargetMs** (Bigtable's latency target in milliseconds for latency-based throttling): This enables latency-based throttling and specifies the target latency.
-* **bigtableBulkWriteMaxRowKeyCount** (The max number of row keys in a Bigtable batch write operation): This sets the max number of row keys in a Bigtable batch write operation.
-* **bigtableBulkWriteMaxRequestSizeBytes** (The max amount of bytes in a Bigtable batch write operation): This sets the max amount of bytes in a Bigtable batch write operation.
+* **inputTableSpec** : BigQuery source table spec. (Example: bigquery-project:dataset.input_table).
+* **outputDeadletterTable** : Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. (Example: your-project-id:your-dataset.your-table-name).
+* **query** : Query to be executed on the source to extract the data. (Example: select * from sampledb.sample_table).
+* **useLegacySql** : Set to true to use legacy SQL (only applicable if supplying query). Defaults to: false.
+* **queryLocation** : Needed when reading from an authorized view without underlying table's permission. (Example: US).
+* **bigtableRpcAttemptTimeoutMs** : This sets the timeout for an RPC attempt in milliseconds.
+* **bigtableRpcTimeoutMs** : This sets the total timeout for an RPC operation in milliseconds.
+* **bigtableAdditionalRetryCodes** : This sets the additional retry codes, separated by ',' (Example: RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED).
+* **bigtableWriteAppProfile** : Bigtable App Profile to use for the export. The default for this parameter is the Bigtable instance's default app profile.
+* **bigtableWriteProjectId** : The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to.
+* **bigtableBulkWriteLatencyTargetMs** : This enables latency-based throttling and specifies the target latency.
+* **bigtableBulkWriteMaxRowKeyCount** : This sets the max number of row keys in a Bigtable batch write operation.
+* **bigtableBulkWriteMaxRequestSizeBytes** : This sets the max amount of bytes in a Bigtable batch write operation.
 
 
 

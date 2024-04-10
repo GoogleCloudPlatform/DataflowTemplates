@@ -126,9 +126,12 @@ public class TemplateDefinitions {
     metadata.setHidden(templateAnnotation.hidden());
     metadata.setPreview(templateAnnotation.preview());
     metadata.setRequirements(Arrays.asList(templateAnnotation.requirements()));
+
     metadata.setStreaming(templateAnnotation.streaming());
     metadata.setSupportsAtLeastOnce(templateAnnotation.supportsAtLeastOnce());
     metadata.setSupportsExactlyOnce(templateAnnotation.supportsExactlyOnce());
+
+    metadata.setDefaultStreamingMode(templateAnnotation.defaultStreamingMode().toString());
 
     metadata.setAdditionalDocumentation(
         Arrays.stream(templateAnnotation.additionalDocumentation())

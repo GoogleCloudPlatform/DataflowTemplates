@@ -16,25 +16,25 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **bigtableProjectId** (Project ID): The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from.
-* **bigtableInstanceId** (Instance ID): The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableTableId** (Table ID): The ID of the Cloud Bigtable table to read.
-* **filenamePrefix** (JSON file prefix): The prefix of the JSON file name. For example, "table1-". Defaults to: part.
-* **idColumn** (ID column): The fully qualified column name where the ID is stored. In the format cf:col or _key.
-* **embeddingColumn** (Embedding column): The fully qualified column name where the embeddings are stored. In the format cf:col or _key.
+* **bigtableProjectId** : The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from.
+* **bigtableInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
+* **bigtableTableId** : The ID of the Cloud Bigtable table to read.
+* **filenamePrefix** : The prefix of the JSON file name. For example, "table1-". Defaults to: part.
+* **idColumn** : The fully qualified column name where the ID is stored. In the format cf:col or _key.
+* **embeddingColumn** : The fully qualified column name where the embeddings are stored. In the format cf:col or _key.
 
-### Optional Parameters
+### Optional parameters
 
-* **outputDirectory** (Cloud Storage directory for storing JSON files): The Cloud Storage path where the output JSON files can be stored. (Example: gs://your-bucket/your-path/).
-* **crowdingTagColumn** (Crowding tag column): The fully qualified column name where the crowding tag is stored. In the format cf:col or _key.
-* **embeddingByteSize** (The byte size of the embeddings array. Can be 4 or 8.): The byte size of each entry in the embeddings array. Use 4 for Float, and 8 for Double. Defaults to: 4.
-* **allowRestrictsMappings** (Allow restricts mappings): The comma separated fully qualified column names of the columns that should be used as the `allow` restricts, with their alias. In the format cf:col->alias.
-* **denyRestrictsMappings** (Deny restricts mappings): The comma separated fully qualified column names of the columns that should be used as the `deny` restricts, with their alias. In the format cf:col->alias.
-* **intNumericRestrictsMappings** (Integer numeric restricts mappings): The comma separated fully qualified column names of the columns that should be used as integer `numeric_restricts`, with their alias. In the format cf:col->alias.
-* **floatNumericRestrictsMappings** (Float numeric restricts mappings): The comma separated fully qualified column names of the columns that should be used as float (4 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.
-* **doubleNumericRestrictsMappings** (Double numeric restricts mappings): The comma separated fully qualified column names of the columns that should be used as double (8 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.
+* **outputDirectory** : The Cloud Storage path where the output JSON files can be stored. (Example: gs://your-bucket/your-path/).
+* **crowdingTagColumn** : The fully qualified column name where the crowding tag is stored. In the format cf:col or _key.
+* **embeddingByteSize** : The byte size of each entry in the embeddings array. Use 4 for Float, and 8 for Double. Defaults to: 4.
+* **allowRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as the `allow` restricts, with their alias. In the format cf:col->alias.
+* **denyRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as the `deny` restricts, with their alias. In the format cf:col->alias.
+* **intNumericRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as integer `numeric_restricts`, with their alias. In the format cf:col->alias.
+* **floatNumericRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as float (4 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.
+* **doubleNumericRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as double (8 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.
 
 
 
