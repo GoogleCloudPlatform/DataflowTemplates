@@ -46,8 +46,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The {@link OrderedSpannerChangeStreamsToKV} class is a {@link PTransform} that takes in {@link
- * PCollection} of DataChangeRecords. The transform returns KV of partition bucket index 
- * and ordered list of DataChangeRecords (ordered by commit timestamp within partition bucket)
+ * PCollection} of DataChangeRecords. The transform returns KV of partition bucket index and ordered
+ * list of DataChangeRecords (ordered by commit timestamp within partition bucket)
  */
 @AutoValue
 public abstract class OrderedSpannerChangeStreamsToKV
@@ -109,7 +109,8 @@ public abstract class OrderedSpannerChangeStreamsToKV
     private KeyByIdFn(int numberOfBuckets) {
       this.numberOfBuckets = numberOfBuckets;
     }
-    // numberOfBuckets is configured by the user (via orderingPartitionBucketCount parameter) 
+
+    // numberOfBuckets is configured by the user (via orderingPartitionBucketCount parameter)
     // to match their key cardinality
     // Here, we are choosing to hash the partition (Spanner primary keys) to a bucket index, in
     // order to have a deterministic number

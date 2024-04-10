@@ -143,8 +143,10 @@ public interface OrderedSpannerChangeStreamsToPubSubOptions extends DataflowPipe
   @TemplateParameter.Text(
       order = 11,
       optional = true,
-      description = "Partition / Grouping key within which records will ordered by commit timestamp",
-      helpText = "Same key will be used as ordering key for pub/sub sink. Only PRIMARY_KEY supported as of now",
+      description =
+          "Partition / Grouping key within which records will ordered by commit timestamp",
+      helpText =
+          "Same key will be used as ordering key for pub/sub sink. Only PRIMARY_KEY supported as of now",
       example = "PRIMARY_KEY")
   @Default.String("PRIMARY_KEY")
   String getOrderingPartitionKey();
@@ -155,25 +157,27 @@ public interface OrderedSpannerChangeStreamsToPubSubOptions extends DataflowPipe
       order = 12,
       optional = true,
       description = "Maximum number of partition buckets to create for ordering",
-      helpText = "This values is used to have a deterministic number of states and timers for performance purposes." 
-                    + " Note that having too many buckets might have undesirable effects if it results in a"
-                    + " low number of records per bucket. On the other hand, having too few buckets might"
-                    + " also be problematic, since many records will be contained within them. Default value is 1000")
+      helpText =
+          "This values is used to have a deterministic number of states and timers for performance purposes."
+              + " Note that having too many buckets might have undesirable effects if it results in a"
+              + " low number of records per bucket. On the other hand, having too few buckets might"
+              + " also be problematic, since many records will be contained within them. Default value is 1000")
   @Default.Integer(1000)
   Integer getOrderingPartitionBucketCount();
 
   void setOrderingPartitionBucketCount(Integer orderingPartitionBucketCount);
-  
+
   @TemplateParameter.Integer(
       order = 13,
       optional = true,
-      description = "Duration in seconds between calls to stateful timer processing which sorts and flushes the buffer.",
+      description =
+          "Duration in seconds between calls to stateful timer processing which sorts and flushes the buffer.",
       helpText =
           "This interval is used to set the expiration time of the timer to time T"
-          + "in the future (commitTimestamp + bufferTimerInterval)."
-          + " When the Dataflow watermark passes time T,"
-          + " all records will flushed from the buffer with timestamp less than T,"
-          + " orders these records by commit timestamp, and outputs a key-value pair where.")
+              + "in the future (commitTimestamp + bufferTimerInterval)."
+              + " When the Dataflow watermark passes time T,"
+              + " all records will flushed from the buffer with timestamp less than T,"
+              + " orders these records by commit timestamp, and outputs a key-value pair where.")
   @Default.Integer(6)
   Integer getBufferTimerInterval();
 

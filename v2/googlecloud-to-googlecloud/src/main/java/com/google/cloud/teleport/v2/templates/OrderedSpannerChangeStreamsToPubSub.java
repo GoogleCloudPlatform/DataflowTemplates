@@ -57,12 +57,10 @@ import org.slf4j.LoggerFactory;
           + " pipeline throws an exception, and the pipeline gets stuck as it continuously tries to"
           + " make a connection.\n",
       "If the necessary Pub/Sub topic already exists, you can output data to that topic.",
-      "Learn more about <a href=\"https://cloud.google.com/spanner/docs/change-streams\">change"
-          + " streams</a>, <a"
-          + " href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow\">how to"
-          + " build change streams Dataflow pipelines</a>, and <a"
-          + " href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best"
-          + " practices</a>."
+      "Learn more about <a href=\"https://cloud.google.com/spanner/docs/change-streams\">change streams</a>,"
+          + " <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow\">how to"
+          + " build change streams Dataflow pipelines</a>, and"
+          + " <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best practices</a>."
     },
     optionsClass = OrderedSpannerChangeStreamsToPubSubOptions.class,
     flexContainerName = "spanner-changestreams-to-pubsub",
