@@ -15,7 +15,11 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.transforms;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO;
