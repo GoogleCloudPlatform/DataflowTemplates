@@ -140,14 +140,14 @@ public interface OrderedSpannerChangeStreamsToPubSubOptions extends DataflowPipe
 
   void setEndTimestamp(String startTimestamp);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Enum(
       order = 11,
+      enumOptions = {@TemplateEnumOption("PRIMARY_KEY")},
       optional = true,
       description =
-          "Partition / Grouping key within which records will ordered by commit timestamp",
+          "Partition/Grouping key within which records will be ordered by commit timestamp",
       helpText =
-          "Same key will be used as ordering key for pub/sub sink. Only PRIMARY_KEY supported as of now",
-      example = "PRIMARY_KEY")
+          "Same key will also be used as ordering key for pub/sub publisher. Only PRIMARY_KEY supported as of now")
   @Default.String("PRIMARY_KEY")
   String getOrderingPartitionKey();
 
@@ -161,7 +161,8 @@ public interface OrderedSpannerChangeStreamsToPubSubOptions extends DataflowPipe
           "This values is used to have a deterministic number of states and timers for performance purposes."
               + " Note that having too many buckets might have undesirable effects if it results in a"
               + " low number of records per bucket. On the other hand, having too few buckets might"
-              + " also be problematic, since many records will be contained within them. Default value is 1000")
+              + " also be problematic, since many records will be contained within them."
+              + " Default value is 1000")
   @Default.Integer(1000)
   Integer getOrderingPartitionBucketCount();
 
@@ -177,7 +178,8 @@ public interface OrderedSpannerChangeStreamsToPubSubOptions extends DataflowPipe
               + "in the future (commitTimestamp + bufferTimerInterval)."
               + " When the Dataflow watermark passes time T,"
               + " all records will flushed from the buffer with timestamp less than T,"
-              + " orders these records by commit timestamp, and outputs a key-value pair where.")
+              + " orders these records by commit timestamp, and outputs a key-value pair where."
+              + " Default value is 6 (seconds)")
   @Default.Integer(6)
   Integer getBufferTimerInterval();
 
@@ -194,12 +196,12 @@ public interface OrderedSpannerChangeStreamsToPubSubOptions extends DataflowPipe
 
   void setSpannerHost(String value);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Enum(
       order = 15,
+      enumOptions = {@TemplateEnumOption("JSON")},
       optional = true,
       description = "Output data format",
-      helpText =
-          "The format of the output to Pub/Sub. Allowed formats are JSON, AVRO. Default is JSON.")
+      helpText = "The format of the output to Pub/Sub. Only JSON supported as of now")
   @Default.String("JSON")
   String getOutputDataFormat();
 
@@ -230,8 +232,9 @@ public interface OrderedSpannerChangeStreamsToPubSubOptions extends DataflowPipe
 
   @TemplateParameter.Text(
       order = 18,
-      description = "The output Pub/Sub topic",
-      helpText = "The Pub/Sub topic to publish PubsubMessage.")
+      description = "The output Pub/Sub Topic ID",
+      helpText = "The Pub/Sub Topic ID to publish PubsubMessage.",
+      example = "spanner-change-records-topic")
   @Validation.Required
   String getPubsubTopic();
 
@@ -241,12 +244,11 @@ public interface OrderedSpannerChangeStreamsToPubSubOptions extends DataflowPipe
       order = 19,
       optional = true,
       description = "The Pub/Sub regional/locational endpoint",
-      helpText = "Check list of endpoints at https://cloud.google.com/pubsub/docs/reference/service_apis_overview#pubsub_endpoints"
-                    + " Message ordering is expected only for messages published in the same region."
-                    + " Hence, ensure your publisher clients use the locational service endpoints to publish messages to the same region for the same ordering key."
-                    + " Default is set to global endpoint (pubsub.googleapis.com:443)."
-                    + " Requests to the global endpoint originating from within Google Cloud are routed to the Pub/Sub in the region where they originate.",
-      example = "us-central1-pubsub.googleapis.com:443")
+      helpText =
+          "Check list of endpoints at https://cloud.google.com/pubsub/docs/reference/service_apis_overview#pubsub_endpoints (example: us-central1-pubsub.googleapis.com:443)\n"
+              + " Message ordering is ensured for messages published in the same region."
+              + " Publishers must use the locational service endpoints to publish messages to the same region for the same order key.\n"
+              + " By default, the global endpoint (pubsub.googleapis.com:443) is used. Requests to the global endpoint that originate from within Google Cloud are routed to the Pub/Sub service in the region of origin.")
   @Default.String("pubsub.googleapis.com:443")
   String getPubsubRegionalEndpoint();
 

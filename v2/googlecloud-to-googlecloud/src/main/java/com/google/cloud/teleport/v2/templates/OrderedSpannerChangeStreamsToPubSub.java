@@ -35,9 +35,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link OrderedSpannerChangeStreamsToPubSub} pipeline streams change stream record(s) and
- * stores to pubsub topic in user specified format. The sink data can be stored in a JSON Text or
- * Avro data format.
+ * The {@link OrderedSpannerChangeStreamsToPubSub} pipeline streams ordered (grouped by bucketized
+ * partition key by and ordered by commit timestamp) change stream record(s) and stores to pubsub
+ * topic in user specified format. The sink data can be stored in a JSON Text.
+ *
+ * <p>Note: This template doesn't ensure ordering within a transaction.
  *
  * <p>Check out <a
  * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Ordered_Spanner_Change_Streams_to_PubSub.md">README</a>

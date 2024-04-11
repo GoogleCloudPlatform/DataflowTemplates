@@ -53,7 +53,11 @@ public class PublishOrderedKVToPubSubDoFn extends DoFn<KV<String, Iterable<byte[
   public void setup() {
     try {
       final TopicName projectTopicName = TopicName.of(projectId, topicName);
-      publisher = Publisher.newBuilder(projectTopicName).setEndpoint(endpoint).setEnableMessageOrdering(true).build();
+      publisher =
+          Publisher.newBuilder(projectTopicName)
+              .setEndpoint(endpoint)
+              .setEnableMessageOrdering(true)
+              .build();
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
