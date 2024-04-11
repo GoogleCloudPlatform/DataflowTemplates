@@ -43,9 +43,6 @@ public abstract class PublishOrderedDataChangeRecordsKVToPubSub
   private static final Logger LOG =
       LoggerFactory.getLogger(PublishOrderedDataChangeRecordsKVToPubSub.class);
 
-  private static final String NATIVE_CLIENT = "native_client";
-  private static final String PUBSUBIO = "pubsubio";
-
   public static WriteToPubSubBuilder newBuilder() {
     return new AutoValue_PublishOrderedDataChangeRecordsKVToPubSub.Builder();
   }
@@ -53,8 +50,6 @@ public abstract class PublishOrderedDataChangeRecordsKVToPubSub
   protected abstract String outputDataFormat();
 
   protected abstract String projectId();
-
-  protected abstract String pubsubAPI();
 
   protected abstract String pubsubTopicName();
 
@@ -104,19 +99,13 @@ public abstract class PublishOrderedDataChangeRecordsKVToPubSub
 
   private void sendToPubSub(PCollection<KV<String, Iterable<byte[]>>> encodedRecordsKV) {
     String pubsubTopicName = pubsubTopicName();
-    String pubsubAPI = pubsubAPI();
     String projectId = projectId();
     String pubsubEndpoint = pubsubEndpoint();
     String outputPubsubTopic = "projects/" + projectId + "/topics/" + pubsubTopicName;
 
-    if (pubsubAPI.equals(NATIVE_CLIENT)) {
-      final PublishOrderedKVToPubSubDoFn publishOrderedKVToPubSubDoFn =
-          new PublishOrderedKVToPubSubDoFn(projectId, pubsubTopicName, pubsubEndpoint);
-      encodedRecordsKV.apply(ParDo.of(publishOrderedKVToPubSubDoFn));
-    } else {
-      final String apiErrorMessage = "Invalid api:" + pubsubAPI + ". Supported apis: native_client";
-      throw new IllegalArgumentException(apiErrorMessage);
-    }
+    final PublishOrderedKVToPubSubDoFn publishOrderedKVToPubSubDoFn =
+        new PublishOrderedKVToPubSubDoFn(projectId, pubsubTopicName, pubsubEndpoint);
+    encodedRecordsKV.apply(ParDo.of(publishOrderedKVToPubSubDoFn));
   }
 
   /** Builder for {@link PublishOrderedDataChangeRecordsKVToPubSub}. */
@@ -126,8 +115,6 @@ public abstract class PublishOrderedDataChangeRecordsKVToPubSub
     public abstract WriteToPubSubBuilder setOutputDataFormat(String value);
 
     public abstract WriteToPubSubBuilder setProjectId(String value);
-
-    public abstract WriteToPubSubBuilder setPubsubAPI(String value);
 
     public abstract WriteToPubSubBuilder setPubsubTopicName(String value);
 

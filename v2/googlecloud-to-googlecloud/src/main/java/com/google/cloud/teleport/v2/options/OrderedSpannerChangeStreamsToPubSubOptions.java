@@ -207,19 +207,8 @@ public interface OrderedSpannerChangeStreamsToPubSubOptions extends DataflowPipe
 
   void setOutputDataFormat(String outputDataFormat);
 
-  @TemplateParameter.Text(
-      order = 16,
-      optional = true,
-      description = "Pub/Sub API",
-      helpText =
-          "Pub/Sub API used to implement the pipeline. Only native_client API is supported as of now.")
-  @Default.String("native_client")
-  String getPubsubAPI();
-
-  void setPubsubAPI(String pubsubAPI);
-
   @TemplateParameter.ProjectId(
-      order = 17,
+      order = 16,
       optional = true,
       description = "Pub/Sub Project ID",
       helpText =
@@ -231,7 +220,7 @@ public interface OrderedSpannerChangeStreamsToPubSubOptions extends DataflowPipe
   void setPubsubProjectId(String pubsubProjectId);
 
   @TemplateParameter.Text(
-      order = 18,
+      order = 17,
       description = "The output Pub/Sub Topic ID",
       helpText = "The Pub/Sub Topic ID to publish PubsubMessage.",
       example = "spanner-change-records-topic")
@@ -241,7 +230,7 @@ public interface OrderedSpannerChangeStreamsToPubSubOptions extends DataflowPipe
   void setPubsubTopic(String pubsubTopic);
 
   @TemplateParameter.Text(
-      order = 19,
+      order = 18,
       optional = true,
       description = "The Pub/Sub regional/locational endpoint",
       helpText =
@@ -255,7 +244,7 @@ public interface OrderedSpannerChangeStreamsToPubSubOptions extends DataflowPipe
   void setPubsubRegionalEndpoint(String pubsubRegionalEndpoint);
 
   @TemplateParameter.Enum(
-      order = 20,
+      order = 19,
       enumOptions = {
         @TemplateEnumOption("LOW"),
         @TemplateEnumOption("MEDIUM"),

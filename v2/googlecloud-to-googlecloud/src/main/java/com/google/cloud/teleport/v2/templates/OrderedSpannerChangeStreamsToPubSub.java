@@ -123,7 +123,6 @@ public class OrderedSpannerChangeStreamsToPubSub {
     String changeStreamName = options.getSpannerChangeStreamName();
     String pubsubProjectId = getPubsubProjectId(options);
     String pubsubTopicName = options.getPubsubTopic();
-    String pubsubAPI = options.getPubsubAPI();
 
     // Retrieve and parse the start / end timestamps.
     Timestamp startTimestamp =
@@ -187,7 +186,6 @@ public class OrderedSpannerChangeStreamsToPubSub {
             PublishOrderedDataChangeRecordsKVToPubSub.newBuilder()
                 .setOutputDataFormat(options.getOutputDataFormat())
                 .setProjectId(pubsubProjectId)
-                .setPubsubAPI(pubsubAPI)
                 .setPubsubTopicName(pubsubTopicName)
                 .setPubsubEndpoint(options.getPubsubRegionalEndpoint())
                 .build());
