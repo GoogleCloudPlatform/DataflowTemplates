@@ -36,6 +36,9 @@
   <properties>
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
+    <!-- remove the pinned version below once TODO(https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/1426)
+         resolved-->
+    <beam.version>2.54.0</beam.version>
   </properties>
 
   <dependencies>
