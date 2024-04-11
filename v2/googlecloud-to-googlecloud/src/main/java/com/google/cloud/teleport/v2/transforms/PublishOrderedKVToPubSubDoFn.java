@@ -30,9 +30,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link PublishOrderedKVToPubSubDoFn} class is a {@link DoFn} that takes in KV of ordering key
- * and bytes payloads and publish each payload to the Pub/Sub topic using the native Pub/Sub client
- * library with orderingKey.
+ * The {@link PublishOrderedKVToPubSubDoFn} class is a {@link DoFn} that takes in KV (where Key is
+ * ordering key and Value is List of bytes payload) and publish each payload serially in order of
+ * thier index in list to the Pub/Sub topic using the native Pub/Sub client library with
+ * orderingKey.
  */
 public class PublishOrderedKVToPubSubDoFn extends DoFn<KV<String, Iterable<byte[]>>, String> {
   /** Logger for class. */
