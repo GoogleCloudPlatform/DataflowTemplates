@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.auto.value.AutoValue;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -240,8 +241,7 @@ public abstract class SpannerChangeStreamsToOrderedKV
     }
   }
 
-  private static class DataChangeRecordComparator
-      implements java.util.Comparator<DataChangeRecord> {
+  private static class DataChangeRecordComparator implements Comparator<DataChangeRecord> {
     @Override
     public int compare(DataChangeRecord r1, DataChangeRecord r2) {
       return r1.getCommitTimestamp().compareTo(r2.getCommitTimestamp());
