@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
     description = {
       "The Cloud Spanner ordered change streams to the Pub/Sub template is a streaming pipeline that"
           + " streams Cloud Spanner data change records, orders them within given partition key by commit timestamp"
-          + " and writes them into Pun/Sub topic using Dataflow Runner V2.\n",
+          + " and writes them into Pub/Sub topic using Dataflow Runner V2.\n",
       "To output your data to a new Pub/Sub topic, you need to first create the topic. After"
           + " creation, Pub/Sub automatically generates and attaches a subscription to the new"
           + " topic. If you try to output data to a Pub/Sub topic that doesn't exist, the dataflow"
