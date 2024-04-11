@@ -29,24 +29,24 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **inputSubscription** (Pub/Sub input subscription): Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **url** (Datadog Logs API URL.): Datadog Logs API URL. This should be routable from the VPC in which the pipeline runs. See: https://docs.datadoghq.com/api/latest/logs/#send-logs (Example: https://http-intake.logs.datadoghq.com).
-* **outputDeadletterTopic** (Output deadletter Pub/Sub topic): The Pub/Sub topic to publish deadletter records to. The name should be in the format of `projects/your-project-id/topics/your-topic-name`.
+* **inputSubscription** : Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
+* **url** : Datadog Logs API URL. This should be routable from the VPC in which the pipeline runs. See: https://docs.datadoghq.com/api/latest/logs/#send-logs (Example: https://http-intake.logs.datadoghq.com).
+* **outputDeadletterTopic** : The Pub/Sub topic to publish deadletter records to. The name should be in the format of `projects/your-project-id/topics/your-topic-name`.
 
-### Optional Parameters
+### Optional parameters
 
-* **apiKey** (Logs API key.): Datadog Logs API key. Must be provided if the apiKeySource is set to PLAINTEXT or KMS. See: https://docs.datadoghq.com/account_management/api-app-keys.
-* **batchCount** (Batch size for sending multiple events to Datadog Logs API.): Batch size for sending multiple events to Datadog Logs API. Min is 10. Max is 1000. Defaults to 100.
-* **parallelism** (Maximum number of parallel requests.): Maximum number of parallel requests. Default 1 (no parallelism).
-* **includePubsubMessage** (Include full Pub/Sub message in the payload.): Include full Pub/Sub message in the payload (true/false). Defaults to false (only data element is included in the payload).
-* **apiKeyKMSEncryptionKey** (Google Cloud KMS encryption key for the API key): The Cloud KMS key to decrypt the Logs API key. This parameter must be provided if the apiKeySource is set to KMS. If this parameter is provided, apiKey string should be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. The Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).
-* **apiKeySecretId** (Google Cloud Secret Manager ID.): Secret Manager secret ID for the apiKey. This parameter should be provided if the apiKeySource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
-* **apiKeySource** (Source of the API key passed. One of PLAINTEXT, KMS or SECRET_MANAGER.): Source of the API key. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter must be provided if secret manager is used. If apiKeySource is set to KMS, apiKeyKMSEncryptionKey and encrypted apiKey must be provided. If apiKeySource is set to SECRET_MANAGER, apiKeySecretId must be provided. If apiKeySource is set to PLAINTEXT, apiKey must be provided.
-* **javascriptTextTransformGcsPath** (JavaScript UDF path in Cloud Storage): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
-* **javascriptTextTransformFunctionName** (JavaScript UDF name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
+* **apiKey** : Datadog Logs API key. Must be provided if the apiKeySource is set to PLAINTEXT or KMS. See: https://docs.datadoghq.com/account_management/api-app-keys.
+* **batchCount** : Batch size for sending multiple events to Datadog Logs API. Min is 10. Max is 1000. Defaults to 100.
+* **parallelism** : Maximum number of parallel requests. Default 1 (no parallelism).
+* **includePubsubMessage** : Include full Pub/Sub message in the payload (true/false). Defaults to false (only data element is included in the payload).
+* **apiKeyKMSEncryptionKey** : The Cloud KMS key to decrypt the Logs API key. This parameter must be provided if the apiKeySource is set to KMS. If this parameter is provided, apiKey string should be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. The Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).
+* **apiKeySecretId** : Secret Manager secret ID for the apiKey. This parameter should be provided if the apiKeySource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
+* **apiKeySource** : Source of the API key. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter must be provided if secret manager is used. If apiKeySource is set to KMS, apiKeyKMSEncryptionKey and encrypted apiKey must be provided. If apiKeySource is set to SECRET_MANAGER, apiKeySecretId must be provided. If apiKeySource is set to PLAINTEXT, apiKey must be provided.
+* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
+* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
+* **javascriptTextTransformReloadIntervalMinutes** : Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
 
 
 ## User-Defined functions (UDFs)

@@ -42,6 +42,7 @@ import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.artifacts.utils.AvroTestUtil;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.RandomUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -83,7 +84,8 @@ public class ExportPipelineIT extends TemplateTestBase {
                   + "  \"fields\": [\n"
                   + "    { \"name\": \"Id\", \"type\": \"long\", \"sqlType\": \"INT64\" },\n"
                   + "    { \"name\": \"FirstName\", \"type\": \"string\" },\n"
-                  + "    { \"name\": \"LastName\", \"type\": \"string\" }\n"
+                  + "    { \"name\": \"LastName\", \"type\": \"string\" },\n"
+                  + "    { \"name\": \"Rating\", \"type\": \"float\" }\n"
                   + "  ]\n"
                   + "}");
 
@@ -191,6 +193,7 @@ public class ExportPipelineIT extends TemplateTestBase {
                 + "  Id INT64 NOT NULL,\n"
                 + "  FirstName String(1024),\n"
                 + "  LastName String(1024),\n"
+                + "  Rating FLOAT32,\n"
                 + ") PRIMARY KEY(Id)",
             testName);
     String createEmbeddingVectorsTableStatement =
@@ -302,6 +305,7 @@ public class ExportPipelineIT extends TemplateTestBase {
                 + "  \"Id\" bigint,\n"
                 + "  \"FirstName\" character varying(256),\n"
                 + "  \"LastName\" character varying(256),\n"
+                + "  \"Rating\" real,\n"
                 + "PRIMARY KEY(\"Id\"))",
             testName);
     String createEmbeddingVectorsTableStatement =
@@ -370,6 +374,7 @@ public class ExportPipelineIT extends TemplateTestBase {
       mutation.set("Id").to(i);
       mutation.set("FirstName").to(RandomStringUtils.randomAlphanumeric(1, 20));
       mutation.set("LastName").to(RandomStringUtils.randomAlphanumeric(1, 20));
+      mutation.set("Rating").to(RandomUtils.nextFloat());
       mutations.add(mutation.build());
     }
 

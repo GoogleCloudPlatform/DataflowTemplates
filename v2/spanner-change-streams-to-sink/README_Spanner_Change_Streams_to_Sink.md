@@ -12,28 +12,28 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **changeStreamName** (Name of the change stream to read from): This is the name of the Spanner change stream that the pipeline will read from.
-* **instanceId** (Cloud Spanner Instance Id.): This is the name of the Cloud Spanner instance where the changestream is present.
-* **databaseId** (Cloud Spanner Database Id.): This is the name of the Cloud Spanner database that the changestream is monitoring.
-* **spannerProjectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
-* **metadataInstance** (Cloud Spanner Instance to store metadata when reading from changestreams): This is the instance to store the metadata used by the connector to control the consumption of the change stream API data.
-* **metadataDatabase** (Cloud Spanner Database to store metadata when reading from changestreams): This is the database to store the metadata used by the connector to control the consumption of the change stream API data.
-* **sinkType** (Type of sink to write the data to): The type of sink where the data will get written to.
-* **sessionFilePath** (Session File Path in Cloud Storage): Session file path in Cloud Storage that contains mapping information from HarbourBridge.
+* **changeStreamName** : This is the name of the Spanner change stream that the pipeline will read from.
+* **instanceId** : This is the name of the Cloud Spanner instance where the changestream is present.
+* **databaseId** : This is the name of the Cloud Spanner database that the changestream is monitoring.
+* **spannerProjectId** : This is the name of the Cloud Spanner project.
+* **metadataInstance** : This is the instance to store the metadata used by the connector to control the consumption of the change stream API data.
+* **metadataDatabase** : This is the database to store the metadata used by the connector to control the consumption of the change stream API data.
+* **sinkType** : The type of sink where the data will get written to.
+* **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from HarbourBridge.
 
-### Optional Parameters
+### Optional parameters
 
-* **startTimestamp** (Changes are read from the given timestamp): Read changes from the given timestamp. Defaults to empty.
-* **endTimestamp** (Changes are read until the given timestamp): Read changes until the given timestamp. If no timestamp provided, reads indefinitely. Defaults to empty.
-* **incrementInterval** (Time interval to increment the Stateful timer.): The timer gets incremented by the specified time interval in seconds. By default, the next timer is set to the current real time.
-* **pubSubDataTopicId** (PubSub topic where records will get written to, in the format of 'projects/your-project-id/topics/your-topic-name'): PubSub topic where records will get written to, in the format of 'projects/your-project-id/topics/your-topic-name'. Must be provided if sink is pubsub.
-* **pubSubErrorTopicId** (PubSub topic where error records will get written to , in the format of 'projects/your-project-id/topics/your-topic-name'): PubSub topic where error records will get written to, in the format of 'projects/your-project-id/topics/your-topic-name'. Must be provided if sink is pubsub.
-* **pubSubEndpoint** (Endpoint for pubsub): Endpoint for pubsub. Must be provided if sink is pubsub. Defaults to empty.
-* **kafkaClusterFilePath** (Path to GCS file containing Kafka cluster details): This is the path to GCS file containing Kafka cluster details. Must be provided if sink is kafka.
-* **sourceShardsFilePath** (Path to GCS file containing the the Source shard details): Path to GCS file containing connection profile info for source shards. Must be provided if sink is kafka.
-* **filtrationMode** (Filtration mode): Mode of Filtration, decides how to drop certain records based on a criteria. Currently supported modes are: none (filter nothing), forward_migration (filter records written via the forward migration pipeline). Defaults to forward_migration.
+* **startTimestamp** : Read changes from the given timestamp. Defaults to empty.
+* **endTimestamp** : Read changes until the given timestamp. If no timestamp provided, reads indefinitely. Defaults to empty.
+* **incrementInterval** : The timer gets incremented by the specified time interval in seconds. By default, the next timer is set to the current real time.
+* **pubSubDataTopicId** : PubSub topic where records will get written to, in the format of 'projects/your-project-id/topics/your-topic-name'. Must be provided if sink is pubsub.
+* **pubSubErrorTopicId** : PubSub topic where error records will get written to, in the format of 'projects/your-project-id/topics/your-topic-name'. Must be provided if sink is pubsub.
+* **pubSubEndpoint** : Endpoint for pubsub. Must be provided if sink is pubsub. Defaults to empty.
+* **kafkaClusterFilePath** : This is the path to GCS file containing Kafka cluster details. Must be provided if sink is kafka.
+* **sourceShardsFilePath** : Path to GCS file containing connection profile info for source shards. Must be provided if sink is kafka.
+* **filtrationMode** : Mode of Filtration, decides how to drop certain records based on a criteria. Currently supported modes are: none (filter nothing), forward_migration (filter records written via the forward migration pipeline). Defaults to forward_migration.
 
 
 

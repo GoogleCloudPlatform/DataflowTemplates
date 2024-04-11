@@ -165,8 +165,11 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       Map<String, String> jobParameters)
       throws IOException {
 
-    gcsClient.uploadArtifact(
-        gcsPathPrefix + "/session.json", Resources.getResource(sessionFileResourceName).getPath());
+    if (sessionFileResourceName != null) {
+      gcsClient.uploadArtifact(
+          gcsPathPrefix + "/session.json",
+          Resources.getResource(sessionFileResourceName).getPath());
+    }
 
     if (transformationContextFileResourceName != null) {
       gcsClient.uploadArtifact(
@@ -197,13 +200,16 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
             put("databaseId", spannerResourceManager.getDatabaseId());
             put("projectId", PROJECT);
             put("deadLetterQueueDirectory", getGcsPath(gcsPathPrefix + "/dlq/"));
-            put("sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json"));
             put("gcsPubSubSubscription", subscription.toString());
             put("dlqGcsPubSubSubscription", dlqSubscription.toString());
             put("datastreamSourceType", "mysql");
             put("inputFileFormat", "avro");
           }
         };
+
+    if (sessionFileResourceName != null) {
+      params.put("sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json"));
+    }
 
     if (transformationContextFileResourceName != null) {
       params.put(

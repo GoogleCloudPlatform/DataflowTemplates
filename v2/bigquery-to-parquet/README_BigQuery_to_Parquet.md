@@ -18,16 +18,16 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **tableRef** (BigQuery table to export): BigQuery table location to export in the format <project>:<dataset>.<table>. (Example: your-project:your-dataset.your-table-name).
-* **bucket** (Output Cloud Storage file(s)): Path and filename prefix for writing output files. (Example: gs://your-bucket/export/).
+* **tableRef** : BigQuery table location to export in the format <project>:<dataset>.<table>. (Example: your-project:your-dataset.your-table-name).
+* **bucket** : Path and filename prefix for writing output files. (Example: gs://your-bucket/export/).
 
-### Optional Parameters
+### Optional parameters
 
-* **numShards** (Maximum output shards): The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 0.
-* **fields** (List of field names): Comma separated list of fields to select from the table.
-* **rowRestriction** (Row restrictions/filter.): Read only rows which match the specified filter, which must be a SQL expression compatible with Google standard SQL (https://cloud.google.com/bigquery/docs/reference/standard-sql). If no value is specified, then all rows are returned.
+* **numShards** : The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 0.
+* **fields** : Comma separated list of fields to select from the table.
+* **rowRestriction** : Read only rows which match the specified filter, which must be a SQL expression compatible with Google standard SQL (https://cloud.google.com/bigquery/docs/reference/standard-sql). If no value is specified, then all rows are returned.
 
 
 

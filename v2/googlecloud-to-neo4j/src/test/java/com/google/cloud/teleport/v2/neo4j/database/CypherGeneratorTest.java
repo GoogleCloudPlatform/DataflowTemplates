@@ -109,19 +109,69 @@ public class CypherGeneratorTest {
   }
 
   @Test
-  public void generatesNodeKeyConstraintsWhenMergingEdgeAndItsNodes() {
+  public void
+      generatesCorrectSchemaStatementsForNodeKeyConstraintsWhenMergingEdgeAndItsNodesOnNeo4j5Enterprise() {
+    assertCorrectSchemaStatementsForNodeKeyConstraintsWhenMergingEdgeAndItsNodes(
+        capabilitiesFor("5.1.0", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id IS NODE KEY"));
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementsForNodeKeyConstraintsWhenMergingEdgeAndItsNodesOnNeo4j5Aura() {
+    assertCorrectSchemaStatementsForNodeKeyConstraintsWhenMergingEdgeAndItsNodes(
+        capabilitiesFor("5.1-aura", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id IS NODE KEY"));
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementsForNodeKeyConstraintsWhenMergingEdgeAndItsNodesOnNeo4j5Community() {
+    assertCorrectSchemaStatementsForNodeKeyConstraintsWhenMergingEdgeAndItsNodes(
+        capabilitiesFor("5.1.5", "community"), Set.of());
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementsForNodeKeyConstraintsWhenMergingEdgeAndItsNodesOnNeo4j44Enterprise() {
+    assertCorrectSchemaStatementsForNodeKeyConstraintsWhenMergingEdgeAndItsNodes(
+        capabilitiesFor("4.4.2", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id IS NODE KEY"));
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementsForNodeKeyConstraintsWhenMergingEdgeAndItsNodesOnNeo4j44Aura() {
+    assertCorrectSchemaStatementsForNodeKeyConstraintsWhenMergingEdgeAndItsNodes(
+        capabilitiesFor("4.4-aura", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id IS NODE KEY"));
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementsForNodeKeyConstraintsWhenMergingEdgeAndItsNodesOnNeo4j44Community() {
+    assertCorrectSchemaStatementsForNodeKeyConstraintsWhenMergingEdgeAndItsNodes(
+        capabilitiesFor("4.4.25", "community"), Set.of());
+  }
+
+  private void assertCorrectSchemaStatementsForNodeKeyConstraintsWhenMergingEdgeAndItsNodes(
+      Neo4jCapabilities capabilities, Set<String> expectedStatements) {
     JobSpec jobSpec =
         JobSpecMapper.fromUri(SPEC_PATH + "/single-target-relation-import-merge-all.json");
     Target relationshipTarget = jobSpec.getTargets().iterator().next();
 
     Set<String> statements =
-        CypherGenerator.getIndexAndConstraintsCypherStatements(relationshipTarget);
+        CypherGenerator.getIndexAndConstraintsCypherStatements(relationshipTarget, capabilities);
 
-    assertThat(statements)
-        .isEqualTo(
-            Set.of(
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id IS NODE KEY",
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id IS NODE KEY"));
+    assertThat(statements).isEqualTo(expectedStatements);
   }
 
   @Test
@@ -132,7 +182,8 @@ public class CypherGeneratorTest {
     Target relationshipTarget = jobSpec.getTargets().iterator().next();
 
     Set<String> statements =
-        CypherGenerator.getIndexAndConstraintsCypherStatements(relationshipTarget);
+        CypherGenerator.getIndexAndConstraintsCypherStatements(
+            relationshipTarget, capabilitiesFor("5.1.0", "enterprise"));
 
     assertThat(statements)
         .isEqualTo(
@@ -142,42 +193,201 @@ public class CypherGeneratorTest {
   }
 
   @Test
-  public void generatesMultiLabelNodeKeyConstraintsWhenMergingEdgeNodes() {
+  public void
+      generatesCorrectSchemaStatementForMultiLabelNodeKeyConstraintsWhenMergingEdgeNodesOnNeo4j5Enterprise() {
+    assertCorrectSchemaStatementForMultiLabelNodeKeyConstraintsWhenMergingEdgeNodes(
+        capabilitiesFor("5.1.0", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source1) REQUIRE n.src_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source2) REQUIRE n.src_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target1) REQUIRE n.tgt_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target2) REQUIRE n.tgt_id IS NODE KEY"));
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementForMultiLabelNodeKeyConstraintsWhenMergingEdgeNodesOnNeo4j5Aura() {
+    assertCorrectSchemaStatementForMultiLabelNodeKeyConstraintsWhenMergingEdgeNodes(
+        capabilitiesFor("5.1-aura", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source1) REQUIRE n.src_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source2) REQUIRE n.src_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target1) REQUIRE n.tgt_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target2) REQUIRE n.tgt_id IS NODE KEY"));
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementForMultiLabelNodeKeyConstraintsWhenMergingEdgeNodesOnNeo4j5Community() {
+    assertCorrectSchemaStatementForMultiLabelNodeKeyConstraintsWhenMergingEdgeNodes(
+        capabilitiesFor("5.1.6", "community"), Set.of());
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementForMultiLabelNodeKeyConstraintsWhenMergingEdgeNodesOnNeo4j44Enterprise() {
+    assertCorrectSchemaStatementForMultiLabelNodeKeyConstraintsWhenMergingEdgeNodes(
+        capabilitiesFor("4.4.25", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source1) REQUIRE n.src_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source2) REQUIRE n.src_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target1) REQUIRE n.tgt_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target2) REQUIRE n.tgt_id IS NODE KEY"));
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementForMultiLabelNodeKeyConstraintsWhenMergingEdgeNodesOnNeo4j44Aura() {
+    assertCorrectSchemaStatementForMultiLabelNodeKeyConstraintsWhenMergingEdgeNodes(
+        capabilitiesFor("4.4-aura", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source1) REQUIRE n.src_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source2) REQUIRE n.src_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target1) REQUIRE n.tgt_id IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target2) REQUIRE n.tgt_id IS NODE KEY"));
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementForMultiLabelNodeKeyConstraintsWhenMergingEdgeNodesOnNeo4j44Community() {
+    assertCorrectSchemaStatementForMultiLabelNodeKeyConstraintsWhenMergingEdgeNodes(
+        capabilitiesFor("4.4.25", "community"), Set.of());
+  }
+
+  private void assertCorrectSchemaStatementForMultiLabelNodeKeyConstraintsWhenMergingEdgeNodes(
+      Neo4jCapabilities capabilities, Set<String> expectedStatements) {
     JobSpec jobSpec = JobSpecMapper.fromUri(SPEC_PATH + "/multi-label-single-pass-import.json");
     Target relationshipTarget = jobSpec.getTargets().iterator().next();
 
     Set<String> statements =
-        CypherGenerator.getIndexAndConstraintsCypherStatements(relationshipTarget);
+        CypherGenerator.getIndexAndConstraintsCypherStatements(relationshipTarget, capabilities);
 
-    assertThat(statements)
-        .isEqualTo(
-            Set.of(
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source1) REQUIRE n.src_id IS NODE KEY",
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source2) REQUIRE n.src_id IS NODE KEY",
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target1) REQUIRE n.tgt_id IS NODE KEY",
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target2) REQUIRE n.tgt_id IS NODE KEY"));
+    assertThat(statements).isEqualTo(expectedStatements);
   }
 
   @Test
-  public void generatesMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodes() {
+  public void
+      generatesCorrectSchemaStatementForMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodesOnNeo4j5Enterprise() {
+    assertCorrectSchemaStatementsForMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodes(
+        capabilitiesFor("5.1.0", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id1 IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id2 IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id1 IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id2 IS NODE KEY"));
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementForMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodesOnNeo4j5Aura() {
+    assertCorrectSchemaStatementsForMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodes(
+        capabilitiesFor("5.1-aura", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id1 IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id2 IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id1 IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id2 IS NODE KEY"));
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementForMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodesOnNeo4j5Community() {
+    assertCorrectSchemaStatementsForMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodes(
+        capabilitiesFor("5.1.0", "community"), Set.of());
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementForMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodesOnNeo4j44Enterprise() {
+    assertCorrectSchemaStatementsForMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodes(
+        capabilitiesFor("4.4.25", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id1 IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id2 IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id1 IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id2 IS NODE KEY"));
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementForMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodesOnNeo4j44Aura() {
+    assertCorrectSchemaStatementsForMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodes(
+        capabilitiesFor("4.4-aura", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id1 IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id2 IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id1 IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id2 IS NODE KEY"));
+  }
+
+  @Test
+  public void
+      generatesCorrectSchemaStatementForMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodesOnNeo4j44Community() {
+    assertCorrectSchemaStatementsForMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodes(
+        capabilitiesFor("4.4.25", "community"), Set.of());
+  }
+
+  private void
+      assertCorrectSchemaStatementsForMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodes(
+          Neo4jCapabilities capabilities, Set<String> expectedStatements) {
     JobSpec jobSpec =
         JobSpecMapper.fromUri(SPEC_PATH + "/multi-distinct-keys-single-pass-import.json");
     Target relationshipTarget = jobSpec.getTargets().iterator().next();
 
     Set<String> statements =
-        CypherGenerator.getIndexAndConstraintsCypherStatements(relationshipTarget);
+        CypherGenerator.getIndexAndConstraintsCypherStatements(relationshipTarget, capabilities);
 
-    assertThat(statements)
-        .isEqualTo(
-            Set.of(
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id1 IS NODE KEY",
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id2 IS NODE KEY",
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id1 IS NODE KEY",
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id2 IS NODE KEY"));
+    assertThat(statements).isEqualTo(expectedStatements);
   }
 
   @Test
-  public void doesNotGenerateDuplicateStatementForSelfLinkingNodes() {
+  public void generatesCorrectSchemaStatementsForSelfLinkingNodesOnNeo4j5Enterprise() {
+    assertCorrectSchemaStatementsForSelfLinkingNodes(
+        capabilitiesFor("5.1.0", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:SELF_LINKS_TO]-() REQUIRE r.targetRelProperty IS RELATIONSHIP KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:PlaceholderLabel) REQUIRE n.targetNodeProperty IS NODE KEY"));
+  }
+
+  @Test
+  public void generatesCorrectSchemaStatementsForSelfLinkingNodesOnNeo4j5Aura() {
+    assertCorrectSchemaStatementsForSelfLinkingNodes(
+        capabilitiesFor("5.1-aura", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:SELF_LINKS_TO]-() REQUIRE r.targetRelProperty IS RELATIONSHIP KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:PlaceholderLabel) REQUIRE n.targetNodeProperty IS NODE KEY"));
+  }
+
+  @Test
+  public void generatesCorrectSchemaStatementsForSelfLinkingNodesOnNeo4j5Community() {
+    assertCorrectSchemaStatementsForSelfLinkingNodes(
+        capabilitiesFor("5.1.0", "community"), Set.of());
+  }
+
+  @Test
+  public void generatesCorrectSchemaStatementsForSelfLinkingNodesOnNeo4j44Enterprise() {
+    assertCorrectSchemaStatementsForSelfLinkingNodes(
+        capabilitiesFor("4.4.25", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:PlaceholderLabel) REQUIRE n.targetNodeProperty IS NODE KEY"));
+  }
+
+  @Test
+  public void generatesCorrectSchemaStatementsForSelfLinkingNodesOnNeo4j44Aura() {
+    assertCorrectSchemaStatementsForSelfLinkingNodes(
+        capabilitiesFor("4.4-aura", "enterprise"),
+        Set.of(
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (n:PlaceholderLabel) REQUIRE n.targetNodeProperty IS NODE KEY"));
+  }
+
+  @Test
+  public void generatesCorrectSchemaStatementsForSelfLinkingNodesOnNeo4j44Community() {
+    assertCorrectSchemaStatementsForSelfLinkingNodes(
+        capabilitiesFor("4.4.25", "community"), Set.of());
+  }
+
+  private void assertCorrectSchemaStatementsForSelfLinkingNodes(
+      Neo4jCapabilities capabilities, Set<String> expectedStatements) {
     Target target = new Target();
     target.setSaveMode(SaveMode.merge);
     target.setEdgeNodesMatchMode(EdgeNodesSaveMode.merge);
@@ -212,13 +422,10 @@ public class CypherGeneratorTest {
     targetKey.setField("source_node_field");
     target.setMappings(List.of(type, key, sourceLabel, sourceKey, targetLabel, targetKey));
 
-    Set<String> schemaStatements = CypherGenerator.getIndexAndConstraintsCypherStatements(target);
+    Set<String> schemaStatements =
+        CypherGenerator.getIndexAndConstraintsCypherStatements(target, capabilities);
 
-    assertThat(schemaStatements)
-        .isEqualTo(
-            Set.of(
-                "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:SELF_LINKS_TO]-() REQUIRE r.targetRelProperty IS RELATIONSHIP KEY",
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:PlaceholderLabel) REQUIRE n.targetNodeProperty IS NODE KEY"));
+    assertThat(schemaStatements).isEqualTo(expectedStatements);
   }
 
   @Test
@@ -262,5 +469,9 @@ public class CypherGeneratorTest {
     assertThat(importStatement)
         .isEqualTo(
             "UNWIND $rows AS row  MATCH (source:StartNode {targetNodeProperty: row.source_node_field}) MATCH (target:EndNode {targetNodeProperty: row.source_node_field}) MERGE (source)-[rel:LINKS_TO {targetRelProperty: row.source_field}]->(target)");
+  }
+
+  private static Neo4jCapabilities capabilitiesFor(String neo4jVersion, String neo4jEdition) {
+    return new Neo4jCapabilities(neo4jVersion, neo4jEdition);
   }
 }

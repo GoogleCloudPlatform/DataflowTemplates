@@ -195,7 +195,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
     LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     // ElementCount metric in dataflow is approximate, allow for 1% difference
-    Integer expectedMessages = (int) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);
+    Long expectedMessages = (long) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);
     Result result =
         pipelineOperator.waitForConditionAndCancel(
             createConfig(info, Duration.ofMinutes(20)),

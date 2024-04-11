@@ -15,25 +15,25 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **sourceShardsFilePath** (Source shard details file path in Cloud Storage): Source shard details file path in Cloud Storage that contains connection profile of source shards.
-* **sessionFilePath** (Session File Path in Cloud Storage): Session file path in Cloud Storage that contains mapping information from HarbourBridge.
-* **GCSInputDirectoryPath** (GCS input directory path): Path from where to read the change stream files.
-* **spannerProjectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
-* **metadataInstance** (Cloud Spanner Instance to store the shard progress when reading from gcs): This is the instance to store the shard progress of the files processed.
-* **metadataDatabase** (Cloud Spanner Database to store the shard progress when reading from gcs): This is the database to store  the shard progress of the files processed..
-* **runIdentifier** (Reverse replication run identifier): The identifier to distinguish between different runs of reverse replication flows.
+* **sourceShardsFilePath** : Source shard details file path in Cloud Storage that contains connection profile of source shards.
+* **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from HarbourBridge.
+* **GCSInputDirectoryPath** : Path from where to read the change stream files.
+* **spannerProjectId** : This is the name of the Cloud Spanner project.
+* **metadataInstance** : This is the instance to store the shard progress of the files processed.
+* **metadataDatabase** : This is the database to store  the shard progress of the files processed..
+* **runIdentifier** : The identifier to distinguish between different runs of reverse replication flows.
 
-### Optional Parameters
+### Optional parameters
 
-* **sourceType** (Destination source type): This is the type of source database. Currently only mysql is supported. Defaults to: mysql.
-* **sourceDbTimezoneOffset** (SourceDB timezone offset): This is the timezone offset from UTC for the source database. Example value: +10:00. Defaults to: +00:00.
-* **timerInterval** (Duration in seconds between calls to stateful timer processing. ): Controls the time between successive polls to buffer and processing of the resultant records. Defaults to: 1.
-* **startTimestamp** (File start timestamp, takes precedence if provided, else value from spanner_to_gcs_metadata is considered, for regular mode.): Start time of file for all shards. If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode.
-* **windowDuration** (File increment window duration,takes precedence if provided, else value from spanner_to_gcs_metadata is considered, for regular mode.): The window duration/size in which data is written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode. (Example: 5m).
-* **runMode** (This type of run mode. Supported values are regular/reprocess/resumeSucess/resumeFailed/resumeAll. Defaults to regular. All run modes should have the same run identifier.): Regular writes to source db, reprocess does processing the specific shards marked as REPROCESS, resumeFailed does reprocess of all shards in error state, resumeSuccess continues processing shards in successful state, resumeAll continues processing all shards irrespective of state. Defaults to: regular.
-* **metadataTableSuffix** (Metadata table suffix): Suffix appended to the spanner_to_gcs_metadata and shard_file_create_progress metadata tables.Useful when doing multiple runs.Only alpha numeric and underscores are allowed. Defaults to empty.
+* **sourceType** : This is the type of source database. Currently only mysql is supported. Defaults to: mysql.
+* **sourceDbTimezoneOffset** : This is the timezone offset from UTC for the source database. Example value: +10:00. Defaults to: +00:00.
+* **timerIntervalInMilliSec** : Controls the time between successive polls to buffer and processing of the resultant records. Defaults to: 1.
+* **startTimestamp** : Start time of file for all shards. If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode.
+* **windowDuration** : The window duration/size in which data is written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode. (Example: 5m).
+* **runMode** : Regular writes to source db, reprocess does processing the specific shards marked as REPROCESS, resumeFailed does reprocess of all shards in error state, resumeSuccess continues processing shards in successful state, resumeAll continues processing all shards irrespective of state. Defaults to: regular.
+* **metadataTableSuffix** : Suffix appended to the spanner_to_gcs_metadata and shard_file_create_progress metadata tables.Useful when doing multiple runs.Only alpha numeric and underscores are allowed. Defaults to empty.
 
 
 
@@ -123,7 +123,7 @@ export RUN_IDENTIFIER=<runIdentifier>
 ### Optional
 export SOURCE_TYPE=mysql
 export SOURCE_DB_TIMEZONE_OFFSET=+00:00
-export TIMER_INTERVAL=1
+export TIMER_INTERVAL_IN_MILLI_SEC=1
 export START_TIMESTAMP=<startTimestamp>
 export WINDOW_DURATION=<windowDuration>
 export RUN_MODE=regular
@@ -137,7 +137,7 @@ gcloud dataflow flex-template run "gcs-to-sourcedb-job" \
   --parameters "sessionFilePath=$SESSION_FILE_PATH" \
   --parameters "sourceType=$SOURCE_TYPE" \
   --parameters "sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET" \
-  --parameters "timerInterval=$TIMER_INTERVAL" \
+  --parameters "timerIntervalInMilliSec=$TIMER_INTERVAL_IN_MILLI_SEC" \
   --parameters "startTimestamp=$START_TIMESTAMP" \
   --parameters "windowDuration=$WINDOW_DURATION" \
   --parameters "GCSInputDirectoryPath=$GCSINPUT_DIRECTORY_PATH" \
@@ -176,7 +176,7 @@ export RUN_IDENTIFIER=<runIdentifier>
 ### Optional
 export SOURCE_TYPE=mysql
 export SOURCE_DB_TIMEZONE_OFFSET=+00:00
-export TIMER_INTERVAL=1
+export TIMER_INTERVAL_IN_MILLI_SEC=1
 export START_TIMESTAMP=<startTimestamp>
 export WINDOW_DURATION=<windowDuration>
 export RUN_MODE=regular
@@ -189,7 +189,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-to-sourcedb-job" \
 -DtemplateName="GCS_to_Sourcedb" \
--Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerInterval=$TIMER_INTERVAL,startTimestamp=$START_TIMESTAMP,windowDuration=$WINDOW_DURATION,GCSInputDirectoryPath=$GCSINPUT_DIRECTORY_PATH,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,runMode=$RUN_MODE,metadataTableSuffix=$METADATA_TABLE_SUFFIX,runIdentifier=$RUN_IDENTIFIER" \
+-Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerIntervalInMilliSec=$TIMER_INTERVAL_IN_MILLI_SEC,startTimestamp=$START_TIMESTAMP,windowDuration=$WINDOW_DURATION,GCSInputDirectoryPath=$GCSINPUT_DIRECTORY_PATH,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,runMode=$RUN_MODE,metadataTableSuffix=$METADATA_TABLE_SUFFIX,runIdentifier=$RUN_IDENTIFIER" \
 -f v2/gcs-to-sourcedb
 ```
 
@@ -243,7 +243,7 @@ resource "google_dataflow_flex_template_job" "gcs_to_sourcedb" {
     runIdentifier = "<runIdentifier>"
     # sourceType = "mysql"
     # sourceDbTimezoneOffset = "+00:00"
-    # timerInterval = "1"
+    # timerIntervalInMilliSec = "1"
     # startTimestamp = "<startTimestamp>"
     # windowDuration = "5m"
     # runMode = "regular"

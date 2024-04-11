@@ -179,6 +179,11 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
           columnValue =
               isNullValue ? Value.int64(null) : Value.int64(Long.valueOf(cellValue.trim()));
           break;
+        case FLOAT32:
+        case PG_FLOAT4:
+          columnValue =
+              isNullValue ? Value.float32(null) : Value.float32(Float.valueOf(cellValue.trim()));
+          break;
         case FLOAT64:
         case PG_FLOAT8:
           columnValue =

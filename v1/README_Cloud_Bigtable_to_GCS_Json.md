@@ -15,18 +15,18 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **bigtableProjectId** (Project ID): The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from.
-* **bigtableInstanceId** (Instance ID): The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableTableId** (Table ID): The ID of the Cloud Bigtable table to read.
-* **filenamePrefix** (JSON file prefix): The prefix of the JSON file name. For example, "table1-". Defaults to: part.
+* **bigtableProjectId** : The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from.
+* **bigtableInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
+* **bigtableTableId** : The ID of the Cloud Bigtable table to read.
+* **filenamePrefix** : The prefix of the JSON file name. For example, "table1-". Defaults to: part.
 
-### Optional Parameters
+### Optional parameters
 
-* **outputDirectory** (Cloud Storage directory for storing JSON files): The Cloud Storage path where the output JSON files can be stored. (Example: gs://your-bucket/your-path/).
-* **userOption** (User option): User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the row to the single level. `NONE` stores the whole row as a JSON string. Defaults to: NONE.
-* **columnsAliases** (Columns aliases): Comma separated list of columns which are required for Vertex AI Vector Search Index. The `id` & `embedding` are required columns for Vertex Vector Search. You can use the notation `fromfamily:fromcolumn;to`. For example, if the columns are `rowkey` and `cf:my_embedding`, in which `rowkey` and the embedding column is named differently, `cf:my_embedding;embedding` and `rowkey;id` should be specified. Only used when FLATTEN user option is specified.
+* **outputDirectory** : The Cloud Storage path where the output JSON files can be stored. (Example: gs://your-bucket/your-path/).
+* **userOption** : User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the row to the single level. `NONE` stores the whole row as a JSON string. Defaults to: NONE.
+* **columnsAliases** : Comma separated list of columns which are required for Vertex AI Vector Search Index. The `id` & `embedding` are required columns for Vertex Vector Search. You can use the notation `fromfamily:fromcolumn;to`. For example, if the columns are `rowkey` and `cf:my_embedding`, in which `rowkey` and the embedding column is named differently, `cf:my_embedding;embedding` and `rowkey;id` should be specified. Only used when FLATTEN user option is specified.
 
 
 

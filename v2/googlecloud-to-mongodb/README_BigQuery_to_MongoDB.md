@@ -16,14 +16,14 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **mongoDbUri** (MongoDB Connection URI): URI to connect to MongoDB Atlas.
-* **database** (MongoDB Database): Database in MongoDB to store the collection. (Example: my-db).
-* **collection** (MongoDB collection): Name of the collection inside MongoDB database. (Example: my-collection).
-* **inputTableSpec** (BigQuery source table): BigQuery source table spec. (Example: bigquery-project:dataset.input_table).
+* **mongoDbUri** : URI to connect to MongoDB Atlas.
+* **database** : Database in MongoDB to store the collection. (Example: my-db).
+* **collection** : Name of the collection inside MongoDB database. (Example: my-collection).
+* **inputTableSpec** : BigQuery source table spec. (Example: bigquery-project:dataset.input_table).
 
-### Optional Parameters
+### Optional parameters
 
 
 

@@ -31,23 +31,23 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **instanceId** (Cloud Spanner instance ID): The instance ID of the Cloud Spanner database that you want to export.
-* **databaseId** (Cloud Spanner database ID): The database ID of the Cloud Spanner database that you want to export.
-* **outputDir** (Cloud Storage output directory): The Cloud Storage path where the Avro files should be exported to. A new directory will be created under this path that contains the export. (Example: gs://your-bucket/your-path).
+* **instanceId** : The instance ID of the Cloud Spanner database that you want to export.
+* **databaseId** : The database ID of the Cloud Spanner database that you want to export.
+* **outputDir** : The Cloud Storage path where the Avro files should be exported to. A new directory will be created under this path that contains the export. (Example: gs://your-bucket/your-path).
 
-### Optional Parameters
+### Optional parameters
 
-* **avroTempDirectory** (Cloud Storage temp directory for storing Avro files): The Cloud Storage path where the temporary Avro files can be created. Ex: gs://your-bucket/your-path.
-* **spannerHost** (Cloud Spanner Endpoint to call): The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
-* **snapshotTime** (Snapshot time): Specifies the snapshot time as RFC 3339 format in UTC time without the timezone offset(always ends in 'Z'). Timestamp must be in the past and Maximum timestamp staleness applies. See https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness (Example: 1990-12-31T23:59:59Z). Defaults to empty.
-* **spannerProjectId** (Cloud Spanner Project Id): The project ID of the Cloud Spanner instance.
-* **shouldExportTimestampAsLogicalType** (Export Timestamps as Timestamp-micros type): If true, Timestamps are exported as timestamp-micros type. Timestamps are exported as ISO8601 strings at nanosecond precision by default.
-* **tableNames** (Cloud Spanner table name(s).): If provided, only this comma separated list of tables are exported. Ancestor tables and tables that are referenced via foreign keys are required. If not explicitly listed, the `shouldExportRelatedTables` flag must be set for a successful export. Defaults to empty.
-* **shouldExportRelatedTables** (Export necessary Related Spanner tables.): Used in conjunction with `tableNames`. If true, add related tables necessary for the export, such as interleaved parent tables and foreign keys tables.  If `tableNames` is specified but doesn't include related tables, this option must be set to true for a successful export. Defaults to: false.
-* **spannerPriority** (Priority for Spanner RPC invocations): The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].
-* **dataBoostEnabled** (Use independent compute resource (Spanner DataBoost).): Use Spanner on-demand compute so the export job will run on independent compute resources and have no impact to current Spanner workloads. This will incur additional charges in Spanner. Defaults to: false.
+* **avroTempDirectory** : The Cloud Storage path where the temporary Avro files can be created. Ex: gs://your-bucket/your-path.
+* **spannerHost** : The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
+* **snapshotTime** : Specifies the snapshot time as RFC 3339 format in UTC time without the timezone offset(always ends in 'Z'). Timestamp must be in the past and Maximum timestamp staleness applies. See https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness (Example: 1990-12-31T23:59:59Z). Defaults to empty.
+* **spannerProjectId** : The project ID of the Cloud Spanner instance.
+* **shouldExportTimestampAsLogicalType** : If true, Timestamps are exported as timestamp-micros type. Timestamps are exported as ISO8601 strings at nanosecond precision by default.
+* **tableNames** : If provided, only this comma separated list of tables are exported. Ancestor tables and tables that are referenced via foreign keys are required. If not explicitly listed, the `shouldExportRelatedTables` flag must be set for a successful export. Defaults to empty.
+* **shouldExportRelatedTables** : Used in conjunction with `tableNames`. If true, add related tables necessary for the export, such as interleaved parent tables and foreign keys tables.  If `tableNames` is specified but doesn't include related tables, this option must be set to true for a successful export. Defaults to: false.
+* **spannerPriority** : The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].
+* **dataBoostEnabled** : Use Spanner on-demand compute so the export job will run on independent compute resources and have no impact to current Spanner workloads. This will incur additional charges in Spanner. Defaults to: false.
 
 
 

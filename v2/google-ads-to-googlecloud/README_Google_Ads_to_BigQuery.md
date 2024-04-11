@@ -15,23 +15,23 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **customerIds** (Google Ads account IDs): A list of Google Ads account IDs for which to execute the query. (Example: 12345,67890).
-* **query** (Google Ads Query Language query): See https://developers.google.com/google-ads/api/docs/query/overview. (Example: SELECT campaign.id, campaign.name FROM campaign).
-* **qpsPerWorker** (Required Google Ads request rate per worker): Indicates rate of query requests per second to be submitted to Google Ads. Divide the desired per pipeline QPS by the maximum number of workers. Avoid exceeding per account or developer token limits. See https://developers.google.com/google-ads/api/docs/best-practices/rate-limits.
-* **googleAdsClientId** (OAuth 2.0 Client ID identifying the application): See https://developers.google.com/google-ads/api/docs/oauth/overview.
-* **googleAdsClientSecret** (OAuth 2.0 Client Secret for the specified Client ID): See https://developers.google.com/google-ads/api/docs/oauth/overview.
-* **googleAdsRefreshToken** (OAuth 2.0 Refresh Token for the user connecting to the Google Ads API): See https://developers.google.com/google-ads/api/docs/oauth/overview.
-* **googleAdsDeveloperToken** (Google Ads developer token for the user connecting to the Google Ads API): See https://developers.google.com/google-ads/api/docs/get-started/dev-token.
-* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
+* **customerIds** : A list of Google Ads account IDs for which to execute the query. (Example: 12345,67890).
+* **query** : See https://developers.google.com/google-ads/api/docs/query/overview. (Example: SELECT campaign.id, campaign.name FROM campaign).
+* **qpsPerWorker** : Indicates rate of query requests per second to be submitted to Google Ads. Divide the desired per pipeline QPS by the maximum number of workers. Avoid exceeding per account or developer token limits. See https://developers.google.com/google-ads/api/docs/best-practices/rate-limits.
+* **googleAdsClientId** : See https://developers.google.com/google-ads/api/docs/oauth/overview.
+* **googleAdsClientSecret** : See https://developers.google.com/google-ads/api/docs/oauth/overview.
+* **googleAdsRefreshToken** : See https://developers.google.com/google-ads/api/docs/oauth/overview.
+* **googleAdsDeveloperToken** : See https://developers.google.com/google-ads/api/docs/get-started/dev-token.
+* **outputTableSpec** : BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
 
-### Optional Parameters
+### Optional parameters
 
-* **loginCustomerId** (Google Ads manager account ID): A Google Ads manager account ID for which to access the account IDs. (Example: 12345).
-* **bigQueryTableSchemaPath** (BigQuery Table Schema Path): Cloud Storage path to the BigQuery schema JSON file. If this is not set, then the schema is inferred from the Proto schema. (Example: gs://MyBucket/bq_schema.json).
-* **writeDisposition** (Write Disposition to use for BigQuery): BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
-* **createDisposition** (Create Disposition to use for BigQuery): BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED.
+* **loginCustomerId** : A Google Ads manager account ID for which to access the account IDs. (Example: 12345).
+* **bigQueryTableSchemaPath** : Cloud Storage path to the BigQuery schema JSON file. If this is not set, then the schema is inferred from the Proto schema. (Example: gs://MyBucket/bq_schema.json).
+* **writeDisposition** : BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
+* **createDisposition** : BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED.
 
 
 

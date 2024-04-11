@@ -16,16 +16,16 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **bigtableProjectId** (Project ID): The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to.
-* **bigtableInstanceId** (Instance ID): The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableTableId** (Table ID): The ID of the Cloud Bigtable table to write.
-* **inputFilePattern** (Input Cloud Storage File(s)): The Cloud Storage location of the files you'd like to process. (Example: gs://your-bucket/your-files/*.avro).
+* **bigtableProjectId** : The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to.
+* **bigtableInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
+* **bigtableTableId** : The ID of the Cloud Bigtable table to write.
+* **inputFilePattern** : The Cloud Storage location of the files you'd like to process. (Example: gs://your-bucket/your-files/*.avro).
 
-### Optional Parameters
+### Optional parameters
 
-* **splitLargeRows** (If true, large rows will be split into multiple MutateRows requests): The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. .
+* **splitLargeRows** : The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. .
 
 
 

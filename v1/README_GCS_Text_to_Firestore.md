@@ -18,17 +18,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **textReadPattern** (Input file(s) in Cloud Storage): The input file pattern Dataflow reads from. Ex: gs://your-bucket/.../*.json.
-* **firestoreWriteProjectId** (Project ID): The Google Cloud project ID of where to write Firestore entities.
-* **errorWritePath** (Output failure file): The error log output folder to use for write failures that occur during processing. (Example: gs://your-bucket/errors/).
+* **textReadPattern** : The input file pattern Dataflow reads from. Ex: gs://your-bucket/.../*.json.
+* **firestoreWriteProjectId** : The Google Cloud project ID of where to write Firestore entities.
+* **errorWritePath** : The error log output folder to use for write failures that occur during processing. (Example: gs://your-bucket/errors/).
 
-### Optional Parameters
+### Optional parameters
 
-* **javascriptTextTransformGcsPath** (JavaScript UDF path in Cloud Storage): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
-* **javascriptTextTransformFunctionName** (JavaScript UDF name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **firestoreHintNumWorkers** (Expected number of workers): Hint for the expected number of workers in the Firestore ramp-up throttling step. Defaults to 500 if not specified.
+* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
+* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
+* **firestoreHintNumWorkers** : Hint for the expected number of workers in the Firestore ramp-up throttling step. Defaults to 500 if not specified.
 
 
 ## User-Defined functions (UDFs)

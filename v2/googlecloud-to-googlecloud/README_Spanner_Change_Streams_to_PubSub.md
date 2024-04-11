@@ -31,27 +31,27 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **spannerInstanceId** (Spanner instance ID): The Spanner instance to read change streams from.
-* **spannerDatabase** (Spanner database): The Spanner database to read change streams from.
-* **spannerMetadataInstanceId** (Spanner metadata instance ID): The Spanner instance to use for the change streams connector metadata table.
-* **spannerMetadataDatabase** (Spanner metadata database): The Spanner database to use for the change streams connector metadata table. For change streams tracking all tables in a database, we recommend putting the metadata table in a separate database.
-* **spannerChangeStreamName** (Spanner change stream): The name of the Spanner change stream to read from.
-* **pubsubTopic** (The output Pub/Sub topic): The Pub/Sub topic to publish PubsubMessage.
+* **spannerInstanceId** : The Spanner instance to read change streams from.
+* **spannerDatabase** : The Spanner database to read change streams from.
+* **spannerMetadataInstanceId** : The Spanner instance to use for the change streams connector metadata table.
+* **spannerMetadataDatabase** : The Spanner database to use for the change streams connector metadata table. For change streams tracking all tables in a database, we recommend putting the metadata table in a separate database.
+* **spannerChangeStreamName** : The name of the Spanner change stream to read from.
+* **pubsubTopic** : The Pub/Sub topic to publish PubsubMessage.
 
-### Optional Parameters
+### Optional parameters
 
-* **spannerProjectId** (Spanner Project ID): Project to read change streams from. The default for this parameter is the project where the Dataflow pipeline is running.
-* **spannerDatabaseRole** (Spanner database role): Database role user assumes while reading from the change stream. The database role should have required privileges to read from change stream. If a database role is not specified, the user should have required IAM permissions to read from the database.
-* **spannerMetadataTableName** (Cloud Spanner metadata table name): The Cloud Spanner change streams connector metadata table name to use. If not provided, a Cloud Spanner change streams connector metadata table will automatically be created during the pipeline flow. This parameter must be provided when updating an existing pipeline and should not be provided otherwise.
-* **startTimestamp** (The timestamp to read change streams from): The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts.
-* **endTimestamp** (The timestamp to read change streams to): The ending DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). Ex-2022-05-05T07:59:59Z. Defaults to an infinite time in the future.
-* **spannerHost** (Cloud Spanner Endpoint to call): The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://spanner.googleapis.com). Defaults to: https://spanner.googleapis.com.
-* **outputDataFormat** (Output data format): The format of the output to Pub/Sub. Allowed formats are JSON, AVRO. Default is JSON.
-* **pubsubAPI** (Pub/Sub API): Pub/Sub API used to implement the pipeline. Allowed APIs are pubsubio and native_client. Default is pubsubio. For a small QPS, native_client can achieve a smaller latency than pubsubio. For a large QPS, pubsubio has better and more stable performance.
-* **pubsubProjectId** (Pub/Sub Project ID): Project of Pub/Sub topic. The default for this parameter is the project where the Dataflow pipeline is running.
-* **rpcPriority** (Priority for Spanner RPC invocations): The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]. Defaults to: HIGH.
+* **spannerProjectId** : Project to read change streams from. The default for this parameter is the project where the Dataflow pipeline is running.
+* **spannerDatabaseRole** : Database role user assumes while reading from the change stream. The database role should have required privileges to read from change stream. If a database role is not specified, the user should have required IAM permissions to read from the database.
+* **spannerMetadataTableName** : The Cloud Spanner change streams connector metadata table name to use. If not provided, a Cloud Spanner change streams connector metadata table will automatically be created during the pipeline flow. This parameter must be provided when updating an existing pipeline and should not be provided otherwise.
+* **startTimestamp** : The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts.
+* **endTimestamp** : The ending DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). Ex-2022-05-05T07:59:59Z. Defaults to an infinite time in the future.
+* **spannerHost** : The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://spanner.googleapis.com). Defaults to: https://spanner.googleapis.com.
+* **outputDataFormat** : The format of the output to Pub/Sub. Allowed formats are JSON, AVRO. Default is JSON.
+* **pubsubAPI** : Pub/Sub API used to implement the pipeline. Allowed APIs are pubsubio and native_client. Default is pubsubio. For a small QPS, native_client can achieve a smaller latency than pubsubio. For a large QPS, pubsubio has better and more stable performance.
+* **pubsubProjectId** : Project of Pub/Sub topic. The default for this parameter is the project where the Dataflow pipeline is running.
+* **rpcPriority** : The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]. Defaults to: HIGH.
 
 
 

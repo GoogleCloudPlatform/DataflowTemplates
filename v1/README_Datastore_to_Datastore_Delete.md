@@ -16,18 +16,18 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **datastoreReadGqlQuery** (GQL Query): Specifies which Datastore entities to read. Ex: ‘SELECT * FROM MyKind’.
-* **datastoreReadProjectId** (Project ID): The Google Cloud project ID of the Datastore instance to read from.
-* **datastoreDeleteProjectId** (Delete all matching entities from the GQL Query present in this Datastore Project Id of): Google Cloud Project Id of where to delete the datastore entities.
+* **datastoreReadGqlQuery** : Specifies which Datastore entities to read. Ex: ‘SELECT * FROM MyKind’.
+* **datastoreReadProjectId** : The Google Cloud project ID of the Datastore instance to read from.
+* **datastoreDeleteProjectId** : Google Cloud Project Id of where to delete the datastore entities.
 
-### Optional Parameters
+### Optional parameters
 
-* **datastoreReadNamespace** (Namespace): Namespace of requested Datastore entities. Leave blank to use default namespace.
-* **javascriptTextTransformGcsPath** (JavaScript UDF path in Cloud Storage): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
-* **javascriptTextTransformFunctionName** (JavaScript UDF name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **datastoreHintNumWorkers** (Expected number of workers): Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to: 500.
+* **datastoreReadNamespace** : Namespace of requested Datastore entities. Leave blank to use default namespace.
+* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
+* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
+* **datastoreHintNumWorkers** : Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to: 500.
 
 
 ## User-Defined functions (UDFs)

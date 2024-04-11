@@ -19,14 +19,14 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-<#list spec.metadata.parameters as parameter><#if !parameter.optional!false>* **${parameter.name}** (${parameter.label}): ${parameter.helpText?ensure_ends_with(".")}
+<#list spec.metadata.parameters as parameter><#if !parameter.optional!false>* **${parameter.name}** : ${parameter.helpText?ensure_ends_with(".")}
 </#if></#list>
 
-### Optional Parameters
+### Optional parameters
 
-<#list spec.metadata.parameters as parameter><#if parameter.optional!false>* **${parameter.name}** (${parameter.label}): ${parameter.helpText?ensure_ends_with(".")}
+<#list spec.metadata.parameters as parameter><#if parameter.optional!false>* **${parameter.name}** : ${parameter.helpText?ensure_ends_with(".")}
 </#if></#list>
 
 
