@@ -45,20 +45,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link OrderedSpannerChangeStreamsToKV} class is a {@link PTransform} that takes in {@link
+ * The {@link SpannerChangeStreamsToOrderedKV} class is a {@link PTransform} that takes in {@link
  * PCollection} of DataChangeRecords. The transform returns KV of partition bucket index and ordered
  * list of DataChangeRecords (ordered by commit timestamp within partition bucket)
  */
 @AutoValue
-public abstract class OrderedSpannerChangeStreamsToKV
+public abstract class SpannerChangeStreamsToOrderedKV
     extends PTransform<
         PCollection<DataChangeRecord>, PCollection<KV<String, Iterable<DataChangeRecord>>>> {
 
   /** Logger for class. */
-  private static final Logger LOG = LoggerFactory.getLogger(OrderedSpannerChangeStreamsToKV.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToOrderedKV.class);
 
   public static OrderingOptionsBuilder newBuilder() {
-    return new AutoValue_OrderedSpannerChangeStreamsToKV.Builder();
+    return new AutoValue_SpannerChangeStreamsToOrderedKV.Builder();
   }
 
   protected abstract String orderingPartitionKey();
@@ -248,7 +248,7 @@ public abstract class OrderedSpannerChangeStreamsToKV
     }
   }
 
-  /** Builder for {@link OrderedSpannerChangeStreamsToKV}. */
+  /** Builder for {@link SpannerChangeStreamsToOrderedKV}. */
   @AutoValue.Builder
   public abstract static class OrderingOptionsBuilder {
 
@@ -258,9 +258,9 @@ public abstract class OrderedSpannerChangeStreamsToKV
 
     public abstract OrderingOptionsBuilder setBufferTimerInterval(Integer value);
 
-    abstract OrderedSpannerChangeStreamsToKV autoBuild();
+    abstract SpannerChangeStreamsToOrderedKV autoBuild();
 
-    public OrderedSpannerChangeStreamsToKV build() {
+    public SpannerChangeStreamsToOrderedKV build() {
       return autoBuild();
     }
   }

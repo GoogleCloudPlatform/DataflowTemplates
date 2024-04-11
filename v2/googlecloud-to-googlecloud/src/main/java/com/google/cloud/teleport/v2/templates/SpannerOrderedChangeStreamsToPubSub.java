@@ -21,8 +21,8 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SpannerOrderedChangeStreamsToPubSubOptions;
-import com.google.cloud.teleport.v2.transforms.OrderedSpannerChangeStreamsToKV;
 import com.google.cloud.teleport.v2.transforms.PublishOrderedDataChangeRecordsKVToPubSub;
+import com.google.cloud.teleport.v2.transforms.SpannerChangeStreamsToOrderedKV;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
@@ -176,7 +176,7 @@ public class SpannerOrderedChangeStreamsToPubSub {
                 .withMetadataTable(metadataTableName))
         .apply(
             "Orders change records and return KV",
-            OrderedSpannerChangeStreamsToKV.newBuilder()
+            SpannerChangeStreamsToOrderedKV.newBuilder()
                 .setOrderingPartitionKey(options.getOrderingPartitionKey())
                 .setOrderingPartitionBucketCount(options.getOrderingPartitionBucketCount())
                 .setBufferTimerInterval(options.getBufferTimerInterval())
