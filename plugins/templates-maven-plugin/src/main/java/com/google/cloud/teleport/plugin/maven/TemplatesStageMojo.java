@@ -229,7 +229,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
    *
    * <p>Step 1: Use the Specs generator to create the metadata files.
    *
-   * <p>Step 2: Use the exec:java plugin to execute the Template class, and passing parameters such
+   * <p>Step 2: Use the exec:java plugin to execute the Template class and pass parameters such
    * that the DataflowRunner knows that it is a Template staging (--stagingLocation,
    * --templateLocation). The class itself is responsible for copying all the dependencies to Cloud
    * Storage and saving the Template file.
