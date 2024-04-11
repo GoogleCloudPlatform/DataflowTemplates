@@ -17,7 +17,7 @@ package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
-import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -43,7 +43,7 @@ public class ReadDialect extends PTransform<PBegin, PCollection<Dialect>> {
 
   private static class ReadDialectFn extends DoFn<Void, Dialect> {
     private final SpannerConfig spannerConfig;
-    private transient LocalSpannerAccessor spannerAccessor;
+    private transient SpannerAccessor spannerAccessor;
 
     public ReadDialectFn(SpannerConfig spannerConfig) {
       this.spannerConfig = spannerConfig;
@@ -51,7 +51,7 @@ public class ReadDialect extends PTransform<PBegin, PCollection<Dialect>> {
 
     @Setup
     public void setup() throws Exception {
-      spannerAccessor = LocalSpannerAccessor.getOrCreate(spannerConfig);
+      spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
     }
 
     @Teardown
