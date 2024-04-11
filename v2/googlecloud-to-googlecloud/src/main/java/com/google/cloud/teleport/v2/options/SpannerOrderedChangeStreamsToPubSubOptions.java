@@ -23,10 +23,10 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 /**
- * The {@link OrderedSpannerChangeStreamsToPubSubOptions} interface provides the custom execution
+ * The {@link SpannerOrderedChangeStreamsToPubSubOptions} interface provides the custom execution
  * options passed by the executor at the command-line.
  */
-public interface OrderedSpannerChangeStreamsToPubSubOptions extends DataflowPipelineOptions {
+public interface SpannerOrderedChangeStreamsToPubSubOptions extends DataflowPipelineOptions {
 
   @TemplateParameter.ProjectId(
       order = 1,

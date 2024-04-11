@@ -20,7 +20,7 @@ import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.options.OrderedSpannerChangeStreamsToPubSubOptions;
+import com.google.cloud.teleport.v2.options.SpannerOrderedChangeStreamsToPubSubOptions;
 import com.google.cloud.teleport.v2.transforms.OrderedSpannerChangeStreamsToKV;
 import com.google.cloud.teleport.v2.transforms.PublishOrderedDataChangeRecordsKVToPubSub;
 import java.util.ArrayList;
@@ -35,14 +35,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link OrderedSpannerChangeStreamsToPubSub} pipeline streams ordered (grouped by bucketized
+ * The {@link SpannerOrderedChangeStreamsToPubSub} pipeline streams ordered (grouped by bucketized
  * partition key by and ordered by commit timestamp) change stream record(s) and stores to pubsub
  * topic in user specified format. The sink data can be stored in a JSON Text.
  *
  * <p>Note: This template doesn't ensure ordering within a transaction.
  *
  * <p>Check out <a
- * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Ordered_Spanner_Change_Streams_to_PubSub.md">README</a>
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Spanner_Ordered_Change_Streams_to_PubSub.md">README</a>
  * for instructions on how to use or modify this template.
  */
 @Template(
@@ -64,7 +64,7 @@ import org.slf4j.LoggerFactory;
           + " build change streams Dataflow pipelines</a>, and"
           + " <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best practices</a>."
     },
-    optionsClass = OrderedSpannerChangeStreamsToPubSubOptions.class,
+    optionsClass = SpannerOrderedChangeStreamsToPubSubOptions.class,
     flexContainerName = "spanner-changestreams-to-pubsub",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-pubsub",
@@ -79,9 +79,9 @@ import org.slf4j.LoggerFactory;
     },
     streaming = true,
     supportsAtLeastOnce = true)
-public class OrderedSpannerChangeStreamsToPubSub {
+public class SpannerOrderedChangeStreamsToPubSub {
   private static final Logger LOG =
-      LoggerFactory.getLogger(OrderedSpannerChangeStreamsToPubSub.class);
+      LoggerFactory.getLogger(SpannerOrderedChangeStreamsToPubSub.class);
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
 
   public static void main(String[] args) {
@@ -89,25 +89,25 @@ public class OrderedSpannerChangeStreamsToPubSub {
 
     LOG.info("Starting Input Messages to Pub/Sub");
 
-    OrderedSpannerChangeStreamsToPubSubOptions options =
-        PipelineOptionsFactory.fromArgs(args).as(OrderedSpannerChangeStreamsToPubSubOptions.class);
+    SpannerOrderedChangeStreamsToPubSubOptions options =
+        PipelineOptionsFactory.fromArgs(args).as(SpannerOrderedChangeStreamsToPubSubOptions.class);
 
     run(options);
   }
 
-  private static String getSpannerProjectId(OrderedSpannerChangeStreamsToPubSubOptions options) {
+  private static String getSpannerProjectId(SpannerOrderedChangeStreamsToPubSubOptions options) {
     return options.getSpannerProjectId().isEmpty()
         ? options.getProject()
         : options.getSpannerProjectId();
   }
 
-  private static String getPubsubProjectId(OrderedSpannerChangeStreamsToPubSubOptions options) {
+  private static String getPubsubProjectId(SpannerOrderedChangeStreamsToPubSubOptions options) {
     return options.getPubsubProjectId().isEmpty()
         ? options.getProject()
         : options.getPubsubProjectId();
   }
 
-  public static PipelineResult run(OrderedSpannerChangeStreamsToPubSubOptions options) {
+  public static PipelineResult run(SpannerOrderedChangeStreamsToPubSubOptions options) {
     LOG.info("Requested Message Format is " + options.getOutputDataFormat());
     options.setStreaming(true);
     options.setEnableStreamingEngine(true);
