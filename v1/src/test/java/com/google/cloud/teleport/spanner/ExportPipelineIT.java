@@ -28,9 +28,9 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -42,7 +42,6 @@ import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.artifacts.utils.AvroTestUtil;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.commons.lang3.RandomUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,7 +58,7 @@ import org.slf4j.LoggerFactory;
 public class ExportPipelineIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(ExportPipelineIT.class);
-  private static final int MESSAGES_COUNT = 5;
+  private static final int MESSAGES_COUNT = 100;
 
   private static final Schema EMPTY_SCHEMA =
       new Schema.Parser()
@@ -274,7 +273,8 @@ public class ExportPipelineIT extends TemplateTestBase {
             mutationsToRecords(expectedSingerRecords));
 
     assertEquals(MESSAGES_COUNT, expectedEmbeddingRecords.size());
-    List<Map<String, Object>> expEmRecs = mutationsToRecords(expectedEmbeddingRecords);
+    List<Map<String, Object>> expEmRecs = mutationsToRecords(expectedEmbeddingRecords, List.of("Id", "Embeddings"));
+
     assertEquals(MESSAGES_COUNT, expEmRecs.size());
     assertThatGenericRecords(embeddingsRecords).hasRows(MESSAGES_COUNT);
 
@@ -284,7 +284,6 @@ public class ExportPipelineIT extends TemplateTestBase {
     assertThatGenericRecords(embeddingsRecords)
         .hasRecordsUnorderedCaseInsensitiveColumns(
             expEmRecs);
-
 
     assertThatGenericRecords(emptyRecords).hasRows(0);
     assertThatGenericRecords(modelStructRecords).hasRows(0);
@@ -379,18 +378,9 @@ public class ExportPipelineIT extends TemplateTestBase {
       Mutation.WriteBuilder mutation = Mutation.newInsertBuilder(tableId);
       mutation.set("Id").to(i);
 
-      ArrayList<Double> embeddings =
-          new ArrayList<>(
-              Arrays.asList(
-                  RandomUtils.nextDouble(),
-                  RandomUtils.nextDouble(),
-                  RandomUtils.nextDouble(),
-                  RandomUtils.nextDouble()));
-
-      mutation.set("Embeddings").to(Value.float64Array(embeddings));
+      mutation.set("Embeddings").to(Value.float64Array(ThreadLocalRandom.current().doubles(4, -10000, 10000).toArray()));
       mutations.add(mutation.build());
     }
-
     return mutations;
   }
 
