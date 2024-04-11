@@ -237,8 +237,23 @@ public interface OrderedSpannerChangeStreamsToPubSubOptions extends DataflowPipe
 
   void setPubsubTopic(String pubsubTopic);
 
-  @TemplateParameter.Enum(
+  @TemplateParameter.Text(
       order = 19,
+      optional = true,
+      description = "The Pub/Sub regional/locational endpoint",
+      helpText = "Check list of endpoints at https://cloud.google.com/pubsub/docs/reference/service_apis_overview#pubsub_endpoints"
+                    + " Message ordering is expected only for messages published in the same region."
+                    + " Hence, ensure your publisher clients use the locational service endpoints to publish messages to the same region for the same ordering key."
+                    + " Default is set to global endpoint (pubsub.googleapis.com:443)."
+                    + " Requests to the global endpoint originating from within Google Cloud are routed to the Pub/Sub in the region where they originate.",
+      example = "us-central1-pubsub.googleapis.com:443")
+  @Default.String("pubsub.googleapis.com:443")
+  String getPubsubRegionalEndpoint();
+
+  void setPubsubRegionalEndpoint(String pubsubRegionalEndpoint);
+
+  @TemplateParameter.Enum(
+      order = 20,
       enumOptions = {
         @TemplateEnumOption("LOW"),
         @TemplateEnumOption("MEDIUM"),

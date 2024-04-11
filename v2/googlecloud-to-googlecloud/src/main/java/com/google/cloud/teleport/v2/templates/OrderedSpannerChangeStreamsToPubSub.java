@@ -187,6 +187,7 @@ public class OrderedSpannerChangeStreamsToPubSub {
                 .setProjectId(pubsubProjectId)
                 .setPubsubAPI(pubsubAPI)
                 .setPubsubTopicName(pubsubTopicName)
+                .setPubsubEndpoint(options.getPubsubRegionalEndpoint())
                 .build());
     return pipeline.run();
   }

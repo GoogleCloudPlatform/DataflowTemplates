@@ -58,6 +58,8 @@ public abstract class PublishOrderedDataChangeRecordsKVToPubSub
 
   protected abstract String pubsubTopicName();
 
+  protected abstract String pubsubEndpoint();
+
   @Override
   public PCollection<KV<String, Iterable<byte[]>>> expand(
       PCollection<KV<String, Iterable<DataChangeRecord>>> recordsKV) {
@@ -104,11 +106,12 @@ public abstract class PublishOrderedDataChangeRecordsKVToPubSub
     String pubsubTopicName = pubsubTopicName();
     String pubsubAPI = pubsubAPI();
     String projectId = projectId();
+    String pubsubEndpoint = pubsubEndpoint();
     String outputPubsubTopic = "projects/" + projectId + "/topics/" + pubsubTopicName;
 
     if (pubsubAPI.equals(NATIVE_CLIENT)) {
       final PublishOrderedKVToPubSubDoFn publishOrderedKVToPubSubDoFn =
-          new PublishOrderedKVToPubSubDoFn(projectId, pubsubTopicName);
+          new PublishOrderedKVToPubSubDoFn(projectId, pubsubTopicName, pubsubEndpoint);
       encodedRecordsKV.apply(ParDo.of(publishOrderedKVToPubSubDoFn));
     } else {
       final String apiErrorMessage = "Invalid api:" + pubsubAPI + ". Supported apis: native_client";
@@ -127,6 +130,8 @@ public abstract class PublishOrderedDataChangeRecordsKVToPubSub
     public abstract WriteToPubSubBuilder setPubsubAPI(String value);
 
     public abstract WriteToPubSubBuilder setPubsubTopicName(String value);
+
+    public abstract WriteToPubSubBuilder setPubsubEndpoint(String value);
 
     abstract PublishOrderedDataChangeRecordsKVToPubSub autoBuild();
 

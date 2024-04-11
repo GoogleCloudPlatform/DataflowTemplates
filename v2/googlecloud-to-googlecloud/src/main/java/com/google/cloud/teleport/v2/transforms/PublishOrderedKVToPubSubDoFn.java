@@ -40,18 +40,20 @@ public class PublishOrderedKVToPubSubDoFn extends DoFn<KV<String, Iterable<byte[
 
   private final String projectId;
   private final String topicName;
+  private final String endpoint;
   private transient Publisher publisher;
 
-  public PublishOrderedKVToPubSubDoFn(String projectId, String topicName) {
+  public PublishOrderedKVToPubSubDoFn(String projectId, String topicName, String endpoint) {
     this.projectId = projectId;
     this.topicName = topicName;
+    this.endpoint = endpoint;
   }
 
   @Setup
   public void setup() {
     try {
       final TopicName projectTopicName = TopicName.of(projectId, topicName);
-      publisher = Publisher.newBuilder(projectTopicName).setEnableMessageOrdering(true).build();
+      publisher = Publisher.newBuilder(projectTopicName).setEndpoint(endpoint).setEnableMessageOrdering(true).build();
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
