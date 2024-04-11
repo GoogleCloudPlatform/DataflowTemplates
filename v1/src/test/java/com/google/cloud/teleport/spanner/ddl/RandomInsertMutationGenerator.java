@@ -187,13 +187,9 @@ public class RandomInsertMutationGenerator {
             Long l = value.isNull() ? null : value.getInt64();
             builder.set(columnName).to(l);
             break;
-          case FLOAT32:
-            Float f = value.isNull() ? null : value.getFloat32();
-            builder.set(columnName).to(f);
-            break;
           case FLOAT64:
-            Double d = value.isNull() ? null : value.getFloat64();
-            builder.set(columnName).to(d);
+            Double f = value.isNull() ? null : value.getFloat64();
+            builder.set(columnName).to(f);
             break;
           case BYTES:
             ByteArray bytes = value.isNull() ? null : value.getBytes();
@@ -225,10 +221,6 @@ public class RandomInsertMutationGenerator {
               case INT64:
                 List<Long> longs = value.isNull() ? null : value.getInt64Array();
                 builder.set(columnName).toInt64Array(longs);
-                break;
-              case FLOAT32:
-                List<Float> floats = value.isNull() ? null : value.getFloat32Array();
-                builder.set(columnName).toFloat32Array(floats);
                 break;
               case FLOAT64:
                 List<Double> doubles = value.isNull() ? null : value.getFloat64Array();

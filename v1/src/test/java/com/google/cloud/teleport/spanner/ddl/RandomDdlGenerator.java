@@ -54,7 +54,6 @@ public abstract class RandomDdlGenerator {
       new Type.Code[] {
         Type.Code.BOOL,
         Type.Code.INT64,
-        Type.Code.FLOAT32,
         Type.Code.FLOAT64,
         Type.Code.STRING,
         Type.Code.BYTES,
@@ -66,7 +65,6 @@ public abstract class RandomDdlGenerator {
       new Type.Code[] {
         Type.Code.PG_BOOL,
         Type.Code.PG_INT8,
-        Type.Code.PG_FLOAT4,
         Type.Code.PG_FLOAT8,
         Type.Code.PG_VARCHAR,
         Type.Code.PG_BYTEA,
@@ -81,7 +79,6 @@ public abstract class RandomDdlGenerator {
           Arrays.asList(
               Type.Code.BOOL,
               Type.Code.INT64,
-              Type.Code.FLOAT32,
               Type.Code.FLOAT64,
               Type.Code.STRING,
               Type.Code.TIMESTAMP,
@@ -92,7 +89,6 @@ public abstract class RandomDdlGenerator {
           Arrays.asList(
               Type.Code.PG_BOOL,
               Type.Code.PG_INT8,
-              Type.Code.PG_FLOAT4,
               Type.Code.PG_FLOAT8,
               Type.Code.PG_TEXT,
               Type.Code.PG_VARCHAR,
@@ -419,9 +415,7 @@ public abstract class RandomDdlGenerator {
           continue;
         }
         // Skip the types that may generate NaN value, as NaN cannot be used as a key
-        if (cm.type().getCode() == Type.Code.FLOAT32
-            || cm.type().getCode() == Type.Code.PG_FLOAT4
-            || cm.type().getCode() == Type.Code.FLOAT64
+        if (cm.type().getCode() == Type.Code.FLOAT64
             || cm.type().getCode() == Type.Code.PG_FLOAT8
             || cm.type().getCode() == Type.Code.PG_NUMERIC) {
           continue;
@@ -625,8 +619,6 @@ public abstract class RandomDdlGenerator {
     switch (code) {
       case BOOL:
         return Type.bool();
-      case FLOAT32:
-        return Type.float32();
       case FLOAT64:
         return Type.float64();
       case STRING:
@@ -643,8 +635,6 @@ public abstract class RandomDdlGenerator {
         return Type.pgBool();
       case PG_INT8:
         return Type.pgInt8();
-      case PG_FLOAT4:
-        return Type.pgFloat4();
       case PG_FLOAT8:
         return Type.pgFloat8();
       case PG_TEXT:

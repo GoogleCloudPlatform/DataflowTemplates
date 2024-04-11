@@ -129,10 +129,7 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"name\" : \"integer\","
             + "    \"type\" : [ \"null\", \"long\" ]"
             + "  }, {"
-            + "    \"name\" : \"float32\","
-            + "    \"type\" : [ \"null\", \"float\" ]"
-            + "  }, {"
-            + "    \"name\" : \"float64\","
+            + "    \"name\" : \"float\","
             + "    \"type\" : [ \"null\", \"double\" ]"
             + "  }, {"
             + "    \"name\" : \"timestamp\","
@@ -183,8 +180,7 @@ public class AvroSchemaToDdlConverterTest {
                 + " `notJsonArr`      ARRAY<STRING(MAX)>,"
                 + " `boolean`         BOOL,"
                 + " `integer`         INT64,"
-                + " `float32`         FLOAT32,"
-                + " `float64`         FLOAT64,"
+                + " `float`           FLOAT64,"
                 + " `timestamp`       TIMESTAMP,"
                 + " CONSTRAINT `ck` CHECK(`first_name` != 'last_name'),"
                 + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC, `last_name` DESC)"
@@ -260,11 +256,7 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"type\" : [ \"null\", \"boolean\" ],"
             + "    \"sqlType\" : \"boolean\""
             + "  }, {"
-            + "    \"name\" : \"float32\","
-            + "    \"type\" : [ \"null\", \"float\" ],"
-            + "    \"sqlType\" : \"real\""
-            + "  }, {"
-            + "    \"name\" : \"float64\","
+            + "    \"name\" : \"float\","
             + "    \"type\" : [ \"null\", \"double\" ],"
             + "    \"sqlType\" : \"double precision\""
             + "  }, {"
@@ -304,10 +296,7 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"name\" : \"integer1\","
             + "    \"type\" : [ \"null\", \"long\" ]"
             + "  }, {"
-            + "    \"name\" : \"float321\","
-            + "    \"type\" : [ \"null\", \"float\" ]"
-            + "  }, {"
-            + "    \"name\" : \"float641\","
+            + "    \"name\" : \"float1\","
             + "    \"type\" : [ \"null\", \"double\" ]"
             + "  }, {"
             + "    \"name\" : \"timestamp1\","
@@ -350,8 +339,7 @@ public class AvroSchemaToDdlConverterTest {
                 + " \"numericArr\"         numeric[],"
                 + " \"notNumericArr\"      bytea[],"
                 + " \"bool\" boolean,"
-                + " \"float32\" real,"
-                + " \"float64\" double precision,"
+                + " \"float\" double precision,"
                 + " \"bytes\" bytea,"
                 + " \"text\" text,"
                 + " \"timestamptz\" timestamp with time zone,"
@@ -361,8 +349,7 @@ public class AvroSchemaToDdlConverterTest {
                 + " \"varcharArr2\"     character varying[],"
                 + " \"boolean\"         boolean,"
                 + " \"integer1\"        bigint,"
-                + " \"float321\"        real,"
-                + " \"float641\"        double precision,"
+                + " \"float1\"          double precision,"
                 + " \"timestamp1\"      timestamp with time zone,"
                 + " CONSTRAINT \"ck\" CHECK(\"first_name\" != \"last_name\"),"
                 + " PRIMARY KEY (\"id\", \"gen_id\", \"last_name\")"
@@ -882,7 +869,7 @@ public class AvroSchemaToDdlConverterTest {
     assertEquals(
         Type.int64(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.LONG), false));
     assertEquals(
-        Type.float32(),
+        Type.float64(),
         avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.FLOAT), false));
     assertEquals(
         Type.float64(),
@@ -910,7 +897,7 @@ public class AvroSchemaToDdlConverterTest {
     assertEquals(
         Type.pgInt8(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.LONG), false));
     assertEquals(
-        Type.pgFloat4(),
+        Type.pgFloat8(),
         avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.FLOAT), false));
     assertEquals(
         Type.pgFloat8(),

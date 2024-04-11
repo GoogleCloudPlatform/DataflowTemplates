@@ -66,12 +66,6 @@ public class RandomValueGenerator {
       case INT64:
       case PG_INT8:
         return Value.int64(null);
-      case FLOAT32:
-      case PG_FLOAT4:
-        if (random.nextBoolean()) {
-          return Value.float32(Float.NaN);
-        }
-        return Value.float32(null);
       case FLOAT64:
       case PG_FLOAT8:
         if (random.nextBoolean()) {
@@ -107,9 +101,6 @@ public class RandomValueGenerator {
           case INT64:
           case PG_INT8:
             return Value.int64Array((long[]) null);
-          case FLOAT32:
-          case PG_FLOAT4:
-            return Value.float32Array((float[]) null);
           case FLOAT64:
           case PG_FLOAT8:
             return Value.float64Array((double[]) null);
@@ -149,9 +140,6 @@ public class RandomValueGenerator {
       case INT64:
       case PG_INT8:
         return Value.int64Array(generateList(random::nextLong));
-      case FLOAT32:
-      case PG_FLOAT4:
-        return Value.float32Array(generateList(random::nextFloat));
       case FLOAT64:
       case PG_FLOAT8:
         return Value.float64Array(generateList(random::nextDouble));
@@ -193,9 +181,6 @@ public class RandomValueGenerator {
       case INT64:
       case PG_INT8:
         return Value.int64(random.nextLong());
-      case FLOAT32:
-      case PG_FLOAT4:
-        return Value.float32(random.nextFloat());
       case FLOAT64:
       case PG_FLOAT8:
         return Value.float64(random.nextDouble());

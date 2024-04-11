@@ -218,9 +218,6 @@ public class SpannerRecordConverter {
             builder.set(field, nullValue ? null : row.getLong(fieldIndex));
           }
           break;
-        case FLOAT:
-          builder.set(field, nullValue ? null : row.getFloat(fieldIndex));
-          break;
         case DOUBLE:
           builder.set(field, nullValue ? null : row.getDouble(fieldIndex));
           break;
@@ -306,11 +303,6 @@ public class SpannerRecordConverter {
                   builder.set(field, nullValue ? null : row.getLongList(fieldIndex));
                 }
                 break;
-              case FLOAT:
-                {
-                  builder.set(field, nullValue ? null : row.getFloatList(fieldIndex));
-                  break;
-                }
               case DOUBLE:
                 {
                   builder.set(field, nullValue ? null : row.getDoubleList(fieldIndex));

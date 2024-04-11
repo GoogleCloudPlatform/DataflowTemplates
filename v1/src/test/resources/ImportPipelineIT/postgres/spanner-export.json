@@ -3,9 +3,6 @@
     "name": "Singers",
     "manifestFile": "Singers-manifest.json"
   }, {
-    "name": "Float32Table",
-    "manifestFile": "Float32Table-manifest.json"
-  }, {
     "name": "EmptyTable",
     "manifestFile": "EmptyTable-manifest.json"
   }],
