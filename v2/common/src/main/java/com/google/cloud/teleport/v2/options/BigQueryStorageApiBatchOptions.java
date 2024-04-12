@@ -36,6 +36,8 @@ public interface BigQueryStorageApiBatchOptions extends BigQueryOptions {
   @TemplateParameter.Boolean(
       order = 2,
       optional = true,
+      parentName = "useStorageWriteApi",
+      parentTriggerValues = {"true"},
       description = "Use at at-least-once semantics in BigQuery Storage Write API",
       helpText =
           "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"
