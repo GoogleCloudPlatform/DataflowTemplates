@@ -68,7 +68,7 @@ import org.apache.beam.sdk.values.Row;
       contactInformation = "https://cloud.google.com/support",
       hidden = true),
   @Template(
-      name = "Firestore_to_BigQuery_Flex",
+      name = "Firestore_to_BigQuery_Xlang",
       category = TemplateCategory.BATCH,
       displayName = "Firestore (Datastore mode) to BigQuery with Python UDF",
       type = Template.TemplateType.XLANG,
@@ -82,7 +82,7 @@ import org.apache.beam.sdk.values.Row;
         "javascriptTextTransformFunctionName",
         "javascriptTextTransformReloadIntervalMinutes"
       },
-      flexContainerName = "firestore-to-bigquery",
+      flexContainerName = "firestore-to-bigquery-xlang",
       contactInformation = "https://cloud.google.com/support",
       hidden = true)
 })
