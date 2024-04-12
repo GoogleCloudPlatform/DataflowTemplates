@@ -487,7 +487,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             containerName,
             targetDirectory,
             project.getArtifact().getFile(),
-            xlangCommandSpec);
+            xlangCommandSpec,
+            project.getProperties().getProperty("beam.version"));
       }
       LOG.info("Staging XLANG image using Dockerfile");
       stageXlangUsingDockerfile(imagePath, containerName + "/Dockerfile");
