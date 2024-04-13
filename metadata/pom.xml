@@ -44,6 +44,11 @@
       <artifactId>beam-sdks-java-core</artifactId>
       <version>${beam.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>${guava.version}</version>
+    </dependency>
 
     <!-- Testing dependencies -->
     <dependency>
