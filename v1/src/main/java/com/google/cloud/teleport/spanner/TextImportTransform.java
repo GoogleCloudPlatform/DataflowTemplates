@@ -460,6 +460,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         return Code.STRING;
       } else if (columnType.equalsIgnoreCase("INT64") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.INT64;
+      } else if (columnType.equalsIgnoreCase("FLOAT32") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
+        return Code.FLOAT32;
       } else if (columnType.equalsIgnoreCase("FLOAT64") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.FLOAT64;
       } else if (columnType.equalsIgnoreCase("BOOL") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
@@ -477,6 +479,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         return Code.JSON;
       } else if (columnType.equalsIgnoreCase("bigint") && dialect == Dialect.POSTGRESQL) {
         return Code.PG_INT8;
+      } else if (columnType.equalsIgnoreCase("real") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_FLOAT4;
       } else if (columnType.equalsIgnoreCase("double precision") && dialect == Dialect.POSTGRESQL) {
         return Code.PG_FLOAT8;
       } else if (columnType.equalsIgnoreCase("boolean") && dialect == Dialect.POSTGRESQL) {
