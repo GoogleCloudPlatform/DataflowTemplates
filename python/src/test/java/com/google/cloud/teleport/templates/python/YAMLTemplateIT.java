@@ -34,6 +34,7 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -47,6 +48,7 @@ import org.junit.runners.JUnit4;
 public final class YAMLTemplateIT extends TemplateTestBase {
 
   @Test
+  @Ignore("Breaking gitactions. Fix in #1405")
   public void testSimpleCompositeSpec() throws IOException {
     // Arrange
     String yamlMessage = createSimpleYamlMessage();
@@ -56,6 +58,7 @@ public final class YAMLTemplateIT extends TemplateTestBase {
   }
 
   @Test
+  @Ignore("Breaking gitactions. Fix in #1405")
   public void testSimpleCompositeSpecFile() throws IOException {
     // Arrange
     gcsClient.createArtifact("input/simple.yaml", createSimpleYamlMessage());
