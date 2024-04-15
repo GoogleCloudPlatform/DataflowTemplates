@@ -213,7 +213,6 @@ public class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, S
       JsonNode retryCount = changeEvent.get("_metadata_retry_count");
       String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
       Map<String, Object> sourceRecord = convertJsonNodeToMap(changeEvent);
-      LOG.info("Source record " + sourceRecord);
 
       if (retryCount != null) {
         isRetryRecord = true;
@@ -239,7 +238,6 @@ public class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, S
           outputWithFilterTag(c, c.element());
           return;
         }
-        LOG.info("Spanner transformed record: " + migrationTransformationResponse.getResponseRow());
         changeEvent =
             transformChangeEventViaAdvancedTransformation(
                 changeEvent, migrationTransformationResponse.getResponseRow());
