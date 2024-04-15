@@ -58,7 +58,6 @@ public class TemplateSpecsGeneratorTest {
 
     try (FileInputStream fis = new FileInputStream(saveImageSpec)) {
       String json = new String(fis.readAllBytes(), StandardCharsets.UTF_8);
-      System.err.println(json);
       ImageSpec read = GSON.fromJson(json, ImageSpec.class);
       assertEquals(imageSpec.getMetadata().getName(), read.getMetadata().getName());
       assertEquals(imageSpec.getMetadata().getParameter("hiddenParam").get().hiddenUi(), true);
