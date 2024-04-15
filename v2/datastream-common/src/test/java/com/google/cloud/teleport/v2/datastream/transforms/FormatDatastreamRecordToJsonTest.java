@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import org.apache.avro.file.DataFileReader;
-import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
@@ -137,7 +136,6 @@ public class FormatDatastreamRecordToJsonTest {
     File file = new File(resource.toURI());
     DatumReader<GenericRecord> datumReader = new GenericDatumReader<>();
     DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(file, datumReader);
-
 
     GenericRecord record = dataFileReader.next();
     String jsonData = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();

@@ -328,22 +328,8 @@ public class DataStreamToSpanner {
 
     void setDatastreamSourceType(String value);
 
-    @TemplateParameter.Boolean(
-        order = 19,
-        optional = true,
-        description =
-            "If true, rounds the decimal values in json columns to a number that can be stored"
-                + " without loss of precision.",
-        helpText =
-            "This flag if set, rounds the decimal values in json columns to a number that can be"
-                + " stored without loss of precision.")
-    @Default.Boolean(false)
-    Boolean getRoundJsonDecimals();
-
-    void setRoundJsonDecimals(Boolean value);
-
     @TemplateParameter.Enum(
-        order = 20,
+        order = 19,
         optional = true,
         description = "Run mode - currently supported are : regular or retryDLQ",
         enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
@@ -354,7 +340,7 @@ public class DataStreamToSpanner {
     void setRunMode(String value);
 
     @TemplateParameter.GcsReadFile(
-        order = 21,
+        order = 20,
         optional = true,
         helpText =
             "Transformation context file path in cloud storage used to populate data used in"
@@ -366,7 +352,7 @@ public class DataStreamToSpanner {
     void setTransformationContextFilePath(String value);
 
     @TemplateParameter.Integer(
-        order = 22,
+        order = 21,
         optional = true,
         description = "Directory watch duration in minutes. Default: 10 minutes",
         helpText =
@@ -381,7 +367,7 @@ public class DataStreamToSpanner {
     void setDirectoryWatchDurationInMinutes(Integer value);
 
     @TemplateParameter.Enum(
-        order = 23,
+        order = 22,
         enumOptions = {
           @TemplateEnumOption("LOW"),
           @TemplateEnumOption("MEDIUM"),
@@ -398,7 +384,7 @@ public class DataStreamToSpanner {
     void setSpannerPriority(RpcPriority value);
 
     @TemplateParameter.PubsubSubscription(
-        order = 24,
+        order = 23,
         optional = true,
         description =
             "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ"
@@ -413,7 +399,7 @@ public class DataStreamToSpanner {
     void setDlqGcsPubSubSubscription(String value);
 
     @TemplateParameter.GcsReadFile(
-        order = 25,
+        order = 24,
         optional = true,
         description = "Custom jar location in Cloud Storage",
         helpText =
@@ -425,7 +411,7 @@ public class DataStreamToSpanner {
     void setTransformationJarPath(String value);
 
     @TemplateParameter.Text(
-        order = 26,
+        order = 25,
         optional = true,
         description = "Custom class name",
         helpText =
@@ -437,7 +423,7 @@ public class DataStreamToSpanner {
     void setTransformationClassName(String value);
 
     @TemplateParameter.Text(
-        order = 27,
+        order = 26,
         optional = true,
         description = "Custom parameters for transformation",
         helpText =
@@ -446,6 +432,19 @@ public class DataStreamToSpanner {
     String getTransformationCustomParameters();
 
     void setTransformationCustomParameters(String value);
+
+    @TemplateParameter.Text(
+        order = 27,
+        optional = true,
+        description = "Filtered events directory",
+        helpText =
+            "This is the file path to store the filtered events. Default is a directory"
+                + " under the Dataflow job's temp location. The default value is enough under most"
+                + " conditions.")
+    @Default.String("")
+    String getFilteredEventsDirectory();
+
+    void setFilteredEventsDirectory(String value);
   }
 
   private static void validateSourceType(Options options) {
@@ -628,17 +627,30 @@ public class DataStreamToSpanner {
                 options.getTransformationCustomParameters(),
                 options.getTransformationJarPath(),
                 options.getTransformationClassName()));
+    /*
+     * Stage 3: Write filtered records to GCS
+     */
+    String tempLocation =
+        options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
+            ? options.as(DataflowPipelineOptions.class).getTempLocation()
+            : options.as(DataflowPipelineOptions.class).getTempLocation() + "/";
+    String filterEventsDirectory =
+        options.getFilteredEventsDirectory().isEmpty()
+            ? tempLocation + "filteredEvents/"
+            : options.getFilteredEventsDirectory();
+    LOG.info("Filtered events directory: {}", filterEventsDirectory);
     spannerWriteResults
         .filteredEvents()
-        .apply(Window.into(FixedWindows.of(Duration.standardMinutes(1))))
+        .apply(Window.into(FixedWindows.of(Duration.standardMinutes(10))))
         .apply(
-            "Write To GCS",
+            "Write Filtered Events To GCS",
             TextIO.write()
-                .to("gs://smt-job-b427-bbce/filter.json")
+                .to(filterEventsDirectory)
+                .withSuffix(".json")
                 .withNumShards(1)
                 .withWindowedWrites());
     /*
-     * Stage 3: Write failures to GCS Dead Letter Queue
+     * Stage 4: Write failures to GCS Dead Letter Queue
      * a) Retryable errors are written to retry GCS Dead letter queue
      * b) Severe errors are written to severe GCS Dead letter queue
      */

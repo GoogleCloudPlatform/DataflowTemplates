@@ -15,59 +15,52 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_METADATA_KEY_PREFIX;
-import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_SCHEMA_KEY;
+import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_CHANGE_TYPE_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_TABLE_NAME_KEY;
-import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_UUID_KEY;
-import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.MYSQL_SOURCE_TYPE;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.Timestamp;
-import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Options;
-import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerException;
-import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
+import com.google.cloud.teleport.v2.spanner.exceptions.TransformationException;
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSessionConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
-import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.AdvancedTransformationImplFetcher;
+import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
+import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
+import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
-import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertor;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
-import com.google.cloud.teleport.v2.templates.datastream.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.templates.datastream.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Spliterator;
-import java.util.Spliterators;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
+import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,7 +77,7 @@ import org.slf4j.LoggerFactory;
  * <p>Change events that failed to be written will be pushed onto the secondary output tagged with
  * PERMANENT_ERROR_TAG/RETRYABLE_ERROR_TAG along with the exception that caused the failure.
  */
-class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>, Timestamp>
+public class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>, Timestamp>
     implements Serializable {
 
   // TODO - Change Cloud Spanner nomenclature in code used to read DDL.
@@ -113,7 +106,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
   private transient SpannerAccessor spannerAccessor;
 
-  private final String advancedCustomParameters;
+  private final String customParameters;
 
   private final Counter processedEvents =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Total events processed");
@@ -136,6 +129,12 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private final Counter retryableErrors =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Retryable errors");
 
+  private final Counter transformationException =
+      Metrics.counter(SpannerTransactionWriterDoFn.class, "Transformation Exceptions");
+
+  private final Distribution applyTransformationResponseTimeMetric =
+      Metrics.distribution(
+          SpannerTransactionWriterDoFn.class, "apply_transformation_impl_latency_ms");
   // The max length of tag allowed in Spanner Transaction tags.
   private static final int MAX_TXN_TAG_LENGTH = 50;
 
@@ -151,7 +150,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   // ChangeEventSessionConvertor utility object.
   private ChangeEventSessionConvertor changeEventSessionConvertor;
 
-  SpannerTransactionWriterDoFn(
+  public SpannerTransactionWriterDoFn(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
       Schema schema,
@@ -159,7 +158,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       String shadowTablePrefix,
       String sourceType,
       Boolean isRegularRunMode,
-      String advancedCustomParameters,
+      String customParameters,
       String customJarPath,
       String customClassName) {
     Preconditions.checkNotNull(spannerConfig);
@@ -171,7 +170,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         (shadowTablePrefix.endsWith("_")) ? shadowTablePrefix : shadowTablePrefix + "_";
     this.sourceType = sourceType;
     this.isRegularRunMode = isRegularRunMode;
-    this.advancedCustomParameters = advancedCustomParameters;
+    this.customParameters = customParameters;
     this.customClassName = customClassName;
     this.customJarPath = customJarPath;
   }
@@ -182,10 +181,11 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-    datastreamToSpannerTransformation = getApplyTransformationImpl(customJarPath, customClassName);
+    datastreamToSpannerTransformation =
+        AdvancedTransformationImplFetcher.getApplyTransformationImpl(
+            customJarPath, customClassName, customParameters);
     changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(
-            schema, transformationContext, sourceType, roundJsonDecimals);
+        new ChangeEventSessionConvertor(schema, transformationContext, sourceType);
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
@@ -213,7 +213,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       JsonNode retryCount = changeEvent.get("_metadata_retry_count");
       String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
       Map<String, Object> sourceRecord = convertJsonNodeToMap(changeEvent);
-      LOG.info("Source record", sourceRecord);
+      LOG.info("Source record " + sourceRecord);
 
       if (retryCount != null) {
         isRetryRecord = true;
@@ -223,14 +223,17 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         schema.verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
         changeEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent);
       }
-      changeEvent =
-          changeEventSessionConvertor.transformChangeEventData(
-              changeEvent, spannerAccessor.getDatabaseClient(), ddl);
       if (datastreamToSpannerTransformation != null) {
+
+        Instant startTimestamp = Instant.now();
         MigrationTransformationRequest migrationTransformationRequest =
-            new MigrationTransformationRequest(tableName, sourceRecord, "");
+            new MigrationTransformationRequest(
+                tableName, sourceRecord, "", changeEvent.get(EVENT_CHANGE_TYPE_KEY).asText());
         MigrationTransformationResponse migrationTransformationResponse =
             datastreamToSpannerTransformation.toSpannerRow(migrationTransformationRequest);
+        Instant endTimestamp = Instant.now();
+        applyTransformationResponseTimeMetric.update(
+            new Duration(startTimestamp, endTimestamp).getMillis());
         if (migrationTransformationResponse.isEventFiltered()) {
           filteredEvents.inc();
           outputWithFilterTag(c, c.element());
@@ -239,7 +242,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         LOG.info("Spanner transformed record: " + migrationTransformationResponse.getResponseRow());
         changeEvent =
             transformChangeEventViaAdvancedTransformation(
-                changeEvent, migrationTransformationResponse.getResponseRow(), tableName, ddl);
+                changeEvent, migrationTransformationResponse.getResponseRow());
       }
       ChangeEventContext changeEventContext =
           ChangeEventContextFactory.createChangeEventContext(
@@ -266,7 +269,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                             transaction, changeEventContext);
 
                     /* There was a previous event recorded with a greater sequence information
-                     * than current. Hence skip the current event.
+                     * than current. Hence, skip the current event.
                      */
                     if (previousChangeEventSequence != null
                         && previousChangeEventSequence.compareTo(currentChangeEventSequence) >= 0) {
@@ -316,6 +319,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       if (!isRetryRecord) {
         retryableErrors.inc();
       }
+    } catch (TransformationException e) {
+      // Errors that result from the custom JAR during transformation are not retryable.
+      outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
+      transformationException.inc();
     } catch (Exception e) {
       // Any other errors are considered severe and not retryable.
       outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
@@ -323,232 +330,63 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     }
   }
 
-  private JsonNode transformChangeEventViaAdvancedTransformation(
-      JsonNode changeEvent, Map<String, Object> spannerRecord, String tableName, Ddl ddl)
-      throws Exception {
-    Table table = ddl.table(tableName);
+  public JsonNode transformChangeEventViaAdvancedTransformation(
+      JsonNode changeEvent, Map<String, Object> spannerRecord) throws IllegalArgumentException {
     for (Map.Entry<String, Object> entry : spannerRecord.entrySet()) {
       String columnName = entry.getKey();
-      if (!changeEvent.has(columnName)) {
-        LOG.info("Column " + columnName + " doesn't exist in change event: " + changeEvent);
-        continue;
-      }
       Object columnValue = entry.getValue();
-      Type columnType = table.column(columnName).type();
-      switch (columnType.getCode()) {
-        case BOOL:
-        case PG_BOOL:
-          if (columnValue instanceof Boolean) {
-            ((ObjectNode) changeEvent).put(columnName, (Boolean) columnValue);
-            break;
-          } else {
-            throw new Exception("Column type not boolean");
-          }
-        case STRING:
-        case PG_VARCHAR:
-        case PG_TEXT:
-          if (columnValue instanceof String) {
-            ((ObjectNode) changeEvent).put(columnName, (String) columnValue);
-            break;
-          } else {
-            throw new Exception("Column type not string");
-          }
-        default:
-          throw new IllegalArgumentException(
-              "Column name("
-                  + columnName
-                  + ") has unsupported column type("
-                  + columnType.getCode()
-                  + ")");
+
+      if (columnValue instanceof Boolean) {
+        ((ObjectNode) changeEvent).put(columnName, (Boolean) columnValue);
+      } else if (columnValue instanceof Long) {
+        ((ObjectNode) changeEvent).put(columnName, (Long) columnValue);
+      } else if (columnValue instanceof byte[]) {
+        ((ObjectNode) changeEvent).put(columnName, (byte[]) columnValue);
+      } else if (columnValue instanceof Double) {
+        ((ObjectNode) changeEvent).put(columnName, (Double) columnValue);
+      } else if (columnValue instanceof Integer) {
+        ((ObjectNode) changeEvent).put(columnName, (Integer) columnValue);
+      } else if (columnValue instanceof String) {
+        ((ObjectNode) changeEvent).put(columnName, (String) columnValue);
+      } else {
+        throw new IllegalArgumentException(
+            "Column name(" + columnName + ") has unsupported column value(" + columnValue + ")");
       }
     }
     return changeEvent;
   }
 
-  private Map<String, Object> convertJsonNodeToMap(JsonNode changeEvent)
-      throws ChangeEventConvertorException {
-
+  public Map<String, Object> convertJsonNodeToMap(JsonNode changeEvent)
+      throws InvalidChangeEventException {
     Map<String, Object> sourceRecord = new HashMap<>();
-    Iterator<Map.Entry<String, JsonNode>> fields = changeEvent.fields();
-    while (fields.hasNext()) {
-      Map.Entry<String, JsonNode> field = fields.next();
-      String key = field.getKey();
-      JsonNode value = field.getValue();
-
-      // Recursively convert nested JSONNodes
+    List<String> changeEventColumns = ChangeEventConvertor.getEventColumnKeys(changeEvent);
+    for (String key : changeEventColumns) {
+      JsonNode value = changeEvent.get(key);
       if (value.isObject()) {
         sourceRecord.put(key, convertJsonNodeToMap(value));
       } else if (value.isArray()) {
-        sourceRecord.put(key, value.toString());
+        if (value.size() > 0 && value.get(0).isIntegralNumber()) {
+          byte[] byteArray = new byte[value.size()];
+          for (int i = 0; i < value.size(); i++) {
+            byteArray[i] = (byte) value.get(i).intValue();
+          }
+          sourceRecord.put(key, byteArray);
+        } else {
+          throw new InvalidChangeEventException("Invalid byte array value for column: " + key);
+        }
       } else if (value.isTextual()) {
         sourceRecord.put(key, value.asText());
       } else if (value.isBoolean()) {
         sourceRecord.put(key, value.asBoolean());
-      } else if (value.isDouble()) {
+      } else if (value.isDouble() || value.isFloat() || value.isFloatingPointNumber()) {
         sourceRecord.put(key, value.asDouble());
-      } else if (value.isLong()) {
+      } else if (value.isLong() || value.isInt() || value.isIntegralNumber()) {
         sourceRecord.put(key, value.asLong());
       } else if (value.isNull()) {
         sourceRecord.put(key, null);
       }
     }
     return sourceRecord;
-  }
-
-  public ISpannerMigrationTransformer getApplyTransformationImpl(
-      String customJarPath, String customClassName) {
-    if (!customJarPath.isEmpty() && !customClassName.isEmpty()) {
-      LOG.info(
-          "Getting custom sharding fetcher : " + customJarPath + " with class: " + customClassName);
-      try {
-        // Get the start time of loading the custom class
-        Instant startTime = Instant.now();
-
-        // Getting the jar URL which contains target class
-        URL[] classLoaderUrls = JarFileReader.saveFilesLocally(customJarPath);
-
-        // Create a new URLClassLoader
-        URLClassLoader urlClassLoader = new URLClassLoader(classLoaderUrls);
-
-        // Load the target class
-        Class<?> advancedTransformationClass = urlClassLoader.loadClass(customClassName);
-
-        // Create a new instance from the loaded class
-        Constructor<?> constructor = advancedTransformationClass.getConstructor();
-        ISpannerMigrationTransformer datastreamToSpannerTransformation =
-            (ISpannerMigrationTransformer) constructor.newInstance();
-        // Get the end time of loading the custom class
-        Instant endTime = Instant.now();
-        LOG.info(
-            "Custom jar "
-                + customJarPath
-                + ": Took "
-                + (new Duration(startTime, endTime)).toString()
-                + " to load");
-        LOG.info("Invoking init of the custom class with input as {}", advancedCustomParameters);
-        datastreamToSpannerTransformation.init(advancedCustomParameters);
-        return datastreamToSpannerTransformation;
-      } catch (Exception e) {
-        throw new RuntimeException("Error loading custom class : " + e.getMessage());
-      }
-    }
-    return null;
-  }
-
-  void verifyTableInSession(String tableName)
-      throws IllegalArgumentException, DroppedTableException {
-    if (!schema.getSrcToID().containsKey(tableName)) {
-      throw new IllegalArgumentException(
-          "Missing entry for " + tableName + " in srcToId map, provide a valid session file.");
-    }
-    if (!schema.getToSpanner().containsKey(tableName)) {
-      throw new DroppedTableException(
-          "Cannot find entry for "
-              + tableName
-              + " in toSpanner map, it is likely this table was dropped");
-    }
-    String tableId = schema.getSrcToID().get(tableName).getName();
-    if (!schema.getSpSchema().containsKey(tableId)) {
-      throw new IllegalArgumentException(
-          "Missing entry for " + tableId + " in spSchema, provide a valid session file.");
-    }
-  }
-
-  /**
-   * This function modifies the change event using transformations based on the session file (stored
-   * in the Schema object). This includes column/table name changes and adding of synthetic Primary
-   * Keys.
-   */
-  JsonNode transformChangeEventViaSessionFile(JsonNode changeEvent) {
-    String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
-    String tableId = schema.getSrcToID().get(tableName).getName();
-
-    // Convert table and column names in change event.
-    changeEvent = convertTableAndColumnNames(changeEvent, tableName);
-
-    // Add synthetic PK to change event.
-    changeEvent = addSyntheticPKs(changeEvent, tableId);
-
-    // Remove columns present in change event that were dropped in Spanner.
-    changeEvent = removeDroppedColumns(changeEvent, tableId);
-
-    // Add shard id to change event.
-    changeEvent = populateShardId(changeEvent, tableId);
-
-    return changeEvent;
-  }
-
-  JsonNode populateShardId(JsonNode changeEvent, String tableId) {
-    if (!MYSQL_SOURCE_TYPE.equals(this.sourceType)
-        || transformationContext.getSchemaToShardId() == null
-        || transformationContext.getSchemaToShardId().isEmpty()) {
-      return changeEvent; // Nothing to do
-    }
-
-    SpannerTable table = schema.getSpSchema().get(tableId);
-    String shardIdColumn = table.getShardIdColumn();
-    if (shardIdColumn == null) {
-      return changeEvent;
-    }
-    SpannerColumnDefinition shardIdColDef = table.getColDefs().get(table.getShardIdColumn());
-    if (shardIdColDef == null) {
-      return changeEvent;
-    }
-    Map<String, String> schemaToShardId = transformationContext.getSchemaToShardId();
-    String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
-    String shardId = schemaToShardId.get(schemaName);
-    ((ObjectNode) changeEvent).put(shardIdColDef.getName(), shardId);
-    return changeEvent;
-  }
-
-  JsonNode convertTableAndColumnNames(JsonNode changeEvent, String tableName) {
-    NameAndCols nameAndCols = schema.getToSpanner().get(tableName);
-    String spTableName = nameAndCols.getName();
-    Map<String, String> cols = nameAndCols.getCols();
-
-    // Convert the table name to corresponding Spanner table name.
-    ((ObjectNode) changeEvent).put(EVENT_TABLE_NAME_KEY, spTableName);
-    // Convert the column names to corresponding Spanner column names.
-    for (Map.Entry<String, String> col : cols.entrySet()) {
-      String srcCol = col.getKey(), spCol = col.getValue();
-      if (!srcCol.equals(spCol)) {
-        ((ObjectNode) changeEvent).set(spCol, changeEvent.get(srcCol));
-        ((ObjectNode) changeEvent).remove(srcCol);
-      }
-    }
-    return changeEvent;
-  }
-
-  JsonNode addSyntheticPKs(JsonNode changeEvent, String tableId) {
-    Map<String, SpannerColumnDefinition> spCols = schema.getSpSchema().get(tableId).getColDefs();
-    Map<String, SyntheticPKey> synthPks = schema.getSyntheticPks();
-    if (synthPks.containsKey(tableId)) {
-      String colID = synthPks.get(tableId).getColId();
-      if (!spCols.containsKey(colID)) {
-        throw new IllegalArgumentException(
-            "Missing entry for "
-                + colID
-                + " in colDefs for tableId: "
-                + tableId
-                + ", provide a valid session file.");
-      }
-      ((ObjectNode) changeEvent)
-          .put(spCols.get(colID).getName(), changeEvent.get(EVENT_UUID_KEY).asText());
-    }
-    return changeEvent;
-  }
-
-  JsonNode removeDroppedColumns(JsonNode changeEvent, String tableId) {
-    Map<String, SpannerColumnDefinition> spCols = schema.getSpSchema().get(tableId).getColDefs();
-    SourceTable srcTable = schema.getSrcSchema().get(tableId);
-    Map<String, SourceColumnDefinition> srcCols = srcTable.getColDefs();
-    for (String colId : srcTable.getColIds()) {
-      // If spanner columns do not contain this column Id, drop from change event.
-      if (!spCols.containsKey(colId)) {
-        ((ObjectNode) changeEvent).remove(srcCols.get(colId).getName());
-      }
-    }
-    return changeEvent;
   }
 
   void outputWithErrorTag(

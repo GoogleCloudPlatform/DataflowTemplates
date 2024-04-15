@@ -250,7 +250,7 @@ public class ChangeEventConvertor {
     }
   }
 
-  private static List<String> getEventColumnKeys(JsonNode changeEvent)
+  public static List<String> getEventColumnKeys(JsonNode changeEvent)
       throws InvalidChangeEventException {
     // Filter all keys which have the metadata prefix
     Iterator<String> fieldNames = changeEvent.fieldNames();
