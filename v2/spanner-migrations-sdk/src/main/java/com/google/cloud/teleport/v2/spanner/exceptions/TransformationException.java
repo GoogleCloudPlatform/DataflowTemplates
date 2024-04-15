@@ -13,17 +13,18 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.spanner.utils;
+package com.google.cloud.teleport.v2.spanner.exceptions;
 
-import java.util.Map;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+public class TransformationException extends Exception {
+  public TransformationException(Exception e) {
+    super(e);
+  }
 
-@Data
-@AllArgsConstructor
-public class MigrationTransformationRequest {
-  String tableName;
-  Map<String, Object> requestRow;
-  String shardId;
-  String eventType;
+  public TransformationException(String message) {
+    super(message);
+  }
+
+  public TransformationException(String message, Exception e) {
+    super(message, e);
+  }
 }

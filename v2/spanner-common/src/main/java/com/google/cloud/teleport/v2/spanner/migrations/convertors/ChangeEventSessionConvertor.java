@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.convertors;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_METADATA_KEY_PREFIX;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_SCHEMA_KEY;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_TABLE_NAME_KEY;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_UUID_KEY;
@@ -23,10 +22,6 @@ import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constant
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.spanner.ResultSet;
-import com.google.cloud.spanner.Statement;
-import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
@@ -35,14 +30,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefin
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
-import com.google.cloud.teleport.v2.spanner.type.Type;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.Spliterator;
-import java.util.Spliterators;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * Utility class with methods which converts change events based on {@link
@@ -58,18 +46,11 @@ public class ChangeEventSessionConvertor {
   // The source database type.
   private final String sourceType;
 
-  // If set to true, round decimals inside jsons.
-  private final Boolean roundJsonDecimals;
-
   public ChangeEventSessionConvertor(
-      Schema schema,
-      TransformationContext transformationContext,
-      String sourceType,
-      boolean roundJsonDecimals) {
+      Schema schema, TransformationContext transformationContext, String sourceType) {
     this.schema = schema;
     this.transformationContext = transformationContext;
     this.sourceType = sourceType;
-    this.roundJsonDecimals = roundJsonDecimals;
   }
 
   /**
@@ -164,52 +145,6 @@ public class ChangeEventSessionConvertor {
       // If spanner columns do not contain this column Id, drop from change event.
       if (!spCols.containsKey(colId)) {
         ((ObjectNode) changeEvent).remove(srcCols.get(colId).getName());
-      }
-    }
-    return changeEvent;
-  }
-
-  /**
-   * This function changes the modifies and data of the change event. Currently, only supports a
-   * single transformation set by roundJsonDecimals.
-   */
-  public JsonNode transformChangeEventData(JsonNode changeEvent, DatabaseClient dbClient, Ddl ddl)
-      throws Exception {
-    if (!roundJsonDecimals) {
-      return changeEvent;
-    }
-    String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
-    if (ddl.table(tableName) == null) {
-      throw new Exception("Table from change event does not exist in Spanner. table=" + tableName);
-    }
-    Iterator<String> fieldNames = changeEvent.fieldNames();
-    List<String> columnNames =
-        StreamSupport.stream(
-                Spliterators.spliteratorUnknownSize(fieldNames, Spliterator.ORDERED), false)
-            .filter(f -> !f.startsWith(EVENT_METADATA_KEY_PREFIX))
-            .collect(Collectors.toList());
-    for (String columnName : columnNames) {
-      Type columnType = ddl.table(tableName).column(columnName).type();
-      if (columnType.getCode() == Type.Code.JSON || columnType.getCode() == Type.Code.PG_JSONB) {
-        // JSON type cannot be a key column, hence setting requiredField to false.
-        String jsonStr =
-            ChangeEventTypeConvertor.toString(
-                changeEvent, columnName.toLowerCase(), /* requiredField= */ false);
-        if (jsonStr != null) {
-          Statement statement =
-              Statement.newBuilder(
-                      "SELECT PARSE_JSON(@jsonStr, wide_number_mode=>'round') as newJson")
-                  .bind("jsonStr")
-                  .to(jsonStr)
-                  .build();
-          ResultSet resultSet = dbClient.singleUse().executeQuery(statement);
-          while (resultSet.next()) {
-            // We want to send the errors to the severe error queue, hence we do not catch any error
-            // here.
-            String val = resultSet.getJson("newJson");
-            ((ObjectNode) changeEvent).put(columnName.toLowerCase(), val);
-          }
-        }
       }
     }
     return changeEvent;
