@@ -107,7 +107,6 @@ public class FormatDatastreamRecordToJson
   public FailsafeElement<String, String> apply(GenericRecord record) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode outputObject = mapper.createObjectNode();
-    Schema schema = record.getSchema();
     UnifiedTypesFormatter.payloadToJson(getPayload(record), outputObject);
     if (this.lowercaseSourceColumns) {
       outputObject = getLowerCaseObject(outputObject);

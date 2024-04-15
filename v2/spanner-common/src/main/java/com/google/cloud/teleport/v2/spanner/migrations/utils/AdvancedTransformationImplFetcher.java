@@ -43,7 +43,10 @@ public class AdvancedTransformationImplFetcher {
       String customJarPath, String customClassName, String customParameters) {
     if (!customJarPath.isEmpty() && !customClassName.isEmpty()) {
       LOG.info(
-          "Getting custom sharding fetcher : " + customJarPath + " with class: " + customClassName);
+          "Getting spanner migration transformer : "
+              + customJarPath
+              + " with class: "
+              + customClassName);
       try {
         // Get the start time of loading the custom class
         Instant startTime = Instant.now();
