@@ -174,7 +174,7 @@ import org.slf4j.LoggerFactory;
         "javascriptTextTransformReloadIntervalMinutes"
       },
       optionsClass = TextToBigQueryStreamingOptions.class,
-      flexContainerName = "text-to-bigquery-streaming",
+      flexContainerName = "text-to-bigquery-streaming-xlang",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-bigquery-stream",
       contactInformation = "https://cloud.google.com/support",

@@ -150,7 +150,7 @@ import org.json.JSONObject;
       optionalOptions = {"javascriptTextTransformGcsPath", "javascriptTextTransformFunctionName"},
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-bigquery",
-      flexContainerName = "text-to-bigquery",
+      flexContainerName = "text-to-bigquery-xlang",
       contactInformation = "https://cloud.google.com/support",
       requirements = {
         "Create a JSON file that describes your {{bigquery_name_short}} schema.\n"
