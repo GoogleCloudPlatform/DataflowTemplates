@@ -153,10 +153,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Enum(
       order = 12,
-      enumOptions = {
-        @TemplateEnumOption("JSON"),
-        @TemplateEnumOption("AVRO")
-      },
+      enumOptions = {@TemplateEnumOption("JSON"), @TemplateEnumOption("AVRO")},
       optional = true,
       description = "Output data format",
       helpText =
