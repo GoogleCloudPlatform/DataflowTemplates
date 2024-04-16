@@ -66,8 +66,8 @@ import org.slf4j.LoggerFactory;
     },
     optionsClass = SpannerOrderedChangeStreamsToPubSubOptions.class,
     flexContainerName = "spanner-ordered-changestreams-to-pubsub",
-    documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-pubsub",
+    // documentation =
+    //     "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-pubsub",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "The Cloud Spanner instance must exist before running the pipeline.",
