@@ -35,6 +35,15 @@ sudo add-apt-repository ppa:git-core/ppa -y
 sudo apt-get update
 sudo apt-get install git -y
 
+# update python to 3.11
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+sudo apt update
+sudo apt upgrade -y
+sudo apt-get install python3.11 -y
+sudo echo "alias python=/usr/bin/python3.11" > /home/$user/.bashrc
+sudo echo "alias python3=/usr/bin/python3.11" >> /home/$user/.bashrc
+source /home/$user/.bashrc
+
 # install gh
 sudo type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
 sudo curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
