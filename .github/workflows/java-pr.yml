@@ -29,6 +29,7 @@ on:
       - '.github/workflows/java-pr.yml'
   schedule:
     - cron: "0 */12 * * *"
+  workflow_dispatch:
 
 env:
   MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
