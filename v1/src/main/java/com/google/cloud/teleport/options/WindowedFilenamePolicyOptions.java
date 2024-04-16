@@ -67,7 +67,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 4,
       optional = true,
-      regexes = {"^[^A-Za-z0-9/](y+|Y+)[^A-Za-z0-9/]$"},
+      regexes = {"^[^A-Za-z0-9/]?(y+|Y+)[^A-Za-z0-9/]?$"},
       description = "Custom Year Pattern to use for the output directory",
       helpText =
           "Pattern for formatting the year. Must be one or more of 'y' or 'Y'. Case makes no"
@@ -80,7 +80,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 5,
       optional = true,
-      regexes = {"^[^A-Za-z0-9/](M+)[^A-Za-z0-9/]$"},
+      regexes = {"^[^A-Za-z0-9/]?(M+)[^A-Za-z0-9/]?$"},
       description = "Custom Month Pattern to use for the output directory",
       helpText =
           "Pattern for formatting the month. Must be one or more of the 'M' character. The "
@@ -93,7 +93,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 6,
       optional = true,
-      regexes = {"^[^A-Za-z0-9/](d+|D+)[^A-Za-z0-9/]$"},
+      regexes = {"^[^A-Za-z0-9/]?(d+|D+)[^A-Za-z0-9/]?$"},
       description = "Custom Day Pattern to use for the output directory",
       helpText =
           "Pattern for formatting the day. Must be one or more of 'd' for day of month or 'D' for"
@@ -107,7 +107,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 7,
       optional = true,
-      regexes = {"^[^A-Za-z0-9/](H+)[^A-Za-z0-9/]$"},
+      regexes = {"^[^A-Za-z0-9/]?(H+)[^A-Za-z0-9/]?$"},
       description = "Custom Hour Pattern to use for the output directory",
       helpText =
           "Pattern for formatting the hour. Must be one or more of the 'H' character. The pattern"
@@ -120,7 +120,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 8,
       optional = true,
-      regexes = {"^[^A-Za-z0-9/](m+)[^A-Za-z0-9/]$"},
+      regexes = {"^[^A-Za-z0-9/]?(m+)[^A-Za-z0-9/]?$"},
       description = "Custom Minute Pattern to use for the output directory",
       helpText =
           "Pattern for formatting the minute. Must be one or more of the 'm' character. The pattern"
