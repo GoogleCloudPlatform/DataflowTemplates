@@ -351,8 +351,6 @@ public class TextToBigQueryStreaming {
                       .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
                       .setFunctionName(options.getPythonExternalTextTransformFunctionName())
                       .build())
-              .setRowSchema(
-                  PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA)
               .apply(
                   ParDo.of(new RowToStringFailsafeElementFn(UDF_OUT, UDF_DEADLETTER_OUT))
                       .withOutputTags(UDF_OUT, TupleTagList.of(UDF_DEADLETTER_OUT)));

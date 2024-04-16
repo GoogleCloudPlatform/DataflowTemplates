@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
@@ -99,59 +100,61 @@ public abstract class PythonExternalTextTransformer {
 
     @Override
     public PCollection<Row> expand(PCollection<Row> elements) {
-      return elements.apply(
-          PythonExternalTransform.<PCollection<Row>, PCollection<Row>>from("__constructor__")
-              .withArgs(
-                  PythonCallableSource.of(
-                      String.format(
-                          "import traceback\n"
-                              + "from typing import Mapping\n"
-                              + "from typing import NamedTuple\n"
-                              + "from typing import Optional\n"
-                              + "\n"
-                              + "import apache_beam as beam\n"
-                              + "from apache_beam import coders\n"
-                              + "from apache_beam.io.filesystems import FileSystems\n"
-                              + "from apache_beam.utils import python_callable\n"
-                              + "\n"
-                              + "class ElementRow(NamedTuple):\n"
-                              + "  messageId:  Optional[str]\n"
-                              + "  message:    Optional[str]\n"
-                              + "  attributes: Optional[Mapping[str, str]]\n"
-                              + "\n"
-                              + "class FailsafeRow(NamedTuple):\n"
-                              + "  original:      ElementRow\n"
-                              + "  transformed:   ElementRow\n"
-                              + "  error_message: Optional[str]\n"
-                              + "  stack_trace:   Optional[str]\n"
-                              + "coders.registry.register_coder(FailsafeRow, coders.RowCoder)\n"
-                              + "\n"
-                              + "class UdfTransform(beam.PTransform):\n"
-                              + "  def expand(self, pcoll):\n"
-                              + "    return pcoll | \"applyUDF\" >> beam.ParDo(self.UdfDoFn())\n"
-                              + "\n"
-                              + "  @beam.typehints.with_output_types(FailsafeRow)\n"
-                              + "  class UdfDoFn(beam.DoFn):\n"
-                              + "    def __init__(self):\n"
-                              + "      self.udf_file = FileSystems.open(\"%s\").read().decode()\n"
-                              + "\n"
-                              + "    def process(self, elem):\n"
-                              + "      try:\n"
-                              + "        transformed_message = python_callable.PythonCallableWithSource.load_from_script(\n"
-                              + "          self.udf_file, \"%s\")(elem.message)\n"
-                              + "        transformed_row = ElementRow(messageId=str(elem.messageId),\n"
-                              + "                                   message=str(transformed_message),\n"
-                              + "                                   attributes=elem.attributes)\n"
-                              + "        error_message = \"\"\n"
-                              + "        stack_trace = \"\"\n"
-                              + "\n"
-                              + "      except Exception as e:\n"
-                              + "        transformed_row = elem\n"
-                              + "        error_message = str(e)\n"
-                              + "        stack_trace = traceback.format_exc()\n"
-                              + "      yield FailsafeRow(original=elem, transformed=transformed_row,\n"
-                              + "                     error_message=error_message, stack_trace=stack_trace)",
-                          fileSystemPath(), functionName()))));
+      return elements
+          .apply(
+              PythonExternalTransform.<PCollection<Row>, PCollection<Row>>from("__constructor__")
+                  .withArgs(
+                      PythonCallableSource.of(
+                          String.format(
+                              "import traceback\n"
+                                  + "from typing import Mapping\n"
+                                  + "from typing import NamedTuple\n"
+                                  + "from typing import Optional\n"
+                                  + "\n"
+                                  + "import apache_beam as beam\n"
+                                  + "from apache_beam import coders\n"
+                                  + "from apache_beam.io.filesystems import FileSystems\n"
+                                  + "from apache_beam.utils import python_callable\n"
+                                  + "\n"
+                                  + "class ElementRow(NamedTuple):\n"
+                                  + "  messageId:  Optional[str]\n"
+                                  + "  message:    Optional[str]\n"
+                                  + "  attributes: Optional[Mapping[str, str]]\n"
+                                  + "\n"
+                                  + "class FailsafeRow(NamedTuple):\n"
+                                  + "  original:      ElementRow\n"
+                                  + "  transformed:   ElementRow\n"
+                                  + "  error_message: Optional[str]\n"
+                                  + "  stack_trace:   Optional[str]\n"
+                                  + "coders.registry.register_coder(FailsafeRow, coders.RowCoder)\n"
+                                  + "\n"
+                                  + "class UdfTransform(beam.PTransform):\n"
+                                  + "  def expand(self, pcoll):\n"
+                                  + "    return pcoll | \"applyUDF\" >> beam.ParDo(self.UdfDoFn())\n"
+                                  + "\n"
+                                  + "  @beam.typehints.with_output_types(FailsafeRow)\n"
+                                  + "  class UdfDoFn(beam.DoFn):\n"
+                                  + "    def __init__(self):\n"
+                                  + "      self.udf_file = FileSystems.open(\"%s\").read().decode()\n"
+                                  + "\n"
+                                  + "    def process(self, elem):\n"
+                                  + "      try:\n"
+                                  + "        transformed_message = python_callable.PythonCallableWithSource.load_from_script(\n"
+                                  + "          self.udf_file, \"%s\")(elem.message)\n"
+                                  + "        transformed_row = ElementRow(messageId=str(elem.messageId),\n"
+                                  + "                                   message=str(transformed_message),\n"
+                                  + "                                   attributes=elem.attributes)\n"
+                                  + "        error_message = \"\"\n"
+                                  + "        stack_trace = \"\"\n"
+                                  + "\n"
+                                  + "      except Exception as e:\n"
+                                  + "        transformed_row = elem\n"
+                                  + "        error_message = str(e)\n"
+                                  + "        stack_trace = traceback.format_exc()\n"
+                                  + "      yield FailsafeRow(original=elem, transformed=transformed_row,\n"
+                                  + "                     error_message=error_message, stack_trace=stack_trace)",
+                              fileSystemPath(), functionName()))))
+          .setRowSchema(PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA);
     }
   }
 
@@ -246,6 +249,46 @@ public abstract class PythonExternalTextTransformer {
                 originalMsg, new String(transformedMsg.getBytes(), StandardCharsets.UTF_8));
         context.output(udfSuccessTag, failsafeObj);
       }
+    }
+  }
+
+  public static class RowToStringElementFn extends DoFn<Row, String> {
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      Row row = context.element();
+      String errorMessage = row.getValue("error_message");
+      String stackTrace = row.getValue("stack_trace");
+      if (!Strings.isNullOrEmpty(errorMessage) || !Strings.isNullOrEmpty(stackTrace)) {
+        Object originalElement = row.getValue("original");
+        throw new RuntimeException(
+            String.format(
+                "Error applying UDF to the source record [%s], error message: [%s], stack trace: [%s]",
+                originalElement, errorMessage, stackTrace));
+      }
+
+      Row transformedRow = row.getValue("transformed");
+      context.output(transformedRow.getValue("message"));
+    }
+  }
+
+  public static class RowToTableRowElementFn extends DoFn<Row, TableRow> {
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      Row row = context.element();
+      String errorMessage = row.getValue("error_message");
+      String stackTrace = row.getValue("stack_trace");
+      if (!Strings.isNullOrEmpty(errorMessage) || !Strings.isNullOrEmpty(stackTrace)) {
+        Object originalElement = row.getValue("original");
+        throw new RuntimeException(
+            String.format(
+                "Error applying UDF to the source record [%s], error message: [%s], stack trace: [%s]",
+                originalElement, errorMessage, stackTrace));
+      }
+
+      Row transformedRow = row.getValue("transformed");
+      context.output(BigQueryConverters.convertJsonToTableRow(transformedRow.getValue("message")));
     }
   }
 

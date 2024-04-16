@@ -467,7 +467,6 @@ public final class PubsubProtoToBigQuery {
                   .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
                   .setFunctionName(options.getPythonExternalTextTransformFunctionName())
                   .build())
-          .setRowSchema(PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA)
           .apply(
               "MapRowsToFailsafeElements",
               ParDo.of(new RowToStringFailsafeElementFn(UDF_SUCCESS_TAG, UDF_FAILURE_TAG))
