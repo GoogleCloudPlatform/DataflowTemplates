@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
  * for instructions on how to use or modify this template.
  */
 @Template(
-    name = "Ordered_Spanner_Change_Streams_to_PubSub",
+    name = "Spanner_Ordered_Change_Streams_to_PubSub",
     category = TemplateCategory.STREAMING,
     displayName = "Cloud Spanner change streams to Pub/Sub",
     description = {
@@ -65,7 +65,7 @@ import org.slf4j.LoggerFactory;
           + " <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best practices</a>."
     },
     optionsClass = SpannerOrderedChangeStreamsToPubSubOptions.class,
-    flexContainerName = "spanner-changestreams-to-pubsub",
+    flexContainerName = "spanner-ordered-changestreams-to-pubsub",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-pubsub",
     contactInformation = "https://cloud.google.com/support",
