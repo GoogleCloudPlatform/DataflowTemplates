@@ -151,12 +151,9 @@ public class SplunkConverters {
 
     void setIncludePubsubMessage(ValueProvider<Boolean> includePubsubMessage);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.KmsEncryptionKey(
         order = 7,
         optional = true,
-        regexes = {
-          "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/keyRings\\/[^\\n\\r\\/]+\\/cryptoKeys\\/[^\\n\\r\\/]+$"
-        },
         description = "Google Cloud KMS encryption key for the token",
         helpText =
             "The Cloud KMS key to use to decrypt the HEC token string. This parameter must be provided when tokenSource is set to KMS. If the Cloud KMS key is provided, the HEC token string `must` be passed in encrypted.",
@@ -217,7 +214,7 @@ public class SplunkConverters {
 
     void setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Boolean(
         order = 12,
         optional = true,
         description =
