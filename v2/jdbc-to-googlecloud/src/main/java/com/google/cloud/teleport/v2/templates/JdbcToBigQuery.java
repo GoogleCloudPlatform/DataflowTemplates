@@ -28,6 +28,7 @@ import com.google.cloud.teleport.v2.utils.JdbcConverters;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
@@ -175,6 +176,8 @@ public class JdbcToBigQuery {
    */
   @VisibleForTesting
   static Write<TableRow> writeToBQTransform(JdbcToBigQueryOptions options) {
+    // Needed for loading GCS filesystem before Pipeline.Create call
+    FileSystems.setDefaultPipelineOptions(options);
     Write<TableRow> write =
         BigQueryIO.writeTableRows()
             .withoutValidation()
