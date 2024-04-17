@@ -3,7 +3,7 @@ pipeline:
   transforms:
     - type: ReadFromCsv
       config:
-        path: "INPUT_PATH"
+        path: {{ INPUT_PATH_PARAM }}
     - type: MapToFields
       name: MapWithErrorHandling
       input: ReadFromCsv
@@ -42,21 +42,13 @@ pipeline:
         fields:
           sum:
             expression: num + inverse
-    - type: WriteToJsonPython
+    - type: WriteToJson
       name: WriteGoodFiles
       input: Sum
       config:
-        path: "OUTPUT_PATH/good"
-    - type: WriteToJsonPython
+        path: {{ OUTPUT_PATH_PARAM }}/good
+    - type: WriteToJson
       name: WriteBadFiles
       input: TrimErrors
       config:
-        path: "OUTPUT_PATH/bad"
-
-# TODO(polber) - remove with https://github.com/apache/beam/pull/30777
-providers:
-  - type: python
-    config:
-      packages: []
-    transforms:
-      'WriteToJsonPython': 'apache_beam.io.WriteToJson'
+        path: {{ OUTPUT_PATH_PARAM }}/bad
