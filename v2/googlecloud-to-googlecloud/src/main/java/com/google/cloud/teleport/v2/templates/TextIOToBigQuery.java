@@ -50,10 +50,10 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.util.StreamUtils;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.Row;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -334,29 +334,9 @@ public class TextIOToBigQuery {
                       .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
                       .setFunctionName(options.getPythonExternalTextTransformFunctionName())
                       .build())
-              .setRowSchema(
-                  PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA)
               .apply(
-                  MapElements.via(
-                      new SimpleFunction<Row, TableRow>() {
-                        @Override
-                        public TableRow apply(Row row) {
-                          String errorMessage = row.getValue("error_message");
-                          String stackTrace = row.getValue("stack_trace");
-                          if (!Strings.isNullOrEmpty(errorMessage)
-                              || !Strings.isNullOrEmpty(stackTrace)) {
-                            Object originalElement = row.getValue("original");
-                            throw new RuntimeException(
-                                String.format(
-                                    "Error applying UDF to the source record [%s], error message: [%s], stack trace: [%s]",
-                                    originalElement, errorMessage, stackTrace));
-                          }
-
-                          Row transformedRow = row.getValue("transformed");
-                          return BigQueryConverters.convertJsonToTableRow(
-                              transformedRow.getValue("message"));
-                        }
-                      }));
+                  "MapToTableRowElements",
+                  ParDo.of(new PythonExternalTextTransformer.RowToTableRowElementFn()));
     } else {
       udfOut =
           source
