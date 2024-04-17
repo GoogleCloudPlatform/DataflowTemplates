@@ -89,5 +89,22 @@ public class AtoBOk {
         helpText = "String that is hidden in the UI")
     @Default.String("")
     String getHiddenParam();
+
+    @TemplateParameter.Boolean(
+        order = 8,
+        groupName = "Source",
+        description = "N/A",
+        helpText = "Boolean that has group name")
+    @Default.Boolean(false)
+    Boolean getParamWithGroupName();
+
+    @TemplateParameter.Text(
+        order = 8,
+        parentName = "paramWithGroupName",
+        parentTriggerValues = {"true"},
+        description = "N/A",
+        helpText = "Text that has parent name and parent trigger value")
+    @Default.Boolean(false)
+    Boolean getParamWithParentName();
   }
 }
