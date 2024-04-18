@@ -108,8 +108,6 @@ public class BigtableChangeStreamsToHBase {
 
     @TemplateParameter.Text(
         optional = true,
-        parentName = "bidirectionalReplicationEnabled",
-        parentTriggerValues = {"true"},
         description = "Source CBT qualifier",
         helpText = "Bidirectional replication source CBT qualifier")
     @Default.String("BIDIRECTIONAL_REPL_SOURCE_CBT")
@@ -119,8 +117,6 @@ public class BigtableChangeStreamsToHBase {
 
     @TemplateParameter.Text(
         optional = true,
-        parentName = "bidirectionalReplicationEnabled",
-        parentTriggerValues = {"true"},
         description = "Source Hbase qualifier",
         helpText = "Bidirectional replication source Hbase qualifier")
     @Default.String("BIDIRECTIONAL_REPL_SOURCE_HBASE")
