@@ -58,13 +58,13 @@ echo \
 sudo apt-get update
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
 
-# add runner to docker group
+# add user to docker group
 sudo groupadd docker
-sudo gpasswd -a runner docker
+sudo gpasswd -a $user docker
 
-# create runner HOME
-sudo mkdir /home/runner
-sudo chown runner /home/runner
+# create user HOME
+sudo mkdir /home/$user
+sudo chown $user /home/$user
 
 # access secrets from secretsmanager
 secrets=$(gcloud secrets versions access latest --secret="GITACTION_SECRET_NAME")
@@ -79,12 +79,12 @@ done
 ACTIONS_RUNNER_INPUT_TOKEN="$(curl -sS --request POST --url "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runners/registration-token" --header "authorization: Bearer ${GITHUB_TOKEN}"  --header 'content-type: application/json' | jq -r .token)"
 
 # create actions-runner directory
-sudo -u runner bash -c "mkdir /home/runner/actions-runner"
+sudo -u $user bash -c "mkdir /home/$user/actions-runner"
 
 # download and extract gitactions binary
-sudo -u runner bash -c "cd /home/runner/actions-runner && curl -o actions-runner-linux-x64.tar.gz --location https://github.com/actions/runner/releases/download/v${GH_RUNNER_VERSION}/actions-runner-linux-x64-${GH_RUNNER_VERSION}.tar.gz"
-sudo -u runner bash -c "cd /home/runner/actions-runner && tar -zxf ./actions-runner-linux-x64.tar.gz"
+sudo -u $user bash -c "cd /home/$user/actions-runner && curl -o actions-runner-linux-x64.tar.gz --location https://github.com/actions/runner/releases/download/v${GH_RUNNER_VERSION}/actions-runner-linux-x64-${GH_RUNNER_VERSION}.tar.gz"
+sudo -u $user bash -c "cd /home/$user/actions-runner && tar -zxf ./actions-runner-linux-x64.tar.gz"
 
 # configure and run gitactions runner
-sudo -u runner bash -c "cd /home/runner/actions-runner && ./config.sh --url ${REPO_URL} --token ${ACTIONS_RUNNER_INPUT_TOKEN} --labels ${GITACTIONS_LABELS} --unattended"
-sudo -u runner bash -c "cd /home/runner/actions-runner && ./run.sh &"
+sudo -u $user bash -c "cd /home/$user/actions-runner && ./config.sh --url ${REPO_URL} --token ${ACTIONS_RUNNER_INPUT_TOKEN} --labels ${GITACTIONS_LABELS} --unattended"
+sudo -u $user bash -c "cd /home/$user/actions-runner && ./run.sh &"
