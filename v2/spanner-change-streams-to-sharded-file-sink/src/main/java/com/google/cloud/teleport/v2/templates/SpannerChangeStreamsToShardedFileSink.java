@@ -154,7 +154,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     void setMetadataDatabase(String value);
 
-    @TemplateParameter.DateTime(
+    @TemplateParameter.Text(
         order = 7,
         optional = true,
         description = "Changes are read from the given timestamp",
@@ -164,7 +164,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     void setStartTimestamp(String value);
 
-    @TemplateParameter.DateTime(
+    @TemplateParameter.Text(
         order = 8,
         optional = true,
         description = "Changes are read until the given timestamp",

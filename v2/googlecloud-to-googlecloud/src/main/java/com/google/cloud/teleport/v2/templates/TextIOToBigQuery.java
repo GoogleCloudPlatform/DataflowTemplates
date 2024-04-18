@@ -242,7 +242,7 @@ public class TextIOToBigQuery {
 
     void setOutputTable(String value);
 
-    @TemplateParameter.GcsWriteFile(
+    @TemplateParameter.GcsReadFile(
         order = 4,
         optional = false,
         description = "GCS path to javascript fn for transforming output",

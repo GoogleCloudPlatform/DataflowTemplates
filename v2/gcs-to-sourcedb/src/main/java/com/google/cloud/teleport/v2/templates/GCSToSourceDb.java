@@ -134,7 +134,7 @@ public class GCSToSourceDb {
 
     void setTimerIntervalInMilliSec(Integer value);
 
-    @TemplateParameter.DateTime(
+    @TemplateParameter.Text(
         order = 6,
         optional = true,
         description =
