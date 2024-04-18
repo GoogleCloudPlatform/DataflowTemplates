@@ -219,6 +219,8 @@ public class PubSubToRedis {
     @TemplateParameter.Long(
         order = 8,
         optional = true,
+        parentName = "redisSinkType",
+        parentTriggerValues = {"HASH_SINK", "LOGGING_SINK"},
         description = "Hash key expiration time in sec (ttl)",
         helpText =
             "Key expiration time in sec (ttl, default for HASH_SINK is -1 i.e. no expiration)")
