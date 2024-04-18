@@ -21,28 +21,12 @@ from apache_beam.yaml import cache_provider_artifacts
 from apache_beam.yaml import main
 
 
-# TODO(https://github.com/apache/beam/issues/29916): Remove once alias args
-#  are added to main.py
-def _get_alias_args(argv):
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      '--yaml_pipeline', help='A yaml description of the pipeline to run.')
-  parser.add_argument(
-      '--yaml_pipeline_file',
-      help='A file containing a yaml description of the pipeline to run.')
-  known_args, pipeline_args = parser.parse_known_args(argv)
-
-  if known_args.yaml_pipeline:
-    pipeline_args += [f'--pipeline_spec={known_args.yaml_pipeline}']
-  if known_args.yaml_pipeline_file:
-    pipeline_args += [f'--pipeline_spec_file={known_args.yaml_pipeline_file}']
-  return pipeline_args
-
-
 def run(argv=None):
-  args = _get_alias_args(argv)
+  parser = argparse.ArgumentParser()
+  _, pipeline_args = parser.parse_known_args(argv)
+  pipeline_args += ['--sdk_location=container']
   cache_provider_artifacts.cache_provider_artifacts()
-  main.run(argv=args)
+  main.run(argv=pipeline_args)
 
 
 if __name__ == '__main__':
