@@ -50,7 +50,7 @@ public final class PythonDockerfileGenerator {
     Map<String, Object> parameters = new HashMap<>();
     parameters.put("baseContainerImage", basePythonContainerImage);
 
-    Template template = freemarkerConfig.getTemplate("Dockerfile-template");
+    Template template = freemarkerConfig.getTemplate("Dockerfile-template-python");
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     OutputStreamWriter writer = new OutputStreamWriter(baos);

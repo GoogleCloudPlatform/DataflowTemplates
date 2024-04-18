@@ -31,7 +31,7 @@ def _get_pipeline_yaml():
 def run(argv=None):
     parser = argparse.ArgumentParser()
     _, pipeline_args = parser.parse_known_args(argv)
-    pipeline_args += [f'--pipeline_spec={_get_pipeline_yaml()}']
+    pipeline_args += [f'--yaml_pipeline={_get_pipeline_yaml()}']
 
     cache_provider_artifacts.cache_provider_artifacts()
     main.run(argv=pipeline_args)
