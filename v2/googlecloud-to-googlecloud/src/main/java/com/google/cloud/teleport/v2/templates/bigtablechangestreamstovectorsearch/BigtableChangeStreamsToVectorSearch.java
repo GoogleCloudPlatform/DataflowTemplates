@@ -48,7 +48,7 @@ import org.slf4j.LoggerFactory;
 @Template(
     name = "Bigtable_Change_Streams_to_Vector_Search",
     category = TemplateCategory.STREAMING,
-    displayName = "Cloud Bigtable Change Streams to Vector Search",
+    displayName = "Bigtable Change Streams to Vector Search",
     description =
         "Streaming pipeline. Streams Bigtable data change records and writes them into Vertex AI Vector Search using Dataflow Runner V2.",
     optionsClass = BigtableChangeStreamsToVectorSearchOptions.class,
@@ -63,9 +63,8 @@ import org.slf4j.LoggerFactory;
       "bigtableRpcAttemptTimeoutMs",
       "bigtableRpcTimeoutMs"
     },
-    // TODO(meagar): Documentation link - how do I generate this from the doc-comments?
     documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-bigtable-change-streams-to-vector-search",
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-change-streams-to-vector-search",
     flexContainerName = "bigtable-changestreams-to-vector-search",
     contactInformation = "https://cloud.google.com/support",
     streaming = true)
@@ -169,21 +168,18 @@ public final class BigtableChangeStreamsToVectorSearch {
                             Utils.parseColumnMapping(options.getFloatNumericRestrictsMappings()),
                             Utils.parseColumnMapping(options.getDoubleNumericRestrictsMappings())))
                     .withOutputTags(
-                        ChangeStreamMutationToDatapointOperationFn.UpsertDatapointTag,
+                        ChangeStreamMutationToDatapointOperationFn.UPSERT_DATAPOINT_TAG,
                         TupleTagList.of(
-                            ChangeStreamMutationToDatapointOperationFn.RemoveDatapointTag)));
+                            ChangeStreamMutationToDatapointOperationFn.REMOVE_DATAPOINT_TAG)));
     results
-        .get(ChangeStreamMutationToDatapointOperationFn.UpsertDatapointTag)
-        .apply(
-            "Add placeholer keys",
-            WithKeys.of("placeholder"))
+        .get(ChangeStreamMutationToDatapointOperationFn.UPSERT_DATAPOINT_TAG)
+        .apply("Add placeholer keys", WithKeys.of("placeholder"))
         .apply(
             "Batch Contents",
             GroupIntoBatches.<String, IndexDatapoint>ofSize(
                     bufferSizeOption(options.getUpsertMaxBatchSize()))
                 .withMaxBufferingDuration(
-                    bufferDurationOption(options.getUpsertMaxBufferDuration()))
-            )
+                    bufferDurationOption(options.getUpsertMaxBufferDuration())))
         .apply("Map to Values", Values.create())
         .apply(
             "Upsert Datapoints to VectorSearch",
@@ -197,17 +193,14 @@ public final class BigtableChangeStreamsToVectorSearch {
                 .build());
 
     results
-        .get(ChangeStreamMutationToDatapointOperationFn.RemoveDatapointTag)
-        .apply(
-            "Add placeholder keys",
-            WithKeys.of("placeholer"))
+        .get(ChangeStreamMutationToDatapointOperationFn.REMOVE_DATAPOINT_TAG)
+        .apply("Add placeholder keys", WithKeys.of("placeholer"))
         .apply(
             "Batch Contents",
             GroupIntoBatches.<String, String>ofSize(
                     bufferSizeOption(options.getDeleteMaxBatchSize()))
                 .withMaxBufferingDuration(
-                    bufferDurationOption(options.getDeleteMaxBufferDuration()))
-            )
+                    bufferDurationOption(options.getDeleteMaxBufferDuration())))
         .apply("Map to Values", Values.create())
         .apply(
             "Remove Datapoints From VectorSearch",

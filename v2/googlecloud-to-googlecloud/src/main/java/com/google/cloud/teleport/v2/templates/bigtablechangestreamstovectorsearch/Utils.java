@@ -62,17 +62,17 @@ public class Utils {
   // If parseDoubles is false, interpret the ByteString as containing 4 byte floats
   public static ArrayList<Float> bytesToFloats(ByteString value, Boolean parseDoubles) {
     byte[] bytes = value.toByteArray();
-    int bytes_per_float = (parseDoubles ? 8 : 4);
+    int bytesPerFloat = (parseDoubles ? 8 : 4);
 
-    if (bytes.length % bytes_per_float != 0) {
+    if (bytes.length % bytesPerFloat != 0) {
       throw new RuntimeException(
           String.format(
               "Invalid ByteStream length %d (should be a multiple of %d)",
-              bytes.length, bytes_per_float));
+              bytes.length, bytesPerFloat));
     }
 
     var embeddings = new ArrayList<Float>();
-    for (int i = 0; i < bytes.length; i += bytes_per_float) {
+    for (int i = 0; i < bytes.length; i += bytesPerFloat) {
       if (parseDoubles) {
         embeddings.add((float) Bytes.toDouble(bytes, i));
       } else {

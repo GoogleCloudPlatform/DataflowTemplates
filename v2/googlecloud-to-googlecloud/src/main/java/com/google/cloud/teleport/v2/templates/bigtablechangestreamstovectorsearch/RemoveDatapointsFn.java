@@ -36,7 +36,7 @@ public class RemoveDatapointsFn extends DatapointOperationFn<Iterable<String>> {
     var datapointIds = c.element();
     LOG.info("Deleting datapoints: {}", datapointIds);
 
-    // Appears to work, even when some of the datapoints don't exist
+    // Appears to work, even when some datapoints don't exist
     RemoveDatapointsRequest request =
         RemoveDatapointsRequest.newBuilder()
             .addAllDatapointIds(datapointIds)

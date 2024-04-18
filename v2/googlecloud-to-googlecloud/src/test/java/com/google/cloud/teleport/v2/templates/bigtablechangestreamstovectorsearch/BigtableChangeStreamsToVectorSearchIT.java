@@ -45,11 +45,11 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigtable.BigtableResourceManager;
 import org.apache.beam.it.gcp.bigtable.BigtableResourceManagerCluster;
 import org.apache.beam.it.gcp.bigtable.BigtableTableSpec;
-import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.commons.lang3.RandomUtils;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -68,20 +68,19 @@ public final class BigtableChangeStreamsToVectorSearchIT extends TemplateTestBas
 
   private static final String TEST_ZONE = "us-central1-b";
   private BigtableResourceManager bigtableResourceManager;
-  private VectorSearchResourceManager vectorSearchResourceManager;
-  private PubsubResourceManager pubsubResourceManager;
+  private static VectorSearchResourceManager vectorSearchResourceManager;
 
-  private final String clusterName = "teleport-c1";
+  private static final String clusterName = "teleport-c1";
   private String appProfileId;
   private String srcTable;
 
   // Fixture embeddings for tests, which match the dimensionality of the test index
-  private final List<Float> GOOD_EMBEDDINGS =
+  private static final List<Float> GOOD_EMBEDDINGS =
       Floats.asList(0.01f, 0.02f, 0.03f, 0.04f, 0.05f, 0.06f, 0.07f, 0.08f, 0.09f, 0.10f);
 
   // The GOOD_EMBEDDINGS list of floats converted to a byte array of single-precision (4 byte)
   // big-endian floats, as they would be sent to CBT
-  private final byte[] GOOD_EMBEDDING_BYTES = {
+  private static final byte[] GOOD_EMBEDDING_BYTES = {
     (byte) 0x3c, (byte) 0x23, (byte) 0xd7, (byte) 0x0a, // 0.01
     (byte) 0x3c, (byte) 0xa3, (byte) 0xd7, (byte) 0x0a, // 0.02
     (byte) 0x3c, (byte) 0xf5, (byte) 0xc2, (byte) 0x8f, // 0.03
@@ -95,11 +94,12 @@ public final class BigtableChangeStreamsToVectorSearchIT extends TemplateTestBas
   };
 
   // A list of embeddings that is too short, and should produce an error on sync
-  private final List<Float> BAD_EMBEDDINGS = Floats.asList(0.01f, 0.02f, 0.03f, 0.04f, 0.05f);
+  private static final List<Float> BAD_EMBEDDINGS =
+      Floats.asList(0.01f, 0.02f, 0.03f, 0.04f, 0.05f);
 
   // The BAD_EMBEDDINGS list of floats converted to a byte array  of single-precision (4 byte)
   // big-endian floats, as they would be sent to CBT
-  private final byte[] BAD_EMBEDDING_BYTES = {
+  private static final byte[] BAD_EMBEDDING_BYTES = {
     (byte) 0x3c, (byte) 0x23, (byte) 0xd7, (byte) 0x0a, // 0.01
     (byte) 0x3c, (byte) 0xa3, (byte) 0xd7, (byte) 0x0a, // 0.02
     (byte) 0x3c, (byte) 0xf5, (byte) 0xc2, (byte) 0x8f, // 0.03
@@ -107,40 +107,49 @@ public final class BigtableChangeStreamsToVectorSearchIT extends TemplateTestBas
     (byte) 0x3d, (byte) 0x4c, (byte) 0xcc, (byte) 0xcd, // 0.05
   };
 
-  private final String EMBEDDING_BYTE_SIZE = "4";
+  private static final String EMBEDDING_BYTE_SIZE = "4";
 
   // Columns for writing to CBT and their ByteString equivalent, so we don't continually have to
   // pass them through ByteString.copyFrom(...) in tests
-  private final String SOURCE_COLUMN_FAMILY = "cf";
-  private final String EMBEDDING_COLUMN_NAME = "embeddings";
-  private final String CROWDING_TAG_COLUMN_NAME = "crowding_tag";
-  private final String ALLOW_RESTRICTS_COLUMN_NAME = "allow";
-  private final String DENY_RESTRICTS_COLUMN_NAME = "deny";
-  private final String INT_RESTRICTS_COLUMN_NAME = "int-restrict";
-  private final String FLOAT_RESTRICTS_COLUMN_NAME = "float-restrict";
-  private final String DOUBLE_RESTRICTS_COLUMN_NAME = "double-restrict";
+  private static final String SOURCE_COLUMN_FAMILY = "cf";
+  private static final String EMBEDDING_COLUMN_NAME = "embeddings";
+  private static final String CROWDING_TAG_COLUMN_NAME = "crowding_tag";
+  private static final String ALLOW_RESTRICTS_COLUMN_NAME = "allow";
+  private static final String DENY_RESTRICTS_COLUMN_NAME = "deny";
+  private static final String INT_RESTRICTS_COLUMN_NAME = "int-restrict";
+  private static final String FLOAT_RESTRICTS_COLUMN_NAME = "float-restrict";
+  private static final String DOUBLE_RESTRICTS_COLUMN_NAME = "double-restrict";
 
-  private final ByteString EMBEDDING_COLUMN =
+  private static final ByteString EMBEDDING_COLUMN =
       ByteString.copyFrom(EMBEDDING_COLUMN_NAME, Charset.defaultCharset());
-  private final ByteString CROWDING_TAG_COLUMN =
+  private static final ByteString CROWDING_TAG_COLUMN =
       ByteString.copyFrom(CROWDING_TAG_COLUMN_NAME, Charset.defaultCharset());
-  private final ByteString ALLOW_RESTRICTS_COLUMN =
+  private static final ByteString ALLOW_RESTRICTS_COLUMN =
       ByteString.copyFrom(ALLOW_RESTRICTS_COLUMN_NAME, Charset.defaultCharset());
-  private final ByteString DENY_RESTRICTS_COLUMN =
+  private static final ByteString DENY_RESTRICTS_COLUMN =
       ByteString.copyFrom(DENY_RESTRICTS_COLUMN_NAME, Charset.defaultCharset());
-  private final ByteString INT_RESTRICTS_COLUMN =
+  private static final ByteString INT_RESTRICTS_COLUMN =
       ByteString.copyFrom(INT_RESTRICTS_COLUMN_NAME, Charset.defaultCharset());
-  private final ByteString FLOAT_RESTRICTS_COLUMN =
+  private static final ByteString FLOAT_RESTRICTS_COLUMN =
       ByteString.copyFrom(FLOAT_RESTRICTS_COLUMN_NAME, Charset.defaultCharset());
-  private final ByteString DOUBLE_RESTRICTS_COLUMN =
+  private static final ByteString DOUBLE_RESTRICTS_COLUMN =
       ByteString.copyFrom(DOUBLE_RESTRICTS_COLUMN_NAME, Charset.defaultCharset());
 
   // Tags we'll read from in a datapoint
-  private final String ALLOW_RESTRICTS_TAG = "allowtag";
-  private final String DENY_RESTRICTS_TAG = "denytag";
-  private final String INT_RESTRICTS_TAG = "inttag";
-  private final String FLOAT_RESTRICTS_TAG = "floattag";
-  private final String DOUBLE_RESTRICTS_TAG = "doubletag";
+  private static final String ALLOW_RESTRICTS_TAG = "allowtag";
+  private static final String DENY_RESTRICTS_TAG = "denytag";
+  private static final String INT_RESTRICTS_TAG = "inttag";
+  private static final String FLOAT_RESTRICTS_TAG = "floattag";
+  private static final String DOUBLE_RESTRICTS_TAG = "doubletag";
+
+  @BeforeClass
+  public static void setupClass() throws Exception {
+    var projectNumber =
+        TestProperties.getProperty("projectNumber", "", TestProperties.Type.PROPERTY);
+
+    vectorSearchResourceManager =
+        VectorSearchResourceManager.findOrCreateTestInfra(projectNumber, REGION);
+  }
 
   @Before
   public void setup() throws Exception {
@@ -151,9 +160,6 @@ public final class BigtableChangeStreamsToVectorSearchIT extends TemplateTestBas
     LOG.info("Have project number {}", projectNumber);
     LOG.info("Have project {}", PROJECT);
     LOG.info("Have region number {}", REGION);
-
-    vectorSearchResourceManager =
-        VectorSearchResourceManager.findOrCreateTestInfra(projectNumber, REGION);
 
     bigtableResourceManager =
         BigtableResourceManager.builder(
@@ -181,7 +187,7 @@ public final class BigtableChangeStreamsToVectorSearchIT extends TemplateTestBas
   }
 
   @After
-  public void tearDownClass() {
+  public void tearDown() {
     ResourceManagerUtils.cleanResources(bigtableResourceManager, vectorSearchResourceManager);
   }
 
@@ -253,7 +259,7 @@ public final class BigtableChangeStreamsToVectorSearchIT extends TemplateTestBas
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForConditionAndCancel(
-                createConfig(launchInfo, Duration.ofMinutes(10)),
+                createConfig(launchInfo, Duration.ofMinutes(30)),
                 () -> {
                   LOG.info("Looking for new datapoint");
                   var datapoint = vectorSearchResourceManager.findDatapoint(rowkey);
@@ -409,7 +415,7 @@ public final class BigtableChangeStreamsToVectorSearchIT extends TemplateTestBas
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForConditionAndCancel(
-                createConfig(launchInfo, Duration.ofMinutes(10)),
+                createConfig(launchInfo, Duration.ofMinutes(30)),
                 () -> {
                   LOG.info("Looking for new datapoint");
                   var datapoint = vectorSearchResourceManager.findDatapoint(rowkey);
@@ -474,7 +480,7 @@ public final class BigtableChangeStreamsToVectorSearchIT extends TemplateTestBas
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(launchInfo, Duration.ofMinutes(10)),
+                createConfig(launchInfo, Duration.ofMinutes(30)),
                 () -> {
                   // Make sure the datapoint exists and is findable
                   var dp = vectorSearchResourceManager.findDatapoint(datapointId);
@@ -493,7 +499,7 @@ public final class BigtableChangeStreamsToVectorSearchIT extends TemplateTestBas
     PipelineOperator.Result result2 =
         pipelineOperator()
             .waitForConditionAndCancel(
-                createConfig(launchInfo, Duration.ofMinutes(10)),
+                createConfig(launchInfo, Duration.ofMinutes(30)),
                 () -> {
                   // Make sure the datapoint exists and is findable
                   var dp = vectorSearchResourceManager.findDatapoint(datapointId);

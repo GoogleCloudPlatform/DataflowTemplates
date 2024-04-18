@@ -16,7 +16,11 @@
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstovectorsearch;
 
 import com.google.cloud.aiplatform.v1.IndexDatapoint;
-import com.google.cloud.bigtable.data.v2.models.*;
+import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
+import com.google.cloud.bigtable.data.v2.models.DeleteCells;
+import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
+import com.google.cloud.bigtable.data.v2.models.Entry;
+import com.google.cloud.bigtable.data.v2.models.SetCell;
 import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
@@ -32,9 +36,9 @@ import org.slf4j.LoggerFactory;
 public class ChangeStreamMutationToDatapointOperationFn
     extends DoFn<ChangeStreamMutation, IndexDatapoint> {
 
-  public static final TupleTag<IndexDatapoint> UpsertDatapointTag =
+  public static final TupleTag<IndexDatapoint> UPSERT_DATAPOINT_TAG =
       new TupleTag<IndexDatapoint>() {};
-  public static final TupleTag<String> RemoveDatapointTag = new TupleTag<String>() {};
+  public static final TupleTag<String> REMOVE_DATAPOINT_TAG = new TupleTag<String>() {};
 
   private static final Logger LOG =
       LoggerFactory.getLogger(ChangeStreamMutationToDatapointOperationFn.class);
@@ -115,7 +119,9 @@ public class ChangeStreamMutationToDatapointOperationFn
       LOG.info("Processing {}", entry);
 
       // We're only interested in SetCell mutations; everything else should be ignored
-      if (!(entry instanceof SetCell)) continue;
+      if (!(entry instanceof SetCell)) {
+        continue;
+      }
 
       SetCell m = (SetCell) entry;
       LOG.info("Have value {}", m.getValue());
@@ -170,7 +176,7 @@ public class ChangeStreamMutationToDatapointOperationFn
     }
 
     LOG.info("Emitting an upsert datapoint");
-    output.get(UpsertDatapointTag).output(datapointBuilder.build());
+    output.get(UPSERT_DATAPOINT_TAG).output(datapointBuilder.build());
   }
 
   private void processDelete(ChangeStreamMutation mutation, MultiOutputReceiver output) {
@@ -213,7 +219,7 @@ public class ChangeStreamMutationToDatapointOperationFn
     if (isDelete) {
       String rowkey = mutation.getRowKey().toStringUtf8();
       LOG.info("Emitting a remove datapoint: {}", rowkey);
-      output.get(RemoveDatapointTag).output(rowkey);
+      output.get(REMOVE_DATAPOINT_TAG).output(rowkey);
     }
   }
 }

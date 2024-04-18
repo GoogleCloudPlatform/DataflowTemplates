@@ -36,10 +36,10 @@ import com.google.cloud.aiplatform.v1.ReadIndexDatapointsResponse;
 import com.google.cloud.aiplatform.v1.RemoveDatapointsRequest;
 import com.google.cloud.aiplatform.v1.UpsertDatapointsRequest;
 import com.google.protobuf.TextFormat;
-import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.it.common.ResourceManager;
+import org.eclipse.jetty.util.ConcurrentHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.threeten.bp.Duration;
@@ -62,9 +62,9 @@ public class VectorSearchResourceManager implements ResourceManager {
   // Note - in the cloud-teleport-testing project, a "nokill' suffix prevents the test
   // infrastructure from being automatically cleaned up.
   public static final int TEST_INDEX_DIMENSIONS = 10;
-  public static final String TEST_INDEX_NAME = "bt-vs-index-nokill";
-  public static final String TEST_ENDPOINT_NAME = "bt-vs-endpoint-nokill";
-  public static final String TEST_DEPLOYED_INDEX_NAME = "bt_vs_deploy_nokill";
+  public static final String TEST_INDEX_NAME = "bt-vs-index1-nokill";
+  public static final String TEST_ENDPOINT_NAME = "bt-vs-endpoint1-nokill";
+  public static final String TEST_DEPLOYED_INDEX_NAME = "bt_deploy1_nokill";
 
   /**
    * Factory method for creating a new resource manager, and provisioning the test index/endpoint.
@@ -111,7 +111,8 @@ public class VectorSearchResourceManager implements ResourceManager {
   // random that this shouldn't cause collisions between test runs. It could mean that the index
   // will slowly grow over time, so we should figure out how to periodically purge the index, but
   // that could cause running instances of this test to fail, so it's not perfect.
-  private HashSet<String> pendingDatapoints = new HashSet<>();
+  // Using ConcurrentHashSet instead of HashSet to support parallelized test cases
+  private ConcurrentHashSet<String> pendingDatapoints = new ConcurrentHashSet<>();
 
   private VectorSearchResourceManager(String projectNumber, String region) throws Exception {
     this.projectNumber = projectNumber;
@@ -180,7 +181,7 @@ public class VectorSearchResourceManager implements ResourceManager {
   }
 
   /**
-   * Add a datapoint directly to the index
+   * Add a datapoint directly to the index.
    *
    * @param datapointId The datapoint ID
    * @param vector Float embeddings. The length of the array must match the dimension of the index
@@ -211,8 +212,8 @@ public class VectorSearchResourceManager implements ResourceManager {
   private void deleteDatapoints(Iterable<String> datapointIds) {
     var request =
         RemoveDatapointsRequest.newBuilder()
-            .setIndex(testIndex.getName())
             .addAllDatapointIds(datapointIds)
+            .setIndex(testIndex.getName())
             .build();
 
     this.indexClient.removeDatapoints(request);

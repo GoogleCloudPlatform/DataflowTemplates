@@ -202,7 +202,7 @@ public interface BigtableChangeStreamsToVectorSearchOptions
       optional = true,
       description = "Dead letter queue directory to store any unpublished change record.",
       helpText =
-          "The file path to store any unprocessed records with"
+          "The path to store any unprocessed records with"
               + " the reason they failed to be processed. "
               + "Default is a directory under the Dataflow job's temp location. "
               + "The default value is enough under most conditions.")
