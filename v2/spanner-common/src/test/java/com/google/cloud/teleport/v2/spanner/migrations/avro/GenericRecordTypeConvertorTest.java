@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.AvroTypeConvertorException;
@@ -52,91 +53,105 @@ public class GenericRecordTypeConvertorTest {
   @Test
   public void testAvroFieldToBoolean() {
     Boolean inputValue = true;
-    Boolean result = GenericRecordTypeConvertor.avroFieldToBoolean(inputValue, Schema.Type.BOOLEAN);
+    Boolean result =
+        GenericRecordTypeConvertor.avroFieldToBoolean(
+            inputValue, SchemaBuilder.builder().booleanType());
     assertEquals("Test true boolean input", inputValue, result);
 
     inputValue = false;
-    result = GenericRecordTypeConvertor.avroFieldToBoolean(inputValue, Schema.Type.BOOLEAN);
+    result =
+        GenericRecordTypeConvertor.avroFieldToBoolean(
+            inputValue, SchemaBuilder.builder().booleanType());
     assertEquals("Test false boolean input", inputValue, result);
 
-    result = GenericRecordTypeConvertor.avroFieldToBoolean("true", Schema.Type.STRING);
+    result =
+        GenericRecordTypeConvertor.avroFieldToBoolean("true", SchemaBuilder.builder().stringType());
     assertEquals("Test string input", true, result);
 
-    result = GenericRecordTypeConvertor.avroFieldToBoolean(4, Schema.Type.INT);
+    result = GenericRecordTypeConvertor.avroFieldToBoolean(4, SchemaBuilder.builder().intType());
     assertEquals("Test int input", false, result);
 
-    result = GenericRecordTypeConvertor.avroFieldToBoolean(1L, Schema.Type.LONG);
+    result = GenericRecordTypeConvertor.avroFieldToBoolean(1L, SchemaBuilder.builder().longType());
     assertEquals("Test long input", false, result);
   }
 
   @Test
   public void testAvroFieldToBoolean_NullInput() {
-    Boolean result = GenericRecordTypeConvertor.avroFieldToBoolean(null, Schema.Type.STRING);
+    Boolean result =
+        GenericRecordTypeConvertor.avroFieldToBoolean(null, SchemaBuilder.builder().stringType());
     assertNull(result);
   }
 
   @Test
   public void testAvroFieldToLong_ValidConversion() {
     Long inputValue = 10L;
-    Long result = GenericRecordTypeConvertor.avroFieldToLong(inputValue, Schema.Type.LONG);
+    Long result =
+        GenericRecordTypeConvertor.avroFieldToLong(inputValue, SchemaBuilder.builder().longType());
     assertEquals(inputValue, result);
 
     // Test integer values as well.
     Integer intValue = 10;
-    result = GenericRecordTypeConvertor.avroFieldToLong(inputValue, Schema.Type.INT);
+    result =
+        GenericRecordTypeConvertor.avroFieldToLong(inputValue, SchemaBuilder.builder().intType());
     assertEquals("Test int input", Long.valueOf(intValue), result);
 
     // Test string values as well.
-    result = GenericRecordTypeConvertor.avroFieldToLong("1536", Schema.Type.INT);
+    result = GenericRecordTypeConvertor.avroFieldToLong("1536", SchemaBuilder.builder().intType());
     assertEquals("Test string input", (Long) 1536L, result);
   }
 
   @Test
   public void testAvroFieldToLong_NullInput() {
     Object inputValue = null;
-    Long result = GenericRecordTypeConvertor.avroFieldToLong(inputValue, Schema.Type.LONG);
+    Long result =
+        GenericRecordTypeConvertor.avroFieldToLong(inputValue, SchemaBuilder.builder().longType());
     assertNull(result);
   }
 
   @Test(expected = AvroTypeConvertorException.class)
   public void testAvroFieldToLong_NonLongInput() {
     String inputValue = "test";
-    Schema.Type inputType = Schema.Type.STRING;
-    GenericRecordTypeConvertor.avroFieldToLong(inputValue, inputType);
+    GenericRecordTypeConvertor.avroFieldToLong(inputValue, SchemaBuilder.builder().stringType());
   }
 
   @Test
   public void testAvroFieldToDouble_ValidDoubleInput() {
     Double inputValue = 5.75;
-    Double result = GenericRecordTypeConvertor.avroFieldToDouble(inputValue, Schema.Type.DOUBLE);
+    Double result =
+        GenericRecordTypeConvertor.avroFieldToDouble(
+            inputValue, SchemaBuilder.builder().doubleType());
     assertEquals(inputValue, result);
 
-    result = GenericRecordTypeConvertor.avroFieldToDouble(3.14f, Schema.Type.FLOAT);
+    result =
+        GenericRecordTypeConvertor.avroFieldToDouble(3.14f, SchemaBuilder.builder().floatType());
     assertEquals("Test float input", (Double) 3.14, result);
 
-    result = GenericRecordTypeConvertor.avroFieldToDouble("456.346", Schema.Type.DOUBLE);
+    result =
+        GenericRecordTypeConvertor.avroFieldToDouble(
+            "456.346", SchemaBuilder.builder().doubleType());
     assertEquals("Test string input", (Double) 456.346, result);
 
-    result = GenericRecordTypeConvertor.avroFieldToDouble(10L, Schema.Type.LONG);
+    result = GenericRecordTypeConvertor.avroFieldToDouble(10L, SchemaBuilder.builder().longType());
     assertEquals("Test long input", Double.valueOf(10L), result);
 
     Integer intValue = 10;
-    result = GenericRecordTypeConvertor.avroFieldToDouble(10, Schema.Type.INT);
+    result = GenericRecordTypeConvertor.avroFieldToDouble(10, SchemaBuilder.builder().intType());
     assertEquals("Test int input", Double.valueOf(10), result);
   }
 
   @Test
   public void testAvroFieldToDouble_NullInput() {
     Object inputValue = null;
-    Double result = GenericRecordTypeConvertor.avroFieldToDouble(inputValue, Schema.Type.DOUBLE);
+    Double result =
+        GenericRecordTypeConvertor.avroFieldToDouble(
+            inputValue, SchemaBuilder.builder().doubleType());
     assertNull(result);
   }
 
   @Test(expected = AvroTypeConvertorException.class)
   public void testAvroFieldToDouble_UnsupportedType() {
     Boolean inputValue = true;
-    Schema.Type inputType = Schema.Type.BOOLEAN;
-    GenericRecordTypeConvertor.avroFieldToDouble(inputValue, inputType);
+    GenericRecordTypeConvertor.avroFieldToDouble(inputValue, SchemaBuilder.builder().booleanType());
   }
 
   @Test
@@ -159,7 +174,8 @@ public class GenericRecordTypeConvertorTest {
     testCases.put("-9223372036854775807", "-9223372036854775807.000000000");
     for (String input : testCases.keySet()) {
       BigDecimal result =
-          GenericRecordTypeConvertor.avroFieldToNumericBigDecimal(input, Schema.Type.STRING);
+          GenericRecordTypeConvertor.avroFieldToNumericBigDecimal(
+              input, SchemaBuilder.builder().stringType());
       assertEquals(
           String.format("Test case input : %s", input), testCases.get(input), result.toString());
     }
@@ -170,27 +186,31 @@ public class GenericRecordTypeConvertorTest {
     Double inputValue = 3.14159;
     BigDecimal expectedResult = new BigDecimal(inputValue).setScale(9, RoundingMode.HALF_UP);
     BigDecimal result =
-        GenericRecordTypeConvertor.avroFieldToNumericBigDecimal(inputValue, Schema.Type.DOUBLE);
+        GenericRecordTypeConvertor.avroFieldToNumericBigDecimal(
+            inputValue, SchemaBuilder.builder().doubleType());
     assertEquals(expectedResult, result);
   }
 
   @Test(expected = AvroTypeConvertorException.class)
   public void testAvroFieldToNumericBigDecimal_InvalidInput_string() {
     String inputValue = "123456.789asd";
-    GenericRecordTypeConvertor.avroFieldToNumericBigDecimal(inputValue, Schema.Type.STRING);
+    GenericRecordTypeConvertor.avroFieldToNumericBigDecimal(
+        inputValue, SchemaBuilder.builder().stringType());
   }
 
   @Test(expected = AvroTypeConvertorException.class)
   public void testAvroFieldToNumericBigDecimal_InvalidInput_boolean() {
     Boolean inputValue = true;
-    GenericRecordTypeConvertor.avroFieldToNumericBigDecimal(inputValue, Schema.Type.BOOLEAN);
+    GenericRecordTypeConvertor.avroFieldToNumericBigDecimal(
+        inputValue, SchemaBuilder.builder().booleanType());
   }
 
   @Test
   public void testAvroFieldToNumericBigDecimal_NullInput() {
     Object inputValue = null;
     BigDecimal result =
-        GenericRecordTypeConvertor.avroFieldToNumericBigDecimal(inputValue, Schema.Type.STRING);
+        GenericRecordTypeConvertor.avroFieldToNumericBigDecimal(
+            inputValue, SchemaBuilder.builder().stringType());
     assertNull(result);
   }
 
@@ -204,7 +224,8 @@ public class GenericRecordTypeConvertorTest {
               104, 101, 108, 108, 111, 32, 104, 111, 119, 32, 97, 114, 32, 101, 121, 111, 117
             });
     ByteArray result =
-        GenericRecordTypeConvertor.avroFieldToByteArray(inputValue, Schema.Type.STRING);
+        GenericRecordTypeConvertor.avroFieldToByteArray(
+            inputValue, SchemaBuilder.builder().stringType());
     assertEquals("Test even length input", expectedResult, result);
 
     // Test odd length string.
@@ -214,7 +235,9 @@ public class GenericRecordTypeConvertorTest {
             new byte[] {
               8, 101, 108, 108, 111, 32, 104, 111, 119, 32, 97, 114, 32, 101, 121, 111, 117
             });
-    result = GenericRecordTypeConvertor.avroFieldToByteArray(inputValue, Schema.Type.STRING);
+    result =
+        GenericRecordTypeConvertor.avroFieldToByteArray(
+            inputValue, SchemaBuilder.builder().stringType());
     assertEquals("Test odd length input", expectedResult, result);
   }
 
@@ -222,22 +245,22 @@ public class GenericRecordTypeConvertorTest {
   public void testAvroFieldToByteArray_ValidByteArrayInput() {
     byte[] inputValue = {10, 20, 30};
     ByteArray result =
-        GenericRecordTypeConvertor.avroFieldToByteArray(inputValue, Schema.Type.BYTES);
+        GenericRecordTypeConvertor.avroFieldToByteArray(
+            inputValue, SchemaBuilder.builder().bytesType());
     assertEquals(ByteArray.copyFrom(inputValue), result);
   }
 
   @Test
   public void testAvroFieldToByteArray_NullInput() {
-    Object inputValue = null;
     ByteArray result =
-        GenericRecordTypeConvertor.avroFieldToByteArray(inputValue, Schema.Type.BYTES);
+        GenericRecordTypeConvertor.avroFieldToByteArray(null, SchemaBuilder.builder().bytesType());
     assertNull(result);
   }
 
   @Test(expected = AvroTypeConvertorException.class)
   public void testAvroFieldToByteArray_UnsupportedType() {
     Integer inputValue = 5;
-    GenericRecordTypeConvertor.avroFieldToByteArray(inputValue, Schema.Type.INT);
+    GenericRecordTypeConvertor.avroFieldToByteArray(inputValue, SchemaBuilder.builder().intType());
   }
 
   @Test
@@ -483,7 +506,7 @@ public class GenericRecordTypeConvertorTest {
     /* Creates DDL without any schema transformations.
      */
     Ddl ddl =
-        Ddl.builder()
+        Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
             .createTable("all_types")
             .column("bool_col")
             .bool()
@@ -537,7 +560,7 @@ public class GenericRecordTypeConvertorTest {
         "timestamp_col", AvroTestingHelper.createTimestampTzRecord(1602599400056483L, 3600000));
     genericRecord.put("date_col", 738991);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        GenericRecordTypeConvertor.create(new IdentityMapper(getIdentityDdl()), "");
+        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "");
     Map<String, Value> actual =
         genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
     Map<String, Value> expected =
@@ -558,6 +581,7 @@ public class GenericRecordTypeConvertorTest {
   public void transformChangeEventTest_incorrectSpannerType() throws IOException {
 
     ISchemaMapper mockSchemaMapper = mock(ISchemaMapper.class);
+    when(mockSchemaMapper.getDialect()).thenReturn(Dialect.GOOGLE_STANDARD_SQL);
     when(mockSchemaMapper.getSpannerTableName(anyString(), anyString())).thenReturn("test");
     when(mockSchemaMapper.getSpannerColumns(anyString(), anyString()))
         .thenReturn(List.of("bool_col"));
@@ -572,7 +596,7 @@ public class GenericRecordTypeConvertorTest {
                 Files.readString(Paths.get("src/test/resources/avro/all-spanner-types.avsc"))));
     genericRecord.put("bool_col", true);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        GenericRecordTypeConvertor.create(mockSchemaMapper, "");
+        new GenericRecordTypeConvertor(mockSchemaMapper, "");
 
     genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
   }

@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.avro;
 
-import com.google.auto.value.AutoValue;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.AvroTypeConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
@@ -53,16 +53,16 @@ import org.slf4j.LoggerFactory;
  * Convertor Class containing methods for type conversion of various AvroTypes to Spanner {@link
  * Value} types.
  */
-@AutoValue
-public abstract class GenericRecordTypeConvertor {
+public class GenericRecordTypeConvertor {
   private static final Logger LOG = LoggerFactory.getLogger(GenericRecordTypeConvertor.class);
 
-  public abstract ISchemaMapper schemaMapper();
+  private final ISchemaMapper schemaMapper;
 
-  public abstract String namespace();
+  private final String namespace;
 
-  public static GenericRecordTypeConvertor create(ISchemaMapper schemaMapper, String namespace) {
-    return new AutoValue_GenericRecordTypeConvertor(schemaMapper, namespace);
+  public GenericRecordTypeConvertor(ISchemaMapper schemaMapper, String namespace) {
+    this.schemaMapper = schemaMapper;
+    this.namespace = namespace;
   }
 
   /**
@@ -72,17 +72,17 @@ public abstract class GenericRecordTypeConvertor {
    */
   public Map<String, Value> transformChangeEvent(GenericRecord record, String srcTableName) {
     Map<String, Value> result = new HashMap<>();
-    String spannerTableName = schemaMapper().getSpannerTableName(namespace(), srcTableName);
-    List<String> spannerColNames = schemaMapper().getSpannerColumns(namespace(), spannerTableName);
+    String spannerTableName = schemaMapper.getSpannerTableName(namespace, srcTableName);
+    List<String> spannerColNames = schemaMapper.getSpannerColumns(namespace, spannerTableName);
     for (String spannerColName : spannerColNames) {
       /**
        * TODO: Handle columns that will not exist at source - synth id - shard id - multi-column
        * transformations - auto-gen keys - Default columns - generated columns
        */
       String srcColName =
-          schemaMapper().getSourceColumnName(namespace(), spannerTableName, spannerColName);
+          schemaMapper.getSourceColumnName(namespace, spannerTableName, spannerColName);
       Type spannerColumnType =
-          schemaMapper().getSpannerColumnType(namespace(), spannerTableName, spannerColName);
+          schemaMapper.getSpannerColumnType(namespace, spannerTableName, spannerColName);
       Value value =
           getSpannerValue(
               record.get(srcColName),
@@ -95,7 +95,7 @@ public abstract class GenericRecordTypeConvertor {
   }
 
   /** Extract the field value from Generic Record and try to convert it to @spannerType. */
-  static Value getSpannerValue(
+  Value getSpannerValue(
       Object recordValue, Schema fieldSchema, String recordColName, Type spannerType) {
     // Logical and record types should be converted to string.
     if (fieldSchema.getLogicalType() != null) {
@@ -104,46 +104,22 @@ public abstract class GenericRecordTypeConvertor {
       // Get the avro field of type record from the whole record.
       recordValue = handleRecordFieldType(recordColName, (GenericRecord) recordValue, fieldSchema);
     }
-    Schema.Type fieldType = fieldSchema.getType();
-    switch (spannerType.getCode()) {
-      case BOOL:
-      case PG_BOOL:
-        return Value.bool(avroFieldToBoolean(recordValue, fieldType));
-      case INT64:
-      case PG_INT8:
-        return Value.int64(avroFieldToLong(recordValue, fieldType));
-      case FLOAT64:
-      case PG_FLOAT8:
-        return Value.float64(avroFieldToDouble(recordValue, fieldType));
-      case STRING:
-      case PG_VARCHAR:
-      case PG_TEXT:
-      case JSON:
-      case PG_JSONB:
-        return Value.string(recordValue.toString());
-      case NUMERIC:
-      case PG_NUMERIC:
-        return Value.numeric(avroFieldToNumericBigDecimal(recordValue, fieldType));
-      case BYTES:
-      case PG_BYTEA:
-        return Value.bytes(avroFieldToByteArray(recordValue, fieldType));
-      case TIMESTAMP:
-      case PG_COMMIT_TIMESTAMP:
-      case PG_TIMESTAMPTZ:
-        return Value.timestamp(avroFieldToTimestamp(recordValue, fieldSchema));
-      case DATE:
-      case PG_DATE:
-        return Value.date(avroFieldToDate(recordValue, fieldSchema));
-      default:
-        throw new IllegalArgumentException(
-            "Found unsupported Spanner column type("
-                + spannerType.getCode()
-                + ") for column "
-                + recordColName);
+    Dialect dialect = schemaMapper.getDialect();
+    if (AvroToValueMapper.convertorMap().get(dialect).containsKey(spannerType)) {
+      return AvroToValueMapper.convertorMap()
+          .get(dialect)
+          .get(spannerType)
+          .apply(recordValue, fieldSchema);
+    } else {
+      throw new IllegalArgumentException(
+          "Found unsupported Spanner column type("
+              + spannerType.getCode()
+              + ") for column "
+              + recordColName);
     }
   }
 
-  static Boolean avroFieldToBoolean(Object recordValue, Schema.Type type) {
+  static Boolean avroFieldToBoolean(Object recordValue, Schema fieldSchema) {
     if (recordValue == null) {
       return null;
     }
@@ -151,7 +127,7 @@ public abstract class GenericRecordTypeConvertor {
     return BooleanUtils.toBoolean(recordValue.toString());
   }
 
-  static Long avroFieldToLong(Object recordValue, Schema.Type type) {
+  static Long avroFieldToLong(Object recordValue, Schema fieldSchema) {
     try {
       if (recordValue == null) {
         return null;
@@ -160,7 +136,7 @@ public abstract class GenericRecordTypeConvertor {
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
           "Unable to convert "
-              + type
+              + fieldSchema.getType()
               + " to Long, with value: "
               + recordValue
               + ", Exception: "
@@ -168,7 +144,7 @@ public abstract class GenericRecordTypeConvertor {
     }
   }
 
-  static Double avroFieldToDouble(Object recordValue, Schema.Type type) {
+  static Double avroFieldToDouble(Object recordValue, Schema fieldSchema) {
     try {
       if (recordValue == null) {
         return null;
@@ -177,7 +153,7 @@ public abstract class GenericRecordTypeConvertor {
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
           "Unable to convert "
-              + type
+              + fieldSchema.getType()
               + " to double, with value: "
               + recordValue
               + ", Exception: "
@@ -185,7 +161,7 @@ public abstract class GenericRecordTypeConvertor {
     }
   }
 
-  static BigDecimal avroFieldToNumericBigDecimal(Object recordValue, Schema.Type type) {
+  static BigDecimal avroFieldToNumericBigDecimal(Object recordValue, Schema fieldSchema) {
     try {
       if (recordValue == null) {
         return null;
@@ -210,7 +186,7 @@ public abstract class GenericRecordTypeConvertor {
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
           "Unable to convert "
-              + type
+              + fieldSchema.getType()
               + " to numeric big decimal, with value: "
               + recordValue
               + ", Exception: "
@@ -224,12 +200,12 @@ public abstract class GenericRecordTypeConvertor {
         .matches(); // match a number with optional '-' and decimal.
   }
 
-  static ByteArray avroFieldToByteArray(Object recordValue, Schema.Type type) {
+  static ByteArray avroFieldToByteArray(Object recordValue, Schema fieldSchema) {
     try {
       if (recordValue == null) {
         return null;
       }
-      if (type.equals(Schema.Type.STRING)) {
+      if (fieldSchema.getType().equals(Schema.Type.STRING)) {
         // For string avro type, expect hex encoded string.
         String s = recordValue.toString();
         if (s.length() % 2 == 1) {
@@ -241,7 +217,7 @@ public abstract class GenericRecordTypeConvertor {
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
           "Unable to convert "
-              + type
+              + fieldSchema.getType()
               + " to byte array, with value: "
               + recordValue
               + ", Exception: "
