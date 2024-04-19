@@ -98,7 +98,7 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
 
   @SuppressWarnings("unused")
   @TimerId("timer")
-  private final TimerSpec timerSpec = TimerSpecs.timer(TimeDomain.EVENT_TIME);
+  private final TimerSpec timerSpec = TimerSpecs.timer(TimeDomain.PROCESSING_TIME);
 
   @StateId("processingContext")
   private final StateSpec<ValueState<ProcessingContext>> processingContext =
