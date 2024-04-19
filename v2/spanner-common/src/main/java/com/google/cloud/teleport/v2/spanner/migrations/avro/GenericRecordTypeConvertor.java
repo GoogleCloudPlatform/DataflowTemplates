@@ -57,12 +57,12 @@ import org.slf4j.LoggerFactory;
 public abstract class GenericRecordTypeConvertor {
   private static final Logger LOG = LoggerFactory.getLogger(GenericRecordTypeConvertor.class);
 
-  public abstract ISchemaMapper iSchemaMapper();
+  public abstract ISchemaMapper schemaMapper();
 
   public abstract String namespace();
 
-  public static GenericRecordTypeConvertor create(ISchemaMapper iSchemaMapper, String namespace) {
-    return new AutoValue_GenericRecordTypeConvertor(iSchemaMapper, namespace);
+  public static GenericRecordTypeConvertor create(ISchemaMapper schemaMapper, String namespace) {
+    return new AutoValue_GenericRecordTypeConvertor(schemaMapper, namespace);
   }
 
   /**
@@ -72,33 +72,37 @@ public abstract class GenericRecordTypeConvertor {
    */
   public Map<String, Value> transformChangeEvent(GenericRecord record, String srcTableName) {
     Map<String, Value> result = new HashMap<>();
-    String spannerTableName = iSchemaMapper().getSpannerTableName(namespace(), srcTableName);
-    List<String> spannerColNames = iSchemaMapper().getSpannerColumns(namespace(), spannerTableName);
+    String spannerTableName = schemaMapper().getSpannerTableName(namespace(), srcTableName);
+    List<String> spannerColNames = schemaMapper().getSpannerColumns(namespace(), spannerTableName);
     for (String spannerColName : spannerColNames) {
       /**
        * TODO: Handle columns that will not exist at source - synth id - shard id - multi-column
        * transformations - auto-gen keys - Default columns - generated columns
        */
       String srcColName =
-          iSchemaMapper().getSourceColumnName(namespace(), spannerTableName, spannerColName);
+          schemaMapper().getSourceColumnName(namespace(), spannerTableName, spannerColName);
       Type spannerColumnType =
-          iSchemaMapper().getSpannerColumnType(namespace(), spannerTableName, spannerColName);
-      Value value = getSpannerValue(record, srcColName, spannerColumnType);
+          schemaMapper().getSpannerColumnType(namespace(), spannerTableName, spannerColName);
+      Value value =
+          getSpannerValue(
+              record.get(srcColName),
+              record.getSchema().getField(srcColName).schema(),
+              srcColName,
+              spannerColumnType);
       result.put(spannerColName, value);
     }
     return result;
   }
 
   /** Extract the field value from Generic Record and try to convert it to @spannerType. */
-  static Value getSpannerValue(GenericRecord record, String recordColName, Type spannerType) {
-    Object recordValue = record.get(recordColName);
-    Schema fieldSchema = record.getSchema().getField(recordColName).schema();
+  static Value getSpannerValue(
+      Object recordValue, Schema fieldSchema, String recordColName, Type spannerType) {
+    // Logical and record types should be converted to string.
     if (fieldSchema.getLogicalType() != null) {
-      // Logical should be converted to string.
-      recordValue = handleLogicalFieldType(recordColName, record);
+      recordValue = handleLogicalFieldType(recordColName, recordValue, fieldSchema);
     } else if (fieldSchema.getType().equals(Schema.Type.RECORD)) {
-      // Record types should be converted to string.
-      recordValue = handleRecordFieldType(recordColName, record);
+      // Get the avro field of type record from the whole record.
+      recordValue = handleRecordFieldType(recordColName, (GenericRecord) recordValue, fieldSchema);
     }
     Schema.Type fieldType = fieldSchema.getType();
     switch (spannerType.getCode()) {
@@ -323,39 +327,36 @@ public abstract class GenericRecordTypeConvertor {
   }
 
   /** Avro logical types are converted to an equivalent string type. */
-  static String handleLogicalFieldType(String fieldName, GenericRecord element) {
-    if (element.get(fieldName) == null) {
+  static String handleLogicalFieldType(String fieldName, Object recordValue, Schema fieldSchema) {
+    if (recordValue == null) {
       return null;
     }
-    Schema fieldSchema = element.getSchema().getField(fieldName).schema();
     if (fieldSchema.getLogicalType() instanceof LogicalTypes.Date) {
       TimeConversions.DateConversion dataConversion = new TimeConversions.DateConversion();
       LocalDate date =
-          dataConversion.fromInt(
-              (Integer) element.get(fieldName), fieldSchema, fieldSchema.getLogicalType());
+          dataConversion.fromInt((Integer) recordValue, fieldSchema, fieldSchema.getLogicalType());
       return date.format(DateTimeFormatter.ISO_LOCAL_DATE);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.Decimal) {
       Conversions.DecimalConversion decimalConversion = new Conversions.DecimalConversion();
       BigDecimal bigDecimal =
           decimalConversion.fromBytes(
-              (ByteBuffer) element.get(fieldName), fieldSchema, fieldSchema.getLogicalType());
+              (ByteBuffer) recordValue, fieldSchema, fieldSchema.getLogicalType());
       return bigDecimal.toPlainString();
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMicros) {
-      Long nanoseconds = (Long) element.get(fieldName) * TimeUnit.MICROSECONDS.toNanos(1);
+      Long nanoseconds = (Long) recordValue * TimeUnit.MICROSECONDS.toNanos(1);
       return LocalTime.ofNanoOfDay(nanoseconds).format(DateTimeFormatter.ISO_LOCAL_TIME);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis) {
-      Long nanoseconds =
-          TimeUnit.MILLISECONDS.toNanos(Long.valueOf(element.get(fieldName).toString()));
+      Long nanoseconds = TimeUnit.MILLISECONDS.toNanos(Long.valueOf(recordValue.toString()));
       return LocalTime.ofNanoOfDay(nanoseconds).format(DateTimeFormatter.ISO_LOCAL_TIME);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMicros) {
-      Long nanoseconds = (Long) element.get(fieldName) * TimeUnit.MICROSECONDS.toNanos(1);
+      Long nanoseconds = (Long) recordValue * TimeUnit.MICROSECONDS.toNanos(1);
       Instant timestamp =
           Instant.ofEpochSecond(
               TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
               nanoseconds % TimeUnit.SECONDS.toNanos(1));
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMillis) {
-      Instant timestamp = Instant.ofEpochMilli(((Long) element.get(fieldName)));
+      Instant timestamp = Instant.ofEpochMilli(((Long) recordValue));
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     } // TODO: add support for custom logical types VARCHAR, JSON and NUMBER once format is
     // finalised.
@@ -364,22 +365,18 @@ public abstract class GenericRecordTypeConvertor {
           "Unknown field type {} for field {} in {}. Ignoring it.",
           fieldSchema,
           fieldName,
-          element.get(fieldName));
+          recordValue);
       throw new UnsupportedOperationException(
           String.format(
-              "Unknown field type %s for field %s in %s.",
-              fieldSchema, fieldName, element.get(fieldName)));
+              "Unknown field type %s for field %s in %s.", fieldSchema, fieldName, recordValue));
     }
   }
 
   /** Record field types are converted to an equivalent string type. */
-  static String handleRecordFieldType(String fieldName, GenericRecord record) {
-    if (record.get(fieldName) == null) {
+  static String handleRecordFieldType(String fieldName, GenericRecord element, Schema fieldSchema) {
+    if (element == null) {
       return null;
     }
-    Schema fieldSchema = record.getSchema().getField(fieldName).schema();
-    // Get the avro field of type record from the whole record.
-    GenericRecord element = (GenericRecord) record.get(fieldName);
     if (fieldSchema.getName().equals("timestampTz")) {
       Long nanoseconds = (Long) element.get("timestamp") * TimeUnit.MICROSECONDS.toNanos(1);
       Instant timestamp =

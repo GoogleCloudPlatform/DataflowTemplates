@@ -32,13 +32,15 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
@@ -332,8 +334,10 @@ public class GenericRecordTypeConvertorTest {
   }
 
   @Test
-  public void testHandleLogicalFieldType() {
-    Schema avroSchema = SchemaUtils.parseAvroSchema(AvroTestingHelper.LOGICAL_TYPES_SCHEMA_JSON);
+  public void testHandleLogicalFieldType() throws IOException {
+    Schema avroSchema =
+        SchemaUtils.parseAvroSchema(
+            Files.readString(Paths.get("src/test/resources/avro/logical-types-schema.avsc")));
     GenericRecord genericRecord = new GenericData.Record(avroSchema);
     genericRecord.put("date_col", 738991);
     genericRecord.put(
@@ -343,46 +347,54 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("timestamp_micros_col", 1602599400056483L);
     genericRecord.put("timestamp_millis_col", 1602599400056L);
 
-    String result = GenericRecordTypeConvertor.handleLogicalFieldType("date_col", genericRecord);
+    String col = "date_col";
+    String result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
     assertEquals("Test date_col conversion: ", "3993-04-16", result);
 
-    result = GenericRecordTypeConvertor.handleLogicalFieldType("decimal_col", genericRecord);
+    col = "decimal_col";
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
     assertEquals("Test decimal_col conversion: ", "12.34", result);
 
-    result = GenericRecordTypeConvertor.handleLogicalFieldType("time_micros_col", genericRecord);
+    col = "time_micros_col";
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
     assertEquals("Test time_micros_col conversion: ", "13:20:35", result);
 
-    result = GenericRecordTypeConvertor.handleLogicalFieldType("time_millis_col", genericRecord);
+    col = "time_millis_col";
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
     assertEquals("Test time_millis_col conversion: ", "13:20:35", result);
 
+    col = "timestamp_micros_col";
     result =
-        GenericRecordTypeConvertor.handleLogicalFieldType("timestamp_micros_col", genericRecord);
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
     assertEquals("Test timestamp_micros_col conversion: ", "2020-10-13T14:30:00.056483Z", result);
 
+    col = "timestamp_millis_col";
     result =
-        GenericRecordTypeConvertor.handleLogicalFieldType("timestamp_millis_col", genericRecord);
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
     assertEquals("Test timestamp_millis_col conversion: ", "2020-10-13T14:30:00.056Z", result);
   }
 
   @Test
   public void testHandleLogicalFieldType_nullInput() {
-    GenericRecord mockRecord = mock(GenericRecord.class);
-    when(mockRecord.get(anyString())).thenReturn(null);
-    assertNull(GenericRecordTypeConvertor.handleLogicalFieldType("col", mockRecord));
+    assertNull(
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            "col", null, SchemaBuilder.builder().stringType()));
   }
 
   @Test(expected = UnsupportedOperationException.class)
   public void testHandleLogicalFieldType_unsupportedLogicalType() {
-    Schema mockFieldSchema = mock(Schema.class);
-    when(mockFieldSchema.getLogicalType()).thenReturn(LogicalTypes.uuid());
-    GenericRecord mockElement = mock(GenericRecord.class);
-    Schema mockSchema = mock(Schema.class);
-    when(mockSchema.getField(anyString())).thenReturn(mock(Schema.Field.class));
-    when(mockSchema.getField(anyString()).schema()).thenReturn(mockFieldSchema);
-    when(mockElement.getSchema()).thenReturn(mockSchema);
-    when(mockElement.get("col")).thenReturn("test");
-
-    GenericRecordTypeConvertor.handleLogicalFieldType("col", mockElement);
+    GenericRecordTypeConvertor.handleLogicalFieldType(
+        "col", "test", SchemaBuilder.builder().stringType());
   }
 
   @Test
@@ -435,26 +447,36 @@ public class GenericRecordTypeConvertorTest {
         "unsupported_type_column",
         new GenericData.Record(SchemaUtils.parseAvroSchema(unsupportedSchemaJson)));
 
+    String col = "timestamp_with_time_zone_column";
     String result =
         GenericRecordTypeConvertor.handleRecordFieldType(
-            "timestamp_with_time_zone_column", genericRecord);
+            col,
+            (GenericRecord) genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema());
     assertEquals("Test timestampTz conversion: ", "2020-10-13T14:30:00.056483Z", result);
 
-    result = GenericRecordTypeConvertor.handleRecordFieldType("date_time_column", genericRecord);
+    col = "date_time_column";
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            col,
+            (GenericRecord) genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema());
     assertEquals("Test datetime conversion: ", "3993-04-16T13:20:35Z", result);
 
     assertThrows(
         UnsupportedOperationException.class,
         () ->
             GenericRecordTypeConvertor.handleRecordFieldType(
-                "unsupported_type_column", genericRecord));
+                "unsupported_type_column",
+                (GenericRecord) genericRecord.get("unsupported_type_column"),
+                genericRecord.getSchema().getField("unsupported_type_column").schema()));
   }
 
   @Test
   public void testHandleRecordFieldType_nullInput() {
-    GenericRecord mockRecord = mock(GenericRecord.class);
-    when(mockRecord.get(anyString())).thenReturn(null);
-    assertNull(GenericRecordTypeConvertor.handleRecordFieldType("col", mockRecord));
+    assertNull(
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "col", null, SchemaBuilder.builder().stringType()));
   }
 
   static Ddl getIdentityDdl() {
@@ -499,10 +521,11 @@ public class GenericRecordTypeConvertorTest {
   }
 
   @Test
-  public void transformChangeEventTest_identityMapper() {
+  public void transformChangeEventTest_identityMapper() throws IOException {
     GenericRecord genericRecord =
         new GenericData.Record(
-            SchemaUtils.parseAvroSchema(AvroTestingHelper.ALL_SPANNER_TYPES_AVRO_JSON));
+            SchemaUtils.parseAvroSchema(
+                Files.readString(Paths.get("src/test/resources/avro/all-spanner-types.avsc"))));
     genericRecord.put("bool_col", true);
     genericRecord.put("int_col", 10);
     genericRecord.put("float_col", 10.34);
@@ -532,7 +555,7 @@ public class GenericRecordTypeConvertorTest {
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void transformChangeEventTest_incorrectSpannerType() {
+  public void transformChangeEventTest_incorrectSpannerType() throws IOException {
 
     ISchemaMapper mockSchemaMapper = mock(ISchemaMapper.class);
     when(mockSchemaMapper.getSpannerTableName(anyString(), anyString())).thenReturn("test");
@@ -545,7 +568,8 @@ public class GenericRecordTypeConvertorTest {
 
     GenericRecord genericRecord =
         new GenericData.Record(
-            SchemaUtils.parseAvroSchema(AvroTestingHelper.ALL_SPANNER_TYPES_AVRO_JSON));
+            SchemaUtils.parseAvroSchema(
+                Files.readString(Paths.get("src/test/resources/avro/all-spanner-types.avsc"))));
     genericRecord.put("bool_col", true);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
         GenericRecordTypeConvertor.create(mockSchemaMapper, "");
