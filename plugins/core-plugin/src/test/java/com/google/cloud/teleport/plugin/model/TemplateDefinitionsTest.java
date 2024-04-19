@@ -172,42 +172,36 @@ public class TemplateDefinitionsTest {
   private static class Streaming {}
 
   @Template(
-          supportsAtLeastOnce = true,
-          supportsExactlyOnce = true,
-          name = "StreamingALOEOEnabledDefaultNone",
-          displayName = "",
-          description = {},
-          streaming = true,
-          category = TemplateCategory.STREAMING)
-  private static class StreamingALOEOEnabledDefaultNone {
-
-  }
+      supportsAtLeastOnce = true,
+      supportsExactlyOnce = true,
+      name = "StreamingALOEOEnabledDefaultNone",
+      displayName = "",
+      description = {},
+      streaming = true,
+      category = TemplateCategory.STREAMING)
+  private static class StreamingALOEOEnabledDefaultNone {}
 
   @Template(
-          supportsAtLeastOnce = true,
-          supportsExactlyOnce = true,
-          defaultStreamingMode = Template.StreamingMode.AT_LEAST_ONCE,
-          name = "StreamingALOEOEnabledDefaultALO",
-          displayName = "",
-          description = {},
-          streaming = true,
-          category = TemplateCategory.STREAMING)
-  private static class StreamingALOEOEnabledDefaultALO {
-
-  }
+      supportsAtLeastOnce = true,
+      supportsExactlyOnce = true,
+      defaultStreamingMode = Template.StreamingMode.AT_LEAST_ONCE,
+      name = "StreamingALOEOEnabledDefaultALO",
+      displayName = "",
+      description = {},
+      streaming = true,
+      category = TemplateCategory.STREAMING)
+  private static class StreamingALOEOEnabledDefaultALO {}
 
   @Template(
-          supportsAtLeastOnce = true,
-          supportsExactlyOnce = true,
-          defaultStreamingMode = Template.StreamingMode.EXACTLY_ONCE,
-          name = "StreamingALOEOEnabledDefaultEO",
-          displayName = "",
-          description = {},
-          streaming = true,
-          category = TemplateCategory.STREAMING)
-  private static class StreamingALOEOEnabledDefaultEO {
-
-  }
+      supportsAtLeastOnce = true,
+      supportsExactlyOnce = true,
+      defaultStreamingMode = Template.StreamingMode.EXACTLY_ONCE,
+      name = "StreamingALOEOEnabledDefaultEO",
+      displayName = "",
+      description = {},
+      streaming = true,
+      category = TemplateCategory.STREAMING)
+  private static class StreamingALOEOEnabledDefaultEO {}
 
   @Template(
       supportsAtLeastOnce = false,
