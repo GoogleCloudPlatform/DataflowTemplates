@@ -112,6 +112,13 @@ public class TemplateDefinitionsTest {
         IllegalArgumentException.class, () -> imageSpecWithValidationOf(StreamingEOMismatch.class));
   }
 
+  @Test
+  public void givenStreamingBothAOEO_thenValidates() {
+    imageSpecWithValidationOf(StreamingALOEOEnabledDefaultNone.class);
+    imageSpecWithValidationOf(StreamingALOEOEnabledDefaultALO.class);
+    imageSpecWithValidationOf(StreamingALOEOEnabledDefaultEO.class);
+  }
+
   private static ImageSpec imageSpecWithValidationOf(Class<?> clazz) {
     return templateDefinitionsOf(clazz).buildSpecModel(true);
   }
@@ -163,6 +170,44 @@ public class TemplateDefinitionsTest {
       streaming = true,
       category = TemplateCategory.STREAMING)
   private static class Streaming {}
+
+  @Template(
+          supportsAtLeastOnce = true,
+          supportsExactlyOnce = true,
+          name = "StreamingALOEOEnabledDefaultNone",
+          displayName = "",
+          description = {},
+          streaming = true,
+          category = TemplateCategory.STREAMING)
+  private static class StreamingALOEOEnabledDefaultNone {
+
+  }
+
+  @Template(
+          supportsAtLeastOnce = true,
+          supportsExactlyOnce = true,
+          defaultStreamingMode = Template.StreamingMode.AT_LEAST_ONCE,
+          name = "StreamingALOEOEnabledDefaultALO",
+          displayName = "",
+          description = {},
+          streaming = true,
+          category = TemplateCategory.STREAMING)
+  private static class StreamingALOEOEnabledDefaultALO {
+
+  }
+
+  @Template(
+          supportsAtLeastOnce = true,
+          supportsExactlyOnce = true,
+          defaultStreamingMode = Template.StreamingMode.EXACTLY_ONCE,
+          name = "StreamingALOEOEnabledDefaultEO",
+          displayName = "",
+          description = {},
+          streaming = true,
+          category = TemplateCategory.STREAMING)
+  private static class StreamingALOEOEnabledDefaultEO {
+
+  }
 
   @Template(
       supportsAtLeastOnce = false,
