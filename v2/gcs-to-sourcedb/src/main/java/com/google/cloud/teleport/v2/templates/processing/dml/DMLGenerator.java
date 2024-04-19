@@ -415,7 +415,7 @@ public class DMLGenerator {
   private static String escapeString(String input) {
     String cleanedNullBytes = StringUtils.replace(input, "\u0000", "");
     cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "'", "''");
-
+    cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "\\", "\\\\");
     return cleanedNullBytes;
   }
 
