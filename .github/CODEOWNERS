@@ -1,5 +1,11 @@
 # review when someone opens a pull request
 
+# These owners will be the default owners for everything in
+# the repo. Unless a later match takes precedence,
+# @global-owner1 and @global-owner2 will be requested for
+# review when someone opens a pull request.
+* @GoogleCloudPlatform/dataflow-templates-wg
+
 # Spanner Import Export templates
 v1/src/main/java/com/google/cloud/teleport/spanner/ @GoogleCloudPlatform/spanner-migrations-team
 v1/src/test/java/com/google/cloud/teleport/spanner/ @GoogleCloudPlatform/spanner-migrations-team
