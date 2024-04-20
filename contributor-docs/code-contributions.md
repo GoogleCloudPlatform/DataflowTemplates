@@ -10,13 +10,14 @@ how to review/merge code, or other info, see the
 
 ## Prerequisites
 
-If you are not already familiar with Dataflow, Dataflow Templates, and Apache
-Beam it is recommended that you familarize yourself with each of these at a
-high level before contributing. Information on each of these can be found in
-the following locations:
+If you are not already familiar with Dataflow, Dataflow Templates (especially
+flex templates), and Apache Beam it is recommended that you familarize yourself
+with each of these at a high level before contributing. Information on each of
+these can be found in the following locations:
 
 * [Dataflow](https://cloud.google.com/dataflow/docs/overview) - general Dataflow documentation.
 * [Dataflow Templates](https://cloud.google.com/dataflow/docs/concepts/dataflow-templates) - basic template concepts.
+* [Flex templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates) - the preferred way to build new templates
 * [Google-provided Templates](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates) - official documentation for templates provided by Google (the source code is in this repository).
 * [Apache Beam](https://beam.apache.org)
   - [Overview](https://beam.apache.org/use/beam-overview/)

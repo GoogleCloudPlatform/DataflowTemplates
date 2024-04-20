@@ -32,7 +32,7 @@ willing to sponsor building/maintaining/supporting those templates in a formal
 agreement with Google.
 
 If you are part of an organization interested in this, please reach out to
-the Dataflow team directly using the [Google Issue Tracker](https://b.corp.google.com/issues/new?component=187168&template=1162867).
+the Dataflow team directly using the [Google Issue Tracker](https://issuetracker.google.com/issues/new?component=187168&template=0).
 
 Existing Templates will continue to receive bug fixes and minor feature upgrades.
 Examples of features that will continue to be considered include:
