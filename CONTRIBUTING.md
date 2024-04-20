@@ -24,6 +24,28 @@ You generally only need to submit a CLA once, so if you've already submitted one
 (even if it was for a different project), you probably don't need to do it
 again.
 
+## New Templates/Features
+
+This repo is generally not accepting contributions or feature requests for new
+templates or large chunks of new functionality unless a partner organization is
+willing to sponsor building/maintaining/supporting those templates in a formal
+agreement with Google.
+
+If you are part of an organization interested in this, please reach out to
+the Dataflow team directly using the [Google Issue Tracker](https://issuetracker.google.com/issues/new?component=187168&template=0).
+
+Existing Templates will continue to receive bug fixes and minor feature upgrades.
+Examples of features that will continue to be considered include:
+
+- Exposing new parameters/features added to existing I/Os in Beam
+- Performance improvements that don't dramatically alter the template
+- Small quality of life improvements that make templates more usable
+
+## Making Code or Documentation Changes
+
+For information on making code contributions, see our
+[code contribution guide](./contributor-docs/code-contributions.md).
+
 ## Code reviews
 
 All submissions, including submissions by project members, require review. We
@@ -31,11 +53,6 @@ use GitHub pull requests for this purpose. Consult
 [GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
 information on using pull requests.
 
-
-## IntelliJ & IDE Setup
-
-For v1 templates, just open the project at the root directory and use maven
-from there.
-
-For v2 templates, open the project at the root directory then find the
-"Add Maven Project" action and add the v2 directory and let the project rebuild.
+Some PRs will receive automatic reviews, while some will require requesting
+review manually. For information on this process, see
+[Code Owners](./contributor-docs/code-owners.md).
