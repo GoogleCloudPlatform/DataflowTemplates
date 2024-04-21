@@ -81,16 +81,13 @@ public class AvroToValueMapper {
     Map<Type, AvroToValueFunction> gsqlFunctions = new HashMap<>();
     gsqlFunctions.put(
         Type.bool(),
-        (recordValue, fieldSchema) ->
-            Value.bool(avroFieldToBoolean(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.bool(avroFieldToBoolean(recordValue, fieldSchema)));
     gsqlFunctions.put(
         Type.int64(),
-        (recordValue, fieldSchema) ->
-            Value.int64(avroFieldToLong(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.int64(avroFieldToLong(recordValue, fieldSchema)));
     gsqlFunctions.put(
         Type.float64(),
-        (recordValue, fieldSchema) ->
-            Value.float64(avroFieldToDouble(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.float64(avroFieldToDouble(recordValue, fieldSchema)));
     gsqlFunctions.put(
         Type.string(), (recordValue, fieldSchema) -> Value.string(recordValue.toString()));
     gsqlFunctions.put(
@@ -98,21 +95,17 @@ public class AvroToValueMapper {
     gsqlFunctions.put(
         Type.numeric(),
         (recordValue, fieldSchema) ->
-            Value.numeric(
-                avroFieldToNumericBigDecimal(recordValue, fieldSchema)));
+            Value.numeric(avroFieldToNumericBigDecimal(recordValue, fieldSchema)));
     gsqlFunctions.put(
         Type.bytes(),
-        (recordValue, fieldSchema) ->
-            Value.bytes(avroFieldToByteArray(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.bytes(avroFieldToByteArray(recordValue, fieldSchema)));
     gsqlFunctions.put(
         Type.timestamp(),
         (recordValue, fieldSchema) ->
-            Value.timestamp(
-                avroFieldToTimestamp(recordValue, fieldSchema)));
+            Value.timestamp(avroFieldToTimestamp(recordValue, fieldSchema)));
     gsqlFunctions.put(
         Type.date(),
-        (recordValue, fieldSchema) ->
-            Value.date(avroFieldToDate(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.date(avroFieldToDate(recordValue, fieldSchema)));
     return gsqlFunctions;
   }
 
@@ -120,16 +113,13 @@ public class AvroToValueMapper {
     Map<Type, AvroToValueFunction> pgFunctions = new HashMap<>();
     pgFunctions.put(
         Type.pgBool(),
-        (recordValue, fieldSchema) ->
-            Value.bool(avroFieldToBoolean(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.bool(avroFieldToBoolean(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgInt8(),
-        (recordValue, fieldSchema) ->
-            Value.int64(avroFieldToLong(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.int64(avroFieldToLong(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgFloat8(),
-        (recordValue, fieldSchema) ->
-            Value.float64(avroFieldToDouble(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.float64(avroFieldToDouble(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgVarchar(), (recordValue, fieldSchema) -> Value.string(recordValue.toString()));
     pgFunctions.put(
@@ -139,26 +129,21 @@ public class AvroToValueMapper {
     pgFunctions.put(
         Type.pgNumeric(),
         (recordValue, fieldSchema) ->
-            Value.numeric(
-                avroFieldToNumericBigDecimal(recordValue, fieldSchema)));
+            Value.numeric(avroFieldToNumericBigDecimal(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgBytea(),
-        (recordValue, fieldSchema) ->
-            Value.bytes(avroFieldToByteArray(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.bytes(avroFieldToByteArray(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgCommitTimestamp(),
         (recordValue, fieldSchema) ->
-            Value.timestamp(
-                avroFieldToTimestamp(recordValue, fieldSchema)));
+            Value.timestamp(avroFieldToTimestamp(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgTimestamptz(),
         (recordValue, fieldSchema) ->
-            Value.timestamp(
-                avroFieldToTimestamp(recordValue, fieldSchema)));
+            Value.timestamp(avroFieldToTimestamp(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgDate(),
-        (recordValue, fieldSchema) ->
-            Value.date(avroFieldToDate(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.date(avroFieldToDate(recordValue, fieldSchema)));
     return pgFunctions;
   }
 
@@ -178,12 +163,12 @@ public class AvroToValueMapper {
       return Long.parseLong(recordValue.toString());
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
-              "Unable to convert "
-                      + fieldSchema.getType()
-                      + " to Long, with value: "
-                      + recordValue
-                      + ", Exception: "
-                      + e.getMessage());
+          "Unable to convert "
+              + fieldSchema.getType()
+              + " to Long, with value: "
+              + recordValue
+              + ", Exception: "
+              + e.getMessage());
     }
   }
 
@@ -195,12 +180,12 @@ public class AvroToValueMapper {
       return Double.valueOf(recordValue.toString());
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
-              "Unable to convert "
-                      + fieldSchema.getType()
-                      + " to double, with value: "
-                      + recordValue
-                      + ", Exception: "
-                      + e.getMessage());
+          "Unable to convert "
+              + fieldSchema.getType()
+              + " to double, with value: "
+              + recordValue
+              + ", Exception: "
+              + e.getMessage());
     }
   }
 
@@ -214,33 +199,33 @@ public class AvroToValueMapper {
         return new BigDecimal(value).setScale(9, RoundingMode.HALF_UP);
       } else {
         throw new AvroTypeConvertorException(
-                "Unable to convert field "
-                        + value
-                        + " as isCreatable("
-                        + value
-                        + ") = "
-                        + NumberUtils.isCreatable(value)
-                        + ", isParsable("
-                        + value
-                        + ") = "
-                        + NumberUtils.isParsable(value)
-                        + ".");
+            "Unable to convert field "
+                + value
+                + " as isCreatable("
+                + value
+                + ") = "
+                + NumberUtils.isCreatable(value)
+                + ", isParsable("
+                + value
+                + ") = "
+                + NumberUtils.isParsable(value)
+                + ".");
       }
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
-              "Unable to convert "
-                      + fieldSchema.getType()
-                      + " to numeric big decimal, with value: "
-                      + recordValue
-                      + ", Exception: "
-                      + e.getMessage());
+          "Unable to convert "
+              + fieldSchema.getType()
+              + " to numeric big decimal, with value: "
+              + recordValue
+              + ", Exception: "
+              + e.getMessage());
     }
   }
 
   private static boolean isNumeric(String str) {
     return Pattern.compile("-?\\d+(\\.\\d+)?")
-            .matcher(str)
-            .matches(); // match a number with optional '-' and decimal.
+        .matcher(str)
+        .matches(); // match a number with optional '-' and decimal.
   }
 
   static ByteArray avroFieldToByteArray(Object recordValue, Schema fieldSchema) {
@@ -259,12 +244,12 @@ public class AvroToValueMapper {
       return ByteArray.copyFrom((byte[]) recordValue);
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
-              "Unable to convert "
-                      + fieldSchema.getType()
-                      + " to byte array, with value: "
-                      + recordValue
-                      + ", Exception: "
-                      + e.getMessage());
+          "Unable to convert "
+              + fieldSchema.getType()
+              + " to byte array, with value: "
+              + recordValue
+              + ", Exception: "
+              + e.getMessage());
     }
   }
 
@@ -276,12 +261,12 @@ public class AvroToValueMapper {
       return com.google.cloud.Timestamp.parseTimestamp(recordValue.toString());
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
-              "Unable to convert "
-                      + fieldSchema.getName()
-                      + " to Timestamp, with value: "
-                      + recordValue
-                      + ", Exception: "
-                      + e.getMessage());
+          "Unable to convert "
+              + fieldSchema.getName()
+              + " to Timestamp, with value: "
+              + recordValue
+              + ", Exception: "
+              + e.getMessage());
     }
   }
 
@@ -293,12 +278,12 @@ public class AvroToValueMapper {
       return Date.fromJavaUtilDate(parseLenientDate(recordValue.toString()));
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
-              "Unable to convert "
-                      + fieldSchema.getName()
-                      + " to Date, with value: "
-                      + recordValue
-                      + ", Exception: "
-                      + e.getMessage());
+          "Unable to convert "
+              + fieldSchema.getName()
+              + " to Date, with value: "
+              + recordValue
+              + ", Exception: "
+              + e.getMessage());
     }
   }
 
@@ -322,16 +307,16 @@ public class AvroToValueMapper {
     ZonedDateTime zonedDateTime;
     try {
       zonedDateTime =
-              ZonedDateTime.parse(timestamp, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-                      .withZoneSameInstant(ZoneId.of("UTC"));
+          ZonedDateTime.parse(timestamp, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+              .withZoneSameInstant(ZoneId.of("UTC"));
     } catch (DateTimeParseException e) {
       if (!timestamp.endsWith("Z")) {
 
         // Datastream replication in JSON format does not contain 'Z' at the end of timestamp.
         timestamp = timestamp + "Z";
         zonedDateTime =
-                ZonedDateTime.parse(timestamp, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-                        .withZoneSameInstant(ZoneId.of("UTC"));
+            ZonedDateTime.parse(timestamp, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                .withZoneSameInstant(ZoneId.of("UTC"));
       } else {
         throw e;
       }
