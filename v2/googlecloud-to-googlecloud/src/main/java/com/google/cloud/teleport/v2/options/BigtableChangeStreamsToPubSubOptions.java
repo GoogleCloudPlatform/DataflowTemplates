@@ -33,6 +33,7 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.Text(
       order = 1,
+      groupName = "Target",
       description = "The output Pub/Sub topic name",
       helpText = "The Pub/Sub topic to publish changelog entry messages.")
   @Validation.Required
@@ -42,6 +43,7 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.Enum(
       order = 2,
+      groupName = "Target",
       enumOptions = {
         @TemplateEnumOption("BINARY"),
         @TemplateEnumOption("JSON"),
@@ -59,6 +61,7 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.Enum(
       order = 3,
+      groupName = "Target",
       enumOptions = {
         @TemplateEnumOption("AVRO"),
         @TemplateEnumOption("PROTOCOL_BUFFERS"),
@@ -77,6 +80,7 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.Boolean(
       order = 4,
+      groupName = "Source",
       optional = true,
       description = "Strip values for SetCell mutation",
       helpText =
@@ -88,6 +92,7 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.GcsWriteFolder(
       order = 5,
+      groupName = "Source",
       optional = true,
       description = "Dead letter queue directory to store any unpublished change record.",
       helpText =
@@ -102,6 +107,7 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.Integer(
       order = 6,
+      groupName = "Source",
       optional = true,
       description = "Dead letter queue retry minutes",
       helpText = "The number of minutes between dead letter queue retries. Defaults to 10.")
@@ -112,6 +118,7 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.Integer(
       order = 7,
+      groupName = "Source",
       optional = true,
       description = "Dead letter maximum retries",
       helpText = "The number of attempts to process change stream mutations. Defaults to 5.")
@@ -122,6 +129,7 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.ProjectId(
       order = 9,
+      groupName = "Target",
       optional = true,
       description = "PubSub project ID",
       helpText = "The PubSub Project. Default is the project for the Dataflow job.")
@@ -132,6 +140,7 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.Boolean(
       order = 8,
+      groupName = "Source",
       optional = true,
       description = "Write Base64-encoded row keys",
       helpText =
@@ -144,6 +153,7 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.Boolean(
       order = 9,
+      groupName = "Source",
       optional = true,
       description = "Write Base64-encoded column qualifiers",
       helpText =
@@ -156,6 +166,7 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.Boolean(
       order = 10,
+      groupName = "Source",
       optional = true,
       description = "Write Base64-encoded values",
       helpText =
@@ -168,6 +179,7 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.Boolean(
       order = 11,
+      groupName = "Source",
       optional = true,
       description = "Whether or not to disable retries for the DLQ",
       helpText = "Whether or not to disable retries for the DLQ")

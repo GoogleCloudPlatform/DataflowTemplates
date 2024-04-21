@@ -30,6 +30,7 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 1,
+      groupName = "Target",
       description = "BigQuery dataset",
       helpText = "The dataset name of the destination BigQuery table.")
   @Validation.Required
@@ -39,6 +40,7 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   @TemplateParameter.Boolean(
       order = 2,
+      groupName = "Target",
       optional = true,
       description = "Write rowkeys as BigQuery BYTES",
       helpText =
@@ -51,6 +53,7 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   @TemplateParameter.Boolean(
       order = 3,
+      groupName = "Target",
       optional = true,
       description = "Write values as BigQuery BYTES",
       helpText =
@@ -63,6 +66,7 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   @TemplateParameter.Boolean(
       order = 4,
+      groupName = "Target",
       optional = true,
       description = "Write Bigtable timestamp as BigQuery INT",
       helpText =
@@ -77,6 +81,7 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   @TemplateParameter.ProjectId(
       order = 5,
+      groupName = "Target",
       optional = true,
       description = "BigQuery project ID",
       helpText = "The BigQuery dataset project ID. The default is the project for the Dataflow job")
@@ -87,6 +92,7 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 6,
+      groupName = "Target",
       optional = true,
       description = "BigQuery changelog table name",
       helpText =
@@ -99,6 +105,7 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 7,
+      groupName = "Target",
       optional = true,
       description = "Changelog table will be partitioned at specified granularity",
       helpText =
@@ -112,6 +119,7 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   @TemplateParameter.Long(
       order = 8,
+      groupName = "Target",
       optional = true,
       description = "Sets partition expiration time in milliseconds",
       helpText =
@@ -124,6 +132,7 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 9,
+      groupName = "Target",
       optional = true,
       description = "Optional changelog table columns to be disabled",
       helpText =
@@ -137,6 +146,7 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   @TemplateParameter.GcsWriteFolder(
       order = 10,
+      groupName = "Source",
       optional = true,
       description = "Dead letter queue directory",
       helpText =

@@ -171,6 +171,7 @@ public class KafkaToBigQuery {
      */
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = true,
         regexes = {"[,:a-zA-Z0-9._-]+"},
         description = "Kafka Bootstrap Server list",
@@ -197,6 +198,7 @@ public class KafkaToBigQuery {
     @Deprecated
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         optional = true,
         regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Kafka topic(s) to read the input from",
@@ -215,6 +217,7 @@ public class KafkaToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 4,
+        groupName = "Target",
         optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
@@ -228,6 +231,7 @@ public class KafkaToBigQuery {
 
     @TemplateParameter.Enum(
         order = 5,
+        groupName = "Target",
         enumOptions = {
           @TemplateParameter.TemplateEnumOption("AVRO"),
           @TemplateParameter.TemplateEnumOption("JSON")
@@ -242,6 +246,7 @@ public class KafkaToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 6,
+        groupName = "Target",
         optional = true,
         description = "Cloud Storage path to the Avro schema file",
         helpText = "Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.")
@@ -251,6 +256,7 @@ public class KafkaToBigQuery {
 
     @TemplateParameter.Boolean(
         order = 7,
+        groupName = "Target",
         optional = true,
         description = "Use at at-least-once semantics in BigQuery Storage Write API",
         helpText =

@@ -212,6 +212,7 @@ public class TextIOToBigQuery {
           BigQueryStorageApiBatchOptions {
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         optional = false,
         regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         description = "The GCS location of the text you'd like to process",
@@ -223,6 +224,7 @@ public class TextIOToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 2,
+        groupName = "Target",
         optional = false,
         description = "JSON file with BigQuery Schema description",
         helpText = "The Cloud Storage path to the JSON file that defines your BigQuery schema.",
@@ -234,6 +236,7 @@ public class TextIOToBigQuery {
     @TemplateParameter.Text(
         order = 3,
         optional = false,
+        groupName = "Target",
         regexes = {".+:.+\\..+"},
         description = "Output table to write to",
         helpText =
@@ -246,6 +249,7 @@ public class TextIOToBigQuery {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Source",
         optional = false,
         regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         description = "GCS path to javascript fn for transforming output",
@@ -259,6 +263,7 @@ public class TextIOToBigQuery {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Source",
         optional = false,
         regexes = {"[a-zA-Z0-9_]+"},
         description = "UDF Javascript Function Name",
@@ -273,6 +278,7 @@ public class TextIOToBigQuery {
     @Validation.Required
     @TemplateParameter.GcsWriteFolder(
         order = 6,
+        groupName = "Target",
         optional = false,
         description = "Temporary directory for BigQuery loading process",
         helpText = "Temporary directory for the BigQuery loading process.",

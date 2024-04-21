@@ -29,6 +29,7 @@ public interface KafkaToPubsubOptions
     extends PipelineOptions, KafkaCommonOptions, JavascriptTextTransformerOptions {
   @TemplateParameter.Text(
       order = 1,
+      groupName = "Source",
       optional = true,
       regexes = {"[,:a-zA-Z0-9._-]+"},
       description = "Kafka Bootstrap Server list",
@@ -41,6 +42,7 @@ public interface KafkaToPubsubOptions
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       optional = false,
       regexes = {"[a-zA-Z0-9._-]+"},
       description = "Kafka topic(s) to read the input from",
@@ -53,6 +55,7 @@ public interface KafkaToPubsubOptions
 
   @TemplateParameter.PubsubTopic(
       order = 3,
+      groupName = "Target",
       description = "Output Pub/Sub topic",
       helpText =
           "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
@@ -64,6 +67,7 @@ public interface KafkaToPubsubOptions
 
   @TemplateParameter.PubsubTopic(
       order = 4,
+      groupName = "Target",
       description = "Output deadletter Pub/Sub topic",
       helpText =
           "The Pub/Sub topic to publish deadletter records to. The name should be in the "

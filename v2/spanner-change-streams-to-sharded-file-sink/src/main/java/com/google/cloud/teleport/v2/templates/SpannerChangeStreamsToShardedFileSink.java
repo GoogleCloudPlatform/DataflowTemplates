@@ -95,6 +95,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         optional = false,
         description = "Name of the change stream to read from",
         helpText =
@@ -105,6 +106,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Instance Id.",
         helpText =
@@ -115,6 +117,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Database Id.",
         helpText =
@@ -125,6 +128,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.ProjectId(
         order = 4,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Project Id.",
         helpText = "This is the name of the Cloud Spanner project.")
@@ -134,6 +138,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Instance to store metadata when reading from changestreams",
         helpText =
@@ -145,6 +150,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Database to store metadata when reading from changestreams",
         helpText =
@@ -156,6 +162,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 7,
+        groupName = "Source",
         optional = true,
         description = "Changes are read from the given timestamp",
         helpText = "Read changes from the given timestamp.")
@@ -166,6 +173,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Source",
         optional = true,
         description = "Changes are read until the given timestamp",
         helpText =
@@ -177,6 +185,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.GcsReadFile(
         order = 9,
+        groupName = "Target",
         optional = true,
         description = "Session File Path in Cloud Storage, needed for sharded reverse replication",
         helpText =
@@ -188,6 +197,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Duration(
         order = 10,
+        groupName = "Target",
         optional = true,
         description = "Window duration",
         helpText =
@@ -202,6 +212,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.GcsWriteFolder(
         order = 11,
+        groupName = "Target",
         optional = false,
         description = "Output file directory in Cloud Storage",
         helpText =
@@ -214,6 +225,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Enum(
         order = 12,
+        groupName = "Target",
         optional = true,
         enumOptions = {@TemplateEnumOption("none"), @TemplateEnumOption("forward_migration")},
         description = "Filtration mode",
@@ -228,6 +240,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.GcsReadFile(
         order = 13,
+        groupName = "Target",
         optional = false,
         description = "Source shard details file path in Cloud Storage",
         helpText =
@@ -239,6 +252,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 14,
+        groupName = "Target",
         optional = true,
         description = "Metadata table suffix",
         helpText =
@@ -252,6 +266,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 15,
+        groupName = "Target",
         optional = true,
         description = "Directory name for holding skipped records",
         helpText =
@@ -264,6 +279,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 16,
+        groupName = "Target",
         optional = false,
         description = "Reverse replication run identifier",
         helpText =
@@ -274,6 +290,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Enum(
         order = 17,
+        groupName = "Target",
         optional = true,
         enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("resume")},
         description =
@@ -287,6 +304,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.GcsReadFile(
         order = 18,
+        groupName = "Target",
         optional = true,
         description = "Custom jar location in Cloud Storage",
         helpText =
@@ -299,6 +317,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 19,
+        groupName = "Target",
         optional = true,
         description = "Custom class name",
         helpText =
@@ -311,6 +330,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 20,
+        groupName = "Target",
         optional = true,
         description = "Custom sharding logic parameters",
         helpText =

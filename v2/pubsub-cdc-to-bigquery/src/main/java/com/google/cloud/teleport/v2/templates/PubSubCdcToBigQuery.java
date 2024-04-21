@@ -132,6 +132,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input subscription",
         helpText =
             "Pub/Sub subscription to read the input from, in the format of"
@@ -143,6 +144,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.Boolean(
         order = 2,
+        groupName = "Target",
         optional = true,
         description = "Auto Map Tables",
         helpText =
@@ -154,6 +156,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Target",
         optional = true,
         description = "Cloud Storage file with BigQuery schema fields to be used in DDL",
         helpText =
@@ -166,6 +169,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         description = "BigQuery Dataset Name or Template: dataset_name or {column_name}",
         helpText = "The name for the dataset to contain the replica table.")
     @Default.String("{_metadata_dataset}")
@@ -175,6 +179,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "BigQuery Table Name or Template: table_name or {column_name}",
         helpText =
             "The location of the BigQuery table to write the output to. If a table does not "
@@ -186,6 +191,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 6,
+        groupName = "Target",
         optional = true,
         description = "BigQuery output table (Deprecated)",
         helpText =
@@ -197,6 +203,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 7,
+        groupName = "Target",
         optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
@@ -211,6 +218,7 @@ public class PubSubCdcToBigQuery {
     // Dead Letter Queue GCS Directory
     @TemplateParameter.GcsWriteFolder(
         order = 8,
+        groupName = "Target",
         optional = true,
         description = "Dead Letter Queue Directory",
         helpText =
@@ -222,6 +230,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.Duration(
         order = 9,
+        groupName = "Target",
         optional = true,
         description = "Window duration",
         helpText =
@@ -237,6 +246,7 @@ public class PubSubCdcToBigQuery {
     // Thread Count
     @TemplateParameter.Text(
         order = 10,
+        groupName = "Source",
         optional = true,
         description = "Thread Number",
         helpText = "The number of parallel threads you want to split your data into")

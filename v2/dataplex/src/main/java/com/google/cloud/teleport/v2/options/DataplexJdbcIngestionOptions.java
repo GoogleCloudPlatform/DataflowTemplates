@@ -41,6 +41,7 @@ public interface DataplexJdbcIngestionOptions
       regexes = {
         "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
       },
+      groupName = "Source",
       description = "JDBC connection URL string.",
       helpText =
           "Url connection string to connect to the JDBC source. Connection string can be passed in"
@@ -52,6 +53,7 @@ public interface DataplexJdbcIngestionOptions
   void setConnectionURL(String connectionURL);
 
   @TemplateParameter.Text(
+      groupName = "Source",
       order = 2,
       optional = false,
       regexes = {"^.+$"},
@@ -64,6 +66,7 @@ public interface DataplexJdbcIngestionOptions
   void setDriverClassName(String driverClassName);
 
   @TemplateParameter.Text(
+      groupName = "Source",
       order = 3,
       optional = false,
       regexes = {"^.+$"},
@@ -76,6 +79,7 @@ public interface DataplexJdbcIngestionOptions
   void setDriverJars(String driverJar);
 
   @TemplateParameter.Text(
+      groupName = "Source",
       order = 4,
       optional = true,
       regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
@@ -90,6 +94,7 @@ public interface DataplexJdbcIngestionOptions
   void setConnectionProperties(String connectionProperties);
 
   @TemplateParameter.Text(
+      groupName = "Source",
       order = 5,
       optional = true,
       regexes = {"^.+$"},
@@ -103,6 +108,7 @@ public interface DataplexJdbcIngestionOptions
   void setUsername(String username);
 
   @TemplateParameter.Password(
+      groupName = "Source",
       order = 6,
       optional = true,
       description = "JDBC connection password.",
@@ -115,6 +121,7 @@ public interface DataplexJdbcIngestionOptions
   void setPassword(String password);
 
   @TemplateParameter.Text(
+      groupName = "Source",
       order = 7,
       optional = false,
       regexes = {"^.+$"},
@@ -127,6 +134,7 @@ public interface DataplexJdbcIngestionOptions
   void setQuery(String query);
 
   @TemplateParameter.Text(
+      groupName = "Target",
       order = 8,
       optional = false,
       regexes = {"^.+$"},
@@ -144,6 +152,7 @@ public interface DataplexJdbcIngestionOptions
   @TemplateParameter.KmsEncryptionKey(
       order = 9,
       optional = true,
+      groupName = "Target",
       description = "Google Cloud KMS key",
       helpText =
           "If this parameter is provided, password, user name and connection string should all be"
@@ -170,6 +179,7 @@ public interface DataplexJdbcIngestionOptions
             + "\\r"
             + "\\/]+$"
       },
+      groupName = "Target",
       description = "Dataplex output asset ID",
       helpText =
           "Dataplex output asset ID to which the results are stored to. Should be in the format of"
@@ -187,6 +197,7 @@ public interface DataplexJdbcIngestionOptions
         @TemplateEnumOption("MONTHLY")
       },
       optional = true,
+      groupName = "Target",
       description = "The partition scheme when writing the file.",
       helpText = "The partition scheme when writing the file. Format: DAILY or MONTHLY or HOURLY.")
   @Default.Enum("DAILY")
@@ -197,6 +208,7 @@ public interface DataplexJdbcIngestionOptions
   @TemplateParameter.Text(
       order = 12,
       optional = true,
+      groupName = "Target",
       description = "The partition column on which the partition is based.",
       helpText =
           "The partition column on which the partition is based. The column type must be of"
@@ -218,6 +230,7 @@ public interface DataplexJdbcIngestionOptions
         @TemplateEnumOption("WRITE_EMPTY")
       },
       optional = true,
+      groupName = "Target",
       description = "BigQuery write disposition type",
       helpText =
           "Strategy to employ if the target file/table exists. If the table exists - should it"
@@ -232,6 +245,7 @@ public interface DataplexJdbcIngestionOptions
       order = 14,
       enumOptions = {@TemplateEnumOption("AVRO"), @TemplateEnumOption("PARQUET")},
       optional = true,
+      groupName = "Target",
       description = "Output file format in Cloud Storage.",
       helpText = "Output file format in Cloud Storage. Format: PARQUET or AVRO.")
   @Default.Enum("PARQUET")
@@ -243,6 +257,7 @@ public interface DataplexJdbcIngestionOptions
       order = 15,
       optional = true,
       description = "Whether to use column alias to map the rows.",
+      groupName = "Target",
       helpText =
           "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the"
               + " column name to map the rows to BigQuery. Defaults to false.")
@@ -254,6 +269,7 @@ public interface DataplexJdbcIngestionOptions
   @TemplateParameter.Integer(
       order = 16,
       optional = true,
+      groupName = "Target",
       description = "Set the data size going to be fetched and loaded in memory per Jdbc call.",
       helpText =
           "It should ONLY be used if the default value throws memory errors. If not set, using Beam's default "
