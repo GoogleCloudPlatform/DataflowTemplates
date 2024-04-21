@@ -72,6 +72,7 @@ public class FirestoreConverters {
      */
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         regexes = {"^.+$"},
         description = "GQL Query",
         helpText = "Specifies which Datastore entities to read. Ex: ‘SELECT * FROM MyKind’")
@@ -91,6 +92,7 @@ public class FirestoreConverters {
      */
     @TemplateParameter.ProjectId(
         order = 2,
+        groupName = "Source",
         description = "Project ID",
         helpText = "The Google Cloud project ID of the Datastore instance to read from")
     @Hidden
@@ -109,6 +111,7 @@ public class FirestoreConverters {
      */
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {"^[0-9A-Za-z._-]{0,100}$"},
         description = "Namespace",
         helpText =
@@ -126,6 +129,7 @@ public class FirestoreConverters {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Source",
         regexes = {"^.+$"},
         description = "GQL Query",
         helpText = "Specifies which Firestore entities to read. Ex: ‘SELECT * FROM MyKind’")
@@ -135,6 +139,7 @@ public class FirestoreConverters {
 
     @TemplateParameter.ProjectId(
         order = 5,
+        groupName = "Source",
         description = "Project ID",
         helpText = "The Google Cloud project ID of the Firestore instance to read from")
     ValueProvider<String> getFirestoreReadProjectId();
@@ -143,6 +148,7 @@ public class FirestoreConverters {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Source",
         optional = true,
         regexes = {"^[0-9A-Za-z._-]{0,100}$"},
         description = "Namespace",
@@ -160,6 +166,7 @@ public class FirestoreConverters {
      */
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Target",
         description = "Project ID",
         helpText = "The Google Cloud project ID of where to write Datastore entities")
     @Hidden
@@ -178,6 +185,7 @@ public class FirestoreConverters {
      */
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         description = "Datastore entity kind",
         helpText =
             "Datastore kind under which entities will be written in the output Google Cloud"
@@ -198,6 +206,7 @@ public class FirestoreConverters {
      */
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Target",
         optional = true,
         description = "Datastore namespace",
         helpText =
@@ -219,6 +228,7 @@ public class FirestoreConverters {
      */
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         optional = true,
         regexes = {"^[1-9]+[0-9]*$"},
         description = "Expected number of workers",
@@ -238,6 +248,7 @@ public class FirestoreConverters {
 
     @TemplateParameter.ProjectId(
         order = 5,
+        groupName = "Target",
         description = "Project ID",
         helpText = "The Google Cloud project ID of where to write Firestore entities")
     ValueProvider<String> getFirestoreWriteProjectId();
@@ -246,6 +257,7 @@ public class FirestoreConverters {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Target",
         description = "Firestore entity kind",
         helpText =
             "Firestore kind under which entities will be written in the output Google Cloud"
@@ -256,6 +268,7 @@ public class FirestoreConverters {
 
     @TemplateParameter.Text(
         order = 7,
+        groupName = "Target",
         optional = true,
         description = "Namespace of the Firestore entity",
         helpText =
@@ -267,6 +280,7 @@ public class FirestoreConverters {
 
     @TemplateParameter.Integer(
         order = 8,
+        groupName = "Target",
         optional = true,
         description = "Expected number of workers",
         helpText =

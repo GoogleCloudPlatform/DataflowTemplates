@@ -75,6 +75,7 @@ public class OrderedChangestreamBufferToSourceDb {
 
     @TemplateParameter.GcsReadFile(
         order = 1,
+        groupName = "Target",
         optional = false,
         description = "Source shard details file path in Cloud Storage",
         helpText =
@@ -86,6 +87,7 @@ public class OrderedChangestreamBufferToSourceDb {
 
     @TemplateParameter.GcsReadFile(
         order = 2,
+        groupName = "Target",
         optional = false,
         description = "Session File Path in Cloud Storage",
         helpText =
@@ -97,6 +99,7 @@ public class OrderedChangestreamBufferToSourceDb {
 
     @TemplateParameter.Enum(
         order = 3,
+        groupName = "Target",
         optional = true,
         description = "Destination source type",
         enumOptions = {@TemplateEnumOption("mysql"), @TemplateEnumOption("postgresql")},
@@ -109,6 +112,7 @@ public class OrderedChangestreamBufferToSourceDb {
 
     @TemplateParameter.Enum(
         order = 4,
+        groupName = "Source",
         optional = true,
         enumOptions = {@TemplateEnumOption("pubsub"), @TemplateEnumOption("kafka")},
         description = "Input buffer type",
@@ -120,6 +124,7 @@ public class OrderedChangestreamBufferToSourceDb {
 
     @TemplateParameter.ProjectId(
         order = 5,
+        groupName = "Source",
         optional = true,
         description = "Project id for the PubSub subscriber",
         helpText =
@@ -131,6 +136,7 @@ public class OrderedChangestreamBufferToSourceDb {
 
     @TemplateParameter.Integer(
         order = 6,
+        groupName = "Source",
         optional = true,
         description = "Max messages to read from PubSub subscriber",
         helpText = "Tuning parameter, to control the throughput.")
@@ -141,6 +147,7 @@ public class OrderedChangestreamBufferToSourceDb {
 
     @TemplateParameter.GcsReadFile(
         order = 7,
+        groupName = "Source",
         optional = true,
         description = "File location for Kafka cluster details file in Cloud Storage.",
         helpText =
@@ -152,6 +159,7 @@ public class OrderedChangestreamBufferToSourceDb {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Target",
         optional = true,
         description = "SourceDB timezone offset",
         helpText =
@@ -163,6 +171,7 @@ public class OrderedChangestreamBufferToSourceDb {
 
     @TemplateParameter.Integer(
         order = 9,
+        groupName = "Target",
         optional = true,
         description = "Duration in seconds between calls to stateful timer processing. ",
         helpText =
@@ -175,6 +184,7 @@ public class OrderedChangestreamBufferToSourceDb {
 
     @TemplateParameter.Boolean(
         order = 10,
+        groupName = "Target",
         optional = true,
         description = "Enable SSL connection for SourceDB",
         helpText =
@@ -186,6 +196,7 @@ public class OrderedChangestreamBufferToSourceDb {
 
     @TemplateParameter.Boolean(
         order = 11,
+        groupName = "Target",
         optional = true,
         description = "Enable SSL validation for SourceDB",
         helpText =

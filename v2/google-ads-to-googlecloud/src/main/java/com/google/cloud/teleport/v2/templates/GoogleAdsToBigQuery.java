@@ -77,6 +77,7 @@ public final class GoogleAdsToBigQuery {
   public interface GoogleAdsToBigQueryOptions extends WriteOptions, GoogleAdsOptions {
     @TemplateParameter.Long(
         order = 1,
+        groupName = "Source",
         optional = true,
         description = "Google Ads manager account ID",
         helpText = "A Google Ads manager account ID for which to access the account IDs.",
@@ -87,6 +88,7 @@ public final class GoogleAdsToBigQuery {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {"^[0-9]+(,[0-9]+)*$"},
         description = "Google Ads account IDs",
         helpText = "A list of Google Ads account IDs for which to execute the query.",
@@ -98,6 +100,7 @@ public final class GoogleAdsToBigQuery {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         description = "Google Ads Query Language query",
         helpText = "See https://developers.google.com/google-ads/api/docs/query/overview.",
         example = "SELECT campaign.id, campaign.name FROM campaign")
@@ -108,6 +111,7 @@ public final class GoogleAdsToBigQuery {
 
     @TemplateParameter.Double(
         order = 4,
+        groupName = "Source",
         description = "Required Google Ads request rate per worker",
         helpText =
             "Indicates rate of query requests per second to be submitted to Google Ads. "
@@ -120,6 +124,7 @@ public final class GoogleAdsToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 5,
+        groupName = "Target",
         optional = true,
         description = "BigQuery Table Schema Path",
         helpText =
@@ -133,6 +138,7 @@ public final class GoogleAdsToBigQuery {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Source",
         description = "OAuth 2.0 Client ID identifying the application",
         helpText = "See https://developers.google.com/google-ads/api/docs/oauth/overview.")
     String getGoogleAdsClientId();
@@ -141,6 +147,7 @@ public final class GoogleAdsToBigQuery {
 
     @TemplateParameter.Password(
         order = 7,
+        groupName = "Source",
         description = "OAuth 2.0 Client Secret for the specified Client ID",
         helpText = "See https://developers.google.com/google-ads/api/docs/oauth/overview.")
     String getGoogleAdsClientSecret();
@@ -149,6 +156,7 @@ public final class GoogleAdsToBigQuery {
 
     @TemplateParameter.Password(
         order = 8,
+        groupName = "Source",
         description = "OAuth 2.0 Refresh Token for the user connecting to the Google Ads API",
         helpText = "See https://developers.google.com/google-ads/api/docs/oauth/overview.")
     String getGoogleAdsRefreshToken();
@@ -157,6 +165,7 @@ public final class GoogleAdsToBigQuery {
 
     @TemplateParameter.Password(
         order = 9,
+        groupName = "Source",
         description = "Google Ads developer token for the user connecting to the Google Ads API",
         helpText = "See https://developers.google.com/google-ads/api/docs/get-started/dev-token.")
     String getGoogleAdsDeveloperToken();

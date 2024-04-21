@@ -31,6 +31,7 @@ public interface KinesisToPubsubOptions
 
   @TemplateParameter.Text(
       order = 1,
+      groupName = "Source",
       optional = false,
       description = "First Secret ID",
       helpText = "First Secret ID containing aws key id")
@@ -41,6 +42,7 @@ public interface KinesisToPubsubOptions
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       optional = false,
       description = "Second Secret ID",
       helpText = "Second Secret ID containing aws key id")
@@ -51,6 +53,7 @@ public interface KinesisToPubsubOptions
 
   @TemplateParameter.Text(
       order = 3,
+      groupName = "Source",
       optional = false,
       description = "AWS Region",
       helpText = "AWS Region")
@@ -62,6 +65,7 @@ public interface KinesisToPubsubOptions
 
   @TemplateParameter.Text(
       order = 4,
+      groupName = "Source",
       optional = true,
       description = "Data format of input",
       helpText = "Data format of input")
@@ -72,6 +76,7 @@ public interface KinesisToPubsubOptions
 
   @TemplateParameter.Text(
       order = 5,
+      groupName = "Source",
       optional = false,
       description = "Name of the Kinesis Data stream to read from",
       helpText =
@@ -84,6 +89,7 @@ public interface KinesisToPubsubOptions
 
   @TemplateParameter.PubsubTopic(
       order = 6,
+      groupName = "Target",
       description = "Output Pub/Sub topic",
       helpText =
           "The name of the topic to which data should published, "

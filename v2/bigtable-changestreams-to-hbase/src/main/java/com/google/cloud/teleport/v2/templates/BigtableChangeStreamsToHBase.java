@@ -75,6 +75,7 @@ public class BigtableChangeStreamsToHBase {
     /** Hbase specific configs. Mirrors configurations on hbase-site.xml. */
     @TemplateParameter.Text(
         description = "Zookeeper quorum host",
+        groupName = "Target",
         helpText = "Zookeeper quorum host, corresponds to hbase.zookeeper.quorum host")
     String getHbaseZookeeperQuorumHost();
 
@@ -83,6 +84,7 @@ public class BigtableChangeStreamsToHBase {
     @TemplateParameter.Text(
         optional = true,
         description = "Zookeeper quorum port",
+        groupName = "Target",
         helpText = "Zookeeper quorum port, corresponds to hbase.zookeeper.quorum port")
     @Default.String("2181")
     String getHbaseZookeeperQuorumPort();
@@ -91,6 +93,7 @@ public class BigtableChangeStreamsToHBase {
 
     @TemplateParameter.Text(
         description = "Hbase root directory",
+        groupName = "Target",
         helpText = "Hbase root directory, corresponds to hbase.rootdir")
     String getHbaseRootDir();
 
@@ -99,6 +102,7 @@ public class BigtableChangeStreamsToHBase {
     @TemplateParameter.Boolean(
         optional = true,
         description = "Bidirectional replication",
+        groupName = "Target",
         helpText =
             "Whether bidirectional replication between hbase and bigtable is enabled, adds additional logic to filter out hbase-replicated mutations")
     @Default.Boolean(false)
@@ -109,6 +113,7 @@ public class BigtableChangeStreamsToHBase {
     @TemplateParameter.Text(
         optional = true,
         description = "Source CBT qualifier",
+        groupName = "Target",
         helpText = "Bidirectional replication source CBT qualifier")
     @Default.String("BIDIRECTIONAL_REPL_SOURCE_CBT")
     String getCbtQualifier();
@@ -118,6 +123,7 @@ public class BigtableChangeStreamsToHBase {
     @TemplateParameter.Text(
         optional = true,
         description = "Source Hbase qualifier",
+        groupName = "Target",
         helpText = "Bidirectional replication source Hbase qualifier")
     @Default.String("BIDIRECTIONAL_REPL_SOURCE_HBASE")
     String getHbaseQualifier();
@@ -127,6 +133,7 @@ public class BigtableChangeStreamsToHBase {
     @TemplateParameter.Boolean(
         optional = true,
         description = "Dry run",
+        groupName = "Target",
         helpText = "When dry run is enabled, pipeline will not write to Hbase")
     @Default.Boolean(false)
     boolean getDryRunEnabled();
@@ -136,6 +143,7 @@ public class BigtableChangeStreamsToHBase {
     @TemplateParameter.Boolean(
         optional = true,
         description = "Filter GC mutations",
+        groupName = "Target",
         helpText = "Filters out garbage collection Delete mutations from CBT")
     @Default.Boolean(false)
     boolean getFilterGCMutations();

@@ -146,6 +146,7 @@ public class DataStreamToBigQuery {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         description = "File location for Datastream file output in Cloud Storage.",
         helpText =
             "This is the file location for Datastream file output in Cloud Storage, in the "
@@ -157,6 +158,7 @@ public class DataStreamToBigQuery {
     @TemplateParameter.Enum(
         order = 2,
         enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("json")},
+        groupName = "Source",
         description = "Datastream output file format (avro/json).",
         helpText =
             "The format of the output files produced by Datastream. Value can be 'avro' or 'json'.")
@@ -166,6 +168,7 @@ public class DataStreamToBigQuery {
     void setInputFileFormat(String value);
 
     @TemplateParameter.PubsubSubscription(
+        groupName = "Source",
         order = 3,
         description = "The Pub/Sub subscription on the Cloud Storage bucket.",
         helpText =
@@ -177,6 +180,7 @@ public class DataStreamToBigQuery {
     void setGcsPubSubSubscription(String value);
 
     @TemplateParameter.Text(
+        groupName = "Source",
         order = 4,
         optional = true,
         description = "Name or template for the stream to poll for schema information.",
@@ -188,6 +192,7 @@ public class DataStreamToBigQuery {
     void setStreamName(String value);
 
     @TemplateParameter.DateTime(
+        groupName = "Source",
         order = 5,
         optional = true,
         description =
@@ -205,6 +210,7 @@ public class DataStreamToBigQuery {
         order = 6,
         optional = true,
         description = "File read concurrency",
+        groupName = "Source",
         helpText = "The number of concurrent DataStream files to read. Default is 10.")
     @Default.Integer(10)
     Integer getFileReadConcurrency();
@@ -215,6 +221,7 @@ public class DataStreamToBigQuery {
         order = 7,
         optional = true,
         description = "Project Id for BigQuery datasets.",
+        groupName = "Target",
         helpText =
             "Project for BigQuery datasets to output data into. The default for this parameter "
                 + "is the project where the Dataflow pipeline is running.")
@@ -224,6 +231,7 @@ public class DataStreamToBigQuery {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Target",
         description = "Name or template for the dataset to contain staging tables.",
         helpText =
             "This is the name for the dataset to contain staging tables. This parameter supports "
@@ -237,6 +245,7 @@ public class DataStreamToBigQuery {
     @TemplateParameter.Text(
         order = 9,
         optional = true,
+        groupName = "Target",
         description = "Template for the name of staging tables.",
         helpText =
             "This is the template for the name of staging tables (e.g. {_metadata_table}). "
@@ -248,6 +257,7 @@ public class DataStreamToBigQuery {
 
     @TemplateParameter.Text(
         order = 10,
+        groupName = "Target",
         description = "Template for the dataset to contain replica tables.",
         helpText =
             "This is the name for the dataset to contain replica tables. This parameter supports"
@@ -260,6 +270,7 @@ public class DataStreamToBigQuery {
 
     @TemplateParameter.Text(
         order = 11,
+        groupName = "Target",
         optional = true,
         description = "Template for the name of replica tables.",
         helpText =
@@ -272,6 +283,7 @@ public class DataStreamToBigQuery {
 
     @TemplateParameter.Text(
         order = 12,
+        groupName = "Target",
         optional = true,
         description = "Fields to be ignored",
         helpText = "Fields to ignore in BigQuery (comma separator).",
@@ -285,6 +297,7 @@ public class DataStreamToBigQuery {
     void setIgnoreFields(String value);
 
     @TemplateParameter.Text(
+        groupName = "Target",
         order = 13,
         optional = true,
         description = "The number of minutes between merges for a given table",
@@ -295,6 +308,7 @@ public class DataStreamToBigQuery {
     void setMergeFrequencyMinutes(Integer value);
 
     @TemplateParameter.Text(
+        groupName = "Target",
         order = 14,
         description = "Dead letter queue directory.",
         helpText =
@@ -306,6 +320,7 @@ public class DataStreamToBigQuery {
     void setDeadLetterQueueDirectory(String value);
 
     @TemplateParameter.Text(
+        groupName = "Target",
         order = 15,
         optional = true,
         description = "The number of minutes between DLQ Retries.",
@@ -316,6 +331,7 @@ public class DataStreamToBigQuery {
     void setDlqRetryMinutes(Integer value);
 
     @TemplateParameter.Text(
+        groupName = "Source",
         order = 16,
         optional = true,
         description = "Datastream API Root URL (only required for testing)",
@@ -326,6 +342,7 @@ public class DataStreamToBigQuery {
     void setDataStreamRootUrl(String value);
 
     @TemplateParameter.Boolean(
+        groupName = "Target",
         order = 17,
         optional = true,
         description = "A switch to disable MERGE queries for the job.",
@@ -336,6 +353,7 @@ public class DataStreamToBigQuery {
     void setApplyMerge(Boolean value);
 
     @TemplateParameter.Integer(
+        groupName = "Target",
         order = 18,
         optional = true,
         description = "Concurrent queries for merge.",
@@ -348,6 +366,7 @@ public class DataStreamToBigQuery {
     void setMergeConcurrency(Integer value);
 
     @TemplateParameter.Integer(
+        groupName = "Target",
         order = 19,
         optional = true,
         description = "Partition retention days.",
@@ -360,6 +379,7 @@ public class DataStreamToBigQuery {
     void setPartitionRetentionDays(Integer value);
 
     @TemplateParameter.Boolean(
+        groupName = "Target",
         order = 20,
         optional = true,
         description = "Use at at-least-once semantics in BigQuery Storage Write API",

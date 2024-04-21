@@ -26,6 +26,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
 
   @TemplateParameter.PubsubSubscription(
       order = 1,
+      groupName = "Source",
       description = "Pub/Sub input subscription",
       helpText =
           "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
@@ -37,6 +38,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Target",
       optional = false,
       regexes = {"^.+$"},
       description = "JDBC driver class name.",
@@ -48,6 +50,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 3,
+      groupName = "Target",
       optional = false,
       regexes = {
         "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
@@ -63,6 +66,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 4,
+      groupName = "Target",
       optional = true,
       regexes = {"^.+$"},
       description = "JDBC connection username.",
@@ -75,6 +79,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Password(
       order = 5,
+      groupName = "Target",
       optional = true,
       description = "JDBC connection password.",
       helpText =
@@ -86,6 +91,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 6,
+      groupName = "Target",
       optional = false,
       regexes = {"^.+$"},
       description = "Cloud Storage paths for JDBC drivers",
@@ -97,6 +103,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 7,
+      groupName = "Target",
       optional = true,
       regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
       description = "JDBC connection property string.",
@@ -109,6 +116,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 8,
+      groupName = "Target",
       optional = false,
       regexes = {"^.+$"},
       description = "Statement which will be executed against the database.",
@@ -123,6 +131,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
 
   @TemplateParameter.PubsubTopic(
       order = 9,
+      groupName = "Source",
       description = "Output deadletter Pub/Sub topic",
       helpText =
           "The Pub/Sub topic to publish deadletter records to. The name should be in the "

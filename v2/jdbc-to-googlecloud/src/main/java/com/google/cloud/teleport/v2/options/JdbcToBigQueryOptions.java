@@ -246,6 +246,7 @@ public interface JdbcToBigQueryOptions
 
   @TemplateParameter.Enum(
       order = 19,
+      groupName = "Target",
       enumOptions = {
         @TemplateParameter.TemplateEnumOption("CREATE_IF_NEEDED"),
         @TemplateParameter.TemplateEnumOption("CREATE_NEVER")
@@ -260,6 +261,7 @@ public interface JdbcToBigQueryOptions
 
   @TemplateParameter.GcsReadFile(
       order = 20,
+      groupName = "Target",
       optional = true,
       description = "Cloud Storage path to BigQuery JSON schema",
       helpText =

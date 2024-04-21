@@ -140,6 +140,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 10,
+      groupName = "Target",
       description = "Cloud Spanner Instance Id.",
       helpText = "The destination Cloud Spanner instance.")
   String getInstanceId();
@@ -148,6 +149,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 11,
+      groupName = "Target",
       description = "Cloud Spanner Database Id.",
       helpText = "The destination Cloud Spanner database.")
   String getDatabaseId();
@@ -156,6 +158,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.ProjectId(
       order = 12,
+      groupName = "Target",
       description = "Cloud Spanner Project Id.",
       helpText = "This is the name of the Cloud Spanner project.")
   String getProjectId();
@@ -164,6 +167,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 13,
+      groupName = "Target",
       optional = true,
       description = "Cloud Spanner Endpoint to call",
       helpText = "The Cloud Spanner endpoint to call in the template.",
@@ -175,6 +179,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 14,
+      groupName = "Source",
       optional = true,
       description = "Source database columns to ignore",
       helpText =
@@ -186,6 +191,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 15,
+      groupName = "Source",
       optional = true,
       description = "Maximum number of connections to Source database per worker",
       helpText =

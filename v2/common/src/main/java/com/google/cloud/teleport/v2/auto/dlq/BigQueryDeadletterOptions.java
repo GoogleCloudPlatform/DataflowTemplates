@@ -21,6 +21,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 public interface BigQueryDeadletterOptions extends PipelineOptions {
 
   @TemplateParameter.BigQueryTable(
+      groupName = "Target",
       order = 4,
       optional = true,
       description = "Table for messages failed to reach the output table (i.e., Deadletter table)",

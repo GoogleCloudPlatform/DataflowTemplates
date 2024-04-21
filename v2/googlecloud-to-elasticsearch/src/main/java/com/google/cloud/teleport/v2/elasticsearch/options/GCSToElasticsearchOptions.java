@@ -32,6 +32,7 @@ public interface GCSToElasticsearchOptions
 
   @TemplateParameter.BigQueryTable(
       order = 1,
+      groupName = "Target",
       description = "BigQuery Deadletter table to send failed inserts.",
       helpText =
           "Messages failed to reach the target for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table.",
@@ -43,6 +44,7 @@ public interface GCSToElasticsearchOptions
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       optional = true,
       regexes = {"[a-zA-Z0-9._-]+"},
       description = "Input file format",

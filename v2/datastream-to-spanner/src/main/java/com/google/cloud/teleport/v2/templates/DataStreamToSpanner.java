@@ -133,6 +133,7 @@ public class DataStreamToSpanner {
   public interface Options extends PipelineOptions, StreamingOptions {
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         description = "File location for Datastream file output in Cloud Storage.",
         helpText =
             "This is the file location for Datastream file output in Cloud Storage. Normally, this"
@@ -143,6 +144,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Enum(
         order = 2,
+        groupName = "Source",
         enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("json")},
         optional = true,
         description = "Datastream output file format (avro/json).",
@@ -156,6 +158,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.GcsReadFile(
         order = 3,
+        groupName = "Target",
         optional = true,
         description = "Session File Path in Cloud Storage",
         helpText =
@@ -167,6 +170,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         description = "Cloud Spanner Instance Id.",
         helpText =
             "This is the name of the Cloud Spanner instance where the changes are replicated.")
@@ -176,6 +180,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "Cloud Spanner Database Id.",
         helpText =
             "This is the name of the Cloud Spanner database where the changes are replicated.")
@@ -185,6 +190,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.ProjectId(
         order = 6,
+        groupName = "Target",
         optional = true,
         description = "Cloud Spanner Project Id.",
         helpText = "This is the name of the Cloud Spanner project.")
@@ -194,6 +200,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 7,
+        groupName = "Target",
         optional = true,
         description = "The Cloud Spanner Endpoint to call",
         helpText = "The Cloud Spanner endpoint to call in the template.",
@@ -205,6 +212,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.PubsubSubscription(
         order = 8,
+        groupName = "Source",
         optional = true,
         description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
         helpText =
@@ -217,6 +225,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 9,
+        groupName = "Source",
         description = "Datastream stream name.",
         helpText = "This is the Datastream stream name used to get information.")
     String getStreamName();
@@ -225,6 +234,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 10,
+        groupName = "Target",
         optional = true,
         description = "Cloud Spanner shadow table prefix.",
         helpText = "The prefix used for the shadow table.")
@@ -235,6 +245,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Boolean(
         order = 11,
+        groupName = "Target",
         optional = true,
         description = "If true, create shadow tables in Cloud Spanner.",
         helpText =
@@ -246,6 +257,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.DateTime(
         order = 12,
+        groupName = "Source",
         optional = true,
         description =
             "The starting DateTime used to fetch from Cloud Storage "
@@ -260,6 +272,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Integer(
         order = 13,
+        groupName = "Source",
         optional = true,
         description = "File read concurrency",
         helpText = "The number of concurrent DataStream files to read.")
@@ -270,6 +283,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 14,
+        groupName = "Target",
         optional = true,
         description = "Dead letter queue directory.",
         helpText =
@@ -283,6 +297,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Integer(
         order = 15,
+        groupName = "Target",
         optional = true,
         description = "Dead letter queue retry minutes",
         helpText = "The number of minutes between dead letter queue retries. Defaults to 10.")
@@ -293,6 +308,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Integer(
         order = 16,
+        groupName = "Target",
         optional = true,
         description = "Dead letter queue maximum retry count",
         helpText =
@@ -305,6 +321,7 @@ public class DataStreamToSpanner {
     // DataStream API Root Url (only used for testing)
     @TemplateParameter.Text(
         order = 17,
+        groupName = "Source",
         optional = true,
         description = "Datastream API Root URL (only required for testing)",
         helpText = "Datastream API Root URL.")
@@ -315,6 +332,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 18,
+        groupName = "Source",
         optional = true,
         description = "Datastream source type (only required for testing)",
         helpText =
@@ -341,6 +359,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Enum(
         order = 20,
+        groupName = "Target",
         optional = true,
         description = "Run mode - currently supported are : regular or retryDLQ",
         enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
@@ -352,6 +371,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.GcsReadFile(
         order = 21,
+        groupName = "Target",
         optional = true,
         helpText =
             "Transformation context file path in cloud storage used to populate data used in"
@@ -364,6 +384,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Integer(
         order = 22,
+        groupName = "Target",
         optional = true,
         description = "Directory watch duration in minutes. Default: 10 minutes",
         helpText =
@@ -379,6 +400,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Enum(
         order = 23,
+        groupName = "Target",
         enumOptions = {
           @TemplateEnumOption("LOW"),
           @TemplateEnumOption("MEDIUM"),
@@ -396,6 +418,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.PubsubSubscription(
         order = 24,
+        groupName = "Target",
         optional = true,
         description =
             "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ"

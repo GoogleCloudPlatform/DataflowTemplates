@@ -34,6 +34,7 @@ public interface PubSubToElasticsearchOptions
 
   @TemplateParameter.PubsubSubscription(
       order = 1,
+      groupName = "Source",
       description = "Pub/Sub input subscription",
       helpText =
           "Pub/Sub subscription to consume the input from. Name should be in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
@@ -45,6 +46,7 @@ public interface PubSubToElasticsearchOptions
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       optional = true,
       description = "Dataset, the type of logs that are sent to Pub/Sub",
       helpText =
@@ -58,6 +60,7 @@ public interface PubSubToElasticsearchOptions
   @TemplateParameter.Text(
       order = 3,
       optional = true,
+      groupName = "Source",
       description = "The namespace for dataset.",
       helpText =
           "An arbitrary grouping, such as an environment (dev, prod, or qa), a team, or a strategic business unit. Default: 'default'")
@@ -68,6 +71,7 @@ public interface PubSubToElasticsearchOptions
 
   @TemplateParameter.PubsubTopic(
       order = 4,
+      groupName = "Target",
       description = "Output deadletter Pub/Sub topic",
       helpText =
           "Pub/Sub output topic for publishing failed records in the format of 'projects/your-project-id/topics/your-topic-name'.")
@@ -78,6 +82,7 @@ public interface PubSubToElasticsearchOptions
 
   @TemplateParameter.Text(
       order = 5,
+      groupName = "Target",
       optional = true,
       description = "Template Version.",
       helpText = "Dataflow Template Version Identifier, usually defined by Google Cloud.")

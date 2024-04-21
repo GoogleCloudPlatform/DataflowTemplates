@@ -79,6 +79,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         optional = false,
         description = "Name of the change stream to read from",
         helpText =
@@ -89,6 +90,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Instance Id.",
         helpText =
@@ -99,6 +101,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Database Id.",
         helpText =
@@ -109,6 +112,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.ProjectId(
         order = 4,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Project Id.",
         helpText = "This is the name of the Cloud Spanner project.")
@@ -118,6 +122,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Instance to store metadata when reading from changestreams",
         helpText =
@@ -129,6 +134,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Database to store metadata when reading from changestreams",
         helpText =
@@ -140,6 +146,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.Text(
         order = 7,
+        groupName = "Source",
         optional = true,
         description = "Changes are read from the given timestamp",
         helpText = "Read changes from the given timestamp.")
@@ -150,6 +157,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Source",
         optional = true,
         description = "Changes are read until the given timestamp",
         helpText =
@@ -161,6 +169,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.Long(
         order = 9,
+        groupName = "Source",
         optional = true,
         description = "Time interval to increment the Stateful timer.",
         helpText =
@@ -173,6 +182,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.Enum(
         order = 10,
+        groupName = "Target",
         optional = false,
         enumOptions = {@TemplateEnumOption("pubsub"), @TemplateEnumOption("kafka")},
         description = "Type of sink to write the data to",
@@ -183,6 +193,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.PubsubTopic(
         order = 11,
+        groupName = "Target",
         optional = true,
         description =
             "PubSub topic where records will get written to, in the format of"
@@ -197,6 +208,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.PubsubTopic(
         order = 12,
+        groupName = "Target",
         optional = true,
         description =
             "PubSub topic where error records will get written to , in the format of"
@@ -211,6 +223,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.Text(
         order = 13,
+        groupName = "Target",
         optional = true,
         description = "Endpoint for pubsub",
         helpText = "Endpoint for pubsub. Must be provided if sink is pubsub.")
@@ -221,6 +234,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.GcsReadFile(
         order = 14,
+        groupName = "Target",
         optional = true,
         description = "Path to GCS file containing Kafka cluster details",
         helpText =
@@ -232,6 +246,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.GcsReadFile(
         order = 15,
+        groupName = "Target",
         optional = true,
         description = "Path to GCS file containing the the Source shard details",
         helpText =
@@ -243,6 +258,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.GcsReadFile(
         order = 16,
+        groupName = "Target",
         optional = false,
         description = "Session File Path in Cloud Storage",
         helpText =
@@ -254,6 +270,7 @@ public class SpannerChangeStreamsToSink {
 
     @TemplateParameter.Enum(
         order = 17,
+        groupName = "Target",
         optional = true,
         enumOptions = {@TemplateEnumOption("none"), @TemplateEnumOption("forward_migration")},
         description = "Filtration mode",
