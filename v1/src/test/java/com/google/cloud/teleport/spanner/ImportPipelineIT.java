@@ -31,13 +31,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -49,19 +49,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class ImportPipelineIT extends TemplateTestBase {
 
-  private SpannerResourceManager googleSqlResourceManager;
-  private SpannerResourceManager postgresResourceManager;
-
-  @Before
-  public void setUp() throws IOException {
-    googleSqlResourceManager =
-        SpannerResourceManager.builder(
-                testName + "-googleSql", PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
-            .build();
-    postgresResourceManager =
-        SpannerResourceManager.builder(testName + "-postgres", PROJECT, REGION, Dialect.POSTGRESQL)
-            .build();
-  }
+  private SpannerResourceManager spannerResourceManager;
 
   private void uploadImportPipelineArtifacts(String subdirectory) throws IOException {
     gcsClient.uploadArtifact(
@@ -131,16 +119,39 @@ public class ImportPipelineIT extends TemplateTestBase {
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(googleSqlResourceManager, postgresResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager);
   }
 
   @Test
   public void testGoogleSqlImportPipeline() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
+            .maybeUseStaticInstance()
+            .build();
+    testGoogleSqlImportPipelineBase(Function.identity());
+  }
+
+  @Test
+  public void testGoogleSqlImportPipelineStaging() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
+            .maybeUseStaticInstance()
+            .maybeUseCustomHost()
+            .build();
+    testGoogleSqlImportPipelineBase(
+        paramAdder ->
+            paramAdder.addParameter("spannerHost", spannerResourceManager.getSpannerHost()));
+  }
+
+  private void testGoogleSqlImportPipelineBase(
+      Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
+          paramsAdder)
+      throws IOException {
     // Arrange
     uploadImportPipelineArtifacts("googlesql");
     String createEmptyTableStatement =
         "CREATE TABLE EmptyTable (\n" + "  id INT64 NOT NULL,\n" + ") PRIMARY KEY(id)";
-    googleSqlResourceManager.executeDdlStatement(createEmptyTableStatement);
+    spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
 
     String createSingersTableStatement =
         "CREATE TABLE Singers (\n"
@@ -148,21 +159,22 @@ public class ImportPipelineIT extends TemplateTestBase {
             + "  FirstName STRING(MAX),\n"
             + "  LastName STRING(MAX),\n"
             + ") PRIMARY KEY(Id)";
-    googleSqlResourceManager.executeDdlStatement(createSingersTableStatement);
+    spannerResourceManager.executeDdlStatement(createSingersTableStatement);
 
     String createFloat32TableStatement =
         "CREATE TABLE Float32Table (\n"
             + "  Key STRING(MAX) NOT NULL,\n"
             + "  Float32Value FLOAT32,\n"
             + ") PRIMARY KEY(Key)";
-    googleSqlResourceManager.executeDdlStatement(createFloat32TableStatement);
+    spannerResourceManager.executeDdlStatement(createFloat32TableStatement);
 
     PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(testName, specPath)
-            .addParameter("spannerProjectId", PROJECT)
-            .addParameter("instanceId", googleSqlResourceManager.getInstanceId())
-            .addParameter("databaseId", googleSqlResourceManager.getDatabaseId())
-            .addParameter("inputDir", getGcsPath("input/"));
+        paramsAdder.apply(
+            PipelineLauncher.LaunchConfig.builder(testName, specPath)
+                .addParameter("spannerProjectId", PROJECT)
+                .addParameter("instanceId", spannerResourceManager.getInstanceId())
+                .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+                .addParameter("inputDir", getGcsPath("input/")));
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
@@ -173,17 +185,17 @@ public class ImportPipelineIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     List<Struct> emptyTableRecords =
-        googleSqlResourceManager.readTableRecords("EmptyTable", ImmutableList.of("id"));
+        spannerResourceManager.readTableRecords("EmptyTable", ImmutableList.of("id"));
     assertThat(emptyTableRecords).isEmpty();
 
     List<Struct> singersRecords =
-        googleSqlResourceManager.readTableRecords(
+        spannerResourceManager.readTableRecords(
             "Singers", ImmutableList.of("Id", "FirstName", "LastName"));
     assertThat(singersRecords).hasSize(4);
     assertThatStructs(singersRecords).hasRecordsUnordered(getExpectedRows());
 
     List<Struct> float32Records =
-        googleSqlResourceManager.readTableRecords(
+        spannerResourceManager.readTableRecords(
             "Float32Table", ImmutableList.of("Key", "Float32Value"));
 
     assertThat(float32Records).hasSize(9);
@@ -192,11 +204,34 @@ public class ImportPipelineIT extends TemplateTestBase {
 
   @Test
   public void testPostgresImportPipeline() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
+            .maybeUseStaticInstance()
+            .build();
+    testPostgresImportPipelineBase(Function.identity());
+  }
+
+  @Test
+  public void testPostgresImportPipelineStaging() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
+            .maybeUseStaticInstance()
+            .maybeUseCustomHost()
+            .build();
+    testPostgresImportPipelineBase(
+        paramAdder ->
+            paramAdder.addParameter("spannerHost", spannerResourceManager.getSpannerHost()));
+  }
+
+  private void testPostgresImportPipelineBase(
+      Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
+          paramsAdder)
+      throws IOException {
     // Arrange
     uploadImportPipelineArtifacts("postgres");
     String createEmptyTableStatement =
         "CREATE TABLE \"EmptyTable\" (\n" + "  id bigint NOT NULL,\nPRIMARY KEY(id)\n" + ")";
-    postgresResourceManager.executeDdlStatement(createEmptyTableStatement);
+    spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
 
     String createSingersTableStatement =
         "CREATE TABLE \"Singers\" (\n"
@@ -204,21 +239,22 @@ public class ImportPipelineIT extends TemplateTestBase {
             + "  \"FirstName\" character varying(256),\n"
             + "  \"LastName\" character varying(256),\n"
             + "PRIMARY KEY(\"Id\"))";
-    postgresResourceManager.executeDdlStatement(createSingersTableStatement);
+    spannerResourceManager.executeDdlStatement(createSingersTableStatement);
 
     String createFloat32TableStatement =
         "CREATE TABLE \"Float32Table\" (\n"
             + "  \"Key\" character varying NOT NULL,\n"
             + "  \"Float32Value\" real,\n"
             + "PRIMARY KEY(\"Key\"))";
-    postgresResourceManager.executeDdlStatement(createFloat32TableStatement);
+    spannerResourceManager.executeDdlStatement(createFloat32TableStatement);
 
     PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(testName, specPath)
-            .addParameter("spannerProjectId", PROJECT)
-            .addParameter("instanceId", postgresResourceManager.getInstanceId())
-            .addParameter("databaseId", postgresResourceManager.getDatabaseId())
-            .addParameter("inputDir", getGcsPath("input/"));
+        paramsAdder.apply(
+            PipelineLauncher.LaunchConfig.builder(testName, specPath)
+                .addParameter("spannerProjectId", PROJECT)
+                .addParameter("instanceId", spannerResourceManager.getInstanceId())
+                .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+                .addParameter("inputDir", getGcsPath("input/")));
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
@@ -229,17 +265,17 @@ public class ImportPipelineIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     List<Struct> emptyTableRecords =
-        postgresResourceManager.readTableRecords("EmptyTable", ImmutableList.of("id"));
+        spannerResourceManager.readTableRecords("EmptyTable", ImmutableList.of("id"));
     assertThat(emptyTableRecords).isEmpty();
 
     List<Struct> singersRecords =
-        postgresResourceManager.readTableRecords(
+        spannerResourceManager.readTableRecords(
             "Singers", ImmutableList.of("Id", "FirstName", "LastName"));
     assertThat(singersRecords).hasSize(4);
     assertThatStructs(singersRecords).hasRecordsUnordered(getExpectedRows());
 
     List<Struct> float32Records =
-        postgresResourceManager.readTableRecords(
+        spannerResourceManager.readTableRecords(
             "Float32Table", ImmutableList.of("Key", "Float32Value"));
 
     assertThat(float32Records).hasSize(9);
