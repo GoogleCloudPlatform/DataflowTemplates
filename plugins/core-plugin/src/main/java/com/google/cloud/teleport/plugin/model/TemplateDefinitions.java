@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -363,6 +364,12 @@ public class TemplateDefinitions {
     // String element type.
     List<String> additionalExperiments =
         (List<String>) defaultEnvironment.get(ADDITIONAL_EXPERIMENTS);
+
+    // Remove any pre-existing streaming_mode* experiment values.
+    Predicate<String> streamingModePrefix =
+        STREAMING_MODE_ENUM_BASED_EXPERIMENT_VALUE_PROVIDER.getPrefixAsPattern().asMatchPredicate();
+    additionalExperiments.removeIf(streamingModePrefix);
+
     String streamingModeExperiment =
         STREAMING_MODE_ENUM_BASED_EXPERIMENT_VALUE_PROVIDER.convert(
             templateAnnotation.defaultStreamingMode());
