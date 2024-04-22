@@ -15,11 +15,16 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import java.io.Serializable;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-public interface ISchemaMapper {
+public interface ISchemaMapper extends Serializable {
+  /** Retrieves the Spanner dialect. */
+  Dialect getDialect();
+
   /**
    * Retrieves the corresponding Spanner table name given a source table name.
    *
