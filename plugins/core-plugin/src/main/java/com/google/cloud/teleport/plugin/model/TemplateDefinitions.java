@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.plugin.model;
 
+import static com.google.cloud.teleport.metadata.util.EnumBasedExperimentValueProvider.STREAMING_MODE_ENUM_BASED_EXPERIMENT_VALUE_PROVIDER;
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.getParameterNameFromMethod;
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -26,6 +27,7 @@ import com.google.cloud.teleport.metadata.TemplateCreationParameters;
 import com.google.cloud.teleport.metadata.TemplateIgnoreParameter;
 import com.google.cloud.teleport.metadata.auto.AutoTemplate;
 import com.google.cloud.teleport.metadata.auto.AutoTemplate.ExecutionBlock;
+import com.google.cloud.teleport.metadata.util.EnumBasedExperimentValueProvider;
 import com.google.cloud.teleport.metadata.util.MetadataUtils;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
@@ -62,6 +64,9 @@ public class TemplateDefinitions {
   /** Default {@link Template} properties. */
   private static final Template DEFAULT_TEMPLATE_ANNOTATION =
       DefaultBatchTemplate.class.getDeclaredAnnotation(Template.class);
+
+  /** Metadata defaultEnvironment key for adding additional default Dataflow Job experiments. */
+  static final String ADDITIONAL_EXPERIMENTS = "additionalExperiments";
 
   /**
    * List of the classes that declare product-specific options. Methods in those classes will not
@@ -119,6 +124,8 @@ public class TemplateDefinitions {
     }
 
     imageSpec.setSdkInfo(sdkInfo);
+
+    imageSpec = updateStreamingModeRelatedDefaultEnvironment(imageSpec);
 
     ImageSpecMetadata metadata = new ImageSpecMetadata();
     metadata.setInternalName(templateAnnotation.name());
@@ -323,6 +330,47 @@ public class TemplateDefinitions {
                 parameter ->
                     parameter.getName().contains("javascriptTextTransformGcsPath")
                         || parameter.getName().contains("javascriptTextTransformFunctionName")));
+
+    return imageSpec;
+  }
+
+  /**
+   * Updates the defaultEnvironment with additionalExperiments for {@link
+   * Template#defaultStreamingMode()} values {@link Template.StreamingMode#EXACTLY_ONCE} or {@link
+   * Template.StreamingMode#AT_LEAST_ONCE}. Uses {@link
+   * EnumBasedExperimentValueProvider#STREAMING_MODE_ENUM_BASED_EXPERIMENT_VALUE_PROVIDER} to
+   * convert {@link Template#defaultStreamingMode()} into the required string representation.
+   */
+  private ImageSpec updateStreamingModeRelatedDefaultEnvironment(ImageSpec imageSpec) {
+    if (!templateAnnotation.streaming()) {
+      return imageSpec;
+    }
+    if (templateAnnotation.defaultStreamingMode().equals(Template.StreamingMode.UNSPECIFIED)) {
+      return imageSpec;
+    }
+
+    if (imageSpec.getDefaultEnvironment() == null) {
+      imageSpec.setDefaultEnvironment(new HashMap<>());
+    }
+
+    Map<String, Object> defaultEnvironment = imageSpec.getDefaultEnvironment();
+
+    if (!defaultEnvironment.containsKey(ADDITIONAL_EXPERIMENTS)) {
+      defaultEnvironment.put(ADDITIONAL_EXPERIMENTS, new ArrayList<String>());
+    }
+
+    // Ok to let a Java cast Exception rather than add a larger amount of code to check for the
+    // String element type.
+    List<String> additionalExperiments =
+        (List<String>) defaultEnvironment.get(ADDITIONAL_EXPERIMENTS);
+    String streamingModeExperiment =
+        STREAMING_MODE_ENUM_BASED_EXPERIMENT_VALUE_PROVIDER.convert(
+            templateAnnotation.defaultStreamingMode());
+
+    additionalExperiments.add(streamingModeExperiment);
+    defaultEnvironment.put(ADDITIONAL_EXPERIMENTS, additionalExperiments);
+
+    imageSpec.setDefaultEnvironment(defaultEnvironment);
 
     return imageSpec;
   }

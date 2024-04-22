@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.plugin.model;
 
+import static com.google.cloud.teleport.plugin.model.TemplateDefinitions.ADDITIONAL_EXPERIMENTS;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
@@ -25,6 +26,8 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.plugin.sample.AtoBMissingAnnotation;
 import com.google.cloud.teleport.plugin.sample.AtoBOk;
+import java.util.List;
+import java.util.Map;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -117,6 +120,37 @@ public class TemplateDefinitionsTest {
     imageSpecWithValidationOf(StreamingALOEOEnabledDefaultNone.class);
     imageSpecWithValidationOf(StreamingALOEOEnabledDefaultALO.class);
     imageSpecWithValidationOf(StreamingALOEOEnabledDefaultEO.class);
+  }
+
+  @Test
+  public void givenStreamingModeNone_noAdditionalExperiments() {
+    ImageSpec imageSpec = imageSpecWithValidationOf(StreamingALOEOEnabledDefaultNone.class);
+    assertThat(imageSpec.getDefaultEnvironment()).isNotNull();
+    assertThat(imageSpec.getDefaultEnvironment()).doesNotContainKey(ADDITIONAL_EXPERIMENTS);
+  }
+
+  @Test
+  public void givenStreamingModeALO_populatesAdditionalExperiments() {
+    ImageSpec imageSpec = imageSpecWithValidationOf(StreamingALOEOEnabledDefaultALO.class);
+    assertThat(imageSpec.getDefaultEnvironment()).isNotNull();
+    Map<String, Object> defaultEnvironment = imageSpec.getDefaultEnvironment();
+    assertThat(defaultEnvironment.size()).isGreaterThan(1);
+    assertThat(defaultEnvironment).containsKey(ADDITIONAL_EXPERIMENTS);
+    List<String> additionalExperiments =
+        (List<String>) defaultEnvironment.get(ADDITIONAL_EXPERIMENTS);
+    assertThat(additionalExperiments).containsExactly("streaming_mode_at_least_once");
+  }
+
+  @Test
+  public void givenStreamingModeEO_populatesAdditionalExperiments() {
+    ImageSpec imageSpec = imageSpecWithValidationOf(StreamingALOEOEnabledDefaultEO.class);
+    assertThat(imageSpec.getDefaultEnvironment()).isNotNull();
+    Map<String, Object> defaultEnvironment = imageSpec.getDefaultEnvironment();
+    assertThat(defaultEnvironment.size()).isGreaterThan(1);
+    assertThat(defaultEnvironment).containsKey(ADDITIONAL_EXPERIMENTS);
+    List<String> additionalExperiments =
+        (List<String>) defaultEnvironment.get(ADDITIONAL_EXPERIMENTS);
+    assertThat(additionalExperiments).containsExactly("streaming_mode_exactly_once");
   }
 
   private static ImageSpec imageSpecWithValidationOf(Class<?> clazz) {
