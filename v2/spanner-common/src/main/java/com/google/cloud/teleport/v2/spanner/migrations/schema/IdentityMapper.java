@@ -15,10 +15,12 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import java.io.Serializable;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
@@ -27,12 +29,17 @@ import java.util.stream.Collectors;
  * This mapper directly maps table and column names without any modification. For fetching
  * destination data types, it uses {@link Ddl}.
  */
-public class IdentityMapper implements ISchemaMapper {
+public class IdentityMapper implements ISchemaMapper, Serializable {
 
   private final Ddl ddl;
 
   public IdentityMapper(Ddl ddl) {
     this.ddl = ddl;
+  }
+
+  @Override
+  public Dialect getDialect() {
+    return ddl.dialect();
   }
 
   @Override

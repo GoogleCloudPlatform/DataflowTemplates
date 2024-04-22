@@ -15,11 +15,13 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.InputMismatchException;
@@ -32,7 +34,7 @@ import java.util.stream.Collectors;
  * This mapper uses an SMT session file to map table and column names. For fetching destination data
  * types, it uses {@link Ddl}.
  */
-public class SessionBasedMapper implements ISchemaMapper {
+public class SessionBasedMapper implements ISchemaMapper, Serializable {
 
   private final Ddl ddl;
 
@@ -69,6 +71,11 @@ public class SessionBasedMapper implements ISchemaMapper {
                 tableName));
       }
     }
+  }
+
+  @Override
+  public Dialect getDialect() {
+    return ddl.dialect();
   }
 
   @Override
