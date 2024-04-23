@@ -632,6 +632,10 @@ public abstract class TemplateTestBase {
         table.getTable());
   }
 
+  protected LaunchConfig.Builder enableStreamingEngine(LaunchConfig.Builder config) {
+    return config.addEnvironment("enableStreamingEngine", true);
+  }
+
   /**
    * Append experiment to the given launch options.
    *
