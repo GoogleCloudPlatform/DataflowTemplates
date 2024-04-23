@@ -106,7 +106,8 @@ public interface JdbcToBigQueryOptions
       regexes = {"^.+$"},
       groupName = "Source",
       description = "JDBC source SQL query",
-      helpText = "The query to be run on the source to extract the data. Either query OR both table AND "
+      helpText =
+          "The query to be run on the source to extract the data. Either query OR both table AND "
               + "PartitionColumn must be specified.",
       example = "select * from sampledb.sample_table")
   String getQuery();
@@ -182,9 +183,9 @@ public interface JdbcToBigQueryOptions
       description = "The name of a column of numeric type that will be used for partitioning.",
       helpText =
           "If this parameter is provided (along with `table`), JdbcIO reads the table in parallel "
-          + "by executing multiple instances of the query on the same table (subquery) using ranges. "
-          + "Currently, only Long partition columns are supported. Either query OR both table AND "
-          + "PartitionColumn must be specified.")
+              + "by executing multiple instances of the query on the same table (subquery) using ranges. "
+              + "Currently, only Long partition columns are supported. Either query OR both table AND "
+              + "PartitionColumn must be specified.")
   String getPartitionColumn();
 
   void setPartitionColumn(String partitionColumn);
@@ -195,8 +196,8 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Name of the table in the external database.",
       helpText =
-          "Table to read from using partitions. This parameter also accepts a subquery in parentheses. "
-          + "Either query OR both table AND PartitionColumn must be specified.",
+          "Table to read from using partitions. Either query OR both table AND PartitionColumn must be specified. "
+              + "This parameter also accepts a subquery in parentheses.",
       example = "(select id, name from Person) as subq")
   String getTable();
 
