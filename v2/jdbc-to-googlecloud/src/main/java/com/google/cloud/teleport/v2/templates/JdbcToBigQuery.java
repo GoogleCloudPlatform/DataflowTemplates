@@ -148,6 +148,9 @@ public class JdbcToBigQuery {
 
       rows = pipeline.apply("Read from JDBC with Partitions", readIO);
     } else {
+      if (options.getQuery() == null) {
+        throw new IllegalArgumentException("Either 'query' or both 'table' AND 'PartitionColumn' must be specified to read from JDBC");
+      }
       JdbcIO.Read<TableRow> readIO =
           JdbcIO.<TableRow>read()
               .withDataSourceConfiguration(dataSourceConfiguration)
