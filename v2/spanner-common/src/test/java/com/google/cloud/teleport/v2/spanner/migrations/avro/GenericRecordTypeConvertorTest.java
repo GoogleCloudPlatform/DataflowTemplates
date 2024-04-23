@@ -290,4 +290,27 @@ public class GenericRecordTypeConvertorTest {
 
     genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
   }
+
+  @Test(expected = NullPointerException.class)
+  public void transformChangeEventTest_nullDialect() throws IOException {
+    ISchemaMapper mockSchemaMapper = mock(ISchemaMapper.class);
+    when(mockSchemaMapper.getDialect()).thenReturn(null);
+    when(mockSchemaMapper.getSpannerTableName(anyString(), anyString())).thenReturn("test");
+    when(mockSchemaMapper.getSpannerColumns(anyString(), anyString()))
+        .thenReturn(List.of("bool_col"));
+    when(mockSchemaMapper.getSourceColumnName(anyString(), anyString(), anyString()))
+        .thenReturn("bool_col");
+    when(mockSchemaMapper.getSpannerColumnType(anyString(), anyString(), anyString()))
+        .thenReturn(Type.array(Type.bool()));
+
+    GenericRecord genericRecord =
+        new GenericData.Record(
+            SchemaUtils.parseAvroSchema(
+                Files.readString(Paths.get("src/test/resources/avro/all-spanner-types.avsc"))));
+    genericRecord.put("bool_col", true);
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(mockSchemaMapper, "");
+
+    genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
+  }
 }
