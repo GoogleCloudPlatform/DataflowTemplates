@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.transformer;
 
-import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -23,16 +22,15 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.type.Type;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -98,35 +96,65 @@ public class SourceRowToMutationDoFnTest {
   }
 
   @Test
-  public void testMutationFromMap_basic() {
-    String tableName = "test_table";
-    Map<String, Value> values = new HashMap<>();
-    values.put("column1", Value.string("value1"));
-    values.put("column2", Value.int64(15));
-    values.put("column3", Value.bool(true));
-    values.put("column4", Value.numeric(null));
-
-    Mutation mutation = SourceRowToMutationDoFn.mutationFromMap(tableName, values);
-    Mutation expected =
-        Mutation.newInsertOrUpdateBuilder(tableName)
-            .set("column1")
-            .to(Value.string("value1"))
-            .set("column2")
-            .to(Value.int64(15))
-            .set("column3")
-            .to(Value.bool(true))
-            .set("column4")
-            .to(Value.numeric(null))
+  public void testSourceRowToMutationDoFn_invalidTableUUID() {
+    final String testTable = "srcTable";
+    var schema = SchemaTestUtils.generateTestTableSchema(testTable);
+    SourceRow sourceRow =
+        SourceRow.builder(schema, 12412435345L)
+            .setField("firstName", "abc")
+            .setField("lastName", "def")
             .build();
-    assertEquals(expected.asMap(), mutation.asMap());
+    PCollection<SourceRow> sourceRows = pipeline.apply(Create.of(sourceRow));
+    Map<String, SourceTableReference> tableIdMapper =
+        Map.of(
+            "wrongUUID",
+            SourceTableReference.builder()
+                .setSourceSchemaReference(
+                    SourceSchemaReference.builder().setDbName("dbName").build())
+                .setSourceTableName(testTable)
+                .setSourceTableSchemaUUID(schema.tableSchemaUUID())
+                .build());
+    ISchemaMapper mockIschemaMapper =
+        mock(ISchemaMapper.class, Mockito.withSettings().serializable());
+    PCollection<Mutation> mutations =
+        sourceRows.apply(
+            "Transform",
+            ParDo.of(SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper)));
+
+    PAssert.that(mutations).empty();
+    pipeline.run();
   }
 
   @Test
-  public void testMutationFromMap_emptyMap() {
-    String tableName = "test_table";
-    Map<String, Value> values = new HashMap<>();
-    Mutation mutation = SourceRowToMutationDoFn.mutationFromMap(tableName, values);
-    Mutation expected = Mutation.newInsertOrUpdateBuilder(tableName).build();
-    assertEquals(expected, mutation);
+  public void testSourceRowToMutationDoFn_transformException() {
+    final String testTable = "srcTable";
+    var schema = SchemaTestUtils.generateTestTableSchema(testTable);
+    SourceRow sourceRow =
+        SourceRow.builder(schema, 12412435345L)
+            .setField("firstName", "abc")
+            .setField("lastName", "def")
+            .build();
+    PCollection<SourceRow> sourceRows = pipeline.apply(Create.of(sourceRow));
+    Map<String, SourceTableReference> tableIdMapper =
+        Map.of(
+            schema.tableSchemaUUID(),
+            SourceTableReference.builder()
+                .setSourceSchemaReference(
+                    SourceSchemaReference.builder().setDbName("dbName").build())
+                .setSourceTableName(testTable)
+                .setSourceTableSchemaUUID(schema.tableSchemaUUID())
+                .build());
+    ISchemaMapper mockIschemaMapper =
+        mock(ISchemaMapper.class, Mockito.withSettings().serializable());
+    when(mockIschemaMapper.getSpannerTableName(anyString(), anyString()))
+        .thenThrow(NoSuchElementException.class);
+
+    PCollection<Mutation> mutations =
+        sourceRows.apply(
+            "Transform",
+            ParDo.of(SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper)));
+
+    PAssert.that(mutations).empty();
+    pipeline.run();
   }
 }

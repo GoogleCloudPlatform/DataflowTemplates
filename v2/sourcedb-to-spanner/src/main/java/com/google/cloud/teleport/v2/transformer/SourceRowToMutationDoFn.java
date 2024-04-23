@@ -51,16 +51,17 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, Mutation>
   @ProcessElement
   public void processElement(ProcessContext c) {
     SourceRow sourceRow = c.element();
-    GenericRecord record = sourceRow.getPayload();
     if (!tableIdMapper().containsKey(sourceRow.tableSchemaUUID())) {
+      // TODO: Remove LOG statements from processElement once counters and DLQ is supported.
       LOG.error(
           "cannot find valid sourceTable for tableId: {} in tableIdMapper",
           sourceRow.tableSchemaUUID());
       return;
     }
-    String srcTableName = tableIdMapper().get(sourceRow.tableSchemaUUID()).sourceTableName();
     try {
       // TODO: update namespace in constructor when Spanner namespace support is added.
+      GenericRecord record = sourceRow.getPayload();
+      String srcTableName = tableIdMapper().get(sourceRow.tableSchemaUUID()).sourceTableName();
       GenericRecordTypeConvertor genericRecordTypeConvertor =
           new GenericRecordTypeConvertor(iSchemaMapper(), "");
       Map<String, Value> values =
@@ -77,7 +78,7 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, Mutation>
     }
   }
 
-  static Mutation mutationFromMap(String spannerTableName, Map<String, Value> values) {
+  private static Mutation mutationFromMap(String spannerTableName, Map<String, Value> values) {
     Mutation.WriteBuilder builder = Mutation.newInsertOrUpdateBuilder(spannerTableName);
     for (String spannerColName : values.keySet()) {
       builder.set(spannerColName).to(values.get(spannerColName));
