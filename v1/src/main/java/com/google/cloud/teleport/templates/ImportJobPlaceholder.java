@@ -58,6 +58,7 @@ public class ImportJobPlaceholder {
 
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Target",
         description = "Project ID",
         helpText =
             "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to. Defaults to --project.")
@@ -65,6 +66,7 @@ public class ImportJobPlaceholder {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
         helpText = "The ID of the Cloud Bigtable instance that contains the table")
@@ -72,6 +74,7 @@ public class ImportJobPlaceholder {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Target",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
         helpText = "The ID of the Cloud Bigtable table to import")
@@ -79,6 +82,7 @@ public class ImportJobPlaceholder {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         optional = true,
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Application profile ID",
@@ -87,6 +91,7 @@ public class ImportJobPlaceholder {
 
     @TemplateParameter.GcsReadFile(
         order = 5,
+        groupName = "Source",
         description = "Source path pattern",
         helpText = "Cloud Storage path pattern where data is located.",
         example = "gs://your-bucket/your-path/prefix*")

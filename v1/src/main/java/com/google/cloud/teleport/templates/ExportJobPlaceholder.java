@@ -57,6 +57,7 @@ public class ExportJobPlaceholder {
 
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Source",
         description = "Project ID",
         helpText =
             "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from. Defaults to job project.")
@@ -64,6 +65,7 @@ public class ExportJobPlaceholder {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
         helpText = "The ID of the Cloud Bigtable instance that contains the table")
@@ -71,6 +73,7 @@ public class ExportJobPlaceholder {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
         helpText = "The ID of the Cloud Bigtable table to export")
@@ -78,6 +81,7 @@ public class ExportJobPlaceholder {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Source",
         optional = true,
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Application profile ID",
@@ -86,6 +90,7 @@ public class ExportJobPlaceholder {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Source",
         optional = true,
         description = "Bigtable Start Row",
         helpText = "The row where to start the export from, defaults to the first row.")
@@ -94,6 +99,7 @@ public class ExportJobPlaceholder {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Source",
         optional = true,
         description = "Bigtable Stop Row",
         helpText = "The row where to stop the export, defaults to the last row.")
@@ -102,6 +108,7 @@ public class ExportJobPlaceholder {
 
     @TemplateParameter.Integer(
         order = 7,
+        groupName = "Source",
         optional = true,
         description = "Bigtable Max Versions",
         helpText = "Maximum number of cell versions.")
@@ -110,6 +117,7 @@ public class ExportJobPlaceholder {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Source",
         optional = true,
         description = "Bigtable Filter",
         helpText = "Filter string. See: http://hbase.apache.org/book.html#thrift.")
@@ -118,6 +126,7 @@ public class ExportJobPlaceholder {
 
     @TemplateParameter.GcsWriteFolder(
         order = 9,
+        groupName = "Target",
         description = "Destination path",
         helpText = "Cloud Storage path where data should be written.",
         example = "gs://your-bucket/your-path/")
@@ -125,6 +134,7 @@ public class ExportJobPlaceholder {
 
     @TemplateParameter.Text(
         order = 10,
+        groupName = "Target",
         description = "SequenceFile prefix",
         helpText = "The prefix for each shard in destinationPath.",
         example = "output-")

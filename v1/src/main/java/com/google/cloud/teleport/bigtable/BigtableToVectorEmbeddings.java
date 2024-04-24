@@ -80,6 +80,7 @@ public class BigtableToVectorEmbeddings {
   public interface Options extends PipelineOptions {
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Source",
         description = "Project ID",
         helpText =
             "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to"
@@ -91,6 +92,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
         helpText = "The ID of the Cloud Bigtable instance that contains the table")
@@ -101,6 +103,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
         helpText = "The ID of the Cloud Bigtable table to read")
@@ -111,6 +114,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
+        groupName = "Target",
         optional = true,
         description = "Cloud Storage directory for storing JSON files",
         helpText = "The Cloud Storage path where the output JSON files can be stored.",
@@ -122,6 +126,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "JSON file prefix",
         helpText = "The prefix of the JSON file name. For example, \"table1-\"")
     @Default.String("part")
@@ -132,6 +137,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Target",
         description = "ID column",
         helpText =
             "The fully qualified column name where the ID is stored. In the format cf:col or _key.")
@@ -142,6 +148,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 7,
+        groupName = "Target",
         description = "Embedding column",
         helpText =
             "The fully qualified column name where the embeddings are stored. In the format cf:col or _key.")
@@ -152,6 +159,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Target",
         optional = true,
         description = "Crowding tag column",
         helpText =
@@ -163,6 +171,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Integer(
         order = 9,
+        groupName = "Target",
         optional = true,
         description = "The byte size of the embeddings array. Can be 4 or 8.",
         helpText =
@@ -175,6 +184,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 10,
+        groupName = "Target",
         optional = true,
         description = "Allow restricts mappings",
         helpText =
@@ -186,6 +196,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 11,
+        groupName = "Target",
         optional = true,
         description = "Deny restricts mappings",
         helpText =
@@ -197,6 +208,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 12,
+        groupName = "Target",
         optional = true,
         description = "Integer numeric restricts mappings",
         helpText =
@@ -208,6 +220,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 13,
+        groupName = "Target",
         optional = true,
         description = "Float numeric restricts mappings",
         helpText =
@@ -219,6 +232,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 14,
+        groupName = "Target",
         optional = true,
         description = "Double numeric restricts mappings",
         helpText =

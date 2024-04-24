@@ -288,6 +288,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.GcsReadFile(
         order = 1,
+        groupName = "Source",
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage location of the files you'd like to process.",
         example = "gs://your-bucket/your-files/*.csv")
@@ -297,6 +298,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {
           "^projects\\/[^\\n\\r\\/]+(\\/locations\\/[^\\n\\r\\/]+)?\\/deidentifyTemplates\\/[^\\n\\r\\/]+$"
         },
@@ -312,6 +314,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         optional = true,
         regexes = {
           "^projects\\/[^\\n\\r\\/]+(\\/locations\\/[^\\n\\r\\/]+)?\\/inspectTemplates\\/[^\\n\\r\\/]+$"
@@ -326,6 +329,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Integer(
         order = 4,
+        groupName = "Source",
         optional = true,
         description = "Batch size",
         helpText =
@@ -339,6 +343,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         regexes = {"^[^.]*$"},
         description = "BigQuery Dataset",
         helpText =
@@ -349,6 +354,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.ProjectId(
         order = 6,
+        groupName = "Source",
         description = "Cloud DLP project ID",
         helpText =
             "Cloud DLP project ID to be used for data masking/tokenization. Ex. your-dlp-project")

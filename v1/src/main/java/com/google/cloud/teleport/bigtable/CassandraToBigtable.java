@@ -70,6 +70,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         regexes = {"^[a-zA-Z0-9\\.\\-,]*$"},
         description = "Cassandra Hosts",
         helpText = "Comma separated value list of hostnames or ips of the Cassandra nodes.")
@@ -80,6 +81,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = true,
         regexes = {
           "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"
@@ -94,6 +96,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {"^[a-zA-Z0-9][a-zA-Z0-9_]{0,47}$"},
         description = "Cassandra Keyspace",
         helpText = "Cassandra Keyspace where the table to be migrated can be located.")
@@ -104,6 +107,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Source",
         regexes = {"^[a-zA-Z][a-zA-Z0-9_]*$"},
         description = "Cassandra Table",
         helpText = "The name of the Cassandra table to Migrate")
@@ -114,6 +118,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.ProjectId(
         order = 5,
+        groupName = "Target",
         description = "Bigtable Project ID",
         helpText = "The Project ID where the target Bigtable Instance is running.")
     ValueProvider<String> getBigtableProjectId();
@@ -123,6 +128,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Target",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Target Bigtable Instance",
         helpText = "The target Bigtable Instance where you want to write the data.")
@@ -133,6 +139,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 7,
+        groupName = "Target",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Target Bigtable Table",
         helpText = "The target Bigtable table where you want to write the data.")
@@ -143,6 +150,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Target",
         optional = true,
         regexes = {"[-_.a-zA-Z0-9]+"},
         description = "The Default Bigtable Column Family",
@@ -156,6 +164,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 9,
+        groupName = "Target",
         optional = true,
         description = "The Row Key Separator",
         helpText =
@@ -168,6 +177,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Boolean(
         order = 10,
+        groupName = "Target",
         optional = true,
         description = "If true, large rows will be split into multiple MutateRows requests",
         helpText =
