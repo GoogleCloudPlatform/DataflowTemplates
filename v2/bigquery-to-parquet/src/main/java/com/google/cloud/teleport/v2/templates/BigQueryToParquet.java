@@ -183,7 +183,6 @@ public class BigQueryToParquet {
     @TemplateParameter.Text(
         order = 4,
         optional = true,
-        groupName = "Source",
         description = "List of field names",
         helpText = "Comma separated list of fields to select from the table.")
     String getFields();
@@ -193,7 +192,6 @@ public class BigQueryToParquet {
     @TemplateParameter.Text(
         order = 5,
         optional = true,
-        groupName = "Source",
         description = "Row restrictions/filter.",
         helpText =
             "Read only rows which match the specified filter, which must be a SQL expression"

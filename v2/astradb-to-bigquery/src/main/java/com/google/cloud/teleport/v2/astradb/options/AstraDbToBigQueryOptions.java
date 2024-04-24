@@ -123,7 +123,6 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.Integer(
         order = 7,
         optional = true,
-        groupName = "Source",
         description = "Token range count",
         helpText = "The minimal number of splits to distribute the query")
     Integer getMinTokenRangesCount();
