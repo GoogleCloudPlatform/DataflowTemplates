@@ -116,22 +116,42 @@ class BuildReadFromTableOperations
     switch (col.dialect()) {
       case GOOGLE_STANDARD_SQL:
         if (col.typeString().equals("JSON")) {
-          return "TO_JSON_STRING(" + "t.`" + col.name() + "`" + ") AS " + col.name();
-        }
-        if (col.typeString().equals("ARRAY<NUMERIC>")) {
-          return "(SELECT ARRAY_AGG(CAST(num AS STRING)) FROM UNNEST("
+          return "CASE WHEN "
               + "t.`"
               + col.name()
               + "`"
-              + ") AS num) AS "
+              + " IS NULL THEN NULL ELSE "
+              + "TO_JSON_STRING("
+              + "t.`"
+              + col.name()
+              + "`"
+              + ") END AS "
+              + col.name();
+        }
+        if (col.typeString().equals("ARRAY<NUMERIC>")) {
+          return "CASE WHEN "
+              + "t.`"
+              + col.name()
+              + "`"
+              + " IS NULL THEN NULL ELSE "
+              + "IFNULL((SELECT ARRAY_AGG(CASE WHEN num IS NULL THEN NULL ELSE CAST(num AS STRING) END) FROM UNNEST("
+              + "t.`"
+              + col.name()
+              + "`"
+              + ") AS num), []) END AS "
               + col.name();
         }
         if (col.typeString().equals("ARRAY<JSON>")) {
-          return "(SELECT ARRAY_AGG(TO_JSON_STRING(element)) FROM UNNEST("
+          return "CASE WHEN "
               + "t.`"
               + col.name()
               + "`"
-              + ") AS element) AS "
+              + " IS NULL THEN NULL ELSE "
+              + "IFNULL((SELECT ARRAY_AGG(CASE WHEN element IS NULL THEN NULL ELSE TO_JSON_STRING(element) END) FROM UNNEST("
+              + "t.`"
+              + col.name()
+              + "`"
+              + ") AS element), []) END AS "
               + col.name();
         }
         return "t.`" + col.name() + "`";
