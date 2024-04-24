@@ -43,6 +43,7 @@ import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 public class GenericRecordTypeConvertorTest {
 
@@ -291,7 +292,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test
   public void transformChangeEventTest_nullDialect() throws IOException {
     ISchemaMapper mockSchemaMapper = mock(ISchemaMapper.class);
     when(mockSchemaMapper.getDialect()).thenReturn(null);
@@ -311,6 +312,10 @@ public class GenericRecordTypeConvertorTest {
     GenericRecordTypeConvertor genericRecordTypeConvertor =
         new GenericRecordTypeConvertor(mockSchemaMapper, "");
 
-    genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
+    assertThrows(
+        NullPointerException.class,
+        () -> genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types"));
+    // Verify that the mock method was called.
+    Mockito.verify(mockSchemaMapper).getDialect();
   }
 }
