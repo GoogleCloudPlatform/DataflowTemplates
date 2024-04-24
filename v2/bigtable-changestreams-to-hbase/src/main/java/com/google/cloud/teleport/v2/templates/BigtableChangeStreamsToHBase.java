@@ -102,7 +102,6 @@ public class BigtableChangeStreamsToHBase {
     @TemplateParameter.Boolean(
         optional = true,
         description = "Bidirectional replication",
-        groupName = "Target",
         helpText =
             "Whether bidirectional replication between hbase and bigtable is enabled, adds additional logic to filter out hbase-replicated mutations")
     @Default.Boolean(false)
@@ -113,7 +112,6 @@ public class BigtableChangeStreamsToHBase {
     @TemplateParameter.Text(
         optional = true,
         description = "Source CBT qualifier",
-        groupName = "Target",
         helpText = "Bidirectional replication source CBT qualifier")
     @Default.String("BIDIRECTIONAL_REPL_SOURCE_CBT")
     String getCbtQualifier();
@@ -123,7 +121,6 @@ public class BigtableChangeStreamsToHBase {
     @TemplateParameter.Text(
         optional = true,
         description = "Source Hbase qualifier",
-        groupName = "Target",
         helpText = "Bidirectional replication source Hbase qualifier")
     @Default.String("BIDIRECTIONAL_REPL_SOURCE_HBASE")
     String getHbaseQualifier();
@@ -133,7 +130,6 @@ public class BigtableChangeStreamsToHBase {
     @TemplateParameter.Boolean(
         optional = true,
         description = "Dry run",
-        groupName = "Target",
         helpText = "When dry run is enabled, pipeline will not write to Hbase")
     @Default.Boolean(false)
     boolean getDryRunEnabled();
@@ -143,7 +139,6 @@ public class BigtableChangeStreamsToHBase {
     @TemplateParameter.Boolean(
         optional = true,
         description = "Filter GC mutations",
-        groupName = "Target",
         helpText = "Filters out garbage collection Delete mutations from CBT")
     @Default.Boolean(false)
     boolean getFilterGCMutations();

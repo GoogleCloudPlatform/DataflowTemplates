@@ -84,7 +84,6 @@ public interface DataplexBigQueryToGcsOptions
       regexes = {
         "^([0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})?)?|-[pP]([0-9]+(\\.[0-9]+)?Y)?([0-9]+(\\.[0-9]+)?M)?([0-9]+(\\.[0-9]+)?W)?([0-9]+(\\.[0-9]+)?D)?(T([0-9]+(\\.[0-9]+)?H)?([0-9]+(\\.[0-9]+)?M)?([0-9]+(\\.[0-9]+)?S)?)?)$"
       },
-      groupName = "Source",
       description = "Move data older than the date.",
       helpText =
           "Move data older than this date (and optional time). For partitioned tables, move partitions last modified before this date/time. For non-partitioned tables, move if the table was last modified before this date/time. If not specified, move all tables / partitions. The date/time is parsed in the default time zone by default, but optional suffixes Z and +HH:mm are supported. Format: YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss or YYYY-MM-DDTHH:mm:ss+03:00. Relative date/time (https://en.wikipedia.org/wiki/ISO_8601#Durations) is also supported. Format: -PnDTnHnMn.nS (must start with -P meaning time in the past).")
@@ -138,7 +137,6 @@ public interface DataplexBigQueryToGcsOptions
   @TemplateParameter.Text(
       order = 8,
       optional = true,
-      groupName = "Source",
       description = "Partition ID regular expression filter.",
       helpText =
           "Process partitions with partition ID matching this regexp only. Default: process all.")
@@ -166,7 +164,6 @@ public interface DataplexBigQueryToGcsOptions
   @TemplateParameter.Boolean(
       order = 10,
       optional = true,
-      groupName = "Source",
       description = "Enforce same partition key.",
       helpText =
           "Whether to enforce the same partition key. Due to a BigQuery limitation, it's not possible to have a partitioned external table with the partition key (in the file path) to have the same name as one of the columns in the file. If this param is true (the default), the partition key of the target file will be set to the original partition column name and the column in the file will be renamed. If false, it's the partition key that will be renamed.")
