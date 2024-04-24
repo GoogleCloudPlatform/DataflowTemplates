@@ -49,6 +49,29 @@ For example:
 mvn clean package -pl v2/pubsub-binary-to-bigquery -am
 ```
 
+### Apple M1 development
+
+To build the project using Maven on Apple M1, add the following profile to `.m2/settings.xml` 
+if it does not already exist:
+
+```xml
+<settings>
+  <activeProfiles>
+    <activeProfile>
+      apple-silicon
+    </activeProfile>
+  </activeProfiles>
+  <profiles>
+    <profile>
+      <id>apple-silicon</id>
+      <properties>
+        <os.detected.classifier>osx-x86_64</os.detected.classifier>
+      </properties>
+    </profile>
+  </profiles>
+</settings>
+```
+
 ### Building/Testing from IntelliJ
 
 IntelliJ, by default, will often skip necessary Maven goals, leading to build
