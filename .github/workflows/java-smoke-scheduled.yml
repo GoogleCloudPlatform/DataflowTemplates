@@ -1,0 +1,76 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Checks that are intended to run on PRs containing Java code.
+
+name: Java Scheduled Smoke Tests
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+env:
+  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+
+permissions: read-all
+
+jobs:
+  java_build:
+    name: Build
+    timeout-minutes: 60
+    runs-on: [self-hosted, smoke-scheduled]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+        with:
+          fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Build
+        run: ./cicd/run-build --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+  java_integration_smoke_tests_templates:
+    name: Dataflow Templates Integration Smoke Tests
+    needs: [ java_build ]
+    timeout-minutes: 60
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [ self-hosted, smoke-scheduled ]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+        with:
+          fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Integration Smoke Tests
+        run: |
+          ./cicd/run-it-smoke-tests \
+          --changed-files="${{ steps.setup-env.outputs.changed-files }}" \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1"
+      - name: Upload Smoke Tests Report
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        if: always() # always run even if the previous step fails
+        with:
+          name: surefire-test-results
+          path: '**/surefire-reports/TEST-*.xml'
+          retention-days: 1
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
