@@ -86,6 +86,7 @@ public class SpannerToText {
 
     @TemplateParameter.GcsWriteFolder(
         order = 1,
+        groupName = "Target",
         optional = true,
         description = "Cloud Storage temp directory for storing CSV files",
         helpText = "The Cloud Storage path where the temporary CSV files can be stored.",
@@ -97,6 +98,7 @@ public class SpannerToText {
 
     @TemplateParameter.Enum(
         order = 2,
+        groupName = "Source",
         enumOptions = {
           @TemplateEnumOption("LOW"),
           @TemplateEnumOption("MEDIUM"),

@@ -82,6 +82,7 @@ public class ParquetToBigtable {
   public interface Options extends PipelineOptions {
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Target",
         description = "Project ID",
         helpText =
             "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to")
@@ -92,6 +93,7 @@ public class ParquetToBigtable {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
         helpText = "The ID of the Cloud Bigtable instance that contains the table")
@@ -102,6 +104,7 @@ public class ParquetToBigtable {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Target",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
         helpText = "The ID of the Cloud Bigtable table to write")
@@ -112,6 +115,7 @@ public class ParquetToBigtable {
 
     @TemplateParameter.GcsReadFile(
         order = 4,
+        groupName = "Source",
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage location of the files you'd like to process.",
         example = "gs://your-bucket/your-files/*.parquet")
@@ -122,6 +126,7 @@ public class ParquetToBigtable {
 
     @TemplateParameter.Boolean(
         order = 5,
+        groupName = "Target",
         optional = true,
         description = "If true, large rows will be split into multiple MutateRows requests",
         helpText =

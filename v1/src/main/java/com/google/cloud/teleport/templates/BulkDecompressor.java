@@ -161,6 +161,7 @@ public class BulkDecompressor {
   public interface Options extends PipelineOptions {
     @TemplateParameter.GcsReadFile(
         order = 1,
+        groupName = "Source",
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage location of the files you'd like to process.",
         example = "gs://your-bucket/your-files/*.gz")
@@ -171,6 +172,7 @@ public class BulkDecompressor {
 
     @TemplateParameter.GcsWriteFolder(
         order = 2,
+        groupName = "Target",
         description = "Output file directory in Cloud Storage",
         helpText =
             "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.",
@@ -182,6 +184,7 @@ public class BulkDecompressor {
 
     @TemplateParameter.GcsWriteFile(
         order = 3,
+        groupName = "Target",
         description = "The output file for failures during the decompression process",
         helpText =
             "The output file to write failures to during the decompression process. If there are no failures, the file will still be created but will be empty. The contents will be one line for each file which failed decompression in CSV format (Filename, Error). Note that this parameter will allow the pipeline to continue processing in the event of a failure.",

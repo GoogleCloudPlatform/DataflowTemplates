@@ -385,6 +385,7 @@ public class TextToBigQueryStreaming {
   public interface TextToBigQueryStreamingOptions extends TextIOToBigQuery.Options {
     @TemplateParameter.BigQueryTable(
         order = 1,
+        groupName = "Target",
         optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =

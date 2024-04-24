@@ -87,6 +87,7 @@ public class SpannerVectorEmbeddingExport {
   public interface SpannerToVectorEmbeddingJsonOptions extends PipelineOptions {
     @TemplateParameter.ProjectId(
         order = 10,
+        groupName = "Source",
         description = "Cloud Spanner Project Id",
         helpText = "The project ID of the Cloud Spanner instance.")
     ValueProvider<String> getSpannerProjectId();
@@ -95,6 +96,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 20,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]*[a-z0-9]"},
         description = "Cloud Spanner instance ID",
         helpText =
@@ -105,6 +107,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 30,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9_\\-]*[a-z0-9]"},
         description = "Cloud Spanner database ID",
         helpText =
@@ -115,6 +118,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 40,
+        groupName = "Source",
         regexes = {"^.+$"},
         description = "Spanner Table",
         helpText = "Spanner Table to read from")
@@ -124,6 +128,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 50,
+        groupName = "Source",
         description = "Columns to Export from Spanner Table",
         helpText =
             "Comma separated list of columns which are required for Vertex AI Vector Search Index."
@@ -139,6 +144,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.GcsWriteFolder(
         order = 60,
+        groupName = "Target",
         description = "Output files folder in Cloud Storage",
         helpText = "The Cloud Storage folder for writing output files. Must end with a slash.",
         example = "gs://your-bucket/folder1/")
@@ -148,6 +154,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 70,
+        groupName = "Target",
         description = "Output files prefix in Cloud Storage",
         helpText = "The filename prefix for writing output files.",
         example = "vector-embeddings")
@@ -157,6 +164,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 80,
+        groupName = "Source",
         optional = true,
         description = "Cloud Spanner Endpoint to call",
         helpText =
@@ -169,6 +177,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 90,
+        groupName = "Source",
         optional = true,
         regexes = {
           "^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):(([0-9]{2})(\\.[0-9]+)?)Z$"
@@ -189,6 +198,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Boolean(
         order = 100,
+        groupName = "Source",
         optional = true,
         description = "Use independent compute resource (Spanner DataBoost).",
         helpText =
@@ -203,6 +213,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Enum(
         order = 110,
+        groupName = "Source",
         enumOptions = {
           @TemplateEnumOption("LOW"),
           @TemplateEnumOption("MEDIUM"),

@@ -101,6 +101,7 @@ public class CSVToBigQuery {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         description = "Cloud Storage Input File(s)",
         helpText = "Path of the file pattern glob to read from.",
         regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
@@ -111,6 +112,7 @@ public class CSVToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 2,
+        groupName = "Target",
         description = "Cloud Storage location of your BigQuery schema file, described as a JSON",
         helpText =
             "JSON file with BigQuery Schema description. JSON Example: {\n"
@@ -143,6 +145,7 @@ public class CSVToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 3,
+        groupName = "Target",
         description = "BigQuery output table",
         helpText =
             "BigQuery table location to write the output to. The table's schema must match the "
@@ -153,6 +156,7 @@ public class CSVToBigQuery {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
+        groupName = "Target",
         description = "Temporary directory for BigQuery loading process",
         helpText = "Temporary directory for BigQuery loading process",
         example = "gs://your-bucket/your-files/temp_dir")
@@ -163,6 +167,7 @@ public class CSVToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 5,
+        groupName = "Target",
         description = "BigQuery output table for bad records",
         helpText =
             "BigQuery table location to write the bad record. The table's schema must match the {RawContent: STRING, ErrorMsg:STRING}")
