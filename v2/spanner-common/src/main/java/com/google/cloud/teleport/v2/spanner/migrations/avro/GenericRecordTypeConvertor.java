@@ -96,6 +96,9 @@ public class GenericRecordTypeConvertor {
       recordValue = handleRecordFieldType(recordColName, (GenericRecord) recordValue, fieldSchema);
     }
     Dialect dialect = schemaMapper.getDialect();
+    if (dialect == null) {
+      throw new NullPointerException("schemaMapper returned null spanner dialect.");
+    }
     if (AvroToValueMapper.convertorMap().get(dialect).containsKey(spannerType)) {
       return AvroToValueMapper.convertorMap()
           .get(dialect)
@@ -124,7 +127,8 @@ public class GenericRecordTypeConvertor {
     if (fieldSchema.getLogicalType() instanceof LogicalTypes.Date) {
       TimeConversions.DateConversion dataConversion = new TimeConversions.DateConversion();
       LocalDate date =
-          dataConversion.fromInt((Integer) recordValue, fieldSchema, fieldSchema.getLogicalType());
+          dataConversion.fromInt(
+              Integer.valueOf(recordValue.toString()), fieldSchema, fieldSchema.getLogicalType());
       return date.format(DateTimeFormatter.ISO_LOCAL_DATE);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.Decimal) {
       Conversions.DecimalConversion decimalConversion = new Conversions.DecimalConversion();
@@ -133,20 +137,20 @@ public class GenericRecordTypeConvertor {
               (ByteBuffer) recordValue, fieldSchema, fieldSchema.getLogicalType());
       return bigDecimal.toPlainString();
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMicros) {
-      Long nanoseconds = (Long) recordValue * TimeUnit.MICROSECONDS.toNanos(1);
+      Long nanoseconds = Long.valueOf(recordValue.toString()) * TimeUnit.MICROSECONDS.toNanos(1);
       return LocalTime.ofNanoOfDay(nanoseconds).format(DateTimeFormatter.ISO_LOCAL_TIME);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis) {
       Long nanoseconds = TimeUnit.MILLISECONDS.toNanos(Long.valueOf(recordValue.toString()));
       return LocalTime.ofNanoOfDay(nanoseconds).format(DateTimeFormatter.ISO_LOCAL_TIME);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMicros) {
-      Long nanoseconds = (Long) recordValue * TimeUnit.MICROSECONDS.toNanos(1);
+      Long nanoseconds = Long.valueOf(recordValue.toString()) * TimeUnit.MICROSECONDS.toNanos(1);
       Instant timestamp =
           Instant.ofEpochSecond(
               TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
               nanoseconds % TimeUnit.SECONDS.toNanos(1));
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMillis) {
-      Instant timestamp = Instant.ofEpochMilli(((Long) recordValue));
+      Instant timestamp = Instant.ofEpochMilli(Long.valueOf(recordValue.toString()));
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     } // TODO: add support for custom logical types VARCHAR, JSON and NUMBER once format is
     // finalised.
@@ -168,7 +172,8 @@ public class GenericRecordTypeConvertor {
       return null;
     }
     if (fieldSchema.getName().equals("timestampTz")) {
-      Long nanoseconds = (Long) element.get("timestamp") * TimeUnit.MICROSECONDS.toNanos(1);
+      Long nanoseconds =
+          Long.valueOf(element.get("timestamp").toString()) * TimeUnit.MICROSECONDS.toNanos(1);
       Instant timestamp =
           Instant.ofEpochSecond(
               TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
@@ -184,7 +189,7 @@ public class GenericRecordTypeConvertor {
     } else if (fieldSchema.getName().equals("datetime")) {
       // Convert to timestamp string.
       Long totalMicros = TimeUnit.DAYS.toMicros(Long.valueOf(element.get("date").toString()));
-      totalMicros += (Long) element.get("time");
+      totalMicros += Long.valueOf(element.get("time").toString());
       Instant timestamp = Instant.ofEpochSecond(TimeUnit.MICROSECONDS.toSeconds(totalMicros));
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     }
