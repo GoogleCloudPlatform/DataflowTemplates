@@ -496,6 +496,7 @@ public class TemplateDefinitions {
       name = "DefaultBatchTemplate",
       displayName = "",
       description = {},
-      category = TemplateCategory.BATCH)
+      category = TemplateCategory.BATCH,
+      testOnly = true)
   private static class DefaultBatchTemplate {}
 }
