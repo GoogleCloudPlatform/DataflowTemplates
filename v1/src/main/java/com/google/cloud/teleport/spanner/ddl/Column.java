@@ -78,7 +78,7 @@ public abstract class Column implements Serializable {
     }
     appendable
         .append(String.format("%1$-40s", quoteIdentifier(name(), dialect())))
-        .append(typeString());
+        .append(typeString(true));
     if (notNull()) {
       appendable.append(" NOT NULL");
     }
@@ -127,9 +127,17 @@ public abstract class Column implements Serializable {
 
   public String typeString() {
     if (arrayLength() != null) {
-      return SizedType.typeString(type(), size(), arrayLength().intValue());
+      return SizedType.typeString(
+          type(), size(), arrayLength(), /* outputAsDdlRepresentation= */ false);
     }
-    return SizedType.typeString(type(), size());
+    return SizedType.typeString(type(), size(), /* outputAsDdlRepresentation= */ false);
+  }
+
+  public String typeString(boolean outputAsDdlRepresentation) {
+    if (arrayLength() != null) {
+      return SizedType.typeString(type(), size(), arrayLength(), outputAsDdlRepresentation);
+    }
+    return SizedType.typeString(type(), size(), outputAsDdlRepresentation);
   }
 
   /** A builder for {@link Column}. */
@@ -265,6 +273,14 @@ public abstract class Column implements Serializable {
 
     public Builder pgJsonb() {
       return type(Type.pgJsonb());
+    }
+
+    public Builder proto(String protoTypeFqn) {
+      return type(Type.proto(protoTypeFqn));
+    }
+
+    public Builder protoEnum(String enumTypeFqn) {
+      return type(Type.protoEnum(enumTypeFqn));
     }
 
     public Builder max() {
