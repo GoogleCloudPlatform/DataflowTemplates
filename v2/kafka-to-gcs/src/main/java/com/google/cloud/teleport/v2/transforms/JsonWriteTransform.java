@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
@@ -19,62 +34,71 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @AutoValue
-public abstract class JsonWriteTransform extends PTransform<PCollection<KafkaRecord<byte[], byte[]>>, POutput> {
+public abstract class JsonWriteTransform
+    extends PTransform<PCollection<KafkaRecord<byte[], byte[]>>, POutput> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(AvroWriteTransform.class);
-    public abstract String outputDirectory();
-    public abstract Integer numShards();
+  private static final Logger LOG = LoggerFactory.getLogger(AvroWriteTransform.class);
 
-    public abstract String outputFilenamePrefix();
-    public abstract String windowDuration();
-    public abstract String tempDirectory();
+  public abstract String outputDirectory();
 
-    public static JsonWriteTransformBuilder newBuilder() {
+  public abstract Integer numShards();
 
-        return new AutoValue_JsonWriteTransform.Builder();
+  public abstract String outputFilenamePrefix();
+
+  public abstract String windowDuration();
+
+  public abstract String tempDirectory();
+
+  public static JsonWriteTransformBuilder newBuilder() {
+
+    return new AutoValue_JsonWriteTransform.Builder();
+  }
+
+  @AutoValue.Builder
+  public abstract static class JsonWriteTransformBuilder {
+    abstract JsonWriteTransform autoBuild();
+
+    public abstract JsonWriteTransformBuilder setNumShards(Integer numShards);
+
+    public abstract JsonWriteTransformBuilder setOutputDirectory(String outputDirectory);
+
+    public abstract JsonWriteTransformBuilder setOutputFilenamePrefix(String outputFilenamePrefix);
+
+    public abstract JsonWriteTransformBuilder setWindowDuration(String windowDuration);
+
+    public abstract JsonWriteTransformBuilder setTempDirectory(String tempDirectory);
+
+    public JsonWriteTransform build() {
+      return autoBuild();
     }
+  }
 
-    @AutoValue.Builder
-    public abstract static class JsonWriteTransformBuilder {
-        abstract JsonWriteTransform autoBuild();
-
-        public abstract JsonWriteTransformBuilder setNumShards(Integer numShards);
-        public abstract JsonWriteTransformBuilder setOutputDirectory(String outputDirectory);
-
-        public abstract JsonWriteTransformBuilder setOutputFilenamePrefix(String outputFilenamePrefix);
-
-        public abstract JsonWriteTransformBuilder setWindowDuration(String windowDuration);
-        public abstract JsonWriteTransformBuilder setTempDirectory(String tempDirectory);
-
-        public JsonWriteTransform build() {
-            return autoBuild();
-        }
+  public static class ConvertBytesToString extends DoFn<KafkaRecord<byte[], byte[]>, String> {
+    @ProcessElement
+    public void processElement(
+        @Element KafkaRecord<byte[], byte[]> kafkaRecord, OutputReceiver<String> o) {
+      // TODO: Add DLQ support.
+      StringDeserializer deserializer = new StringDeserializer();
+      o.output(deserializer.deserialize(kafkaRecord.getTopic(), kafkaRecord.getKV().getValue()));
     }
+  }
 
-    public static class ConvertBytesToString extends DoFn<KafkaRecord<byte[], byte[]>, String> {
-        @ProcessElement
-        public void processElement(@Element KafkaRecord<byte[], byte[]>kafkaRecord, OutputReceiver<String> o) {
-            // TODO: Add DLQ support.
-            StringDeserializer deserializer = new StringDeserializer();
-            o.output(
-                    deserializer.deserialize(kafkaRecord.getTopic(), kafkaRecord.getKV().getValue())
-            );
-        }
-    }
-    public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> records) {
-        return records.apply(ParDo.of(new ConvertBytesToString()))
-                // TextIO needs windowing for unbounded PCollections.
-                .apply(Window.into(FixedWindows.of(DurationUtils.parseDuration(windowDuration()))))
-                .apply("Write using TextIO", TextIO.write()
-                        .withWindowedWrites()
-                        .withNumShards(numShards())
-                        .to(WindowedFilenamePolicy.writeWindowedFiles()
-                                .withOutputDirectory(outputDirectory())
-                                .withOutputFilenamePrefix(outputFilenamePrefix())
-                                .withSuffix(".json")
-                                .withShardTemplate(WriteToGCSUtility.SHARD_TEMPLATE)
-                        )
-                        .withTempDirectory(FileBasedSink.convertToFileResourceIfPossible(tempDirectory()))
-                );
-    }
+  public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> records) {
+    return records
+        .apply(ParDo.of(new ConvertBytesToString()))
+        // TextIO needs windowing for unbounded PCollections.
+        .apply(Window.into(FixedWindows.of(DurationUtils.parseDuration(windowDuration()))))
+        .apply(
+            "Write using TextIO",
+            TextIO.write()
+                .withWindowedWrites()
+                .withNumShards(numShards())
+                .to(
+                    WindowedFilenamePolicy.writeWindowedFiles()
+                        .withOutputDirectory(outputDirectory())
+                        .withOutputFilenamePrefix(outputFilenamePrefix())
+                        .withSuffix(".json")
+                        .withShardTemplate(WriteToGCSUtility.SHARD_TEMPLATE))
+                .withTempDirectory(FileBasedSink.convertToFileResourceIfPossible(tempDirectory())));
+  }
 }

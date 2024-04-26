@@ -13,9 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.transforms;
-
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.options.KafkaToGCSOptions;
@@ -27,58 +25,61 @@ import org.apache.beam.sdk.values.POutput;
 
 @AutoValue
 public abstract class WriteTransform
-        extends PTransform<PCollection<KafkaRecord<byte[], byte[]>>, POutput> {
+    extends PTransform<PCollection<KafkaRecord<byte[], byte[]>>, POutput> {
 
-    public static WriteTransformBuilder newBuilder() {
-        return new AutoValue_WriteTransform.Builder();
+  public static WriteTransformBuilder newBuilder() {
+    return new AutoValue_WriteTransform.Builder();
+  }
+
+  public abstract KafkaToGCSOptions options();
+
+  @Override
+  public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> record) {
+    POutput pOutput = null;
+    WriteToGCSUtility.FileFormat outputFileFormat =
+        WriteToGCSUtility.FileFormat.valueOf(options().getOutputFileFormat().toUpperCase());
+
+    switch (outputFileFormat) {
+      case TEXT:
+        pOutput =
+            record.apply(
+                JsonWriteTransform.newBuilder()
+                    .setOutputFilenamePrefix(options().getOutputFilenamePrefix())
+                    .setNumShards(options().getNumShards())
+                    .setOutputDirectory(options().getOutputDirectory())
+                    .setWindowDuration(options().getWindowDuration())
+                    .setTempDirectory(options().getTempLocation())
+                    .build());
+        break;
+      case AVRO:
+        pOutput =
+            record.apply(
+                AvroWriteTransform.newBuilder()
+                    .setOutputDirectory(options().getOutputDirectory())
+                    .setNumShards(options().getNumShards())
+                    .setMessageFormat(options().getMessageFormat())
+                    .setSchemaRegistryURL(options().getSchemaRegistryURL())
+                    .setSchemaPath(options().getSchemaPath())
+                    .setWindowDuration(options().getWindowDuration())
+                    .build());
+        break;
+      case PARQUET:
+        // TODO: Add more info to the error string.
+        throw new UnsupportedOperationException("Unsupported output format");
     }
-    public abstract KafkaToGCSOptions options();
+    return pOutput;
+  }
 
-    @Override
-    public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> record) {
-        POutput pOutput = null;
-        WriteToGCSUtility.FileFormat outputFileFormat =
-                WriteToGCSUtility.FileFormat.valueOf(options().getOutputFileFormat().toUpperCase());
+  @AutoValue.Builder
+  public abstract static class WriteTransformBuilder {
+    public abstract WriteTransformBuilder setOptions(KafkaToGCSOptions options);
 
-        switch (outputFileFormat) {
-            case TEXT:
-                pOutput = record.apply(JsonWriteTransform
-                        .newBuilder()
-                        .setOutputFilenamePrefix(options().getOutputFilenamePrefix())
-                        .setNumShards(options().getNumShards())
-                        .setOutputDirectory(options().getOutputDirectory())
-                        .setWindowDuration(options().getWindowDuration())
-                        .setTempDirectory(options().getTempLocation())
-                        .build());
-                break;
-            case AVRO:
-                 pOutput = record.apply(AvroWriteTransform
-                         .newBuilder()
-                         .setOutputDirectory(options().getOutputDirectory())
-                         .setNumShards(options().getNumShards())
-                         .setMessageFormat(options().getMessageFormat())
-                         .setSchemaRegistryURL(options().getSchemaRegistryURL())
-                         .setSchemaPath(options().getSchemaPath())
-                         .setWindowDuration(options().getWindowDuration())
-                         .build()
-                 );
-                break;
-            case PARQUET:
-                // TODO: Add more info to the error string.
-                throw new UnsupportedOperationException("Unsupported output format");
-        }
-        return pOutput;
+    abstract KafkaToGCSOptions options();
+
+    abstract WriteTransform autoBuild();
+
+    public WriteTransform build() {
+      return autoBuild();
     }
-    @AutoValue.Builder
-    public abstract static class WriteTransformBuilder {
-        public abstract WriteTransformBuilder setOptions(KafkaToGCSOptions options);
-
-        abstract KafkaToGCSOptions options();
-
-        abstract WriteTransform autoBuild();
-
-        public WriteTransform build() {
-            return autoBuild();
-        }
-    }
+  }
 }
