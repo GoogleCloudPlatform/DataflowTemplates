@@ -25,8 +25,12 @@ import com.google.common.collect.ImmutableMap;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import java.io.IOException;
 import java.util.*;
+
+import org.apache.arrow.flatbuf.Null;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.ByteArrayCoder;
+import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -99,8 +103,8 @@ public class KafkaToGCSFlex {
             KafkaIO.<byte[], byte[]>read()
                 .withBootstrapServers(options.getBootstrapServers())
                 .withTopics(topics)
-                .withKeyDeserializer(ByteArrayDeserializer.class)
-                .withValueDeserializer(ByteArrayDeserializer.class)
+                .withKeyDeserializerAndCoder(ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
+                .withValueDeserializerAndCoder(ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
                 .withConsumerConfigUpdates(kafkaConfig));
 
     kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
@@ -125,7 +129,6 @@ public class KafkaToGCSFlex {
   }
 
   public static void main(String[] args) throws RestClientException, IOException {
-
     KafkaToGCSOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToGCSOptions.class);
     validateOptions(options);
