@@ -178,6 +178,7 @@ public class BigQueryToElasticsearch {
     udfOut.apply(
         "WriteToElasticsearch",
         WriteToElasticsearch.newBuilder()
+            .setUserAgent("dataflow-bigquery-to-elasticsearch-template/v2")
             .setOptions(options.as(BigQueryToElasticsearchOptions.class))
             .build());
 

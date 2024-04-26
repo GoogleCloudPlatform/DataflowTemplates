@@ -227,8 +227,8 @@ public class GCSToElasticsearch {
           .setPythonUdfFunctionName(options.getPythonExternalTextTransformFunctionName());
     } else {
       lineToFailsafeJsonBuilder
-          .setJavascriptUdfFileSystemPath(options.getPythonExternalTextTransformGcsPath())
-          .setJavascriptUdfFunctionName(options.getPythonExternalTextTransformFunctionName());
+          .setJavascriptUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+          .setJavascriptUdfFunctionName(options.getJavascriptTextTransformFunctionName());
     }
     PCollectionTuple convertedCsvLines =
         readCsvLines.apply("ConvertLine", lineToFailsafeJsonBuilder.build());
