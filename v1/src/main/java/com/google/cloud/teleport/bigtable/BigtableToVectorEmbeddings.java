@@ -177,7 +177,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Allow restricts mappings",
         helpText =
-            "The comma separated fully qualified column names of the columns that should be used as the `allow` restricts, with their alias. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names for the columns to use as the allow restricts, with their aliases. In the format cf:col->alias.")
     ValueProvider<String> getAllowRestrictsMappings();
 
     @SuppressWarnings("unused")
@@ -188,7 +188,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Deny restricts mappings",
         helpText =
-            "The comma separated fully qualified column names of the columns that should be used as the `deny` restricts, with their alias. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names for the columns to use as the deny restricts, with their aliases. In the format cf:col->alias.")
     ValueProvider<String> getDenyRestrictsMappings();
 
     @SuppressWarnings("unused")
@@ -199,7 +199,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Integer numeric restricts mappings",
         helpText =
-            "The comma separated fully qualified column names of the columns that should be used as integer `numeric_restricts`, with their alias. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names of the columns to use as integer numeric_restricts, with their aliases. In the format cf:col->alias.")
     ValueProvider<String> getIntNumericRestrictsMappings();
 
     @SuppressWarnings("unused")
@@ -210,7 +210,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Float numeric restricts mappings",
         helpText =
-            "The comma separated fully qualified column names of the columns that should be used as float (4 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names of the columns to use as float (4 bytes) numeric_restricts, with their aliases. In the format cf:col->alias.")
     ValueProvider<String> getFloatNumericRestrictsMappings();
 
     @SuppressWarnings("unused")
@@ -221,7 +221,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Double numeric restricts mappings",
         helpText =
-            "The comma separated fully qualified column names of the columns that should be used as double (8 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names of the columns to use as double (8 bytes) numeric_restricts, with their aliases. In the format cf:col->alias.")
     ValueProvider<String> getDoubleNumericRestrictsMappings();
 
     @SuppressWarnings("unused")
