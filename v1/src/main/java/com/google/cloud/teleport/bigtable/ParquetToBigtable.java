@@ -84,7 +84,7 @@ public class ParquetToBigtable {
         order = 1,
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to")
+            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to.")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
@@ -104,7 +104,7 @@ public class ParquetToBigtable {
         order = 3,
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
-        helpText = "The ID of the Cloud Bigtable table to write")
+        helpText = "The ID of the Cloud Bigtable table to import")
     ValueProvider<String> getBigtableTableId();
 
     @SuppressWarnings("unused")
@@ -113,7 +113,7 @@ public class ParquetToBigtable {
     @TemplateParameter.GcsReadFile(
         order = 4,
         description = "Input Cloud Storage File(s)",
-        helpText = "The Cloud Storage location of the files you'd like to process.",
+        helpText = "The Cloud Storage path pattern where data is located. For example, `gs://mybucket/somefolder/prefix*`.",
         example = "gs://your-bucket/your-files/*.parquet")
     ValueProvider<String> getInputFilePattern();
 
