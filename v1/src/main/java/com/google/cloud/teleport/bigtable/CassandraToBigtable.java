@@ -115,7 +115,7 @@ final class CassandraToBigtable {
     @TemplateParameter.ProjectId(
         order = 5,
         description = "Bigtable Project ID",
-        helpText = "The Google Project ID of the Bigtable instance where the Apache Cassandra is running.")
+        helpText = "The Google Project ID of the Bigtable instance where the Apache Cassandra is copied.")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
