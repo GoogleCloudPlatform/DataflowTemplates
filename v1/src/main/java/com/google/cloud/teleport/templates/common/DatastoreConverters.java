@@ -156,7 +156,7 @@ public class DatastoreConverters {
     @TemplateParameter.ProjectId(
         order = 1,
         description = "Project ID",
-        helpText = "The Google Cloud project ID of where to write Datastore entities")
+        helpText = "The Google Cloud project ID of where to write the Datastore entities.")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreWriteProjectId();
@@ -217,7 +217,7 @@ public class DatastoreConverters {
         regexes = {"^[1-9]+[0-9]*$"},
         description = "Expected number of workers",
         helpText =
-            "Hint for the expected number of workers in the Datastore ramp-up throttling step.")
+            "Hint for the expected number of workers in the Datastore ramp-up throttling step. Default is `500`.")
     @Default.Integer(500)
     @Hidden
     @Deprecated
