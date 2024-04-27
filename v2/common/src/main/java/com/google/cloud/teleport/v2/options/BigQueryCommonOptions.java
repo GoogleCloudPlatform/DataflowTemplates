@@ -37,7 +37,7 @@ public final class BigQueryCommonOptions {
         order = 1,
         description = "BigQuery output table",
         helpText =
-            "BigQuery table location to write the output to. The name should be in the format "
+            "The BigQuery table location to write the output to. The name should be in the format "
                 + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
     @Required
     String getOutputTableSpec();
@@ -54,7 +54,7 @@ public final class BigQueryCommonOptions {
         optional = true,
         description = "Write Disposition to use for BigQuery",
         helpText =
-            "BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE.")
+            "The BigQuery [WriteDisposition](https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload) value. For example, `WRITE_APPEND`, `WRITE_EMPTY` or `WRITE_TRUNCATE`. Defaults to : `WRITE_APPEND`")
     @Default.String("WRITE_APPEND")
     String getWriteDisposition();
 
@@ -68,7 +68,7 @@ public final class BigQueryCommonOptions {
         },
         optional = true,
         description = "Create Disposition to use for BigQuery",
-        helpText = "BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER.")
+        helpText = "The BigQuery [CreateDisposition](https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload). For example, `CREATE_IF_NEEDED`, `CREATE_NEVER`. Defaults to : `CREATE_IF_NEEDED`.")
     @Default.String("CREATE_IF_NEEDED")
     String getCreateDisposition();
 
