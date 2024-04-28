@@ -33,11 +33,11 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       optional = true,
       description = "Shard template",
       helpText =
-          "Defines the unique/dynamic portion of each windowed file. Recommended: use the default"
-              + " (W-P-SS-of-NN). At runtime, 'W' is replaced with the window date range and 'P' is"
-              + " replaced with the pane info. Repeating sequences of the letters 'S' or 'N' are"
-              + " replaced with the shard number and number of shards respectively. The pipeline"
-              + " assumes a single file output and will produce the text of '00-of-01' by default.",
+          "The shard template defines the dynamic portion of each windowed file. By default, the pipeline uses a"
+              + " single shard for output to the file system within each window. This means that all data outputs into a"
+              + " single file per window. The `outputShardTemplate` defaults `to W-P-SS-of-NN` where `W` is the window"
+              + " date range, `P` is the pane info, `S` is the shard number, and `N` is the number of shards. In case of a single"
+              + " file, the `SS-of-NN` portion of the `outputShardTemplate` is `00-of-01`.",
       regexes = "^W-P-(S){1,}-of-(N){1,}$")
   @Default.String("W-P-SS-of-NN")
   ValueProvider<String> getOutputShardTemplate();
