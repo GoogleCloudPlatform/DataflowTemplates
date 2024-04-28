@@ -70,9 +70,9 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       regexes = {"^[^A-Za-z0-9/](y+|Y+)[^A-Za-z0-9/]$"},
       description = "Custom Year Pattern to use for the output directory",
       helpText =
-          "Pattern for formatting the year. Must be one or more of 'y' or 'Y'. Case makes no"
+          "Pattern for formatting the year. Must be one or more of `y` or `Y`. Case makes no"
               + " difference in the year. The pattern can be optionally wrapped by characters that"
-              + " aren't either alphanumeric or the directory ('/') character. Defaults to 'YYYY'")
+              + " aren't either alphanumeric or the directory ('/') character. Defaults to `YYYY`")
   ValueProvider<String> getYearPattern();
 
   void setYearPattern(ValueProvider<String> yearPattern);
@@ -83,9 +83,9 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       regexes = {"^[^A-Za-z0-9/](M+)[^A-Za-z0-9/]$"},
       description = "Custom Month Pattern to use for the output directory",
       helpText =
-          "Pattern for formatting the month. Must be one or more of the 'M' character. The "
+          "Pattern for formatting the month. Must be one or more of the `M` character. The "
               + "pattern can be optionally wrapped by characters that aren't alphanumeric or the "
-              + "directory ('/') character. Defaults to 'MM'")
+              + "directory ('/') character. Defaults to `MM`")
   ValueProvider<String> getMonthPattern();
 
   void setMonthPattern(ValueProvider<String> monthPattern);
@@ -96,10 +96,10 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       regexes = {"^[^A-Za-z0-9/](d+|D+)[^A-Za-z0-9/]$"},
       description = "Custom Day Pattern to use for the output directory",
       helpText =
-          "Pattern for formatting the day. Must be one or more of 'd' for day of month or 'D' for"
+          "Pattern for formatting the day. Must be one or more of `d` for day of month or `D` for"
               + " day of year. Case makes no difference in the year. The pattern can be optionally"
               + " wrapped by characters that aren't either alphanumeric or the directory ('/')"
-              + " character. Defaults to 'dd'")
+              + " character. Defaults to `dd`")
   ValueProvider<String> getDayPattern();
 
   void setDayPattern(ValueProvider<String> dayPattern);
@@ -110,9 +110,9 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       regexes = {"^[^A-Za-z0-9/](H+)[^A-Za-z0-9/]$"},
       description = "Custom Hour Pattern to use for the output directory",
       helpText =
-          "Pattern for formatting the hour. Must be one or more of the 'H' character. The pattern"
+          "Pattern for formatting the hour. Must be one or more of the `H` character. The pattern"
               + " can be optionally wrapped by characters that aren't alphanumeric or the directory"
-              + " ('/') character. Defaults to 'HH'")
+              + " ('/') character. Defaults to `HH`")
   ValueProvider<String> getHourPattern();
 
   void setHourPattern(ValueProvider<String> hourPattern);
@@ -123,9 +123,9 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       regexes = {"^[^A-Za-z0-9/](m+)[^A-Za-z0-9/]$"},
       description = "Custom Minute Pattern to use for the output directory",
       helpText =
-          "Pattern for formatting the minute. Must be one or more of the 'm' character. The pattern"
+          "Pattern for formatting the minute. Must be one or more of the `m` character. The pattern"
               + " can be optionally wrapped by characters that aren't alphanumeric or the directory"
-              + " ('/') character. Defaults to 'mm'")
+              + " ('/') character. Defaults to `mm`")
   ValueProvider<String> getMinutePattern();
 
   void setMinutePattern(ValueProvider<String> minutePattern);
