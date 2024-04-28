@@ -42,6 +42,7 @@ public class TextConverters {
   public interface FilesystemWriteOptions extends PipelineOptions {
     @TemplateParameter.GcsWriteFolder(
         order = 2,
+        groupName = "Target",
         description = "Output file directory in Cloud Storage",
         helpText = "The path and filename prefix for writing output files.",
         example = "gs://your-bucket/your-path")
@@ -55,6 +56,7 @@ public class TextConverters {
 
     @TemplateParameter.GcsWriteFolder(
         order = 1,
+        groupName = "Target",
         description = "Output file directory in Cloud Storage",
         helpText =
             "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.",
@@ -66,6 +68,7 @@ public class TextConverters {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         description = "Output filename prefix of the files to write",
         helpText = "The prefix to place on each windowed file.",
         example = "output-")
@@ -91,6 +94,7 @@ public class TextConverters {
 
     @TemplateParameter.Integer(
         order = 4,
+        groupName = "Target",
         optional = true,
         description = "Maximum output shards",
         helpText =
@@ -104,6 +108,7 @@ public class TextConverters {
 
     @TemplateParameter.Duration(
         order = 5,
+        groupName = "Target",
         optional = true,
         description = "Window duration",
         helpText =
