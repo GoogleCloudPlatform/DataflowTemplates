@@ -135,8 +135,8 @@ public class DataStreamToSpanner {
         order = 1,
         description = "File location for Datastream file output in Cloud Storage.",
         helpText =
-            "This is the file location for Datastream file output in Cloud Storage. Normally, this"
-                + " will be gs://${BUCKET}/${ROOT_PATH}/.")
+            "The file location for Datastream files in Cloud Storage to replicate. Typically, "
+                    + "this is the root path for a stream.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -147,8 +147,7 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Datastream output file format (avro/json).",
         helpText =
-            "This is the format of the output file produced by Datastream. By default this will be"
-                + " avro.")
+            "The format of the output file produced by Datastream. For example `avro,json`. Default, `avro`.")
     @Default.String("avro")
     String getInputFileFormat();
 
@@ -169,7 +168,7 @@ public class DataStreamToSpanner {
         order = 4,
         description = "Cloud Spanner Instance Id.",
         helpText =
-            "This is the name of the Cloud Spanner instance where the changes are replicated.")
+            "The Spanner instance where the changes are replicated.")
     String getInstanceId();
 
     void setInstanceId(String value);
@@ -178,7 +177,7 @@ public class DataStreamToSpanner {
         order = 5,
         description = "Cloud Spanner Database Id.",
         helpText =
-            "This is the name of the Cloud Spanner database where the changes are replicated.")
+            "The Spanner database where the changes are replicated.")
     String getDatabaseId();
 
     void setDatabaseId(String value);
@@ -187,7 +186,7 @@ public class DataStreamToSpanner {
         order = 6,
         optional = true,
         description = "Cloud Spanner Project Id.",
-        helpText = "This is the name of the Cloud Spanner project.")
+        helpText = "The Spanner project ID.")
     String getProjectId();
 
     void setProjectId(String projectId);
@@ -218,7 +217,7 @@ public class DataStreamToSpanner {
     @TemplateParameter.Text(
         order = 9,
         description = "Datastream stream name.",
-        helpText = "This is the Datastream stream name used to get information.")
+        helpText = "The name or template for the stream to poll for schema information and source type.")
     String getStreamName();
 
     void setStreamName(String value);
@@ -227,7 +226,7 @@ public class DataStreamToSpanner {
         order = 10,
         optional = true,
         description = "Cloud Spanner shadow table prefix.",
-        helpText = "The prefix used for the shadow table.")
+        helpText = "The prefix used to name shadow tables. Default: `shadow_`.")
     @Default.String("shadow_")
     String getShadowTablePrefix();
 
@@ -273,9 +272,8 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Dead letter queue directory.",
         helpText =
-            "This is the file path to store the deadletter queue output. Default is a directory"
-                + " under the Dataflow job's temp location. The default value is enough under most"
-                + " conditions.")
+            "This is the file path to store the error queue output. "
+                    + "Default is a directory under the Dataflow job's temp location.")
     @Default.String("")
     String getDeadLetterQueueDirectory();
 
