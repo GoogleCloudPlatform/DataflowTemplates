@@ -19,6 +19,7 @@ import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.options.KafkaToGCSOptions;
+import com.google.cloud.teleport.v2.transforms.KafkaDLQSink;
 import com.google.cloud.teleport.v2.transforms.WriteTransform;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.collect.ImmutableMap;
@@ -34,11 +35,16 @@ import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.checkerframework.checker.initialization.qual.Initialized;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +63,10 @@ import org.slf4j.LoggerFactory;
 public class KafkaToGCSFlex {
   /* Logger for class */
   private static final Logger LOG = LoggerFactory.getLogger(KafkaToGCSFlex.class);
+  /* Delimiter to split the input topics */
   private static final String topicsSplitDelimiter = ",";
+  /* The tag for the dead letter queue router */
+
 
   public static class ClientAuthConfig {
     public static ImmutableMap<String, Object> get(String username, String password) {
@@ -87,6 +96,8 @@ public class KafkaToGCSFlex {
     List<String> topics =
         new ArrayList<>(Arrays.asList(options.getInputTopics().split(topicsSplitDelimiter)));
 
+    // We need to set hard code this to true unless the Beam pipeline is interpreted as Batch pipeline
+    // even though the source is Unbounded(Kafka)
     options.setStreaming(true);
 
     String kafkaSaslPlainUserName = SecretManagerUtils.getSecret(options.getUserNameSecretID());
@@ -97,6 +108,10 @@ public class KafkaToGCSFlex {
     kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
     kafkaConfig.putAll(ClientAuthConfig.get(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
 
+    /* Error Handler for BadRecords */
+    KafkaDLQSink.ErrorSinkTransform transform = new KafkaDLQSink.ErrorSinkTransform();
+    ErrorHandler.BadRecordErrorHandler<PCollection<Long>> eh = pipeline.registerBadRecordErrorHandler(transform);
+
     // Step 1: Read from Kafka as bytes.
     kafkaRecord =
         pipeline.apply(
@@ -105,9 +120,17 @@ public class KafkaToGCSFlex {
                 .withTopics(topics)
                 .withKeyDeserializerAndCoder(ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
                 .withValueDeserializerAndCoder(ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
-                .withConsumerConfigUpdates(kafkaConfig));
+                .withConsumerConfigUpdates(kafkaConfig)
+        );
 
-    kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
+    // Step 2: Send bytes to write transform, which takes care of writing to appropriate sinks based on the
+    // pipeline options.
+    kafkaRecord.apply(WriteTransform
+            .newBuilder()
+            .setBadRecordErrorHandler(eh)
+            .setOptions(options)
+            .build());
+    eh.close();
     return pipeline.run();
   }
 

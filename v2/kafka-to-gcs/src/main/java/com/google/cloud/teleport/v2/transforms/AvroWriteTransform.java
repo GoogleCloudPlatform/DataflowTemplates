@@ -16,9 +16,12 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.ByteArray;
+import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
@@ -30,14 +33,28 @@ import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.sdk.coders.ByteArrayCoder;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.NullableCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
 import org.apache.beam.sdk.io.*;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
+import org.apache.beam.sdk.io.kafka.KafkaRecordCoder;
 import org.apache.beam.sdk.transforms.*;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecordRouter;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.transforms.windowing.*;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.checkerframework.checker.initialization.qual.Initialized;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.joda.time.Instant;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
@@ -63,6 +80,20 @@ public abstract class AvroWriteTransform
 
   public abstract @Nullable String schemaPath();
 
+
+//  public abstract TupleTag<FailsafeElement<T, String>> failureTag();
+//
+  public static TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> successTag = new TupleTag<>() {};
+
+  private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
+  private ErrorHandler<BadRecord, ?> errorHandler = new ErrorHandler.DefaultErrorHandler<>();
+
+  public AvroWriteTransform withBadRecordHandler(ErrorHandler<BadRecord, ?> errorHandler) {
+    this.errorHandler = errorHandler;
+    this.badRecordRouter = BadRecordRouter.THROWING_ROUTER;
+    return this;
+  }
+
   enum WireFormat {
     CONFLUENT_WIRE_FORMAT,
     AVRO_BINARY_ENCODING,
@@ -74,7 +105,7 @@ public abstract class AvroWriteTransform
   }
 
   public WriteFilesResult<AvroDestination> expand(
-      PCollection<KafkaRecord<byte[], byte[]>> records) {
+      PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord) {
     WireFormat inputWireFormat = WireFormat.valueOf(messageFormat());
     switch (inputWireFormat) {
       case CONFLUENT_WIRE_FORMAT:
@@ -85,15 +116,34 @@ public abstract class AvroWriteTransform
           throw new UnsupportedOperationException(
               "A Schema Registry URL or static schemas are required for CONFLUENT_WIRE_FORMAT messages");
         }
-        DoFn<KafkaRecord<byte[], byte[]>, GenericRecord> convertToBytes;
+
+        // Convert the bytes to GenericRecord and wrap the bytes and GenericRecord in FailSafeElement
+        DoFn<KafkaRecord<byte[], byte[]>, FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> convertToBytes;
         if (schemaRegistryURL != null) {
-          convertToBytes = new ConvertBytesToGenericRecord(schemaRegistryURL);
+          convertToBytes = new ConvertBytesToGenericRecord(schemaRegistryURL, badRecordRouter);
         } else {
-          convertToBytes = new ConvertBytesToGenericRecord(schemaPath, true);
+          convertToBytes = new ConvertBytesToGenericRecord(schemaPath, true, badRecordRouter);
         }
-        PCollection<GenericRecord> genericRecords =
-            records.apply(ParDo.of(convertToBytes)).setCoder(GenericRecordCoder.of());
-        return writeToGCS(genericRecords);
+
+//        PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> genericRecords =
+        PCollectionTuple genericRecords =
+            kafkaRecord
+                    .apply("ConvertKafkaRecordsToGenericRecordsWrappedinFailsafeElement", ParDo.of(
+                            convertToBytes).withOutputTags(successTag, TupleTagList.of(BadRecordRouter.BAD_RECORD_TAG)));
+
+        // Send the failed elements to the bad record error handler.
+        // How does it define the bad record?
+        PCollection<BadRecord> failed = genericRecords.get(BadRecordRouter.BAD_RECORD_TAG) ;
+        errorHandler.addErrorCollection(failed.setCoder(BadRecord.getCoder(kafkaRecord.getPipeline())));
+
+        PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> success = genericRecords
+                .get(successTag)
+                .setCoder(
+                        FailsafeElementCoder.of(
+                                KafkaRecordCoder.of(
+                                        NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of())), GenericRecordCoder.of()));
+
+        return writeToGCS(success);
       default:
         throw new UnsupportedOperationException(
             "Message format other than Confluent wire format is not supported");
@@ -122,21 +172,22 @@ public abstract class AvroWriteTransform
     }
   }
 
-  public WriteFilesResult<AvroDestination> writeToGCS(PCollection<GenericRecord> genericRecords) {
+  public WriteFilesResult<AvroDestination> writeToGCS(
+          PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> failsafeElementPCollection) {
     // FileIO sinks needs a Windowed PCollection.
-    genericRecords =
-        genericRecords.apply(
+    failsafeElementPCollection =
+        failsafeElementPCollection.apply(
             Window.into(FixedWindows.of(DurationUtils.parseDuration(windowDuration()))));
-    return genericRecords.apply(
-        FileIO.<AvroDestination, GenericRecord>writeDynamic()
+    return failsafeElementPCollection.apply(
+        FileIO.<AvroDestination, FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>writeDynamic()
             .by(
-                (record) -> {
-                  Schema schema = record.getSchema();
+                (failsafeElement) -> {
+                  Schema schema = failsafeElement.getPayload().getSchema();
                   String name1 = schema.getName();
                   return AvroDestination.of(name1, schema.toString());
                 })
             .via(
-                Contextful.fn(record -> record),
+                Contextful.fn(failsafeElement -> failsafeElement.getPayload()),
                 Contextful.fn(destination -> AvroIO.sink(destination.jsonSchema)))
             .withDestinationCoder(AvroCoder.of(AvroDestination.class))
             .to(outputDirectory())
@@ -146,19 +197,23 @@ public abstract class AvroWriteTransform
   }
 
   public static class ConvertBytesToGenericRecord
-      extends DoFn<KafkaRecord<byte[], byte[]>, GenericRecord> {
+      extends DoFn<KafkaRecord<byte[], byte[]>, FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> {
     private transient SchemaRegistryClient schemaRegistryClient;
     private String schemaRegistryURL = null;
     private String schemaPath = null;
     private boolean useMock;
 
-    public ConvertBytesToGenericRecord(String schemaRegistryURL) {
+    private final BadRecordRouter badRecordRouter;
+
+    public ConvertBytesToGenericRecord(String schemaRegistryURL, BadRecordRouter badRecordRouter) {
       this.schemaRegistryURL = schemaRegistryURL;
+      this.badRecordRouter = badRecordRouter;
     }
 
-    public ConvertBytesToGenericRecord(String schemaPath, boolean useMock) {
+    public ConvertBytesToGenericRecord(String schemaPath, boolean useMock, BadRecordRouter badRecordRouter) {
       this.schemaPath = schemaPath;
       this.useMock = useMock;
+      this.badRecordRouter = badRecordRouter;
     }
 
     @DoFn.Setup
@@ -172,17 +227,39 @@ public abstract class AvroWriteTransform
       }
     }
 
+     GenericRecord deserializeBytes(KafkaRecord<byte[], byte[]> kafkaRecord, String topicName) {
+      KafkaAvroDeserializer deserializer = new KafkaAvroDeserializer(schemaRegistryClient);
+       return (GenericRecord)
+               deserializer.deserialize(topicName, kafkaRecord.getKV().getValue());
+     }
+
     @ProcessElement
     // TODO: Add Dead letter queue when deserialization error happens.
     public void processElement(
-        @Element KafkaRecord<byte[], byte[]> kafkaRecord, OutputReceiver<GenericRecord> o) {
-      KafkaAvroDeserializer deserializer = new KafkaAvroDeserializer(schemaRegistryClient);
+        @Element KafkaRecord<byte[], byte[]> kafkaRecord, MultiOutputReceiver receiver) throws Exception  {
+      GenericRecord genericRecord;
       if (!useMock) {
-        o.output(
-            (GenericRecord)
-                deserializer.deserialize(kafkaRecord.getTopic(), kafkaRecord.getKV().getValue()));
+        try {
+          genericRecord = deserializeBytes(kafkaRecord, kafkaRecord.getTopic());
+          // TODO: Remove the if condition
+//          if (genericRecord.getSchema().getName().equals("SimpleMessage")) {
+//            throw new RuntimeException("Received Simple message. Sending to DLQ.");
+//          }
+          receiver.get(successTag).output(FailsafeElement.of(kafkaRecord, genericRecord));
+        }
+        catch (RuntimeException e) {
+          // TODO: Make this nullable
+         badRecordRouter.route(receiver, kafkaRecord, KafkaRecordCoder.of(ByteArrayCoder.of(), ByteArrayCoder.of()), e, e.toString());
+        }
+
       } else {
-        o.output((GenericRecord) deserializer.deserialize(subject, kafkaRecord.getKV().getValue()));
+        try {
+          genericRecord = deserializeBytes(kafkaRecord, subject);
+          receiver.get(successTag).output(FailsafeElement.of(kafkaRecord,genericRecord));
+        } catch (Exception e) {
+          badRecordRouter.route(receiver, kafkaRecord, KafkaRecordCoder.of(ByteArrayCoder.of(), ByteArrayCoder.of()), e, e.toString());
+        }
+
       }
     }
   }
@@ -191,7 +268,7 @@ public abstract class AvroWriteTransform
     try {
       // TODO: Change the schema registry to 1.
       // Register schemas under the fake subject name.
-      mockSchemaRegistryClient.register(subject, SchemaUtils.getAvroSchema(schemaFilePath), 1, 7);
+      mockSchemaRegistryClient.register(subject, SchemaUtils.getAvroSchema(schemaFilePath), 1, 1);
     } catch (IOException | RestClientException e) {
       // TODO: Add this to DLQ
       throw new RuntimeException(e);

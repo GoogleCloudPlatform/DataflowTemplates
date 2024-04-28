@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.options.KafkaToGCSOptions;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.POutput;
 
@@ -32,6 +33,8 @@ public abstract class WriteTransform
   }
 
   public abstract KafkaToGCSOptions options();
+
+  public abstract ErrorHandler.BadRecordErrorHandler badRecordErrorHandler();
 
   @Override
   public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> record) {
@@ -61,7 +64,8 @@ public abstract class WriteTransform
                     .setSchemaRegistryURL(options().getSchemaRegistryURL())
                     .setSchemaPath(options().getSchemaPath())
                     .setWindowDuration(options().getWindowDuration())
-                    .build());
+                    .build()
+                    .withBadRecordHandler(badRecordErrorHandler()));
         break;
       case PARQUET:
         // TODO: Add more info to the error string.
@@ -74,7 +78,7 @@ public abstract class WriteTransform
   public abstract static class WriteTransformBuilder {
     public abstract WriteTransformBuilder setOptions(KafkaToGCSOptions options);
 
-    abstract KafkaToGCSOptions options();
+    public abstract WriteTransformBuilder setBadRecordErrorHandler(ErrorHandler.BadRecordErrorHandler errorHandler);
 
     abstract WriteTransform autoBuild();
 
