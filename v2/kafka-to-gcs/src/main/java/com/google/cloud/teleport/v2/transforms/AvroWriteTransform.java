@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.ByteArray;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
@@ -27,19 +26,15 @@ import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
-import java.io.IOException;
-import java.text.DecimalFormat;
-import java.util.concurrent.ThreadLocalRandom;
-import javax.annotation.Nullable;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
-import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.NullableCoder;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
-import org.apache.beam.sdk.io.*;
+import org.apache.beam.sdk.io.Compression;
+import org.apache.beam.sdk.io.FileIO;
+import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.io.kafka.KafkaRecordCoder;
 import org.apache.beam.sdk.transforms.*;
@@ -52,14 +47,16 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.checkerframework.checker.initialization.qual.Initialized;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.joda.time.Instant;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
+import java.io.IOException;
+import java.text.DecimalFormat;
+import java.util.concurrent.ThreadLocalRandom;
 
 @AutoValue
 public abstract class AvroWriteTransform
@@ -85,12 +82,12 @@ public abstract class AvroWriteTransform
 //
   public static TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> successTag = new TupleTag<>() {};
 
-  private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
+  private BadRecordRouter badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
   private ErrorHandler<BadRecord, ?> errorHandler = new ErrorHandler.DefaultErrorHandler<>();
 
   public AvroWriteTransform withBadRecordHandler(ErrorHandler<BadRecord, ?> errorHandler) {
     this.errorHandler = errorHandler;
-    this.badRecordRouter = BadRecordRouter.THROWING_ROUTER;
+    this.badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
     return this;
   }
 
@@ -236,41 +233,31 @@ public abstract class AvroWriteTransform
     @ProcessElement
     // TODO: Add Dead letter queue when deserialization error happens.
     public void processElement(
-        @Element KafkaRecord<byte[], byte[]> kafkaRecord, MultiOutputReceiver receiver) throws Exception  {
+        @Element KafkaRecord<byte[], byte[]> kafkaRecord, MultiOutputReceiver receiver ) throws Exception {
       GenericRecord genericRecord;
-      if (!useMock) {
-        try {
+      try {
+        if (!useMock) {
           genericRecord = deserializeBytes(kafkaRecord, kafkaRecord.getTopic());
           // TODO: Remove the if condition
-//          if (genericRecord.getSchema().getName().equals("SimpleMessage")) {
-//            throw new RuntimeException("Received Simple message. Sending to DLQ.");
-//          }
-          receiver.get(successTag).output(FailsafeElement.of(kafkaRecord, genericRecord));
-        }
-        catch (RuntimeException e) {
-          // TODO: Make this nullable
-         badRecordRouter.route(receiver, kafkaRecord, KafkaRecordCoder.of(ByteArrayCoder.of(), ByteArrayCoder.of()), e, e.toString());
-        }
-
-      } else {
-        try {
+          if ("SimpleMessage".equals(genericRecord.getSchema().getName())) {
+            throw new RuntimeException("Received Simple message. Sending to DLQ.");
+          }
+        } else {
           genericRecord = deserializeBytes(kafkaRecord, subject);
-          receiver.get(successTag).output(FailsafeElement.of(kafkaRecord,genericRecord));
-        } catch (Exception e) {
-          badRecordRouter.route(receiver, kafkaRecord, KafkaRecordCoder.of(ByteArrayCoder.of(), ByteArrayCoder.of()), e, e.toString());
         }
-
+        receiver.get(successTag).output(FailsafeElement.of(kafkaRecord, genericRecord));
+      } catch (Exception e) {
+        badRecordRouter.route(receiver, kafkaRecord, KafkaRecordCoder.of(
+                NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of())), e, e.toString());
       }
     }
   }
 
   static void registerSchema(SchemaRegistryClient mockSchemaRegistryClient, String schemaFilePath) {
     try {
-      // TODO: Change the schema registry to 1.
       // Register schemas under the fake subject name.
       mockSchemaRegistryClient.register(subject, SchemaUtils.getAvroSchema(schemaFilePath), 1, 1);
     } catch (IOException | RestClientException e) {
-      // TODO: Add this to DLQ
       throw new RuntimeException(e);
     }
   }

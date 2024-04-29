@@ -108,7 +108,6 @@ public interface KafkaToGCSOptions
       example = "gs://<bucket_name>/schema1.avsc",
       helpText = "Specify an Avro Schema Path.")
   String getSchemaPath();
-
   void setSchemaPath(String schema);
 
   @TemplateParameter.Enum(
