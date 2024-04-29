@@ -131,9 +131,21 @@ public interface KafkaToGCSOptions
   String getMessageFormat();
 
   void setMessageFormat(String messageFormat);
+  @TemplateParameter.Text(
+          order = 8,
+          groupName = "Kafka SASL_PLAIN Authentication parameter",
+          description =
+                  "Username to be used with SASL_PLAIN mechanism for Kafka, stored in Google Cloud Secret Manager",
+          helpText =
+                  "Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
+          example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
+  String getUserNameSecretID();
+
+  void setUserNameSecretID(String userNameSecretID);
+
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 9,
       groupName = "Kafka SASL_PLAIN Authentication parameter",
       description =
           "Password to be used with SASL_PLAIN mechanism for Kafka, stored in Google Cloud Secret Manager",
@@ -145,7 +157,7 @@ public interface KafkaToGCSOptions
   void setPasswordSecretID(String passwordSecretID);
 
   @TemplateParameter.Enum(
-      order = 9,
+      order = 10,
       description = "Set Kafka offset",
       enumOptions = {
         @TemplateEnumOption("latest"),
