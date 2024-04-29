@@ -46,7 +46,8 @@ public interface CommonTemplateOptions extends PipelineOptions {
       description = "Extra files to stage in the workers",
       helpText =
           "Comma-separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in "
-              + "the /extra_files directory in each worker. For example, `gs://<my-bucket>/file.txt,projects/<project-id>/secrets/<secret-id>/versions/<version-id>`.")
+              + "the /extra_files directory in each worker.",
+      example = "gs://<my-bucket>/file.txt,projects/<project-id>/secrets/<secret-id>/versions/<version-id>")
   @Validation.Required
   ValueProvider<String> getExtraFilesToStage();
 
