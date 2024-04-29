@@ -32,7 +32,9 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
-import org.apache.beam.sdk.io.*;
+import org.apache.beam.sdk.io.Compression;
+import org.apache.beam.sdk.io.FileIO;
+import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.windowing.*;
@@ -41,15 +43,13 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.joda.time.Instant;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @AutoValue
 public abstract class AvroWriteTransform
     extends PTransform<
         PCollection<KafkaRecord<byte[], byte[]>>, WriteFilesResult<AvroDestination>> {
-  private static final Logger LOG = LoggerFactory.getLogger(AvroWriteTransform.class);
   private static final String subject = "UNUSED";
+  static final int DEFAULT_CACHE_CAPACITY = 1000;
 
   public abstract String outputDirectory();
 
@@ -80,7 +80,6 @@ public abstract class AvroWriteTransform
     WireFormat inputWireFormat = WireFormat.valueOf(messageFormat());
     switch (inputWireFormat) {
       case CONFLUENT_WIRE_FORMAT:
-        // Ask for Schema registry URL
         String schemaRegistryURL = schemaRegistryURL();
         String schemaPath = schemaPath();
         if (schemaRegistryURL == null && schemaPath == null) {
@@ -172,7 +171,8 @@ public abstract class AvroWriteTransform
         schemaRegistryClient = new MockSchemaRegistryClient();
         registerSchema(schemaRegistryClient, schemaPath);
       } else {
-        schemaRegistryClient = new CachedSchemaRegistryClient(schemaRegistryURL, 100);
+        schemaRegistryClient =
+            new CachedSchemaRegistryClient(schemaRegistryURL, DEFAULT_CACHE_CAPACITY);
       }
     }
 

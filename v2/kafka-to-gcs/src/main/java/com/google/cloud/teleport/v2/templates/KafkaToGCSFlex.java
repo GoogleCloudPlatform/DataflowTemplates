@@ -37,8 +37,6 @@ import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Template(
     name = "Kafka_to_GCS_2",
@@ -54,7 +52,6 @@ import org.slf4j.LoggerFactory;
     streaming = true)
 public class KafkaToGCSFlex {
   /* Logger for class */
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaToGCSFlex.class);
   private static final String topicsSplitDelimiter = ",";
 
   public static class ClientAuthConfig {

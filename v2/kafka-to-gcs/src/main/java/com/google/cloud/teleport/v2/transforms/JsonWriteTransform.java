@@ -30,14 +30,10 @@ import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.POutput;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @AutoValue
 public abstract class JsonWriteTransform
     extends PTransform<PCollection<KafkaRecord<byte[], byte[]>>, POutput> {
-
-  private static final Logger LOG = LoggerFactory.getLogger(AvroWriteTransform.class);
 
   public abstract String outputDirectory();
 
