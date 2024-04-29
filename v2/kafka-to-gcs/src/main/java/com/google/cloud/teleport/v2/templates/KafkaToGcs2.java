@@ -22,7 +22,6 @@ import com.google.cloud.teleport.v2.options.KafkaToGCSOptions;
 import com.google.cloud.teleport.v2.transforms.WriteTransform;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.collect.ImmutableMap;
-
 import java.util.*;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -55,7 +54,8 @@ public class KafkaToGcs2 {
   private static boolean useKafkaAuth = true;
 
   public static class ClientAuthConfig {
-    public static ImmutableMap<String, Object> getSaslPlainConfig(String username, String password) {
+    public static ImmutableMap<String, Object> getSaslPlainConfig(
+        String username, String password) {
       ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
       properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
       properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
@@ -71,76 +71,77 @@ public class KafkaToGcs2 {
       return properties.buildOrThrow();
     }
 
-  public static PipelineResult run(KafkaToGCSOptions options) throws UnsupportedOperationException {
+    public static PipelineResult run(KafkaToGCSOptions options)
+        throws UnsupportedOperationException {
 
-    // Create the Pipeline
-    Pipeline pipeline = Pipeline.create(options);
+      // Create the Pipeline
+      Pipeline pipeline = Pipeline.create(options);
 
-    PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord;
+      PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord;
 
-    List<String> topics =
-        new ArrayList<>(Arrays.asList(options.getInputTopics().split(topicsSplitDelimiter)));
+      List<String> topics =
+          new ArrayList<>(Arrays.asList(options.getInputTopics().split(topicsSplitDelimiter)));
 
-    options.setStreaming(true);
+      options.setStreaming(true);
 
-    String kafkaSaslPlainUserName = SecretManagerUtils.getSecret(options.getUserNameSecretID());
-    String kafkaSaslPlainPassword = SecretManagerUtils.getSecret(options.getPasswordSecretID());
+      String kafkaSaslPlainUserName = SecretManagerUtils.getSecret(options.getUserNameSecretID());
+      String kafkaSaslPlainPassword = SecretManagerUtils.getSecret(options.getPasswordSecretID());
 
-    Map<String, Object> kafkaConfig = new HashMap<>();
-    // Set offset to either earliest or latest.
-    kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getOffset());
-    // Authenticate to Kafka only when user provides authentication params.
-    if (useKafkaAuth)
-      kafkaConfig.putAll(ClientAuthConfig.getSaslPlainConfig(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
+      Map<String, Object> kafkaConfig = new HashMap<>();
+      // Set offset to either earliest or latest.
+      kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getOffset());
+      // Authenticate to Kafka only when user provides authentication params.
+      if (useKafkaAuth)
+        kafkaConfig.putAll(
+            ClientAuthConfig.getSaslPlainConfig(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
 
-    // Step 1: Read from Kafka as bytes.
-    kafkaRecord =
-        pipeline.apply(
-            KafkaIO.<byte[], byte[]>read()
-                .withBootstrapServers(options.getBootstrapServers())
-                .withTopics(topics)
-                .withKeyDeserializerAndCoder(
-                    ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
-                .withValueDeserializerAndCoder(
-                    ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
-                .withConsumerConfigUpdates(kafkaConfig));
+      // Step 1: Read from Kafka as bytes.
+      kafkaRecord =
+          pipeline.apply(
+              KafkaIO.<byte[], byte[]>read()
+                  .withBootstrapServers(options.getBootstrapServers())
+                  .withTopics(topics)
+                  .withKeyDeserializerAndCoder(
+                      ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
+                  .withValueDeserializerAndCoder(
+                      ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
+                  .withConsumerConfigUpdates(kafkaConfig));
 
-    kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
-    return pipeline.run();
-  }
-
-  public static void validateAuthOptions(KafkaToGCSOptions options) {
-    // Authenticate to Kafka brokers without any auth config. This can be the case when
-    // the dataflow pipeline and Kafka broker is on the same network.
-    if (options.getUserNameSecretID().isBlank() && options.getPasswordSecretID().isBlank()) {
-      useKafkaAuth = false;
+      kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
+      return pipeline.run();
     }
 
-    if (
-            (options.getUserNameSecretID().isBlank() && !options.getPasswordSecretID().isBlank())
-      || (options.getPasswordSecretID().isBlank() && !options.getUserNameSecretID().isBlank())
-    ) {
-              throw new IllegalArgumentException(
-                      "Both username secret ID and password secret ID should be provided together or left null."
-              );
+    public static void validateAuthOptions(KafkaToGCSOptions options) {
+      // Authenticate to Kafka brokers without any auth config. This can be the case when
+      // the dataflow pipeline and Kafka broker is on the same network.
+      if (options.getUserNameSecretID().isBlank() && options.getPasswordSecretID().isBlank()) {
+        useKafkaAuth = false;
+      }
+
+      if ((options.getUserNameSecretID().isBlank() && !options.getPasswordSecretID().isBlank())
+          || (options.getPasswordSecretID().isBlank()
+              && !options.getUserNameSecretID().isBlank())) {
+        throw new IllegalArgumentException(
+            "Both username secret ID and password secret ID should be provided together or left null.");
+      }
+
+      if (!SecretVersionName.isParsableFrom(options.getUserNameSecretID())) {
+        throw new IllegalArgumentException(
+            "Provided Secret Username ID must be in the form"
+                + " projects/{project}/secrets/{secret}/versions/{secret_version}");
+      }
+      if (!SecretVersionName.isParsableFrom(options.getPasswordSecretID())) {
+        throw new IllegalArgumentException(
+            "Provided Secret Password ID must be in the form"
+                + " projects/{project}/secrets/{secret}/versions/{secret_version}");
+      }
     }
 
-    if (!SecretVersionName.isParsableFrom(options.getUserNameSecretID())) {
-      throw new IllegalArgumentException(
-          "Provided Secret Username ID must be in the form"
-              + " projects/{project}/secrets/{secret}/versions/{secret_version}");
+    public static void main(String[] args) {
+      KafkaToGCSOptions options =
+          PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToGCSOptions.class);
+      validateAuthOptions(options);
+      run(options);
     }
-    if (!SecretVersionName.isParsableFrom(options.getPasswordSecretID())) {
-      throw new IllegalArgumentException(
-          "Provided Secret Password ID must be in the form"
-              + " projects/{project}/secrets/{secret}/versions/{secret_version}");
-    }
-  }
-
-  public static void main(String[] args) {
-    KafkaToGCSOptions options =
-        PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToGCSOptions.class);
-    validateAuthOptions(options);
-    run(options);
   }
 }
