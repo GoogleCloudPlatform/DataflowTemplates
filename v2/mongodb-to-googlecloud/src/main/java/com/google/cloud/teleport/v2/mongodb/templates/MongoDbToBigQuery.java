@@ -34,6 +34,7 @@ import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import java.io.IOException;
 import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -109,6 +110,8 @@ public class MongoDbToBigQuery {
     String mongoDbUri = maybeDecrypt(options.getMongoDbUri(), options.getKMSEncryptionKey()).get();
 
     if(options.getBigQuerySchemaPath() != null) {
+      // initialize FileSystem to read from GCS
+      FileSystems.setDefaultPipelineOptions(options);
       String jsonSchema = getGcsFileAsString(options.getBigQuerySchemaPath());
       GsonFactory gf = new GsonFactory();
       bigquerySchema = gf.fromString(jsonSchema, TableSchema.class);
