@@ -181,7 +181,7 @@ gcloud compute instance-templates create $INSTANCE_TEMPLATE_NAME \
   --image-project=$IMAGE_PROJECT \
   --boot-disk-type=$BOOT_DISK_TYPE \
   --boot-disk-size=$BOOT_DISK_SIZE \
-  --machine-type="MACHINE_TYPE" \
+  --machine-type=$MACHINE_TYPE \
   --scopes=$SCOPE \
   --service-account=${SA_EMAIL} \
   --metadata-from-file=startup-script=startup-script-${NAME_SUFFIX}.sh,shutdown-script=shutdown-script-${NAME_SUFFIX}.sh
