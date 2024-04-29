@@ -25,8 +25,6 @@ import com.google.common.collect.ImmutableMap;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import java.io.IOException;
 import java.util.*;
-
-import org.apache.arrow.flatbuf.Null;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
@@ -103,15 +101,13 @@ public class KafkaToGCSFlex {
             KafkaIO.<byte[], byte[]>read()
                 .withBootstrapServers(options.getBootstrapServers())
                 .withTopics(topics)
-                .withKeyDeserializerAndCoder(ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
-                .withValueDeserializerAndCoder(ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
+                .withKeyDeserializerAndCoder(
+                    ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
+                .withValueDeserializerAndCoder(
+                    ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
                 .withConsumerConfigUpdates(kafkaConfig));
 
-    kafkaRecord.apply(WriteTransform
-            .newBuilder()
-            .setOptions(options)
-            .build()
-    );
+    kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
     return pipeline.run();
   }
 

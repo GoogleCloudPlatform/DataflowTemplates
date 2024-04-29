@@ -42,7 +42,7 @@ public abstract class WriteTransform
     switch (outputFileFormat) {
       case TEXT:
         pOutput =
-                kafkaRecord.apply(
+            kafkaRecord.apply(
                 JsonWriteTransform.newBuilder()
                     .setOutputFilenamePrefix(options().getOutputFilenamePrefix())
                     .setNumShards(options().getNumShards())
@@ -53,11 +53,11 @@ public abstract class WriteTransform
         break;
       case AVRO:
         pOutput =
-                kafkaRecord.apply(
+            kafkaRecord.apply(
                 AvroWriteTransform.newBuilder()
-                        .setOutputDirectory(options().getOutputDirectory())
+                    .setOutputDirectory(options().getOutputDirectory())
                     .setOutputFilenamePrefix(options().getOutputFilenamePrefix())
-                        .setNumShards(options().getNumShards())
+                    .setNumShards(options().getNumShards())
                     .setMessageFormat(options().getMessageFormat())
                     .setSchemaRegistryURL(options().getSchemaRegistryURL())
                     .setSchemaPath(options().getSchemaPath())
@@ -65,7 +65,8 @@ public abstract class WriteTransform
                     .build());
         break;
       case PARQUET:
-        throw new UnsupportedOperationException("Parquet format is not yet supported for Kafka to GCS template.");
+        throw new UnsupportedOperationException(
+            "Parquet format is not yet supported for Kafka to GCS template.");
     }
     return pOutput;
   }
