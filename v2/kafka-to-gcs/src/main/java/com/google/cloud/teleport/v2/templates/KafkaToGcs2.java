@@ -50,7 +50,7 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
     contactInformation = "https://cloud.google.com/support",
     hidden = true,
     streaming = true)
-public class KafkaToGCSFlex {
+public class KafkaToGcs2 {
   /* Logger for class */
   private static final String topicsSplitDelimiter = ",";
 
@@ -125,7 +125,7 @@ public class KafkaToGCSFlex {
     }
   }
 
-  public static void main(String[] args) throws RestClientException, IOException {
+  public static void main(String[] args) {
     KafkaToGCSOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToGCSOptions.class);
     validateOptions(options);
