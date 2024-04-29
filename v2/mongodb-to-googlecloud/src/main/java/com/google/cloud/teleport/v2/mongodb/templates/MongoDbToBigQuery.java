@@ -15,8 +15,10 @@
  */
 package com.google.cloud.teleport.v2.mongodb.templates;
 
+import static com.google.cloud.teleport.v2.utils.GCSUtils.getGcsFileAsString;
 import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
 
+import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.metadata.Template;
@@ -106,7 +108,12 @@ public class MongoDbToBigQuery {
     // Get MongoDbUri plain text or base64 encrypted with a specific KMS encryption key
     String mongoDbUri = maybeDecrypt(options.getMongoDbUri(), options.getKMSEncryptionKey()).get();
 
-    if (options.getJavascriptDocumentTransformFunctionName() != null
+    if(options.getBigQuerySchemaPath() != null) {
+      String jsonSchema = getGcsFileAsString(options.getBigQuerySchemaPath());
+      GsonFactory gf = new GsonFactory();
+      bigquerySchema = gf.fromString(jsonSchema, TableSchema.class);
+    }
+    else if (options.getJavascriptDocumentTransformFunctionName() != null
         && options.getJavascriptDocumentTransformGcsPath() != null) {
       bigquerySchema =
           MongoDbUtils.getTableFieldSchemaForUDF(
