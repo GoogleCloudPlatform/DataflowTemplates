@@ -117,15 +117,15 @@ func (*mvnFlags) FailAtTheEnd() string {
 }
 
 func (*mvnFlags) RunIntegrationTests() string {
-	return "-PtemplatesIntegrationTests,splunkDeps"
+	return "-PtemplatesIntegrationTests,splunkDeps,missing-artifact-repos"
 }
 
 func (*mvnFlags) RunIntegrationSmokeTests() string {
-	return "-PtemplatesIntegrationSmokeTests,splunkDeps"
+	return "-PtemplatesIntegrationSmokeTests,splunkDeps,missing-artifact-repos"
 }
 
 func (*mvnFlags) RunLoadTests() string {
-	return "-PtemplatesLoadTests,splunkDeps"
+	return "-PtemplatesLoadTests,splunkDeps,missing-artifact-repos"
 }
 
 func (*mvnFlags) ThreadCount(count int) string {
