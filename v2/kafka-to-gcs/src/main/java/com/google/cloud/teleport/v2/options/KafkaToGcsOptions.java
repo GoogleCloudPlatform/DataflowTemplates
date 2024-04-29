@@ -93,7 +93,7 @@ public interface KafkaToGcsOptions
       order = 5,
       groupName = "MessageFormat",
       optional = true,
-      description = "Schema Registry URL for decoding Confluent Wire Format messages.",
+      description = "Schema Registry URL for decoding Confluent Wire Format messages",
       helpText =
           "Provide the full URL of your Schema Registry (e.g., http://your-registry:8081) if your Kafka messages are encoded in Confluent Wire Format. Leave blank for other formats.")
   String getSchemaRegistryURL();
@@ -104,7 +104,7 @@ public interface KafkaToGcsOptions
       order = 6,
       optional = true,
       groupName = "MessageFormat",
-      description = "Path to your Avro schema file (required for Avro formats).",
+      description = "Path to your Avro schema file (required for Avro formats)",
       example = "gs://<bucket_name>/schema1.avsc",
       helpText =
           "Specify the Google Cloud Storage path (or other accessible path) to the Avro schema (.avsc) file that defines the structure of your Kafka messages.")
@@ -121,7 +121,7 @@ public interface KafkaToGcsOptions
         @TemplateEnumOption("AVRO_SINGLE_OBJECT_ENCODING")
       },
       optional = true,
-      description = "The format in which your Kafka messages are encoded.",
+      description = "The format in which your Kafka messages are encoded",
       helpText =
           "Choose the encoding used for your Kafka messages:\n"
               + " - CONFLUENT_WIRE_FORMAT: Confluent's format, requires a Schema Registry URL.\n"
