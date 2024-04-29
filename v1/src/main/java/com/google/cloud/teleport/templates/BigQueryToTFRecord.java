@@ -331,7 +331,8 @@ public class BigQueryToTFRecord {
     @TemplateParameter.GcsWriteFolder(
         order = 1,
         description = "Output Cloud Storage directory.",
-        helpText = "The top-level Cloud Storage path prefix at which to write the training, testing, and validation TFRecord files. For example, `gs://mybucket/output`. Subdirectories for resulting training, testing, and validation TFRecord files are automatically generated from `outputDirectory`. For example, `gs://mybucket/output/train`")
+        helpText = "The top-level Cloud Storage path prefix at which to write the training, testing, and validation TFRecord files. Subdirectories for resulting training, testing, and validation TFRecord files are automatically generated from `outputDirectory`. For example, `gs://mybucket/output/train`",
+            example = "gs://mybucket/output")
     ValueProvider<String> getOutputDirectory();
 
     void setOutputDirectory(ValueProvider<String> outputDirectory);

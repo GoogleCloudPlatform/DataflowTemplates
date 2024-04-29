@@ -137,7 +137,8 @@ public class TextImportPipeline {
     @TemplateParameter.GcsReadFile(
         order = 4,
         description = "Text Import Manifest file",
-        helpText = "The path in Cloud Storage to the import manifest file.")
+        helpText = "The path in Cloud Storage to the import manifest file.",
+            example = "gs://your-bucket/your-folder/your-manifest.json")
     ValueProvider<String> getImportManifest();
 
     void setImportManifest(ValueProvider<String> value);
@@ -157,7 +158,8 @@ public class TextImportPipeline {
         optional = true,
         description = "Field qualifier used by the source file",
         helpText = "The character that must surround any value in the source file that "
-                + "contains the columnDelimiter. The default value is \".")
+                + "contains the columnDelimiter. The default value is \".",
+    example = ",")
     @Default.Character('"')
     ValueProvider<Character> getFieldQualifier();
 

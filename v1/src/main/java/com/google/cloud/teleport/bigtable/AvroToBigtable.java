@@ -109,7 +109,8 @@ public final class AvroToBigtable {
     @TemplateParameter.GcsReadFile(
         order = 5,
         description = "Input Cloud Storage File(s)",
-        helpText = "The Cloud Storage path pattern where data is located. For example, `gs://mybucket/somefolder/prefix*`.")
+        helpText = "The Cloud Storage path pattern where data is located.",
+            example = "gs://mybucket/somefolder/prefix*")
     ValueProvider<String> getInputFilePattern();
 
     @SuppressWarnings("unused")

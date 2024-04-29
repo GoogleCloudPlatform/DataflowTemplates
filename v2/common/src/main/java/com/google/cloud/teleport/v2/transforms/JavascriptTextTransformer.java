@@ -79,7 +79,8 @@ public abstract class JavascriptTextTransformer {
         description = "Cloud Storage path to Javascript UDF source",
         helpText =
             "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) "
-                    + "you want to use. For example, `gs://my-bucket/my-udfs/my_file.js`.")
+                    + "you want to use" ,
+            example =  "gs://my-bucket/my-udfs/my_file.js")
     String getJavascriptTextTransformGcsPath();
 
     void setJavascriptTextTransformGcsPath(String javascriptTextTransformGcsPath);

@@ -126,7 +126,8 @@ public class ExportJobPlaceholder {
     @TemplateParameter.Text(
         order = 10,
         description = "SequenceFile prefix",
-        helpText = "The prefix of the SequenceFile filename. For example, `output-`")
+        helpText = "The prefix of the SequenceFile filename.",
+            example = "output-")
     ValueProvider<String> getFilenamePrefix();
 
     @TemplateCreationParameter(value = "false")

@@ -57,7 +57,8 @@ public interface JdbcToBigQueryOptions
       helpText =
           "The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. You can pass in this "
                   + "value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. "
-                  + "Remove whitespace characters from the Base64-encoded string.")
+                  + "Remove whitespace characters from the Base64-encoded string.",
+          example = "jdbc:mysql://some-host:3306/sampledb")
   String getConnectionURL();
 
   void setConnectionURL(String connectionURL);
@@ -73,7 +74,8 @@ public interface JdbcToBigQueryOptions
                   + "be `[propertyName=property;]*`. For example, `unicode=true;characterEncoding=UTF-8`. "
                   + "For more information, see "
                   + "[Configuration Properties](https://dev.mysql.com/doc/connector-j/8.1/en/connector-j-reference-configuration-properties.html) "
-                  + "in the MySQL documentation.")
+                  + "in the MySQL documentation.",
+          example = "unicode=true;characterEncoding=UTF-8")
   String getConnectionProperties();
 
   void setConnectionProperties(String connectionProperties);
@@ -109,8 +111,9 @@ public interface JdbcToBigQueryOptions
       regexes = {"^.+$"},
       groupName = "Source",
       description = "JDBC source SQL query",
-      helpText = "The query to run on the source to extract the data. For example, `select * from sampledb.sample_table`."
-                  + "Required when not using partitions.")
+      helpText = "The query to run on the source to extract the data."
+                  + "Required when not using partitions.",
+          example = "select * from sampledb.sample_table")
   String getQuery();
 
   void setQuery(String query);
@@ -121,7 +124,8 @@ public interface JdbcToBigQueryOptions
       order = 8,
       groupName = "Target",
       description = "BigQuery output table",
-      helpText = "The BigQuery output table location, in the format of <my-project>:<my-dataset>.<my-table>.")
+      helpText = "The BigQuery output table location, in the format of <my-project>:<my-dataset>.<my-table>.",
+          example = "<my-project>:<my-dataset>.<my-table>")
   String getOutputTable();
 
   @TemplateParameter.GcsWriteFolder(
@@ -129,7 +133,8 @@ public interface JdbcToBigQueryOptions
       optional = false,
       groupName = "Target",
       description = "Temporary directory for BigQuery loading process",
-      helpText = "The temporary directory for the BigQuery loading process. For example, `gs://<my-bucket>/my-files/temp_dir`.")
+      helpText = "The temporary directory for the BigQuery loading process.",
+          example = "gs://<my-bucket>/my-files/temp_dir")
   String getBigQueryLoadingTemporaryDirectory();
 
   void setBigQueryLoadingTemporaryDirectory(String directory);
@@ -153,7 +158,8 @@ public interface JdbcToBigQueryOptions
       description = "Whether to use column alias to map the rows.",
       helpText =
           "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the"
-              + " column name to map the rows to BigQuery. Defaults to false.")
+              + " column name to map the rows to BigQuery. Defaults to false.",
+          example = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
   @Default.Boolean(false)
   Boolean getUseColumnAlias();
 
@@ -190,7 +196,8 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Name of the table in the external database.",
       helpText = "The table to extract the data from. This parameter also accepts a subquery in parentheses. "
-                  + "For example, `Person` or `(select id, name from Person) as subq`. Required when using partitions.")
+                  + "Required when using partitions.",
+      example =  "Person or (select id, name from Person) as subq")
   String getTable();
 
   void setTable(String table);

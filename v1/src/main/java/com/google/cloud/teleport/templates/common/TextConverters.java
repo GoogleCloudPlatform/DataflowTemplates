@@ -43,7 +43,8 @@ public class TextConverters {
     @TemplateParameter.GcsWriteFolder(
         order = 2,
         description = "Output file directory in Cloud Storage",
-        helpText = "The Cloud Storage path prefix to specify where the data is written. For example, `gs://mybucket/somefolder/`.")
+        helpText = "The Cloud Storage path prefix to specify where the data is written.",
+            example = "gs://mybucket/somefolder/")
     ValueProvider<String> getTextWritePrefix();
 
     void setTextWritePrefix(ValueProvider<String> textWritePrefix);
