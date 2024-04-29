@@ -25,8 +25,6 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import java.io.IOException;
-import java.text.DecimalFormat;
-import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -201,17 +199,21 @@ public abstract class AvroWriteTransform
   }
 
   class AvroFileNaming implements FileIO.Write.FileNaming {
-
-    private AvroDestination avroDestination;
-    private String outputFilenamePrefix;
-    private String DATE_SUBDIR_FORMAT = "yyyy-MM-dd";
-    private String DATE_SUBDIR_PREFIX = "date=";
-
-    private String FILE_EXTENSION = ".avro";
+    private final FileIO.Write.FileNaming defaultNaming;
+    private final AvroDestination avroDestination;
+    private final String DATE_SUBDIR_FORMAT = "yyyy-MM-dd";
+    private final String DATE_SUBDIR_PREFIX = "date=";
 
     public AvroFileNaming(AvroDestination avroDestination) {
+      defaultNaming =
+          FileIO.Write.defaultNaming(DigestUtils.md5Hex(avroDestination.jsonSchema), ".avro");
       this.avroDestination = avroDestination;
-      this.outputFilenamePrefix = outputFilenamePrefix();
+    }
+
+    public String getDateSubDir(IntervalWindow window) {
+      Instant maxTimestamp = window.start();
+      DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern(DATE_SUBDIR_FORMAT);
+      return DATE_SUBDIR_PREFIX + maxTimestamp.toString(dateTimeFormatter);
     }
 
     @Override
@@ -225,32 +227,9 @@ public abstract class AvroWriteTransform
       if (window instanceof IntervalWindow) {
         subDir += "/" + getDateSubDir((IntervalWindow) window);
       }
-      String numShardsStr = String.valueOf(numShards);
-      DecimalFormat df =
-          new DecimalFormat("000000000000".substring(0, Math.max(5, numShardsStr.length())));
-      String fileName =
-          String.format(
-              "%s/%s-%s-[nanoTime=%s-random=%s]-%s-%s-of-%s-pane-%s%s%s",
-              subDir,
-              outputFilenamePrefix,
-              DigestUtils.md5Hex(avroDestination.jsonSchema),
-              System.nanoTime(),
-              // Attach a thread based id. Prevents from overwriting a file from other threads.
-              ThreadLocalRandom.current().nextInt(100000),
-              window,
-              df.format(shardIndex),
-              df.format(numShards),
-              pane.getIndex(),
-              pane.isLast() ? "-final" : "",
-              FILE_EXTENSION);
-
-      return fileName;
-    }
-
-    public String getDateSubDir(IntervalWindow window) {
-      Instant maxTimestamp = window.start();
-      DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern(DATE_SUBDIR_FORMAT);
-      return DATE_SUBDIR_PREFIX + maxTimestamp.toString(dateTimeFormatter);
+      return subDir
+          + "/"
+          + defaultNaming.getFilename(window, pane, numShards, shardIndex, compression);
     }
   }
 }
