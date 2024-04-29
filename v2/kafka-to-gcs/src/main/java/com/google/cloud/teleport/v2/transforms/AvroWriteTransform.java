@@ -134,7 +134,8 @@ public abstract class AvroWriteTransform
                 (record) -> {
                   Schema schema = record.getSchema();
                   String name1 = schema.getName();
-                  // TODO: Build destination based on the schema ID or something compact than schema itself.
+                  // TODO: Build destination based on the schema ID or something compact than schema
+                  // itself.
                   return AvroDestination.of(name1, schema.toString());
                 })
             .via(

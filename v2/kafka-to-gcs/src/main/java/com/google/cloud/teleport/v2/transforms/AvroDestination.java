@@ -15,13 +15,9 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import java.util.Objects;
 import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
-
-import java.util.Objects;
 
 @DefaultCoder(AvroCoder.class)
 public class AvroDestination {
