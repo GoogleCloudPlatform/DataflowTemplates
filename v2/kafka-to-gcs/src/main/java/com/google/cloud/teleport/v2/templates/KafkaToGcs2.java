@@ -22,8 +22,7 @@ import com.google.cloud.teleport.v2.options.KafkaToGCSOptions;
 import com.google.cloud.teleport.v2.transforms.WriteTransform;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.collect.ImmutableMap;
-import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
-import java.io.IOException;
+
 import java.util.*;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -53,9 +52,10 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 public class KafkaToGcs2 {
   /* Logger for class */
   private static final String topicsSplitDelimiter = ",";
+  private static boolean useKafkaAuth = true;
 
   public static class ClientAuthConfig {
-    public static ImmutableMap<String, Object> get(String username, String password) {
+    public static ImmutableMap<String, Object> getSaslPlainConfig(String username, String password) {
       ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
       properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
       properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
@@ -70,7 +70,6 @@ public class KafkaToGcs2 {
               + "\';");
       return properties.buildOrThrow();
     }
-  }
 
   public static PipelineResult run(KafkaToGCSOptions options) throws UnsupportedOperationException {
 
@@ -90,7 +89,9 @@ public class KafkaToGcs2 {
     Map<String, Object> kafkaConfig = new HashMap<>();
     // Set offset to either earliest or latest.
     kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getOffset());
-    kafkaConfig.putAll(ClientAuthConfig.get(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
+    // Authenticate to Kafka only when user provides authentication params.
+    if (useKafkaAuth)
+      kafkaConfig.putAll(ClientAuthConfig.getSaslPlainConfig(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
 
     // Step 1: Read from Kafka as bytes.
     kafkaRecord =
@@ -108,11 +109,22 @@ public class KafkaToGcs2 {
     return pipeline.run();
   }
 
-  public static void validateOptions(KafkaToGCSOptions options) {
-    if (options.getUserNameSecretID().isBlank() || options.getPasswordSecretID().isBlank()) {
-      throw new IllegalArgumentException(
-          "No Information to retrieve Kafka SASL_PLAIN username/password was provided.");
+  public static void validateAuthOptions(KafkaToGCSOptions options) {
+    // Authenticate to Kafka brokers without any auth config. This can be the case when
+    // the dataflow pipeline and Kafka broker is on the same network.
+    if (options.getUserNameSecretID().isBlank() && options.getPasswordSecretID().isBlank()) {
+      useKafkaAuth = false;
     }
+
+    if (
+            (options.getUserNameSecretID().isBlank() && !options.getPasswordSecretID().isBlank())
+      || (options.getPasswordSecretID().isBlank() && !options.getUserNameSecretID().isBlank())
+    ) {
+              throw new IllegalArgumentException(
+                      "Both username secret ID and password secret ID should be provided together or left null."
+              );
+    }
+
     if (!SecretVersionName.isParsableFrom(options.getUserNameSecretID())) {
       throw new IllegalArgumentException(
           "Provided Secret Username ID must be in the form"
@@ -128,7 +140,7 @@ public class KafkaToGcs2 {
   public static void main(String[] args) {
     KafkaToGCSOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToGCSOptions.class);
-    validateOptions(options);
+    validateAuthOptions(options);
     run(options);
   }
 }
