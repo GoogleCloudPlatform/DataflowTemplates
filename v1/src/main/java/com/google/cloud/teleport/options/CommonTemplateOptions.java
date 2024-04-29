@@ -29,7 +29,8 @@ public interface CommonTemplateOptions extends PipelineOptions {
       description = "Disabled algorithms to override jdk.tls.disabledAlgorithms",
       helpText =
           "Comma-separated list of algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with "
-              + "caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example: `SSLv3, RC4`.")
+              + "caution, because the algorithms disabled by default might have vulnerabilities or performance issues.",
+      example = "SSLv3, RC4")
   @Validation.Required
   ValueProvider<String> getDisabledAlgorithms();
 

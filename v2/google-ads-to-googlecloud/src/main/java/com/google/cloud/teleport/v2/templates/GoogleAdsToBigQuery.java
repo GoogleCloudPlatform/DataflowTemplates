@@ -79,7 +79,8 @@ public final class GoogleAdsToBigQuery {
         order = 1,
         optional = true,
         description = "Google Ads manager account ID",
-        helpText = "A Google Ads manager account ID to use to access the account IDs. For example: `12345`.")
+        helpText = "A Google Ads manager account ID to use to access the account IDs.",
+        example = "12345")
     Long getLoginCustomerId();
 
     void setLoginCustomerId(Long loginCustomerId);
@@ -88,7 +89,8 @@ public final class GoogleAdsToBigQuery {
         order = 2,
         regexes = {"^[0-9]+(,[0-9]+)*$"},
         description = "Google Ads account IDs",
-        helpText = "A list of Google Ads account ID's to use to execute the query. For example: `12345`,`67890`.")
+        helpText = "A list of Google Ads account ID's to use to execute the query.",
+        example = "12345,67890")
     @Validation.Required
     List<Long> getCustomerIds();
 
@@ -97,7 +99,8 @@ public final class GoogleAdsToBigQuery {
     @TemplateParameter.Text(
         order = 3,
         description = "Google Ads Query Language query",
-        helpText = "The query to use to get the data. See Google Ads Query Language. For example: `SELECT campaign.id, campaign.name FROM campaign`.")
+        helpText = "The query to use to get the data. See Google Ads Query Language. For example: `SELECT campaign.id, campaign.name FROM campaign`.",
+        example = "SELECT campaign.id, campaign.name FROM campaign")
     @Validation.Required
     String getQuery();
 
@@ -122,7 +125,8 @@ public final class GoogleAdsToBigQuery {
         helpText =
             "The Cloud Storage path to the BigQuery schema JSON file. "
                 + "If this value is not set, then the schema is inferred "
-                + "from the Proto schema. For example : `gs://MyBucket/bq_schema.json`.")
+                + "from the Proto schema.",
+        example = "gs://MyBucket/bq_schema.json")
     String getBigQueryTableSchemaPath();
 
     void setBigQueryTableSchemaPath(String value);

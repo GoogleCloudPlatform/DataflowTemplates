@@ -34,7 +34,9 @@ public final class PubsubCommonOptions {
         order = 1,
         description = "Pub/Sub input subscription",
         helpText =
-            "The Pub/Sub input subscription to read the from. For example, `projects/<project>/subscription/<subscription>`.")    @Required
+            "The Pub/Sub input subscription to read the from.",
+        example = "projects/<project>/subscription/<subscription>")    
+    @Required
     String getInputSubscription();
 
     void setInputSubscription(String inputSubscription);
@@ -63,7 +65,8 @@ public final class PubsubCommonOptions {
         order = 3,
         description = "Output Pub/Sub topic",
         helpText =
-            "The Pub/Sub topic to use for unprocessed records. For example, `projects/<project-id>/topics/<topic-name>`.")
+            "The Pub/Sub topic to use for unprocessed records.",
+        example = "projects/<project-id>/topics/<topic-name>")
     @Required
     String getOutputTopic();
 

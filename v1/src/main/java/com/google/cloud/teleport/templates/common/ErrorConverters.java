@@ -84,7 +84,8 @@ public class ErrorConverters {
         order = 1,
         description = "Output failure file",
         helpText =
-            "The error log output file to use for write failures that occur during processing. For example, `gs://bucket-name/errors.txt`")
+            "The error log output file to use for write failures that occur during processing.",
+        example = "gs://your-bucket/errors/")
     ValueProvider<String> getErrorWritePath();
 
     void setErrorWritePath(ValueProvider<String> errorWritePath);

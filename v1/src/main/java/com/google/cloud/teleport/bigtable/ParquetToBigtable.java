@@ -113,7 +113,7 @@ public class ParquetToBigtable {
     @TemplateParameter.GcsReadFile(
         order = 4,
         description = "Input Cloud Storage File(s)",
-        helpText = "The Cloud Storage path pattern where data is located. For example, `gs://mybucket/somefolder/prefix*`.",
+        helpText = "The Cloud Storage path pattern where data is located.",
         example = "gs://your-bucket/your-files/*.parquet")
     ValueProvider<String> getInputFilePattern();
 
