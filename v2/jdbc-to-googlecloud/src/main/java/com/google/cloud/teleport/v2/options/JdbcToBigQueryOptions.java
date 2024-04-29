@@ -55,8 +55,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection URL string.",
       helpText =
-          "The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. Note the difference between an Oracle non-RAC database connection string (`jdbc:oracle:thin:@some-host:<port>:<sid>`) and an Oracle RAC database connection string (`jdbc:oracle:thin:@//some-host[:<port>]/<service_name>`).",
-      example = "jdbc:mysql://some-host:3306/sampledb")
+          "The JDBC connection URL string. For example, `jdbc:oracle:thin:@some-host:port:sid`. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string.")
   String getConnectionURL();
 
   void setConnectionURL(String connectionURL);
@@ -68,9 +67,8 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection property string.",
       helpText =
-          "Properties string to use for the JDBC connection. Format of the string must be"
-              + " [propertyName=property;]*.",
-      example = "unicode=true;characterEncoding=UTF-8")
+          "The properties string to use for the JDBC connection. The format of the string must be `[propertyName=property;]*`."
+              + " For example, `unicode=true;characterEncoding=UTF-8`.")
   String getConnectionProperties();
 
   void setConnectionProperties(String connectionProperties);
@@ -82,8 +80,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection username.",
       helpText =
-          "The username to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted "
-              + "with a Cloud KMS key.")
+          "The username to use for the JDBC connection. You can pass in this value encrypted by a Cloud KMS key as a Base64-encoded string.")
   String getUsername();
 
   void setUsername(String username);
@@ -94,8 +91,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection password.",
       helpText =
-          "The password to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted "
-              + "with a Cloud KMS key.")
+          "The password to use for the JDBC connection. You can pass in this value encrypted by a Cloud KMS key as a Base64-encoded string.")
   String getPassword();
 
   void setPassword(String password);
@@ -106,8 +102,7 @@ public interface JdbcToBigQueryOptions
       regexes = {"^.+$"},
       groupName = "Source",
       description = "JDBC source SQL query",
-      helpText = "The query to be run on the source to extract the data.",
-      example = "select * from sampledb.sample_table")
+      helpText = "Optional when using partitions: The query to run on the source to extract the data. For example, `select * from sampledb.sample_table`.")
   String getQuery();
 
   void setQuery(String query);
@@ -119,9 +114,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Target",
       description = "BigQuery output table",
       helpText =
-          "BigQuery table location to write the output to. The name should be in the format"
-              + " `<project>:<dataset>.<table_name>`. The table's schema must match input objects.",
-      example = "<my-project>:<my-dataset>.<my-table>")
+          "The BigQuery output table location, in the format of `<my-project>:<my-dataset>.<my-table>`.")
   String getOutputTable();
 
   @TemplateParameter.GcsWriteFolder(
@@ -129,8 +122,7 @@ public interface JdbcToBigQueryOptions
       optional = false,
       groupName = "Target",
       description = "Temporary directory for BigQuery loading process",
-      helpText = "The temporary directory for the BigQuery loading process",
-      example = "gs://your-bucket/your-files/temp_dir")
+      helpText = "The temporary directory for the BigQuery loading process. For example, `gs://<my-bucket>/my-files/temp_dir`.")
   String getBigQueryLoadingTemporaryDirectory();
 
   void setBigQueryLoadingTemporaryDirectory(String directory);
@@ -141,9 +133,8 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Google Cloud KMS key",
       helpText =
-          "Cloud KMS Encryption Key to decrypt the username, password, and connection string. If Cloud KMS key is "
-              + "passed in, the username, password, and connection string must all be passed in encrypted.",
-      example = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
+          "The Cloud KMS encryption key to use to decrypt the username, password, and connection string. If you  "
+              + "pass in a Cloud KMS key, you must also encrypt the username, password, and connection string. For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`")
   String getKMSEncryptionKey();
 
   void setKMSEncryptionKey(String keyName);
@@ -180,7 +171,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "The name of a column of numeric type that will be used for partitioning.",
       helpText =
-          "If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported.")
+          "Required when using partitions: The name of a column to use for partitioning. Only numeric columns are supported.")
   String getPartitionColumn();
 
   void setPartitionColumn(String partitionColumn);
@@ -191,8 +182,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Name of the table in the external database.",
       helpText =
-          "Table to read from using partitions. This parameter also accepts a subquery in parentheses.",
-      example = "(select id, name from Person) as subq")
+          "Required when using partitions: The table to extract the data from. This parameter also accepts a subquery in parentheses. For example, `Person or (select id, name from Person) as subq`.")
   String getTable();
 
   void setTable(String table);
@@ -203,7 +193,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "The number of partitions.",
       helpText =
-          "The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1.")
+          "The number of partitions to use. If not specified, a conservative number is assumed by the worker.")
   Integer getNumPartitions();
 
   void setNumPartitions(Integer numPartitions);
