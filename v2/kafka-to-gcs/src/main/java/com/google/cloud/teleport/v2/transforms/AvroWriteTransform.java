@@ -63,6 +63,8 @@ public abstract class AvroWriteTransform
 
   public abstract @Nullable String schemaPath();
 
+  public abstract String outputFilenamePrefix();
+
   enum WireFormat {
     CONFLUENT_WIRE_FORMAT,
     AVRO_BINARY_ENCODING,
@@ -114,6 +116,8 @@ public abstract class AvroWriteTransform
         @Nullable String schemaRegistryURL);
 
     public abstract AvroWriteTransformBuilder setSchemaPath(@Nullable String schemaInfo);
+
+    public abstract AvroWriteTransformBuilder setOutputFilenamePrefix(String value);
 
     public abstract AvroWriteTransformBuilder setWindowDuration(String windowDuration);
 
@@ -189,11 +193,9 @@ public abstract class AvroWriteTransform
 
   static void registerSchema(SchemaRegistryClient mockSchemaRegistryClient, String schemaFilePath) {
     try {
-      // TODO: Change the schema registry to 1.
       // Register schemas under the fake subject name.
-      mockSchemaRegistryClient.register(subject, SchemaUtils.getAvroSchema(schemaFilePath), 1, 7);
+      mockSchemaRegistryClient.register(subject, SchemaUtils.getAvroSchema(schemaFilePath), 1, 1);
     } catch (IOException | RestClientException e) {
-      // TODO: Add this to DLQ
       throw new RuntimeException(e);
     }
   }
@@ -201,6 +203,7 @@ public abstract class AvroWriteTransform
   class AvroFileNaming implements FileIO.Write.FileNaming {
 
     private AvroDestination avroDestination;
+    private String outputFilenamePrefix;
     private String DATE_SUBDIR_FORMAT = "yyyy-MM-dd";
     private String DATE_SUBDIR_PREFIX = "date=";
 
@@ -208,6 +211,7 @@ public abstract class AvroWriteTransform
 
     public AvroFileNaming(AvroDestination avroDestination) {
       this.avroDestination = avroDestination;
+      this.outputFilenamePrefix = outputFilenamePrefix();
     }
 
     @Override
@@ -226,8 +230,9 @@ public abstract class AvroWriteTransform
           new DecimalFormat("000000000000".substring(0, Math.max(5, numShardsStr.length())));
       String fileName =
           String.format(
-              "%s/%s-[nanoTime=%s-random=%s]-%s-%s-of-%s-pane-%s%s%s",
+              "%s/%s-%s-[nanoTime=%s-random=%s]-%s-%s-of-%s-pane-%s%s%s",
               subDir,
+              outputFilenamePrefix,
               DigestUtils.md5Hex(avroDestination.jsonSchema),
               System.nanoTime(),
               // Attach a thread based id. Prevents from overwriting a file from other threads.
@@ -238,6 +243,7 @@ public abstract class AvroWriteTransform
               pane.getIndex(),
               pane.isLast() ? "-final" : "",
               FILE_EXTENSION);
+
       return fileName;
     }
 

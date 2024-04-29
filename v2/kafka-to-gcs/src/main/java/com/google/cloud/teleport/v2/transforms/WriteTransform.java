@@ -34,7 +34,7 @@ public abstract class WriteTransform
   public abstract KafkaToGCSOptions options();
 
   @Override
-  public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> record) {
+  public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord) {
     POutput pOutput = null;
     WriteToGCSUtility.FileFormat outputFileFormat =
         WriteToGCSUtility.FileFormat.valueOf(options().getOutputFileFormat().toUpperCase());
@@ -42,7 +42,7 @@ public abstract class WriteTransform
     switch (outputFileFormat) {
       case TEXT:
         pOutput =
-            record.apply(
+                kafkaRecord.apply(
                 JsonWriteTransform.newBuilder()
                     .setOutputFilenamePrefix(options().getOutputFilenamePrefix())
                     .setNumShards(options().getNumShards())
@@ -53,10 +53,11 @@ public abstract class WriteTransform
         break;
       case AVRO:
         pOutput =
-            record.apply(
+                kafkaRecord.apply(
                 AvroWriteTransform.newBuilder()
-                    .setOutputDirectory(options().getOutputDirectory())
-                    .setNumShards(options().getNumShards())
+                        .setOutputDirectory(options().getOutputDirectory())
+                    .setOutputFilenamePrefix(options().getOutputFilenamePrefix())
+                        .setNumShards(options().getNumShards())
                     .setMessageFormat(options().getMessageFormat())
                     .setSchemaRegistryURL(options().getSchemaRegistryURL())
                     .setSchemaPath(options().getSchemaPath())
@@ -64,8 +65,7 @@ public abstract class WriteTransform
                     .build());
         break;
       case PARQUET:
-        // TODO: Add more info to the error string.
-        throw new UnsupportedOperationException("Unsupported output format");
+        throw new UnsupportedOperationException("Parquet format is not yet supported for Kafka to GCS template.");
     }
     return pOutput;
   }
