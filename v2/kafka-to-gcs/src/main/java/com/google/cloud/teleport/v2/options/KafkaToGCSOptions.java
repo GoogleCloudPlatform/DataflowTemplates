@@ -93,9 +93,9 @@ public interface KafkaToGCSOptions
       order = 5,
       groupName = "MessageFormat",
       optional = true,
-      description = "Schema Registry URL for Confluent wire format messages.",
+      description = "Schema Registry URL for decoding Confluent Wire Format messages.",
       helpText =
-          "Schema Registry URL used to fetch schemas to convert the Kafka messages to Avro Records.")
+          "Provide the full URL of your Schema Registry (e.g., http://your-registry:8081) if your Kafka messages are encoded in Confluent Wire Format. Leave blank for other formats.")
   String getSchemaRegistryURL();
 
   void setSchemaRegistryURL(String schemaRegistryURL);
@@ -104,9 +104,10 @@ public interface KafkaToGCSOptions
       order = 6,
       optional = true,
       groupName = "MessageFormat",
-      description = "Specify an Avro schema path",
+      description = "Path to your Avro schema file (required for Avro formats).",
       example = "gs://<bucket_name>/schema1.avsc",
-      helpText = "Specify an Avro Schema Path.")
+      helpText =
+          "Specify the Google Cloud Storage path (or other accessible path) to the Avro schema (.avsc) file that defines the structure of your Kafka messages.")
   String getSchemaPath();
 
   void setSchemaPath(String schema);
@@ -120,26 +121,16 @@ public interface KafkaToGCSOptions
         @TemplateEnumOption("AVRO_SINGLE_OBJECT_ENCODING")
       },
       optional = true,
-      description = "Messaging format for the incoming Kafka Messages",
+      description = "The format in which your Kafka messages are encoded.",
       helpText =
-          "Messaging format for the incoming Kafka messages. For Confluent wire format messages",
-      example = "CONFLUENT_WIRE_FORMAT")
+          "Choose the encoding used for your Kafka messages:\n"
+              + " - CONFLUENT_WIRE_FORMAT: Confluent's format, requires a Schema Registry URL.\n"
+              + " - AVRO_BINARY_ENCODING: Avro's compact binary format.\n"
+              + " - AVRO_SINGLE_OBJECT_ENCODING: Avro, but each message is a single Avro object.")
   @Default.String("CONFLUENT_WIRE_FORMAT")
   String getMessageFormat();
 
   void setMessageFormat(String messageFormat);
-
-  @TemplateParameter.Text(
-      order = 7,
-      groupName = "Kafka SASL_PLAIN Authentication parameter",
-      description =
-          "Username to be used with SASL_PLAIN mechanism for Kafka, stored in Google Cloud Secret Manager",
-      helpText =
-          "Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
-      example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
-  String getUserNameSecretID();
-
-  void setUserNameSecretID(String userNameSecretID);
 
   @TemplateParameter.Text(
       order = 8,
