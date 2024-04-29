@@ -32,6 +32,8 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <java.version>11</java.version>
+    <!-- workaround compile on ARM Mac -->
+    <os.detected.classifier>osx-x86_64</os.detected.classifier>
     <!-- Plugins -->
     <templates-maven-plugin.version>1.0-SNAPSHOT</templates-maven-plugin.version>
     <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
@@ -47,7 +49,7 @@
 
     <!-- Beam and linked versions -->
     <!-- Also update beam version in requirements.txt throughout the repo -->
-    <beam.version>2.55.1</beam.version>
+    <beam.version>2.56.0</beam.version>
     <jackson.version>2.14.1</jackson.version>
 
     <!-- Common dependency versions -->
@@ -620,6 +622,12 @@
       <url>https://oss.sonatype.org/content/repositories/snapshots</url>
     </snapshotRepository>
   </distributionManagement>
+  <repositories>
+    <repository>
+      <id>apache.candidate</id>
+      <url>https://repository.apache.org/content/repositories/orgapachebeam-1377/</url>
+    </repository>
+  </repositories>
   <modules>
     <module>metadata</module>
     <module>plugins</module>
