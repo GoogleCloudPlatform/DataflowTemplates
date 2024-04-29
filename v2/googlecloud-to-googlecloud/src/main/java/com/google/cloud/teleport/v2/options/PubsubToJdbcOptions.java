@@ -40,7 +40,8 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       optional = false,
       regexes = {"^.+$"},
       description = "JDBC driver class name.",
-      helpText = "The JDBC driver class name. For example, com.mysql.jdbc.Driver.")
+      helpText = "The JDBC driver class name.",
+          example = "com.mysql.jdbc.Driver")
   String getDriverClassName();
 
   void setDriverClassName(String driverClassName);
@@ -53,9 +54,10 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       },
       description = "JDBC connection URL string.",
       helpText =
-          "The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. "
+          "The JDBC connection URL string. "
                   + "You can pass in this value as a string that's encrypted with a Cloud KMS "
-                  + "key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string.")
+                  + "key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string.",
+          example = "jdbc:mysql://some-host:3306/sampledb")
   String getConnectionUrl();
 
   void setConnectionUrl(String connectionUrl);
@@ -88,8 +90,8 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       optional = false,
       regexes = {"^.+$"},
       description = "Cloud Storage paths for JDBC drivers",
-      helpText = "Comma separated Cloud Storage paths for JDBC drivers. "
-              + "For example, `gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar`.")
+      helpText = "Comma separated Cloud Storage paths for JDBC drivers. ",
+                example = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar")
   String getDriverJars();
 
   void setDriverJars(String driverJar);
@@ -101,8 +103,8 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       description = "JDBC connection property string.",
       helpText =
           "Properties string to use for the JDBC connection. "
-                  + "Format of the string must be `[propertyName=property;]*`. "
-                  + "For example, `unicode=true;characterEncoding=UTF-8`.")
+                  + "Format of the string must be `[propertyName=property;]*`. ",
+                   example = "unicode=true;characterEncoding=UTF-8")
   String getConnectionProperties();
 
   void setConnectionProperties(String connectionProperties);
@@ -115,8 +117,8 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       helpText =
           "Statement to run against the database. The statement must specify the column "
                   + "names of the table in any order. Only the values of the specified column "
-                  + "names are read from the JSON and added to the statement. "
-                  + "For example, `INSERT INTO tableName (column1, column2) VALUES (?,?)`")
+                  + "names are read from the JSON and added to the statement. ",
+                   example = "INSERT INTO tableName (column1, column2) VALUES (?,?)")
   String getStatement();
 
   void setStatement(String statement);
@@ -125,8 +127,8 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       order = 9,
       description = "Output deadletter Pub/Sub topic",
       helpText =
-          "The Pub/Sub topic to forward undeliverable messages. "
-                  + "For example, `projects/<project-id>/topics/<topic-name>`.")
+          "The Pub/Sub topic to forward undeliverable messages. ",
+                  example = "projects/<project-id>/topics/<topic-name>")
   @Validation.Required
   String getOutputDeadletterTopic();
 
@@ -139,7 +141,8 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       helpText =
           "Cloud KMS Encryption Key to decrypt the username, password, and connection string. "
                   + "If Cloud KMS key is passed in, the username, password, and "
-                  + "connection string must all be passed in encrypted.")
+                  + "connection string must all be passed in encrypted.",
+          example =  "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
   String getKMSEncryptionKey();
 
   void setKMSEncryptionKey(String keyName);

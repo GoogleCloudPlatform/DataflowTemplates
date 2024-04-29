@@ -147,7 +147,8 @@ public class TextImportPipeline {
         order = 5,
         optional = true,
         description = "Column delimiter of the data files",
-        helpText = "The column delimiter that the source file uses. The default value is ','.")
+        helpText = "The column delimiter that the source file uses. The default value is ','.",
+            example = ",")
     @Default.Character(',')
     ValueProvider<Character> getColumnDelimiter();
 
@@ -158,8 +159,7 @@ public class TextImportPipeline {
         optional = true,
         description = "Field qualifier used by the source file",
         helpText = "The character that must surround any value in the source file that "
-                + "contains the columnDelimiter. The default value is \".",
-    example = ",")
+                + "contains the columnDelimiter. The default value is \".")
     @Default.Character('"')
     ValueProvider<Character> getFieldQualifier();
 
@@ -270,7 +270,8 @@ public class TextImportPipeline {
         order = 16,
         description = "Invalid rows output path",
         optional = true,
-        helpText = "The Cloud Storage path to write rows that cannot be imported.")
+        helpText = "The Cloud Storage path to write rows that cannot be imported.",
+            example = "gs://your-bucket/your-path")
     @Default.String("")
     ValueProvider<String> getInvalidOutputPath();
 
