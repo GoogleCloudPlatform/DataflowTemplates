@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <groupId>com.google.cloud.teleport.v2</groupId>
+    <artifactId>dynamic-templates</artifactId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>kafka-to-kafka</artifactId>
+  <modelVersion>4.0.0</modelVersion>
+
+  <dependencies>
+    <!-- Kafka dependencies -->
+    <dependency>
+      <groupId>com.google.cloud.teleport.v2</groupId>
+      <artifactId>kafka-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-google-cloud-platform</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-kafka</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+</project>
