@@ -43,14 +43,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Template(
-    name = "Kafka_to_GCSFlex",
+    name = "Kafka_to_GCS_2",
     category = TemplateCategory.STREAMING,
     displayName = "Kafka to Cloud Storage",
     description =
         "A streaming pipeline which ingests data from Kafka and writes to a pre-existing Cloud"
             + " Storage bucket with a variety of file types.",
     optionsClass = KafkaToGCSOptions.class,
-    flexContainerName = "kafka-to-gcs-flex",
+    flexContainerName = "kafka-to-gcs-2",
     contactInformation = "https://cloud.google.com/support",
     hidden = true,
     streaming = true)
@@ -93,8 +93,8 @@ public class KafkaToGCSFlex {
     String kafkaSaslPlainPassword = SecretManagerUtils.getSecret(options.getPasswordSecretID());
 
     Map<String, Object> kafkaConfig = new HashMap<>();
-    // TODO: Make this configurable.
-    kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    // Set offset to either earliest or latest.
+    kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getOffset());
     kafkaConfig.putAll(ClientAuthConfig.get(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
 
     // Step 1: Read from Kafka as bytes.
@@ -107,7 +107,11 @@ public class KafkaToGCSFlex {
                 .withValueDeserializerAndCoder(ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
                 .withConsumerConfigUpdates(kafkaConfig));
 
-    kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
+    kafkaRecord.apply(WriteTransform
+            .newBuilder()
+            .setOptions(options)
+            .build()
+    );
     return pipeline.run();
   }
 

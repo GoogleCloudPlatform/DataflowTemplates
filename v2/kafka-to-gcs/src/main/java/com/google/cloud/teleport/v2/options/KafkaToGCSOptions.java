@@ -152,4 +152,20 @@ public interface KafkaToGCSOptions
   String getPasswordSecretID();
 
   void setPasswordSecretID(String passwordSecretID);
+
+  @TemplateParameter.Enum(
+          order = 9,
+          description = "Set Kafka offset",
+          enumOptions = {
+                  @TemplateEnumOption("latest"),
+                  @TemplateEnumOption("earliest"),
+                  @TemplateEnumOption("none")
+          },
+          helpText = "Set the Kafka offset to earliest or latest(default)",
+          optional = true
+  )
+  @Default.String("latest")
+  String getOffset();
+  void setOffset(String offset);
+
 }
