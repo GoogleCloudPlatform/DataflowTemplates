@@ -109,14 +109,13 @@ public class MongoDbToBigQuery {
     // Get MongoDbUri plain text or base64 encrypted with a specific KMS encryption key
     String mongoDbUri = maybeDecrypt(options.getMongoDbUri(), options.getKMSEncryptionKey()).get();
 
-    if(options.getBigQuerySchemaPath() != null) {
+    if (options.getBigQuerySchemaPath() != null) {
       // initialize FileSystem to read from GCS
       FileSystems.setDefaultPipelineOptions(options);
       String jsonSchema = getGcsFileAsString(options.getBigQuerySchemaPath());
       GsonFactory gf = new GsonFactory();
       bigquerySchema = gf.fromString(jsonSchema, TableSchema.class);
-    }
-    else if (options.getJavascriptDocumentTransformFunctionName() != null
+    } else if (options.getJavascriptDocumentTransformFunctionName() != null
         && options.getJavascriptDocumentTransformGcsPath() != null) {
       bigquerySchema =
           MongoDbUtils.getTableFieldSchemaForUDF(
