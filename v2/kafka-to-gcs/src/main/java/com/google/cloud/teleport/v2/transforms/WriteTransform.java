@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.options.KafkaToGCSOptions;
+import com.google.cloud.teleport.v2.options.KafkaToGcsOptions;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -31,7 +31,7 @@ public abstract class WriteTransform
     return new AutoValue_WriteTransform.Builder();
   }
 
-  public abstract KafkaToGCSOptions options();
+  public abstract KafkaToGcsOptions options();
 
   @Override
   public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord) {
@@ -73,9 +73,9 @@ public abstract class WriteTransform
 
   @AutoValue.Builder
   public abstract static class WriteTransformBuilder {
-    public abstract WriteTransformBuilder setOptions(KafkaToGCSOptions options);
+    public abstract WriteTransformBuilder setOptions(KafkaToGcsOptions options);
 
-    abstract KafkaToGCSOptions options();
+    abstract KafkaToGcsOptions options();
 
     abstract WriteTransform autoBuild();
 

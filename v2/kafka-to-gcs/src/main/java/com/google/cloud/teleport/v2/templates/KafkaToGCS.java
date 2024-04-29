@@ -20,7 +20,7 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.options.KafkaToGCSOptions;
+import com.google.cloud.teleport.v2.options.KafkaToGcsOptions;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactory;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
@@ -69,7 +69,7 @@ import org.slf4j.LoggerFactory;
     description =
         "A streaming pipeline which ingests data from Kafka and writes to a pre-existing Cloud"
             + " Storage bucket with a variety of file types.",
-    optionsClass = KafkaToGCSOptions.class,
+    optionsClass = KafkaToGcsOptions.class,
     flexContainerName = "kafka-to-gcs",
     contactInformation = "https://cloud.google.com/support",
     hidden = true,
@@ -87,8 +87,8 @@ public class KafkaToGCS {
   public static void main(String[] args) {
     UncaughtExceptionLogger.register();
 
-    KafkaToGCSOptions options =
-        PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToGCSOptions.class);
+    KafkaToGcsOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToGcsOptions.class);
 
     run(options);
   }
@@ -98,7 +98,7 @@ public class KafkaToGCS {
    *
    * @param options arguments to the pipeline
    */
-  public static PipelineResult run(KafkaToGCSOptions options) {
+  public static PipelineResult run(KafkaToGcsOptions options) {
 
     String outputFileFormat = options.getOutputFileFormat().toUpperCase();
     LOG.info("Requested File Format is " + outputFileFormat);

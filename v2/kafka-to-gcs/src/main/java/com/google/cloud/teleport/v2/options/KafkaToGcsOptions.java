@@ -25,10 +25,10 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
- * The {@link KafkaToGCSOptions} interface provides the custom execution options passed by the
+ * The {@link KafkaToGcsOptions} interface provides the custom execution options passed by the
  * executor at the command-line.
  */
-public interface KafkaToGCSOptions
+public interface KafkaToGcsOptions
     extends PipelineOptions,
         DataflowPipelineOptions,
         WriteToGCSText.WriteToGCSTextOptions,
@@ -131,18 +131,18 @@ public interface KafkaToGCSOptions
   String getMessageFormat();
 
   void setMessageFormat(String messageFormat);
-
   @TemplateParameter.Text(
-      order = 8,
-      groupName = "Kafka SASL_PLAIN Authentication parameter",
-      description =
-          "Username to be used with SASL_PLAIN mechanism for Kafka, stored in Google Cloud Secret Manager",
-      helpText =
-          "Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
-      example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
+          order = 8,
+          groupName = "Kafka SASL_PLAIN Authentication parameter",
+          description =
+                  "Username to be used with SASL_PLAIN mechanism for Kafka, stored in Google Cloud Secret Manager",
+          helpText =
+                  "Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
+          example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
   String getUserNameSecretID();
 
   void setUserNameSecretID(String userNameSecretID);
+
 
   @TemplateParameter.Text(
       order = 9,

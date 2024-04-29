@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
-import com.google.cloud.teleport.v2.options.KafkaToGCSOptions;
+import com.google.cloud.teleport.v2.options.KafkaToGcsOptions;
 import com.google.cloud.teleport.v2.transforms.WriteTransform;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.collect.ImmutableMap;
@@ -43,7 +43,7 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
     description =
         "A streaming pipeline which ingests data from Kafka and writes to a pre-existing Cloud"
             + " Storage bucket with a variety of file types.",
-    optionsClass = KafkaToGCSOptions.class,
+    optionsClass = KafkaToGcsOptions.class,
     flexContainerName = "kafka-to-gcs-2",
     contactInformation = "https://cloud.google.com/support",
     hidden = true,
@@ -72,7 +72,7 @@ public class KafkaToGcs2 {
     }
   }
 
-  public static PipelineResult run(KafkaToGCSOptions options) throws UnsupportedOperationException {
+  public static PipelineResult run(KafkaToGcsOptions options) throws UnsupportedOperationException {
 
     // Create the Pipeline
     Pipeline pipeline = Pipeline.create(options);
@@ -111,7 +111,7 @@ public class KafkaToGcs2 {
     return pipeline.run();
   }
 
-  public static void validateAuthOptions(KafkaToGCSOptions options) {
+  public static void validateAuthOptions(KafkaToGcsOptions options) {
     // Authenticate to Kafka brokers without any auth config. This can be the case when
     // the dataflow pipeline and Kafka broker is on the same network.
     if (options.getUserNameSecretID().isBlank() && options.getPasswordSecretID().isBlank()) {
@@ -137,8 +137,8 @@ public class KafkaToGcs2 {
   }
 
   public static void main(String[] args) {
-    KafkaToGCSOptions options =
-        PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToGCSOptions.class);
+    KafkaToGcsOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToGcsOptions.class);
     validateAuthOptions(options);
     run(options);
   }
