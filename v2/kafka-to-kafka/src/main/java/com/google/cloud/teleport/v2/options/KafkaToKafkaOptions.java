@@ -96,7 +96,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
   void setAuthenticationMethod(String authenticationMethod);
   @TemplateParameter.Text(
       order = 7,
-      optional = false,
+      optional = true,
       description = "Version id of Kafka source username",
       helpText = "Version id from the secret manager to get Kafka SASL_PLAIN username for source Kafka.",
       example = "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
