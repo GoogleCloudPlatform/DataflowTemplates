@@ -116,7 +116,7 @@ public final class PubsubAvroToBigQuery {
         description = "Use at at-least-once semantics in BigQuery Storage Write API",
         helpText =
             " When using the Storage Write API, specifies the write semantics. To use"
-                + " [at-least-once semantics](https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to true. To use exactly-once"
+                + " at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to true. To use exactly-once"
                 + " semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.",
         hiddenUi = true)
     @Default.Boolean(false)
