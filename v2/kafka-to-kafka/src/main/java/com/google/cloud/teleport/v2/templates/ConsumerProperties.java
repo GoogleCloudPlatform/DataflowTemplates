@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  *   properties required for configuring a Kafka consumer. These properties are needed to
  *   establish connections to Kafka brokers. They ensure security through SASL authentication.
  *   The properties should specify the necessary authentication credentials in order to establish
- *   a successful connection to the Kafka source.
+ *   successful connection to the source Kafka.
  * </p>
  */
 
