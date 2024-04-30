@@ -85,7 +85,7 @@ final class CassandraToBigtable {
           "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"
         },
         description = "Cassandra Port",
-        helpText = "The TCP port to reach Apache Cassandra on the nodes (defaults to 9042).")
+        helpText = "The TCP port to use to reach Apache Cassandra on the nodes. The default value is 9042.")
     @Default.Integer(9042)
     ValueProvider<Integer> getCassandraPort();
 
@@ -106,7 +106,7 @@ final class CassandraToBigtable {
         order = 4,
         regexes = {"^[a-zA-Z][a-zA-Z0-9_]*$"},
         description = "Cassandra Table",
-        helpText = "The Apache Cassandra table to be copied")
+        helpText = "The Apache Cassandra table to copy.")
     ValueProvider<String> getCassandraTable();
 
     @SuppressWarnings("unused")
@@ -125,7 +125,7 @@ final class CassandraToBigtable {
         order = 6,
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Target Bigtable Instance",
-        helpText = "The Bigtable instance ID in which to copy the Apache Cassandra table.")
+        helpText = "The ID of the Bigtable instance that the Apache Cassandra table is copied to.")
     ValueProvider<String> getBigtableInstanceId();
 
     @SuppressWarnings("unused")
@@ -135,7 +135,7 @@ final class CassandraToBigtable {
         order = 7,
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Target Bigtable Table",
-        helpText = "The name of the Bigtable table in which to copy the Apache Cassandra table.")
+        helpText = "The name of the Bigtable table that the Apache Cassandra table is copied to.")
     ValueProvider<String> getBigtableTableId();
 
     @SuppressWarnings("unused")
@@ -146,7 +146,7 @@ final class CassandraToBigtable {
         optional = true,
         regexes = {"[-_.a-zA-Z0-9]+"},
         description = "The Default Bigtable Column Family",
-        helpText = "The name of the Bigtable table's column family (defaults to default).")
+        helpText = "The name of the column family of the Bigtable table. The default value is default).")
     @Default.String("default")
     ValueProvider<String> getDefaultColumnFamily();
 
@@ -158,7 +158,7 @@ final class CassandraToBigtable {
         optional = true,
         description = "The Row Key Separator",
         helpText =
-            "The separator used to build row-key (defaults to '#').")
+            "The separator used to build row-key. The default value is '#'.")
     @Default.String("#")
     ValueProvider<String> getRowKeySeparator();
 

@@ -101,7 +101,7 @@ public interface JdbcToBigQueryOptions
       regexes = {"^.+$"},
       groupName = "Source",
       description = "JDBC source SQL query",
-      helpText = "Optional when using partitions: The query to run on the source to extract the data.",
+      helpText = "Optional when using partitions. The query to run on the source to extract the data.",
       example = "select * from sampledb.sample_table")
   String getQuery();
 
@@ -173,7 +173,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "The name of a column of numeric type that will be used for partitioning.",
       helpText =
-          "Required when using partitions: The name of a column to use for partitioning. Only numeric columns are supported.")
+          "Required when using partitions. The name of a column to use for partitioning. Only numeric columns are supported.")
   String getPartitionColumn();
 
   void setPartitionColumn(String partitionColumn);
@@ -184,7 +184,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Name of the table in the external database.",
       helpText =
-          "Required when using partitions: The table to extract the data from. This parameter also accepts a subquery in parentheses.",
+          "Required when using partitions. The table to extract the data from. This parameter also accepts a subquery in parentheses.",
       example = "(select id, name from Person) as subq")
   String getTable();
 

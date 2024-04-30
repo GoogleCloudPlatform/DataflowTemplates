@@ -38,7 +38,7 @@ public final class BigQueryCommonOptions {
         description = "BigQuery output table",
         helpText =
             "The BigQuery output table location to write the output to. For example, `<my-project>:<my-dataset>.<my-table>`."
-                + "Depending on the `createDisposition` specified, the output table may be created automatically using the user provided Avro schema.")
+                + "Depending on the `createDisposition` specified, the output table might be created automatically using the user provided Avro schema.")
     @Required
     String getOutputTableSpec();
 

@@ -156,7 +156,7 @@ public class DatastoreConverters {
     @TemplateParameter.ProjectId(
         order = 1,
         description = "Project ID",
-        helpText = "The Google Cloud project ID of where to write the Datastore entities.")
+        helpText = "The ID of the Google Cloud project to write the Datastore entities to.")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreWriteProjectId();

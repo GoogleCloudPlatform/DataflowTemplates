@@ -146,7 +146,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 1,
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Source Bigtable Instance ID",
-        helpText = "The source Bigtable instance ID")
+        helpText = "The source Bigtable instance ID.")
     @Validation.Required
     String getBigtableReadInstanceId();
 

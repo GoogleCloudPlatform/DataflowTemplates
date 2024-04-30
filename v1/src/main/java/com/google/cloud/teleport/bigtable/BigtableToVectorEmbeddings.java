@@ -92,7 +92,7 @@ public class BigtableToVectorEmbeddings {
         order = 2,
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
-        helpText = "The ID of the Cloud Bigtable instance that contains the table.")
+        helpText = "The ID of the Bigtable instance that contains the table.")
     ValueProvider<String> getBigtableInstanceId();
 
     @SuppressWarnings("unused")
@@ -102,7 +102,7 @@ public class BigtableToVectorEmbeddings {
         order = 3,
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
-        helpText = "The ID of the Cloud Bigtable table to read.")
+        helpText = "The ID of the Bigtable table to read from.")
     ValueProvider<String> getBigtableTableId();
 
     @SuppressWarnings("unused")
@@ -165,7 +165,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "The byte size of the embeddings array. Can be 4 or 8.",
         helpText =
-            "The byte size of each entry in the embeddings array. For float, use the value 4. For double, use the value 8. Defaults to: 4.")
+            "The byte size of each entry in the embeddings array. For float, use the value 4. For double, use the value 8. Defaults to 4.")
     @Default.Integer(4)
     ValueProvider<Integer> getEmbeddingByteSize();
 

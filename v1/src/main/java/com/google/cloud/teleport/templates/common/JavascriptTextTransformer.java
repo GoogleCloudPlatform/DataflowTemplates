@@ -89,7 +89,7 @@ public abstract class JavascriptTextTransformer {
         regexes = {"[a-zA-Z0-9_]+"},
         description = "JavaScript UDF name",
         helpText =
-            "The name of the JavaScript user-defined function (UDF) that you want to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see [UDF Examples](https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)",
+            "The name of the JavaScript user-defined function (UDF) that you want to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see [UDF Examples](https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).",
         example = "transform_udf1")
     ValueProvider<String> getJavascriptTextTransformFunctionName();
 

@@ -134,7 +134,7 @@ public class DataStreamToSQL {
         optional = true,
         description = "Name or template for the stream to poll for schema information.",
         helpText =
-            "The name or template for the stream to poll for schema information. Default, `{_metadata_stream}`.")
+            "The name or template for the stream to poll for schema information. The default value is `{_metadata_stream}`.")
     String getStreamName();
 
     void setStreamName(String value);
@@ -188,7 +188,7 @@ public class DataStreamToSQL {
         order = 9,
         optional = true,
         description = "Database Port to connect on.",
-        helpText = "The SQL database port to connect to. Default, `5432`.")
+        helpText = "The SQL database port to connect to. The default value is `5432`.")
     @Default.String("5432")
     String getDatabasePort();
 
@@ -214,7 +214,7 @@ public class DataStreamToSQL {
         order = 12,
         optional = true,
         description = "SQL Database Name.",
-        helpText = "The name of the SQL database to connect to. Default, `postgres`.")
+        helpText = "The name of the SQL database to connect to. The default value is `postgres`.")
     @Default.String("postgres")
     String getDatabaseName();
 

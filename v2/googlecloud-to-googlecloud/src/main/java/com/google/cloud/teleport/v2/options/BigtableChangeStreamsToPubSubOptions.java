@@ -49,8 +49,8 @@ public interface BigtableChangeStreamsToPubSubOptions
       optional = true,
       description = "The encoding of the message written into PubSub",
       helpText =
-          "When destination topic has schema configured, the message encoding is determined by the topic settings. The encoding of the messages "
-              + "to be published to the Pub/Sub topic. Supported values: `BINARY`, `JSON` and `JSON`. Defaults to `JSON`.")
+          "The encoding of the messages to be published to the Pub/Sub topic. When schema of the "
+              + "destination topic is configured, the message encoding is determined by the topic settings. The following values are supported: `BINARY`, `JSON` and `JSON`. Defaults to `JSON`.")
   @Default.Enum("JSON")
   MessageEncoding getMessageEncoding();
 
@@ -66,9 +66,9 @@ public interface BigtableChangeStreamsToPubSubOptions
       optional = true,
       description = "The format of the message written into PubSub",
       helpText =
-          "When destination topic has schema configured, the message format is determined by the configured schema and encoding. The format of the "
-              + "messages to be published to the Pub/Sub topic. Supported values: `AVRO`, `PROTOCOL_BUFFERS` and `JSON`. Defaults to `JSON`. When `JSON` format is used, "
-              + "rowKey, column and value fields of the message are strings, the contents of which is determined by `useBase64Rowkeys`, `useBase64ColumnQualifiers`, `useBase64Values` and `bigtableChangeStreamCharset` pipeline options.")
+          "The encoding of the messages to be published to the Pub/Sub topic. When schema of the destination topic is configured, the message encoding is determined by the topic settings. "
+              + "The following values are supported: `AVRO`, `PROTOCOL_BUFFERS` and `JSON`. The defaults value is `JSON`. When the `JSON` format is used, "
+              + "the rowKey, column, and value fields of the message are strings, the contents of which are determined by the pipeline options `useBase64Rowkeys`, `useBase64ColumnQualifiers`, `useBase64Values`, and `bigtableChangeStreamCharset`.")
   @Default.Enum("JSON")
   MessageFormat getMessageFormat();
 
@@ -79,7 +79,7 @@ public interface BigtableChangeStreamsToPubSubOptions
       optional = true,
       description = "Strip values for SetCell mutation",
       helpText =
-          "When set to true, the SET_CELL mutations are returned without new values set. Defaults to false. This parameter is useful when the you don't need a new value to be present, also known as cache invalidation, or when values are extremely large and exceed Pub/Sub message size limits.")
+          "When set to true, the SET_CELL mutations are returned without new values set. Defaults to false. This parameter is useful when you don't need a new value to be present, also known as cache invalidation, or when values are extremely large and exceed Pub/Sub message size limits.")
   @Default.Boolean(false)
   Boolean getStripValues();
 
@@ -90,8 +90,8 @@ public interface BigtableChangeStreamsToPubSubOptions
       optional = true,
       description = "Dead letter queue directory to store any unpublished change record.",
       helpText =
-          "The directory for the dead-letter queue. Records that fail to be processed are stored in this directory. The default "
-              + "is a directory under the temp location of the Dataflow job. In most cases, you can use the default path.")
+          "The directory for the dead-letter queue. Records that fail to be processed are stored in this directory. Defaults to "
+              + "a directory under the Dataflow job temp location. In most cases, you can use the default path.")
   @Default.String("")
   String getDlqDirectory();
 
