@@ -84,7 +84,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       description = "Custom Month Pattern to use for the output directory",
       helpText =
           "Pattern for formatting the month. Must be one or more of the `M` character. "
-              + "pattern can be optionally wrapped by characters that aren't alphanumeric or the "
+              + "Optionally, wrap the pattern with characters that aren't alphanumeric or the "
               + "directory ('/') character. Defaults to `MM`")
   ValueProvider<String> getMonthPattern();
 
@@ -110,7 +110,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       regexes = {"^[^A-Za-z0-9/]?(H+)[^A-Za-z0-9/]?$"},
       description = "Custom Hour Pattern to use for the output directory",
       helpText =
-          "Pattern for formatting the hour. Must be one or more of the `H` character. The pattern"
+          "Pattern for formatting the hour. Must be one or more of the `H` character. Optionally,"
               + " wrap the pattern with characters that aren't alphanumeric or the directory"
               + " ('/') character. Defaults to `HH`")
   ValueProvider<String> getHourPattern();
