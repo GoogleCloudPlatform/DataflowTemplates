@@ -1,1 +1,1 @@
-apache-beam[gcp,aws, azure, dataframe]==2.56.0rc2
+apache-beam[gcp,aws, azure, dataframe]==2.56.0
