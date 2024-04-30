@@ -146,7 +146,7 @@ public class BigQueryToParquet {
     @TemplateParameter.BigQueryTable(
         order = 1,
         description = "BigQuery table to export",
-        helpText = "The BigQuery input table location",
+        helpText = "The BigQuery input table location.",
         example = "your-project:your-dataset.your-table-name")
     @Required
     String getTableRef();
@@ -168,7 +168,7 @@ public class BigQueryToParquet {
         optional = true,
         description = "Maximum output shards",
         helpText =
-            "(Optional) The number of output file shards. The default value is 1")
+            "(Optional) The number of output file shards. The default value is 1.")
     @Default.Integer(0)
     Integer getNumShards();
 
