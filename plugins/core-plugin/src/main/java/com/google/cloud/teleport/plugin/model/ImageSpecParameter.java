@@ -204,6 +204,23 @@ public class ImageSpecParameter {
         this.setHiddenUi(gcsReadFolderParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.GCS_READ_FOLDER);
         break;
+      case "GcsReadBucket":
+        TemplateParameter.GcsReadBucket gcsReadBucketParam =
+            (TemplateParameter.GcsReadBucket) parameterAnnotation;
+        if (!gcsReadBucketParam.name().isEmpty()) {
+          this.setName(gcsReadBucketParam.name());
+        }
+        processDescriptions(
+            gcsReadBucketParam.groupName(),
+            gcsReadBucketParam.description(),
+            gcsReadBucketParam.helpText(),
+            gcsReadBucketParam.example());
+        this.setParentName(gcsReadBucketParam.parentName());
+        this.setParentTriggerValues(gcsReadBucketParam.parentTriggerValues());
+        this.setOptional(gcsReadBucketParam.optional());
+        this.setHiddenUi(gcsReadBucketParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.GCS_READ_BUCKET);
+        break;
       case "GcsWriteFile":
         TemplateParameter.GcsWriteFile gcsWriteFileParam =
             (TemplateParameter.GcsWriteFile) parameterAnnotation;
