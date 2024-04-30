@@ -209,7 +209,7 @@ public class TextImportPipeline {
         helpText =
             "The format used to parse date columns. By default, the pipeline tries to parse the date columns "
                 + "as `yyyy-M-d[' 00:00:00']`, for example, as 2019-01-31 or 2019-1-1 00:00:00. If your date format "
-                + "is different, specify the format using the [java.time.format.DateTimeFormatter]"
+                + "is different, specify the format using the java.time.format.DateTimeFormatter "
                 + "(https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html) patterns.")
     ValueProvider<String> getDateFormat();
 
@@ -222,7 +222,7 @@ public class TextImportPipeline {
         helpText =
             "The format used to parse timestamp columns. If the timestamp is a long integer, then it is parsed "
                 + "as Unix epoch time. Otherwise, it is parsed as a string using the "
-                + "[java.time.format.DateTimeFormatter.ISO_INSTANT]"
+                + "java.time.format.DateTimeFormatter.ISO_INSTANT "
                 + "(https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html#ISO_INSTANT) format. "
                 + "For other cases, specify your own pattern string, for example, using `MMM dd yyyy HH:mm:ss.SSSVV` "
                 + "for timestamps in the form of `\"Jan 21 1998 01:02:03.456+08:00\"`.")

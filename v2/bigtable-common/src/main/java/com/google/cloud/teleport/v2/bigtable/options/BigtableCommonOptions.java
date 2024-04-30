@@ -238,7 +238,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         optional = true,
         description = "The timestamp to read change streams from",
         helpText =
-            "The starting [timestamp](https://tools.ietf.org/html/rfc3339), inclusive, to use "
+            "The starting timestamp (https://tools.ietf.org/html/rfc3339), inclusive, to use "
                 + "for reading change streams. For example, `2022-05-05T07:59:59Z`. "
                 + "Defaults to the timestamp of the pipeline start time.")
     @Default.String("")

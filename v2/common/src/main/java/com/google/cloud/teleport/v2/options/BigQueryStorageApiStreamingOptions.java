@@ -27,9 +27,9 @@ public interface BigQueryStorageApiStreamingOptions extends BigQueryOptions {
       description = "Use BigQuery Storage Write API",
       helpText =
           "If true, the pipeline uses the "
-              + "[BigQuery Storage Write API](https://cloud.google.com/bigquery/docs/write-api). "
+              + "BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). "
               + "The default value is `false`. For more information, "
-              + "see [Using the Storage Write API](https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).")
+              + "see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).")
   @Default.Boolean(false)
   @Override
   Boolean getUseStorageWriteApi();

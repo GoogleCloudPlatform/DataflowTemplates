@@ -93,7 +93,7 @@ public abstract class JavascriptTextTransformer {
             "The name of the JavaScript user-defined function (UDF) that you want to use. For example, if your "
                 + "JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name "
                 + "is `myTransform`. For sample JavaScript UDFs, see "
-                + "[UDF Examples](https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).")
+                + "UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).")
     ValueProvider<String> getJavascriptTextTransformFunctionName();
 
     void setJavascriptTextTransformFunctionName(

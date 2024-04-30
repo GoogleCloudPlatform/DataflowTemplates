@@ -124,7 +124,7 @@ public class DatastoreConverters {
         regexes = {"^.+$"},
         description = "GQL Query",
         helpText =
-            "A [GQL](https://cloud.google.com/datastore/docs/reference/gql_reference) query that specifies "
+            "A GQL (https://cloud.google.com/datastore/docs/reference/gql_reference) query that specifies "
                 + "which entities to grab. For example, `SELECT * FROM MyKind`.")
     ValueProvider<String> getFirestoreReadGqlQuery();
 
