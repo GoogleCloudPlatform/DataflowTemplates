@@ -36,7 +36,7 @@ import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 public class GenericRecordCoder extends AtomicCoder<GenericRecord> {
   private static final Integer MAX_CACHE_SIZE = 1000;
 
-  /** Constructs a new {@link GenericRecordCoder} */
+  /** Constructs a new {@link GenericRecordCoder}. */
   public static GenericRecordCoder of() {
     return new GenericRecordCoder();
   }
