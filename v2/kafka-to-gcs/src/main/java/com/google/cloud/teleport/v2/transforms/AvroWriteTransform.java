@@ -43,11 +43,10 @@ import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
 /**
- * {@link PTransform} for converting the {@link KafkaRecord} into {@link GenericRecord}
- * using Schema Registry or using static schema provided during build time.
- * After converting the bytes to {@link GenericRecord}, {@link FileIO#writeDynamic()}
- * is used to write the records to {@link #outputDirectory()} using the {@link AvroFileNaming}
- * class.
+ * {@link PTransform} for converting the {@link KafkaRecord} into {@link GenericRecord} using Schema
+ * Registry or using static schema provided during build time. After converting the bytes to {@link
+ * GenericRecord}, {@link FileIO#writeDynamic()} is used to write the records to {@link
+ * #outputDirectory()} using the {@link AvroFileNaming} class.
  */
 @AutoValue
 public abstract class AvroWriteTransform
@@ -70,38 +69,43 @@ public abstract class AvroWriteTransform
 
   public abstract String outputFilenamePrefix();
 
-  /**
-   * Expected Message format from the Kafka topics
-   */
+  /** Expected Message format from the Kafka topics */
   enum MessageFormat {
     /**
      * Represents messages serialized in the Confluent wire format.
-     * <p>
-     * This format follows the Confluent wire format specification as documented in the Confluent Schema Registry.
-     * Messages serialized in this format are typically associated with a schema ID registered in a Schema Registry.
-     * In situations where access to the Schema Registry is unavailable, messages can still be deserialized using
-     * a schema provided by the user as a template parameter.
-     * The deserialization process utilizes binary encoding, as specified in the Avro Binary Encoding specification.
      *
-     * @see <a href="https://docs.confluent.io/platform/current/schema-registry/fundamentals/serdes-develop/index.html#wire-format">Confluent Wire Format Documentation</a>
-     * @see <a href="https://avro.apache.org/docs/current/specification/#binary-encoding">Avro Binary Encoding Specification</a>
-     * </p>
+     * <p>This format follows the Confluent wire format specification as documented in the Confluent
+     * Schema Registry. Messages serialized in this format are typically associated with a schema ID
+     * registered in a Schema Registry. In situations where access to the Schema Registry is
+     * unavailable, messages can still be deserialized using a schema provided by the user as a
+     * template parameter. The deserialization process utilizes binary encoding, as specified in the
+     * Avro Binary Encoding specification.
+     *
+     * @see <a
+     *     href="https://docs.confluent.io/platform/current/schema-registry/fundamentals/serdes-develop/index.html#wire-format">Confluent
+     *     Wire Format Documentation</a>
+     * @see <a href="https://avro.apache.org/docs/current/specification/#binary-encoding">Avro
+     *     Binary Encoding Specification</a>
      */
     CONFLUENT_WIRE_FORMAT,
     /**
      * Represents messages serialized in the Avro binary format.
-     * <p>
-     *     This format follow the Avro Binary Encoding Specification. The schema used to serialize the Avro messages by
-     *     the reader must be used to deserialize the bytes by the writer. Otherwise, there could be unexpected errors.
-     * </p>
-     * @see <a href="https://avro.apache.org/docs/current/specification/#binary-encoding">Avro Binary Encoding Specification</a>
+     *
+     * <p>This format follow the Avro Binary Encoding Specification. The schema used to serialize
+     * the Avro messages by the reader must be used to deserialize the bytes by the writer.
+     * Otherwise, there could be unexpected errors.
+     *
+     * @see <a href="https://avro.apache.org/docs/current/specification/#binary-encoding">Avro
+     *     Binary Encoding Specification</a>
      */
     // TODO: Pending implementation.
     AVRO_BINARY_ENCODING,
     /**
      * Represents message serialized in the Avro Single Object.
      *
-     * @see <a href="https://avro.apache.org/docs/current/specification/#single-object-encoding">Avro Single Object Encoding Specification</a>
+     * @see <a
+     *     href="https://avro.apache.org/docs/current/specification/#single-object-encoding">Avro
+     *     Single Object Encoding Specification</a>
      */
     // TODO: Pending implementation.
     AVRO_SINGLE_OBJECT_ENCODING
