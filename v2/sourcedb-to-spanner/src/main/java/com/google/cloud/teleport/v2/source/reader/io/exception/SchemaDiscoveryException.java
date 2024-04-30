@@ -13,18 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.source.reader.io.exception.exception;
+package com.google.cloud.teleport.v2.source.reader.io.exception;
 
-/**
- * Schema Discovery Exception that can be retried, for example retriable connection errors.
- *
- * <p><b>Note:</b>
- *
- * <p>{@link RetriableSchemaDiscoveryException} does not extend SchemaDiscoveryException as it
- * should not be thrown outside the SchemaDiscovery Interface.
- */
-public class RetriableSchemaDiscoveryException extends Exception {
-  public RetriableSchemaDiscoveryException(Throwable cause) {
+/** Exceptions During Schema Discovery. */
+public class SchemaDiscoveryException extends RuntimeException {
+  public SchemaDiscoveryException(Throwable cause) {
     super(cause);
   }
 }

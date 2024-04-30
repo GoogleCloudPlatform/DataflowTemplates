@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Exception Definitions for reader.io classes. */
-package com.google.cloud.teleport.v2.source.reader.io.exception.exception;
+/** Mysql dialect adapter. */
+package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql;

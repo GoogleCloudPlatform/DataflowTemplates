@@ -13,11 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.dialectadapter.dialectadapter.mysql;
+package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql;
 
-import com.google.cloud.teleport.v2.source.reader.io.exception.exception.RetriableSchemaDiscoveryException;
-import com.google.cloud.teleport.v2.source.reader.io.exception.exception.SchemaDiscoveryException;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.dialectadapter.dialectadapter.DialectAdapter;
+import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
+import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;

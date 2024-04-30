@@ -13,11 +13,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.source.reader.io.exception.exception;
+package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter;
 
-/** Exceptions During Schema Discovery. */
-public class SchemaDiscoveryException extends RuntimeException {
-  public SchemaDiscoveryException(Throwable cause) {
-    super(cause);
-  }
-}
+import com.google.cloud.teleport.v2.source.reader.io.schema.RetriableSchemaDiscovery;
+
+/**
+ * Interface to support various dialects of JDBC databases.
+ *
+ * <p><b>Note:</b>As a prt of M2 effort, this interface will expose more mehtods than just extending
+ * {@link RetriableSchemaDiscovery}.
+ */
+public interface DialectAdapter extends RetriableSchemaDiscovery {}

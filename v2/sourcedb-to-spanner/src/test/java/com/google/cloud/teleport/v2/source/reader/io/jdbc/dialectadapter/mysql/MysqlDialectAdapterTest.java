@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.dialectadapter.dialectadapter.mysql;
+package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
@@ -25,10 +25,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.source.reader.io.exception.exception.RetriableSchemaDiscoveryException;
-import com.google.cloud.teleport.v2.source.reader.io.exception.exception.SchemaDiscoveryException;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.dialectadapter.dialectadapter.mysql.MysqlDialectAdapter.InformationSchemaCols;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.dialectadapter.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
+import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
+import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.InformationSchemaCols;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
