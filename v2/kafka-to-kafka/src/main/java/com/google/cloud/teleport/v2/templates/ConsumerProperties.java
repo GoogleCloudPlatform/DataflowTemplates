@@ -17,6 +17,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.collect.ImmutableMap;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
@@ -24,8 +25,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link ConsumerProperties} class returns client properties
- * for source Kafka.
+ * The {@link ConsumerProperties} is a utility class for constructing properties
+ * for Kafka consumers. In this case, it is the Kafka source where we read
+ * the data from.
+ * <p>
+ *   The {@code ConsumerProperties} class provides a static method to generate consumer
+ *   properties required for configuring a Kafka consumer. These properties are needed to
+ *   establish connections to Kafka brokers. They ensure security through SASL authentication.
+ *   The properties should specify the necessary authentication credentials in order to establish
+ *   a successful connection to the source Kafka.
+ * </p>
  */
 final class ConsumerProperties {
 
@@ -33,7 +42,6 @@ final class ConsumerProperties {
 
   public static ImmutableMap<String, Object> get(KafkaToKafkaOptions options) {
 
-    String[] saslCredentials = Credentials.accessSecretVersion(options).toArray(new String[0]);
     ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
     properties.put(
         CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
@@ -45,10 +53,10 @@ final class ConsumerProperties {
         SaslConfigs.SASL_JAAS_CONFIG,
         "org.apache.kafka.common.security.plain.PlainLoginModule required"
             + " username=\'"
-            + saslCredentials[0]
+            + SecretManagerUtils.getSecret(options.getSourceUsernameVersionId())
             + "\'"
             + " password=\'"
-            + saslCredentials[1]
+            + SecretManagerUtils.getSecret(options.getSourcePasswordVersionId())
             + "\';");
 
     return properties.buildOrThrow();
