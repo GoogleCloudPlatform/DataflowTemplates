@@ -55,7 +55,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection URL string.",
       helpText =
-          "The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. You can pass in this "
+          "The JDBC connection URL string. You can pass in this "
               + "value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. "
               + "Remove whitespace characters from the Base64-encoded string.",
       example = "jdbc:mysql://some-host:3306/sampledb")
@@ -71,7 +71,7 @@ public interface JdbcToBigQueryOptions
       description = "JDBC connection property string.",
       helpText =
           "Optional: The properties string to use for the JDBC connection. The format of the string must "
-              + "be `[propertyName=property;]*`. For example, `unicode=true;characterEncoding=UTF-8`. "
+              + "be `[propertyName=property;]*`."
               + "For more information, see "
               + "[Configuration Properties](https://dev.mysql.com/doc/connector-j/8.1/en/connector-j-reference-configuration-properties.html) "
               + "in the MySQL documentation.",

@@ -121,7 +121,7 @@ public class ExportJobPlaceholder {
         order = 9,
         description = "Destination path",
         helpText =
-            "The Cloud Storage path where data is written. For example, `gs://mybucket/somefolder`.",
+            "The Cloud Storage path where data is written.",
         example = "gs://your-bucket/your-path/")
     ValueProvider<String> getDestinationPath();
 
