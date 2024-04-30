@@ -101,7 +101,7 @@ public interface JdbcToBigQueryOptions
       regexes = {"^.+$"},
       groupName = "Source",
       description = "JDBC source SQL query",
-      helpText = "Optional when using partitions. The query to run on the source to extract the data.",
+      helpText = "Optional when using partitions. The query to be run on the source to extract the data. Either query OR both table AND PartitionColumn must be specified.",
       example = "select * from sampledb.sample_table")
   String getQuery();
 
