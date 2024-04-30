@@ -20,7 +20,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertThat;
 
-import com.google.cloud.teleport.v2.options.KafkaToGcsOptions;
+import com.google.cloud.teleport.v2.options.KafkaToGCSOptions;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactory;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
@@ -96,7 +96,7 @@ public class KafkaToGCSTest {
     final Integer numShards = 1;
     final String tempOutputDirectory = "gs://bucket_name/path/to/temp-location";
 
-    KafkaToGcsOptions options = PipelineOptionsFactory.create().as(KafkaToGcsOptions.class);
+    KafkaToGCSOptions options = PipelineOptionsFactory.create().as(KafkaToGCSOptions.class);
 
     options.setOutputFileFormat(outputFileFormat);
     options.setOutputDirectory(outputDirectory);

@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.options.KafkaToGcsOptions;
+import com.google.cloud.teleport.v2.options.KafkaToGCSOptions;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
 import com.google.common.base.Joiner;
 import java.util.Arrays;
@@ -47,7 +47,7 @@ public abstract class FileFormatFactory
     return new AutoValue_FileFormatFactory.Builder();
   }
 
-  public abstract KafkaToGcsOptions options();
+  public abstract KafkaToGCSOptions options();
 
   public abstract String outputFileFormat();
 
@@ -122,11 +122,11 @@ public abstract class FileFormatFactory
   @AutoValue.Builder
   public abstract static class WriteToGCSBuilder {
 
-    public abstract WriteToGCSBuilder setOptions(KafkaToGcsOptions options);
+    public abstract WriteToGCSBuilder setOptions(KafkaToGCSOptions options);
 
     public abstract WriteToGCSBuilder setOutputFileFormat(String outputFileFormat);
 
-    abstract KafkaToGcsOptions options();
+    abstract KafkaToGCSOptions options();
 
     abstract FileFormatFactory autoBuild();
 

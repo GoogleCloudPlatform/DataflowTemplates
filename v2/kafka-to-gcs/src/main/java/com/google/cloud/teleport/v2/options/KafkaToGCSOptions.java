@@ -25,10 +25,10 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
- * The {@link KafkaToGcsOptions} interface provides the custom execution options passed by the
+ * The {@link KafkaToGCSOptions} interface provides the custom execution options passed by the
  * executor at the command-line.
  */
-public interface KafkaToGcsOptions
+public interface KafkaToGCSOptions
     extends PipelineOptions,
         DataflowPipelineOptions,
         WriteToGCSText.WriteToGCSTextOptions,
