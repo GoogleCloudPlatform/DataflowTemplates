@@ -37,12 +37,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **connectionProperties** : Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8).
 * **username** : The username to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key.
 * **password** : The password to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key.
-* **query** : The query to be run on the source to extract the data. (Example: select * from sampledb.sample_table).
+* **query** : The query to be run on the source to extract the data. Either query OR both table AND PartitionColumn must be specified. (Example: select * from sampledb.sample_table).
 * **KMSEncryptionKey** : Cloud KMS Encryption Key to decrypt the username, password, and connection string. If Cloud KMS key is passed in, the username, password, and connection string must all be passed in encrypted. (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key).
 * **useColumnAlias** : If enabled (set to true) the pipeline will consider column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to false.
 * **isTruncate** : If enabled (set to true) the pipeline will truncate before loading data into BigQuery. Defaults to false, which is used to only append data.
-* **partitionColumn** : If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported.
-* **table** : Table to read from using partitions. This parameter also accepts a subquery in parentheses. (Example: (select id, name from Person) as subq).
+* **partitionColumn** : If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported. Either query OR both table AND PartitionColumn must be specified.
+* **table** : Table to read from using partitions. Either query OR both table AND PartitionColumn must be specified. This parameter also accepts a subquery in parentheses. (Example: (select id, name from Person) as subq).
 * **numPartitions** : The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1.
 * **lowerBound** : Lower bound used in the partition scheme. If not provided, it is automatically inferred by Beam (for the supported types).
 * **upperBound** : Upper bound used in partition scheme. If not provided, it is automatically inferred by Beam (for the supported types).

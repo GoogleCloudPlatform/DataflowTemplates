@@ -174,7 +174,7 @@ import org.slf4j.LoggerFactory;
         "javascriptTextTransformReloadIntervalMinutes"
       },
       optionsClass = TextToBigQueryStreamingOptions.class,
-      flexContainerName = "text-to-bigquery-streaming",
+      flexContainerName = "text-to-bigquery-streaming-xlang",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-bigquery-stream",
       contactInformation = "https://cloud.google.com/support",
@@ -351,8 +351,6 @@ public class TextToBigQueryStreaming {
                       .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
                       .setFunctionName(options.getPythonExternalTextTransformFunctionName())
                       .build())
-              .setRowSchema(
-                  PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA)
               .apply(
                   ParDo.of(new RowToStringFailsafeElementFn(UDF_OUT, UDF_DEADLETTER_OUT))
                       .withOutputTags(UDF_OUT, TupleTagList.of(UDF_DEADLETTER_OUT)));

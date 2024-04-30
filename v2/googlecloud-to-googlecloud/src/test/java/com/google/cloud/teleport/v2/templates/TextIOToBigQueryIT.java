@@ -25,6 +25,7 @@ import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
@@ -78,6 +79,13 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
           b.addParameter("javascriptTextTransformFunctionName", "identity");
           return b;
         });
+  }
+
+  @Test
+  @TemplateIntegrationTest(value = TextIOToBigQuery.class, template = "GCS_Text_to_BigQuery_Flex")
+  @Category(DirectRunnerTest.class)
+  public void testTextIOToBigQueryWithNoUdf() throws IOException {
+    testTextIOToBigQuery(Function.identity());
   }
 
   @Test

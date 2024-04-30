@@ -88,13 +88,13 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Test -->
+        <!-- hamcrest is a transitive dependency for beam-io-gcp and also needed in test -->
         <dependency>
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest</artifactId>
             <version>${hamcrest.version}</version>
-            <scope>test</scope>
         </dependency>
+        <!-- Test -->
         <dependency>
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest-core</artifactId>
@@ -708,7 +708,6 @@
         <module>mqtt-to-pubsub</module>
         <module>mysql-to-googlecloud</module>
         <module>oracle-to-googlecloud</module>
-        <module>ordered-changestream-buffer-to-sourcedb</module>
         <module>postgresql-to-googlecloud</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
@@ -718,7 +717,6 @@
         <module>pubsub-to-redis</module>
         <module>sourcedb-to-spanner</module>
         <module>spanner-change-streams-to-sharded-file-sink</module>
-        <module>spanner-change-streams-to-sink</module>
         <module>spanner-common</module>
         <module>spanner-custom-shard</module>
         <module>spanner-migrations-sdk</module>

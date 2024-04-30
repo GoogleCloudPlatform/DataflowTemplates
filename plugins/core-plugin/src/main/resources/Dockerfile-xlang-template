@@ -26,7 +26,10 @@ WORKDIR $WORKDIR
 ENV DATAFLOW_JAVA_COMMAND_SPEC=${commandSpec}
 ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=requirements.txt
 
-ENV SITE_PACKAGES=/root/.apache_beam/cache/venvs/py-3.11-beam-2.54.0-da39a3ee5e6b4b0d3255bfef95601890afd80709
+# SHA hash here equates to null and is independent of beam version. This hash is generated based on the values of the
+# .withExtraPackages() call made in the PythonExternalTextTransform class. We do not utilize this function meaning that
+# this hash will remain constant.
+ENV SITE_PACKAGES=/root/.apache_beam/cache/venvs/py-3.11-beam-${beamVersion}-da39a3ee5e6b4b0d3255bfef95601890afd80709
 RUN python -m venv $SITE_PACKAGES
 
 # pip install dependencies and cache wheels

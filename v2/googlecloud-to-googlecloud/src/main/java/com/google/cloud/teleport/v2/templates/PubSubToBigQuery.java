@@ -125,8 +125,9 @@ import org.slf4j.LoggerFactory;
       skipOptions = {
         "javascriptTextTransformGcsPath",
         "javascriptTextTransformFunctionName",
+        "javascriptTextTransformReloadIntervalMinutes"
       },
-      flexContainerName = "pubsub-to-bigquery",
+      flexContainerName = "pubsub-to-bigquery-xlang",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-bigquery",
       contactInformation = "https://cloud.google.com/support",
@@ -434,9 +435,7 @@ public class PubSubToBigQuery {
                     PythonExternalTextTransformer.FailsafePythonExternalUdf.newBuilder()
                         .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
                         .setFunctionName(options.getPythonExternalTextTransformFunctionName())
-                        .build())
-                .setRowSchema(
-                    PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA);
+                        .build());
         udfOut =
             udfRowsOut.apply(
                 "MapRowsToFailsafeElements",

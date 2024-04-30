@@ -50,7 +50,7 @@ public final class PythonDockerfileGenerator {
     Map<String, Object> parameters = new HashMap<>();
     parameters.put("baseContainerImage", basePythonContainerImage);
 
-    Template template = freemarkerConfig.getTemplate("Dockerfile-template");
+    Template template = freemarkerConfig.getTemplate("Dockerfile-template-python");
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     OutputStreamWriter writer = new OutputStreamWriter(baos);
@@ -73,7 +73,8 @@ public final class PythonDockerfileGenerator {
       String containerName,
       File targetDirectory,
       File artifactFile,
-      String commandSpec)
+      String commandSpec,
+      String beamVersion)
       throws IOException, TemplateException {
     Configuration freemarkerConfig = new Configuration(Configuration.VERSION_2_3_32);
     freemarkerConfig.setDefaultEncoding("UTF-8");
@@ -86,6 +87,7 @@ public final class PythonDockerfileGenerator {
     parameters.put("baseContainerImage", basePythonContainerImage);
     parameters.put("commandSpec", commandSpec);
     parameters.put("containerName", containerName);
+    parameters.put("beamVersion", beamVersion);
 
     Template template = freemarkerConfig.getTemplate("Dockerfile-xlang-template");
 

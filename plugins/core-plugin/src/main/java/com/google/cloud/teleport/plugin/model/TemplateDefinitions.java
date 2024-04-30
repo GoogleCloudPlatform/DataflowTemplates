@@ -15,15 +15,19 @@
  */
 package com.google.cloud.teleport.plugin.model;
 
+import static com.google.cloud.teleport.metadata.util.EnumBasedExperimentValueProvider.STREAMING_MODE_ENUM_BASED_EXPERIMENT_VALUE_PROVIDER;
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.getParameterNameFromMethod;
+import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.Template.TemplateType;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateCreationParameters;
 import com.google.cloud.teleport.metadata.TemplateIgnoreParameter;
 import com.google.cloud.teleport.metadata.auto.AutoTemplate;
 import com.google.cloud.teleport.metadata.auto.AutoTemplate.ExecutionBlock;
+import com.google.cloud.teleport.metadata.util.EnumBasedExperimentValueProvider;
 import com.google.cloud.teleport.metadata.util.MetadataUtils;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
@@ -37,6 +41,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -55,6 +61,13 @@ public class TemplateDefinitions {
 
   /** Options that don't need annotations (i.e., from generic parameters). */
   private static final Set<String> IGNORED_FIELDS = Set.of("as");
+
+  /** Default {@link Template} properties. */
+  private static final Template DEFAULT_TEMPLATE_ANNOTATION =
+      DefaultBatchTemplate.class.getDeclaredAnnotation(Template.class);
+
+  /** Metadata defaultEnvironment key for adding additional default Dataflow Job experiments. */
+  static final String ADDITIONAL_EXPERIMENTS = "additionalExperiments";
 
   /**
    * List of the classes that declare product-specific options. Methods in those classes will not
@@ -96,6 +109,10 @@ public class TemplateDefinitions {
 
   public ImageSpec buildSpecModel(boolean validateFlag) {
 
+    if (validateFlag) {
+      validate(templateAnnotation);
+    }
+
     ImageSpec imageSpec = new ImageSpec();
 
     SdkInfo sdkInfo = new SdkInfo();
@@ -108,6 +125,8 @@ public class TemplateDefinitions {
     }
 
     imageSpec.setSdkInfo(sdkInfo);
+
+    imageSpec = updateStreamingModeRelatedDefaultEnvironment(imageSpec);
 
     ImageSpecMetadata metadata = new ImageSpecMetadata();
     metadata.setInternalName(templateAnnotation.name());
@@ -251,14 +270,10 @@ public class TemplateDefinitions {
           continue;
         }
 
-        if (validateFlag && method.getAnnotation(Deprecated.class) == null) {
-          throw new IllegalArgumentException(
-              "Method "
-                  + method.getDeclaringClass().getName()
-                  + "."
-                  + methodName
-                  + "() does not have a @TemplateParameter annotation (and not deprecated).");
+        if (validateFlag) {
+          validate(method);
         }
+
         continue;
       }
 
@@ -316,6 +331,53 @@ public class TemplateDefinitions {
                 parameter ->
                     parameter.getName().contains("javascriptTextTransformGcsPath")
                         || parameter.getName().contains("javascriptTextTransformFunctionName")));
+
+    return imageSpec;
+  }
+
+  /**
+   * Updates the defaultEnvironment with additionalExperiments for {@link
+   * Template#defaultStreamingMode()} values {@link Template.StreamingMode#EXACTLY_ONCE} or {@link
+   * Template.StreamingMode#AT_LEAST_ONCE}. Uses {@link
+   * EnumBasedExperimentValueProvider#STREAMING_MODE_ENUM_BASED_EXPERIMENT_VALUE_PROVIDER} to
+   * convert {@link Template#defaultStreamingMode()} into the required string representation.
+   */
+  private ImageSpec updateStreamingModeRelatedDefaultEnvironment(ImageSpec imageSpec) {
+    if (!templateAnnotation.streaming()) {
+      return imageSpec;
+    }
+    if (templateAnnotation.defaultStreamingMode().equals(Template.StreamingMode.UNSPECIFIED)) {
+      return imageSpec;
+    }
+
+    if (imageSpec.getDefaultEnvironment() == null) {
+      imageSpec.setDefaultEnvironment(new HashMap<>());
+    }
+
+    Map<String, Object> defaultEnvironment = imageSpec.getDefaultEnvironment();
+
+    if (!defaultEnvironment.containsKey(ADDITIONAL_EXPERIMENTS)) {
+      defaultEnvironment.put(ADDITIONAL_EXPERIMENTS, new ArrayList<String>());
+    }
+
+    // Ok to let a Java cast Exception rather than add a larger amount of code to check for the
+    // String element type.
+    List<String> additionalExperiments =
+        (List<String>) defaultEnvironment.get(ADDITIONAL_EXPERIMENTS);
+
+    // Remove any pre-existing streaming_mode* experiment values.
+    Predicate<String> streamingModePrefix =
+        STREAMING_MODE_ENUM_BASED_EXPERIMENT_VALUE_PROVIDER.getPrefixAsPattern().asMatchPredicate();
+    additionalExperiments.removeIf(streamingModePrefix);
+
+    String streamingModeExperiment =
+        STREAMING_MODE_ENUM_BASED_EXPERIMENT_VALUE_PROVIDER.convert(
+            templateAnnotation.defaultStreamingMode());
+
+    additionalExperiments.add(streamingModeExperiment);
+    defaultEnvironment.put(ADDITIONAL_EXPERIMENTS, additionalExperiments);
+
+    imageSpec.setDefaultEnvironment(defaultEnvironment);
 
     return imageSpec;
   }
@@ -403,4 +465,93 @@ public class TemplateDefinitions {
 
     return null;
   }
+
+  /** Validates a {@link Template} annotation. */
+  private void validate(Template templateAnnotation) {
+    getValidator(templateAnnotation.streaming()).accept(templateAnnotation);
+  }
+
+  /**
+   * Returns the appropriate {@link Consumer} to validate a {@link Template} based on whether it
+   * {@param isStreaming}.
+   */
+  private Consumer<Template> getValidator(boolean isStreaming) {
+    if (isStreaming) {
+      return templateAnnotation -> {
+        if (!templateAnnotation.supportsAtLeastOnce()) {
+          checkArgument(
+              !templateAnnotation
+                  .defaultStreamingMode()
+                  .equals(Template.StreamingMode.AT_LEAST_ONCE),
+              String.format(
+                  "configuration mismatch for supportsAtLeastOnce: '%s': defaultStreamingMode: %s",
+                  templateAnnotation.name(), templateAnnotation.defaultStreamingMode()));
+        }
+        if (!templateAnnotation.supportsExactlyOnce()) {
+          checkArgument(
+              !templateAnnotation
+                  .defaultStreamingMode()
+                  .equals(Template.StreamingMode.EXACTLY_ONCE),
+              String.format(
+                  "configuration mismatch for supportsExactlyOnce: '%s': defaultStreamingMode: %s",
+                  templateAnnotation.name(), templateAnnotation.defaultStreamingMode()));
+        }
+        checkArgument(
+            templateAnnotation.supportsAtLeastOnce() || templateAnnotation.supportsExactlyOnce(),
+            String.format(
+                "template: '%s' streaming == true but neither supportsAtLeastOnce or supportsExactlyOnce",
+                templateAnnotation.name()));
+      };
+    }
+
+    return templateAnnotation -> {
+      checkArgument(
+          templateAnnotation.defaultStreamingMode().equals(Template.StreamingMode.UNSPECIFIED),
+          String.format(
+              "template '%s' streaming == false and therefore should not configure a %s other than %s",
+              templateAnnotation.name(),
+              Template.StreamingMode.class,
+              Template.StreamingMode.UNSPECIFIED));
+
+      checkArgument(
+          templateAnnotation.supportsAtLeastOnce()
+              == DEFAULT_TEMPLATE_ANNOTATION.supportsAtLeastOnce(),
+          String.format(
+              "template '%s' mismatched configuration: supportsAtLeastOnce: %s != default: %s;"
+                  + " only applies to streaming template behavior",
+              templateAnnotation.name(),
+              templateAnnotation.supportsAtLeastOnce(),
+              DEFAULT_TEMPLATE_ANNOTATION.supportsAtLeastOnce()));
+
+      checkArgument(
+          templateAnnotation.supportsExactlyOnce()
+              == DEFAULT_TEMPLATE_ANNOTATION.supportsExactlyOnce(),
+          String.format(
+              "template '%s' mismatched configuration: supportsExactlyOnce: %s != default: %s;"
+                  + " only applies to streaming template behavior",
+              templateAnnotation.name(),
+              templateAnnotation.supportsExactlyOnce(),
+              DEFAULT_TEMPLATE_ANNOTATION.supportsExactlyOnce()));
+    };
+  }
+
+  private void validate(Method method) {
+    if (method.getAnnotation(Deprecated.class) == null) {
+      throw new IllegalArgumentException(
+          "Method "
+              + method.getDeclaringClass().getName()
+              + "."
+              + method.getName()
+              + "() does not have a @TemplateParameter annotation (and not deprecated).");
+    }
+  }
+
+  /** Used to validate against default {@link Template} properties. */
+  @Template(
+      name = "DefaultBatchTemplate",
+      displayName = "",
+      description = {},
+      category = TemplateCategory.BATCH,
+      testOnly = true)
+  private static class DefaultBatchTemplate {}
 }

@@ -36,6 +36,12 @@ public final class TemplateParameter {
     /** Group Name of the parameter. */
     String groupName() default "";
 
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -68,6 +74,12 @@ public final class TemplateParameter {
     /** Group Name of the parameter. */
     String groupName() default "";
 
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -97,6 +109,12 @@ public final class TemplateParameter {
     /** Group Name of the parameter. */
     String groupName() default "";
 
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -125,6 +143,12 @@ public final class TemplateParameter {
 
     /** Group Name of the parameter. */
     String groupName() default "";
+
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;
@@ -166,6 +190,12 @@ public final class TemplateParameter {
     /** Group Name of the parameter. */
     String groupName() default "";
 
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -194,6 +224,12 @@ public final class TemplateParameter {
 
     /** Group Name of the parameter. */
     String groupName() default "";
+
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;
@@ -224,6 +260,12 @@ public final class TemplateParameter {
     /** Group Name of the parameter. */
     String groupName() default "";
 
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -252,6 +294,12 @@ public final class TemplateParameter {
 
     /** Group Name of the parameter. */
     String groupName() default "";
+
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;
@@ -282,6 +330,12 @@ public final class TemplateParameter {
     /** Group Name of the parameter. */
     String groupName() default "";
 
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -310,6 +364,12 @@ public final class TemplateParameter {
 
     /** Group Name of the parameter. */
     String groupName() default "";
+
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;
@@ -340,6 +400,12 @@ public final class TemplateParameter {
     /** Group Name of the parameter. */
     String groupName() default "";
 
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -368,6 +434,12 @@ public final class TemplateParameter {
 
     /** Group Name of the parameter. */
     String groupName() default "";
+
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;
@@ -398,6 +470,12 @@ public final class TemplateParameter {
     /** Group Name of the parameter. */
     String groupName() default "";
 
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -426,6 +504,12 @@ public final class TemplateParameter {
 
     /** Group Name of the parameter. */
     String groupName() default "";
+
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;
@@ -456,6 +540,12 @@ public final class TemplateParameter {
     /** Group Name of the parameter. */
     String groupName() default "";
 
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -484,6 +574,12 @@ public final class TemplateParameter {
 
     /** Group Name of the parameter. */
     String groupName() default "";
+
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;
@@ -514,6 +610,12 @@ public final class TemplateParameter {
     /** Group Name of the parameter. */
     String groupName() default "";
 
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -543,6 +645,12 @@ public final class TemplateParameter {
     /** Group Name of the parameter. */
     String groupName() default "";
 
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -571,6 +679,12 @@ public final class TemplateParameter {
 
     /** Group Name of the parameter. */
     String groupName() default "";
+
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;

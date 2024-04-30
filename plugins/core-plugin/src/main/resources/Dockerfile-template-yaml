@@ -1,15 +1,67 @@
-FROM ${baseContainerImage}
+#===================================================================#
+# Create build environment from base Python template launcher image #
+#===================================================================#
+FROM gcr.io/dataflow-templates-base/python311-template-launcher-base:latest as python-base
+
+# Build args
+ARG WORKDIR=/template
+ARG REQUIREMENTS_FILE=requirements.txt
+ARG BEAM_VERSION=${beamVersion}
+ARG BEAM_PACKAGE=apache-beam[dataframe,gcp,test,yaml]==$BEAM_VERSION
+ARG PY_VERSION=${pythonVersion}
 
 # Copy template files to /template
-ARG WORKDIR=/template
-COPY main.py /template
-COPY requirements.txt /template
-COPY ${yamlTemplateName} /template/template.yaml
+RUN mkdir -p $WORKDIR
+COPY main.py requirements.txt* /template/
+<#if copyOtherFiles??>COPY ${copyOtherFiles} /template/</#if>
 WORKDIR $WORKDIR
 
-ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=requirements.txt
+# Create requirements.txt file if not provided
+RUN if ! [ -f requirements.txt ] ; then echo "$BEAM_PACKAGE" > requirements.txt ; fi
+
+# Install dependencies to launch the pipeline and download to reduce startup time
+RUN python -m venv /venv \
+    && /venv/bin/pip install --no-cache-dir --upgrade pip setuptools \
+    && /venv/bin/pip install --no-cache-dir -U -r $REQUIREMENTS_FILE \
+    && /venv/bin/pip download --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE \
+    && rm -rf /usr/local/lib/python$PY_VERSION/site-packages  \
+    && mv /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/
+
+
+#============================================================#
+# Create Distroless xlang image compatible with YamlTemplate #
+#============================================================#
+FROM ${baseJavaContainerImage}
+
+# Build args
+ARG CHIPSET_ARCH=x86_64-linux-gnu
+ARG PY_VERSION=${pythonVersion}
+
+# Set python environment variables
 ENV FLEX_TEMPLATE_PYTHON_PY_FILE=main.py
 ENV PIP_NO_DEPS=True
+
+# Copy template, python wheels and python launcher script from python-base
+COPY --from=python-base /template /template
+COPY --from=python-base /tmp/dataflow-requirements-cache /tmp/dataflow-requirements-cache
+COPY --from=python-base /opt/google/dataflow/python_template_launcher /opt/google/dataflow/python_template_launcher
+
+# Copy python and installed packages from python-base
+COPY --from=python-base /usr/local/bin/python$PY_VERSION /usr/local/bin/python
+COPY --from=python-base /usr/local/lib/python$PY_VERSION /usr/local/lib/python$PY_VERSION
+
+# Copy required shared libraries from python-base
+COPY --from=python-base /lib/$CHIPSET_ARCH/ld-*so* /lib64/
+COPY --from=python-base /lib/$CHIPSET_ARCH/lib*so* /lib/$CHIPSET_ARCH/
+COPY --from=python-base /usr/lib/$CHIPSET_ARCH/libffi* /usr/lib/$CHIPSET_ARCH/
+COPY --from=python-base /usr/local/lib/libpython$PY_VERSION* /usr/local/lib/
+
+# Copy minimal commands from python-base needed to execute template
+COPY --from=python-base /bin/dash /bin/sh
+COPY --from=python-base /usr/bin/which.debianutils /usr/bin/which
+
+# Copy licenses
+COPY --from=python-base /usr/licenses/ /usr/licenses/
 
 WORKDIR /template
 

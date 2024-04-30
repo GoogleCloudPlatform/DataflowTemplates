@@ -90,6 +90,10 @@ import org.apache.commons.lang3.ArrayUtils;
         "A JavaScript user-defined function (UDF) can be provided to transform data. "
             + "Errors while executing the UDF can be sent to either a separate Pub/Sub topic or the same unprocessed topic as the BigQuery errors."
       },
+      skipOptions = {
+        "pythonExternalTextTransformGcsPath",
+        "pythonExternalTextTransformFunctionName"
+      },
       optionsClass = PubSubProtoToBigQueryOptions.class,
       flexContainerName = "pubsub-proto-to-bigquery",
       documentation =
@@ -115,8 +119,13 @@ import org.apache.commons.lang3.ArrayUtils;
         "A Python user-defined function (UDF) can be provided to transform data. "
             + "Errors while executing the UDF can be sent to either a separate Pub/Sub topic or the same unprocessed topic as the BigQuery errors."
       },
+      skipOptions = {
+        "javascriptTextTransformGcsPath",
+        "javascriptTextTransformFunctionName",
+        "javascriptTextTransformReloadIntervalMinutes"
+      },
       optionsClass = PubSubProtoToBigQueryOptions.class,
-      flexContainerName = "pubsub-proto-to-bigquery",
+      flexContainerName = "pubsub-proto-to-bigquery-xlang",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-proto-to-bigquery",
       contactInformation = "https://cloud.google.com/support",
@@ -458,7 +467,6 @@ public final class PubsubProtoToBigQuery {
                   .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
                   .setFunctionName(options.getPythonExternalTextTransformFunctionName())
                   .build())
-          .setRowSchema(PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA)
           .apply(
               "MapRowsToFailsafeElements",
               ParDo.of(new RowToStringFailsafeElementFn(UDF_SUCCESS_TAG, UDF_FAILURE_TAG))
