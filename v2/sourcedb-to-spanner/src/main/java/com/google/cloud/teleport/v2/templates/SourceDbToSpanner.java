@@ -15,27 +15,41 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.spanner.BatchClient;
+import com.google.cloud.spanner.BatchReadOnlyTransaction;
+import com.google.cloud.spanner.DatabaseAdminClient;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.source.DataSourceProvider;
-import com.google.cloud.teleport.v2.spanner.ResultSetToMutation;
+import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.InformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.transformer.SourceRowToMutationDoFn;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO.Write;
-import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -101,63 +115,69 @@ public class SourceDbToSpanner {
   @VisibleForTesting
   static PipelineResult run(SourceDbToSpannerOptions options) {
     Pipeline pipeline = Pipeline.create(options);
-    Map<String, Set<String>> columnsToIgnore = getColumnsToIgnore(options);
-    Map<String, String> tableVsPartitionMap = getTablesVsPartitionColumn(options);
-    for (String table : getTablesVsPartitionColumn(options).keySet()) {
-      PCollection<Mutation> rows =
-          pipeline.apply(
-              "ReadPartitions_" + table,
-              getJdbcReader(
-                  table, tableVsPartitionMap.get(table), columnsToIgnore.get(table), options));
-      rows.apply("Write_" + table, getSpannerWrite(options));
-    }
+
+    FakeReader2 fr = new FakeReader2(10, 2);
+    SourceSchema srcSchema = fr.getSourceSchema();
+    ReaderTransform readerTransform = fr.getReaderTransform();
+
+    PCollectionTuple rowsAndTables = pipeline.apply("Read rows", readerTransform.readTransform());
+    PCollection<SourceRow> sourceRows = rowsAndTables.get(readerTransform.sourceRowTag());
+    PCollection<SourceTableReference> sourceTableReferenceTag =
+        rowsAndTables.get(readerTransform.sourceTableReferenceTag());
+
+    SourceRowToMutationDoFn transformDoFn =
+        SourceRowToMutationDoFn.create(getSchemaMapper(options), getTableIDToRefMap(srcSchema));
+    PCollection<Mutation> mutations = sourceRows.apply("Transform", ParDo.of(transformDoFn));
+    mutations.apply("Write", getSpannerWrite(options));
+
     return pipeline.run();
   }
 
-  private static Map<String, String> getTablesVsPartitionColumn(SourceDbToSpannerOptions options) {
-    String[] tables = options.getTables().split(",");
-    String[] partitionColumns = options.getPartitionColumns().split(",");
-    if (tables.length != partitionColumns.length) {
-      throw new RuntimeException(
-          "invalid configuration. Partition column count does not match " + "tables count.");
+  private static ISchemaMapper getSchemaMapper(SourceDbToSpannerOptions options) {
+    SpannerConfig spannerConfig =
+        SpannerConfig.create()
+            .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
+            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+            .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+    Ddl ddl = getInformationSchemaAsDdl(spannerConfig);
+    ISchemaMapper schemaMapper = new IdentityMapper(ddl);
+    if (options.getSessionFilePath() != null && !options.getSessionFilePath().equals("")) {
+      schemaMapper = new SessionBasedMapper(options.getSessionFilePath(), ddl);
     }
-    Map<String, String> tableVsPartitionColumn = new HashMap();
-    for (int i = 0; i < tables.length; i++) {
-      tableVsPartitionColumn.put(tables[i], partitionColumns[i]);
-    }
-    return tableVsPartitionColumn;
+    return schemaMapper;
   }
 
-  private static Map<String, Set<String>> getColumnsToIgnore(SourceDbToSpannerOptions options) {
-    String ignoreStr = options.getIgnoreColumns();
-    if (ignoreStr == null || ignoreStr.isEmpty()) {
-      return Collections.emptyMap();
-    }
-    Map<String, Set<String>> ignore = new HashMap<>();
-    for (String tableColumns : ignoreStr.split(",")) {
-      int tableNameIndex = tableColumns.indexOf(':');
-      if (tableNameIndex == -1) {
-        continue;
-      }
-      String table = tableColumns.substring(0, tableNameIndex);
-      String columnStr = tableColumns.substring(tableNameIndex + 1);
-      Set<String> columns = new HashSet<>(Arrays.asList(columnStr.split(";")));
-      ignore.put(table, columns);
-    }
-    return ignore;
+  // TODO: SpannerInfoschema scanner code is duplicated across live, bulk and reverse replication
+  // templates. We should refactor everything to spanner-common.
+  private static Ddl getInformationSchemaAsDdl(SpannerConfig spannerConfig) {
+    SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+    DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
+    Dialect dialect =
+        databaseAdminClient
+            .getDatabase(spannerConfig.getInstanceId().get(), spannerConfig.getDatabaseId().get())
+            .getDialect();
+    BatchClient batchClient = spannerAccessor.getBatchClient();
+    BatchReadOnlyTransaction context =
+        batchClient.batchReadOnlyTransaction(TimestampBound.strong());
+    InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
+    Ddl ddl = scanner.scan();
+    spannerAccessor.close();
+    return ddl;
   }
 
-  private static JdbcIO.ReadWithPartitions<Mutation, Long> getJdbcReader(
-      String table,
-      String partitionColumn,
-      Set<String> columnsToIgnore,
-      SourceDbToSpannerOptions options) {
-    return JdbcIO.<Mutation>readWithPartitions()
-        .withDataSourceProviderFn(new DataSourceProvider(options))
-        .withTable(table)
-        .withPartitionColumn(partitionColumn)
-        .withRowMapper(ResultSetToMutation.create(table, columnsToIgnore))
-        .withNumPartitions(options.getNumPartitions());
+  private static Map<String, SourceTableReference> getTableIDToRefMap(SourceSchema srcSchema) {
+    Map<String, SourceTableReference> tableIdMapper = new HashMap<>();
+    for (SourceTableSchema srcTableSchema : srcSchema.tableSchemas()) {
+      tableIdMapper.put(
+          srcTableSchema.tableSchemaUUID(),
+          SourceTableReference.builder()
+              .setSourceSchemaReference(srcSchema.schemaReference())
+              .setSourceTableName(srcTableSchema.tableName())
+              .setSourceTableSchemaUUID(srcTableSchema.tableSchemaUUID())
+              .build());
+    }
+    return tableIdMapper;
   }
 
   private static Write getSpannerWrite(SourceDbToSpannerOptions options) {

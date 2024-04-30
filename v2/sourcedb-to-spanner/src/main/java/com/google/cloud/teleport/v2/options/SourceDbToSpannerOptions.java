@@ -267,4 +267,16 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   Integer getReconnectAttempts();
 
   void setReconnectAttempts(Integer value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 21,
+      optional = true,
+      description =
+          "Session File Path in Cloud Storage, to provide mapping information in the form of a session file",
+      helpText =
+          "Session file path in Cloud Storage that contains mapping information from"
+              + " Spanner Migration Tool")
+  String getSessionFilePath();
+
+  void setSessionFilePath(String value);
 }
