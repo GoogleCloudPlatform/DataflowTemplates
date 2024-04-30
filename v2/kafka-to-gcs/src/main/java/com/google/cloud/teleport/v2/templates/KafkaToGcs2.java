@@ -36,6 +36,7 @@ import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -73,7 +74,7 @@ public class KafkaToGcs2 {
         description = "Kafka Bootstrap Server list",
         helpText = "Kafka Bootstrap Server list, separated by commas.",
         example = "localhost:9092,127.0.0.1:9093")
-    //  @Validation.Required
+      @Validation.Required
     String getBootstrapServers();
 
     void setBootstrapServers(String bootstrapServers);
@@ -85,7 +86,7 @@ public class KafkaToGcs2 {
         description = "Kafka topic(s) to read the input from",
         helpText = "Kafka topic(s) to read the input from.",
         example = "topic1,topic2")
-    //  @Validation.Required
+    @Validation.Required
     String getInputTopics();
 
     void setInputTopics(String inputTopics);
