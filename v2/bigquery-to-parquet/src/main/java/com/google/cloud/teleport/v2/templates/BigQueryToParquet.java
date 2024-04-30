@@ -146,7 +146,7 @@ public class BigQueryToParquet {
     @TemplateParameter.BigQueryTable(
         order = 1,
         description = "BigQuery table to export",
-        helpText = "BigQuery table location to export in the format <project>:<dataset>.<table>.",
+        helpText = "The BigQuery input table location",
         example = "your-project:your-dataset.your-table-name")
     @Required
     String getTableRef();
@@ -156,7 +156,7 @@ public class BigQueryToParquet {
     @TemplateParameter.GcsWriteFile(
         order = 2,
         description = "Output Cloud Storage file(s)",
-        helpText = "Path and filename prefix for writing output files.",
+        helpText = "The Cloud Storage folder in which to write the Parquet files",
         example = "gs://your-bucket/export/")
     @Required
     String getBucket();
@@ -168,10 +168,7 @@ public class BigQueryToParquet {
         optional = true,
         description = "Maximum output shards",
         helpText =
-            "The maximum number of output shards produced when writing. A higher number of shards"
-                + " means higher throughput for writing to Cloud Storage, but potentially higher"
-                + " data aggregation cost across shards when processing output Cloud Storage"
-                + " files.")
+            "(Optional) The number of output file shards. The default value is 1")
     @Default.Integer(0)
     Integer getNumShards();
 
@@ -181,7 +178,7 @@ public class BigQueryToParquet {
         order = 4,
         optional = true,
         description = "List of field names",
-        helpText = "Comma separated list of fields to select from the table.")
+        helpText = "(Optional) A comma-separated list of fields to select from the input BigQuery table.")
     String getFields();
 
     void setFields(String fields);
