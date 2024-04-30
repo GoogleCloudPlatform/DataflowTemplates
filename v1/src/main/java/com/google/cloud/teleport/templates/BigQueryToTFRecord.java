@@ -331,8 +331,9 @@ public class BigQueryToTFRecord {
     @TemplateParameter.GcsWriteFolder(
         order = 1,
         description = "Output Cloud Storage directory.",
-        helpText = "The top-level Cloud Storage path prefix at which to write the training, testing, and validation TFRecord files. Subdirectories for resulting training, testing, and validation TFRecord files are automatically generated from `outputDirectory`. For example, `gs://mybucket/output/train`",
-            example = "gs://mybucket/output")
+        helpText =
+            "The top-level Cloud Storage path prefix at which to write the training, testing, and validation TFRecord files. Subdirectories for resulting training, testing, and validation TFRecord files are automatically generated from `outputDirectory`. For example, `gs://mybucket/output/train`",
+        example = "gs://mybucket/output")
     ValueProvider<String> getOutputDirectory();
 
     void setOutputDirectory(ValueProvider<String> outputDirectory);
@@ -342,7 +343,8 @@ public class BigQueryToTFRecord {
         optional = true,
         regexes = {"^[A-Za-z_0-9.]*"},
         description = "The output suffix for TFRecord files",
-        helpText = "The file suffix for the training, testing, and validation TFRecord files that are written. The default value is `.tfrecord`.")
+        helpText =
+            "The file suffix for the training, testing, and validation TFRecord files that are written. The default value is `.tfrecord`.")
     @Default.String(".tfrecord")
     ValueProvider<String> getOutputSuffix();
 
@@ -353,7 +355,8 @@ public class BigQueryToTFRecord {
         optional = true,
         regexes = {"(^\\.[1-9]*$)|(^[01]*)"},
         description = "Percentage of data to be in the training set ",
-        helpText = "The percentage of query data allocated to training TFRecord files. The default value is 1, or 100%.")
+        helpText =
+            "The percentage of query data allocated to training TFRecord files. The default value is 1, or 100%.")
     @Default.Float(1)
     ValueProvider<Float> getTrainingPercentage();
 
@@ -364,7 +367,8 @@ public class BigQueryToTFRecord {
         optional = true,
         regexes = {"(^\\.[1-9]*$)|(^[01]*)"},
         description = "Percentage of data to be in the testing set ",
-        helpText = "The percentage of query data allocated to testing TFRecord files. The default value is 0, or 0%.")
+        helpText =
+            "The percentage of query data allocated to testing TFRecord files. The default value is 0, or 0%.")
     @Default.Float(0)
     ValueProvider<Float> getTestingPercentage();
 
@@ -375,7 +379,8 @@ public class BigQueryToTFRecord {
         optional = true,
         regexes = {"(^\\.[1-9]*$)|(^[01]*)"},
         description = "Percentage of data to be in the validation set ",
-        helpText = "The percentage of query data allocated to validation TFRecord files. The default value is 0, or 0%.")
+        helpText =
+            "The percentage of query data allocated to validation TFRecord files. The default value is 0, or 0%.")
     @Default.Float(0)
     ValueProvider<Float> getValidationPercentage();
 

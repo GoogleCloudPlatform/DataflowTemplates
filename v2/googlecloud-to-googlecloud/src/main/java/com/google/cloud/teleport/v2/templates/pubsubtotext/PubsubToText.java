@@ -81,9 +81,9 @@ public class PubsubToText {
         description = "Pub/Sub input topic",
         helpText =
             "The Pub/Sub topic to read the input from. The topic name should be in the format "
-                    + "`projects/<project-id>/topics/<topic-name>`. If this parameter is provided "
-                    + "`inputSubscription` shouldn't be provided.",
-            example = "projects/your-project-id/topics/your-topic-name")
+                + "`projects/<project-id>/topics/<topic-name>`. If this parameter is provided "
+                + "`inputSubscription` shouldn't be provided.",
+        example = "projects/your-project-id/topics/your-topic-name")
     String getInputTopic();
 
     void setInputTopic(String value);
@@ -94,9 +94,9 @@ public class PubsubToText {
         description = "Pub/Sub input subscription",
         helpText =
             "The Pub/Sub subscription to read the input from. The subscription name should be in the format "
-                    + "`projects/<project-id>/subscription/<subscription-name>`. If this parameter is "
-                    + "provided `inputTopic` shouldn't be provided.",
-            example = "projects/your-project-id/subscriptions/your-subscription-name")
+                + "`projects/<project-id>/subscription/<subscription-name>`. If this parameter is "
+                + "provided `inputTopic` shouldn't be provided.",
+        example = "projects/your-project-id/subscriptions/your-subscription-name")
     String getInputSubscription();
 
     void setInputSubscription(String value);
@@ -106,8 +106,8 @@ public class PubsubToText {
         description = "Output file directory in Cloud Storage",
         helpText =
             "The path and filename prefix for writing output files. "
-                    + "This value must end in a slash.",
-    example = "gs://your-bucket/your-path")
+                + "This value must end in a slash.",
+        example = "gs://your-bucket/your-path")
     @Required
     String getOutputDirectory();
 
@@ -129,7 +129,6 @@ public class PubsubToText {
         description = "Output filename prefix of the files to write",
         helpText = "The prefix to place on each windowed file.",
         example = "output-")
-
     @Default.String("output")
     @Required
     String getOutputFilenamePrefix();
@@ -142,7 +141,7 @@ public class PubsubToText {
         description = "Output filename suffix of the files to write",
         helpText =
             "The suffix to place on each windowed file, typically a file extension such as `.txt` or `.csv`.",
-            example = ".txt")
+        example = ".txt")
     @Default.String("")
     String getOutputFilenameSuffix();
 

@@ -27,9 +27,9 @@ public interface BigQueryStorageApiStreamingOptions extends BigQueryOptions {
       description = "Use BigQuery Storage Write API",
       helpText =
           "If true, the pipeline uses the "
-                  + "[BigQuery Storage Write API](https://cloud.google.com/bigquery/docs/write-api). "
-                  + "The default value is `false`. For more information, "
-                  + "see [Using the Storage Write API](https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).")
+              + "[BigQuery Storage Write API](https://cloud.google.com/bigquery/docs/write-api). "
+              + "The default value is `false`. For more information, "
+              + "see [Using the Storage Write API](https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).")
   @Default.Boolean(false)
   @Override
   Boolean getUseStorageWriteApi();
@@ -52,8 +52,8 @@ public interface BigQueryStorageApiStreamingOptions extends BigQueryOptions {
       description = "Number of streams for BigQuery Storage Write API",
       helpText =
           "When using the Storage Write API, specifies the number of write streams. "
-                  + "If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, "
-                  + "then you must set this parameter.")
+              + "If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, "
+              + "then you must set this parameter.")
   @Override
   @Default.Integer(0)
   Integer getNumStorageWriteApiStreams();
@@ -64,8 +64,8 @@ public interface BigQueryStorageApiStreamingOptions extends BigQueryOptions {
       description = "Triggering frequency in seconds for BigQuery Storage Write API",
       helpText =
           "When using the Storage Write API, specifies the triggering frequency, "
-                  + "in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, "
-                  + "then you must set this parameter.")
+              + "in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, "
+              + "then you must set this parameter.")
   @Override
   Integer getStorageWriteApiTriggeringFrequencySec();
 }

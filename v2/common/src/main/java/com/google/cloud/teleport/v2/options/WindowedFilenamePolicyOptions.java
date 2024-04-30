@@ -31,10 +31,10 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       description = "Shard template",
       helpText =
           "The shard template defines the dynamic portion of each windowed file. By default, the pipeline uses a "
-                  + "single shard for output to the file system within each window. This means that all data outputs into"
-                  + " a single file per window. The `outputShardTemplate` defaults to `W-P-SS-of-NN` where `W` is the window "
-                  + "date range, `P` is the pane info, `S` is the shard number, and `N` is the number of shards. "
-                  + "In case of a single file, the `SS-of-NN` portion of the `outputShardTemplate` is `00-of-01`.")
+              + "single shard for output to the file system within each window. This means that all data outputs into"
+              + " a single file per window. The `outputShardTemplate` defaults to `W-P-SS-of-NN` where `W` is the window "
+              + "date range, `P` is the pane info, `S` is the shard number, and `N` is the number of shards. "
+              + "In case of a single file, the `SS-of-NN` portion of the `outputShardTemplate` is `00-of-01`.")
   @Default.String("W-P-SS-of-NN")
   String getOutputShardTemplate();
 
@@ -59,11 +59,11 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       description = "Window duration",
       helpText =
           "The window duration is the interval in which data is written to the output directory. "
-                  + "Configure the duration based on the pipeline's throughput. For example, a higher "
-                  + "throughput might require smaller window sizes so that the data fits into memory. "
-                  + "Defaults to 5m, with a minimum of 1s. Allowed formats are: [int]s (for seconds, example: 5s), "
-                  + "[int]m (for minutes, example: 12m), [int]h (for hours, example: 2h).",
-          example = "5m")
+              + "Configure the duration based on the pipeline's throughput. For example, a higher "
+              + "throughput might require smaller window sizes so that the data fits into memory. "
+              + "Defaults to 5m, with a minimum of 1s. Allowed formats are: [int]s (for seconds, example: 5s), "
+              + "[int]m (for minutes, example: 12m), [int]h (for hours, example: 2h).",
+      example = "5m")
   @Default.String("5m")
   String getWindowDuration();
 

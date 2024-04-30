@@ -136,7 +136,7 @@ public class DataStreamToSpanner {
         description = "File location for Datastream file output in Cloud Storage.",
         helpText =
             "The file location for Datastream files in Cloud Storage to replicate. Typically, "
-                    + "this is the root path for a stream.")
+                + "this is the root path for a stream.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -167,8 +167,7 @@ public class DataStreamToSpanner {
     @TemplateParameter.Text(
         order = 4,
         description = "Cloud Spanner Instance Id.",
-        helpText =
-            "The Spanner instance where the changes are replicated.")
+        helpText = "The Spanner instance where the changes are replicated.")
     String getInstanceId();
 
     void setInstanceId(String value);
@@ -176,8 +175,7 @@ public class DataStreamToSpanner {
     @TemplateParameter.Text(
         order = 5,
         description = "Cloud Spanner Database Id.",
-        helpText =
-            "The Spanner database where the changes are replicated.")
+        helpText = "The Spanner database where the changes are replicated.")
     String getDatabaseId();
 
     void setDatabaseId(String value);
@@ -217,7 +215,8 @@ public class DataStreamToSpanner {
     @TemplateParameter.Text(
         order = 9,
         description = "Datastream stream name.",
-        helpText = "The name or template for the stream to poll for schema information and source type.")
+        helpText =
+            "The name or template for the stream to poll for schema information and source type.")
     String getStreamName();
 
     void setStreamName(String value);
@@ -273,7 +272,7 @@ public class DataStreamToSpanner {
         description = "Dead letter queue directory.",
         helpText =
             "This is the file path to store the error queue output. "
-                    + "Default is a directory under the Dataflow job's temp location.")
+                + "Default is a directory under the Dataflow job's temp location.")
     @Default.String("")
     String getDeadLetterQueueDirectory();
 

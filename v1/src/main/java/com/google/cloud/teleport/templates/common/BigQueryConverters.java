@@ -84,7 +84,8 @@ public class BigQueryConverters {
     @TemplateParameter.Text(
         order = 1,
         description = "Input SQL query",
-        helpText = "A BigQuery SQL query that extracts data from the source. For example, select * from dataset1.sample_table.")
+        helpText =
+            "A BigQuery SQL query that extracts data from the source. For example, select * from dataset1.sample_table.")
     ValueProvider<String> getReadQuery();
 
     void setReadQuery(ValueProvider<String> value);

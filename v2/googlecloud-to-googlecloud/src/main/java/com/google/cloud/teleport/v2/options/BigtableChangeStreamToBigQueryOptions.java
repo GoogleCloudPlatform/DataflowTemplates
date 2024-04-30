@@ -43,7 +43,7 @@ public interface BigtableChangeStreamToBigQueryOptions
       description = "Write rowkeys as BigQuery BYTES",
       helpText =
           "Write rowkeys as BigQuery `BYTES`. When set to `true`, row keys are written to the `BYTES` "
-                  + "column. Otherwise, rowkeys are written to the `STRING` column. Defaults to `false`.")
+              + "column. Otherwise, rowkeys are written to the `STRING` column. Defaults to `false`.")
   @Default.Boolean(false)
   Boolean getWriteRowkeyAsBytes();
 
@@ -67,9 +67,9 @@ public interface BigtableChangeStreamToBigQueryOptions
       description = "Write Bigtable timestamp as BigQuery INT",
       helpText =
           "Write the Bigtable timestamp as BigQuery `INT64`. When set to true, values are written to the `INT64` column."
-                  + " Otherwise, values are written to the `TIMESTAMP` column. Columns affected: `timestamp`, `timestamp_from`, "
-                  + "and `timestamp_to`. Defaults to `false`. When set to `true`, the time is measured in microseconds "
-                  + "since the Unix epoch (January 1, 1970 at UTC).")
+              + " Otherwise, values are written to the `TIMESTAMP` column. Columns affected: `timestamp`, `timestamp_from`, "
+              + "and `timestamp_to`. Defaults to `false`. When set to `true`, the time is measured in microseconds "
+              + "since the Unix epoch (January 1, 1970 at UTC).")
   @Default.Boolean(false)
   Boolean getWriteNumericTimestamps();
 
@@ -91,7 +91,7 @@ public interface BigtableChangeStreamToBigQueryOptions
       description = "BigQuery changelog table name",
       helpText =
           "Destination BigQuery table name. If not specified, "
-                  + "the value `bigtableReadTableId + \"_changelog\"` is used")
+              + "the value `bigtableReadTableId + \"_changelog\"` is used")
   @Default.String("")
   String getBigQueryChangelogTableName();
 
@@ -103,8 +103,8 @@ public interface BigtableChangeStreamToBigQueryOptions
       description = "Changelog table will be partitioned at specified granularity",
       helpText =
           "Specifies a granularity for partitioning the changelog table. When set, the table is partitioned. "
-                  + "Use one of the following supported values: `HOUR`, `DAY`, `MONTH`, or `YEAR`. "
-                  + "By default, the table isn't partitioned.")
+              + "Use one of the following supported values: `HOUR`, `DAY`, `MONTH`, or `YEAR`. "
+              + "By default, the table isn't partitioned.")
   @Default.String("")
   String getBigQueryChangelogTablePartitionGranularity();
 
@@ -116,8 +116,8 @@ public interface BigtableChangeStreamToBigQueryOptions
       description = "Sets partition expiration time in milliseconds",
       helpText =
           "Sets the changelog table partition expiration time, in milliseconds. When set to true, "
-                  + "partitions older than the specified number of milliseconds are deleted. "
-                  + "By default, no expiration is set.")
+              + "partitions older than the specified number of milliseconds are deleted. "
+              + "By default, no expiration is set.")
   Long getBigQueryChangelogTablePartitionExpirationMs();
 
   void setBigQueryChangelogTablePartitionExpirationMs(Long value);
@@ -128,9 +128,9 @@ public interface BigtableChangeStreamToBigQueryOptions
       description = "Optional changelog table columns to be disabled",
       helpText =
           "A comma-separated list of the changelog columns that, when specified, aren't "
-                  + "created and populated. Use one of the following supported values: is_gc, "
-                  + "source_instance, source_cluster, `source_table`, `tiebreaker`, or `big_query_commit_timestamp`. "
-                  + "By default, all columns are populated.")
+              + "created and populated. Use one of the following supported values: is_gc, "
+              + "source_instance, source_cluster, `source_table`, `tiebreaker`, or `big_query_commit_timestamp`. "
+              + "By default, all columns are populated.")
   String getBigQueryChangelogTableFieldsToIgnore();
 
   void setBigQueryChangelogTableFieldsToIgnore(String value);
@@ -141,8 +141,8 @@ public interface BigtableChangeStreamToBigQueryOptions
       description = "Dead letter queue directory",
       helpText =
           "The directory for the dead-letter queue. Records that fail to be processed are stored in this directory. "
-                  + "The default is a directory under the Dataflow job's temp location. "
-                  + "In most cases, you can use the default path.")
+              + "The default is a directory under the Dataflow job's temp location. "
+              + "In most cases, you can use the default path.")
   @Default.String("")
   String getDlqDirectory();
 

@@ -123,7 +123,8 @@ public class DatastoreConverters {
         order = 4,
         regexes = {"^.+$"},
         description = "GQL Query",
-        helpText = "A [GQL](https://cloud.google.com/datastore/docs/reference/gql_reference) query that specifies "
+        helpText =
+            "A [GQL](https://cloud.google.com/datastore/docs/reference/gql_reference) query that specifies "
                 + "which entities to grab. For example, `SELECT * FROM MyKind`.")
     ValueProvider<String> getFirestoreReadGqlQuery();
 
@@ -132,7 +133,8 @@ public class DatastoreConverters {
     @TemplateParameter.ProjectId(
         order = 5,
         description = "Project ID",
-        helpText = "The Google Cloud project ID of the Firestore instance that you want to read data from.")
+        helpText =
+            "The Google Cloud project ID of the Firestore instance that you want to read data from.")
     ValueProvider<String> getFirestoreReadProjectId();
 
     void setFirestoreReadProjectId(ValueProvider<String> firestoreReadProjectId);

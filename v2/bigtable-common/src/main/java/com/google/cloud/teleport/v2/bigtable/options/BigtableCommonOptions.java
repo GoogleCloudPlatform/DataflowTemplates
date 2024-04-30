@@ -165,8 +165,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 3,
         optional = true,
         description = "Source Cloud Bigtable Project ID",
-        helpText =
-            "The Bigtable project ID. The default is the project for the Dataflow job.")
+        helpText = "The Bigtable project ID. The default is the project for the Dataflow job.")
     @Default.String("")
     String getBigtableReadProjectId();
 
@@ -192,8 +191,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 1,
         optional = true,
         description = "Cloud Bigtable change streams metadata instance ID",
-        helpText =
-            "The Bigtable change streams metadata instance ID.")
+        helpText = "The Bigtable change streams metadata instance ID.")
     @Default.String("")
     String getBigtableChangeStreamMetadataInstanceId();
 
@@ -204,7 +202,9 @@ public interface BigtableCommonOptions extends GcpOptions {
         optional = true,
         description = "Cloud Bigtable change streams metadata table ID",
         helpText =
-            "The Bigtable change streams metadata table ID.")
+            "The Cloud Bigtable change streams connector metadata table ID to use. If not "
+                + "provided, a Cloud Bigtable change streams connector metadata table will automatically be "
+                + "created during the pipeline flow.")
     @Default.String("")
     String getBigtableChangeStreamMetadataTableTableId();
 
@@ -214,7 +214,8 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 3,
         regexes = {"[a-z][a-z0-9\\-_]+[a-z0-9]"},
         description = "Cloud Bigtable application profile ID",
-        helpText = "The Bigtable application profile ID. The application profile must use single-cluster routing and allow single-row transactions.")
+        helpText =
+            "The Bigtable application profile ID. The application profile must use single-cluster routing and allow single-row transactions.")
     @Validation.Required
     String getBigtableChangeStreamAppProfile();
 
@@ -238,8 +239,8 @@ public interface BigtableCommonOptions extends GcpOptions {
         description = "The timestamp to read change streams from",
         helpText =
             "The starting [timestamp](https://tools.ietf.org/html/rfc3339), inclusive, to use "
-                    + "for reading change streams. For example, `2022-05-05T07:59:59Z`. "
-                    + "Defaults to the timestamp of the pipeline start time.")
+                + "for reading change streams. For example, `2022-05-05T07:59:59Z`. "
+                + "Defaults to the timestamp of the pipeline start time.")
     @Default.String("")
     String getBigtableChangeStreamStartTimestamp();
 
@@ -249,8 +250,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 6,
         optional = true,
         description = "Cloud Bigtable change streams column families to ignore",
-        helpText =
-            "A comma-separated list of column family name changes to ignore.")
+        helpText = "A comma-separated list of column family name changes to ignore.")
     @Default.String("")
     String getBigtableChangeStreamIgnoreColumnFamilies();
 
@@ -272,8 +272,8 @@ public interface BigtableCommonOptions extends GcpOptions {
         description = "A unique name of the client pipeline",
         helpText =
             "A unique name for the client pipeline. Lets you resume processing "
-                    + "from the point at which a previously running pipeline stopped. "
-                    + "Defaults to auto-generated name. See the Dataflow job logs for the value used.")
+                + "from the point at which a previously running pipeline stopped. "
+                + "Defaults to auto-generated name. See the Dataflow job logs for the value used.")
     String getBigtableChangeStreamName();
 
     void setBigtableChangeStreamName(String value);
@@ -284,11 +284,11 @@ public interface BigtableCommonOptions extends GcpOptions {
         description = "Resume streaming with the same change stream name",
         helpText =
             "When set to `true`, a new pipeline resumes processing from the point when a previously "
-                    + "running pipeline with the same `bigtableChangeStreamName` value stopped. If the "
-                    + "pipeline with the given `bigtableChangeStreamName` value has never run, a new pipeline "
-                    + "doesn't start. When set to `false`, a new pipeline starts. If a pipeline with the "
-                    + "same `bigtableChangeStreamName` value has already run for the given source, "
-                    + "a new pipeline doesn't start. Defaults to `false`.")
+                + "running pipeline with the same `bigtableChangeStreamName` value stopped. If the "
+                + "pipeline with the given `bigtableChangeStreamName` value has never run, a new pipeline "
+                + "doesn't start. When set to `false`, a new pipeline starts. If a pipeline with the "
+                + "same `bigtableChangeStreamName` value has already run for the given source, "
+                + "a new pipeline doesn't start. Defaults to `false`.")
     @Default.Boolean(false)
     Boolean getBigtableChangeStreamResume();
 

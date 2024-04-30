@@ -81,7 +81,8 @@ public class ExportJobPlaceholder {
         optional = true,
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Application profile ID",
-        helpText = "The ID of the Bigtable application profile to be used for the export. If you do not specify an app profile, Bigtable uses the instance's default app profile https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.")
+        helpText =
+            "The ID of the Bigtable application profile to be used for the export. If you do not specify an app profile, Bigtable uses the instance's default app profile https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.")
     ValueProvider<String> getBigtableAppProfileId();
 
     @TemplateParameter.Text(
@@ -119,7 +120,8 @@ public class ExportJobPlaceholder {
     @TemplateParameter.GcsWriteFolder(
         order = 9,
         description = "Destination path",
-        helpText = "The Cloud Storage path where data is written. For example, `gs://mybucket/somefolder`.",
+        helpText =
+            "The Cloud Storage path where data is written. For example, `gs://mybucket/somefolder`.",
         example = "gs://your-bucket/your-path/")
     ValueProvider<String> getDestinationPath();
 
@@ -127,7 +129,7 @@ public class ExportJobPlaceholder {
         order = 10,
         description = "SequenceFile prefix",
         helpText = "The prefix of the SequenceFile filename.",
-            example = "output-")
+        example = "output-")
     ValueProvider<String> getFilenamePrefix();
 
     @TemplateCreationParameter(value = "false")

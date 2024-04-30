@@ -79,8 +79,8 @@ public abstract class JavascriptTextTransformer {
         description = "Cloud Storage path to Javascript UDF source",
         helpText =
             "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) "
-                    + "you want to use" ,
-            example =  "gs://my-bucket/my-udfs/my_file.js")
+                + "you want to use",
+        example = "gs://my-bucket/my-udfs/my_file.js")
     String getJavascriptTextTransformGcsPath();
 
     void setJavascriptTextTransformGcsPath(String javascriptTextTransformGcsPath);
@@ -92,10 +92,10 @@ public abstract class JavascriptTextTransformer {
         description = "UDF Javascript Function Name",
         helpText =
             "The name of the JavaScript user-defined function (UDF) "
-                    + "that you want to use. For example, if your JavaScript function "
-                    + "code is `myTransform(inJson) { /*...do stuff...*/ }`, then "
-                    + "the function name is `myTransform`. For sample JavaScript UDFs, "
-                    + "see [UDF Examples](https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).")
+                + "that you want to use. For example, if your JavaScript function "
+                + "code is `myTransform(inJson) { /*...do stuff...*/ }`, then "
+                + "the function name is `myTransform`. For sample JavaScript UDFs, "
+                + "see [UDF Examples](https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).")
     String getJavascriptTextTransformFunctionName();
 
     void setJavascriptTextTransformFunctionName(String javascriptTextTransformFunctionName);
@@ -106,11 +106,11 @@ public abstract class JavascriptTextTransformer {
         description = "JavaScript UDF auto-reload interval (minutes)",
         helpText =
             "Specifies how frequently to reload the UDF, in minutes. If the value "
-                    + "is greater than 0, Dataflow periodically checks the UDF file in "
-                    + "Cloud Storage, and reloads the UDF if the file is modified. "
-                    + "This parameter allows you to update the UDF while the pipeline is running, "
-                    + "without needing to restart the job. If the value is 0, UDF reloading is "
-                    + "disabled. The default value is 0.")
+                + "is greater than 0, Dataflow periodically checks the UDF file in "
+                + "Cloud Storage, and reloads the UDF if the file is modified. "
+                + "This parameter allows you to update the UDF while the pipeline is running, "
+                + "without needing to restart the job. If the value is 0, UDF reloading is "
+                + "disabled. The default value is 0.")
     @Default.Integer(0)
     Integer getJavascriptTextTransformReloadIntervalMinutes();
 
