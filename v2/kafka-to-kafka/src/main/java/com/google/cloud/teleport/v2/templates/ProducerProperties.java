@@ -14,24 +14,32 @@
  * the License.
  */
 
-/**
- * The {@link com.google.cloud.teleport.v2.templates.ProducerProperties} returns
- * client properties for destination Kafka.
- */
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.collect.ImmutableMap;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The {@link ProducerProperties} is a utility class for constructing properties
+ * for Kafka producers. In this case, it is the Kafka destination where we write
+ * the data to.
+ * <p>
+ *   The {@link ProducerProperties} class provides a static method to generate producer
+ *   properties required for configuring a Kafka producer. These properties are needed to
+ *   establish connections to Kafka brokers. They ensure security through SASL authentication.
+ *   The properties should specify the necessary authentication credentials in order to establish
+ *   a successful connection to the Kafka destination.
+ * </p>
+ */
 final class ProducerProperties {
   private static final Logger LOGG = LoggerFactory.getLogger(ProducerProperties.class);
   public static ImmutableMap<String, Object> get(KafkaToKafkaOptions options) {
 
-    String[] saslCredentials = Credentials.accessSecretVersion(options).toArray(new String[0]);
     ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
     properties.put(
         CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
@@ -43,10 +51,10 @@ final class ProducerProperties {
         SaslConfigs.SASL_JAAS_CONFIG,
         "org.apache.kafka.common.security.plain.PlainLoginModule required"
             + " username=\'"
-            + saslCredentials[2]
+            + SecretManagerUtils.getSecret(options.getDestinationUsernameVersionId())
             + "\'"
             + " password=\'"
-            + saslCredentials[3]
+            + SecretManagerUtils.getSecret(options.getDestinationPasswordVersionId())
             + "\';");
 
     return properties.buildOrThrow();
