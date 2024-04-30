@@ -57,11 +57,11 @@ import org.apache.beam.sdk.values.TupleTag;
  */
 @AutoValue
 public abstract class ReaderTransform {
-  abstract TupleTag<SourceRow> sourceRowTag();
+  public abstract TupleTag<SourceRow> sourceRowTag();
 
-  abstract TupleTag<SourceTableReference> sourceTableReferenceTag();
+  public abstract TupleTag<SourceTableReference> sourceTableReferenceTag();
 
-  abstract PTransform<PBegin, PCollectionTuple> readTransform();
+  public abstract PTransform<PBegin, PCollectionTuple> readTransform();
 
   public static Builder builder() {
     TupleTag<SourceRow> sourceRowTupleTag = new TupleTag<>();
