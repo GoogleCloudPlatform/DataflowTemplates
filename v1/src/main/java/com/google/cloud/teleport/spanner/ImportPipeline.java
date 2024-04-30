@@ -106,7 +106,7 @@ public class ImportPipeline {
         optional = true,
         description = "Wait for Indexes",
         helpText =
-            "Optional: If true, the pipeline waits for indexes to be created. If false, the job might complete while indexes are still being created in the background. Default: false.")
+            "Optional: If `true`, the pipeline waits for indexes to be created. If `false`, the job might complete while indexes are still being created in the background. Default: `false`.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForIndexes();
 
@@ -117,7 +117,7 @@ public class ImportPipeline {
         optional = true,
         description = "Wait for Foreign Keys",
         helpText =
-            "Optional: If true, the pipeline waits for foreign keys to be created. If false, the job might complete while foreign keys are still being created in the background. Default: false.")
+            "Optional: If `true`, the pipeline waits for foreign keys to be created. If `false`, the job might complete while foreign keys are still being created in the background. Default: `false`.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForForeignKeys();
 
@@ -128,7 +128,7 @@ public class ImportPipeline {
         optional = true,
         description = "Wait for Change Streams",
         helpText =
-            "Optional: If true, the pipeline waits for change streams to be created. If false, the job might complete while change streams are still being created in the background. Default: true.")
+            "Optional: If `true`, the pipeline waits for change streams to be created. If `false`, the job might complete while change streams are still being created in the background. Default: `true`.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getWaitForChangeStreams();
 
@@ -139,7 +139,7 @@ public class ImportPipeline {
         optional = true,
         description = "Wait for Sequences",
         helpText =
-            "By default the import pipeline is blocked on sequence creation. If false, it may"
+            "By default the import pipeline is blocked on sequence creation. If `false`, it may"
                 + " complete with sequences still being created in the background.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getWaitForSequences();
@@ -151,7 +151,7 @@ public class ImportPipeline {
         optional = true,
         description = "Create Indexes early",
         helpText =
-            "Optional: Specifies whether to enable early index creation. If the template runs a large number of DDL statements, it's more efficient to create indexes before loading data. Therefore, the default behavior is to create the indexes first when the number of DDL statements exceeds a threshold. To disable this feature, set earlyIndexCreateFlag to false. Default: true.")
+            "Optional: Specifies whether to enable early index creation. If the template runs a large number of DDL statements, it's more efficient to create indexes before loading data. Therefore, the default behavior is to create the indexes first when the number of DDL statements exceeds a threshold. To disable this feature, `set earlyIndexCreateFlag` to `false`. Default: `true`.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getEarlyIndexCreateFlag();
 
@@ -194,7 +194,7 @@ public class ImportPipeline {
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
-            "Optional: The request priority for Spanner calls. Possible values are HIGH, MEDIUM, LOW. The default value is MEDIUM.")
+            "Optional: The request priority for Spanner calls. Possible values are `HIGH`, `MEDIUM`, `LOW`. The default value is `MEDIUM`.")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);

@@ -33,7 +33,7 @@ public interface AstraDbToBigQueryOptions {
         description = "BigQuery output table",
         optional = true,
         helpText =
-            "Optional: The BigQuery table location to write the output to. The table should be in the format <project>:<dataset>.<table_name>. The table's schema must match the input objects.")
+            "Optional: The BigQuery table location to write the output to. The table should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match the input objects.")
     String getOutputTableSpec();
 
     @SuppressWarnings("unused")

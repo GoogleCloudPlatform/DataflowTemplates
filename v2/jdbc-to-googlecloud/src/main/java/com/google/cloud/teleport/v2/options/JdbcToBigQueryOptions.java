@@ -55,7 +55,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection URL string.",
       helpText =
-          "The JDBC connection URL string. For example, jdbc:mysql://some-host:3306/sampledb. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string. Note the difference between an Oracle non-RAC database connection string (jdbc:oracle:thin:@some-host:<port>:<sid>) and an Oracle RAC database connection string (jdbc:oracle:thin:@//some-host[:<port>]/<service_name>).",
+          "The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string. Note the difference between an Oracle non-RAC database connection string (`jdbc:oracle:thin:@some-host:<port>:<sid>`) and an Oracle RAC database connection string (`jdbc:oracle:thin:@//some-host[:<port>]/<service_name>`).",
       example = "jdbc:mysql://some-host:3306/sampledb")
   String getConnectionURL();
 
@@ -151,7 +151,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Whether to use column alias to map the rows.",
       helpText =
-          "Optional: If enabled (set to true), the pipeline uses the column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to false.")
+          "Optional: If enabled (set to `true`), the pipeline uses the column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to `false`.")
   @Default.Boolean(false)
   Boolean getUseColumnAlias();
 
@@ -163,7 +163,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Target",
       description = "Whether to truncate data before writing",
       helpText =
-          "Optional: If enabled (set to true), the pipeline truncates before loading data into BigQuery. Defaults to false, which causes the pipeline to append data.")
+          "Optional: If enabled (set to `true`), the pipeline truncates before loading data into BigQuery. Defaults to `false`, which causes the pipeline to append data.")
   @Default.Boolean(false)
   Boolean getIsTruncate();
 
@@ -175,7 +175,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "The name of a column of numeric type that will be used for partitioning.",
       helpText =
-          "	Optional: If this parameter is provided (along with table), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports Long partition columns.")
+          "	Optional: If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.")
   String getPartitionColumn();
 
   void setPartitionColumn(String partitionColumn);
@@ -198,7 +198,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "The number of partitions.",
       helpText =
-          "Optional: The number of partitions. With the lower and upper bound, this value forms partition strides for generated WHERE clause expressions that are used to split the partition column evenly. When the input is less than 1, the number is set to 1.")
+          "Optional: The number of partitions. With the lower and upper bound, this value forms partition strides for generated `WHERE` clause expressions that are used to split the partition column evenly. When the input is less than `1`, the number is set to `1`.")
   Integer getNumPartitions();
 
   void setNumPartitions(Integer numPartitions);
@@ -247,7 +247,7 @@ public interface JdbcToBigQueryOptions
       },
       optional = true,
       description = "Create Disposition to use for BigQuery",
-      helpText = "BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER.")
+      helpText = "BigQuery CreateDisposition. For example, `CREATE_IF_NEEDED`, `CREATE_NEVER`.")
   @Default.String("CREATE_NEVER")
   String getCreateDisposition();
 

@@ -132,7 +132,7 @@ public class PubsubToPubsub {
         order = 1,
         description = "Pub/Sub input subscription",
         helpText =
-            "Pub/Sub subscription to read the input from. For example, projects/<project-id>/subscriptions/<subscription-name>.",
+            "Pub/Sub subscription to read the input from. For example, `projects/<project-id>/subscriptions/<subscription-name>`.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     @Validation.Required
     ValueProvider<String> getInputSubscription();
@@ -143,7 +143,7 @@ public class PubsubToPubsub {
         order = 2,
         description = "Output Pub/Sub topic",
         helpText =
-            "Cloud Pub/Sub topic to write the output to. For example, projects/<project-id>/topics/<topic-name>.",
+            "Cloud Pub/Sub topic to write the output to. For example, `projects/<project-id>/topics/<topic-name>`.",
         example = "projects/your-project-id/topics/your-topic-name")
     @Validation.Required
     ValueProvider<String> getOutputTopic();
@@ -155,7 +155,7 @@ public class PubsubToPubsub {
         optional = true,
         description = "Event filter key",
         helpText =
-            "(Optional) Filter events based on an attribute key. No filters are applied if filterKey is not specified.")
+            "(Optional) Filter events based on an attribute key. No filters are applied if `filterKey` is not specified.")
     ValueProvider<String> getFilterKey();
 
     void setFilterKey(ValueProvider<String> filterKey);
@@ -165,7 +165,7 @@ public class PubsubToPubsub {
         optional = true,
         description = "Event filter value",
         helpText =
-            "(Optional) Filter attribute value to use in case a filterKey is provided. A null filterValue is used by default.")
+            "(Optional) Filter attribute value to use in case a filterKey is provided. A null `filterValue` is used by default.")
     ValueProvider<String> getFilterValue();
 
     void setFilterValue(ValueProvider<String> filterValue);

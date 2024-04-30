@@ -118,7 +118,7 @@ public class BigtableToAvro {
     @TemplateParameter.Text(
         order = 5,
         description = "Avro file prefix",
-        helpText = "The prefix of the Avro filename. For example, output-.")
+        helpText = "The prefix of the Avro filename. For example, `output-`.")
     @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 
