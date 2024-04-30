@@ -74,7 +74,7 @@ public class KafkaToGcs2 {
         description = "Kafka Bootstrap Server list",
         helpText = "Kafka Bootstrap Server list, separated by commas.",
         example = "localhost:9092,127.0.0.1:9093")
-      @Validation.Required
+    @Validation.Required
     String getBootstrapServers();
 
     void setBootstrapServers(String bootstrapServers);
