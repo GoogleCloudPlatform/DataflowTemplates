@@ -65,7 +65,8 @@ func main() {
 		flags.StageBucket(),
 		flags.HostIp(),
 		flags.PrivateConnectivity(),
-		flags.FailureMode())
+		flags.FailureMode(),
+		flags.RetryFailures())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}

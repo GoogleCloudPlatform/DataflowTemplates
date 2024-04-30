@@ -26,19 +26,6 @@ public class SchemaTestUtils {
   public static SourceTableSchema generateTestTableSchema(String tableName) {
     return SourceTableSchema.builder()
         .setTableName(tableName)
-        .setAvroSchema(
-            SourceTableSchema.avroSchemaFieldAssembler()
-                .name(TEST_FIELD_NAME_1)
-                .type()
-                .stringType()
-                .noDefault()
-                .name(TEST_FIELD_NAME_2)
-                .type()
-                .stringType()
-                .noDefault()
-                .endRecord()
-                .noDefault()
-                .endRecord())
         .addSourceColumnNameToSourceColumnType(
             TEST_FIELD_NAME_1, new SourceColumnType("varchar", new Long[] {20L}, null))
         .addSourceColumnNameToSourceColumnType(

@@ -31,6 +31,7 @@ var (
 	dHostIp              string
 	dPrivateConnectivity string
 	dReleaseMode         bool
+	dRetryFailures       string
 )
 
 // Registers all common flags. Must be called before flag.Parse().
@@ -42,6 +43,7 @@ func RegisterItFlags() {
 	flag.StringVar(&dHostIp, "it-host-ip", "", "(optional) The ip that the gitactions runner is listening on")
 	flag.StringVar(&dPrivateConnectivity, "it-private-connectivity", "", "(optional) A GCP private connectivity endpoint")
 	flag.BoolVar(&dReleaseMode, "it-release", false, "(optional) Set if tests are being executed for a release")
+	flag.StringVar(&dRetryFailures, "it-retry-failures", "0", "Number of retries attempts for failing tests")
 }
 
 func Region() string {
@@ -90,4 +92,8 @@ func FailureMode() string {
 
 	// Fail PRs at the end
 	return "-fae"
+}
+
+func RetryFailures() string {
+	return "-Dsurefire.rerunFailingTestsCount=" + dRetryFailures
 }

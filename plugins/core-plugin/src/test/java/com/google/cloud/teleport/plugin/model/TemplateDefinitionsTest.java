@@ -15,13 +15,19 @@
  */
 package com.google.cloud.teleport.plugin.model;
 
+import static com.google.cloud.teleport.plugin.model.TemplateDefinitions.ADDITIONAL_EXPERIMENTS;
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.plugin.sample.AtoBMissingAnnotation;
 import com.google.cloud.teleport.plugin.sample.AtoBOk;
+import java.util.List;
+import java.util.Map;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -74,4 +80,201 @@ public class TemplateDefinitionsTest {
 
     assertThrows(IllegalArgumentException.class, () -> definitions.buildSpecModel(true));
   }
+
+  @Test
+  public void givenBatchDefault_thenValidates() {
+    assertThat(imageSpecWithValidationOf(Batch.class)).isNotNull();
+  }
+
+  @Test
+  public void givenStreamingDefault_thenValidates() {
+    assertThat(imageSpecWithValidationOf(Streaming.class)).isNotNull();
+  }
+
+  @Test
+  public void givenBatchWithStreamingModeConfigurations_throws() {
+    assertThrows(
+        IllegalArgumentException.class, () -> imageSpecWithValidationOf(BatchSupportsALO.class));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> imageSpecWithValidationOf(BatchStreamingModeALO.class));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> imageSpecWithValidationOf(BatchStreamingModeEO.class));
+  }
+
+  @Test
+  public void givenStreamingModeMismatch_throws() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> imageSpecWithValidationOf(StreamingNotALONotEO.class));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> imageSpecWithValidationOf(StreamingALOMismatch.class));
+    assertThrows(
+        IllegalArgumentException.class, () -> imageSpecWithValidationOf(StreamingEOMismatch.class));
+  }
+
+  @Test
+  public void givenStreamingBothAOEO_thenValidates() {
+    imageSpecWithValidationOf(StreamingALOEOEnabledDefaultNone.class);
+    imageSpecWithValidationOf(StreamingALOEOEnabledDefaultALO.class);
+    imageSpecWithValidationOf(StreamingALOEOEnabledDefaultEO.class);
+  }
+
+  @Test
+  public void givenStreamingModeNone_noAdditionalExperiments() {
+    ImageSpec imageSpec = imageSpecWithValidationOf(StreamingALOEOEnabledDefaultNone.class);
+    assertThat(imageSpec.getDefaultEnvironment()).isNotNull();
+    assertThat(imageSpec.getDefaultEnvironment()).doesNotContainKey(ADDITIONAL_EXPERIMENTS);
+  }
+
+  @Test
+  public void givenStreamingModeALO_populatesAdditionalExperiments() {
+    ImageSpec imageSpec = imageSpecWithValidationOf(StreamingALOEOEnabledDefaultALO.class);
+    assertThat(imageSpec.getDefaultEnvironment()).isNotNull();
+    Map<String, Object> defaultEnvironment = imageSpec.getDefaultEnvironment();
+    assertThat(defaultEnvironment.size()).isGreaterThan(1);
+    assertThat(defaultEnvironment).containsKey(ADDITIONAL_EXPERIMENTS);
+    List<String> additionalExperiments =
+        (List<String>) defaultEnvironment.get(ADDITIONAL_EXPERIMENTS);
+    assertThat(additionalExperiments).containsExactly("streaming_mode_at_least_once");
+  }
+
+  @Test
+  public void givenStreamingModeEO_populatesAdditionalExperiments() {
+    ImageSpec imageSpec = imageSpecWithValidationOf(StreamingALOEOEnabledDefaultEO.class);
+    assertThat(imageSpec.getDefaultEnvironment()).isNotNull();
+    Map<String, Object> defaultEnvironment = imageSpec.getDefaultEnvironment();
+    assertThat(defaultEnvironment.size()).isGreaterThan(1);
+    assertThat(defaultEnvironment).containsKey(ADDITIONAL_EXPERIMENTS);
+    List<String> additionalExperiments =
+        (List<String>) defaultEnvironment.get(ADDITIONAL_EXPERIMENTS);
+    assertThat(additionalExperiments).containsExactly("streaming_mode_exactly_once");
+  }
+
+  private static ImageSpec imageSpecWithValidationOf(Class<?> clazz) {
+    return templateDefinitionsOf(clazz).buildSpecModel(true);
+  }
+
+  private static TemplateDefinitions templateDefinitionsOf(Class<?> clazz) {
+    checkArgument(clazz.isAnnotationPresent(Template.class));
+    return new TemplateDefinitions(clazz, clazz.getAnnotation(Template.class));
+  }
+
+  @Template(
+      name = "Batch",
+      displayName = "",
+      description = {},
+      streaming = false,
+      category = TemplateCategory.BATCH,
+      testOnly = true)
+  private static class Batch {}
+
+  @Template(
+      supportsAtLeastOnce = true,
+      name = "BatchSupportsALO",
+      displayName = "",
+      description = {},
+      streaming = false,
+      category = TemplateCategory.BATCH,
+      testOnly = true)
+  private static class BatchSupportsALO {}
+
+  @Template(
+      defaultStreamingMode = Template.StreamingMode.AT_LEAST_ONCE,
+      name = "BatchStreamingModeALO",
+      displayName = "",
+      description = {},
+      streaming = false,
+      category = TemplateCategory.BATCH,
+      testOnly = true)
+  private static class BatchStreamingModeALO {}
+
+  @Template(
+      defaultStreamingMode = Template.StreamingMode.EXACTLY_ONCE,
+      name = "BatchStreamingModeEO",
+      displayName = "",
+      description = {},
+      streaming = false,
+      category = TemplateCategory.BATCH,
+      testOnly = true)
+  private static class BatchStreamingModeEO {}
+
+  @Template(
+      name = "Streaming",
+      displayName = "",
+      description = {},
+      streaming = true,
+      category = TemplateCategory.STREAMING,
+      testOnly = true)
+  private static class Streaming {}
+
+  @Template(
+      supportsAtLeastOnce = true,
+      supportsExactlyOnce = true,
+      name = "StreamingALOEOEnabledDefaultNone",
+      displayName = "",
+      description = {},
+      streaming = true,
+      category = TemplateCategory.STREAMING,
+      testOnly = true)
+  private static class StreamingALOEOEnabledDefaultNone {}
+
+  @Template(
+      supportsAtLeastOnce = true,
+      supportsExactlyOnce = true,
+      defaultStreamingMode = Template.StreamingMode.AT_LEAST_ONCE,
+      name = "StreamingALOEOEnabledDefaultALO",
+      displayName = "",
+      description = {},
+      streaming = true,
+      category = TemplateCategory.STREAMING,
+      testOnly = true)
+  private static class StreamingALOEOEnabledDefaultALO {}
+
+  @Template(
+      supportsAtLeastOnce = true,
+      supportsExactlyOnce = true,
+      defaultStreamingMode = Template.StreamingMode.EXACTLY_ONCE,
+      name = "StreamingALOEOEnabledDefaultEO",
+      displayName = "",
+      description = {},
+      streaming = true,
+      category = TemplateCategory.STREAMING,
+      testOnly = true)
+  private static class StreamingALOEOEnabledDefaultEO {}
+
+  @Template(
+      supportsAtLeastOnce = false,
+      supportsExactlyOnce = false,
+      name = "StreamingNotALONotEO",
+      displayName = "",
+      description = {},
+      streaming = true,
+      category = TemplateCategory.STREAMING,
+      testOnly = true)
+  private static class StreamingNotALONotEO {}
+
+  @Template(
+      supportsAtLeastOnce = false,
+      defaultStreamingMode = Template.StreamingMode.AT_LEAST_ONCE,
+      name = "StreamingALOMismatch",
+      displayName = "",
+      description = {},
+      streaming = true,
+      category = TemplateCategory.STREAMING,
+      testOnly = true)
+  private static class StreamingALOMismatch {}
+
+  @Template(
+      supportsExactlyOnce = false,
+      defaultStreamingMode = Template.StreamingMode.EXACTLY_ONCE,
+      name = "StreamingALOMismatch",
+      displayName = "",
+      description = {},
+      streaming = true,
+      category = TemplateCategory.STREAMING,
+      testOnly = true)
+  private static class StreamingEOMismatch {}
 }

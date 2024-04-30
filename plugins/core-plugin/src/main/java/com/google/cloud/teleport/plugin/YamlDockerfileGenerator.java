@@ -27,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -37,9 +38,13 @@ public class YamlDockerfileGenerator {
   private YamlDockerfileGenerator() {}
 
   public static void generateDockerfile(
-      String basePythonContainerImage, String yamlTemplateName, File targetDirectory)
+      String baseJavaContainerImage,
+      String beamVersion,
+      String pythonVersion,
+      String yamlTemplateName,
+      List<String> otherFiles,
+      File targetDirectory)
       throws IOException, TemplateException {
-
     Configuration freemarkerConfig = new Configuration(Configuration.VERSION_2_3_32);
     freemarkerConfig.setDefaultEncoding("UTF-8");
     freemarkerConfig.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
@@ -47,8 +52,12 @@ public class YamlDockerfileGenerator {
     freemarkerConfig.setClassForTemplateLoading(PythonDockerfileGenerator.class, "/");
 
     Map<String, Object> parameters = new HashMap<>();
-    parameters.put("baseContainerImage", basePythonContainerImage);
-    parameters.put("yamlTemplateName", yamlTemplateName + ".yaml");
+    parameters.put("baseJavaContainerImage", baseJavaContainerImage);
+    parameters.put("beamVersion", beamVersion);
+    parameters.put("pythonVersion", pythonVersion);
+    if (!otherFiles.isEmpty()) {
+      parameters.put("copyOtherFiles", String.join(" ", otherFiles));
+    }
 
     Template template = freemarkerConfig.getTemplate("Dockerfile-template-yaml");
 

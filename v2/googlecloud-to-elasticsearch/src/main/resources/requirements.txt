@@ -1,0 +1,1 @@
+apache-beam[gcp,aws, azure, dataframe]==2.55.1

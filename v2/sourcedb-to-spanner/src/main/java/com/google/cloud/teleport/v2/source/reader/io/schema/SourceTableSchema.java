@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.source.reader.io.schema;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper;
+import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
@@ -55,31 +57,6 @@ public abstract class SourceTableSchema implements Serializable {
   // Mapped Avro Schema (to unified types) that each row will carry.
   public abstract Schema avroSchema();
 
-  /*
-   * TODO(vardhanvthigle): This will be not needed once we have complete type mapping and builder is simplified.
-   * This todo is internal to the reader and does not change the contract.
-   */
-  public static FieldAssembler<RecordDefault<Schema>> avroSchemaFieldAssembler() {
-    /* Note: DataStream `read_timestamp` is encoded as `timeMillis`. We use `timeMirco` since:
-     * 1. To achieve 1 GBPs performance (potentially on a single table), we will be writing 1 to 10 million records per second.
-     * (Assuming around 100 to 1000 bytes per record)
-     * 2. That level of throughput will make milliseconds less precise than what we need.
-     * 3. For example, for writing 1 million records per second, if we are batching 100 records, by Little's law,
-     *    we get a mean latency of around 100 micro seconds.
-     * 4. A precision finer than micro second granularity will be severely affected by clock skew across machines.
-     */
-    Schema timeMicroType = LogicalTypes.timeMicros().addToSchema(Schema.create(Schema.Type.LONG));
-    return org.apache.avro.SchemaBuilder.record(AVRO_SCHEMA_RECORD_DEFAULT_NAME)
-        .fields()
-        .name(READ_TIME_STAMP_FIELD_NAME)
-        .type(timeMicroType)
-        .noDefault()
-        .name(PAYLOAD_FIELD_NAME)
-        .type()
-        .record(PAYLOAD_FIELD_NAME)
-        .fields();
-  }
-
   public Schema getAvroPayload() {
     return avroSchema().getField(PAYLOAD_FIELD_NAME).schema();
   }
@@ -103,30 +80,51 @@ public abstract class SourceTableSchema implements Serializable {
     abstract ImmutableMap.Builder<String, SourceColumnType>
         sourceColumnNameToSourceColumnTypeBuilder();
 
+    private FieldAssembler<RecordDefault<Schema>> payloadFieldAssembler;
+
     public final Builder addSourceColumnNameToSourceColumnType(
         String sourceColumnName, SourceColumnType sourceColumnType) {
       this.sourceColumnNameToSourceColumnTypeBuilder().put(sourceColumnName, sourceColumnType);
+      this.payloadFieldAssembler =
+          this.payloadFieldAssembler
+              .name(sourceColumnName)
+              .type(new UnifiedTypeMapper(MapperType.MYSQL).getSchema(sourceColumnType))
+              .noDefault();
       return this;
     }
 
-    public abstract Builder setAvroSchema(Schema value);
+    public Builder() {
+      /* Note: DataStream `read_timestamp` is encoded as `timeMillis`. We use `timeMirco` since:
+       * 1. To achieve 1 GBPs performance (potentially on a single table), we will be writing 1 to 10 million records per second.
+       * (Assuming around 100 to 1000 bytes per record)
+       * 2. That level of throughput will make milliseconds less precise than what we need.
+       * 3. For example, for writing 1 million records per second, if we are batching 100 records, by Little's law,
+       *    we get a mean latency of around 100 micro seconds.
+       * 4. A precision finer than micro second granularity will be severely affected by clock skew across machines.
+       */
+      Schema timeMicroType = LogicalTypes.timeMicros().addToSchema(Schema.create(Schema.Type.LONG));
+      this.payloadFieldAssembler =
+          org.apache.avro.SchemaBuilder.record(AVRO_SCHEMA_RECORD_DEFAULT_NAME)
+              .fields()
+              .name(READ_TIME_STAMP_FIELD_NAME)
+              .type(timeMicroType)
+              .noDefault()
+              .name(PAYLOAD_FIELD_NAME)
+              .type()
+              .record(PAYLOAD_FIELD_NAME)
+              .fields();
+    }
+
+    abstract Builder setAvroSchema(Schema value);
 
     abstract SourceTableSchema autoBuild();
 
     public SourceTableSchema build() {
+      this.setAvroSchema(this.payloadFieldAssembler.endRecord().noDefault().endRecord());
       SourceTableSchema sourceTableSchema = autoBuild();
       Preconditions.checkState(
-          sourceTableSchema.avroSchema().hasFields(), "avro schema not initialized");
-      Preconditions.checkState(
-          sourceTableSchema.avroSchema().getName().equals(AVRO_SCHEMA_RECORD_DEFAULT_NAME),
-          "avro schema does not have the correct name");
-      // TODO: (vardhanvthigle) After the schema mapping is in place, the builder gets simplified to
-      // accept just the source type and map it to the avro type.
-      // With that the precondition on count of fields can be removed.
-      Preconditions.checkState(
-          sourceTableSchema.getAvroPayload().getFields().size()
-              == sourceTableSchema.sourceColumnNameToSourceColumnType().size(),
-          "source table schema and avro schema payload should have equal number of fields");
+          !sourceTableSchema.sourceColumnNameToSourceColumnType().isEmpty(),
+          "SourceSchema must have fields in the payload");
       return sourceTableSchema;
     }
   }

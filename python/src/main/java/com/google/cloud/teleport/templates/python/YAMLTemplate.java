@@ -23,7 +23,7 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 @Template(
     name = "Yaml_Template",
     category = TemplateCategory.GET_STARTED,
-    type = Template.TemplateType.PYTHON,
+    type = Template.TemplateType.YAML,
     displayName = "YAML Template (Experimental)",
     description =
         "YAML pipeline. Reads YAML from Cloud Storage and dynamically expands YAML into "

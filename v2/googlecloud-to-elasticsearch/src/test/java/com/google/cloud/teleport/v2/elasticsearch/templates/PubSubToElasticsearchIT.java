@@ -69,11 +69,17 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
   }
 
   @Test
+  @TemplateIntegrationTest(
+      value = PubSubToElasticsearch.class,
+      template = "PubSub_to_Elasticsearch_Flex")
   public void testPubSubToElasticsearch() throws IOException {
     basePubSubToElasticsearch(Function.identity(), Map.of("id", "1", "name", testName));
   }
 
   @Test
+  @TemplateIntegrationTest(
+      value = PubSubToElasticsearch.class,
+      template = "PubSub_to_Elasticsearch_Flex")
   public void testPubSubToElasticsearchWithUdf() throws IOException {
     gcsClient.createArtifact(
         "udf-name-upper-case.js",
@@ -89,6 +95,27 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
                 .addParameter(
                     "javascriptTextTransformGcsPath", getGcsPath("udf-name-upper-case.js"))
                 .addParameter("javascriptTextTransformFunctionName", "transform"),
+        Map.of("id", "1", "name", testName.toUpperCase()));
+  }
+
+  @Test
+  @TemplateIntegrationTest(
+      value = PubSubToElasticsearch.class,
+      template = "PubSub_to_Elasticsearch_Xlang")
+  public void testPubSubToElasticsearchWithPythonUdf() throws IOException {
+    gcsClient.createArtifact(
+        "pyudf.py",
+        "import json\n"
+            + "def uppercaseName(value):\n"
+            + "  data = json.loads(value)\n"
+            + "  data['name'] = data['name'].upper()\n"
+            + "  return json.dumps(data)");
+
+    basePubSubToElasticsearch(
+        builder ->
+            builder
+                .addParameter("pythonExternalTextTransformGcsPath", getGcsPath("pyudf.py"))
+                .addParameter("pythonExternalTextTransformFunctionName", "uppercaseName"),
         Map.of("id", "1", "name", testName.toUpperCase()));
   }
 

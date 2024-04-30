@@ -22,6 +22,7 @@ import com.google.common.base.CaseFormat;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /** Converts enum types to {@link org.apache.beam.sdk.options.ExperimentalOptions} values. */
 public class EnumBasedExperimentValueProvider<T extends Enum<T>> {
@@ -61,6 +62,11 @@ public class EnumBasedExperimentValueProvider<T extends Enum<T>> {
    */
   public String getPrefix() {
     return this.prefix;
+  }
+
+  /** Returns {@link #getPrefix()} as a {@link Pattern}. */
+  public Pattern getPrefixAsPattern() {
+    return Pattern.compile(String.format("^%s.*$", this.prefix));
   }
 
   /**
