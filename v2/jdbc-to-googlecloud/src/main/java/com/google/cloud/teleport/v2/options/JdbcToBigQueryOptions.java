@@ -55,7 +55,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection URL string.",
       helpText =
-          "The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. Note the difference between an Oracle non-RAC database connection string (`jdbc:oracle:thin:@some-host:<port>:<sid>`) and an Oracle RAC database connection string (`jdbc:oracle:thin:@//some-host[:<port>]/<service_name>`).",
+          "The JDBC connection URL string. For example, jdbc:mysql://some-host:3306/sampledb. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string. Note the difference between an Oracle non-RAC database connection string (jdbc:oracle:thin:@some-host:<port>:<sid>) and an Oracle RAC database connection string (jdbc:oracle:thin:@//some-host[:<port>]/<service_name>).",
       example = "jdbc:mysql://some-host:3306/sampledb")
   String getConnectionURL();
 
@@ -68,8 +68,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection property string.",
       helpText =
-          "Properties string to use for the JDBC connection. Format of the string must be"
-              + " [propertyName=property;]*.",
+          "Optional: The properties string to use for the JDBC connection. Use the string format [propertyName=property;]*.",
       example = "unicode=true;characterEncoding=UTF-8")
   String getConnectionProperties();
 
@@ -82,8 +81,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection username.",
       helpText =
-          "The username to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted "
-              + "with a Cloud KMS key.")
+          "Optional: The username to use for the JDBC connection. You can pass in this value encrypted by a Cloud KMS key as a Base64-encoded string.")
   String getUsername();
 
   void setUsername(String username);
@@ -94,8 +92,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection password.",
       helpText =
-          "The password to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted "
-              + "with a Cloud KMS key.")
+          "Optional: The password to use for the JDBC connection. You can pass in this value encrypted by a Cloud KMS key as a Base64-encoded string.")
   String getPassword();
 
   void setPassword(String password);
@@ -107,8 +104,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC source SQL query",
       helpText =
-          "The query to be run on the source to extract the data. Either query OR both table AND "
-              + "PartitionColumn must be specified.",
+          "Optional: The query to run on the source to extract the data.",
       example = "select * from sampledb.sample_table")
   String getQuery();
 
@@ -131,7 +127,7 @@ public interface JdbcToBigQueryOptions
       optional = false,
       groupName = "Target",
       description = "Temporary directory for BigQuery loading process",
-      helpText = "The temporary directory for the BigQuery loading process",
+      helpText = "The temporary directory for the BigQuery loading process.",
       example = "gs://your-bucket/your-files/temp_dir")
   String getBigQueryLoadingTemporaryDirectory();
 
@@ -143,8 +139,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Google Cloud KMS key",
       helpText =
-          "Cloud KMS Encryption Key to decrypt the username, password, and connection string. If Cloud KMS key is "
-              + "passed in, the username, password, and connection string must all be passed in encrypted.",
+          "Optional: The Cloud KMS encryption key to use decrypt the username, password, and connection string. If you pass in a Cloud KMS key, the username, password, and connection string must all be passed in encrypted.",
       example = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
   String getKMSEncryptionKey();
 
@@ -156,8 +151,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Whether to use column alias to map the rows.",
       helpText =
-          "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the"
-              + " column name to map the rows to BigQuery. Defaults to false.")
+          "Optional: If enabled (set to true), the pipeline uses the column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to false.")
   @Default.Boolean(false)
   Boolean getUseColumnAlias();
 
@@ -169,8 +163,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Target",
       description = "Whether to truncate data before writing",
       helpText =
-          "If enabled (set to true) the pipeline will truncate before loading data into BigQuery."
-              + " Defaults to false, which is used to only append data.")
+          "Optional: If enabled (set to true), the pipeline truncates before loading data into BigQuery. Defaults to false, which causes the pipeline to append data.")
   @Default.Boolean(false)
   Boolean getIsTruncate();
 
@@ -182,10 +175,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "The name of a column of numeric type that will be used for partitioning.",
       helpText =
-          "If this parameter is provided (along with `table`), JdbcIO reads the table in parallel "
-              + "by executing multiple instances of the query on the same table (subquery) using ranges. "
-              + "Currently, only Long partition columns are supported. Either query OR both table AND "
-              + "PartitionColumn must be specified.")
+          "	Optional: If this parameter is provided (along with table), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports Long partition columns.")
   String getPartitionColumn();
 
   void setPartitionColumn(String partitionColumn);
@@ -196,8 +186,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Name of the table in the external database.",
       helpText =
-          "Table to read from using partitions. Either query OR both table AND PartitionColumn must be specified. "
-              + "This parameter also accepts a subquery in parentheses.",
+          "Optional: The table to read from when using partitions. This parameter also accepts a subquery in parentheses.",
       example = "(select id, name from Person) as subq")
   String getTable();
 
@@ -209,7 +198,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "The number of partitions.",
       helpText =
-          "The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1.")
+          "Optional: The number of partitions. With the lower and upper bound, this value forms partition strides for generated WHERE clause expressions that are used to split the partition column evenly. When the input is less than 1, the number is set to 1.")
   Integer getNumPartitions();
 
   void setNumPartitions(Integer numPartitions);
@@ -220,7 +209,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Lower bound of partition column.",
       helpText =
-          "Lower bound used in the partition scheme. If not provided, it is automatically inferred by Beam (for the supported types)")
+          "Optional: The lower bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types.")
   Long getLowerBound();
 
   void setLowerBound(Long lowerBound);
@@ -231,7 +220,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Upper bound of partition column",
       helpText =
-          "Upper bound used in partition scheme. If not provided, it is automatically inferred by Beam (for the supported types)")
+          "Optional: The upper bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types.")
   Long getUpperBound();
 
   void setUpperBound(Long lowerBound);

@@ -132,7 +132,7 @@ public class PubsubToPubsub {
         order = 1,
         description = "Pub/Sub input subscription",
         helpText =
-            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
+            "Pub/Sub subscription to read the input from. For example, projects/<project-id>/subscriptions/<subscription-name>.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     @Validation.Required
     ValueProvider<String> getInputSubscription();
@@ -143,7 +143,7 @@ public class PubsubToPubsub {
         order = 2,
         description = "Output Pub/Sub topic",
         helpText =
-            "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
+            "Cloud Pub/Sub topic to write the output to. For example, projects/<project-id>/topics/<topic-name>.",
         example = "projects/your-project-id/topics/your-topic-name")
     @Validation.Required
     ValueProvider<String> getOutputTopic();
@@ -155,7 +155,7 @@ public class PubsubToPubsub {
         optional = true,
         description = "Event filter key",
         helpText =
-            "Attribute key by which events are filtered. No filters are applied if no key is specified.")
+            "(Optional) Filter events based on an attribute key. No filters are applied if filterKey is not specified.")
     ValueProvider<String> getFilterKey();
 
     void setFilterKey(ValueProvider<String> filterKey);
@@ -165,10 +165,7 @@ public class PubsubToPubsub {
         optional = true,
         description = "Event filter value",
         helpText =
-            "Filter attribute value to use if an event filter key is provided. Accepts a valid "
-                + "Java Regex string as an event filter value. In case a regex is provided, the complete "
-                + "expression should match in order for the message to be filtered. Partial matches (e.g. "
-                + "substring) will not be filtered. A null event filter value is used by default.")
+            "(Optional) Filter attribute value to use in case a filterKey is provided. A null filterValue is used by default.")
     ValueProvider<String> getFilterValue();
 
     void setFilterValue(ValueProvider<String> filterValue);
