@@ -13,17 +13,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
+/**
+ * The {@link com.google.cloud.teleport.v2.templates.ProducerProperties} returns
+ * client properties for destination Kafka.
+ */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.ServiceOptions;
-import com.google.cloud.secretmanager.v1.AccessSecretVersionResponse;
-import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
-import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.common.collect.ImmutableMap;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.slf4j.Logger;
@@ -31,43 +29,13 @@ import org.slf4j.LoggerFactory;
 
 final class ProducerProperties {
   private static final Logger LOGG = LoggerFactory.getLogger(ProducerProperties.class);
-
-  public static List<String> accessSecretVersion(String projectId, KafkaToKafkaOptions options) {
-    List<String> saslCredentials = new ArrayList<>();
-    String sinkUsername = options.getSecretIdSinkUsername();
-    String sinkUsernameVersionId = options.getVersionIdSinkUsername();
-    String sinkPassword = options.getSecretIdSinkPassword();
-    String sinkPasswordVersionId = options.getVersionIdSinkPassword();
-    String usernameSink = null;
-    String passwordSink = null;
-    try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
-      SecretVersionName secretVersionUsername = SecretVersionName.of(projectId, sinkUsername, sinkUsernameVersionId);
-      AccessSecretVersionResponse responseUsername = client.accessSecretVersion(secretVersionUsername);
-      usernameSink = responseUsername.getPayload().getData().toStringUtf8();
-      saslCredentials.add(usernameSink);
-      SecretVersionName secretVersionPassword = SecretVersionName.of(projectId, sinkPassword, sinkPasswordVersionId);
-      AccessSecretVersionResponse responsePassword = client.accessSecretVersion(secretVersionPassword);
-      passwordSink = responsePassword.getPayload().getData().toStringUtf8();
-      saslCredentials.add(passwordSink);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    return saslCredentials;
-
-  }
-
-
   public static ImmutableMap<String, Object> get(KafkaToKafkaOptions options) {
 
-
-    String projectId = ServiceOptions.getDefaultProjectId();
-    String projectNumber = options.getProjectNumber();
-    LOGG.info("Got default ProjectId" + projectId);
-    String[] saslCredentials = accessSecretVersion(projectNumber, options).toArray(new String[0]);
+    String[] saslCredentials = Credentials.accessSecretVersion(options).toArray(new String[0]);
     ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
     properties.put(
         CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
-        options.getSinkBootstrapServer());
+        options.getDestinationBootstrapServer());
     properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
     //         Note: in other languages, set sasl.username and sasl.password instead.
     properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
@@ -75,10 +43,10 @@ final class ProducerProperties {
         SaslConfigs.SASL_JAAS_CONFIG,
         "org.apache.kafka.common.security.plain.PlainLoginModule required"
             + " username=\'"
-            + saslCredentials[0]
+            + saslCredentials[2]
             + "\'"
             + " password=\'"
-            + saslCredentials[1]
+            + saslCredentials[3]
             + "\';");
 
     return properties.buildOrThrow();

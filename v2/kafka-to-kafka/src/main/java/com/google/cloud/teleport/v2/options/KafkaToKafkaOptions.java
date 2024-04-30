@@ -23,10 +23,10 @@ import org.apache.beam.sdk.options.Validation;
 public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions {
   @TemplateParameter.Text(
       order = 1,
-      optional = true,
+      optional = false,
       regexes = {"[,:a-zA-Z0-9._-]+"},
       description = "Kafka Bootstrap Server List to read from",
-      helpText = "Kafka Bootstrap Server List, separated by commas.",
+      helpText = "Kafka Bootstrap Server List, separated by commas to read messages from the given input topic.",
       example = "localhost:9092, 127.0.0.1:9093")
   @Validation.Required
   String getSourceBootstrapServers();
@@ -38,7 +38,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
       optional = false,
       regexes = {"[,a-zA-Z0-9._-]+"},
       description = "Kafka topic(s) to read the input from",
-      helpText = "Kafka topic(s) to read the input from.",
+      helpText = "Kafka topic(s) to read the input from the given source bootstrap server.",
       example = "topic1,topic2")
   @Validation.Required
   String getInputTopic();
@@ -49,8 +49,8 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
       order = 3,
       optional = false,
       regexes = {"[,:a-zA-Z0-9._-]+"},
-      description = "output topics to write to",
-      helpText = "topics to write to for the data read from Kafka",
+      description = "Output topics to write to",
+      helpText = "Topics to write to in the destination Kafka for the data read from the source Kafka.",
       example = "topic1,topic2")
   @Validation.Required
   String getOutputTopic();
@@ -61,13 +61,13 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
       order = 4,
       optional = false,
       regexes = {"[,:a-zA-Z0-9._-]+"},
-      description = "sink kafka Bootstrap Server",
-      helpText = "sink kafka Bootstrap Server to write data to",
+      description = "Destination kafka Bootstrap Server",
+      helpText = "Destination kafka Bootstrap Server to write data to.",
       example = "localhost:9092")
   @Validation.Required
-  String getSinkBootstrapServer();
+  String getDestinationBootstrapServer();
 
-  void setSinkBootstrapServer(String sinkBootstrapServer);
+  void setDestinationBootstrapServer(String destinationBootstrapServer);
 
   @TemplateParameter.Enum(
       order = 5,
@@ -77,104 +77,61 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
           @TemplateParameter.TemplateEnumOption("nonGMK-to-GMK")
       },
       optional = false,
-      description = "the type of kafka-to-kafka migration",
-      helpText = "Migration Type can be one of the three options `nonGMK-to-nonGMK`, `GMK-to-GMK`, nonGMK-to-GMK`"
+      description = "The type of kafka-to-kafka migration",
+      helpText = "Migration type for the data movement from a source to a destination kafka."
   )
   String getMigrationType();
   void setMigrationType(String migrationType);
-
-  @TemplateParameter.Text(
+  @TemplateParameter.Enum(
       order = 6,
       optional = true,
-      description = "secretid to get SASL username for kafka source",
-      helpText = "secretid for username to authenticate to kafka source"
+      description = "Method for kafka authentication",
+      enumOptions = {
+          @TemplateParameter.TemplateEnumOption("secret manager"),
+          @TemplateParameter.TemplateEnumOption("no authentication (only for non-GMK)"),
+      },
+      helpText = "Type of authentication mechanism to authenticate to Kafka."
   )
-  String getSecretIdSourceUsername();
-  void setSecretIdSourceUsername(String secretIdSourceUsername);
-
+  String getAuthenticationMethod();
+  void setAuthenticationMethod(String authenticationMethod);
   @TemplateParameter.Text(
       order = 7,
-      optional = true,
-      description = "secretid to get SASL password for the kafka source",
-      helpText = "secretid in secret manager to authenticate to kafka source"
+      optional = false,
+      description = "Version id of Kafka source username",
+      helpText = "Version id from the secret manager to get Kafka SASL_PLAIN username for source Kafka.",
+      example = "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
   )
 
-  String getSecretIdSourcePassword();
-  void setSecretIdSourcePassword(String secretIdSourcePassword);
+  String getSourceUsernameVersionId();
+  void setSourceUsernameVersionId(String sourceUsernameVersionId);
 
   @TemplateParameter.Text(
       order = 8,
       optional = true,
-      description = "secretid to get SASL username for kafka sink",
-      helpText = "secretid to get password to authenticate to kafka sink"
+      description = "Version of Kafka source password",
+      helpText = "Version id from the secret manager to get Kafka SASL_PLAIN password for the source Kafka.",
+      example = "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
   )
-  String getSecretIdSinkUsername();
-  void setSecretIdSinkUsername(String secretIdSinkUsername);
+  String getSourcePasswordVersionId();
+  void setSourcePasswordVersionId(String sourcePasswordVersionId);
+
   @TemplateParameter.Text(
       order = 9,
       optional = true,
-      description = "secretid to get password for the kafka sink",
-      helpText = "secretid in secret manager to get access to the secret"
+      description = "Version id for destination Kafka username",
+      helpText = "Version id from the secret manager to get Kafka SASL_PLAIN username for the destination Kafka.",
+      example = "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
   )
-  String getSecretIdSinkPassword();
-  void setSecretIdSinkPassword(String secretIdSinkPassword);
+  String getDestinationUsernameVersionId();
+  void setDestinationUsernameVersionId(String destinationUsernameVersionId);
 
   @TemplateParameter.Text(
       order = 10,
       optional = true,
-      description = "versionid from the secret manager to get username for source",
-      helpText = "version of the secret"
+      description = "Version Id for destination Kafka password",
+      helpText = "Version id from the secret manager to get Kafka SASL_PLAIN password for the destination Kafka.",
+      example = "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
   )
-
-  String getVersionIdSourceUsername();
-  void setVersionIdSourceUsername(String versionIdSourceUsername);
-
-  @TemplateParameter.Text(
-      order =11,
-      optional = true,
-      description = "versionId to get password for source",
-      helpText = "version of the secret"
-  )
-  String getVersionIdSourcePassword();
-  void setVersionIdSourcePassword(String versionIdSourcePassword);
-
-  @TemplateParameter.Text(
-      order = 12,
-      optional = true,
-      description = "versionid for username secret for sink",
-      helpText = "version for the sink secret"
-  )
-  String getVersionIdSinkUsername();
-  void setVersionIdSinkUsername(String versionIdSinkUsername);
-
-  @TemplateParameter.Text(
-      order =13,
-      optional = true,
-      description = "versionId four password for sink",
-      helpText = "version for sink password secret"
-  )
-  String getVersionIdSinkPassword();
-  void setVersionIdSinkPassword(String versionIdSinkPassword);
-  @TemplateParameter.Text(
-      order = 14,
-      optional = true,
-      description = "project number",
-      helpText = "project number for the project"
-  )
-  String getProjectNumber();
-  void setProjectNumber(String projectNumber);
-
-  @TemplateParameter.Enum(
-      order = 15,
-      optional = true,
-      description = "method for kafka authentication",
-      enumOptions = {
-          @TemplateParameter.TemplateEnumOption("secret manager"),
-          @TemplateParameter.TemplateEnumOption("secretstore url"),
-      },
-      helpText = "type of authentication protocol for kafka."
-  )
-  String getAuthenticationMethod();
-  void setAuthenticationMethod(String authenticationMethod);
-
+  String getDestinationPasswordVersionId();
+  void setDestinationPasswordVersionId(String destinationPasswordVersionId);
 }
