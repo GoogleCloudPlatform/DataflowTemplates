@@ -102,7 +102,7 @@ public class PubsubToText {
         description = "Pub/Sub input topic",
         helpText =
             "The Pub/Sub topic to read the input from. The topic name should be in the format "
-                + "`projects/<project-id>/topics/<topic-name>`")
+                + "`projects/<PROJECT_ID>/topics/<TOPIC_NAME>`")
     ValueProvider<String> getInputTopic();
 
     void setInputTopic(ValueProvider<String> value);
@@ -138,7 +138,7 @@ public class PubsubToText {
     @TemplateParameter.Text(
         order = 5,
         description = "Output filename prefix of the files to write",
-        helpText = "The prefix to place on each windowed file. For example, `output-`")
+        helpText = "The prefix to place on each windowed file. For example, `output-`.")
     @Default.String("output")
     @Required
     ValueProvider<String> getOutputFilenamePrefix();

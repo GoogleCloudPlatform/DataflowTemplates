@@ -158,7 +158,7 @@ final class CassandraToBigtable {
         optional = true,
         description = "The Row Key Separator",
         helpText =
-            "The separator used to build row-key. The default value is '#'.")
+            "The separator used to build row-keys. The default value is '#'.")
     @Default.String("#")
     ValueProvider<String> getRowKeySeparator();
 

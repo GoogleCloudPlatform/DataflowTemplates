@@ -79,7 +79,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection username.",
       helpText =
-          "The username to use for the JDBC connection. You can pass in this value encrypted by a Cloud KMS key as a Base64-encoded string.")
+          "The username to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string.")
   String getUsername();
 
   void setUsername(String username);
@@ -90,7 +90,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection password.",
       helpText =
-          "The password to use for the JDBC connection. You can pass in this value encrypted by a Cloud KMS key as a Base64-encoded string.")
+          "The password to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string.")
   String getPassword();
 
   void setPassword(String password);
@@ -101,7 +101,7 @@ public interface JdbcToBigQueryOptions
       regexes = {"^.+$"},
       groupName = "Source",
       description = "JDBC source SQL query",
-      helpText = "Optional when using partitions. The query to be run on the source to extract the data. Either query OR both table AND PartitionColumn must be specified.",
+      helpText = "Optional when using partitions. The query to run on the source to extract the data. Either query OR both table AND PartitionColumn must be specified.",
       example = "select * from sampledb.sample_table")
   String getQuery();
 
@@ -123,7 +123,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Target",
       description = "Temporary directory for BigQuery loading process",
       helpText = "The temporary directory for the BigQuery loading process.",
-      example = "gs://<my-bucket>/my-files/temp_dir")
+      example = "gs://<BUCKET>/my-files/temp_dir")
   String getBigQueryLoadingTemporaryDirectory();
 
   void setBigQueryLoadingTemporaryDirectory(String directory);

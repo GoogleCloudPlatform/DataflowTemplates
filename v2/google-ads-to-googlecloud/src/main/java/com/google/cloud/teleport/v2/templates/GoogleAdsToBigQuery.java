@@ -89,7 +89,7 @@ public final class GoogleAdsToBigQuery {
         order = 2,
         regexes = {"^[0-9]+(,[0-9]+)*$"},
         description = "Google Ads account IDs",
-        helpText = "A list of Google Ads account ID's to use to execute the query.",
+        helpText = "A list of Google Ads account IDs to use to execute the query.",
         example = "12345,67890")
     @Validation.Required
     List<Long> getCustomerIds();

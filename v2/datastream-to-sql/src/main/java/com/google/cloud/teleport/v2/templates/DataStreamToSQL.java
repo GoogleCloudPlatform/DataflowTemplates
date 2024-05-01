@@ -101,7 +101,7 @@ public class DataStreamToSQL {
         order = 1,
         description = "File location for Datastream file input in Cloud Storage.",
         helpText =
-            "The file location for Datastream files in Cloud Storage to replicate. This file location is typically the root path for the stream.")
+            "The file location for the Datastream files in Cloud Storage to replicate. This file location is typically the root path for the stream.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);

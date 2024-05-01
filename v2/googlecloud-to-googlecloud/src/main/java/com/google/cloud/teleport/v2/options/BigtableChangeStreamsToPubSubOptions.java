@@ -49,8 +49,8 @@ public interface BigtableChangeStreamsToPubSubOptions
       optional = true,
       description = "The encoding of the message written into PubSub",
       helpText =
-          "The encoding of the messages to be published to the Pub/Sub topic. When schema of the "
-              + "destination topic is configured, the message encoding is determined by the topic settings. The following values are supported: `BINARY`, `JSON` and `JSON`. Defaults to `JSON`.")
+          "The encoding of the messages to be published to the Pub/Sub topic. When the schema of the "
+              + "destination topic is configured, the message encoding is determined by the topic settings. The following values are supported: `BINARY` and `JSON`. Defaults to `JSON`.")
   @Default.Enum("JSON")
   MessageEncoding getMessageEncoding();
 
@@ -66,8 +66,8 @@ public interface BigtableChangeStreamsToPubSubOptions
       optional = true,
       description = "The format of the message written into PubSub",
       helpText =
-          "The encoding of the messages to be published to the Pub/Sub topic. When schema of the destination topic is configured, the message encoding is determined by the topic settings. "
-              + "The following values are supported: `AVRO`, `PROTOCOL_BUFFERS` and `JSON`. The defaults value is `JSON`. When the `JSON` format is used, "
+          "The encoding of the messages to publish to the Pub/Sub topic. When the schema of the destination topic is configured, the message encoding is determined by the topic settings. "
+              + "The following values are supported: `AVRO`, `PROTOCOL_BUFFERS`, and `JSON`. The default value is `JSON`. When the `JSON` format is used, "
               + "the rowKey, column, and value fields of the message are strings, the contents of which are determined by the pipeline options `useBase64Rowkeys`, `useBase64ColumnQualifiers`, `useBase64Values`, and `bigtableChangeStreamCharset`.")
   @Default.Enum("JSON")
   MessageFormat getMessageFormat();
