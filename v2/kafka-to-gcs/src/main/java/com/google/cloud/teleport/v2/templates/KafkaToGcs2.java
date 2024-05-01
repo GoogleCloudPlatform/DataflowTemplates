@@ -25,7 +25,11 @@ import com.google.cloud.teleport.v2.transforms.WriteToGCSText;
 import com.google.cloud.teleport.v2.transforms.WriteTransform;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.collect.ImmutableMap;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -246,9 +250,10 @@ public class KafkaToGcs2 {
     // Set offset to either earliest or latest.
     kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getOffset());
     // Authenticate to Kafka only when user provides authentication params.
-    if (useKafkaAuth)
+    if (useKafkaAuth) {
       kafkaConfig.putAll(
           ClientAuthConfig.getSaslPlainConfig(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
+    }
 
     // Step 1: Read from Kafka as bytes.
     kafkaRecord =

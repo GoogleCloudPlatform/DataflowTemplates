@@ -34,13 +34,17 @@ import org.apache.beam.sdk.io.Compression;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
-import org.apache.beam.sdk.transforms.*;
-import org.apache.beam.sdk.transforms.windowing.*;
+import org.apache.beam.sdk.transforms.Contextful;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.PaneInfo;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.joda.time.Instant;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 
 /**
  * {@link PTransform} for converting the {@link KafkaRecord} into {@link GenericRecord} using Schema
@@ -69,7 +73,7 @@ public abstract class AvroWriteTransform
 
   public abstract String outputFilenamePrefix();
 
-  /** Expected Message format from the Kafka topics */
+  /** Expected Message format from the Kafka topics. */
   enum MessageFormat {
     /**
      * Represents messages serialized in the Confluent wire format.
@@ -244,19 +248,11 @@ public abstract class AvroWriteTransform
   class AvroFileNaming implements FileIO.Write.FileNaming {
     private final FileIO.Write.FileNaming defaultNaming;
     private final AvroDestination avroDestination;
-    private final String DATE_SUBDIR_FORMAT = "yyyy-MM-dd";
-    private final String DATE_SUBDIR_PREFIX = "date=";
 
     public AvroFileNaming(AvroDestination avroDestination) {
       defaultNaming =
           FileIO.Write.defaultNaming(DigestUtils.md5Hex(avroDestination.jsonSchema), ".avro");
       this.avroDestination = avroDestination;
-    }
-
-    public String getDateSubDir(IntervalWindow window) {
-      Instant maxTimestamp = window.start();
-      DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern(DATE_SUBDIR_FORMAT);
-      return DATE_SUBDIR_PREFIX + maxTimestamp.toString(dateTimeFormatter);
     }
 
     @Override
@@ -267,9 +263,6 @@ public abstract class AvroWriteTransform
         int shardIndex,
         Compression compression) {
       String subDir = avroDestination.name;
-      if (window instanceof IntervalWindow) {
-        subDir += "/" + getDateSubDir((IntervalWindow) window);
-      }
       return subDir
           + "/"
           + defaultNaming.getFilename(window, pane, numShards, shardIndex, compression);

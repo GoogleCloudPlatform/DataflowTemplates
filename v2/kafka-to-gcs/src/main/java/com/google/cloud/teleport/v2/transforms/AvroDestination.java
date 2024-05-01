@@ -38,8 +38,12 @@ public class AvroDestination {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof AvroDestination)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof AvroDestination)) {
+      return false;
+    }
     AvroDestination that = (AvroDestination) o;
     return Objects.equals(name, that.name) && Objects.equals(jsonSchema, that.jsonSchema);
   }
