@@ -49,6 +49,8 @@ public class AvroUtil {
   public static final String SPANNER_SEQUENCE_COUNTER_START = "counterStartValue";
   public static final String SPANNER_VIEW_QUERY = "spannerViewQuery";
   public static final String SPANNER_VIEW_SECURITY = "spannerViewSecurity";
+  public static final String SPANNER_NAMED_SCHEMA = "spannerNamedSchema";
+  public static final String SPANNER_NAME = "spannerName";
   public static final String STORED = "stored";
 
   public static Schema unpackNullable(Schema schema) {
@@ -67,5 +69,34 @@ public class AvroUtil {
       return unionTypes.get(0);
     }
     return null;
+  }
+
+  /**
+   * For named schema, the database object name could have dot(.). When building a avro schema
+   * object, a name with dot(.) is special. See org.apache.avro.Schema.Name#name for more
+   * detail. So we use avro property to store the database object name in newer version, this
+   * function thus provides a way to get name in a compatible way.
+   *
+   * @return spanner's database object name.
+   */
+  public static String getSpannerObjectName(Schema schema) {
+    if (schema.getProp(SPANNER_NAME) != null && !schema.getProp(SPANNER_NAME).isEmpty()) {
+      return schema.getProp(SPANNER_NAME);
+    }
+    return schema.getName();
+  }
+
+  /**
+   * For a fully qualified database object name, we can not use it directly as avro schema name.
+   * Transform the name by replacing the dot(.) using underscore(_) to avoid conflicts with avro.
+   *
+   * @param spannerName database object name
+   * @return avro schema name.
+   */
+  public static String generateAvroSchemaName(String spannerName) {
+    if(spannerName.contains(".")) {
+      return spannerName.replaceAll("\\.", "_");
+    }
+    return spannerName;
   }
 }

@@ -15,12 +15,14 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
 import static com.google.common.base.Strings.isNullOrEmpty;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
+import com.google.cloud.teleport.spanner.common.NameUtils;
 import com.google.cloud.teleport.spanner.ddl.ForeignKey.ReferentialAction;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.common.annotations.VisibleForTesting;
@@ -465,13 +467,13 @@ public class InformationSchemaScanner {
         options.add(
             optionName
                 + "=\""
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + NameUtils.OPTION_STRING_ESCAPER.escape(optionValue)
                 + "\"");
       } else if (optionType.equalsIgnoreCase("character varying")) {
         options.add(
             optionName
                 + "='"
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + NameUtils.OPTION_STRING_ESCAPER.escape(optionValue)
                 + "'");
       } else {
         options.add(optionName + "=" + optionValue);
@@ -767,16 +769,16 @@ public class InformationSchemaScanner {
         options.add(
             optionName
                 + "="
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
+                + NameUtils.GSQL_LITERAL_QUOTE
+                + NameUtils.OPTION_STRING_ESCAPER.escape(optionValue)
+                + NameUtils.GSQL_LITERAL_QUOTE);
       } else if (optionType.equalsIgnoreCase("character varying")) {
         options.add(
             optionName
                 + "="
-                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE);
+                + NameUtils.POSTGRESQL_LITERAL_QUOTE
+                + NameUtils.OPTION_STRING_ESCAPER.escape(optionValue)
+                + NameUtils.POSTGRESQL_LITERAL_QUOTE);
       } else {
         options.add(optionName + "=" + optionValue);
       }
@@ -857,16 +859,16 @@ public class InformationSchemaScanner {
         options.add(
             optionName
                 + "="
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
+                + NameUtils.GSQL_LITERAL_QUOTE
+                + NameUtils.OPTION_STRING_ESCAPER.escape(optionValue)
+                + NameUtils.GSQL_LITERAL_QUOTE);
       } else if (optionType.equalsIgnoreCase("character varying")) {
         options.add(
             optionName
                 + "="
-                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE);
+                + NameUtils.POSTGRESQL_LITERAL_QUOTE
+                + NameUtils.OPTION_STRING_ESCAPER.escape(optionValue)
+                + NameUtils.POSTGRESQL_LITERAL_QUOTE);
       } else {
         options.add(optionName + "=" + optionValue);
       }
@@ -924,7 +926,6 @@ public class InformationSchemaScanner {
   }
 
   private void listChangeStreams(Ddl.Builder builder) {
-    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect);
     ResultSet resultSet =
         context.executeQuery(
             Statement.of(
@@ -975,7 +976,7 @@ public class InformationSchemaScanner {
       }
 
       forClause.append(forClause.length() == 0 ? "FOR " : ", ");
-      forClause.append(identifierQuote).append(tableName).append(identifierQuote);
+      forClause.append(quoteIdentifier(tableName, dialect));
       if (allColumns) {
         continue;
       } else if (columnNameList == null) {
@@ -985,7 +986,7 @@ public class InformationSchemaScanner {
             columnNameList.stream()
                 .filter(s -> s != null)
                 .sorted()
-                .map(s -> identifierQuote + s + identifierQuote)
+                .map(s -> quoteIdentifier(s, dialect))
                 .collect(Collectors.joining(", "));
         forClause.append("(").append(sortedColumns).append(")");
       }
@@ -1022,16 +1023,16 @@ public class InformationSchemaScanner {
         options.add(
             optionName
                 + "="
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
+                + NameUtils.GSQL_LITERAL_QUOTE
+                + NameUtils.OPTION_STRING_ESCAPER.escape(optionValue)
+                + NameUtils.GSQL_LITERAL_QUOTE);
       } else if (optionType.equalsIgnoreCase("character varying")) {
         options.add(
             optionName
                 + "="
-                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE);
+                + NameUtils.POSTGRESQL_LITERAL_QUOTE
+                + NameUtils.OPTION_STRING_ESCAPER.escape(optionValue)
+                + NameUtils.POSTGRESQL_LITERAL_QUOTE);
       } else {
         options.add(optionName + "=" + optionValue);
       }
@@ -1153,9 +1154,9 @@ public class InformationSchemaScanner {
         options.add(
             optionName
                 + "="
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
+                + NameUtils.GSQL_LITERAL_QUOTE
+                + NameUtils.OPTION_STRING_ESCAPER.escape(optionValue)
+                + NameUtils.GSQL_LITERAL_QUOTE);
       } else {
         options.add(optionName + "=" + optionValue);
       }

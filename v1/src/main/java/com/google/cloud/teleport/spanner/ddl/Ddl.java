@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.spanner.ddl;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.spanner.common.NameUtils;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
@@ -321,12 +322,12 @@ public class Ddl implements Serializable {
 
   private static String getDatabaseOptionsStatements(
       Export.DatabaseOption databaseOption, String databaseId, Dialect dialect) {
-    String literalQuote = DdlUtilityComponents.literalQuote(dialect);
+    String literalQuote = NameUtils.literalQuote(dialect);
     String optionType = databaseOption.getOptionType();
     String formattedValue =
         (optionType.equalsIgnoreCase("STRING") || optionType.equalsIgnoreCase("character varying"))
             ? literalQuote
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(databaseOption.getOptionValue())
+                + NameUtils.OPTION_STRING_ESCAPER.escape(databaseOption.getOptionValue())
                 + literalQuote
             : databaseOption.getOptionValue();
     String statement;
