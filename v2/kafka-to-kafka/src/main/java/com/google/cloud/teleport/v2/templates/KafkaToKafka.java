@@ -62,35 +62,35 @@ public class KafkaToKafka {
           options.getAuthenticationMethod().equals("secret manager"),
           "SASL_PLAIN authentication required for GMK");
       checkArgument(
-          options.getSourceUsernameVersionId().trim().length() > 0,
+          options.getSourceUsernameSecretId().trim().length() > 0,
           "version id required to access username to GMK");
       checkArgument(
-          options.getSourcePasswordVersionId().trim().length() > 0,
+          options.getSourcePasswordSecretId().trim().length() > 0,
           "version id required to access password to authenticate to GMK");
     }
 
     if (options.getMigrationType().split("to-")[1].equals("GMK")) {
       checkArgument(
-          options.getDestinationUsernameVersionId().trim().length() > 0,
+          options.getDestinationUsernameSecretId().trim().length() > 0,
           "version id required to access username to GMK");
 
       checkArgument(
-          options.getDestinationPasswordVersionId().trim().length() > 0,
+          options.getDestinationPasswordSecretId().trim().length() > 0,
           "version id requited to access password to authenticate to GMK");
     }
     if (options.getMigrationType().equals("nonGMK-to-nonGMK")) {
       if (options.getAuthenticationMethod().equals("secret manager")) {
         checkArgument(
-            options.getSourceUsernameVersionId().trim().length() > 0,
+            options.getSourceUsernameSecretId().trim().length() > 0,
             "version id required to access username for source Kafka");
         checkArgument(
-            options.getSourcePasswordVersionId().trim().length() > 0,
+            options.getSourcePasswordSecretId().trim().length() > 0,
             "version id required to access password for source kafka");
         checkArgument(
-            options.getDestinationUsernameVersionId().trim().length() > 0,
+            options.getDestinationUsernameSecretId().trim().length() > 0,
             "version id required to access username for destination Kafka");
         checkArgument(
-            options.getDestinationPasswordVersionId().trim().length() > 0,
+            options.getDestinationPasswordSecretId().trim().length() > 0,
             "version id required to access password for destination kafka");
       }
     }

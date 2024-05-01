@@ -78,7 +78,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
         @TemplateParameter.TemplateEnumOption("GMK-to-GMK"),
         @TemplateParameter.TemplateEnumOption("nonGMK-to-GMK")
       },
-      optional = false,
+      optional = true,
       description = "The type of kafka-to-kafka migration",
       helpText = "Migration type for the data movement from a source to a destination kafka.")
   @Validation.Required

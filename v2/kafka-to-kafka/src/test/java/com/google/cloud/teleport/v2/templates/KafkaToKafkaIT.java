@@ -92,7 +92,7 @@ public final class KafkaToKafkaIT extends TemplateTestBase {
                 .addParameter("inputTopic", inputTopicName)
                 .addParameter("outputTopic", outputTopicName)
                 .addParameter(
-                    "sinkBootstrapServer",
+                    "destinationBootstrapServer",
                     kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "")));
 
     LaunchInfo info = launchTemplate(options);
