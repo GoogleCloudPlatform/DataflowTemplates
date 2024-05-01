@@ -108,7 +108,7 @@ public class ExportPipeline {
         optional = true,
         description = "Cloud Storage temp directory for storing Avro files",
         helpText =
-            "(Optional) The Cloud Storage path where temporary Avro files are written.")
+            "The Cloud Storage path where temporary Avro files are written.")
     ValueProvider<String> getAvroTempDirectory();
 
     void setAvroTempDirectory(ValueProvider<String> value);
@@ -146,7 +146,7 @@ public class ExportPipeline {
         },
         description = "Snapshot time",
         helpText =
-            "(Optional) The timestamp that corresponds to the version of the Spanner database that you want to read. The timestamp must be specified as per RFC 3339 UTC "Zulu" format. The timestamp must be in the past and Maximum timestamp staleness applies.",
+            "The timestamp that corresponds to the version of the Spanner database that you want to read. The timestamp must be specified as per RFC 3339 UTC "Zulu" format. The timestamp must be in the past and Maximum timestamp staleness applies.",
         example = "1990-12-31T23:59:60Z")
     @Default.String(value = "")
     ValueProvider<String> getSnapshotTime();
@@ -157,7 +157,7 @@ public class ExportPipeline {
         order = 8,
         optional = true,
         description = "Cloud Spanner Project Id",
-        helpText = "(Optional) The Google Cloud Project ID of the Spanner database that you want to read data from.")
+        helpText = "The Google Cloud Project ID of the Spanner database that you want to read data from.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);
@@ -167,7 +167,7 @@ public class ExportPipeline {
         optional = true,
         description = "Export Timestamps as Timestamp-micros type",
         helpText =
-            "(Optional) If true, timestamps are exported as a `long` type with `timestamp-micros` logical type. By default, timestamps are exported as ISO-8601 strings at nanosecond precision.")
+            "If true, timestamps are exported as a `long` type with `timestamp-micros` logical type. By default, timestamps are exported as ISO-8601 strings at nanosecond precision.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getShouldExportTimestampAsLogicalType();
 
@@ -179,7 +179,7 @@ public class ExportPipeline {
         regexes = {"^[a-zA-Z0-9_]+(,[a-zA-Z0-9_]+)*$"},
         description = "Cloud Spanner table name(s).",
         helpText =
-            "(Optional) A comma-separated list of tables specifying the subset of the Spanner database to export. If you set this parameter, you must include all of the related tables (parent tables and foreign key referenced tables) or else set the `shouldExportRelatedTables` parameter to `true`.")
+            "A comma-separated list of tables specifying the subset of the Spanner database to export. If you set this parameter, you must include all of the related tables (parent tables and foreign key referenced tables) or else set the `shouldExportRelatedTables` parameter to `true`.")
     @Default.String(value = "")
     ValueProvider<String> getTableNames();
 
@@ -190,7 +190,7 @@ public class ExportPipeline {
         optional = true,
         description = "Export necessary Related Spanner tables.",
         helpText =
-            "\t(Optional) Specifies whether to include related tables. This parameter is used in conjunction with the `tableNames` parameter.")
+            "Specifies whether to include related tables. This parameter is used in conjunction with the `tableNames` parameter.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getShouldExportRelatedTables();
 
@@ -206,7 +206,7 @@ public class ExportPipeline {
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
-            "(Optional) The request priority for Spanner calls. Possible values are `HIGH`, `MEDIUM`, `LOW`. The default value is `MEDIUM`.")
+            "The request priority for Spanner calls. Possible values are `HIGH`, `MEDIUM`, `LOW`. The default value is `MEDIUM`.")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);
@@ -216,7 +216,7 @@ public class ExportPipeline {
         optional = true,
         description = "Use independent compute resource (Spanner DataBoost).",
         helpText =
-            "(Optional) Set to `true` to use the compute resources of Spanner Data Boost to run the job with near-zero impact on Spanner OLTP workflows. This requires the `spanner.databases.useDataBoost` IAM permission. For more information, see [Data Boost overview](https://cloud.google.com/spanner/docs/databoost/databoost-overview).")
+            "Set to `true` to use the compute resources of Spanner Data Boost to run the job with near-zero impact on Spanner OLTP workflows. This requires the `spanner.databases.useDataBoost` IAM permission. For more information, see Data Boost overview(https://cloud.google.com/spanner/docs/databoost/databoost-overview).")
     @Default.Boolean(false)
     ValueProvider<Boolean> getDataBoostEnabled();
 

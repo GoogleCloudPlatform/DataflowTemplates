@@ -186,7 +186,7 @@ public class JmsToPubsub {
     @TemplateParameter.Text(
         order = 5,
         description = "JMS Username",
-        helpText = "\t(Optional) The username to use for authentication on the JMS server.",
+        helpText = "The username to use for authentication on the JMS server.",
         example = "sampleusername")
     String getUsername();
 
@@ -195,7 +195,7 @@ public class JmsToPubsub {
     @TemplateParameter.Text(
         order = 6,
         description = "JMS Password",
-        helpText = "(Optional) The password associated with the provided username.",
+        helpText = "The password associated with the provided username.",
         example = "samplepassword")
     String getPassword();
 

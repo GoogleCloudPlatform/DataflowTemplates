@@ -33,7 +33,7 @@ public interface AstraDbToBigQueryOptions {
         description = "BigQuery output table",
         optional = true,
         helpText =
-            "Optional: The BigQuery table location to write the output to. The table should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match the input objects.")
+            "The BigQuery table location to write the output to. The table should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match the input objects.")
     String getOutputTableSpec();
 
     @SuppressWarnings("unused")
@@ -92,7 +92,7 @@ public interface AstraDbToBigQueryOptions {
         order = 5,
         optional = true,
         description = "Cassandra CQL Query",
-        helpText = "Optional: Query to filter rows instead of reading the whole table.")
+        helpText = "Query to filter rows instead of reading the whole table.")
     @SuppressWarnings("unused")
     String getAstraQuery();
 
@@ -104,7 +104,7 @@ public interface AstraDbToBigQueryOptions {
         optional = true,
         description = "Astra Database Region",
         helpText =
-            "Optional: If not provided, a default is chosen, which is useful with multi-region databases.")
+            "If not provided, a default is chosen, which is useful with multi-region databases.")
     @SuppressWarnings("unused")
     String getAstraDatabaseRegion();
 
@@ -115,7 +115,7 @@ public interface AstraDbToBigQueryOptions {
         order = 7,
         optional = true,
         description = "Token range count",
-        helpText = "Optional: The minimal number of splits to distribute the query.")
+        helpText = "The minimal number of splits to distribute the query.")
     Integer getMinTokenRangesCount();
 
     @SuppressWarnings("unused")
