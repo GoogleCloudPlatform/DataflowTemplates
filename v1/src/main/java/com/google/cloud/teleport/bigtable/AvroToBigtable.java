@@ -80,7 +80,7 @@ public final class AvroToBigtable {
         order = 1,
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Bigtable instance that you want to write data to.")
+            "The ID of the Google Cloud project that contains the Bigtable instance that you want to write data to.")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
@@ -110,7 +110,7 @@ public final class AvroToBigtable {
         order = 5,
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage path pattern where data is located.",
-        example = "gs://mybucket/somefolder/prefix*")
+        example = "gs://<BUCKET>/<FOLDER>/<PREFIX>*")
     ValueProvider<String> getInputFilePattern();
 
     @SuppressWarnings("unused")

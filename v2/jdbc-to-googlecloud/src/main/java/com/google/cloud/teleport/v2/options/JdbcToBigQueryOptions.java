@@ -126,7 +126,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Target",
       description = "BigQuery output table",
       helpText =
-          "The BigQuery output table location, in the format of <my-project>:<my-dataset>.<my-table>.",
+          "The BigQuery output table location, in the format <PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>.",
       example = "<my-project>:<my-dataset>.<my-table>")
   String getOutputTable();
 
@@ -136,7 +136,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Target",
       description = "Temporary directory for BigQuery loading process",
       helpText = "The temporary directory for the BigQuery loading process.",
-      example = "gs://<my-bucket>/my-files/temp_dir")
+      example = "gs://<BUCKET>/my-files/temp_dir")
   String getBigQueryLoadingTemporaryDirectory();
 
   void setBigQueryLoadingTemporaryDirectory(String directory);
@@ -159,7 +159,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Whether to use column alias to map the rows.",
       helpText =
-          "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the"
+          "If enabled (set to true) the pipeline uses the column alias (\"AS\") instead of the"
               + " column name to map the rows to BigQuery. Defaults to false.",
       example = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
   @Default.Boolean(false)
@@ -211,7 +211,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "The number of partitions.",
       helpText =
-          "The number of partitions to use. If not specified, a conservative number is assumed by the worker.")
+          "The number of partitions to use. If not specified, the worker uses a conservative number of partitions.")
   Integer getNumPartitions();
 
   void setNumPartitions(Integer numPartitions);

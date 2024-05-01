@@ -28,7 +28,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       order = 1,
       description = "Pub/Sub input subscription",
       helpText =
-          "The Pub/Sub input subscription to read from, in the format of 'projects/<project>/subscriptions/<subscription>'",
+          "The Pub/Sub input subscription to read from, in the format of 'projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>'",
       example = "projects/your-project-id/subscriptions/your-subscription-name")
   @Validation.Required
   String getInputSubscription();
@@ -68,7 +68,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       regexes = {"^.+$"},
       description = "JDBC connection username.",
       helpText =
-          "The username to be used for the JDBC connection. "
+          "The username to use for the JDBC connection. "
               + "You can pass in this value encrypted by a Cloud KMS key as a Base64-encoded string.")
   String getUsername();
 
@@ -79,7 +79,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       optional = true,
       description = "JDBC connection password.",
       helpText =
-          "The password to be used for the JDBC connection. "
+          "The password to use for the JDBC connection. "
               + "You can pass in this value encrypted by a Cloud KMS key as a Base64-encoded string.")
   String getPassword();
 
@@ -102,8 +102,8 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
       description = "JDBC connection property string.",
       helpText =
-          "Properties string to use for the JDBC connection. "
-              + "Format of the string must be `[propertyName=property;]*`. ",
+          "The properties string to use for the JDBC connection. "
+              + "The string must use the format `[propertyName=property;]*`. ",
       example = "unicode=true;characterEncoding=UTF-8")
   String getConnectionProperties();
 
@@ -115,7 +115,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       regexes = {"^.+$"},
       description = "Statement which will be executed against the database.",
       helpText =
-          "Statement to run against the database. The statement must specify the column "
+          "The statement to run against the database. The statement must specify the column "
               + "names of the table in any order. Only the values of the specified column "
               + "names are read from the JSON and added to the statement. ",
       example = "INSERT INTO tableName (column1, column2) VALUES (?,?)")
@@ -126,8 +126,8 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
   @TemplateParameter.PubsubTopic(
       order = 9,
       description = "Output deadletter Pub/Sub topic",
-      helpText = "The Pub/Sub topic to forward undeliverable messages. ",
-      example = "projects/<project-id>/topics/<topic-name>")
+      helpText = "The Pub/Sub topic to forward undeliverable messages to. ",
+      example = "projects/<PROJECT_ID>/topics/<TOPIC_NAME>")
   @Validation.Required
   String getOutputDeadletterTopic();
 
@@ -138,8 +138,8 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       optional = true,
       description = "Google Cloud KMS encryption key",
       helpText =
-          "Cloud KMS Encryption Key to decrypt the username, password, and connection string. "
-              + "If Cloud KMS key is passed in, the username, password, and "
+          "The Cloud KMS Encryption Key to use to decrypt the username, password, and connection string. "
+              + "If a Cloud KMS key is passed in, the username, password, and "
               + "connection string must all be passed in encrypted.",
       example =
           "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")

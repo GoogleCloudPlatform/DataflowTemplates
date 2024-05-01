@@ -273,7 +273,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         helpText =
             "A unique name for the client pipeline. Lets you resume processing "
                 + "from the point at which a previously running pipeline stopped. "
-                + "Defaults to auto-generated name. See the Dataflow job logs for the value used.")
+                + "Defaults to an automatically generated name. See the Dataflow job logs for the value used.")
     String getBigtableChangeStreamName();
 
     void setBigtableChangeStreamName(String value);
@@ -283,7 +283,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         optional = true,
         description = "Resume streaming with the same change stream name",
         helpText =
-            "When set to `true`, a new pipeline resumes processing from the point when a previously "
+            "When set to `true`, a new pipeline resumes processing from the point at which a previously "
                 + "running pipeline with the same `bigtableChangeStreamName` value stopped. If the "
                 + "pipeline with the given `bigtableChangeStreamName` value has never run, a new pipeline "
                 + "doesn't start. When set to `false`, a new pipeline starts. If a pipeline with the "

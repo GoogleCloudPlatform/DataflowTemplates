@@ -135,7 +135,7 @@ public class DataStreamToSpanner {
         order = 1,
         description = "File location for Datastream file output in Cloud Storage.",
         helpText =
-            "The file location for Datastream files in Cloud Storage to replicate. Typically, "
+            "The Cloud Storage file location that contains the Datastream files to replicate. Typically, "
                 + "this is the root path for a stream.")
     String getInputFilePattern();
 
@@ -271,8 +271,8 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Dead letter queue directory.",
         helpText =
-            "This is the file path to store the error queue output. "
-                + "Default is a directory under the Dataflow job's temp location.")
+            "The file path used when storing the error queue output. "
+                + "The default file path is a directory under the Dataflow job's temp location.")
     @Default.String("")
     String getDeadLetterQueueDirectory();
 

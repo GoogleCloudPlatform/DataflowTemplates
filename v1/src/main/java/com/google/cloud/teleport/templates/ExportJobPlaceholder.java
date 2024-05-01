@@ -59,7 +59,7 @@ public class ExportJobPlaceholder {
         order = 1,
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Bigtable instance that you want to read data from.")
+            "The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from.")
     ValueProvider<String> getBigtableProject();
 
     @TemplateParameter.Text(
@@ -73,7 +73,7 @@ public class ExportJobPlaceholder {
         order = 3,
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
-        helpText = "The ID of the Bigtable table to export")
+        helpText = "The ID of the Bigtable table to export.")
     ValueProvider<String> getBigtableTableId();
 
     @TemplateParameter.Text(
@@ -82,7 +82,7 @@ public class ExportJobPlaceholder {
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Application profile ID",
         helpText =
-            "The ID of the Bigtable application profile to be used for the export. If you do not specify an app profile, Bigtable uses the instance's default app profile https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.")
+            "The ID of the Bigtable application profile to be used for the export. If you do not specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.")
     ValueProvider<String> getBigtableAppProfileId();
 
     @TemplateParameter.Text(

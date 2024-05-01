@@ -332,7 +332,7 @@ public class BigQueryToTFRecord {
         order = 1,
         description = "Output Cloud Storage directory.",
         helpText =
-            "The top-level Cloud Storage path prefix at which to write the training, testing, and validation TFRecord files. Subdirectories for resulting training, testing, and validation TFRecord files are automatically generated from `outputDirectory`. For example, `gs://mybucket/output/train`",
+            "The top-level Cloud Storage path prefix to use when writing the training, testing, and validation TFRecord files. Subdirectories for resulting training, testing, and validation TFRecord files are automatically generated from `outputDirectory`. For example, `gs://mybucket/output/train`",
         example = "gs://mybucket/output")
     ValueProvider<String> getOutputDirectory();
 

@@ -81,8 +81,8 @@ public class PubsubToText {
         description = "Pub/Sub input topic",
         helpText =
             "The Pub/Sub topic to read the input from. The topic name should be in the format "
-                + "`projects/<project-id>/topics/<topic-name>`. If this parameter is provided "
-                + "`inputSubscription` shouldn't be provided.",
+                + "`projects/<PROJECT_ID>/topics/<TOPIC_NAME>`. If this parameter is provided "
+                + "don't use `inputSubscription`.",
         example = "projects/your-project-id/topics/your-topic-name")
     String getInputTopic();
 
@@ -93,9 +93,9 @@ public class PubsubToText {
         optional = true,
         description = "Pub/Sub input subscription",
         helpText =
-            "The Pub/Sub subscription to read the input from. The subscription name should be in the format "
-                + "`projects/<project-id>/subscription/<subscription-name>`. If this parameter is "
-                + "provided `inputTopic` shouldn't be provided.",
+            "The Pub/Sub subscription to read the input from. The subscription name uses the format "
+                + "`projects/<PROJECT_ID>/subscription/<SUBSCRIPTION_NAME>`. If this parameter is "
+                + "provided, don't use `inputTopic`.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     String getInputSubscription();
 
@@ -105,7 +105,7 @@ public class PubsubToText {
         order = 3,
         description = "Output file directory in Cloud Storage",
         helpText =
-            "The path and filename prefix for writing output files. "
+            "The path and filename prefix to write write output files to. "
                 + "This value must end in a slash.",
         example = "gs://your-bucket/your-path")
     @Required

@@ -134,7 +134,7 @@ public class DatastoreConverters {
         order = 5,
         description = "Project ID",
         helpText =
-            "The Google Cloud project ID of the Firestore instance that you want to read data from.")
+            "The ID of the Google Cloud project that contains the Firestore instance that you want to read data from.")
     ValueProvider<String> getFirestoreReadProjectId();
 
     void setFirestoreReadProjectId(ValueProvider<String> firestoreReadProjectId);

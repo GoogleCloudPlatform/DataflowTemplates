@@ -42,7 +42,7 @@ public interface BigtableChangeStreamToBigQueryOptions
       optional = true,
       description = "Write rowkeys as BigQuery BYTES",
       helpText =
-          "Write rowkeys as BigQuery `BYTES`. When set to `true`, row keys are written to the `BYTES` "
+          "Whether to write rowkeys as BigQuery `BYTES`. When set to `true`, row keys are written to the `BYTES` "
               + "column. Otherwise, rowkeys are written to the `STRING` column. Defaults to `false`.")
   @Default.Boolean(false)
   Boolean getWriteRowkeyAsBytes();
@@ -66,7 +66,7 @@ public interface BigtableChangeStreamToBigQueryOptions
       optional = true,
       description = "Write Bigtable timestamp as BigQuery INT",
       helpText =
-          "Write the Bigtable timestamp as BigQuery `INT64`. When set to true, values are written to the `INT64` column."
+          "Whether to write the Bigtable timestamp as BigQuery `INT64`. When set to true, values are written to the `INT64` column."
               + " Otherwise, values are written to the `TIMESTAMP` column. Columns affected: `timestamp`, `timestamp_from`, "
               + "and `timestamp_to`. Defaults to `false`. When set to `true`, the time is measured in microseconds "
               + "since the Unix epoch (January 1, 1970 at UTC).")
@@ -128,8 +128,8 @@ public interface BigtableChangeStreamToBigQueryOptions
       description = "Optional changelog table columns to be disabled",
       helpText =
           "A comma-separated list of the changelog columns that, when specified, aren't "
-              + "created and populated. Use one of the following supported values: is_gc, "
-              + "source_instance, source_cluster, `source_table`, `tiebreaker`, or `big_query_commit_timestamp`. "
+              + "created and populated. Use one of the following supported values: `is_gc`, "
+              + "`source_instance`, `source_cluster`, `source_table`, `tiebreaker`, or `big_query_commit_timestamp`. "
               + "By default, all columns are populated.")
   String getBigQueryChangelogTableFieldsToIgnore();
 
@@ -140,7 +140,7 @@ public interface BigtableChangeStreamToBigQueryOptions
       optional = true,
       description = "Dead letter queue directory",
       helpText =
-          "The directory for the dead-letter queue. Records that fail to be processed are stored in this directory. "
+          "The directory to use for the dead-letter queue. Records that fail to be processed are stored in this directory. "
               + "The default is a directory under the Dataflow job's temp location. "
               + "In most cases, you can use the default path.")
   @Default.String("")

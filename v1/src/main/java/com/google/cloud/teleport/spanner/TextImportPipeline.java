@@ -137,7 +137,7 @@ public class TextImportPipeline {
     @TemplateParameter.GcsReadFile(
         order = 4,
         description = "Text Import Manifest file",
-        helpText = "The path in Cloud Storage to the import manifest file.",
+        helpText = "The path in Cloud Storage to use when importing manifest file.",
         example = "gs://your-bucket/your-folder/your-manifest.json")
     ValueProvider<String> getImportManifest();
 
@@ -171,7 +171,7 @@ public class TextImportPipeline {
         optional = true,
         description = "If true, the lines has trailing delimiters",
         helpText =
-            "Specifies whether the lines in the source files have trailing delimiters (that is, if the "
+            "Specifies whether the lines in the source files have trailing delimiters, that is, whether the "
                 + "`columnDelimiter` character appears at the end of each line, after the last column value). "
                 + "The default value is `true`.")
     @Default.Boolean(true)
@@ -242,7 +242,7 @@ public class TextImportPipeline {
         optional = true,
         description = "Cloud Spanner Project Id",
         helpText =
-            "The Google Cloud project ID of the Spanner database. If not set, the default Google Cloud project is used.")
+            "The ID of the Google Cloud project that contains the Spanner database. If not set, the project ID of the default Google Cloud project is used.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);
@@ -258,7 +258,7 @@ public class TextImportPipeline {
         description = "Priority for Spanner RPC invocations",
         helpText =
             "The request priority for Spanner calls. Possible values "
-                + "are `HIGH, MEDIUM, LOW`. The default value is `MEDIUM`.")
+                + "are HIGH, MEDIUM, and LOW. The default value is MEDIUM.")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);
@@ -279,7 +279,7 @@ public class TextImportPipeline {
         order = 16,
         description = "Invalid rows output path",
         optional = true,
-        helpText = "The Cloud Storage path to write rows that cannot be imported.",
+        helpText = "The Cloud Storage path to use when writing rows that cannot be imported.",
         example = "gs://your-bucket/your-path")
     @Default.String("")
     ValueProvider<String> getInvalidOutputPath();

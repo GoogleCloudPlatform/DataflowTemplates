@@ -61,7 +61,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
           "The window duration is the interval in which data is written to the output directory. "
               + "Configure the duration based on the pipeline's throughput. For example, a higher "
               + "throughput might require smaller window sizes so that the data fits into memory. "
-              + "Defaults to 5m, with a minimum of 1s. Allowed formats are: [int]s (for seconds, example: 5s), "
+              + "Defaults to 5m (5 minutes), with a minimum of 1s (1 second). Allowed formats are: [int]s (for seconds, example: 5s), "
               + "[int]m (for minutes, example: 12m), [int]h (for hours, example: 2h).",
       example = "5m")
   @Default.String("5m")
