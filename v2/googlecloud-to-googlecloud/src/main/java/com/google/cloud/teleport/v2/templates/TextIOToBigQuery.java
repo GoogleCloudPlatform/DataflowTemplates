@@ -237,8 +237,7 @@ public class TextIOToBigQuery {
         regexes = {".+:.+\\..+"},
         description = "Output table to write to",
         helpText =
-            "The location of the BigQuery table in which to store your processed data. If you reuse"
-                + " an existing table, it will be overwritten.",
+            "The location of the BigQuery table in which to store your processed data. If you reuse an existing table, it will be overwritten.",
         example = "your-project:your-dataset.your-table")
     String getOutputTable();
 
@@ -250,8 +249,7 @@ public class TextIOToBigQuery {
         regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         description = "GCS path to javascript fn for transforming output",
         helpText =
-            "The Cloud Storage path pattern for the JavaScript code containing your user-defined"
-                + " functions.",
+            "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.",
         example = "gs://your-bucket/your-transforms/*.js")
     String getJavascriptTextTransformGcsPath();
 
@@ -263,8 +261,7 @@ public class TextIOToBigQuery {
         regexes = {"[a-zA-Z0-9_]+"},
         description = "UDF Javascript Function Name",
         helpText =
-            "The name of the function to call from your JavaScript file. Use only letters, digits,"
-                + " and underscores.",
+            "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores.",
         example = "transform_udf1")
     String getJavascriptTextTransformFunctionName();
 
