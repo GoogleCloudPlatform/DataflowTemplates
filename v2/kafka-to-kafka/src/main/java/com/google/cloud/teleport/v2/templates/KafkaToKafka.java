@@ -58,43 +58,52 @@ public class KafkaToKafka {
   public static PipelineResult run(KafkaToKafkaOptions options) {
 
     if (options.getMigrationType().equals("GMK-to-GMK")) {
-      checkArgument(options.getAuthenticationMethod().equals("secret manager"),
+      checkArgument(
+          options.getAuthenticationMethod().equals("secret manager"),
           "SASL_PLAIN authentication required for GMK");
-      checkArgument(options.getSourceUsernameVersionId().trim().length() > 0,
+      checkArgument(
+          options.getSourceUsernameVersionId().trim().length() > 0,
           "version id required to access username to GMK");
-      checkArgument(options.getSourcePasswordVersionId().trim().length() > 0,
+      checkArgument(
+          options.getSourcePasswordVersionId().trim().length() > 0,
           "version id required to access password to authenticate to GMK");
     }
 
     if (options.getMigrationType().split("to-")[1].equals("GMK")) {
-      checkArgument(options.getDestinationUsernameVersionId().trim().length() > 0,
+      checkArgument(
+          options.getDestinationUsernameVersionId().trim().length() > 0,
           "version id required to access username to GMK");
 
-      checkArgument(options.getDestinationPasswordVersionId().trim().length() > 0,
+      checkArgument(
+          options.getDestinationPasswordVersionId().trim().length() > 0,
           "version id requited to access password to authenticate to GMK");
     }
     if (options.getMigrationType().equals("nonGMK-to-nonGMK")) {
       if (options.getAuthenticationMethod().equals("secret manager")) {
-        checkArgument(options.getSourceUsernameVersionId().trim().length() > 0,
+        checkArgument(
+            options.getSourceUsernameVersionId().trim().length() > 0,
             "version id required to access username for source Kafka");
-        checkArgument(options.getSourcePasswordVersionId().trim().length() > 0,
+        checkArgument(
+            options.getSourcePasswordVersionId().trim().length() > 0,
             "version id required to access password for source kafka");
-        checkArgument(options.getDestinationUsernameVersionId().trim().length() > 0,
-        "version id required to access username for destination Kafka");
-        checkArgument(options.getDestinationPasswordVersionId().trim().length() > 0,
+        checkArgument(
+            options.getDestinationUsernameVersionId().trim().length() > 0,
+            "version id required to access username for destination Kafka");
+        checkArgument(
+            options.getDestinationPasswordVersionId().trim().length() > 0,
             "version id required to access password for destination kafka");
       }
     }
     String outputTopic;
     String inputTopic = options.getInputTopic();
 
-    checkArgument(inputTopic.trim().length() > 0,
-        "Kafka input topic to read from cannot be empty.");
+    checkArgument(
+        inputTopic.trim().length() > 0, "Kafka input topic to read from cannot be empty.");
 
     String sourceBootstrapServers = options.getSourceBootstrapServers();
 
-    checkArgument(sourceBootstrapServers.trim().length() > 0,
-        "source bootstrap servers cannot be empty");
+    checkArgument(
+        sourceBootstrapServers.trim().length() > 0, "source bootstrap servers cannot be empty");
 
     if (options.getOutputTopic() != null) {
       outputTopic = options.getOutputTopic();
@@ -105,32 +114,38 @@ public class KafkaToKafka {
 
     String destinationBootstrapServer = options.getDestinationBootstrapServer();
 
-    checkArgument(destinationBootstrapServer.trim().length() > 0, "destination bootstrap server cannot be empty");
+    checkArgument(
+        destinationBootstrapServer.trim().length() > 0,
+        "destination bootstrap server cannot be empty");
 
     Pipeline pipeline = Pipeline.create(options);
     PCollection<KV<byte[], byte[]>> records;
-    records = pipeline.apply(
-              "Read from Kafka",
-              KafkaIO.<byte[], byte[]>read()
-                  .withBootstrapServers(sourceBootstrapServers)
-                  .withTopic(inputTopic)
-                  .withKeyDeserializer(ByteArrayDeserializer.class)
-                  .withValueDeserializer(ByteArrayDeserializer.class)
-                  .withConsumerConfigUpdates(
-                      options.getAuthenticationMethod().equals("secret manager") ?
-                          ConsumerProperties.get(options)
-                          : ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"))
-                  .withoutMetadata());
+    records =
+        pipeline.apply(
+            "Read from Kafka",
+            KafkaIO.<byte[], byte[]>read()
+                .withBootstrapServers(sourceBootstrapServers)
+                .withTopic(inputTopic)
+                .withKeyDeserializer(ByteArrayDeserializer.class)
+                .withValueDeserializer(ByteArrayDeserializer.class)
+                .withConsumerConfigUpdates(
+                    options.getAuthenticationMethod().equals("secret manager")
+                        ? ConsumerProperties.get(options)
+                        : ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"))
+                .withoutMetadata());
 
-    KafkaIO.Write<byte[], byte[]> kafkaWrite = KafkaIO.<byte[], byte[]>write()
-          .withBootstrapServers(destinationBootstrapServer)
-          .withTopic(outputTopic)
-          .withKeySerializer(ByteArraySerializer.class)
-          .withValueSerializer(ByteArraySerializer.class);
-      records.apply("write messages to kafka", kafkaWrite.withProducerConfigUpdates(
-          options.getAuthenticationMethod().equals("secret manager") ?
-              ProducerProperties.get(options)
-              : ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")));
+    KafkaIO.Write<byte[], byte[]> kafkaWrite =
+        KafkaIO.<byte[], byte[]>write()
+            .withBootstrapServers(destinationBootstrapServer)
+            .withTopic(outputTopic)
+            .withKeySerializer(ByteArraySerializer.class)
+            .withValueSerializer(ByteArraySerializer.class);
+    records.apply(
+        "write messages to kafka",
+        kafkaWrite.withProducerConfigUpdates(
+            options.getAuthenticationMethod().equals("secret manager")
+                ? ProducerProperties.get(options)
+                : ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")));
 
     return pipeline.run();
   }

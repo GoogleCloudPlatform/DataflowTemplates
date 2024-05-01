@@ -120,6 +120,7 @@ public final class KafkaToKafkaIT extends TemplateTestBase {
     assertThatResult(result).meetsConditions();
     assertThat(outMessages).containsExactlyElementsIn(inMessages);
   }
+
   private void publish(KafkaProducer<String, String> producer, String topicName, String message) {
     try {
       RecordMetadata recordMetadata = producer.send(new ProducerRecord<>(topicName, message)).get();

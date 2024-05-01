@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
@@ -25,25 +24,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link ProducerProperties} is a utility class for constructing properties
- * for Kafka producers. In this case, it is the Kafka destination where we write
- * the data to.
- * <p>
- *   The {@link ProducerProperties} class provides a static method to generate producer
- *   properties required for configuring a Kafka producer. These properties are needed to
- *   establish connections to Kafka brokers. They ensure security through SASL authentication.
- *   The properties should specify the necessary authentication credentials in order to establish
- *   a successful connection to the Kafka destination.
- * </p>
+ * The {@link ProducerProperties} is a utility class for constructing properties for Kafka
+ * producers. In this case, it is the Kafka destination where we write the data to.
+ *
+ * <p>The {@link ProducerProperties} class provides a static method to generate producer properties
+ * required for configuring a Kafka producer. These properties are needed to establish connections
+ * to Kafka brokers. They ensure security through SASL authentication. The properties should specify
+ * the necessary authentication credentials in order to establish a successful connection to the
+ * Kafka destination.
  */
 final class ProducerProperties {
   private static final Logger LOGG = LoggerFactory.getLogger(ProducerProperties.class);
+
   public static ImmutableMap<String, Object> get(KafkaToKafkaOptions options) {
 
     ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
     properties.put(
-        CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
-        options.getDestinationBootstrapServer());
+        CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, options.getDestinationBootstrapServer());
     properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
     //         Note: in other languages, set sasl.username and sasl.password instead.
     properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
@@ -51,10 +48,10 @@ final class ProducerProperties {
         SaslConfigs.SASL_JAAS_CONFIG,
         "org.apache.kafka.common.security.plain.PlainLoginModule required"
             + " username=\'"
-            + SecretManagerUtils.getSecret(options.getDestinationUsernameVersionId())
+            + SecretManagerUtils.getSecret(options.getDestinationUsernameSecretId())
             + "\'"
             + " password=\'"
-            + SecretManagerUtils.getSecret(options.getDestinationPasswordVersionId())
+            + SecretManagerUtils.getSecret(options.getDestinationPasswordSecretId())
             + "\';");
 
     return properties.buildOrThrow();
