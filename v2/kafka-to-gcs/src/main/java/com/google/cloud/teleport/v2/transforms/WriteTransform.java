@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.options.KafkaToGCSOptions;
+import com.google.cloud.teleport.v2.templates.KafkaToGcs2;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -32,12 +32,12 @@ public abstract class WriteTransform
     return new AutoValue_WriteTransform.Builder();
   }
 
-  public abstract KafkaToGCSOptions options();
+  public abstract KafkaToGcs2.KafkaToGcsOptions options();
 
   public abstract ErrorHandler.BadRecordErrorHandler badRecordErrorHandler();
 
   @Override
-  public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> record) {
+  public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord) {
     POutput pOutput = null;
     WriteToGCSUtility.FileFormat outputFileFormat =
         WriteToGCSUtility.FileFormat.valueOf(options().getOutputFileFormat().toUpperCase());
@@ -45,7 +45,7 @@ public abstract class WriteTransform
     switch (outputFileFormat) {
       case TEXT:
         pOutput =
-            record.apply(
+            kafkaRecord.apply(
                 JsonWriteTransform.newBuilder()
                     .setOutputFilenamePrefix(options().getOutputFilenamePrefix())
                     .setNumShards(options().getNumShards())
@@ -56,9 +56,10 @@ public abstract class WriteTransform
         break;
       case AVRO:
         pOutput =
-            record.apply(
+            kafkaRecord.apply(
                 AvroWriteTransform.newBuilder()
                     .setOutputDirectory(options().getOutputDirectory())
+                    .setOutputFilenamePrefix(options().getOutputFilenamePrefix())
                     .setNumShards(options().getNumShards())
                     .setMessageFormat(options().getMessageFormat())
                     .setSchemaRegistryURL(options().getSchemaRegistryURL())
@@ -68,17 +69,17 @@ public abstract class WriteTransform
                     .withBadRecordHandler(badRecordErrorHandler()));
         break;
       case PARQUET:
-        // TODO: Add more info to the error string.
-        throw new UnsupportedOperationException("Unsupported output format");
+        throw new UnsupportedOperationException(
+            "Parquet format is not yet supported for Kafka to GCS template.");
     }
     return pOutput;
   }
 
   @AutoValue.Builder
   public abstract static class WriteTransformBuilder {
-    public abstract WriteTransformBuilder setOptions(KafkaToGCSOptions options);
+    public abstract WriteTransformBuilder setOptions(KafkaToGcs2.KafkaToGcsOptions options);
 
-    public abstract WriteTransformBuilder setBadRecordErrorHandler(ErrorHandler.BadRecordErrorHandler errorHandler);
+    abstract KafkaToGcs2.KafkaToGcsOptions options();
 
     abstract WriteTransform autoBuild();
 

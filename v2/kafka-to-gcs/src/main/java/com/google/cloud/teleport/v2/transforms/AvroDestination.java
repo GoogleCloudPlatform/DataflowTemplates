@@ -15,11 +15,9 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import java.util.Objects;
 import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
 
 @DefaultCoder(AvroCoder.class)
 public class AvroDestination {
@@ -39,17 +37,19 @@ public class AvroDestination {
   }
 
   @Override
-  public String toString() {
-    return ReflectionToStringBuilder.toString(this);
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof AvroDestination)) {
+      return false;
+    }
+    AvroDestination that = (AvroDestination) o;
+    return Objects.equals(name, that.name) && Objects.equals(jsonSchema, that.jsonSchema);
   }
 
   @Override
   public int hashCode() {
-    return HashCodeBuilder.reflectionHashCode(this);
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    return EqualsBuilder.reflectionEquals(this, obj);
+    return Objects.hash(name, jsonSchema);
   }
 }

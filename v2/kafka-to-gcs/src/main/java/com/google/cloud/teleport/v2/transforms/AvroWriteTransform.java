@@ -26,6 +26,8 @@ import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import java.io.IOException;
+import javax.annotation.Nullable;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
@@ -36,34 +38,33 @@ import org.apache.beam.sdk.io.Compression;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
-import org.apache.beam.sdk.io.kafka.KafkaRecordCoder;
-import org.apache.beam.sdk.transforms.*;
-import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
-import org.apache.beam.sdk.transforms.errorhandling.BadRecordRouter;
-import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
-import org.apache.beam.sdk.transforms.windowing.*;
+import org.apache.beam.sdk.transforms.Contextful;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.PaneInfo;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.joda.time.Instant;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-import java.io.IOException;
-import java.text.DecimalFormat;
-import java.util.concurrent.ThreadLocalRandom;
-
+/**
+ * {@link PTransform} for converting the {@link KafkaRecord} into {@link GenericRecord} using Schema
+ * Registry or using static schema provided during build time. After converting the bytes to {@link
+ * GenericRecord}, {@link FileIO#writeDynamic()} is used to write the records to {@link
+ * #outputDirectory()} using the {@link AvroFileNaming} class.
+ */
 @AutoValue
 public abstract class AvroWriteTransform
     extends PTransform<
         PCollection<KafkaRecord<byte[], byte[]>>, WriteFilesResult<AvroDestination>> {
-  private static final Logger LOG = LoggerFactory.getLogger(AvroWriteTransform.class);
   private static final String subject = "UNUSED";
+  static final int DEFAULT_CACHE_CAPACITY = 1000;
 
   public abstract String outputDirectory();
 
@@ -77,23 +78,47 @@ public abstract class AvroWriteTransform
 
   public abstract @Nullable String schemaPath();
 
+  public abstract String outputFilenamePrefix();
 
-//  public abstract TupleTag<FailsafeElement<T, String>> failureTag();
-//
-  public static TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> successTag = new TupleTag<>() {};
-
-  private BadRecordRouter badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
-  private ErrorHandler<BadRecord, ?> errorHandler = new ErrorHandler.DefaultErrorHandler<>();
-
-  public AvroWriteTransform withBadRecordHandler(ErrorHandler<BadRecord, ?> errorHandler) {
-    this.errorHandler = errorHandler;
-    this.badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
-    return this;
-  }
-
-  enum WireFormat {
+  /** Expected Message format from the Kafka topics. */
+  enum MessageFormat {
+    /**
+     * Represents messages serialized in the Confluent wire format.
+     *
+     * <p>This format follows the Confluent wire format specification as documented in the Confluent
+     * Schema Registry. Messages serialized in this format are typically associated with a schema ID
+     * registered in a Schema Registry. In situations where access to the Schema Registry is
+     * unavailable, messages can still be deserialized using a schema provided by the user as a
+     * template parameter. The deserialization process utilizes binary encoding, as specified in the
+     * Avro Binary Encoding specification.
+     *
+     * @see <a
+     *     href="https://docs.confluent.io/platform/current/schema-registry/fundamentals/serdes-develop/index.html#wire-format">Confluent
+     *     Wire Format Documentation</a>
+     * @see <a href="https://avro.apache.org/docs/current/specification/#binary-encoding">Avro
+     *     Binary Encoding Specification</a>
+     */
     CONFLUENT_WIRE_FORMAT,
+    /**
+     * Represents messages serialized in the Avro binary format.
+     *
+     * <p>This format follow the Avro Binary Encoding Specification. The schema used to serialize
+     * the Avro messages by the reader must be used to deserialize the bytes by the writer.
+     * Otherwise, there could be unexpected errors.
+     *
+     * @see <a href="https://avro.apache.org/docs/current/specification/#binary-encoding">Avro
+     *     Binary Encoding Specification</a>
+     */
+    // TODO: Pending implementation.
     AVRO_BINARY_ENCODING,
+    /**
+     * Represents message serialized in the Avro Single Object.
+     *
+     * @see <a
+     *     href="https://avro.apache.org/docs/current/specification/#single-object-encoding">Avro
+     *     Single Object Encoding Specification</a>
+     */
+    // TODO: Pending implementation.
     AVRO_SINGLE_OBJECT_ENCODING
   }
 
@@ -102,11 +127,10 @@ public abstract class AvroWriteTransform
   }
 
   public WriteFilesResult<AvroDestination> expand(
-      PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord) {
-    WireFormat inputWireFormat = WireFormat.valueOf(messageFormat());
+      PCollection<KafkaRecord<byte[], byte[]>> records) {
+    MessageFormat inputWireFormat = MessageFormat.valueOf(messageFormat());
     switch (inputWireFormat) {
       case CONFLUENT_WIRE_FORMAT:
-        // Ask for Schema registry URL
         String schemaRegistryURL = schemaRegistryURL();
         String schemaPath = schemaPath();
         if (schemaRegistryURL == null && schemaPath == null) {
@@ -162,6 +186,8 @@ public abstract class AvroWriteTransform
 
     public abstract AvroWriteTransformBuilder setSchemaPath(@Nullable String schemaInfo);
 
+    public abstract AvroWriteTransformBuilder setOutputFilenamePrefix(String value);
+
     public abstract AvroWriteTransformBuilder setWindowDuration(String windowDuration);
 
     public AvroWriteTransform build() {
@@ -181,6 +207,8 @@ public abstract class AvroWriteTransform
                 (failsafeElement) -> {
                   Schema schema = failsafeElement.getPayload().getSchema();
                   String name1 = schema.getName();
+                  // TODO: Build destination based on the schema ID or something compact than schema
+                  // itself.
                   return AvroDestination.of(name1, schema.toString());
                 })
             .via(
@@ -215,12 +243,12 @@ public abstract class AvroWriteTransform
 
     @DoFn.Setup
     public void setup() {
-      // Defining Schema registry during template build time is raising serialization error.
       if (useMock) {
         schemaRegistryClient = new MockSchemaRegistryClient();
         registerSchema(schemaRegistryClient, schemaPath);
       } else {
-        schemaRegistryClient = new CachedSchemaRegistryClient(schemaRegistryURL, 100);
+        schemaRegistryClient =
+            new CachedSchemaRegistryClient(schemaRegistryURL, DEFAULT_CACHE_CAPACITY);
       }
     }
 
@@ -263,14 +291,12 @@ public abstract class AvroWriteTransform
   }
 
   class AvroFileNaming implements FileIO.Write.FileNaming {
-
-    private AvroDestination avroDestination;
-    private String DATE_SUBDIR_FORMAT = "yyyy-MM-dd";
-    private String DATE_SUBDIR_PREFIX = "date=";
-
-    private String FILE_EXTENSION = ".avro";
+    private final FileIO.Write.FileNaming defaultNaming;
+    private final AvroDestination avroDestination;
 
     public AvroFileNaming(AvroDestination avroDestination) {
+      defaultNaming =
+          FileIO.Write.defaultNaming(DigestUtils.md5Hex(avroDestination.jsonSchema), ".avro");
       this.avroDestination = avroDestination;
     }
 
@@ -282,33 +308,9 @@ public abstract class AvroWriteTransform
         int shardIndex,
         Compression compression) {
       String subDir = avroDestination.name;
-      if (window instanceof IntervalWindow) {
-        subDir += "/" + getDateSubDir((IntervalWindow) window);
-      }
-      String numShardsStr = String.valueOf(numShards);
-      DecimalFormat df =
-          new DecimalFormat("000000000000".substring(0, Math.max(5, numShardsStr.length())));
-      String fileName =
-          String.format(
-              "%s/%s-[nanoTime=%s-random=%s]-%s-%s-of-%s-pane-%s%s%s",
-              subDir,
-              DigestUtils.md5Hex(avroDestination.jsonSchema),
-              System.nanoTime(),
-              // Attach a thread based id. Prevents from overwriting a file from other threads.
-              ThreadLocalRandom.current().nextInt(100000),
-              window,
-              df.format(shardIndex),
-              df.format(numShards),
-              pane.getIndex(),
-              pane.isLast() ? "-final" : "",
-              FILE_EXTENSION);
-      return fileName;
-    }
-
-    public String getDateSubDir(IntervalWindow window) {
-      Instant maxTimestamp = window.start();
-      DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern(DATE_SUBDIR_FORMAT);
-      return DATE_SUBDIR_PREFIX + maxTimestamp.toString(dateTimeFormatter);
+      return subDir
+          + "/"
+          + defaultNaming.getFilename(window, pane, numShards, shardIndex, compression);
     }
   }
 }

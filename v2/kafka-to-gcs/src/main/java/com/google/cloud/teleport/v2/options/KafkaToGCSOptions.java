@@ -20,9 +20,9 @@ import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSAvro;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSParquet;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSText;
-import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.options.Validation;
 
 /**
  * The {@link KafkaToGCSOptions} interface provides the custom execution options passed by the
@@ -30,7 +30,6 @@ import org.apache.beam.sdk.options.PipelineOptions;
  */
 public interface KafkaToGCSOptions
     extends PipelineOptions,
-        DataflowPipelineOptions,
         WriteToGCSText.WriteToGCSTextOptions,
         WriteToGCSParquet.WriteToGCSParquetOptions,
         WriteToGCSAvro.WriteToGCSAvroOptions {
@@ -42,7 +41,7 @@ public interface KafkaToGCSOptions
       description = "Kafka Bootstrap Server list",
       helpText = "Kafka Bootstrap Server list, separated by commas.",
       example = "localhost:9092,127.0.0.1:9093")
-  //  @Validation.Required
+  @Validation.Required
   String getBootstrapServers();
 
   void setBootstrapServers(String bootstrapServers);
@@ -54,14 +53,13 @@ public interface KafkaToGCSOptions
       description = "Kafka topic(s) to read the input from",
       helpText = "Kafka topic(s) to read the input from.",
       example = "topic1,topic2")
-  //  @Validation.Required
+  @Validation.Required
   String getInputTopics();
 
   void setInputTopics(String inputTopics);
 
   @TemplateParameter.Enum(
       order = 3,
-      groupName = "MessageFormat",
       enumOptions = {
         @TemplateEnumOption("TEXT"),
         @TemplateEnumOption("AVRO"),
@@ -88,67 +86,4 @@ public interface KafkaToGCSOptions
   String getWindowDuration();
 
   void setWindowDuration(String windowDuration);
-
-  @TemplateParameter.Text(
-      order = 5,
-      groupName = "MessageFormat",
-      optional = true,
-      description = "Schema Registry URL for Confluent wire format messages.",
-      helpText =
-          "Schema Registry URL used to fetch schemas to convert the Kafka messages to Avro Records.")
-  String getSchemaRegistryURL();
-
-  void setSchemaRegistryURL(String schemaRegistryURL);
-
-  @TemplateParameter.Text(
-      order = 6,
-      optional = true,
-      groupName = "MessageFormat",
-      description = "Specify an Avro schema path",
-      example = "gs://<bucket_name>/schema1.avsc",
-      helpText = "Specify an Avro Schema Path.")
-  String getSchemaPath();
-  void setSchemaPath(String schema);
-
-  @TemplateParameter.Enum(
-      order = 7,
-      groupName = "MessageFormat",
-      enumOptions = {
-        @TemplateEnumOption("CONFLUENT_WIRE_FORMAT"),
-        @TemplateEnumOption("AVRO_BINARY_ENCODING"),
-        @TemplateEnumOption("AVRO_SINGLE_OBJECT_ENCODING")
-      },
-      optional = true,
-      description = "Messaging format for the incoming Kafka Messages",
-      helpText =
-          "Messaging format for the incoming Kafka messages. For Confluent wire format messages",
-      example = "CONFLUENT_WIRE_FORMAT")
-  @Default.String("CONFLUENT_WIRE_FORMAT")
-  String getMessageFormat();
-
-  void setMessageFormat(String messageFormat);
-
-  @TemplateParameter.Text(
-      order = 7,
-      groupName = "Kafka SASL_PLAIN Authentication parameter",
-      description =
-          "Username to be used with SASL_PLAIN mechanism for Kafka, stored in Google Cloud Secret Manager",
-      helpText =
-          "Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
-      example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
-  String getUserNameSecretID();
-
-  void setUserNameSecretID(String userNameSecretID);
-
-  @TemplateParameter.Text(
-      order = 8,
-      groupName = "Kafka SASL_PLAIN Authentication parameter",
-      description =
-          "Password to be used with SASL_PLAIN mechanism for Kafka, stored in Google Cloud Secret Manager",
-      helpText =
-          "Secret Manager secret ID for the SASL_PLAIN password. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
-      example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
-  String getPasswordSecretID();
-
-  void setPasswordSecretID(String passwordSecretID);
 }
