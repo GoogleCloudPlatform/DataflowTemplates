@@ -216,7 +216,7 @@ public class ExportPipeline {
         optional = true,
         description = "Use independent compute resource (Spanner DataBoost).",
         helpText =
-            "Set to `true` to use the compute resources of Spanner Data Boost to run the job with near-zero impact on Spanner OLTP workflows. This requires the `spanner.databases.useDataBoost` IAM permission. For more information, see Data Boost overview(https://cloud.google.com/spanner/docs/databoost/databoost-overview).")
+            "Set to `true` to use the compute resources of Spanner Data Boost to run the job with near-zero impact on Spanner OLTP workflows. This requires the `spanner.databases.useDataBoost` IAM permission. For more information, see Data Boost overview (https://cloud.google.com/spanner/docs/databoost/databoost-overview).")
     @Default.Boolean(false)
     ValueProvider<Boolean> getDataBoostEnabled();
 

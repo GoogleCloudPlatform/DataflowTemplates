@@ -68,7 +68,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Spanner database role",
       helpText =
-          "The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a fine-grained access control user. The database role must have the `SELECT` privilege on the change stream and the `EXECUTE` privilege on the change stream's read function. For more information, see [Fine-grained access control for change streams](https://cloud.google.com/spanner/docs/fgac-change-streams).")
+          "The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a fine-grained access control user. The database role must have the `SELECT` privilege on the change stream and the `EXECUTE` privilege on the change stream's read function. For more information, see Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams).")
   String getSpannerDatabaseRole();
 
   void setSpannerDatabaseRole(String spannerDatabaseRole);

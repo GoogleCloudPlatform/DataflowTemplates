@@ -203,7 +203,7 @@ public class PubSubToBigQuery {
         description =
             "Table for messages failed to reach the output table (i.e., Deadletter table)",
         helpText =
-            "The BigQuery table for messages that failed to reach the output table, in the format of `<my-project>:<my-dataset>.<my-table>`. If it doesn't exist, it is created during pipeline execution. If not specified, OUTPUT_TABLE_SPEC_error_records is used instead.")
+            "The BigQuery table for messages that failed to reach the output table, in the format of `<my-project>:<my-dataset>.<my-table>`. If it doesn't exist, it is created during pipeline execution. If not specified, `OUTPUT_TABLE_SPEC_error_records` is used instead.")
     ValueProvider<String> getOutputDeadletterTable();
 
     void setOutputDeadletterTable(ValueProvider<String> value);

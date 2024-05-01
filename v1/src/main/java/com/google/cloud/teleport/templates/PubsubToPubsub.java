@@ -143,7 +143,7 @@ public class PubsubToPubsub {
         order = 2,
         description = "Output Pub/Sub topic",
         helpText =
-            "Cloud Pub/Sub topic to write the output to..",
+            "Cloud Pub/Sub topic to write the output to.",
         example = "projects/your-project-id/topics/your-topic-name")
     @Validation.Required
     ValueProvider<String> getOutputTopic();
