@@ -37,8 +37,7 @@ public final class BigQueryCommonOptions {
         order = 1,
         description = "BigQuery output table",
         helpText =
-            "The BigQuery output table location. For example, `my-project:my_dataset.my_table`. "
-                + "Depending on the `createDisposition` specified, the output table might be created automatically using the input schema file.")
+            "The BigQuery table to write to. For example, `<project>:<dataset>.<table_name>`.")
     @Required
     String getOutputTableSpec();
 
