@@ -314,4 +314,3 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setApiKeySource(String apiKeySource);
 }
-

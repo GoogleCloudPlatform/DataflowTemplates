@@ -96,7 +96,7 @@ public class BigQueryConverters {
    * Converts a JSON string to a {@link TableRow} object. If the data fails to convert, a {@link
    * RuntimeException} will be thrown.
    *
-   * @param json The JSON strinrm  to parse.
+   * @param json The JSON string to parse.
    * @return The parsed {@link TableRow} object.
    */
   public static TableRow convertJsonToTableRow(String json) {
