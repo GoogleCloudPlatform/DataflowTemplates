@@ -15,33 +15,36 @@
  */
 package com.google.cloud.teleport.v2.kafka.transforms;
 
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.DatumReader;
-import org.apache.avro.io.Decoder;
-import org.apache.avro.io.DecoderFactory;
+import org.apache.avro.io.DatumWriter;
+import org.apache.avro.io.Encoder;
+import org.apache.avro.io.EncoderFactory;
 import org.apache.kafka.common.errors.SerializationException;
-import org.apache.kafka.common.header.Headers;
 
-public class NonWireAvroDeserializer extends KafkaAvroDeserializer {
+public class BinaryAvroSerializer extends KafkaAvroSerializer {
   private Schema schema;
 
-  public NonWireAvroDeserializer() {}
+  public BinaryAvroSerializer() {}
 
-  public NonWireAvroDeserializer(Schema schema) {
+  public BinaryAvroSerializer(Schema schema) {
     this.schema = schema;
   }
 
-  public GenericRecord deserialize(String topic, Headers header, byte[] bytes) {
+  public byte[] serialize(String subject, GenericRecord record) {
     try {
-      Decoder decoder = DecoderFactory.get().binaryDecoder(bytes, null);
-      DatumReader<GenericRecord> reader = new GenericDatumReader<GenericRecord>(this.schema);
-      return reader.read(null, decoder);
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      Encoder encoder = EncoderFactory.get().binaryEncoder(out, null);
+      DatumWriter<GenericRecord> writer = new GenericDatumWriter<GenericRecord>(this.schema);
+      writer.write(record, encoder);
+      encoder.flush();
+      return out.toByteArray();
     } catch (IOException e) {
-      throw new SerializationException("Error deserialing avro message", e.getCause());
+      throw new SerializationException("Error serialing avro message", e.getCause());
     }
   }
 

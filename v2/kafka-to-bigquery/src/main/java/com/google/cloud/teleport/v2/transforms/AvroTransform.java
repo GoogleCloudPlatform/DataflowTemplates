@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
-import com.google.cloud.teleport.v2.kafka.transforms.NonWireAvroDeserializer;
+import com.google.cloud.teleport.v2.kafka.transforms.BinaryAvroDeserializer;
 import com.google.cloud.teleport.v2.options.KafkaToBigQueryFlexOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryAvroUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
@@ -135,7 +135,7 @@ public class AvroTransform
     @Setup
     public void setup() throws IOException, RestClientException {
       if (this.schema != null && this.useConfluentWireFormat.equals("NON_WIRE_FORMAT")) {
-        this.deserializer = new NonWireAvroDeserializer(this.schema);
+        this.deserializer = new BinaryAvroDeserializer(this.schema);
       } else if (this.schema != null
           && this.useConfluentWireFormat.equals("CONFLUENT_WIRE_FORMAT")) {
         this.schemaRegistryClient = new MockSchemaRegistryClient();

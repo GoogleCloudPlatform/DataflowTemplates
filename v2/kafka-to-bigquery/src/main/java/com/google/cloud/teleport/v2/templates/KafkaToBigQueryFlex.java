@@ -188,25 +188,29 @@ public class KafkaToBigQueryFlex {
      *  4) Write failed records out to BigQuery
      */
 
-    Map<String, Object> kafkaConfig =
+    ImmutableMap<String, Object> kafkaConfig =
         ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
 
-    String username = SecretManagerUtils.getSecret(options.getKafkaReadUsernameSecretId());
-    String password = SecretManagerUtils.getSecret(options.getKafkaReadPasswordSecretId());
+    if (options.getKafkaReadUsernameSecretId() != null
+        && options.getKafkaReadPasswordSecretId() != null) {
 
-    ImmutableMap<String, Object> finalKafkaConfig =
-        ImmutableMap.<String, Object>builder()
-            .putAll(kafkaConfig)
-            .putAll(setClientAuthConfig(username, password))
-            .build();
+      String username = SecretManagerUtils.getSecret(options.getKafkaReadUsernameSecretId());
+      String password = SecretManagerUtils.getSecret(options.getKafkaReadPasswordSecretId());
+
+      kafkaConfig =
+          ImmutableMap.<String, Object>builder()
+              .putAll(kafkaConfig)
+              .putAll(setClientAuthConfig(username, password))
+              .build();
+    }
 
     if (options.getMessageFormat() == null || options.getMessageFormat().equals("JSON")) {
 
-      return runJsonPipeline(pipeline, options, topicsList, bootstrapServers, finalKafkaConfig);
+      return runJsonPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
 
     } else if (options.getMessageFormat() == null || options.getMessageFormat().equals("AVRO")) {
 
-      return runAvroPipeline(pipeline, options, topicsList, bootstrapServers, finalKafkaConfig);
+      return runAvroPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
 
     } else {
       throw new IllegalArgumentException("Invalid format specified: " + options.getMessageFormat());
