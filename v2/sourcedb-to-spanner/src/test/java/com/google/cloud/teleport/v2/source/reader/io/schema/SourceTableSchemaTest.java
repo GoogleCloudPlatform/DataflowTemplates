@@ -17,9 +17,8 @@ package com.google.cloud.teleport.v2.source.reader.io.schema;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import junit.framework.TestCase;
-import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -41,19 +40,11 @@ public class SourceTableSchemaTest extends TestCase {
                 .toString())
         .isEqualTo("{\"type\":\"long\",\"logicalType\":\"time-micros\"}");
     assertThat(
-            sourceTableSchema
-                .getAvroPayload()
-                .getField(SchemaTestUtils.TEST_FIELD_NAME_1)
-                .schema()
-                .getType())
-        .isEqualTo(Schema.Type.STRING);
+            sourceTableSchema.getAvroPayload().getField(SchemaTestUtils.TEST_FIELD_NAME_1).schema())
+        .isEqualTo(SchemaBuilder.unionOf().nullType().and().stringType().endUnion());
     assertThat(
-            sourceTableSchema
-                .getAvroPayload()
-                .getField(SchemaTestUtils.TEST_FIELD_NAME_2)
-                .schema()
-                .getType())
-        .isEqualTo(Schema.Type.STRING);
+            sourceTableSchema.getAvroPayload().getField(SchemaTestUtils.TEST_FIELD_NAME_2).schema())
+        .isEqualTo(SchemaBuilder.unionOf().nullType().and().stringType().endUnion());
     assertThat(sourceTableSchema.tableName()).isEqualTo(testTableName);
   }
 
@@ -68,65 +59,9 @@ public class SourceTableSchemaTest extends TestCase {
   @Test
   public void testTableSchemaPreConditions() {
     String tableName = "testTable";
-    // Missing Source Schema Field.
+    // Miss Adding any fields to schema.
     Assert.assertThrows(
         java.lang.IllegalStateException.class,
-        () ->
-            SourceTableSchema.builder()
-                .setTableName(tableName)
-                .setAvroSchema(
-                    SourceTableSchema.avroSchemaFieldAssembler()
-                        .name(SchemaTestUtils.TEST_FIELD_NAME_1)
-                        .type()
-                        .stringType()
-                        .noDefault()
-                        .name(SchemaTestUtils.TEST_FIELD_NAME_2)
-                        .type()
-                        .stringType()
-                        .noDefault()
-                        .endRecord()
-                        .noDefault()
-                        .endRecord())
-                .addSourceColumnNameToSourceColumnType(
-                    SchemaTestUtils.TEST_FIELD_NAME_2,
-                    new SourceColumnType("varchar", new Long[] {20L}, null))
-                .build());
-
-    /* Missing Avro Schema Field */
-    Assert.assertThrows(
-        java.lang.IllegalStateException.class,
-        () ->
-            SourceTableSchema.builder()
-                .setTableName(tableName)
-                .setAvroSchema(
-                    SourceTableSchema.avroSchemaFieldAssembler()
-                        .name(SchemaTestUtils.TEST_FIELD_NAME_2)
-                        .type()
-                        .stringType()
-                        .noDefault()
-                        .endRecord()
-                        .noDefault()
-                        .endRecord())
-                .addSourceColumnNameToSourceColumnType(
-                    SchemaTestUtils.TEST_FIELD_NAME_1,
-                    new SourceColumnType("varchar", new Long[] {20L}, null))
-                .addSourceColumnNameToSourceColumnType(
-                    SchemaTestUtils.TEST_FIELD_NAME_2,
-                    new SourceColumnType("varchar", new Long[] {20L}, null))
-                .build());
-
-    /* No Avro Schema */
-    Assert.assertThrows(
-        java.lang.IllegalStateException.class,
-        () ->
-            SourceTableSchema.builder()
-                .setTableName(tableName)
-                .addSourceColumnNameToSourceColumnType(
-                    SchemaTestUtils.TEST_FIELD_NAME_1,
-                    new SourceColumnType("varchar", new Long[] {20L}, null))
-                .addSourceColumnNameToSourceColumnType(
-                    SchemaTestUtils.TEST_FIELD_NAME_2,
-                    new SourceColumnType("varchar", new Long[] {20L}, null))
-                .build());
+        () -> SourceTableSchema.builder().setTableName(tableName).build());
   }
 }
