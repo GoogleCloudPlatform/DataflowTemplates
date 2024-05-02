@@ -69,7 +69,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       description = "JDBC connection username.",
       helpText =
           "The username to use for the JDBC connection. "
-              + "You can pass in this value encrypted by a Cloud KMS key as a Base64-encoded string.")
+              + "You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded.")
   String getUsername();
 
   void setUsername(String username);
@@ -80,7 +80,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       description = "JDBC connection password.",
       helpText =
           "The password to use for the JDBC connection. "
-              + "You can pass in this value encrypted by a Cloud KMS key as a Base64-encoded string.")
+              + "You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded.")
   String getPassword();
 
   void setPassword(String password);
