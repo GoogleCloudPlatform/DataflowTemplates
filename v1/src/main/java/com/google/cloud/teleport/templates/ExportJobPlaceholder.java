@@ -120,8 +120,7 @@ public class ExportJobPlaceholder {
     @TemplateParameter.GcsWriteFolder(
         order = 9,
         description = "Destination path",
-        helpText =
-            "The Cloud Storage path where data is written.",
+        helpText = "The Cloud Storage path where data is written.",
         example = "gs://your-bucket/your-path/")
     ValueProvider<String> getDestinationPath();
 
