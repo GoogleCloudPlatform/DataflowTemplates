@@ -189,6 +189,7 @@ public abstract class AvroWriteTransform
                 Contextful.fn(destination -> AvroIO.sink(destination.jsonSchema)))
             .withDestinationCoder(AvroCoder.of(AvroDestination.class))
             .to(outputDirectory())
+            .withNumShards(numShards())
             .withNaming(
                 (SerializableFunction<AvroDestination, FileIO.Write.FileNaming>)
                     AvroFileNaming::new));
