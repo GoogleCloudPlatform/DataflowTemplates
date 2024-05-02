@@ -137,7 +137,7 @@ public class TextImportPipeline {
     @TemplateParameter.GcsReadFile(
         order = 4,
         description = "Text Import Manifest file",
-        helpText = "The path in Cloud Storage to use when importing manifest file.",
+        helpText = "The path in Cloud Storage to use when importing manifest files.",
         example = "gs://your-bucket/your-folder/your-manifest.json")
     ValueProvider<String> getImportManifest();
 
