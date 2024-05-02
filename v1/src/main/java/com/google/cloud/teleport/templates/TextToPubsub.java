@@ -63,7 +63,7 @@ public class TextToPubsub {
     @TemplateParameter.GcsReadFile(
         order = 1,
         description = "Cloud Storage Input File(s)",
-        helpText = "Path of the file pattern glob to read from.",
+        helpText = "The input file pattern to read from. For example, `gs://bucket-name/files/*.json` or `gs://bucket-name/path/*.csv`.",
         example = "gs://your-bucket/path/*.txt")
     @Required
     ValueProvider<String> getInputFilePattern();
@@ -74,7 +74,7 @@ public class TextToPubsub {
         order = 2,
         description = "Output Pub/Sub topic",
         helpText =
-            "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
+            "The Pub/Sub input topic to write to. The name should be in the format of `projects/<project-id>/topics/<topic-name>`.'",
         example = "projects/your-project-id/topics/your-topic-name")
     @Required
     ValueProvider<String> getOutputTopic();
