@@ -77,10 +77,11 @@ public abstract class Index implements Serializable {
     if (unique()) {
       appendable.append(" UNIQUE");
     }
-    appendable.append(" INDEX \"")
+    appendable
+        .append(" INDEX ")
         .append(quoteIdentifier(name(), dialect()))
         .append(" ON ")
-        .append(quoteIdentifier(name(), dialect()));
+        .append(quoteIdentifier(table(), dialect()));
 
     String indexColumnsString =
         indexColumns().stream()
@@ -116,7 +117,8 @@ public abstract class Index implements Serializable {
     if (nullFiltered()) {
       appendable.append(" NULL_FILTERED");
     }
-    appendable.append(" INDEX ")
+    appendable
+        .append(" INDEX ")
         .append(quoteIdentifier(name(), dialect()))
         .append(" ON ")
         .append(quoteIdentifier(table(), dialect()));

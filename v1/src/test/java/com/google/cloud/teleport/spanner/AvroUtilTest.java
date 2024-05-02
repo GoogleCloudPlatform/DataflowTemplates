@@ -73,12 +73,11 @@ public class AvroUtilTest {
 
   @Test
   public void testGetSpannerObjectName() {
-    Schema schemaNew = SchemaBuilder.record("avro_name").prop(SPANNER_NAME, "spanner.name").fields()
-        .endRecord();
+    Schema schemaNew =
+        SchemaBuilder.record("avro_name").prop(SPANNER_NAME, "spanner.name").fields().endRecord();
     assertEquals(AvroUtil.getSpannerObjectName(schemaNew), "spanner.name");
 
-    Schema schemaOld = SchemaBuilder.record("table_name").fields()
-        .endRecord();
+    Schema schemaOld = SchemaBuilder.record("table_name").fields().endRecord();
     assertEquals(AvroUtil.getSpannerObjectName(schemaOld), "table_name");
   }
 
@@ -86,5 +85,4 @@ public class AvroUtilTest {
   public void testGenerateAvorName() {
     assertEquals(AvroUtil.generateAvroSchemaName("schema.table"), "schema_table");
   }
-
 }

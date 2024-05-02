@@ -67,9 +67,7 @@ public abstract class Sequence implements Serializable {
     if (dialect() != Dialect.GOOGLE_STANDARD_SQL && dialect() != Dialect.POSTGRESQL) {
       throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
     }
-    appendable
-        .append("CREATE SEQUENCE ")
-        .append(quoteIdentifier(name(), dialect()));
+    appendable.append("CREATE SEQUENCE ").append(quoteIdentifier(name(), dialect()));
 
     if (dialect() == Dialect.GOOGLE_STANDARD_SQL && (options() != null && !options().isEmpty())) {
       String optionsString = String.join(", ", options());

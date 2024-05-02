@@ -55,9 +55,7 @@ public abstract class ChangeStream implements Serializable {
     if (dialect() != Dialect.GOOGLE_STANDARD_SQL && dialect() != Dialect.POSTGRESQL) {
       throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
     }
-    appendable
-        .append("CREATE CHANGE STREAM ")
-        .append(quoteIdentifier(name(), dialect()));
+    appendable.append("CREATE CHANGE STREAM ").append(quoteIdentifier(name(), dialect()));
     if (!Strings.isNullOrEmpty(forClause())) {
       appendable.append("\n\t").append(forClause());
     }

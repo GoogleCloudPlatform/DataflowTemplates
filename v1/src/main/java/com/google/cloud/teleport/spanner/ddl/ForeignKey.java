@@ -112,9 +112,9 @@ public abstract class ForeignKey implements Serializable {
     appendable
         .append("ALTER TABLE ")
         .append(quoteIdentifier(table(), dialect()))
-        .append( " ADD CONSTRAINT ")
+        .append(" ADD CONSTRAINT ")
         .append(quoteIdentifier(name(), dialect()))
-        .append( " FOREIGN KEY (")
+        .append(" FOREIGN KEY (")
         .append(columnsString)
         .append(") REFERENCES ")
         .append(quoteIdentifier(referencedTable(), dialect()))

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -22,35 +22,16 @@ import com.google.cloud.spanner.Dialect;
 import java.io.IOException;
 import java.io.Serializable;
 
-/** Cloud Spanner CHECK CONSTRAINT. */
 @AutoValue
-public abstract class CheckConstraint implements Serializable {
-  private static final long serialVersionUID = 286089906L;
+public abstract class NamedSchema implements Serializable {
+
+  private static final long serialVersionUID = -5156046721891763991L;
 
   public abstract String name();
 
-  public abstract String expression();
-
   public abstract Dialect dialect();
 
-  public abstract Builder toBuilder();
-
-  public static Builder builder(Dialect dialect) {
-    return new AutoValue_CheckConstraint.Builder().dialect(dialect);
-  }
-
-  public static Builder builder() {
-    return builder(Dialect.GOOGLE_STANDARD_SQL);
-  }
-
-  private void prettyPrint(Appendable appendable) throws IOException {
-    appendable
-        .append("CONSTRAINT ")
-        .append(quoteIdentifier(name(), dialect()))
-        .append(" CHECK (")
-        .append(expression())
-        .append(")");
-  }
+  public abstract NamedSchema.Builder toBuilder();
 
   public String prettyPrint() {
     StringBuilder sb = new StringBuilder();
@@ -62,20 +43,42 @@ public abstract class CheckConstraint implements Serializable {
     return sb.toString();
   }
 
+  public void prettyPrint(Appendable appendable) throws IOException {
+    appendable.append("CREATE SCHEMA ").append(quoteIdentifier(name(), dialect()));
+  }
+
   @Override
   public String toString() {
     return prettyPrint();
   }
 
-  /** A builder for {@link CheckConstraint}. */
+  public static Builder builder() {
+    return new AutoValue_NamedSchema.Builder();
+  }
+
+  public static Builder builder(Dialect dialect) {
+    return new AutoValue_NamedSchema.Builder().dialect(dialect);
+  }
+
   @AutoValue.Builder
   public abstract static class Builder {
-    public abstract Builder name(String name);
 
-    public abstract Builder expression(String expr);
+    private Ddl.Builder ddlBuilder;
 
-    abstract Builder dialect(Dialect dialect);
+    public NamedSchema.Builder ddlBuilder(Ddl.Builder ddlBuilder) {
+      this.ddlBuilder = ddlBuilder;
+      return this;
+    }
 
-    public abstract CheckConstraint build();
+    public abstract Builder name(String value);
+
+    public abstract Builder dialect(Dialect value);
+
+    public abstract NamedSchema build();
+
+    public Ddl.Builder endNamedSchema() {
+      ddlBuilder.addSchema(build());
+      return ddlBuilder;
+    }
   }
 }

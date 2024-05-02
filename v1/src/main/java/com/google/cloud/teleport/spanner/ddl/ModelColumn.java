@@ -62,7 +62,7 @@ public abstract class ModelColumn implements Serializable {
       throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
     }
     appendable
-        .append(String.format("%1$-40s",quoteIdentifier(name(), dialect())))
+        .append(String.format("%1$-40s", quoteIdentifier(name(), dialect())))
         .append(typeString());
 
     if (columnOptions() != null && !columnOptions().isEmpty()) {

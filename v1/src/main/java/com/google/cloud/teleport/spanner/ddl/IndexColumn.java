@@ -78,10 +78,7 @@ public abstract class IndexColumn implements Serializable {
   }
 
   public void prettyPrint(Appendable appendable) throws IOException {
-    appendable
-        .append(quoteIdentifier(name(), dialect()))
-        .append(" ")
-        .append(order().title);
+    appendable.append(quoteIdentifier(name(), dialect())).append(" ").append(order().title);
     if (nullsOrder() != null) {
       appendable.append(" NULLS ").append(nullsOrder().title);
     }

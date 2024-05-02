@@ -50,6 +50,7 @@ public class Ddl implements Serializable {
   private ImmutableSortedMap<String, View> views;
   private ImmutableSortedMap<String, ChangeStream> changeStreams;
   private ImmutableSortedMap<String, Sequence> sequences;
+  private ImmutableSortedMap<String, NamedSchema> schemas;
   private TreeMultimap<String, String> parents;
   // This is only populated by InformationSchemaScanner and not while reading from AVRO files.
   private TreeMultimap<String, String> referencedTables;
@@ -62,6 +63,7 @@ public class Ddl implements Serializable {
       ImmutableSortedMap<String, View> views,
       ImmutableSortedMap<String, ChangeStream> changeStreams,
       ImmutableSortedMap<String, Sequence> sequences,
+      ImmutableSortedMap<String, NamedSchema> schemas,
       TreeMultimap<String, String> parents,
       TreeMultimap<String, String> referencedTables,
       ImmutableList<Export.DatabaseOption> databaseOptions,
@@ -71,6 +73,7 @@ public class Ddl implements Serializable {
     this.views = views;
     this.changeStreams = changeStreams;
     this.sequences = sequences;
+    this.schemas = schemas;
     this.parents = parents;
     this.referencedTables = referencedTables;
     this.databaseOptions = databaseOptions;
@@ -163,6 +166,14 @@ public class Ddl implements Serializable {
     return sequences.get(sequenceName.toLowerCase());
   }
 
+  public Collection<NamedSchema> schemas() {
+    return schemas.values();
+  }
+
+  public NamedSchema schema(String schemaName) {
+    return schemas.get(schemaName.toLowerCase());
+  }
+
   public ImmutableList<Export.DatabaseOption> databaseOptions() {
     return databaseOptions;
   }
@@ -171,6 +182,11 @@ public class Ddl implements Serializable {
     for (Export.DatabaseOption databaseOption : databaseOptions()) {
       appendable.append(getDatabaseOptionsStatements(databaseOption, "%db_name%", dialect));
       appendable.append("\n");
+    }
+
+    for (NamedSchema schema : schemas()) {
+      appendable.append("\n");
+      schema.prettyPrint(appendable);
     }
 
     for (Sequence sequence : sequences()) {
@@ -223,6 +239,7 @@ public class Ddl implements Serializable {
   public List<String> statements() {
     // CREATE SEQUENCE statements have to be before CREATE TABLE statements.
     return ImmutableList.<String>builder()
+        .addAll(createNamedSchemaStatements())
         .addAll(createSequenceStatements())
         .addAll(createTableStatements())
         .addAll(createIndexStatements())
@@ -232,6 +249,14 @@ public class Ddl implements Serializable {
         .addAll(createChangeStreamStatements())
         .addAll(setOptionsStatements("%db_name%"))
         .build();
+  }
+
+  public List<String> createNamedSchemaStatements() {
+    List<String> result = new ArrayList<>();
+    for (NamedSchema schema : schemas()) {
+      result.add(schema.prettyPrint());
+    }
+    return result;
   }
 
   public List<String> createTableStatements() {
@@ -395,6 +420,7 @@ public class Ddl implements Serializable {
     private Map<String, View> views = Maps.newLinkedHashMap();
     private Map<String, ChangeStream> changeStreams = Maps.newLinkedHashMap();
     private Map<String, Sequence> sequences = Maps.newLinkedHashMap();
+    private Map<String, NamedSchema> schemas = Maps.newLinkedHashMap();
     private TreeMultimap<String, String> parents = TreeMultimap.create();
     private TreeMultimap<String, String> referencedTables = TreeMultimap.create();
     private ImmutableList<Export.DatabaseOption> databaseOptions = ImmutableList.of();
@@ -488,6 +514,18 @@ public class Ddl implements Serializable {
       sequences.put(sequence.name().toLowerCase(), sequence);
     }
 
+    public NamedSchema.Builder createSchema(String name) {
+      NamedSchema schema = schemas.get(name.toLowerCase());
+      if (schema == null) {
+        return NamedSchema.builder(dialect).name(name).ddlBuilder(this);
+      }
+      return schema.toBuilder().ddlBuilder(this);
+    }
+
+    public void addSchema(NamedSchema schema) {
+      schemas.put(schema.name().toLowerCase(), schema);
+    }
+
     public boolean hasSequence(String name) {
       return sequences.containsKey(name.toLowerCase());
     }
@@ -518,6 +556,7 @@ public class Ddl implements Serializable {
           ImmutableSortedMap.copyOf(views),
           ImmutableSortedMap.copyOf(changeStreams),
           ImmutableSortedMap.copyOf(sequences),
+          ImmutableSortedMap.copyOf(schemas),
           parents,
           referencedTables,
           databaseOptions,
@@ -527,6 +566,7 @@ public class Ddl implements Serializable {
 
   public Builder toBuilder() {
     Builder builder = new Builder(dialect);
+    builder.schemas.putAll(schemas);
     builder.tables.putAll(tables);
     builder.models.putAll(models);
     builder.views.putAll(views);

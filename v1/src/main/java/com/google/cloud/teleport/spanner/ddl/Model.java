@@ -72,9 +72,7 @@ public abstract class Model implements Serializable {
       throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
     }
 
-    appendable
-        .append("CREATE MODEL ")
-        .append(quoteIdentifier(name(), dialect()));
+    appendable.append("CREATE MODEL ").append(quoteIdentifier(name(), dialect()));
     if (!inputColumns().isEmpty()) {
       appendable.append("\nINPUT (");
       for (ModelColumn column : inputColumns()) {

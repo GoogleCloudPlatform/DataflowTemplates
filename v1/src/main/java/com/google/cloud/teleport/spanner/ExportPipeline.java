@@ -176,10 +176,11 @@ public class ExportPipeline {
     @TemplateParameter.Text(
         order = 10,
         optional = true,
-        regexes = {"^[a-zA-Z0-9_]+(,[a-zA-Z0-9_]+)*$"},
+        regexes = {"^[a-zA-Z0-9_\\.]+(,[a-zA-Z0-9_\\.]+)*$"},
         description = "Cloud Spanner table name(s).",
         helpText =
-            "A comma-separated list of tables specifying the subset of the Spanner database to export. If you set this parameter, you must either include all of the related tables (parent tables and foreign key referenced tables) or set the `shouldExportRelatedTables` parameter to `true`.")
+            "A comma-separated list of tables specifying the subset of the Spanner database to export. If you set this parameter, you must either include all of the related tables (parent tables and foreign key referenced tables) or set the `shouldExportRelatedTables` parameter to `true`."
+                + "If the table is in named schema, please use fully qualified name. For example: `sch1.foo` in which `sch1` is the schema name and `foo` is the table name.")
     @Default.String(value = "")
     ValueProvider<String> getTableNames();
 

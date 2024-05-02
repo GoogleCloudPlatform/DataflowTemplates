@@ -22,15 +22,12 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 import kotlin.Pair;
 
-/**
- * Cloud Spanner Ddl utility components.
- */
+/** Cloud Spanner Ddl utility components. */
 public class NameUtils {
 
   // Private constructor to prevent initializing instance, because this class is only served within
   // ddl directory
-  private NameUtils() {
-  }
+  private NameUtils() {}
 
   // Shared at package-level
   public static final Escaper OPTION_STRING_ESCAPER =
@@ -48,7 +45,7 @@ public class NameUtils {
   public static Pair<String, String> splitName(String name, Dialect dialect) {
     String[] paths = name.split("\\.");
     if (paths.length == 1) {
-      return new Pair<>(dialect == Dialect.POSTGRESQL ? "public":"", paths[0]);
+      return new Pair<>(dialect == Dialect.POSTGRESQL ? "public" : "", paths[0]);
     }
     if (paths.length == 2) {
       return new Pair<>(paths[0], paths[1]);
@@ -56,9 +53,11 @@ public class NameUtils {
     throw new IllegalArgumentException(
         String.format("Name format is wrong %s, it should be {schema}.{object} or {object}", name));
   }
+
   public static String quoteIdentifier(String name, Dialect dialect) {
     String quote = identifierQuote(dialect);
-    return Arrays.stream(name.split("\\.")).map(s -> quote + s + quote)
+    return Arrays.stream(name.split("\\."))
+        .map(s -> quote + s + quote)
         .collect(Collectors.joining("."));
   }
 

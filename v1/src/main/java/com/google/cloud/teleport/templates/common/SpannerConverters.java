@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.templates.common;
 
+import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
+import static com.google.cloud.teleport.spanner.common.NameUtils.splitName;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
@@ -51,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
+import kotlin.Pair;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
@@ -342,14 +346,18 @@ public class SpannerConverters {
             read =
                 ReadOperation.create()
                     .withQuery(
-                        String.format("SELECT %s FROM `%s`", columnsListAsString, table().get()))
+                        String.format(
+                            "SELECT %s FROM %s",
+                            columnsListAsString, quoteIdentifier(table().get(), dialect)))
                     .withPartitionOptions(partitionOptions);
             break;
           case POSTGRESQL:
             read =
                 ReadOperation.create()
                     .withQuery(
-                        String.format("SELECT %s FROM \"%s\";", columnsListAsString, table().get()))
+                        String.format(
+                            "SELECT %s FROM %s;",
+                            columnsListAsString, quoteIdentifier(table().get(), dialect)))
                     .withPartitionOptions(partitionOptions);
             break;
           default:
@@ -403,36 +411,46 @@ public class SpannerConverters {
     private LinkedHashMap<String, String> getAllColumns(
         ReadContext context, String tableName, Dialect dialect) {
       LinkedHashMap<String, String> columns = Maps.newLinkedHashMap();
-      String statement;
+      Pair<String, String> paths = splitName(tableName, dialect);
+      Statement statement;
       ResultSet resultSet;
       switch (dialect) {
         case GOOGLE_STANDARD_SQL:
-          statement =
+          String googleSQL =
               "SELECT COLUMN_NAME, SPANNER_TYPE FROM INFORMATION_SCHEMA.COLUMNS "
-                  + "WHERE TABLE_NAME=@table_name AND TABLE_CATALOG='' AND TABLE_SCHEMA='' "
-                  + "AND IS_GENERATED = 'NEVER' "
-                  + "ORDER BY ORDINAL_POSITION";
-          resultSet =
-              context.executeQuery(
-                  Statement.newBuilder(statement).bind("table_name").to(tableName).build());
+                  + "WHERE TABLE_NAME=@table_name AND TABLE_SCHEMA=@schema_name "
+                  + "AND IS_GENERATED = 'NEVER' ORDER BY ORDINAL_POSITION";
+          statement =
+              Statement.newBuilder(googleSQL)
+                  .bind("table_name")
+                  .to(paths.getSecond())
+                  .bind("schema_name")
+                  .to(paths.getFirst())
+                  .build();
           break;
         case POSTGRESQL:
-          statement =
+          String postgreSQL =
               "SELECT COLUMN_NAME, SPANNER_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME=$1"
-                  + " AND TABLE_SCHEMA NOT IN ('information_schema', 'spanner_sys', 'pg_catalog')"
+                  + " AND TABLE_SCHEMA=$2"
                   + " AND IS_GENERATED = 'NEVER' ORDER BY ORDINAL_POSITION;";
-          resultSet =
-              context.executeQuery(
-                  Statement.newBuilder(statement).bind("p1").to(tableName).build());
+          statement =
+              Statement.newBuilder(postgreSQL)
+                  .bind("p1")
+                  .to(paths.getSecond())
+                  .bind("p2")
+                  .to(paths.getFirst())
+                  .build();
           break;
         default:
           throw new IllegalArgumentException(String.format("Unrecognized dialect: %s", dialect));
       }
-      LOG.info("Got schema information. Reading columns.");
+      LOG.info("Got schema information. Reading columns:" + statement.toString());
+      resultSet = context.executeQuery(statement);
       while (resultSet.next()) {
         Struct currentRow = resultSet.getCurrentRowAsStruct();
         columns.put(currentRow.getString(0), currentRow.getString(1));
       }
+      LOG.info("Columns:" + columns.toString());
       return columns;
     }
   }

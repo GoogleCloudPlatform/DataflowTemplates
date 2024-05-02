@@ -97,10 +97,7 @@ public abstract class Table implements Serializable {
   private void prettyPrintPg(
       Appendable appendable, boolean includeIndexes, boolean includeForeignKeys)
       throws IOException {
-    appendable
-        .append("CREATE TABLE ")
-        .append(quoteIdentifier(name(), dialect()))
-        .append(" (");
+    appendable.append("CREATE TABLE ").append(quoteIdentifier(name(), dialect())).append(" (");
     for (Column column : columns()) {
       appendable.append("\n\t");
       column.prettyPrint(appendable);
@@ -139,10 +136,7 @@ public abstract class Table implements Serializable {
   private void prettyPrintGsql(
       Appendable appendable, boolean includeIndexes, boolean includeForeignKeys)
       throws IOException {
-    appendable
-        .append("CREATE TABLE ")
-        .append(quoteIdentifier(name(), dialect()))
-        .append( " (");
+    appendable.append("CREATE TABLE ").append(quoteIdentifier(name(), dialect())).append(" (");
     for (Column column : columns()) {
       appendable.append("\n\t");
       column.prettyPrint(appendable);
