@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.templates.KafkaToGcs2;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
 import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.POutput;
@@ -31,10 +32,8 @@ public abstract class WriteTransform
   public static WriteTransformBuilder newBuilder() {
     return new AutoValue_WriteTransform.Builder();
   }
-
   public abstract KafkaToGcs2.KafkaToGcsOptions options();
-
-  public abstract ErrorHandler.BadRecordErrorHandler badRecordErrorHandler();
+  public abstract ErrorHandler<BadRecord, ?> errorHandler();
 
   @Override
   public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord) {
@@ -66,7 +65,7 @@ public abstract class WriteTransform
                     .setSchemaPath(options().getSchemaPath())
                     .setWindowDuration(options().getWindowDuration())
                     .build()
-                    .withBadRecordHandler(badRecordErrorHandler()));
+                    .withBadRecordHandler(errorHandler()));
         break;
       case PARQUET:
         throw new UnsupportedOperationException(
@@ -78,6 +77,8 @@ public abstract class WriteTransform
   @AutoValue.Builder
   public abstract static class WriteTransformBuilder {
     public abstract WriteTransformBuilder setOptions(KafkaToGcs2.KafkaToGcsOptions options);
+
+    public abstract WriteTransformBuilder setErrorHandler(ErrorHandler<BadRecord, ?> errorHandler);
 
     abstract KafkaToGcs2.KafkaToGcsOptions options();
 

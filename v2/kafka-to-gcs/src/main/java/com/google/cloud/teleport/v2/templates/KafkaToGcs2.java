@@ -19,10 +19,7 @@ import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.cloud.teleport.v2.transforms.WriteToGCSAvro;
-import com.google.cloud.teleport.v2.transforms.WriteToGCSParquet;
-import com.google.cloud.teleport.v2.transforms.WriteToGCSText;
-import com.google.cloud.teleport.v2.transforms.WriteTransform;
+import com.google.cloud.teleport.v2.transforms.*;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
@@ -41,6 +38,8 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -48,7 +47,7 @@ import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 
 @Template(
-    name = "Kafka_to_GCS_2",
+    name = "Kafka_to_GCS_2_with_DLQ",
     category = TemplateCategory.STREAMING,
     displayName = "Kafka to Cloud Storage",
     description =
@@ -66,7 +65,7 @@ public class KafkaToGcs2 {
    */
   public interface KafkaToGcsOptions
       extends PipelineOptions,
-          DataflowPipelineOptions,
+//          DataflowPipelineOptions,
           WriteToGCSText.WriteToGCSTextOptions,
           WriteToGCSParquet.WriteToGCSParquetOptions,
           WriteToGCSAvro.WriteToGCSAvroOptions {
@@ -78,7 +77,7 @@ public class KafkaToGcs2 {
         description = "Kafka Bootstrap Server list",
         helpText = "Kafka Bootstrap Server list, separated by commas.",
         example = "localhost:9092,127.0.0.1:9093")
-    @Validation.Required
+//    @Validation.Required
     String getBootstrapServers();
 
     void setBootstrapServers(String bootstrapServers);
@@ -90,7 +89,7 @@ public class KafkaToGcs2 {
         description = "Kafka topic(s) to read the input from",
         helpText = "Kafka topic(s) to read the input from.",
         example = "topic1,topic2")
-    @Validation.Required
+//    @Validation.Required
     String getInputTopics();
 
     void setInputTopics(String inputTopics);
@@ -231,7 +230,7 @@ public class KafkaToGcs2 {
     }
   }
 
-  public static PipelineResult run(KafkaToGcsOptions options) throws UnsupportedOperationException {
+  public static PipelineResult run(KafkaToGcsOptions options) {
 
     // Create the Pipeline
     Pipeline pipeline = Pipeline.create(options);
@@ -241,7 +240,7 @@ public class KafkaToGcs2 {
     List<String> topics =
         new ArrayList<>(Arrays.asList(options.getInputTopics().split(topicsSplitDelimiter)));
 
-    options.setStreaming(true);
+//    options.setStreaming(true);
 
     String kafkaSaslPlainUserName = SecretManagerUtils.getSecret(options.getUserNameSecretID());
     String kafkaSaslPlainPassword = SecretManagerUtils.getSecret(options.getPasswordSecretID());
@@ -255,6 +254,14 @@ public class KafkaToGcs2 {
           ClientAuthConfig.getSaslPlainConfig(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
     }
 
+    ErrorHandler<BadRecord, ?> errorHandler =  pipeline.registerBadRecordErrorHandler(
+            KafkaDLQ
+                    .newBuilder()
+                    // Change this to a configurable topic
+                    .setTopics(topics.get(0) + "-dlq")
+                    .setBootStrapServers(options.getBootstrapServers())
+                    .setConfig(kafkaConfig)
+                    .build());
     // Step 1: Read from Kafka as bytes.
     kafkaRecord =
         pipeline.apply(
@@ -267,7 +274,14 @@ public class KafkaToGcs2 {
                     ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
                 .withConsumerConfigUpdates(kafkaConfig));
 
-    kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
+    kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options)
+            .setErrorHandler(errorHandler)
+            .build());
+    try {
+      errorHandler.close();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
     return pipeline.run();
   }
 

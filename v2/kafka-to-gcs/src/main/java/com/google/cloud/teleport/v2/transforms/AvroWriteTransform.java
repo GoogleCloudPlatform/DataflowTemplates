@@ -38,11 +38,15 @@ import org.apache.beam.sdk.io.Compression;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
+import org.apache.beam.sdk.io.kafka.KafkaRecordCoder;
 import org.apache.beam.sdk.transforms.Contextful;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecordRouter;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
@@ -65,6 +69,8 @@ public abstract class AvroWriteTransform
         PCollection<KafkaRecord<byte[], byte[]>>, WriteFilesResult<AvroDestination>> {
   private static final String subject = "UNUSED";
   static final int DEFAULT_CACHE_CAPACITY = 1000;
+  private ErrorHandler<BadRecord, ?> errorHandler;
+  private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
 
   public abstract String outputDirectory();
 
@@ -79,6 +85,12 @@ public abstract class AvroWriteTransform
   public abstract @Nullable String schemaPath();
 
   public abstract String outputFilenamePrefix();
+  private static final TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> SUCESS_GENERIC_RECORDS = new TupleTag<>();
+  private static final FailsafeElementCoder<KafkaRecord<byte[], byte[]>, GenericRecord> failsafeElementCoder = FailsafeElementCoder.of(
+          KafkaRecordCoder.of(
+                  NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of())),
+                  GenericRecordCoder.of()
+  );
 
   /** Expected Message format from the Kafka topics. */
   enum MessageFormat {
@@ -126,6 +138,12 @@ public abstract class AvroWriteTransform
     return new AutoValue_AvroWriteTransform.Builder();
   }
 
+  public AvroWriteTransform withBadRecordHandler(ErrorHandler<BadRecord, ?> errorHandler) {
+    this.errorHandler = errorHandler;
+    this.badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
+    return this;
+  }
+
   public WriteFilesResult<AvroDestination> expand(
       PCollection<KafkaRecord<byte[], byte[]>> records) {
     MessageFormat inputWireFormat = MessageFormat.valueOf(messageFormat());
@@ -148,21 +166,18 @@ public abstract class AvroWriteTransform
 
 //        PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> genericRecords =
         PCollectionTuple genericRecords =
-            kafkaRecord
+                records
                     .apply("ConvertKafkaRecordsToGenericRecordsWrappedinFailsafeElement", ParDo.of(
-                            convertToBytes).withOutputTags(successTag, TupleTagList.of(BadRecordRouter.BAD_RECORD_TAG)));
+                            convertToBytes).withOutputTags(SUCESS_GENERIC_RECORDS, TupleTagList.of(BadRecordRouter.BAD_RECORD_TAG)));
 
         // Send the failed elements to the bad record error handler.
         // How does it define the bad record?
         PCollection<BadRecord> failed = genericRecords.get(BadRecordRouter.BAD_RECORD_TAG) ;
-        errorHandler.addErrorCollection(failed.setCoder(BadRecord.getCoder(kafkaRecord.getPipeline())));
+        errorHandler.addErrorCollection(failed.setCoder(BadRecord.getCoder(records.getPipeline())));
 
         PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> success = genericRecords
-                .get(successTag)
-                .setCoder(
-                        FailsafeElementCoder.of(
-                                KafkaRecordCoder.of(
-                                        NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of())), GenericRecordCoder.of()));
+                .get(SUCESS_GENERIC_RECORDS)
+                .setCoder(failsafeElementCoder);
 
         return writeToGCS(success);
       default:
@@ -216,6 +231,7 @@ public abstract class AvroWriteTransform
                 Contextful.fn(destination -> AvroIO.sink(destination.jsonSchema)))
             .withDestinationCoder(AvroCoder.of(AvroDestination.class))
             .to(outputDirectory())
+            .withNumShards(numShards())
             .withNaming(
                 (SerializableFunction<AvroDestination, FileIO.Write.FileNaming>)
                     AvroFileNaming::new));
@@ -273,10 +289,9 @@ public abstract class AvroWriteTransform
         } else {
           genericRecord = deserializeBytes(kafkaRecord, subject);
         }
-        receiver.get(successTag).output(FailsafeElement.of(kafkaRecord, genericRecord));
+        receiver.get(SUCESS_GENERIC_RECORDS).output(FailsafeElement.of(kafkaRecord, genericRecord));
       } catch (Exception e) {
-        badRecordRouter.route(receiver, kafkaRecord, KafkaRecordCoder.of(
-                NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of())), e, e.toString());
+        badRecordRouter.route(receiver, kafkaRecord, failsafeElementCoder.getOriginalPayloadCoder(), e, e.toString());
       }
     }
   }

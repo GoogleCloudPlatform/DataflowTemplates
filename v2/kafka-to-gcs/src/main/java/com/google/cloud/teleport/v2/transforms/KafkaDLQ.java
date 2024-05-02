@@ -3,6 +3,7 @@ package com.google.cloud.teleport.v2.transforms;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.NullableCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.io.kafka.KafkaRecordCoder;
@@ -14,8 +15,8 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection.IsBounded;
-import org.apache.beam.sdk.values.PDone;
-import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.beam.sdk.values.POutput;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.joda.time.Duration;
 
 import java.io.ByteArrayInputStream;
@@ -25,14 +26,21 @@ import java.util.Map;
 
 
 import com.google.auto.value.AutoValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
 
 
 @AutoValue
-public abstract class KafkaDLQ extends PTransform<PCollection<BadRecord>, PDone> {
+public abstract class KafkaDLQ extends PTransform<PCollection<BadRecord>, POutput> {
 
-    private static Coder<KafkaRecord<byte[], byte[]>> coder = KafkaRecordCoder.of(
+    private static Logger LOG = LoggerFactory.getLogger(KafkaDLQ.class);
+    private static final Coder<KafkaRecord<byte[], byte[]>> byteCoder = KafkaRecordCoder.of(
             NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of())
+    );
+
+    private static final Coder<KafkaRecord<String, String>> stringCoder = KafkaRecordCoder.of(
+            StringUtf8Coder.of(), StringUtf8Coder.of()
     );
     public abstract String bootStrapServers();
     public abstract String topics();
@@ -56,14 +64,15 @@ public abstract class KafkaDLQ extends PTransform<PCollection<BadRecord>, PDone>
 
     // Overridden expand method
     @Override
-    public PDone expand(PCollection<BadRecord> input) {
-        return input.apply(ParDo.of(new GetPayloadFromBadRecord()))
-                .apply(KafkaIO.<byte[], byte[]>write()
+    public POutput expand(PCollection<BadRecord> input) {
+//        return input.apply(ParDo.of(new GetPayloadFromBadRecord()))
+        return input.apply(ParDo.of(new GetStringFromBadRecord()))
+                .apply(KafkaIO.<String, String>write()
                         .withBootstrapServers(bootStrapServers())
                         .withTopic(topics())
                         .withProducerConfigUpdates(config())
-                        .withKeySerializer(ByteArraySerializer.class)
-                        .withValueSerializer(ByteArraySerializer.class));
+                        .withKeySerializer(StringSerializer.class)
+                        .withValueSerializer(StringSerializer.class));
     }
 
     public static class GetPayloadFromBadRecord extends DoFn<BadRecord, KV<byte[], byte[]>> {
@@ -74,8 +83,23 @@ public abstract class KafkaDLQ extends PTransform<PCollection<BadRecord>, PDone>
             InputStream inputStream = new ByteArrayInputStream(encodedRecord);
             // We get the coder from the record, but it is returned as string. Maybe the class name which we
             // can import?
-            KafkaRecord<byte[], byte[]> record = coder.decode(inputStream);
+            KafkaRecord<byte[], byte[]> record = byteCoder.decode(inputStream);
             receiver.output(record.getKV());
+        }
+    }
+
+    public static class GetStringFromBadRecord extends DoFn<BadRecord, KV<String, String>> {
+        @ProcessElement
+        public void processElement(@Element BadRecord badRecord,
+                                   OutputReceiver<KV<String, String>> receiver) throws IOException {
+//            byte[] encodedRecord = badRecord.getRecord().getEncodedRecord();
+//            InputStream inputStream = new ByteArrayInputStream(encodedRecord);
+            // We get the coder from the record, but it is returned as string. Maybe the class name which we
+            // can import?
+//            KafkaRecord<String, String> record = stringCoder.decode(inputStream);
+            String record = badRecord.getRecord().getHumanReadableJsonRecord();
+            LOG.error(String.format("Failed Record: %s", record));
+            receiver.output(KV.of(badRecord.getFailure().getException(), record));
         }
     }
 
