@@ -80,8 +80,9 @@ public class PubsubToText {
         optional = true,
         description = "Pub/Sub input topic",
         helpText =
-            "Pub/Sub topic to read the input from, in the format of "
-                + "'projects/your-project-id/topics/your-topic-name'",
+            "The Pub/Sub topic to read the input from. The topic name should be in the format "
+                + "`projects/<PROJECT_ID>/topics/<TOPIC_NAME>`. If this parameter is provided "
+                + "don't use `inputSubscription`.",
         example = "projects/your-project-id/topics/your-topic-name")
     String getInputTopic();
 
@@ -92,8 +93,9 @@ public class PubsubToText {
         optional = true,
         description = "Pub/Sub input subscription",
         helpText =
-            "Pub/Sub subscription to read the input from, in the format of"
-                + " 'projects/your-project-id/subscriptions/your-subscription-name'",
+            "The Pub/Sub subscription to read the input from. The subscription name uses the format "
+                + "`projects/<PROJECT_ID>/subscription/<SUBSCRIPTION_NAME>`. If this parameter is "
+                + "provided, don't use `inputTopic`.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     String getInputSubscription();
 
@@ -103,8 +105,8 @@ public class PubsubToText {
         order = 3,
         description = "Output file directory in Cloud Storage",
         helpText =
-            "The path and filename prefix for writing output files. Must end with a slash. DateTime"
-                + " formatting is used to parse directory path for date & time formatters.",
+            "The path and filename prefix to write write output files to. "
+                + "This value must end in a slash.",
         example = "gs://your-bucket/your-path")
     @Required
     String getOutputDirectory();
@@ -138,8 +140,7 @@ public class PubsubToText {
         optional = true,
         description = "Output filename suffix of the files to write",
         helpText =
-            "The suffix to place on each windowed file. Typically a file extension such "
-                + "as .txt or .csv.",
+            "The suffix to place on each windowed file, typically a file extension such as `.txt` or `.csv`.",
         example = ".txt")
     @Default.String("")
     String getOutputFilenameSuffix();

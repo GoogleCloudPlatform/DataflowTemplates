@@ -123,7 +123,9 @@ public class DatastoreConverters {
         order = 4,
         regexes = {"^.+$"},
         description = "GQL Query",
-        helpText = "Specifies which Firestore entities to read. Ex: ‘SELECT * FROM MyKind’")
+        helpText =
+            "A GQL (https://cloud.google.com/datastore/docs/reference/gql_reference) query that specifies "
+                + "which entities to grab. For example, `SELECT * FROM MyKind`.")
     ValueProvider<String> getFirestoreReadGqlQuery();
 
     void setFirestoreReadGqlQuery(ValueProvider<String> firestoreReadGqlQuery);
@@ -131,7 +133,8 @@ public class DatastoreConverters {
     @TemplateParameter.ProjectId(
         order = 5,
         description = "Project ID",
-        helpText = "The Google Cloud project ID of the Firestore instance to read from")
+        helpText =
+            "The ID of the Google Cloud project that contains the Firestore instance that you want to read data from.")
     ValueProvider<String> getFirestoreReadProjectId();
 
     void setFirestoreReadProjectId(ValueProvider<String> firestoreReadProjectId);
@@ -142,7 +145,7 @@ public class DatastoreConverters {
         regexes = {"^[0-9A-Za-z._-]{0,100}$"},
         description = "Namespace",
         helpText =
-            "Namespace of requested Firestore entities. Leave blank to use default namespace.")
+            "The namespace of the requested entities. To use the default namespace, leave this parameter blank.")
     ValueProvider<String> getFirestoreReadNamespace();
 
     void setFirestoreReadNamespace(ValueProvider<String> firestoreReadNamespace);

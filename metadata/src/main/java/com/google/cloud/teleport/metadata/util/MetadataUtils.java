@@ -185,7 +185,7 @@ public final class MetadataUtils {
       case "DateTime":
         TemplateParameter.DateTime dateTimeParam = (TemplateParameter.DateTime) parameterAnnotation;
         return List.of(
-            "^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):(([0-9]{2})(\\\\.[0-9]+)?)Z$");
+            "^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):(([0-9]{2})(\\.[0-9]+)?)Z$");
       case "BigQueryTable":
         TemplateParameter.BigQueryTable bigQueryTableParam =
             (TemplateParameter.BigQueryTable) parameterAnnotation;
