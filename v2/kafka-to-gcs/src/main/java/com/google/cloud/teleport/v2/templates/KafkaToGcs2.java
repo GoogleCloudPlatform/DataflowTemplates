@@ -276,6 +276,7 @@ public class KafkaToGcs2 {
     // the dataflow pipeline and Kafka broker is on the same network.
     if (options.getUserNameSecretID().isBlank() && options.getPasswordSecretID().isBlank()) {
       useKafkaAuth = false;
+      return;
     }
 
     if ((options.getUserNameSecretID().isBlank() && !options.getPasswordSecretID().isBlank())
