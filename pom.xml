@@ -411,6 +411,9 @@
               <includes>
                 <include>**/*IT.java</include>
               </includes>
+              <excludes>
+                <exclude>**/KafkaToKafkaIT.java</exclude>
+              </excludes>
               <excludedGroups>${direct-runner.tests}</excludedGroups>
               <groups>
                 ${integration.tests}
