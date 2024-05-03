@@ -136,8 +136,7 @@ public class PubSubToMongoDB {
         order = 1,
         description = "Pub/Sub input subscription",
         helpText =
-            "Pub/Sub subscription to read the input from, in the format of"
-                + " 'projects/your-project-id/subscriptions/your-subscription-name'",
+            "Name of the Pub/Sub subscription.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     @Validation.Required
     String getInputSubscription();
@@ -167,7 +166,7 @@ public class PubSubToMongoDB {
     @TemplateParameter.Text(
         order = 4,
         description = "MongoDB collection",
-        helpText = "Name of the collection inside MongoDB database to insert the documents.",
+        helpText = "Name of the collection inside MongoDB database.",
         example = "my-collection")
     @Validation.Required
     String getCollection();
@@ -178,9 +177,7 @@ public class PubSubToMongoDB {
         order = 5,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
-                + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
-                + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
+            "BigQuery table that store messages due to failures (mismatched schema, malformed JSON etc).",
         example = "your-project-id:your-dataset.your-table-name")
     @Validation.Required
     String getDeadletterTable();
