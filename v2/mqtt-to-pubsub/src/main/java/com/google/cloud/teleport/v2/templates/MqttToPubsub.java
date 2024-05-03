@@ -124,7 +124,7 @@ public class MqttToPubsub {
         optional = true,
         regexes = {"[,\\/:a-zA-Z0-9._-]+"},
         description = "MQTT Broker IP",
-        helpText = "Server IP for MQTT broker",
+        helpText = "The MQTT broker server IP or host.",
         example = "tcp://host:1883")
     @Validation.Required
     String getBrokerServer();
@@ -136,7 +136,7 @@ public class MqttToPubsub {
         optional = false,
         regexes = {"[\\/a-zA-Z0-9._-]+"},
         description = "MQTT topic(s) to read the input from",
-        helpText = "MQTT topic(s) to read the input from.",
+        helpText = "The name of the MQTT topic that data is read from.",
         example = "topic")
     @Validation.Required
     String getInputTopic();
@@ -147,7 +147,7 @@ public class MqttToPubsub {
         order = 3,
         description = "Output Pub/Sub topic",
         helpText =
-            "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
+            "The name of the output Pub/Sub topic that data is written to.",
         example = "projects/your-project-id/topics/your-topic-name")
     @Validation.Required
     String getOutputTopic();
@@ -157,7 +157,7 @@ public class MqttToPubsub {
     @TemplateParameter.Text(
         order = 4,
         description = "MQTT Username",
-        helpText = "MQTT username for authentication with MQTT server",
+        helpText = "The username to use for authentication on the MQTT server.",
         example = "sampleusername")
     String getUsername();
 
@@ -166,7 +166,7 @@ public class MqttToPubsub {
     @TemplateParameter.Password(
         order = 5,
         description = "MQTT Password",
-        helpText = "Password for username provided for authentication with MQTT server",
+        helpText = "The password associated with the provided username.",
         example = "samplepassword")
     String getPassword();
 
