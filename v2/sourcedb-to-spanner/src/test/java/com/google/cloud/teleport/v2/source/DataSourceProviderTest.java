@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.source;
 
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,6 +35,7 @@ public class DataSourceProviderTest {
     System.setProperty("derby.stream.error.file", "build/derby.log");
   }
 
+  @Before
   @Test
   public void testDataSourceProvider() {
     SourceDbToSpannerOptions sourceDbToSpannerOptions =
