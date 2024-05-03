@@ -78,9 +78,9 @@ public abstract class JavascriptTextTransformer {
         optional = true,
         description = "Cloud Storage path to Javascript UDF source",
         helpText =
-            "The Cloud Storage path pattern for the JavaScript code containing your user-defined "
-                + "functions.",
-        example = "gs://your-bucket/your-function.js")
+            "\tThe Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) "
+                + "you want to use.",
+        example = "gs://my-bucket/my-udfs/my_file.js")
     String getJavascriptTextTransformGcsPath();
 
     void setJavascriptTextTransformGcsPath(String javascriptTextTransformGcsPath);
@@ -102,7 +102,8 @@ public abstract class JavascriptTextTransformer {
         optional = true,
         description = "JavaScript UDF auto-reload interval (minutes)",
         helpText =
-            "Define the interval that workers may check for JavaScript UDF changes to reload the files.")
+            "Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults " +
+                    "to: 0.")
     @Default.Integer(0)
     Integer getJavascriptTextTransformReloadIntervalMinutes();
 
