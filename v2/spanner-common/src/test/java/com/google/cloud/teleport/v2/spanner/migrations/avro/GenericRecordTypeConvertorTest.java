@@ -38,6 +38,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import org.apache.avro.LogicalType;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
@@ -47,11 +49,64 @@ import org.mockito.Mockito;
 
 public class GenericRecordTypeConvertorTest {
 
+  public Schema getLogicalTypesSchema() {
+    // Create schema types with LogicalTypes
+    Schema dateType = LogicalTypes.date().addToSchema(Schema.create(Schema.Type.INT));
+    Schema decimalType = LogicalTypes.decimal(4, 2).addToSchema(Schema.create(Schema.Type.BYTES));
+    Schema timeMicrosType = LogicalTypes.timeMicros().addToSchema(Schema.create(Schema.Type.LONG));
+    Schema timeMillisType = LogicalTypes.timeMillis().addToSchema(Schema.create(Schema.Type.INT));
+    Schema timestampMicrosType =
+        LogicalTypes.timestampMicros().addToSchema(Schema.create(Schema.Type.LONG));
+    Schema timestampMillisType =
+        LogicalTypes.timestampMillis().addToSchema(Schema.create(Schema.Type.LONG));
+    Schema jsonType =
+        new LogicalType(GenericRecordTypeConvertor.CustomAvroTypes.JSON)
+            .addToSchema(SchemaBuilder.builder().stringType());
+    Schema numberType =
+        new LogicalType(GenericRecordTypeConvertor.CustomAvroTypes.NUMBER)
+            .addToSchema(SchemaBuilder.builder().stringType());
+    Schema varcharType =
+        new LogicalType(GenericRecordTypeConvertor.CustomAvroTypes.VARCHAR)
+            .addToSchema(SchemaBuilder.builder().stringType());
+
+    // Build the schema using the created types
+    return SchemaBuilder.record("logicalTypes")
+        .namespace("com.test.schema")
+        .fields()
+        .name("date_col")
+        .type(dateType)
+        .noDefault()
+        .name("decimal_col")
+        .type(decimalType)
+        .noDefault()
+        .name("time_micros_col")
+        .type(timeMicrosType)
+        .noDefault()
+        .name("time_millis_col")
+        .type(timeMillisType)
+        .noDefault()
+        .name("timestamp_micros_col")
+        .type(timestampMicrosType)
+        .noDefault()
+        .name("timestamp_millis_col")
+        .type(timestampMillisType)
+        .noDefault()
+        .name("json_col")
+        .type(jsonType)
+        .noDefault()
+        .name("number_col")
+        .type(numberType)
+        .noDefault()
+        .name("varchar_col")
+        .type(varcharType)
+        .noDefault()
+        .endRecord();
+  }
+
   @Test
-  public void testHandleLogicalFieldType() throws IOException {
-    Schema avroSchema =
-        SchemaUtils.parseAvroSchema(
-            Files.readString(Paths.get("src/test/resources/avro/logical-types-schema.avsc")));
+  public void testHandleLogicalFieldType() {
+    Schema avroSchema = getLogicalTypesSchema();
+
     GenericRecord genericRecord = new GenericData.Record(avroSchema);
     genericRecord.put("date_col", 738991);
     genericRecord.put(
@@ -60,6 +115,9 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("time_millis_col", 48035000);
     genericRecord.put("timestamp_micros_col", 1602599400056483L);
     genericRecord.put("timestamp_millis_col", 1602599400056L);
+    genericRecord.put("json_col", "{\"k1\":\"v1\"}");
+    genericRecord.put("number_col", "289452");
+    genericRecord.put("varchar_col", "Hellogcds");
 
     String col = "date_col";
     String result =
@@ -96,6 +154,24 @@ public class GenericRecordTypeConvertorTest {
         GenericRecordTypeConvertor.handleLogicalFieldType(
             col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
     assertEquals("Test timestamp_millis_col conversion: ", "2020-10-13T14:30:00.056Z", result);
+
+    col = "json_col";
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+    assertEquals("Test json_col conversion: ", "{\"k1\":\"v1\"}", result);
+
+    col = "number_col";
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+    assertEquals("Test number_col conversion: ", "289452", result);
+
+    col = "varchar_col";
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+    assertEquals("Test varchar_col conversion: ", "Hellogcds", result);
   }
 
   @Test
