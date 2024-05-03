@@ -97,7 +97,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       description = "Custom Day Pattern to use for the output directory",
       helpText =
           "Pattern for formatting the day. Must be one or more of `d` for day of month or `D` for"
-              + " day of year. Case makes no difference in the year. Optionally,"
+              + " day of year. Optionally,"
               + " wrap the pattern with characters that aren't alphanumeric or the directory ('/')"
               + " character. Defaults to `dd`")
   ValueProvider<String> getDayPattern();
