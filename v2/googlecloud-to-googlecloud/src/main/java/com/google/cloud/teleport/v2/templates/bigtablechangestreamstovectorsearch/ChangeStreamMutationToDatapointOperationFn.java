@@ -138,9 +138,10 @@ public class ChangeStreamMutationToDatapointOperationFn
         datapointBuilder.addAllFeatureVector(floats);
       } else if (col.equals(crowdingTagColumn)) {
         LOG.info("Setting crowding tag {}", m.getValue().toStringUtf8());
-        datapointBuilder.getCrowdingTagBuilder().setCrowdingAttribute(
-          m.getValue().toStringUtf8()
-        ).build();
+        datapointBuilder
+            .getCrowdingTagBuilder()
+            .setCrowdingAttribute(m.getValue().toStringUtf8())
+            .build();
       } else if ((mappedColumn = allowRestrictsMappings.get(col)) != null) {
         datapointBuilder
             .addRestrictsBuilder()
