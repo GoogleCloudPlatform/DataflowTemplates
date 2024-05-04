@@ -29,16 +29,6 @@ public abstract class DatapointOperationFn<InputT> extends DoFn<InputT, String> 
 
   protected abstract Logger logger();
 
-  // public class Error {
-  //   public Iterable<String> datapointIds;
-  //   public String errorMessage;
-  //
-  //   public Error(String errorMessage, Iterable<String> datapointIds) {
-  //     this.errorMessage = errorMessage;
-  //     this.datapointIds = datapointIds;
-  //   }
-  // }
-
   public DatapointOperationFn(String endpoint, String indexName) {
     this.indexName = indexName;
     this.endpoint = endpoint;

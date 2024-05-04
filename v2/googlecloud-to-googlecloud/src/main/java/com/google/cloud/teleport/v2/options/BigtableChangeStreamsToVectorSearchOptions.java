@@ -132,6 +132,7 @@ public interface BigtableChangeStreamsToVectorSearchOptions
               + "Batches will be sent when there are either upsertBatchSize records ready, or any record has been "
               + "waiting upsertBatchDelay time has passed.",
       example = "10")
+  @Default.Integer(10)
   int getUpsertMaxBatchSize();
 
   @SuppressWarnings("unused")
@@ -163,6 +164,7 @@ public interface BigtableChangeStreamsToVectorSearchOptions
               + "Batches will be sent when there are either deleteBatchSize records ready, or any record has been "
               + "waiting deleteBatchDelay time has passed.",
       example = "10")
+  @Default.Integer(10)
   int getDeleteMaxBatchSize();
 
   @SuppressWarnings("unused")

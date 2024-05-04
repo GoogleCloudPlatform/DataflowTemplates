@@ -47,10 +47,10 @@ public class Utils {
 
     for (String columnsWithAlias : columnsList) {
       String[] columnWithAlias = columnsWithAlias.split("->");
-      if (columnWithAlias.length == 2) {
+      if (columnWithAlias.length == 2 && columnWithAlias[0].length() >= 1 && columnWithAlias[1].length() >= 1) {
         columnsWithAliases.put(columnWithAlias[0], columnWithAlias[1]);
       } else {
-        throw new IllegalArgumentException(String.format("Malformed column mapping %s", mapstr));
+        throw new IllegalArgumentException(String.format("Malformed column mapping pair %s", columnsList));
       }
     }
     return columnsWithAliases;
