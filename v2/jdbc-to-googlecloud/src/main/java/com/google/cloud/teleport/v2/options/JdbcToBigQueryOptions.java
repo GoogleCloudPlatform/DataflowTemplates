@@ -126,8 +126,8 @@ public interface JdbcToBigQueryOptions
       groupName = "Target",
       description = "BigQuery output table",
       helpText =
-          "The BigQuery output table location, in the format <PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>.",
-      example = "<my-project>:<my-dataset>.<my-table>")
+          "The BigQuery output table location.",
+      example = "<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>")
   String getOutputTable();
 
   @TemplateParameter.GcsWriteFolder(

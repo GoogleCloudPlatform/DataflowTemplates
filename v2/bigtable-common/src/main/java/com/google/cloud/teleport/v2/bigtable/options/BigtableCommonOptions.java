@@ -202,7 +202,9 @@ public interface BigtableCommonOptions extends GcpOptions {
         optional = true,
         description = "Cloud Bigtable change streams metadata table ID",
         helpText =
-            "The Bigtable change streams metadata table ID.")
+            "The ID of the Bigtable change streams connector metadata table. If not "
+                + "provided, a Bigtable change streams connector metadata table is automatically "
+                + "created during pipeline execution.")
     @Default.String("")
     String getBigtableChangeStreamMetadataTableTableId();
 
@@ -225,7 +227,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         description =
             "Bigtable change streams charset name when reading values and column qualifiers",
         helpText =
-            "The Bigtable change streams charset name when reading values and column qualifiers.")
+            "The Bigtable change streams charset name.")
     @Default.String("UTF-8")
     String getBigtableChangeStreamCharset();
 
