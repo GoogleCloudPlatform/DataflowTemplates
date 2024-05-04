@@ -69,11 +69,17 @@ public class CsvConvertersTest {
   private static final String NO_HEADER_CSV_FILE_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "no_header.csv").getPath();
 
+  private static final String RFC4180_NO_HEADER_CSV_FILE_PATH =
+      Resources.getResource(CSV_RESOURCES_DIR + "rfc4180_no_header.csv").getPath();
+
   private static final String HEADER_CSV_FILE_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "with_headers.csv").getPath();
 
   private static final String TEST_JSON_SCHEMA_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "testSchema.json").getPath();
+
+  private static final String TEST_RFC4180_AVRO_SCHEMA_PATH =
+      Resources.getResource(CSV_RESOURCES_DIR + "testRFC4180AvroSchema.json").getPath();
 
   private static final String TEST_AVRO_SCHEMA_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "testAvroSchema.json").getPath();
@@ -86,6 +92,8 @@ public class CsvConvertersTest {
   private static final String HEADER_STRING = "id,state,price";
 
   private static final String RECORD_STRING = "007,CA,26.23";
+
+  private static final String RFC4180_RECORD_STRING = "007,\"CA,AZ\",26.23";
 
   private static final String JSON_STRING_RECORD =
       "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
@@ -137,6 +145,44 @@ public class CsvConvertersTest {
             collection -> {
               String result = collection.iterator().next();
               assertThat(result, is(equalTo(RECORD_STRING)));
+              return null;
+            });
+
+    //  Execute pipeline
+    pipeline.run();
+  }
+
+  /** Tests {@link CsvConverters.ReadCsv} reads a RFC4180 Csv with no headers correctly. */
+  @Test
+  public void testReadRFC4180NoHeadersCsv() {
+
+    CsvConverters.CsvPipelineOptions options =
+        PipelineOptionsFactory.create().as(CsvConverters.CsvPipelineOptions.class);
+
+    options.setContainsHeaders(false);
+    options.setDelimiter(",");
+    options.setCsvFormat("Default");
+    options.setInputFileSpec(RFC4180_NO_HEADER_CSV_FILE_PATH);
+
+    // Build pipeline with no headers.
+    PCollectionTuple readCsvOut =
+        pipeline.apply(
+            "TestReadRFC4180CsvNoHeaders",
+            CsvConverters.ReadCsv.newBuilder()
+                .setCsvFormat(options.getCsvFormat())
+                .setDelimiter(options.getDelimiter())
+                .setHasHeaders(options.getContainsHeaders())
+                .setInputFileSpec(options.getInputFileSpec())
+                .setHeaderTag(CSV_HEADERS)
+                .setLineTag(CSV_LINES)
+                .setFileEncoding(options.getCsvFileEncoding())
+                .build());
+
+    PAssert.that(readCsvOut.get(CSV_LINES))
+        .satisfies(
+            collection -> {
+              String result = collection.iterator().next();
+              assertThat(result, is(equalTo(RFC4180_RECORD_STRING)));
               return null;
             });
 
@@ -556,6 +602,44 @@ public class CsvConvertersTest {
             .apply(
                 "ConvertStringToGenericRecord",
                 ParDo.of(new CsvConverters.StringToGenericRecordFn(TEST_AVRO_SCHEMA_PATH, ",")))
+            .setCoder(AvroCoder.of(GenericRecord.class, schema));
+
+    PAssert.that(pCollection).containsInAnyOrder(genericRecord);
+
+    pipeline.run();
+  }
+
+  /**
+   * Tests if {@link CsvConverters.StringToGenericRecordFn} creates a proper GenericRecord with
+   * RFC4180 Csv record.
+   */
+  @Test
+  public void testStringToGenericRecordWithRFC4180Csv() {
+    Schema schema = SchemaUtils.getAvroSchema(TEST_RFC4180_AVRO_SCHEMA_PATH);
+
+    GenericRecord genericRecord = new GenericData.Record(schema);
+    genericRecord.put("id", "007");
+    genericRecord.put("states", "CA,AZ");
+    genericRecord.put("price", 26.23);
+
+    PCollection<GenericRecord> pCollection =
+        pipeline
+            .apply(
+                "ReadCsvFile",
+                CsvConverters.ReadCsv.newBuilder()
+                    .setHasHeaders(false)
+                    .setInputFileSpec(RFC4180_NO_HEADER_CSV_FILE_PATH)
+                    .setHeaderTag(CSV_HEADERS)
+                    .setLineTag(CSV_LINES)
+                    .setCsvFormat("Default")
+                    .setDelimiter(",")
+                    .setFileEncoding(CSV_FILE_ENCODING)
+                    .build())
+            .get(CSV_LINES)
+            .apply(
+                "ConvertStringToGenericRecord",
+                ParDo.of(
+                    new CsvConverters.StringToGenericRecordFn(TEST_RFC4180_AVRO_SCHEMA_PATH, ",")))
             .setCoder(AvroCoder.of(GenericRecord.class, schema));
 
     PAssert.that(pCollection).containsInAnyOrder(genericRecord);
