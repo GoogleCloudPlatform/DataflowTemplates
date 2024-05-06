@@ -72,7 +72,6 @@ public class KafkaToGcs2 {
 
     @TemplateParameter.Text(
         order = 1,
-        optional = false,
         regexes = {"[,:a-zA-Z0-9._-]+"},
         description = "Kafka Bootstrap Server list",
         helpText = "Kafka Bootstrap Server list, separated by commas.",
@@ -84,7 +83,6 @@ public class KafkaToGcs2 {
 
     @TemplateParameter.Text(
         order = 2,
-        optional = false,
         regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Kafka topic(s) to read the input from",
         helpText = "Kafka topic(s) to read the input from.",
@@ -102,7 +100,6 @@ public class KafkaToGcs2 {
           @TemplateParameter.TemplateEnumOption("AVRO"),
           @TemplateParameter.TemplateEnumOption("PARQUET")
         },
-        optional = false,
         description = "File format of the desired output files. (TEXT, AVRO or PARQUET)",
         helpText =
             "The file format of the desired output files. Can be TEXT, AVRO or PARQUET. Defaults to TEXT")
@@ -159,7 +156,7 @@ public class KafkaToGcs2 {
         description = "The format in which your Kafka messages are encoded",
         helpText =
             "Choose the encoding used for your Kafka messages:\n"
-                + " - CONFLUENT_WIRE_FORMAT: Confluent's format, requires a Schema Registry URL.\n"
+                + " - CONFLUENT_WIRE_FORMAT: Confluent format, requires a Schema Registry URL.\n"
                 + " - AVRO_BINARY_ENCODING: Avro's compact binary format.\n"
                 + " - AVRO_SINGLE_OBJECT_ENCODING: Avro, but each message is a single Avro object.")
     @Default.String("CONFLUENT_WIRE_FORMAT")
@@ -174,7 +171,9 @@ public class KafkaToGcs2 {
             "Username to be used with SASL_PLAIN mechanism for Kafka, stored in Google Cloud Secret Manager",
         helpText =
             "Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
-        example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
+        example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version",
+        optional = true)
+    @Default.String("")
     String getUserNameSecretID();
 
     void setUserNameSecretID(String userNameSecretID);
@@ -186,7 +185,9 @@ public class KafkaToGcs2 {
             "Password to be used with SASL_PLAIN mechanism for Kafka, stored in Google Cloud Secret Manager",
         helpText =
             "Secret Manager secret ID for the SASL_PLAIN password. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
-        example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
+        example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version",
+        optional = true)
+    @Default.String("")
     String getPasswordSecretID();
 
     void setPasswordSecretID(String passwordSecretID);
@@ -242,14 +243,13 @@ public class KafkaToGcs2 {
 
 //    options.setStreaming(true);
 
-    String kafkaSaslPlainUserName = SecretManagerUtils.getSecret(options.getUserNameSecretID());
-    String kafkaSaslPlainPassword = SecretManagerUtils.getSecret(options.getPasswordSecretID());
-
     Map<String, Object> kafkaConfig = new HashMap<>();
     // Set offset to either earliest or latest.
     kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getOffset());
     // Authenticate to Kafka only when user provides authentication params.
     if (useKafkaAuth) {
+      String kafkaSaslPlainUserName = SecretManagerUtils.getSecret(options.getUserNameSecretID());
+      String kafkaSaslPlainPassword = SecretManagerUtils.getSecret(options.getPasswordSecretID());
       kafkaConfig.putAll(
           ClientAuthConfig.getSaslPlainConfig(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
     }
@@ -290,6 +290,7 @@ public class KafkaToGcs2 {
     // the dataflow pipeline and Kafka broker is on the same network.
     if (options.getUserNameSecretID().isBlank() && options.getPasswordSecretID().isBlank()) {
       useKafkaAuth = false;
+      return;
     }
 
     if ((options.getUserNameSecretID().isBlank() && !options.getPasswordSecretID().isBlank())
