@@ -31,8 +31,6 @@ public class SourceSchemaTest extends TestCase {
     final String testDb = "test-db";
     final String testTable = "test-table";
 
-    final String testFieldName = "firstName";
-
     SourceSchema testSchema =
         SourceSchema.builder()
             .setSchemaReference(SourceSchemaReference.builder().setDbName(testDb).build())

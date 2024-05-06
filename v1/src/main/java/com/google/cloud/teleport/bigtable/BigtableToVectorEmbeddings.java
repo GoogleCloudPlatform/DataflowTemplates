@@ -227,6 +227,18 @@ public class BigtableToVectorEmbeddings {
 
     @SuppressWarnings("unused")
     void setDoubleNumericRestrictsMappings(ValueProvider<String> value);
+
+    @TemplateParameter.Text(
+        order = 15,
+        regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
+        optional = true,
+        description = "App Profile ID",
+        helpText = "The ID of the Cloud Bigtable app profile to be used for the export")
+    @Default.String("default")
+    ValueProvider<String> getBigtableAppProfileId();
+
+    @SuppressWarnings("unused")
+    void setBigtableAppProfileId(ValueProvider<String> value);
   }
 
   /**
@@ -254,6 +266,7 @@ public class BigtableToVectorEmbeddings {
         BigtableIO.read()
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
+            .withAppProfileId(options.getBigtableAppProfileId())
             .withTableId(options.getBigtableTableId())
             .withRowFilter(RowFilter.newBuilder().setCellsPerColumnLimitFilter(1).build());
 

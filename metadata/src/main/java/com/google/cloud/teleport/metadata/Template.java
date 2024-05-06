@@ -124,6 +124,12 @@ public @interface Template {
 
   StreamingMode defaultStreamingMode() default StreamingMode.UNSPECIFIED;
 
+  /**
+   * Set to true if the template is used internally/ for testing purposes and should not be staged
+   * or released.
+   */
+  boolean testOnly() default false;
+
   enum StreamingMode {
     UNSPECIFIED,
     EXACTLY_ONCE,
