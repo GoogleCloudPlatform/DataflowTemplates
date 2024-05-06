@@ -77,7 +77,7 @@ public class BigtableToParquet {
         order = 1,
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Bigtable instance that you want to read data from.")
+            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from.")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
@@ -87,7 +87,7 @@ public class BigtableToParquet {
         order = 2,
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
-        helpText = "The ID of the Bigtable instance that contains the table")
+        helpText = "The ID of the Cloud Bigtable instance that contains the table.")
     ValueProvider<String> getBigtableInstanceId();
 
     @SuppressWarnings("unused")
@@ -97,7 +97,7 @@ public class BigtableToParquet {
         order = 3,
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
-        helpText = "The ID of the Bigtable table to export.")
+        helpText = "The ID of the Cloud Bigtable table to export.")
     ValueProvider<String> getBigtableTableId();
 
     @SuppressWarnings("unused")
@@ -107,7 +107,7 @@ public class BigtableToParquet {
         order = 4,
         description = "Output file directory in Cloud Storage",
         helpText =
-            "The Cloud Storage path where data is written. For example, gs://mybucket/somefolder.")
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path).")
     ValueProvider<String> getOutputDirectory();
 
     @SuppressWarnings("unused")
@@ -116,7 +116,7 @@ public class BigtableToParquet {
     @TemplateParameter.Text(
         order = 5,
         description = "Parquet file prefix",
-        helpText = "The prefix of the Parquet filename. For example, output-")
+        helpText = "The prefix of the Parquet file name. For example, \"table1-\". Defaults to: part.")
     @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 
@@ -128,7 +128,7 @@ public class BigtableToParquet {
         optional = true,
         description = "Maximum output shards",
         helpText =
-            "The number of output file shards. For example 2.")
+            "The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Default value is decided by Dataflow.")
     @Default.Integer(0)
     ValueProvider<Integer> getNumShards();
 
