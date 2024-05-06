@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.kafka.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
@@ -45,4 +46,38 @@ public interface KafkaReadOptions extends PipelineOptions {
   String getKafkaReadTopics();
 
   void setKafkaReadTopics(String inputTopics);
+
+  @TemplateParameter.Text(
+      order = 3,
+      optional = true,
+      description = "The Kafka Offset to read from.",
+      helpText = "The Kafka Offset to read from.")
+  @Default.String("latest")
+  String getKafkaReadOffset();
+
+  void setKafkaReadOffset(String value);
+
+  @TemplateParameter.Text(
+      order = 4,
+      optional = true,
+      description =
+          "Username to be used with SASL_PLAIN mechanism for reading from Kafka, stored in Google Cloud Secret Manager.",
+      helpText =
+          "Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}.",
+      example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
+  String getKafkaReadUsernameSecretId();
+
+  void setKafkaReadUsernameSecretId(String value);
+
+  @TemplateParameter.Text(
+      order = 5,
+      optional = true,
+      description =
+          "Password to be used with SASL_PLAIN mechanism for reading from Kafka, stored in Google Cloud Secret Manager.",
+      helpText =
+          "Secret Manager secret ID for the SASL_PLAIN password. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
+      example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
+  String getKafkaReadPasswordSecretId();
+
+  void setKafkaReadPasswordSecretId(String value);
 }
