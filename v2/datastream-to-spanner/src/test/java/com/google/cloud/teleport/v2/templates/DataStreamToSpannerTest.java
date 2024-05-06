@@ -33,9 +33,7 @@ public class DataStreamToSpannerTest {
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
             .as(DataStreamToSpanner.Options.class);
-
-    DataStreamToSpanner dataStreamToSpanner = new DataStreamToSpanner();
-    String result = dataStreamToSpanner.getSourceType(options);
+    String result = DataStreamToSpanner.getSourceType(options);
 
     assertEquals("mysql", result);
   }
@@ -49,9 +47,7 @@ public class DataStreamToSpannerTest {
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
             .as(DataStreamToSpanner.Options.class);
-
-    DataStreamToSpanner dataStreamToSpanner = new DataStreamToSpanner();
-    String result = dataStreamToSpanner.getSourceType(options);
+    String result = DataStreamToSpanner.getSourceType(options);
   }
 
   @Test
@@ -66,8 +62,6 @@ public class DataStreamToSpannerTest {
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
             .as(DataStreamToSpanner.Options.class);
-
-    DataStreamToSpanner dataStreamToSpanner = new DataStreamToSpanner();
-    String result = dataStreamToSpanner.getSourceType(options);
+    String result = DataStreamToSpanner.getSourceType(options);
   }
 }
