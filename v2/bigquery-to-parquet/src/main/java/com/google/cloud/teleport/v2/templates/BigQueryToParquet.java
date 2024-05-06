@@ -156,7 +156,7 @@ public class BigQueryToParquet {
     @TemplateParameter.GcsWriteFile(
         order = 2,
         description = "Output Cloud Storage file(s)",
-        helpText = "The Cloud Storage folder in which to write the Parquet files",
+        helpText = "The Cloud Storage folder in which to write the Parquet files.",
         example = "gs://your-bucket/export/")
     @Required
     String getBucket();
@@ -168,7 +168,7 @@ public class BigQueryToParquet {
         optional = true,
         description = "Maximum output shards",
         helpText =
-            "(Optional) The number of output file shards. The default value is 1.")
+            "The number of output file shards. The default value is 1.")
     @Default.Integer(0)
     Integer getNumShards();
 
@@ -178,7 +178,7 @@ public class BigQueryToParquet {
         order = 4,
         optional = true,
         description = "List of field names",
-        helpText = "(Optional) A comma-separated list of fields to select from the input BigQuery table.")
+        helpText = "A comma-separated list of fields to select from the input BigQuery table.")
     String getFields();
 
     void setFields(String fields);
