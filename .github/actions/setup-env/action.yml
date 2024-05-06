@@ -55,12 +55,13 @@ runs:
   using: 'composite'
   steps:
     - name: Setup Go
-      uses: actions/setup-go@44e221478fc6847752e5c574fc7a7b3247b00fbf
+      uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
       with:
         go-version: ${{ inputs.go-version }}
+        cache: false
     - name: Get Changed Files
       id: changed-files
-      uses: tj-actions/changed-files@61ee456a9d0f512e7ecfdf28863634c97dae2d16
+      uses: tj-actions/changed-files@4c5f5d698fbf2d763d5f13815ac7c2ccbef1ff7f # v44.2.0
       with:
         separator: ','
     # It shouldn't take too long to build all of this, and it will at least
