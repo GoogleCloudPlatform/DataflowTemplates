@@ -68,7 +68,7 @@ public class DatastoreConverters {
         order = 1,
         regexes = {"^.+$"},
         description = "GQL Query",
-        helpText = "Specifies which Datastore entities to read. Ex: ‘SELECT * FROM MyKind’")
+        helpText = "A GQL (https://cloud.google.com/datastore/docs/reference/gql_reference) query that specifies which entities to grab. For example, `SELECT * FROM MyKind`.")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreReadGqlQuery();
@@ -86,7 +86,7 @@ public class DatastoreConverters {
     @TemplateParameter.ProjectId(
         order = 2,
         description = "Project ID",
-        helpText = "The Google Cloud project ID of the Datastore instance to read from")
+        helpText = "The Google Cloud project ID of the Datastore instance that you want to read data from.")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreReadProjectId();
@@ -107,7 +107,7 @@ public class DatastoreConverters {
         regexes = {"^[0-9A-Za-z._-]{0,100}$"},
         description = "Namespace",
         helpText =
-            "Namespace of requested Datastore entities. Leave blank to use default namespace.")
+            "The namespace of the requested entities. To use the default namespace, leave this parameter blank.")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreReadNamespace();
