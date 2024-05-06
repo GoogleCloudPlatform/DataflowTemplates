@@ -70,7 +70,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection property string.",
       helpText =
-          "Optional: The properties string to use for the JDBC connection. The format of the string must "
+          "The properties string to use for the JDBC connection. The format of the string must "
               + "be `[propertyName=property;]*`."
               + "For more information, see "
               + "Configuration Properties (https://dev.mysql.com/doc/connector-j/8.1/en/connector-j-reference-configuration-properties.html) "
