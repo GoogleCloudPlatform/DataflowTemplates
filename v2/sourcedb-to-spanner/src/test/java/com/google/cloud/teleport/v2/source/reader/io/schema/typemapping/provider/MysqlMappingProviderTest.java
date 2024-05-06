@@ -59,7 +59,7 @@ public class MysqlMappingProviderTest {
         .put("CHAR", "\"string\"")
         .put("DATE", "{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}")
         .put(
-            "DateTime",
+            "DATETIME",
             "{\"type\":\"record\","
                 + "\"name\":\"datetime\","
                 + "\"fields\": ["
