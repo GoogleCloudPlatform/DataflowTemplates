@@ -135,7 +135,9 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
 
   private void createSpannerDatabase() throws IOException {
     spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
+        SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .build(); // DB name is appended with prefix to avoid clashes
     String ddl =
         String.join(
             " ", Resources.readLines(Resources.getResource(spannerDdl), StandardCharsets.UTF_8));
@@ -173,7 +175,9 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
 
   private void createSpannerMetadataDatabase() throws IOException {
     spannerMetadataResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
+        SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .build(); // DB name is appended with prefix to avoid clashes
     String dummy = "create table t1(id INT64 ) primary key(id)";
     spannerMetadataResourceManager.executeDdlStatement(dummy);
     // needed to create separate metadata database
