@@ -152,14 +152,17 @@ public class GenericRecordTypeConvertor {
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMillis) {
       Instant timestamp = Instant.ofEpochMilli(Long.valueOf(recordValue.toString()));
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-    } // TODO: add support for custom logical types VARCHAR, JSON and NUMBER once format is
-    // finalised.
-    else {
-      LOG.error(
-          "Unknown field type {} for field {} in {}. Ignoring it.",
-          fieldSchema,
-          fieldName,
-          recordValue);
+    } else if (fieldSchema.getLogicalType() != null
+        && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.JSON)) {
+      return recordValue.toString();
+    } else if (fieldSchema.getLogicalType() != null
+        && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.NUMBER)) {
+      return recordValue.toString();
+    } else if (fieldSchema.getLogicalType() != null
+        && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.VARCHAR)) {
+      return recordValue.toString();
+    } else {
+      LOG.error("Unknown field type {} for field {} in {}.", fieldSchema, fieldName, recordValue);
       throw new UnsupportedOperationException(
           String.format(
               "Unknown field type %s for field %s in %s.", fieldSchema, fieldName, recordValue));
