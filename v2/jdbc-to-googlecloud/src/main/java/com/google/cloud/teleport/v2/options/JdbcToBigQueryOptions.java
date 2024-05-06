@@ -139,7 +139,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Google Cloud KMS key",
       helpText =
-          "The Cloud KMS encryption key to use decrypt the username, password, and connection string. If you pass in a Cloud KMS key, the username, password, and connection string must all be passed in encrypted.",
+          "The Cloud KMS encryption key to decrypt the username, password, and connection string. If you pass in a Cloud KMS key, the username, password, and connection string must all be passed in encrypted.",
       example = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
   String getKMSEncryptionKey();
 
@@ -175,7 +175,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "The name of a column of numeric type that will be used for partitioning.",
       helpText =
-          "If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.")
+          "If this parameter is provided (along with the name of the `table` defined as an optional parameter), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.")
   String getPartitionColumn();
 
   void setPartitionColumn(String partitionColumn);
