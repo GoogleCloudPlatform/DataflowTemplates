@@ -25,16 +25,19 @@ on:
       - '**.xml'
       # Include relevant GitHub Action files for running these checks.
       # This will make it easier to verify action changes don't break anything.
-      - '.github/actions/setup-env/*'
+      - '.github/actions/*'
       - '.github/workflows/java-pr.yml'
-  schedule:
-    - cron: "0 */12 * * *"
+      - '.github/codecov.yml'
+      - 'cicd'
   workflow_dispatch:
 
 env:
   MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
 
-permissions: read-all
+permissions:
+  contents: read
+  checks: write
+  id-token: write
 
 jobs:
   spotless_check:
@@ -43,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+        uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
         with:
           fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
       - name: Setup Environment
@@ -57,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+        uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
         with:
           fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
       - name: Setup Environment
@@ -67,20 +70,18 @@ jobs:
         run: ./cicd/run-checkstyle --changed-files="${{ steps.setup-env.outputs.changed-files }}"
   java_build:
     name: Build
+    needs: [spotless_check, checkstyle_check]
     timeout-minutes: 60
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+        uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
         with:
           fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
-      - name: Setup Environment
-        id: setup-env
-        uses: ./.github/actions/setup-env
-      - name: Run Build
-        run: ./cicd/run-build --changed-files="${{ steps.setup-env.outputs.changed-files }}"
-      - name: Cleanup Java Environment
-        uses: ./.github/actions/cleanup-java-env
+      - name: Run Java Build
+        uses: ./.github/actions/run-build
+        with:
+          changed-files: ${{ steps.setup-env.outputs.changed-files }}
   java_unit_tests:
     name: Unit Tests
     needs: [java_build]
@@ -88,113 +89,61 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+        uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
         with:
           fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
-      - name: Setup Environment
-        id: setup-env
-        uses: ./.github/actions/setup-env
       - name: Run Unit Tests
-        run: ./cicd/run-unit-tests --changed-files="${{ steps.setup-env.outputs.changed-files }}"
-      - name: Upload Unit Tests Report
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-        if: always() # always run even if the previous step fails
+        uses: ./.github/actions/run-unit-tests
         with:
-          name: surefire-test-results
-          path: '**/surefire-reports/TEST-*.xml'
-          retention-days: 1
+          changed-files: ${{ steps.setup-env.outputs.changed-files }}
+      - name: Upload Unit Tests Surefire Report
+        uses: ./.github/actions/upload-test-report
+        with:
+          output-zip-file: unit-test-results
+        if: always()
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: GoogleCloudPlatform/DataflowTemplates
           files: 'target/site/jacoco-aggregate/jacoco.xml'
-      - name: Cleanup Java Environment
-        uses: ./.github/actions/cleanup-java-env
   java_integration_smoke_tests_templates:
     name: Dataflow Templates Integration Smoke Tests
-    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests]
+    needs: [java_build]
     timeout-minutes: 60
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+        uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
         with:
           fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
-      - name: Setup Environment
-        id: setup-env
-        uses: ./.github/actions/setup-env
-      - name: Run Integration Smoke Tests
-        run: | 
-          ./cicd/run-it-smoke-tests \
-          --changed-files="${{ steps.setup-env.outputs.changed-files }}" \
-          --it-region="us-central1" \
-          --it-project="cloud-teleport-testing" \
-          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-          --it-private-connectivity="datastream-private-connect-us-central1"
-      - name: Upload Smoke Tests Report
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-        if: always() # always run even if the previous step fails
+      - name: Run Smoke Tests
+        uses: ./.github/actions/run-smoke-tests
         with:
-          name: surefire-test-results
-          path: '**/surefire-reports/TEST-*.xml'
-          retention-days: 1
-      - name: Cleanup Java Environment
-        uses: ./.github/actions/cleanup-java-env
+          changed-files: ${{ steps.setup-env.outputs.changed-files }}
+      - name: Upload Smoke Tests Surefire Report
+        uses: ./.github/actions/upload-test-report
+        with:
+          output-zip-file: smoke-test-results
+        if: always()
   java_integration_tests_templates:
     name: Dataflow Templates Integration Tests
-    needs: [java_integration_smoke_tests_templates]
+    needs: [java_build]
     timeout-minutes: 180
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+        uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
         with:
           fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
-      - name: Setup Environment
-        id: setup-env
-        uses: ./.github/actions/setup-env
       - name: Run Integration Tests
-        run: | 
-          ./cicd/run-it-tests \
-          --changed-files="${{ steps.setup-env.outputs.changed-files }}" \
-          --it-region="us-central1" \
-          --it-project="cloud-teleport-testing" \
-          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-          --it-private-connectivity="datastream-private-connect-us-central1"
-      - name: Upload Integration Tests Report
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-        if: always() # always run even if the previous step fails
+        uses: ./.github/actions/run-integration-tests
         with:
-          name: surefire-test-results
-          path: '**/surefire-reports/TEST-*.xml'
-          retention-days: 1
-      - name: Cleanup Java Environment
-        uses: ./.github/actions/cleanup-java-env
-  java_load_tests_templates:
-    if: contains(github.event.pull_request.labels.*.name, 'run-load-tests')
-    name: Dataflow Templates Load Tests
-    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests, java_integration_tests_templates]
-    timeout-minutes: 600
-    # Run on any runner that matches all the specified runs-on values.
-    runs-on: [self-hosted, perf]
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-      with:
-        fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
-    - name: Setup Environment
-      id: setup-env
-      uses: ./.github/actions/setup-env
-    - name: Run Load Tests
-      run: |
-        ./cicd/run-load-tests \
-        --changed-files="${{ steps.setup-env.outputs.changed-files }}" \
-        --it-region="us-central1" \
-        --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1"
-    - name: Cleanup Java Environment
-      uses: ./.github/actions/cleanup-java-env
+          changed-files: ${{ steps.setup-env.outputs.changed-files }}
+      - name: Upload Integration Tests Surefire Report
+        uses: ./.github/actions/upload-test-report
+        with:
+          output-zip-file: integration-test-results
+        if: always()

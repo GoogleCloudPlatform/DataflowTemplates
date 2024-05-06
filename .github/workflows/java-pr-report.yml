@@ -19,7 +19,6 @@ on:
   workflow_run:
     workflows:
       - Java PR
-      - Release
     types: [ completed ]
 
 permissions:
@@ -29,15 +28,17 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-    - name: Download Test Report
-      uses: dawidd6/action-download-artifact@246dbf436b23d7c49e21a7ab8204ca9ecd1fe615 # v2.27.0
+    - name: Checkout Code
+      uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
       with:
-        name: surefire-test-results
-        workflow: ${{ github.event.workflow.id }}
+        fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
+    - name: Download Test Reports
+      uses: dawidd6/action-download-artifact@e7466d1a7587ed14867642c2ca74b5bcc1e19a2d # v3.0.0
+      with:
         run_id: ${{ github.event.workflow_run.id }}
-        if_no_artifact_found: warn
+        if_no_artifact_found: ignore
     - name: Publish Test Report
-      uses: mikepenz/action-junit-report@150e2f992e4fad1379da2056d1d1c279f520e058 # v3.8.0
+      uses: mikepenz/action-junit-report@9379f0ccddcab154835d4e2487555ee79614fe95 # v4.2.1
       with:
         commit: ${{github.event.workflow_run.head_sha}}
         report_paths: '**/surefire-reports/TEST-*.xml'
