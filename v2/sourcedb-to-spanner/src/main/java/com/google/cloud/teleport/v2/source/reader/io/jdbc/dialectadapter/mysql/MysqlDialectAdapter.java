@@ -159,9 +159,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   private static final Pattern normalizedColumnTypeMultiSpaces = Pattern.compile("( )+");
   private static final ImmutableMap<String, String> mySQlTypeAliases =
       ImmutableMap.of(
-          "DOUBLE PRECISION", "DOUBLE",
-          "DEC", "DECIMAL",
-          "INT", "INTEGER");
+          "DOUBLE PRECISION", "DOUBLE", "DEC", "DECIMAL", "INT", "INTEGER", "BOOLEAN", "BOOL");
 
   private String normalizeColumnType(String columnType) {
 

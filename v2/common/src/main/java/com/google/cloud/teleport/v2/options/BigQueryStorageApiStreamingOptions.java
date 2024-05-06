@@ -26,13 +26,10 @@ public interface BigQueryStorageApiStreamingOptions extends BigQueryOptions {
       optional = true,
       description = "Use BigQuery Storage Write API",
       helpText =
-          "If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see"
-              + " https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api)."
-              + " The default value is false. When using Storage Write API in exactly-once mode,"
-              + " you must set the following parameters: \"Number of streams for BigQuery Storage Write API\""
-              + " and \"Triggering frequency in seconds for BigQuery Storage Write API\"."
-              + " If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter"
-              + " to true, then you don't need to set the number of streams or the triggering frequency.")
+          "If true, the pipeline uses the "
+              + "BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). "
+              + "The default value is `false`. For more information, "
+              + "see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).")
   @Default.Boolean(false)
   @Override
   Boolean getUseStorageWriteApi();
@@ -54,11 +51,9 @@ public interface BigQueryStorageApiStreamingOptions extends BigQueryOptions {
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
       helpText =
-          "Number of streams defines the parallelism of the BigQueryIO’s Write transform and"
-              + " roughly corresponds to the number of Storage Write API’s streams which will be"
-              + " used by the pipeline. See"
-              + " https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api"
-              + " for the recommended values.")
+          "When using the Storage Write API, specifies the number of write streams. "
+              + "If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, "
+              + "then you must set this parameter.")
   @Override
   @Default.Integer(0)
   Integer getNumStorageWriteApiStreams();
@@ -68,10 +63,9 @@ public interface BigQueryStorageApiStreamingOptions extends BigQueryOptions {
       optional = true,
       description = "Triggering frequency in seconds for BigQuery Storage Write API",
       helpText =
-          "Triggering frequency will determine how soon the data will be visible for querying in"
-              + " BigQuery. See"
-              + " https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api"
-              + " for the recommended values.")
+          "When using the Storage Write API, specifies the triggering frequency, "
+              + "in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, "
+              + "then you must set this parameter.")
   @Override
   Integer getStorageWriteApiTriggeringFrequencySec();
 }
