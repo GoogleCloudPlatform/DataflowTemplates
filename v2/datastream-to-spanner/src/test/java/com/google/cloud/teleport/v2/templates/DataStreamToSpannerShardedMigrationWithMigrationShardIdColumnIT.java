@@ -44,15 +44,19 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Sharded data migration Integration test with addition of migration_shard_id column in the schema for
- * each table in the {@link DataStreamToSpanner} Flex template. */
+/**
+ * Sharded data migration Integration test with addition of migration_shard_id column in the schema
+ * for each table in the {@link DataStreamToSpanner} Flex template.
+ */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT extends DataStreamToSpannerITBase {
+public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
+    extends DataStreamToSpannerITBase {
 
   private static final Logger LOG =
-      LoggerFactory.getLogger(DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT.class);
+      LoggerFactory.getLogger(
+          DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT.class);
 
   private static final String TABLE = "Users";
   private static final String MOVIE_TABLE = "Movie";
@@ -68,7 +72,8 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT ext
   private static final String SPANNER_DDL_RESOURCE =
       "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/spanner-schema.sql";
 
-  private static HashSet<DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT> testInstances = new HashSet<>();
+  private static HashSet<DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT>
+      testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo1;
   private static PipelineLauncher.LaunchInfo jobInfo2;
 
