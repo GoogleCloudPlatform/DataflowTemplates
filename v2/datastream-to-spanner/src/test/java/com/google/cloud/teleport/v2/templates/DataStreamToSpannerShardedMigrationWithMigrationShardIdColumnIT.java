@@ -44,30 +44,31 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Sharded data migration Integration test for {@link DataStreamToSpanner} Flex template. */
+/** Sharded data migration Integration test with addition of migration_shard_id column in the schema for
+ * each table in the {@link DataStreamToSpanner} Flex template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerShardedMigrationIT extends DataStreamToSpannerITBase {
+public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT extends DataStreamToSpannerITBase {
 
   private static final Logger LOG =
-      LoggerFactory.getLogger(DataStreamToSpannerShardedMigrationIT.class);
+      LoggerFactory.getLogger(DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT.class);
 
   private static final String TABLE = "Users";
   private static final String MOVIE_TABLE = "Movie";
 
   private static final String SESSION_FILE_RESOURCE =
-      "DataStreamToSpannerShardedMigrationIT/mysql-session.json";
+      "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/mysql-session.json";
 
   private static final String TRANSFORMATION_CONTEXT_RESOURCE_SHARD1 =
-      "DataStreamToSpannerShardedMigrationIT/transformation-context-shard1.json";
+      "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/transformation-context-shard1.json";
   private static final String TRANSFORMATION_CONTEXT_RESOURCE_SHARD2 =
-      "DataStreamToSpannerShardedMigrationIT/transformation-context-shard2.json";
+      "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/transformation-context-shard2.json";
 
   private static final String SPANNER_DDL_RESOURCE =
-      "DataStreamToSpannerShardedMigrationIT/spanner-schema.sql";
+      "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/spanner-schema.sql";
 
-  private static HashSet<DataStreamToSpannerShardedMigrationIT> testInstances = new HashSet<>();
+  private static HashSet<DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo1;
   private static PipelineLauncher.LaunchInfo jobInfo2;
 
@@ -83,7 +84,7 @@ public class DataStreamToSpannerShardedMigrationIT extends DataStreamToSpannerIT
   public void setUp() throws IOException {
     // Prevent cleaning up of dataflow job after a test method is executed.
     skipBaseCleanup = true;
-    synchronized (DataStreamToSpannerShardedMigrationIT.class) {
+    synchronized (DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT.class) {
       testInstances.add(this);
       if (spannerResourceManager == null) {
         spannerResourceManager = setUpSpannerResourceManager();
@@ -132,7 +133,7 @@ public class DataStreamToSpannerShardedMigrationIT extends DataStreamToSpannerIT
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (DataStreamToSpannerShardedMigrationIT instance : testInstances) {
+    for (DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
@@ -151,17 +152,17 @@ public class DataStreamToSpannerShardedMigrationIT extends DataStreamToSpannerIT
                         jobInfo1,
                         TABLE,
                         "Users-backfill-logical-shard1.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Users-backfill-logical-shard1.jsonl"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard1.jsonl"),
                     uploadDataStreamFile(
                         jobInfo1,
                         TABLE,
                         "Users-backfill-logical-shard2.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Users-backfill-logical-shard2.jsonl"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard2.jsonl"),
                     uploadDataStreamFile(
                         jobInfo1,
                         TABLE,
                         "Users-cdc-shard1.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Users-cdc-shard1.jsonl")))
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-shard1.jsonl")))
             .build();
 
     // Wait for conditions
@@ -179,17 +180,17 @@ public class DataStreamToSpannerShardedMigrationIT extends DataStreamToSpannerIT
                         jobInfo2,
                         TABLE,
                         "Users-backfill-logical-shard3.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Users-backfill-logical-shard3.jsonl"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard3.jsonl"),
                     uploadDataStreamFile(
                         jobInfo2,
                         TABLE,
                         "Users-backfill-logical-shard4.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Users-backfill-logical-shard4.jsonl"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard4.jsonl"),
                     uploadDataStreamFile(
                         jobInfo2,
                         TABLE,
                         "Users-cdc-shard2.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Users-cdc-shard2.jsonl")))
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-shard2.jsonl")))
             .build();
 
     result =
@@ -224,12 +225,12 @@ public class DataStreamToSpannerShardedMigrationIT extends DataStreamToSpannerIT
                         jobInfo1,
                         MOVIE_TABLE,
                         "Movie-shard1.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Movie-shard1.jsonl"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Movie-shard1.jsonl"),
                     uploadDataStreamFile(
                         jobInfo1,
                         MOVIE_TABLE,
                         "Movie-shard2.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Movie-shard2.jsonl")))
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Movie-shard2.jsonl")))
             .build();
 
     // Wait for conditions
