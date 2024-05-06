@@ -24,7 +24,10 @@ import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
@@ -116,14 +119,15 @@ public class SourceDbToSpanner {
   static PipelineResult run(SourceDbToSpannerOptions options) {
     Pipeline pipeline = Pipeline.create(options);
 
-    FakeReader2 fr = new FakeReader2(10, 2);
-    SourceSchema srcSchema = fr.getSourceSchema();
-    ReaderTransform readerTransform = fr.getReaderTransform();
+    ReaderImpl reader =
+        ReaderImpl.of(
+            JdbcIoWrapper.of(
+                OptionsToConfigBuilder.MySql.configWithMySqlDefualtsFromOptions(options)));
+    SourceSchema srcSchema = reader.getSourceSchema();
+    ReaderTransform readerTransform = reader.getReaderTransform();
 
     PCollectionTuple rowsAndTables = pipeline.apply("Read rows", readerTransform.readTransform());
     PCollection<SourceRow> sourceRows = rowsAndTables.get(readerTransform.sourceRowTag());
-    PCollection<SourceTableReference> sourceTableReferenceTag =
-        rowsAndTables.get(readerTransform.sourceTableReferenceTag());
 
     SourceRowToMutationDoFn transformDoFn =
         SourceRowToMutationDoFn.create(getSchemaMapper(options), getTableIDToRefMap(srcSchema));

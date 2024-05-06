@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.options;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -28,19 +29,24 @@ public class OptionsToConfigBuilderTest {
 
   @Test
   public void testconfigWithMySqlDefualtsFromOptions() {
+    final String testdriverClassName = "org.apache.derby.jdbc.EmbeddedDriver";
+    final String testHost = "localHost";
+    final String testPort = "3306";
+    final String testuser = "user";
+    final String testpassword = "password";
     SourceDbToSpannerOptions sourceDbToSpannerOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
-    sourceDbToSpannerOptions.setSourceHost("localHost");
-    sourceDbToSpannerOptions.setSourcePort("3306");
-    sourceDbToSpannerOptions.setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver");
+    sourceDbToSpannerOptions.setSourceHost(testHost);
+    sourceDbToSpannerOptions.setSourcePort(testPort);
+    sourceDbToSpannerOptions.setJdbcDriverClassName(testdriverClassName);
     sourceDbToSpannerOptions.setSourceConnectionURL("jdbc:derby:memory:testDB;create=true");
     sourceDbToSpannerOptions.setSourceConnectionProperties(
         "maxTotal=160;maxpoolsize=160;maxIdle=160;minIdle=160" + ";wait_timeout=57600");
     sourceDbToSpannerOptions.setFetchSize(50000);
     sourceDbToSpannerOptions.setMaxConnections(150);
     sourceDbToSpannerOptions.setNumPartitions(4000);
-    sourceDbToSpannerOptions.setUsername("user");
-    sourceDbToSpannerOptions.setPassword("password");
+    sourceDbToSpannerOptions.setUsername(testuser);
+    sourceDbToSpannerOptions.setPassword(testpassword);
     sourceDbToSpannerOptions.setReconnectsEnabled(true);
     sourceDbToSpannerOptions.setReconnectAttempts(10);
     sourceDbToSpannerOptions.setSourceDB("testDB");
@@ -48,8 +54,15 @@ public class OptionsToConfigBuilderTest {
     sourceDbToSpannerOptions.setPartitionColumns("col1,col2");
     var config =
         OptionsToConfigBuilder.MySql.configWithMySqlDefualtsFromOptions(sourceDbToSpannerOptions);
-    assertThat(config.toString())
-        .isEqualTo(
-            "JdbcIOWrapperConfig{sourceHost=localHost, sourcePort=3306, sourceSchemaReference=SourceSchemaReference{dbName=testDB, namespace=null}, tableConfigs=[TableConfig{tableName=table1, maxPartitions=4000, maxFetchSize=50000, partitionColumns=[col1]}, TableConfig{tableName=table2, maxPartitions=4000, maxFetchSize=50000, partitionColumns=[col2]}], shardID=Unsupported, dbAuth=LocalCredentialsProvider{userName=user, password=GuardedStringValueProvider{guardedString=org.identityconnectors.common.security.GuardedString@a05005e9}}, jdbcDriverJars=, jdbcDriverClassName=org.apache.derby.jdbc.EmbeddedDriver, schemaMapperType=MYSQL, dialectAdapter=com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter@19382338, valueMappingsProvider=com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider.MysqlJdbcValueMappings@66420549, connectionProperties=maxTotal=160;maxpoolsize=160;maxIdle=160;minIdle=160;wait_timeout=57600, autoReconnect=true, reconnectAttempts=10, maxConnections=150, schemaDiscoveryBackOff=FluentBackoff{exponent=1.5, initialBackoff=PT1S, maxBackoff=PT86400000S, maxRetries=2147483647, maxCumulativeBackoff=PT86400000S}}");
+    assertThat(config.autoReconnect()).isTrue();
+    assertThat(config.jdbcDriverClassName()).isEqualTo(testdriverClassName);
+    assertThat(config.sourceHost()).isEqualTo(testHost);
+    assertThat(config.sourcePort()).isEqualTo(testPort);
+    assertThat(
+            ImmutableList.of(
+                config.tableConfigs().get(0).tableName(), config.tableConfigs().get(1).tableName()))
+        .containsExactlyElementsIn(ImmutableList.of("table1", "table2"));
+    assertThat(config.dbAuth().getUserName().get()).isEqualTo(testuser);
+    assertThat(config.dbAuth().getPassword().get()).isEqualTo(testpassword);
   }
 }
