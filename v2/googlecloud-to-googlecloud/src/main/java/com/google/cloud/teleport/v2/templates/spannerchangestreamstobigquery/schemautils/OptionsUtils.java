@@ -29,7 +29,6 @@ public class OptionsUtils {
       SpannerChangeStreamsToBigQueryOptions options) {
     String bigqueryProjectId = options.getBigQueryProjectId();
     String bigqueryDataset = options.getBigQueryDataset();
-    LOG.info("===bigqueryDataset: " + bigqueryDataset);
     int datasetStartPos = bigqueryDataset.indexOf(".");
     if (datasetStartPos != -1) {
       String inferredBigQueryProjectId = bigqueryDataset.substring(0, datasetStartPos);

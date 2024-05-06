@@ -393,7 +393,7 @@ public abstract class TemplateTestBase {
       "-pl",
       moduleBuild,
       "-am",
-      "-PtemplatesStage,pluginOutputDir,splunkDeps",
+      "-PtemplatesStage,pluginOutputDir,splunkDeps,missing-artifact-repos",
       "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(16),
       // Skip shading for now due to flakiness / slowness in the process.
       "-DskipShade=" + skipShade,
