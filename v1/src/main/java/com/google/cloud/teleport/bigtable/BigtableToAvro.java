@@ -78,7 +78,7 @@ public class BigtableToAvro {
         order = 1,
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Bigtable instance that you want to read data from.")
+            "The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from.")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")

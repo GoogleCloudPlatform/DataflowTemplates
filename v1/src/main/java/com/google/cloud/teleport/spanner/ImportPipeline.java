@@ -106,7 +106,7 @@ public class ImportPipeline {
         optional = true,
         description = "Wait for Indexes",
         helpText =
-            "If `true`, the pipeline waits for indexes to be created. If `false`, the job might complete while indexes are still being created in the background. Default: `false`.")
+            "If `true`, the pipeline waits for indexes to be created. If `false`, the job might complete while indexes are still being created in the background. The default value is `false`.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForIndexes();
 
@@ -117,7 +117,7 @@ public class ImportPipeline {
         optional = true,
         description = "Wait for Foreign Keys",
         helpText =
-            "If `true`, the pipeline waits for foreign keys to be created. If `false`, the job might complete while foreign keys are still being created in the background. Default: `false`.")
+            "If `true`, the pipeline waits for foreign keys to be created. If `false`, the job might complete while foreign keys are still being created in the background. The default value is `false`.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForForeignKeys();
 
@@ -128,7 +128,7 @@ public class ImportPipeline {
         optional = true,
         description = "Wait for Change Streams",
         helpText =
-            "If `true`, the pipeline waits for change streams to be created. If `false`, the job might complete while change streams are still being created in the background. Default: `true`.")
+            "If `true`, the pipeline waits for change streams to be created. If `false`, the job might complete while change streams are still being created in the background. The default value is `true`.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getWaitForChangeStreams();
 
@@ -139,7 +139,7 @@ public class ImportPipeline {
         optional = true,
         description = "Wait for Sequences",
         helpText =
-            "By default the import pipeline is blocked on sequence creation. If `false`, it may"
+            "By default, the import pipeline is blocked on sequence creation. If `false`, the import pipeline might"
                 + " complete with sequences still being created in the background.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getWaitForSequences();
@@ -151,7 +151,7 @@ public class ImportPipeline {
         optional = true,
         description = "Create Indexes early",
         helpText =
-            "Specifies whether to enable early index creation. If the template runs a large number of DDL statements, it's more efficient to create indexes before loading data. Therefore, the default behavior is to create the indexes first when the number of DDL statements exceeds a threshold. To disable this feature, `set earlyIndexCreateFlag` to `false`. Default: `true`.")
+            "Specifies whether early index creation is enabled. If the template runs a large number of DDL statements, it's more efficient to create indexes before loading data. Therefore, the default behavior is to create the indexes first when the number of DDL statements exceeds a threshold. To disable this feature, set `earlyIndexCreateFlag` to `false`. The default value is `true`.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getEarlyIndexCreateFlag();
 
@@ -166,7 +166,7 @@ public class ImportPipeline {
         order = 9,
         optional = true,
         description = "Cloud Spanner Project Id",
-        helpText = "The Google Cloud project ID of the Spanner database. If not set, the default Google Cloud project is used.")
+        helpText = "The ID of the Google Cloud project that contains the Spanner database. If not set, the default Google Cloud project is used.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);
@@ -178,7 +178,7 @@ public class ImportPipeline {
         optional = true,
         regexes = {"[0-9]+"},
         description = "DDL Creation timeout in minutes",
-        helpText = "The timeout, in minutes, for DDL statements performed by the template. The default value is 30 minutes.")
+        helpText = "The timeout in minutes for DDL statements performed by the template. The default value is 30 minutes.")
     @Default.Integer(30)
     ValueProvider<Integer> getDdlCreationTimeoutInMinutes();
 
@@ -194,7 +194,7 @@ public class ImportPipeline {
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
-            "The request priority for Spanner calls. Possible values are `HIGH`, `MEDIUM`, `LOW`. The default value is `MEDIUM`.")
+            "The request priority for Spanner calls. Possible values are `HIGH`, `MEDIUM`, and `LOW`. The default value is `MEDIUM`.")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);

@@ -153,7 +153,7 @@ public class JmsToPubsub {
         optional = false,
         regexes = {"[a-zA-Z0-9._-]+"},
         description = "JMS Queue/Topic Name to read the input from",
-        helpText = "The name of the JMS topic/queue that data is read from.",
+        helpText = "The name of the JMS topic or queue that data is read from.",
         example = "queue")
     @Validation.Required
     String getInputName();
@@ -165,7 +165,7 @@ public class JmsToPubsub {
         optional = false,
         regexes = {"[a-zA-Z0-9._-]+"},
         description = "JMS Destination Type to read the input from",
-        helpText = "The JMS destination type to read data from , can be queue or topic.",
+        helpText = "The JMS destination type to read data from. Can be a queue or a topic.",
         example = "queue")
     @Validation.Required
     String getInputType();
@@ -176,7 +176,7 @@ public class JmsToPubsub {
         order = 4,
         description = "Output Pub/Sub topic",
         helpText =
-            "The name of the topic to which data should published, in the format `projects/your-project-id/topics/your-topic-name`.",
+            "The name of the Pub/Sub topic to publish data to, in the format `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.",
         example = "projects/your-project-id/topics/your-topic-name")
     @Validation.Required
     String getOutputTopic();

@@ -39,7 +39,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Spanner Project ID",
       helpText =
-          "Project to read change streams from. This is also the project where the change streams connector metadata table is created. The default for this parameter is the project where the Dataflow pipeline is running.")
+          "The ID of the Google Cloud project that contains the Spanner database to read change streams from. This  project is also where the change streams connector metadata table is created. The default for this parameter is the project where the Dataflow pipeline is running.")
   @Default.String("")
   String getSpannerProjectId();
 
@@ -97,7 +97,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Cloud Spanner metadata table name",
       helpText =
-          "The Spanner change streams connector metadata table name to use. If not provided, a Spanner change streams metadata table will automatically be created during the pipeline flow. This parameter must be provided when updating an existing pipeline and shouldn't be provided otherwise.")
+          "The Spanner change streams connector metadata table name to use. If not provided, a Spanner change streams metadata table is automatically created during the pipeline flow. You must provide a value for this parameter when updating an existing pipeline. Otherwise, don't use this parameter.")
   String getSpannerMetadataTableName();
 
   void setSpannerMetadataTableName(String value);
@@ -116,7 +116,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "The timestamp to read change streams from",
       helpText =
-          "The starting DateTime, inclusive, to use for reading change streams. Ex-2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, i.e. the current time.")
+          "The starting DateTime, inclusive, to use for reading change streams, in the format Ex-2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, that is, the current time.")
   @Default.String("")
   String getStartTimestamp();
 
@@ -127,7 +127,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "The timestamp to read change streams to",
       helpText =
-          "The ending DateTime, inclusive, to use for reading change streams. Ex-2021-10-12T07:20:50.52Z. Defaults to an infinite time in the future.")
+          "The ending DateTime, inclusive, to use for reading change streams. For example, Ex-2021-10-12T07:20:50.52Z. Defaults to an infinite time in the future.")
   @Default.String("")
   String getEndTimestamp();
 
@@ -150,7 +150,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Output file format",
       helpText =
-          "The format of the output Cloud Storage file. Allowed formats are TEXT, AVRO. Default is AVRO.")
+          "The format of the output Cloud Storage file. Allowed formats are TEXT and AVRO. Defaults to AVRO.")
   @Default.Enum("AVRO")
   FileFormat getOutputFileFormat();
 
@@ -161,7 +161,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Window duration",
       helpText =
-          "The window duration is the interval in which data is written to the output directory. Configure the duration based on the pipeline's throughput. For example, a higher throughput might require smaller window sizes so that the data fits into memory. Defaults to 5m, with a minimum of 1s. Allowed formats are: [int]s (for seconds, example: 5s), [int]m (for minutes, example: 12m), [int]h (for hours, example: 2h).",
+          "The window duration is the interval in which data is written to the output directory. Configure the duration based on the pipeline's throughput. For example, a higher throughput might require smaller window sizes so that the data fits into memory. Defaults to 5m (five minutes), with a minimum of 1s (one second). Allowed formats are: [int]s (for seconds, example: 5s), [int]m (for minutes, example: 12m), [int]h (for hours, example: 2h).",
       example = "5m")
   @Default.String("5m")
   String getWindowDuration();
@@ -178,7 +178,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Priority for Spanner RPC invocations",
       helpText =
-          "The request priority for Spanner calls. The value must be one of:[HIGH,MEDIUM,LOW]. (Default: HIGH)")
+          "The request priority for Spanner calls. The value must be HIGH, MEDIUM, or LOW. Defaults to HIGH.")
   @Default.Enum("HIGH")
   RpcPriority getRpcPriority();
 

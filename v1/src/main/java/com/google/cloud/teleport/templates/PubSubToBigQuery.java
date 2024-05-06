@@ -166,7 +166,7 @@ public class PubSubToBigQuery {
         order = 1,
         description = "BigQuery output table",
         helpText =
-            "The BigQuery output table location, in the format of `<my-project>:<my-dataset>.<my-table>`")
+            "The BigQuery output table location, in the format `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`")
     ValueProvider<String> getOutputTableSpec();
 
     void setOutputTableSpec(ValueProvider<String> value);
@@ -183,7 +183,7 @@ public class PubSubToBigQuery {
         order = 3,
         description = "Pub/Sub input subscription",
         helpText =
-            "The Pub/Sub input subscription to read from, in the format of `projects/<project>/subscriptions/<subscription>`.")
+            "The Pub/Sub input subscription to read from, in the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION>`.")
     ValueProvider<String> getInputSubscription();
 
     void setInputSubscription(ValueProvider<String> value);
@@ -203,7 +203,7 @@ public class PubSubToBigQuery {
         description =
             "Table for messages failed to reach the output table (i.e., Deadletter table)",
         helpText =
-            "The BigQuery table for messages that failed to reach the output table, in the format of `<my-project>:<my-dataset>.<my-table>`. If it doesn't exist, it is created during pipeline execution. If not specified, `OUTPUT_TABLE_SPEC_error_records` is used instead.")
+            "The BigQuery table to use for messages that failed to reach the output table, in the format of `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`. If the table doesn't exist, it is created during pipeline execution. If not specified, `OUTPUT_TABLE_SPEC_error_records` is used.")
     ValueProvider<String> getOutputDeadletterTable();
 
     void setOutputDeadletterTable(ValueProvider<String> value);

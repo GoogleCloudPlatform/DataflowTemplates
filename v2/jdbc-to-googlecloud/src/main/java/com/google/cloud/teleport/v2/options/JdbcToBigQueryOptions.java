@@ -81,7 +81,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection username.",
       helpText =
-          "The username to use for the JDBC connection. You can pass in this value encrypted by a Cloud KMS key as a Base64-encoded string.")
+          "The username to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string.")
   String getUsername();
 
   void setUsername(String username);
@@ -92,7 +92,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection password.",
       helpText =
-          "The password to use for the JDBC connection. You can pass in this value encrypted by a Cloud KMS key as a Base64-encoded string.")
+          "The password to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string.")
   String getPassword();
 
   void setPassword(String password);
@@ -151,7 +151,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Whether to use column alias to map the rows.",
       helpText =
-          "If enabled (set to `true`), the pipeline uses the column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to `false`.")
+          "If set to `true`, the pipeline uses the column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to `false`.")
   @Default.Boolean(false)
   Boolean getUseColumnAlias();
 
@@ -163,7 +163,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Target",
       description = "Whether to truncate data before writing",
       helpText =
-          "If enabled (set to `true`), the pipeline truncates before loading data into BigQuery. Defaults to `false`, which causes the pipeline to append data.")
+          "If set to `true`, the pipeline truncates before loading data into BigQuery. Defaults to `false`, which causes the pipeline to append data.")
   @Default.Boolean(false)
   Boolean getIsTruncate();
 
@@ -175,7 +175,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "The name of a column of numeric type that will be used for partitioning.",
       helpText =
-          "If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.")
+          "If this parameter is provided with `table`, JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.")
   String getPartitionColumn();
 
   void setPartitionColumn(String partitionColumn);
@@ -247,7 +247,7 @@ public interface JdbcToBigQueryOptions
       },
       optional = true,
       description = "Create Disposition to use for BigQuery",
-      helpText = "BigQuery CreateDisposition. For example, `CREATE_IF_NEEDED`, `CREATE_NEVER`.")
+      helpText = "The BigQuery CreateDisposition to use. For example, `CREATE_IF_NEEDED` or `CREATE_NEVER`.")
   @Default.String("CREATE_NEVER")
   String getCreateDisposition();
 

@@ -74,7 +74,7 @@ public class TextToPubsub {
         order = 2,
         description = "Output Pub/Sub topic",
         helpText =
-            "The Pub/Sub input topic to write to. The name must be in the format of `projects/<project-id>/topics/<topic-name>`.",
+            "The Pub/Sub input topic to write to. The name must be in the format `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.",
         example = "projects/your-project-id/topics/your-topic-name")
     @Required
     ValueProvider<String> getOutputTopic();
