@@ -166,7 +166,7 @@ public class PubSubToMongoDB {
     @TemplateParameter.Text(
         order = 4,
         description = "MongoDB collection",
-        helpText = "Name of the collection inside MongoDB database.",
+        helpText = "Name of the collection in the MongoDB database.",
         example = "my-collection")
     @Validation.Required
     String getCollection();
@@ -188,7 +188,7 @@ public class PubSubToMongoDB {
         order = 6,
         optional = true,
         description = "Batch Size",
-        helpText = "Batch Size used for batch insertion of documents into MongoDB.")
+        helpText = "Batch size used for batch insertion of documents into MongoDB.")
     @Default.Long(1000)
     Long getBatchSize();
 
@@ -198,7 +198,7 @@ public class PubSubToMongoDB {
         order = 7,
         optional = true,
         description = "Batch Size in Bytes",
-        helpText = "Batch Size in bytes used for batch insertion of documents into MongoDB.")
+        helpText = "Batch size in bytes.")
     @Default.Long(5242880)
     Long getBatchSizeBytes();
 
@@ -218,7 +218,7 @@ public class PubSubToMongoDB {
         order = 9,
         optional = true,
         description = "SSL Enabled",
-        helpText = "Indicates whether connection to MongoDB is ssl enabled.")
+        helpText = "Boolean value indicating whether connection to MongoDB is SSL enabled.")
     @Default.Boolean(true)
     Boolean getSslEnabled();
 
@@ -228,7 +228,7 @@ public class PubSubToMongoDB {
         order = 10,
         optional = true,
         description = "Ignore SSL Certificate",
-        helpText = "Indicates whether SSL certificate should be ignored.")
+        helpText = "Boolean value indicating if SSL certificate should be ignored.")
     @Default.Boolean(true)
     Boolean getIgnoreSSLCertificate();
 
@@ -238,7 +238,7 @@ public class PubSubToMongoDB {
         order = 11,
         optional = true,
         description = "withOrdered",
-        helpText = "Enables ordered bulk insertions into MongoDB.")
+        helpText = "Boolean value enabling ordered bulk insertions into MongoDB.")
     @Default.Boolean(true)
     Boolean getWithOrdered();
 
@@ -248,7 +248,7 @@ public class PubSubToMongoDB {
         order = 12,
         optional = true,
         description = "withSSLInvalidHostNameAllowed",
-        helpText = "Indicates whether invalid host name is allowed for ssl connection.")
+        helpText = "Boolean value indicating if invalid hostname is allowed for SSL connection.")
     @Default.Boolean(true)
     Boolean getWithSSLInvalidHostNameAllowed();
 

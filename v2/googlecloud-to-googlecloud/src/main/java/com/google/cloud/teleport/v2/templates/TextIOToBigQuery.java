@@ -238,7 +238,7 @@ public class TextIOToBigQuery {
         description = "Output table to write to",
         helpText =
             "The fully qualified BigQuery table.",
-        example = "your-project:your-dataset.your-table")
+        example = "<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>")
     String getOutputTable();
 
     void setOutputTable(String value);
@@ -265,7 +265,7 @@ public class TextIOToBigQuery {
             "The name of the JavaScript user-defined function (UDF) that you want to use. For example, if " +
                     "your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then " +
                     "the function name is `myTransform`. For sample JavaScript UDFs, " +
-                    "see UDF Examples(https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)",
+                    "see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)",
         example = "transform_udf1")
     String getJavascriptTextTransformFunctionName();
 
