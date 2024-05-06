@@ -42,8 +42,6 @@ component_management:
     paths:
     - "v2/datastream-to-spanner/**"
     - "v2/spanner-common/**"
-    ignore:
-      - "**/*Exception.*"
   - component_id: spanner-live-reverse-replication
     name: spanner-live-reverse-replication
     paths:
