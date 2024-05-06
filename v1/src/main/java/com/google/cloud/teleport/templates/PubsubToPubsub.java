@@ -132,7 +132,7 @@ public class PubsubToPubsub {
         order = 1,
         description = "Pub/Sub input subscription",
         helpText =
-            "Pub/Sub subscription to read the input from.",
+            "The Pub/Sub subscription to read the input from.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     @Validation.Required
     ValueProvider<String> getInputSubscription();
@@ -143,7 +143,7 @@ public class PubsubToPubsub {
         order = 2,
         description = "Output Pub/Sub topic",
         helpText =
-            "Cloud Pub/Sub topic to write the output to.",
+            "The Pub/Sub topic to write the output to.",
         example = "projects/your-project-id/topics/your-topic-name")
     @Validation.Required
     ValueProvider<String> getOutputTopic();
@@ -155,7 +155,7 @@ public class PubsubToPubsub {
         optional = true,
         description = "Event filter key",
         helpText =
-            "Filter events based on an attribute key. No filters are applied if `filterKey` is not specified.")
+            "The attribute key to use to filter events based. No filters are applied if `filterKey` is not specified.")
     ValueProvider<String> getFilterKey();
 
     void setFilterKey(ValueProvider<String> filterKey);
@@ -165,7 +165,7 @@ public class PubsubToPubsub {
         optional = true,
         description = "Event filter value",
         helpText =
-            "Filter attribute value to use in case a filterKey is provided. A null `filterValue` is used by default.")
+            "The attribute value to use to filter events when a `filterKey` is provided. By default, a null `filterValue` is used.")
     ValueProvider<String> getFilterValue();
 
     void setFilterValue(ValueProvider<String> filterValue);
