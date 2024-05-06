@@ -68,7 +68,8 @@ public final class BigQueryCommonOptions {
         },
         optional = true,
         description = "Create Disposition to use for BigQuery",
-        helpText = "The BigQuery CreateDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload). For example, `CREATE_IF_NEEDED` and `CREATE_NEVER`. Defaults to : `CREATE_IF_NEEDED`.")
+        helpText =
+            "The BigQuery CreateDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload). For example, `CREATE_IF_NEEDED` and `CREATE_NEVER`. Defaults to : `CREATE_IF_NEEDED`.")
     @Default.String("CREATE_IF_NEEDED")
     String getCreateDisposition();
 

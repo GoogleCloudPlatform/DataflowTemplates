@@ -83,8 +83,7 @@ public class ParquetToBigtable {
     @TemplateParameter.ProjectId(
         order = 1,
         description = "Project ID",
-        helpText =
-            "The Google Cloud project ID associated with the Bigtable instance.")
+        helpText = "The Google Cloud project ID associated with the Bigtable instance.")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")

@@ -32,7 +32,8 @@ public class TextConverters {
         order = 1,
         regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         description = "Input file(s) in Cloud Storage",
-        helpText = "A Cloud Storage path pattern that specifies the location of your text data files. For example, `gs://mybucket/somepath/*.json`.")
+        helpText =
+            "A Cloud Storage path pattern that specifies the location of your text data files. For example, `gs://mybucket/somepath/*.json`.")
     ValueProvider<String> getTextReadPattern();
 
     void setTextReadPattern(ValueProvider<String> textReadPattern);

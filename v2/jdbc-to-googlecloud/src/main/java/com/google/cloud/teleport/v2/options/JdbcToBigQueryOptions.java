@@ -125,8 +125,7 @@ public interface JdbcToBigQueryOptions
       order = 8,
       groupName = "Target",
       description = "BigQuery output table",
-      helpText =
-          "The BigQuery output table location.",
+      helpText = "The BigQuery output table location.",
       example = "<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>")
   String getOutputTable();
 

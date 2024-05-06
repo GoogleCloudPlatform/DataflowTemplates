@@ -99,7 +99,8 @@ public final class GoogleAdsToBigQuery {
     @TemplateParameter.Text(
         order = 3,
         description = "Google Ads Query Language query",
-        helpText = "The query to use to get the data. See Google Ads Query Language. For example: `SELECT campaign.id, campaign.name FROM campaign`.",
+        helpText =
+            "The query to use to get the data. See Google Ads Query Language. For example: `SELECT campaign.id, campaign.name FROM campaign`.",
         example = "SELECT campaign.id, campaign.name FROM campaign")
     @Validation.Required
     String getQuery();
@@ -134,7 +135,8 @@ public final class GoogleAdsToBigQuery {
     @TemplateParameter.Text(
         order = 6,
         description = "OAuth 2.0 Client ID identifying the application",
-        helpText = "The OAuth 2.0 client ID that identifies the application. See Create a client ID and client secret (https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret).")
+        helpText =
+            "The OAuth 2.0 client ID that identifies the application. See Create a client ID and client secret (https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret).")
     String getGoogleAdsClientId();
 
     void setGoogleAdsClientId(String clientId);
@@ -142,7 +144,8 @@ public final class GoogleAdsToBigQuery {
     @TemplateParameter.Password(
         order = 7,
         description = "OAuth 2.0 Client Secret for the specified Client ID",
-        helpText = "The OAuth 2.0 client secret that corresponds to the specified client ID. See Create a client ID and client secret (https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret).")
+        helpText =
+            "The OAuth 2.0 client secret that corresponds to the specified client ID. See Create a client ID and client secret (https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret).")
     String getGoogleAdsClientSecret();
 
     void setGoogleAdsClientSecret(String clientSecret);
@@ -150,7 +153,8 @@ public final class GoogleAdsToBigQuery {
     @TemplateParameter.Password(
         order = 8,
         description = "OAuth 2.0 Refresh Token for the user connecting to the Google Ads API",
-        helpText = "The OAuth 2.0 refresh token to use to connect to the Google Ads API. See 2-Step Verification (https://developers.google.com/google-ads/api/docs/oauth/2sv).")
+        helpText =
+            "The OAuth 2.0 refresh token to use to connect to the Google Ads API. See 2-Step Verification (https://developers.google.com/google-ads/api/docs/oauth/2sv).")
     String getGoogleAdsRefreshToken();
 
     void setGoogleAdsRefreshToken(String refreshToken);
@@ -158,7 +162,8 @@ public final class GoogleAdsToBigQuery {
     @TemplateParameter.Password(
         order = 9,
         description = "Google Ads developer token for the user connecting to the Google Ads API",
-        helpText = "The Google Ads developer token to use to connect to the Google Ads API. See Obtain a developer token (https://developers.google.com/google-ads/api/docs/get-started/dev-token).")
+        helpText =
+            "The Google Ads developer token to use to connect to the Google Ads API. See Obtain a developer token (https://developers.google.com/google-ads/api/docs/get-started/dev-token).")
     String getGoogleAdsDeveloperToken();
 
     void setGoogleAdsDeveloperToken(String developerToken);

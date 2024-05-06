@@ -226,8 +226,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         optional = true,
         description =
             "Bigtable change streams charset name when reading values and column qualifiers",
-        helpText =
-            "The Bigtable change streams charset name.")
+        helpText = "The Bigtable change streams charset name.")
     @Default.String("UTF-8")
     String getBigtableChangeStreamCharset();
 

@@ -197,7 +197,8 @@ public class DataStreamToSQL {
     @TemplateParameter.Text(
         order = 10,
         description = "Database User to connect with.",
-        helpText = "The SQL user with all required permissions to write to all tables in replication.")
+        helpText =
+            "The SQL user with all required permissions to write to all tables in replication.")
     String getDatabaseUser();
 
     void setDatabaseUser(String value);

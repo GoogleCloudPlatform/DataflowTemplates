@@ -102,7 +102,8 @@ public final class PubsubAvroToBigQuery {
     @TemplateParameter.GcsReadFile(
         order = 1,
         description = "Cloud Storage path to the Avro schema file",
-        helpText = "The Cloud Storage location of the Avro schema file. For example, `gs://path/to/my/schema.avsc`.")
+        helpText =
+            "The Cloud Storage location of the Avro schema file. For example, `gs://path/to/my/schema.avsc`.")
     @Required
     String getSchemaPath();
 

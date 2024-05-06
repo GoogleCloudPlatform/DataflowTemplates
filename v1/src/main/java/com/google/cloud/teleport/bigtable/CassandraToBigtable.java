@@ -85,7 +85,8 @@ final class CassandraToBigtable {
           "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"
         },
         description = "Cassandra Port",
-        helpText = "The TCP port to use to reach Apache Cassandra on the nodes. The default value is 9042.")
+        helpText =
+            "The TCP port to use to reach Apache Cassandra on the nodes. The default value is 9042.")
     @Default.Integer(9042)
     ValueProvider<Integer> getCassandraPort();
 
@@ -146,7 +147,8 @@ final class CassandraToBigtable {
         optional = true,
         regexes = {"[-_.a-zA-Z0-9]+"},
         description = "The Default Bigtable Column Family",
-        helpText = "The name of the column family of the Bigtable table. The default value is default).")
+        helpText =
+            "The name of the column family of the Bigtable table. The default value is default).")
     @Default.String("default")
     ValueProvider<String> getDefaultColumnFamily();
 
@@ -157,8 +159,7 @@ final class CassandraToBigtable {
         order = 9,
         optional = true,
         description = "The Row Key Separator",
-        helpText =
-            "The separator used to build row-keys. The default value is '#'.")
+        helpText = "The separator used to build row-keys. The default value is '#'.")
     @Default.String("#")
     ValueProvider<String> getRowKeySeparator();
 
