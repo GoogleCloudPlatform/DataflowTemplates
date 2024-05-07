@@ -172,8 +172,7 @@ public class PubSubToMongoDB {
     @TemplateParameter.PubsubSubscription(
         order = 1,
         description = "Pub/Sub input subscription",
-        helpText =
-            "Name of the Pub/Sub subscription.",
+        helpText = "Name of the Pub/Sub subscription.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     @Validation.Required
     String getInputSubscription();
@@ -285,7 +284,8 @@ public class PubSubToMongoDB {
         order = 12,
         optional = true,
         description = "withSSLInvalidHostNameAllowed",
-        helpText = "Boolean value indicating whether an invalid hostname is allowed for the SSL connection.")
+        helpText =
+            "Boolean value indicating whether an invalid hostname is allowed for the SSL connection.")
     @Default.Boolean(true)
     Boolean getWithSSLInvalidHostNameAllowed();
 

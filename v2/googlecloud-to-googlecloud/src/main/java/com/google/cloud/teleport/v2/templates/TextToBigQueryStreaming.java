@@ -479,8 +479,8 @@ public class TextToBigQueryStreaming {
         optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "Table for messages that failed to reach the output table. If it doesn't exist, it is created during " +
-                    "pipeline execution. If not specified, `<outputTableSpec>_error_records` is used.",
+            "Table for messages that failed to reach the output table. If it doesn't exist, it is created during "
+                + "pipeline execution. If not specified, `<outputTableSpec>_error_records` is used.",
         example = "<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>")
     String getOutputDeadletterTable();
 
