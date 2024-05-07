@@ -29,8 +29,8 @@ public abstract class ReaderImpl implements Reader, Serializable {
   abstract ReaderTransform readerTransform();
 
   public static ReaderImpl of(IoWrapper ioWrapper) {
-    var sourceSchema = ioWrapper.discoverTableSchema();
-    var readerTransformBuilder = ReaderTransform.builder();
+    SourceSchema sourceSchema = ioWrapper.discoverTableSchema();
+    ReaderTransform.Builder readerTransformBuilder = ReaderTransform.builder();
     ioWrapper
         .getTableReaders()
         .entrySet()

@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig.builderWithMySqlDefualts;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig.builderWithMySqlDefaults;
 
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
@@ -28,9 +28,9 @@ public final class OptionsToConfigBuilder {
 
   public static final class MySql {
 
-    public static JdbcIOWrapperConfig configWithMySqlDefualtsFromOptions(
+    public static JdbcIOWrapperConfig configWithMySqlDefaultsFromOptions(
         SourceDbToSpannerOptions options) {
-      var builder = builderWithMySqlDefualts();
+      JdbcIOWrapperConfig.Builder builder = builderWithMySqlDefaults();
       builder =
           builder
               .setSourceHost(options.getSourceHost())
@@ -57,12 +57,13 @@ public final class OptionsToConfigBuilder {
           builder.setReconnectAttempts((long) options.getReconnectAttempts());
         }
       }
-      var tablesWithPartitionColumns = getTablesWithPartitionColumn(options);
+      ImmutableMap<String, String> tablesWithPartitionColumns =
+          getTablesWithPartitionColumn(options);
       ImmutableList<TableConfig> tableConfigs =
           tablesWithPartitionColumns.entrySet().stream()
               .map(
                   entry -> {
-                    var configBuilder =
+                    TableConfig.Builder configBuilder =
                         TableConfig.builder(entry.getKey()).withPartitionColum(entry.getValue());
                     if (options.getNumPartitions() != 0) {
                       configBuilder = configBuilder.setMaxPartitions(options.getNumPartitions());

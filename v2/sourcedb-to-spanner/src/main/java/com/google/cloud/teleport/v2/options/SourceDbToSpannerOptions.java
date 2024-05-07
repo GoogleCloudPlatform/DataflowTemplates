@@ -46,26 +46,8 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   void setJdbcDriverClassName(String driverClassName);
 
-  @Deprecated
   @TemplateParameter.Text(
       order = 3,
-      optional = true,
-      regexes = {
-        "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
-      },
-      groupName = "Source",
-      description = "Connection URL to connect to the source database.",
-      helpText =
-          "The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can"
-              + " be passed in as a string that's Base64-encoded and then encrypted with a Cloud"
-              + " KMS key. Currently supported sources: MySQL",
-      example = "jdbc:mysql://some-host:3306/sampledb")
-  String getSourceConnectionURL();
-
-  void setSourceConnectionURL(String connectionURL);
-
-  @TemplateParameter.Text(
-      order = 4,
       regexes = {"(^jdbc:[a-zA-Z0-9/:@.]+$)"},
       groupName = "Source",
       description =
@@ -76,7 +58,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setSourceHost(String host);
 
   @TemplateParameter.Text(
-      order = 5,
+      order = 4,
       optional = false,
       regexes = {"(^[0-9]+$)"},
       groupName = "Source",
@@ -88,7 +70,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   /* TODO: (support Sharding, PG namespaces) */
   @TemplateParameter.Text(
-      order = 6,
+      order = 5,
       regexes = {"(^[a-zA-Z0-9]+$)"},
       groupName = "Source",
       description = "source database name.",
@@ -98,7 +80,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setSourceDB(String db);
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 6,
       optional = true,
       regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
       groupName = "Source",
@@ -113,8 +95,8 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setSourceConnectionProperties(String connectionProperties);
 
   @TemplateParameter.Text(
-      order = 8,
-      optional = false,
+      order = 7,
+      optional = true,
       regexes = {"^.+$"},
       groupName = "Source",
       description = "JDBC connection username.",
@@ -123,22 +105,24 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
               + " string encrypted with a Cloud KMS key.")
   String getUsername();
 
+  @Default.String("")
   void setUsername(String username);
 
   @TemplateParameter.Password(
-      order = 9,
-      optional = false,
+      order = 8,
+      optional = true,
       groupName = "Source",
       description = "JDBC connection password.",
       helpText =
           "The password to be used for the JDBC connection. Can be passed in as a Base64-encoded"
               + " string encrypted with a Cloud KMS key.")
+  @Default.String("")
   String getPassword();
 
   void setPassword(String password);
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 9,
       optional = true,
       groupName = "Source Parameters",
       description = "The name of a column of numeric type that will be used for partitioning.",
@@ -152,7 +136,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setPartitionColumns(String partitionColumns);
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 10,
       optional = true,
       groupName = "Source Parameters",
       description = "Comma-separated names of the tables in the source database.",
@@ -163,7 +147,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   /* TODO(pipelineController) allow per table NumPartitions. */
   @TemplateParameter.Integer(
-      order = 12,
+      order = 11,
       optional = true,
       groupName = "Source",
       description = "The number of partitions.",
@@ -178,7 +162,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   /* TODO(pipelineController) allow per table FetchSize. */
   @TemplateParameter.Integer(
-      order = 13,
+      order = 12,
       optional = true,
       groupName = "Source",
       description = "Table Read Fetch Size.",

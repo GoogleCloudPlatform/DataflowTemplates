@@ -97,7 +97,7 @@ public abstract class JdbcIOWrapperConfig {
   /** BackOff Strategy for Schema Discovery retries. Defaults to {@link FluentBackoff#DEFAULT}. */
   public abstract FluentBackoff schemaDiscoveryBackOff();
 
-  public static Builder builderWithMySqlDefualts() {
+  public static Builder builderWithMySqlDefaults() {
     return new AutoValue_JdbcIOWrapperConfig.Builder()
         .setSchemaMapperType(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_MAPPER_TYPE)
         .setDialectAdapter(MySqlConfigDefaults.DEFAULT_MYSQL_DIALECT_ADAPTER)

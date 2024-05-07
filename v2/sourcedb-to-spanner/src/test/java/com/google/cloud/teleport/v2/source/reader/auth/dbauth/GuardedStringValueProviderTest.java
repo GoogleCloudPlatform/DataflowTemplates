@@ -27,7 +27,7 @@ public class GuardedStringValueProviderTest {
   @Test
   public void testGuardedStringValueProvider() {
     final String testPassword = "testPassword";
-    var provider = GuardedStringValueProvider.create(testPassword);
+    GuardedStringValueProvider provider = GuardedStringValueProvider.create(testPassword);
     assertThat(provider.isAccessible()).isTrue();
     assertThat(provider.get()).isEqualTo(testPassword);
   }

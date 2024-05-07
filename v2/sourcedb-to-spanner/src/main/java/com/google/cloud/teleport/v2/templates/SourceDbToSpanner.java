@@ -122,7 +122,7 @@ public class SourceDbToSpanner {
     ReaderImpl reader =
         ReaderImpl.of(
             JdbcIoWrapper.of(
-                OptionsToConfigBuilder.MySql.configWithMySqlDefualtsFromOptions(options)));
+                OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(options)));
     SourceSchema srcSchema = reader.getSourceSchema();
     ReaderTransform readerTransform = reader.getReaderTransform();
 

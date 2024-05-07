@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
 
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
@@ -25,27 +26,37 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaDiscoveryImpl;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.DataSourceConfiguration;
+import org.apache.beam.sdk.io.jdbc.JdbcIO.ReadWithPartitions;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.checkerframework.checker.initialization.qual.Initialized;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class JdbcIoWrapper implements IoWrapper {
   private final ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
       tableReaders;
   private final SourceSchema sourceSchema;
 
-  public static JdbcIoWrapper of(JdbcIOWrapperConfig config) {
-    var dataSourceConfiguration = getDataSourceConfiguration(config);
+  private static final Logger logger = LoggerFactory.getLogger(JdbcIoWrapper.class);
 
-    var sourceSchema = getSourceSchema(config, dataSourceConfiguration);
-    var tableReaders = buildTableReaders(config, dataSourceConfiguration, sourceSchema);
+  public static JdbcIoWrapper of(JdbcIOWrapperConfig config) {
+    DataSourceConfiguration dataSourceConfiguration = getDataSourceConfiguration(config);
+
+    SourceSchema sourceSchema = getSourceSchema(config, dataSourceConfiguration);
+    ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> tableReaders =
+        buildTableReaders(config, dataSourceConfiguration, sourceSchema);
     return new JdbcIoWrapper(tableReaders, sourceSchema);
   }
 
@@ -93,14 +104,14 @@ public final class JdbcIoWrapper implements IoWrapper {
       JdbcIOWrapperConfig config, DataSourceConfiguration dataSourceConfiguration) {
     SchemaDiscovery schemaDiscovery =
         new SchemaDiscoveryImpl(config.dialectAdapter(), config.schemaDiscoveryBackOff());
-    var sourceSchemaBuilder =
+    SourceSchema.Builder sourceSchemaBuilder =
         SourceSchema.builder().setSchemaReference(config.sourceSchemaReference());
     DataSource dataSource = dataSourceConfiguration.buildDatasource();
     ImmutableList<String> tables =
         config.tableConfigs().stream()
             .map(TableConfig::tableName)
             .collect(ImmutableList.toImmutableList());
-    var tableSchemas =
+    ImmutableMap<String, ImmutableMap<String, SourceColumnType>> tableSchemas =
         schemaDiscovery.discoverTableSchema(dataSource, config.sourceSchemaReference(), tables);
     tableSchemas.entrySet().stream()
         .map(
@@ -125,7 +136,7 @@ public final class JdbcIoWrapper implements IoWrapper {
       DataSourceConfiguration dataSourceConfiguration,
       TableConfig tableConfig,
       SourceTableSchema sourceTableSchema) {
-    var jdbcIO =
+    ReadWithPartitions<SourceRow, @UnknownKeyFor @NonNull @Initialized Long> jdbcIO =
         JdbcIO.<SourceRow>readWithPartitions()
             .withTable(tableConfig.tableName())
             .withPartitionColumn(tableConfig.partitionColumns().get(0))
@@ -141,24 +152,31 @@ public final class JdbcIoWrapper implements IoWrapper {
     return jdbcIO;
   }
 
-  static DataSourceConfiguration getDataSourceConfiguration(JdbcIOWrapperConfig config) {
-    return JdbcIO.DataSourceConfiguration.create(
+  private static DataSourceConfiguration getDataSourceConfiguration(JdbcIOWrapperConfig config) {
+
+    DataSourceConfiguration dataSourceConfig =  JdbcIO.DataSourceConfiguration.create(
             StaticValueProvider.of(config.jdbcDriverClassName()),
             StaticValueProvider.of(getUrl(config)))
-        .withUsername(config.dbAuth().getUserName())
-        .withPassword(config.dbAuth().getPassword())
         .withDriverJars(config.jdbcDriverJars())
         .withMaxConnections(Math.toIntExact(config.maxConnections()));
+
+    if (!config.dbAuth().getUserName().get().isBlank()) {
+      dataSourceConfig = dataSourceConfig.withUsername(config.dbAuth().getUserName().get());
+    }
+    if (!config.dbAuth().getPassword().get().isBlank()) {
+      dataSourceConfig = dataSourceConfig.withPassword(config.dbAuth().getPassword().get());
+    }
+    return  dataSourceConfig;
   }
 
-  static String getUrl(JdbcIOWrapperConfig config) {
+  private static String getUrl(JdbcIOWrapperConfig config) {
     StringBuffer urlBuilder =
         new StringBuffer()
             .append(config.sourceHost())
             .append(":")
             .append(config.sourcePort())
             .append("/")
-            .append(config.sourceSchemaReference().getName());
+            .append(config.sourceSchemaReference().dbName());
     /* TODO: Handle PG Namespace */
     ImmutableList.Builder<String> attributesBuilder = new ImmutableList.Builder<>();
     if (config.autoReconnect()) {
@@ -170,6 +188,7 @@ public final class JdbcIoWrapper implements IoWrapper {
     if (!attributes.isBlank()) {
       urlBuilder.append("?").append(attributes);
     }
+    logger.debug("connection url is" + urlBuilder.toString());
     return urlBuilder.toString();
   }
 
