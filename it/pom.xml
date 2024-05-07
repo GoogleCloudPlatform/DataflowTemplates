@@ -196,5 +196,6 @@
     <module>conditions</module>
     <module>jdbc</module>
     <module>splunk</module>
+    <module>neo4j</module>
   </modules>
 </project>
