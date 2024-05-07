@@ -116,7 +116,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Target",
       description = "BigQuery output table",
       helpText =
-          "The BigQuery table location to write the output to. The name should be in the format"
+          "The BigQuery table location to write the output to. Use the format"
               + " `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`. The table's schema must match input objects.",
       example = "<my-project>:<my-dataset>.<my-table>")
   String getOutputTable();
@@ -174,7 +174,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "The name of a column of numeric type that will be used for partitioning.",
       helpText =
-          "If this parameter is provided (along with the name of the `table` defined as an optional parameter), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.")
+          "If this parameter is provided with the name of the `table` defined as an optional parameter, JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.")
   String getPartitionColumn();
 
   void setPartitionColumn(String partitionColumn);
