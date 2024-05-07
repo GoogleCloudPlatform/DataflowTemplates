@@ -293,7 +293,7 @@ public class DLPTextToBigQueryStreaming {
     @TemplateParameter.GcsReadFile(
         order = 1,
         description = "Input Cloud Storage File(s)",
-        helpText = "The CSV files to read input data records from. Wildcards are also accepted. For example, `gs://mybucket/my_csv_filename.csv` or `gs://mybucket/file-*.csv`.",
+        helpText = "The Cloud Storage location of the files you'd like to process.",
         example = "gs://your-bucket/your-files/*.csv")
     String getInputFilePattern();
 
@@ -312,7 +312,8 @@ public class DLPTextToBigQueryStreaming {
         },
         description = "Cloud DLP deidentify template name",
         helpText =
-            "Sensitive Data Protection de-identification template to use for API requests, specified with the pattern `projects/{template_project_id}/deidentifyTemplates/{deIdTemplateId}`. For example,`projects/my_project/deidentifyTemplates/100`.",
+            "Cloud DLP template to deidentify contents. Must be created here:"
+                + " https://console.cloud.google.com/security/dlp/create/template.",
         example =
             "projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id")
     @Required
@@ -333,9 +334,7 @@ public class DLPTextToBigQueryStreaming {
               + "\\/]+$"
         },
         description = "Cloud DLP inspect template name",
-        helpText = "Sensitive Data Protection inspection template to use for API requests, specified"
-                + " with the pattern `projects/{template_project_id}/identifyTemplates/{idTemplateId}`."
-                + " For example, `projects/my_project/identifyTemplates/100`.",
+        helpText = "Cloud DLP template to inspect contents.",
         example =
             "projects/your-project-id/locations/global/inspectTemplates/generated_template_id")
     String getInspectTemplateName();
@@ -347,9 +346,9 @@ public class DLPTextToBigQueryStreaming {
         optional = true,
         description = "Batch size",
         helpText =
-            "Chunking/batch size for sending data to inspect and detokenize. For a CSV file, `batchSize` is the number of rows in a batch."
-                + " You must determine the batch size based on the size of the records and the sizing of the file."
-                + " The DLP API has a payload size limit of 524 KB per API call.")
+            "Batch size contents (number of rows) to optimize DLP API call. Total size of the rows"
+                + " must not exceed 512 KB and total cell count must not exceed 50,000. Default"
+                + " batch size is set to 100. Ex. 1000")
     @Required
     @Default.Integer(100)
     Integer getBatchSize();
@@ -361,7 +360,7 @@ public class DLPTextToBigQueryStreaming {
         regexes = {"^[^.]*$"},
         description = "BigQuery Dataset",
         helpText =
-            "BigQuery dataset for sending tokenized results.")
+            "BigQuery Dataset to be used. Dataset must exist prior to execution. Ex. pii_dataset")
     String getDatasetName();
 
     void setDatasetName(String value);
@@ -370,9 +369,7 @@ public class DLPTextToBigQueryStreaming {
         order = 6,
         description = "Cloud DLP project ID",
         helpText =
-            "Sensitive Data Protection project ID that owns the DLP API resource. This Sensitive"
-                + " Data Protection project can be the same project that owns the Sensitive Data Protection templates, or it"
-                + " can be a separate project. For example, `my_dlp_api_project`.")
+            "Cloud DLP project ID to be used for data masking/tokenization. Ex. your-dlp-project")
     String getDlpProjectId();
 
     void setDlpProjectId(String value);
