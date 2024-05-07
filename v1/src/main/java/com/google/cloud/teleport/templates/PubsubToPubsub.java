@@ -131,8 +131,7 @@ public class PubsubToPubsub {
     @TemplateParameter.PubsubSubscription(
         order = 1,
         description = "Pub/Sub input subscription",
-        helpText =
-            "The Pub/Sub subscription to read the input from.",
+        helpText = "The Pub/Sub subscription to read the input from.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     @Validation.Required
     ValueProvider<String> getInputSubscription();
@@ -142,8 +141,7 @@ public class PubsubToPubsub {
     @TemplateParameter.PubsubTopic(
         order = 2,
         description = "Output Pub/Sub topic",
-        helpText =
-            "The Pub/Sub topic to write the output to.",
+        helpText = "The Pub/Sub topic to write the output to.",
         example = "projects/your-project-id/topics/your-topic-name")
     @Validation.Required
     ValueProvider<String> getOutputTopic();

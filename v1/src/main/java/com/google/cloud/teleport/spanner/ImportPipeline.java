@@ -76,8 +76,7 @@ public class ImportPipeline {
         order = 2,
         regexes = {"^[a-z_0-9\\-]+$"},
         description = "Cloud Spanner database ID",
-        helpText =
-            "The database ID of the Spanner database.")
+        helpText = "The database ID of the Spanner database.")
     ValueProvider<String> getDatabaseId();
 
     void setDatabaseId(ValueProvider<String> value);
@@ -166,7 +165,8 @@ public class ImportPipeline {
         order = 9,
         optional = true,
         description = "Cloud Spanner Project Id",
-        helpText = "The ID of the Google Cloud project that contains the Spanner database. If not set, the default Google Cloud project is used.")
+        helpText =
+            "The ID of the Google Cloud project that contains the Spanner database. If not set, the default Google Cloud project is used.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);
@@ -178,7 +178,8 @@ public class ImportPipeline {
         optional = true,
         regexes = {"[0-9]+"},
         description = "DDL Creation timeout in minutes",
-        helpText = "The timeout in minutes for DDL statements performed by the template. The default value is 30 minutes.")
+        helpText =
+            "The timeout in minutes for DDL statements performed by the template. The default value is 30 minutes.")
     @Default.Integer(30)
     ValueProvider<Integer> getDdlCreationTimeoutInMinutes();
 

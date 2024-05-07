@@ -107,8 +107,7 @@ public class BigtableToAvro {
     @TemplateParameter.GcsWriteFolder(
         order = 4,
         description = "Output file directory in Cloud Storage",
-        helpText =
-            "The Cloud Storage path where data is written.",
+        helpText = "The Cloud Storage path where data is written.",
         example = "gs://mybucket/somefolder")
     ValueProvider<String> getOutputDirectory();
 

@@ -85,8 +85,7 @@ public interface SpannerChangeStreamsToGcsOptions
   @TemplateParameter.Text(
       order = 6,
       description = "Spanner metadata database",
-      helpText =
-          "The Spanner database to use for the change streams connector metadata table.")
+      helpText = "The Spanner database to use for the change streams connector metadata table.")
   @Validation.Required
   String getSpannerMetadataDatabase();
 

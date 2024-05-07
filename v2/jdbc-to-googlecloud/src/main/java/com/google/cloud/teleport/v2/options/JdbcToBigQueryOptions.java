@@ -103,8 +103,7 @@ public interface JdbcToBigQueryOptions
       regexes = {"^.+$"},
       groupName = "Source",
       description = "JDBC source SQL query",
-      helpText =
-          "The query to run on the source to extract the data.",
+      helpText = "The query to run on the source to extract the data.",
       example = "select * from sampledb.sample_table")
   String getQuery();
 
@@ -151,7 +150,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Whether to use column alias to map the rows.",
       helpText =
-          "If set to `true`, the pipeline uses the column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to `false`.")
+          "If set to `true`, the pipeline uses the column alias (`AS`) instead of the column name to map the rows to BigQuery. Defaults to `false`.")
   @Default.Boolean(false)
   Boolean getUseColumnAlias();
 
@@ -247,7 +246,8 @@ public interface JdbcToBigQueryOptions
       },
       optional = true,
       description = "Create Disposition to use for BigQuery",
-      helpText = "The BigQuery CreateDisposition to use. For example, `CREATE_IF_NEEDED` or `CREATE_NEVER`.")
+      helpText =
+          "The BigQuery CreateDisposition to use. For example, `CREATE_IF_NEEDED` or `CREATE_NEVER`.")
   @Default.String("CREATE_NEVER")
   String getCreateDisposition();
 
