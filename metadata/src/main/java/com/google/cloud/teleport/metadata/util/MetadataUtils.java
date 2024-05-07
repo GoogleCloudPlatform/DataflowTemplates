@@ -132,7 +132,7 @@ public final class MetadataUtils {
         return null;
       case "JavascriptUdfFile":
         TemplateParameter.JavascriptUdfFile javascriptUdfFileParam =
-                (TemplateParameter.JavascriptUdfFile) parameterAnnotation;
+            (TemplateParameter.JavascriptUdfFile) parameterAnnotation;
         return List.of("^gs:\\/\\/[^\\n\\r]+$");
       case "GcsReadFile":
         TemplateParameter.GcsReadFile gcsReadFileParam =
