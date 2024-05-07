@@ -244,14 +244,13 @@ public class KafkaToGcs2 {
 
     options.setStreaming(true);
 
-    String kafkaSaslPlainUserName = SecretManagerUtils.getSecret(options.getUserNameSecretID());
-    String kafkaSaslPlainPassword = SecretManagerUtils.getSecret(options.getPasswordSecretID());
-
     Map<String, Object> kafkaConfig = new HashMap<>();
     // Set offset to either earliest or latest.
     kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getOffset());
     // Authenticate to Kafka only when user provides authentication params.
     if (useKafkaAuth) {
+      String kafkaSaslPlainUserName = SecretManagerUtils.getSecret(options.getUserNameSecretID());
+      String kafkaSaslPlainPassword = SecretManagerUtils.getSecret(options.getPasswordSecretID());
       kafkaConfig.putAll(
           ClientAuthConfig.getSaslPlainConfig(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
     }
@@ -277,6 +276,7 @@ public class KafkaToGcs2 {
     // the dataflow pipeline and Kafka broker is on the same network.
     if (options.getUserNameSecretID().isBlank() && options.getPasswordSecretID().isBlank()) {
       useKafkaAuth = false;
+      return;
     }
 
     if ((options.getUserNameSecretID().isBlank() && !options.getPasswordSecretID().isBlank())

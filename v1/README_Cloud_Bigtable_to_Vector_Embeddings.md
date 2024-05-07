@@ -35,6 +35,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **intNumericRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as integer `numeric_restricts`, with their alias. In the format cf:col->alias.
 * **floatNumericRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as float (4 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.
 * **doubleNumericRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as double (8 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.
+* **bigtableAppProfileId** (App Profile ID): The ID of the Cloud Bigtable app profile to be used for the export. Defaults to: default.
 
 
 
@@ -131,6 +132,7 @@ export DENY_RESTRICTS_MAPPINGS=<denyRestrictsMappings>
 export INT_NUMERIC_RESTRICTS_MAPPINGS=<intNumericRestrictsMappings>
 export FLOAT_NUMERIC_RESTRICTS_MAPPINGS=<floatNumericRestrictsMappings>
 export DOUBLE_NUMERIC_RESTRICTS_MAPPINGS=<doubleNumericRestrictsMappings>
+export BIGTABLE_APP_PROFILE_ID=default
 
 gcloud dataflow jobs run "cloud-bigtable-to-vector-embeddings-job" \
   --project "$PROJECT" \
@@ -149,7 +151,8 @@ gcloud dataflow jobs run "cloud-bigtable-to-vector-embeddings-job" \
   --parameters "denyRestrictsMappings=$DENY_RESTRICTS_MAPPINGS" \
   --parameters "intNumericRestrictsMappings=$INT_NUMERIC_RESTRICTS_MAPPINGS" \
   --parameters "floatNumericRestrictsMappings=$FLOAT_NUMERIC_RESTRICTS_MAPPINGS" \
-  --parameters "doubleNumericRestrictsMappings=$DOUBLE_NUMERIC_RESTRICTS_MAPPINGS"
+  --parameters "doubleNumericRestrictsMappings=$DOUBLE_NUMERIC_RESTRICTS_MAPPINGS" \
+  --parameters "bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID"
 ```
 
 For more information about the command, please check:
@@ -184,6 +187,7 @@ export DENY_RESTRICTS_MAPPINGS=<denyRestrictsMappings>
 export INT_NUMERIC_RESTRICTS_MAPPINGS=<intNumericRestrictsMappings>
 export FLOAT_NUMERIC_RESTRICTS_MAPPINGS=<floatNumericRestrictsMappings>
 export DOUBLE_NUMERIC_RESTRICTS_MAPPINGS=<doubleNumericRestrictsMappings>
+export BIGTABLE_APP_PROFILE_ID=default
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -192,7 +196,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-bigtable-to-vector-embeddings-job" \
 -DtemplateName="Cloud_Bigtable_to_Vector_Embeddings" \
--Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,idColumn=$ID_COLUMN,embeddingColumn=$EMBEDDING_COLUMN,crowdingTagColumn=$CROWDING_TAG_COLUMN,embeddingByteSize=$EMBEDDING_BYTE_SIZE,allowRestrictsMappings=$ALLOW_RESTRICTS_MAPPINGS,denyRestrictsMappings=$DENY_RESTRICTS_MAPPINGS,intNumericRestrictsMappings=$INT_NUMERIC_RESTRICTS_MAPPINGS,floatNumericRestrictsMappings=$FLOAT_NUMERIC_RESTRICTS_MAPPINGS,doubleNumericRestrictsMappings=$DOUBLE_NUMERIC_RESTRICTS_MAPPINGS" \
+-Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,idColumn=$ID_COLUMN,embeddingColumn=$EMBEDDING_COLUMN,crowdingTagColumn=$CROWDING_TAG_COLUMN,embeddingByteSize=$EMBEDDING_BYTE_SIZE,allowRestrictsMappings=$ALLOW_RESTRICTS_MAPPINGS,denyRestrictsMappings=$DENY_RESTRICTS_MAPPINGS,intNumericRestrictsMappings=$INT_NUMERIC_RESTRICTS_MAPPINGS,floatNumericRestrictsMappings=$FLOAT_NUMERIC_RESTRICTS_MAPPINGS,doubleNumericRestrictsMappings=$DOUBLE_NUMERIC_RESTRICTS_MAPPINGS,bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID" \
 -f v1
 ```
 
@@ -252,6 +256,7 @@ resource "google_dataflow_job" "cloud_bigtable_to_vector_embeddings" {
     # intNumericRestrictsMappings = "<intNumericRestrictsMappings>"
     # floatNumericRestrictsMappings = "<floatNumericRestrictsMappings>"
     # doubleNumericRestrictsMappings = "<doubleNumericRestrictsMappings>"
+    # bigtableAppProfileId = "default"
   }
 }
 ```
