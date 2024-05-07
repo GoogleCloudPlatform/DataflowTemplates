@@ -32,7 +32,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: java-pr
+  group: java-pr-${{ github.event.number }}
   cancel-in-progress: true
 
 env:
