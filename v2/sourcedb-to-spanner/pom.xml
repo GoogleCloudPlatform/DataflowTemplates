@@ -48,6 +48,17 @@
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-core</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.syncope.identityconnectors</groupId>
+      <artifactId>framework</artifactId>
+      <version>0.4.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.syncope.identityconnectors</groupId>
+      <artifactId>framework-internal</artifactId>
+      <version>0.4.3</version>
+      <scope>runtime</scope>
+    </dependency>
 
     <!-- Test Dependencies -->
     <dependency>

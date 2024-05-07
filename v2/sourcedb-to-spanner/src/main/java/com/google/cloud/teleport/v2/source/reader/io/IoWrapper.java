@@ -13,21 +13,18 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper;
+package com.google.cloud.teleport.v2.source.reader.io;
 
+import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.common.collect.ImmutableMap;
-import java.io.Serializable;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.values.PBegin;
+import org.apache.beam.sdk.values.PCollection;
 
-/**
- * An interface to be implemented for various jdbc source types to get the {@link JdbcValueMapper}
- * for various source types.
- */
-public interface JdbcValueMappingsProvider extends Serializable {
+public interface IoWrapper {
+  ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> getTableReaders();
 
-  /**
-   * Get Mapping of source types to {@link JdbcValueMapper}.
-   *
-   * @return mapping.
-   */
-  ImmutableMap<String, JdbcValueMapper<?>> getMappings();
+  SourceSchema discoverTableSchema();
 }
