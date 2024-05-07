@@ -63,8 +63,8 @@ public class TextToPubsub {
     @TemplateParameter.GcsReadFile(
         order = 1,
         description = "Cloud Storage Input File(s)",
-        helpText = "The input file pattern to read from. For example, `gs://bucket-name/files/*.json` or `gs://bucket-name/path/*.csv`.",
-        example = "gs://your-bucket/path/*.txt")
+        helpText = "The input file pattern to read from.",
+        example = "gs://bucket-name/files/*.json or gs://bucket-name/path/*.csv")
     @Required
     ValueProvider<String> getInputFilePattern();
 

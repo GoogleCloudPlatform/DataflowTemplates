@@ -71,7 +71,7 @@ public interface SpannerToBigQueryOptions
       optional = true,
       description = "Priority for Spanner RPC invocations",
       helpText =
-          "The \"request priority (https://cloud.google.com/spanner/docs/reference/rest/v1/RequestOptions)\" for Spanner calls. Possible values are `HIGH`, `MEDIUM`, and `LOW`. The default value is `HIGH`.")
+          "The request priority (https://cloud.google.com/spanner/docs/reference/rest/v1/RequestOptions) for Spanner calls. Possible values are `HIGH`, `MEDIUM`, and `LOW`. The default value is `HIGH`.")
   RpcPriority getSpannerRpcPriority();
 
   void setSpannerRpcPriority(RpcPriority spannerRpcPriority);
@@ -89,7 +89,7 @@ public interface SpannerToBigQueryOptions
       optional = true,
       description = "Cloud Storage path to BigQuery JSON schema",
       helpText =
-          "The Cloud Storage path (gs://) to the JSON file that defines your BigQuery schema. For example, gs://path/to/my/schema.json.",
+          "The Cloud Storage path (gs://) to the JSON file that defines your BigQuery schema.",
       example = "gs://your-bucket/your-schema.json")
   String getBigQuerySchemaPath();
 

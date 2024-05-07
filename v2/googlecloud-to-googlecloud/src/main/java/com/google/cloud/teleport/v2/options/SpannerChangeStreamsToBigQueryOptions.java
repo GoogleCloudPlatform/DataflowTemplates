@@ -67,7 +67,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
           "The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a"
               + " fine-grained access control user. The database role must have the SELECT privilege on the change stream"
               + " and the EXECUTE privilege on the change stream's read function. For more information, see"
-              + " \"Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams)\".")
+              + " Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams).")
   String getSpannerDatabaseRole();
 
   void setSpannerDatabaseRole(String spannerDatabaseRole);
@@ -144,7 +144,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
       optional = true,
       description = "The timestamp to read change streams from",
       helpText =
-          "The starting \"DateTime (https://datatracker.ietf.org/doc/html/rfc3339)\", inclusive, to use for reading change streams."
+          "The starting DateTime (https://datatracker.ietf.org/doc/html/rfc3339), inclusive, to use for reading change streams."
               + " Ex-2021-10-12T07:20:50.52Z."
               + " Defaults to the timestamp when the pipeline starts, that is, the current time.")
   @Default.String("")
@@ -157,7 +157,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
       optional = true,
       description = "The timestamp to read change streams to",
       helpText =
-          "The ending \"DateTime (https://datatracker.ietf.org/doc/html/rfc3339)\", inclusive, to use for reading change streams."
+          "The ending DateTime (https://datatracker.ietf.org/doc/html/rfc3339), inclusive, to use for reading change streams."
               + "Ex-2021-10-12T07:20:50.52Z. Defaults to an"
               + " infinite time in the future.")
   @Default.String("")

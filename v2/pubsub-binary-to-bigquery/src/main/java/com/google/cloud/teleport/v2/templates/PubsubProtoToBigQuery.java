@@ -203,7 +203,7 @@ public final class PubsubProtoToBigQuery {
         optional = true,
         description = "BigQuery Table Schema Path",
         helpText =
-            "Cloud Storage path to BigQuery schema path. For example, `gs://path/to/my/schema.json`. "
+            "Cloud Storage path to BigQuery schema path. "
                 + "If this is not provided, then the schema is inferred from the Proto schema.",
         example = "gs://MyBucket/bq_schema.json")
     String getBigQueryTableSchemaPath();
@@ -215,7 +215,7 @@ public final class PubsubProtoToBigQuery {
         optional = true,
         description = "Pub/Sub output topic for UDF failures",
         helpText =
-            "The Pub/Sub topic storing the UDF errors. For example, `projects/<project-id>/topics/<topic-name>`."
+            "The Pub/Sub topic storing the UDF errors."
                 + " If this is not provided, UDF errors are sent to the same topic as `outputTopic`.",
         example = "projects/your-project-id/topics/your-topic-name")
     String getUdfOutputTopic();
@@ -230,7 +230,7 @@ public final class PubsubProtoToBigQuery {
         description = "Use at at-least-once semantics in BigQuery Storage Write API",
         helpText =
             "When using the Storage Write API, specifies the write semantics."
-                + " To use \"at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics)\", set this parameter to true`. To use exactly-once semantics, set the parameter to `false`."
+                + " To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to true`. To use exactly-once semantics, set the parameter to `false`."
                 + " This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.",
         hiddenUi = true)
     @Default.Boolean(false)

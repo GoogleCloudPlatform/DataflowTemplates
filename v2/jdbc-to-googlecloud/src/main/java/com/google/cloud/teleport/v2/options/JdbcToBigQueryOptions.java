@@ -69,7 +69,7 @@ public interface JdbcToBigQueryOptions
       description = "JDBC connection property string.",
       helpText =
           "The properties string to use for the JDBC connection. The format of the string must be `[propertyName=property;]*`."
-              + " For example, `connectTimeout=60;socketTimeout=600`. For more information, see [Connection Parameters](https://jdbc.postgresql.org/documentation/use/#connection-parameters) in the PostgreSQL documentation.",
+              + " For example, `connectTimeout=60;socketTimeout=600`. For more information, see Connection Parameters (https://jdbc.postgresql.org/documentation/use/#connection-parameters) in the PostgreSQL documentation.",
       example = "unicode=true;characterEncoding=UTF-8")
   String getConnectionProperties();
 
@@ -106,7 +106,7 @@ public interface JdbcToBigQueryOptions
       description = "JDBC source SQL query",
       helpText =
           "The query to run on the source to extract the data. "
-              + "For example, `select * from sampledb.sample_table`. Required when not using partitions.",
+              + "Required when not using partitions.",
       example = "select * from sampledb.sample_table")
   String getQuery();
 
@@ -191,7 +191,7 @@ public interface JdbcToBigQueryOptions
       description = "Name of the table in the external database.",
       helpText =
           "The table to extract the data from. This parameter also accepts a subquery in parentheses."
-              + " For example, `Person` or `(select id, name from Person) as subq`. Required when using partitions.",
+              + " For example, `Person` or `(select id, name from Person)` as `subq`. Required when using partitions.",
       example = "(select id, name from Person) as subq")
   String getTable();
 
