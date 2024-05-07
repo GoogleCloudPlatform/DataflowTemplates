@@ -1,8 +1,16 @@
 
-YAML Template (Experimental) template
+YAML Template
 ---
-YAML pipeline. Reads YAML from Cloud Storage and dynamically expands YAML into
-Beam pipeline graph.
+The YAML Template is used to run Dataflow pipelines written in Beam YAML. The
+YAML pipeline can be passed to the template directly as a raw string or the
+location of a Beam YAML pipeline file stored in Google Cloud Storage can
+optionally be passed.
+
+For launching a Beam YAML pipeline directly from the gcloud command line, see
+https://cloud.google.com/sdk/gcloud/reference/dataflow/yaml.
+
+For more information on Beam YAML, see
+https://beam.apache.org/documentation/sdks/yaml/.
 
 
 
