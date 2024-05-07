@@ -280,7 +280,7 @@ public class TextIOToBigQuery {
   }
 
   private static final String BIGQUERY_SCHEMA = "BigQuery Schema";
-  
+
   private static final String NAME = "name";
   private static final String TYPE = "type";
   private static final String MODE = "mode";

@@ -45,8 +45,7 @@ public class PubsubConverters {
     @TemplateParameter.PubsubSubscription(
         order = 1,
         description = "Pub/Sub input subscription",
-        helpText =
-            "The Pub/Sub subscription to read the input from.",
+        helpText = "The Pub/Sub subscription to read the input from.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     ValueProvider<String> getInputSubscription();
 

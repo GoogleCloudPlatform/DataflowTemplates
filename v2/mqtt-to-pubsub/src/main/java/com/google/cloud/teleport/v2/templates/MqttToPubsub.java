@@ -146,8 +146,7 @@ public class MqttToPubsub {
     @TemplateParameter.PubsubTopic(
         order = 3,
         description = "Output Pub/Sub topic",
-        helpText =
-            "The name of the output Pub/Sub topic that data is written to.",
+        helpText = "The name of the output Pub/Sub topic that data is written to.",
         example = "projects/your-project-id/topics/your-topic-name")
     @Validation.Required
     String getOutputTopic();

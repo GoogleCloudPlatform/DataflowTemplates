@@ -116,7 +116,8 @@ public class BigtableToParquet {
     @TemplateParameter.Text(
         order = 5,
         description = "Parquet file prefix",
-        helpText = "The prefix of the Parquet file name. For example, \"table1-\". Defaults to: part.")
+        helpText =
+            "The prefix of the Parquet file name. For example, \"table1-\". Defaults to: part.")
     @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 

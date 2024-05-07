@@ -116,7 +116,8 @@ public class SplunkConverters {
         order = 3,
         optional = true,
         description = "Batch size for sending multiple events to Splunk HEC.",
-        helpText = "The batch size for sending multiple events to Splunk. Defaults to 1 (no batching).")
+        helpText =
+            "The batch size for sending multiple events to Splunk. Defaults to 1 (no batching).")
     ValueProvider<Integer> getBatchCount();
 
     void setBatchCount(ValueProvider<Integer> batchCount);
@@ -209,8 +210,7 @@ public class SplunkConverters {
         order = 11,
         optional = true,
         description = "Enable logs for batches written to Splunk.",
-        helpText =
-            "Specifies whether to enable logs for batches written to Splunk. Default: true.")
+        helpText = "Specifies whether to enable logs for batches written to Splunk. Default: true.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getEnableBatchLogs();
 

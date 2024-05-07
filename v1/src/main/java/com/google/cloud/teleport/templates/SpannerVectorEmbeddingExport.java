@@ -97,8 +97,7 @@ public class SpannerVectorEmbeddingExport {
         order = 20,
         regexes = {"[a-z][a-z0-9\\-]*[a-z0-9]"},
         description = "Cloud Spanner instance ID",
-        helpText =
-            "The ID of the Spanner instance to export the vector embeddings from.")
+        helpText = "The ID of the Spanner instance to export the vector embeddings from.")
     ValueProvider<String> getSpannerInstanceId();
 
     void setSpannerInstanceId(ValueProvider<String> spannerInstanceId);
@@ -107,8 +106,7 @@ public class SpannerVectorEmbeddingExport {
         order = 30,
         regexes = {"[a-z][a-z0-9_\\-]*[a-z0-9]"},
         description = "Cloud Spanner database ID",
-        helpText =
-            "The ID of the Spanner database to export the vector embeddings from.")
+        helpText = "The ID of the Spanner database to export the vector embeddings from.")
     ValueProvider<String> getSpannerDatabaseId();
 
     void setSpannerDatabaseId(ValueProvider<String> spannerDatabaseId);
@@ -134,7 +132,8 @@ public class SpannerVectorEmbeddingExport {
     @TemplateParameter.GcsWriteFolder(
         order = 60,
         description = "Output files folder in Cloud Storage",
-        helpText = "The Cloud Storage folder to write output files to. The path must end with a slash.",
+        helpText =
+            "The Cloud Storage folder to write output files to. The path must end with a slash.",
         example = "gs://your-bucket/folder1/")
     ValueProvider<String> getGcsOutputFolder();
 

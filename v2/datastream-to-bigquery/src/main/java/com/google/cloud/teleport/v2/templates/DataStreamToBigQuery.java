@@ -262,7 +262,8 @@ public class DataStreamToBigQuery {
         order = 12,
         optional = true,
         description = "Fields to be ignored",
-        helpText = "Comma-separated fields to ignore in BigQuery. Defaults to: _metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count.",
+        helpText =
+            "Comma-separated fields to ignore in BigQuery. Defaults to: _metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count.",
         example = "_metadata_stream,_metadata_schema")
     @Default.String(
         "_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,"
