@@ -74,12 +74,9 @@ public class GenericRecordTypeConvertor {
           schemaMapper.getSourceColumnName(namespace, spannerTableName, spannerColName);
       Type spannerColumnType =
           schemaMapper.getSpannerColumnType(namespace, spannerTableName, spannerColName);
-      Value value =
-          getSpannerValue(
-              record.get(srcColName),
-              record.getSchema().getField(srcColName).schema(),
-              srcColName,
-              spannerColumnType);
+
+      Schema schema = record.getSchema().getField(srcColName).schema();
+      Value value = getSpannerValue(record.get(srcColName), schema, srcColName, spannerColumnType);
       result.put(spannerColName, value);
     }
     return result;

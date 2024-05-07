@@ -15,7 +15,8 @@
  */
 package com.google.cloud.teleport.v2.source.reader.auth.dbauth;
 
-import com.google.auto.value.AutoValue;
+import java.io.IOException;
+import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.checkerframework.checker.initialization.qual.Initialized;
@@ -28,8 +29,8 @@ import org.identityconnectors.common.security.GuardedString;
  * GuardedString} helps prevent accidental logging of the password from the reader code. {@link
  * GuardedString} also zeros the string before it is freed.
  */
-@AutoValue
-abstract class GuardedStringValueProvider implements ValueProvider<String> {
+public final class GuardedStringValueProvider implements ValueProvider<String>, Serializable {
+  private GuardedString guardedString;
 
   /**
    * Creates a new Instance of {@link GuardedStringValueProvider}.
@@ -38,7 +39,7 @@ abstract class GuardedStringValueProvider implements ValueProvider<String> {
    * @return created instance.
    */
   public static GuardedStringValueProvider create(String value) {
-    return GuardedStringValueProvider.create(new GuardedString(value.toCharArray()));
+    return new GuardedStringValueProvider(new GuardedString(value.toCharArray()));
   }
 
   /**
@@ -53,14 +54,27 @@ abstract class GuardedStringValueProvider implements ValueProvider<String> {
     return ret.get();
   }
 
-  abstract GuardedString guardedString();
+  private GuardedString guardedString() {
+    return this.guardedString;
+  }
 
-  private static GuardedStringValueProvider create(GuardedString guardedString) {
-    return new AutoValue_GuardedStringValueProvider(guardedString);
+  private GuardedStringValueProvider(GuardedString guardedString) {
+    this.guardedString = guardedString;
   }
 
   @Override
   public @UnknownKeyFor @NonNull @Initialized boolean isAccessible() {
     return true;
   }
+
+  private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+    // TODO: wok on an encrypted version of this.
+    out.writeObject(this.get());
+  }
+
+  private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+    this.guardedString = new GuardedString(((String) in.readObject()).toCharArray());
+  }
+
+  private void readObjectNoData() {}
 }

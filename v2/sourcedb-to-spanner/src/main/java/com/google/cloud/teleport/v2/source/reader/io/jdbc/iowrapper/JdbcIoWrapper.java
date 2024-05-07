@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
 
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
@@ -154,11 +153,12 @@ public final class JdbcIoWrapper implements IoWrapper {
 
   private static DataSourceConfiguration getDataSourceConfiguration(JdbcIOWrapperConfig config) {
 
-    DataSourceConfiguration dataSourceConfig =  JdbcIO.DataSourceConfiguration.create(
-            StaticValueProvider.of(config.jdbcDriverClassName()),
-            StaticValueProvider.of(getUrl(config)))
-        .withDriverJars(config.jdbcDriverJars())
-        .withMaxConnections(Math.toIntExact(config.maxConnections()));
+    DataSourceConfiguration dataSourceConfig =
+        JdbcIO.DataSourceConfiguration.create(
+                StaticValueProvider.of(config.jdbcDriverClassName()),
+                StaticValueProvider.of(getUrl(config)))
+            .withDriverJars(config.jdbcDriverJars())
+            .withMaxConnections(Math.toIntExact(config.maxConnections()));
 
     if (!config.dbAuth().getUserName().get().isBlank()) {
       dataSourceConfig = dataSourceConfig.withUsername(config.dbAuth().getUserName().get());
@@ -166,7 +166,7 @@ public final class JdbcIoWrapper implements IoWrapper {
     if (!config.dbAuth().getPassword().get().isBlank()) {
       dataSourceConfig = dataSourceConfig.withPassword(config.dbAuth().getPassword().get());
     }
-    return  dataSourceConfig;
+    return dataSourceConfig;
   }
 
   private static String getUrl(JdbcIOWrapperConfig config) {
