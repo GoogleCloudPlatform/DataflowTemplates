@@ -249,7 +249,7 @@ public class TextIOToBigQuery {
         regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         description = "GCS path to javascript fn for transforming output",
         helpText =
-            "The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) you want " +
+            "The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) " +
                     "to use.",
         example = "gs://your-bucket/your-transforms/*.js")
     String getJavascriptTextTransformGcsPath();
@@ -262,10 +262,10 @@ public class TextIOToBigQuery {
         regexes = {"[a-zA-Z0-9_]+"},
         description = "UDF Javascript Function Name",
         helpText =
-            "The name of the JavaScript user-defined function (UDF) that you want to use. For example, if " +
+            "The name of the JavaScript user-defined function (UDF) =to use. For example, if " +
                     "your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then " +
                     "the function name is `myTransform`. For sample JavaScript UDFs, " +
-                    "see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)",
+                    "see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).",
         example = "transform_udf1")
     String getJavascriptTextTransformFunctionName();
 

@@ -214,7 +214,7 @@ public class PubSubToMongoDB {
         order = 5,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "BigQuery table that store messages due to failures (mismatched schema, malformed JSON etc).",
+            "The BigQuery table that stores messages caused by failures such as mismatched schema, malformed JSON and so on.",
         example = "your-project-id:your-dataset.your-table-name")
     @Validation.Required
     String getDeadletterTable();
@@ -255,7 +255,7 @@ public class PubSubToMongoDB {
         order = 9,
         optional = true,
         description = "SSL Enabled",
-        helpText = "Boolean value indicating whether connection to MongoDB is SSL enabled.")
+        helpText = "Boolean value indicating whether the connection to MongoDB is SSL enabled.")
     @Default.Boolean(true)
     Boolean getSslEnabled();
 
@@ -265,7 +265,7 @@ public class PubSubToMongoDB {
         order = 10,
         optional = true,
         description = "Ignore SSL Certificate",
-        helpText = "Boolean value indicating if SSL certificate should be ignored.")
+        helpText = "Boolean value indicating whether to ignore the SSL certificate.")
     @Default.Boolean(true)
     Boolean getIgnoreSSLCertificate();
 
@@ -285,7 +285,7 @@ public class PubSubToMongoDB {
         order = 12,
         optional = true,
         description = "withSSLInvalidHostNameAllowed",
-        helpText = "Boolean value indicating if invalid hostname is allowed for SSL connection.")
+        helpText = "Boolean value indicating whether an invalid hostname is allowed for the SSL connection.")
     @Default.Boolean(true)
     Boolean getWithSSLInvalidHostNameAllowed();
 
