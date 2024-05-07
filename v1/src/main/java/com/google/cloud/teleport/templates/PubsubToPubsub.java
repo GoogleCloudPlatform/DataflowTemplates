@@ -155,7 +155,7 @@ public class PubsubToPubsub {
         optional = true,
         description = "Event filter key",
         helpText =
-            "The attribute key to use to filter events based. No filters are applied if `filterKey` is not specified.")
+            "The attribute key to use to filter events. No filters are applied if `filterKey` is not specified.")
     ValueProvider<String> getFilterKey();
 
     void setFilterKey(ValueProvider<String> filterKey);

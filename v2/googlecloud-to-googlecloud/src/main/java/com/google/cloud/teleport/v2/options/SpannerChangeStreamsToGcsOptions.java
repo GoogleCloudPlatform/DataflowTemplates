@@ -39,7 +39,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Spanner Project ID",
       helpText =
-          "The ID of the Google Cloud project that contains the Spanner database to read change streams from. This  project is also where the change streams connector metadata table is created. The default for this parameter is the project where the Dataflow pipeline is running.")
+          "The ID of the Google Cloud project that contains the Spanner database to read change streams from. This project is also where the change streams connector metadata table is created. The default for this parameter is the project where the Dataflow pipeline is running.")
   @Default.String("")
   String getSpannerProjectId();
 
@@ -97,7 +97,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Cloud Spanner metadata table name",
       helpText =
-          "The Spanner change streams connector metadata table name to use. If not provided, a Spanner change streams metadata table is automatically created during the pipeline flow. You must provide a value for this parameter when updating an existing pipeline. Otherwise, don't use this parameter.")
+          "The Spanner change streams connector metadata table name to use. If not provided, a Spanner change streams metadata table is automatically created during pipeline execution. You must provide a value for this parameter when updating an existing pipeline. Otherwise, don't use this parameter.")
   String getSpannerMetadataTableName();
 
   void setSpannerMetadataTableName(String value);

@@ -146,7 +146,7 @@ public class ExportPipeline {
         },
         description = "Snapshot time",
         helpText =
-            "The timestamp that corresponds to the version of the Spanner database that you want to read. The timestamp must be specified as per RFC 3339 UTC "Zulu" format. The timestamp must be in the past, and maximum timestamp staleness applies.",
+            "The timestamp that corresponds to the version of the Spanner database that you want to read. The timestamp must be specified by using RFC 3339 UTC "Zulu" format. The timestamp must be in the past, and maximum timestamp staleness applies.",
         example = "1990-12-31T23:59:60Z")
     @Default.String(value = "")
     ValueProvider<String> getSnapshotTime();

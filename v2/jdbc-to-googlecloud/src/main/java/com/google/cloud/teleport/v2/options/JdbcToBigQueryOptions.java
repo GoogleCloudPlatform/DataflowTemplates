@@ -117,8 +117,8 @@ public interface JdbcToBigQueryOptions
       groupName = "Target",
       description = "BigQuery output table",
       helpText =
-          "BigQuery table location to write the output to. The name should be in the format"
-              + " `<project>:<dataset>.<table_name>`. The table's schema must match input objects.",
+          "The BigQuery table location to write the output to. The name should be in the format"
+              + " `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`. The table's schema must match input objects.",
       example = "<my-project>:<my-dataset>.<my-table>")
   String getOutputTable();
 
@@ -139,7 +139,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Google Cloud KMS key",
       helpText =
-          "The Cloud KMS encryption key to decrypt the username, password, and connection string. If you pass in a Cloud KMS key, the username, password, and connection string must all be passed in encrypted.",
+          "The Cloud KMS encryption key to use to decrypt the username, password, and connection string. If you pass in a Cloud KMS key, the username, password, and connection string must all be passed in encrypted.",
       example = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
   String getKMSEncryptionKey();
 
@@ -178,7 +178,7 @@ public interface JdbcToBigQueryOptions
 <<<<<<< HEAD
           "If this parameter is provided (along with the name of the `table` defined as an optional parameter), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.")
 =======
-          "If this parameter is provided with `table`, JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.")
+          "If this parameter is provided with the `table` parameter, JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.")
 >>>>>>> 199fa612676178379366597662da7aacd66f4f23
   String getPartitionColumn();
 

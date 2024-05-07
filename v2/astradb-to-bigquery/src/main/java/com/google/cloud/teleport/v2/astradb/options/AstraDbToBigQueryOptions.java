@@ -57,7 +57,7 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 2,
         description = "Database identifier",
-        helpText = "The database unique identifier (uuid).",
+        helpText = "The database unique identifier (UUID).",
         example = "cf7af129-d33a-498f-ad06-d97a6ee6eb7")
     @Validation.Required
     @SuppressWarnings("unused")
