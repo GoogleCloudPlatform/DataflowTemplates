@@ -229,12 +229,15 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
 
   private void assertFileContentsInGCS() throws IOException, java.lang.InterruptedException {
     List<Artifact> artifacts = null;
-    Thread.sleep(300000); // wait sufficiently for the file to be generated
-    artifacts = gcsClient.listArtifacts("output/testA/", Pattern.compile(".*\\.txt$"));
-
-    LOG.info("The number of items in GCS: {}", artifacts.size());
-    for (Artifact a : artifacts) {
-      LOG.info("The file name is : {}", a.name());
+    Thread.sleep(
+        120000); // wait sufficiently for the file to be generated. It takes about 2 minutes
+    // at-least. If not present wait additional 3 minutes before failing
+    for (int i = 0; i < 10; i++) {
+      Thread.sleep(18000); // wait for total 3 minutes over an interval of 10 seconds
+      artifacts = gcsClient.listArtifacts("output/testA/", Pattern.compile(".*\\.txt$"));
+      if (artifacts.size() == 1) {
+        break;
+      }
     }
     assertThat(artifacts).hasSize(1);
     assertThatArtifacts(artifacts).hasContent("SingerId\\\":\\\"1");
