@@ -175,11 +175,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "The name of a column of numeric type that will be used for partitioning.",
       helpText =
-<<<<<<< HEAD
           "If this parameter is provided (along with the name of the `table` defined as an optional parameter), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.")
-=======
-          "If this parameter is provided with the `table` parameter, JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.")
->>>>>>> 199fa612676178379366597662da7aacd66f4f23
   String getPartitionColumn();
 
   void setPartitionColumn(String partitionColumn);
