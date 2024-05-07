@@ -46,7 +46,7 @@ public class PubsubConverters {
         order = 1,
         description = "Pub/Sub input subscription",
         helpText =
-            "The Pub/Sub subscription from which to read the input.",
+            "The Pub/Sub subscription to read the input from.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     ValueProvider<String> getInputSubscription();
 
@@ -59,7 +59,7 @@ public class PubsubConverters {
         order = 1,
         description = "Output deadletter Pub/Sub topic",
         helpText =
-            "The Pub/Sub topic to forward undeliverable messages. For example, projects/<project-id>/topics/<topic-name>.")
+            "The Pub/Sub topic to forward undeliverable messages to. For example, projects/<PROJECT_ID>/topics/<TOPIC_NAME>.")
     @Validation.Required
     ValueProvider<String> getOutputDeadletterTopic();
 

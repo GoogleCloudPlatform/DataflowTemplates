@@ -156,7 +156,7 @@ public class BigQueryToParquet {
     @TemplateParameter.GcsWriteFile(
         order = 2,
         description = "Output Cloud Storage file(s)",
-        helpText = "The Cloud Storage folder in which to write the Parquet files.",
+        helpText = "The Cloud Storage folder to write the Parquet files to.",
         example = "gs://your-bucket/export/")
     @Required
     String getBucket();

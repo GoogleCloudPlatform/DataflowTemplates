@@ -107,7 +107,7 @@ public class CdcToBigQueryChangeApplierPipeline {
         order = 2,
         regexes = {"[^/]+"},
         description = "Input subscriptions to the template",
-        helpText = "The comma-separated list of Pub/Sub input subscriptions to read from, in the format of `<subscription>,<subscription>, ...`")
+        helpText = "The comma-separated list of Pub/Sub input subscriptions to read from, in the format `<SUBSCRIPTION_NAME>,<SUBSCRIPTION_NAME>, ...`")
     String getInputSubscriptions();
 
     void setInputSubscriptions(String subscriptions);
@@ -116,7 +116,7 @@ public class CdcToBigQueryChangeApplierPipeline {
         order = 3,
         regexes = {".+"},
         description = "Output BigQuery dataset for Changelog tables",
-        helpText = "The BigQuery dataset to store the staging tables, in the format of `<my-dataset>`")
+        helpText = "The BigQuery dataset to store the staging tables in, in the format <DATASET_NAME>.")
     String getChangeLogDataset();
 
     void setChangeLogDataset(String dataset);
@@ -125,7 +125,7 @@ public class CdcToBigQueryChangeApplierPipeline {
         order = 4,
         regexes = {".+"},
         description = "Output BigQuery dataset for replica tables",
-        helpText = "The location of the BigQuery dataset to store the replica tables, in the format of `<my-dataset>`")
+        helpText = "The location of the BigQuery dataset to store the replica tables in, in the format <DATASET_NAME>.")
     String getReplicaDataset();
 
     void setReplicaDataset(String dataset);

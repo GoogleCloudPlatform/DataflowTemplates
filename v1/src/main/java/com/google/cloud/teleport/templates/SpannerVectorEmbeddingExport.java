@@ -88,7 +88,7 @@ public class SpannerVectorEmbeddingExport {
     @TemplateParameter.ProjectId(
         order = 10,
         description = "Cloud Spanner Project Id",
-        helpText = "The project ID of the Spanner instance")
+        helpText = "The project ID of the Spanner instance.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);
@@ -126,7 +126,7 @@ public class SpannerVectorEmbeddingExport {
         order = 50,
         description = "Columns to Export from Spanner Table",
         helpText =
-            "A comma-separated list of required columns for the Vertex AI Vector Search index. The id and embedding columns are required by Vector Search. If your column names don't match the Vertex AI Vector Search index input structure, create column mappings by using aliases. If the column names don't match the format expected by Vertex AI, use the notation from:to. For example, if you have columns named id and my_embedding, specify id, my_embedding:embedding.")
+            "A comma-separated list of required columns for the Vertex AI Vector Search index. The ID and embedding columns are required by Vector Search. If your column names don't match the Vertex AI Vector Search index input structure, create column mappings by using aliases. If the column names don't match the format expected by Vertex AI, use the notation from:to. For example, if you have columns named id and my_embedding, specify id, my_embedding:embedding.")
     ValueProvider<String> getSpannerColumnsToExport();
 
     void setSpannerColumnsToExport(ValueProvider<String> value);
@@ -143,7 +143,7 @@ public class SpannerVectorEmbeddingExport {
     @TemplateParameter.Text(
         order = 70,
         description = "Output files prefix in Cloud Storage",
-        helpText = "The filename prefix for writing output files",
+        helpText = "The filename prefix for writing output files.",
         example = "vector-embeddings")
     ValueProvider<String> getGcsOutputFilePrefix();
 

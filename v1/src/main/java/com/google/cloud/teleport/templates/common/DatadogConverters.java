@@ -131,7 +131,7 @@ public class DatadogConverters {
         optional = true,
         description = "Include full Pub/Sub message in the payload.",
         helpText =
-            "Include the full Pub/Sub message in the payload. The default is `false` (only the data element is included in the payload).")
+            "Whether to include the full Pub/Sub message in the payload. The default is `false` (only the data element is included in the payload).")
     ValueProvider<Boolean> getIncludePubsubMessage();
 
     void setIncludePubsubMessage(ValueProvider<Boolean> includePubsubMessage);
@@ -144,7 +144,7 @@ public class DatadogConverters {
         },
         description = "Google Cloud KMS encryption key for the API key",
         helpText =
-            "The Cloud KMS key to decrypt the API Key. You must provide this parameter if the `apiKeySource` is set to `KMS`. If the Cloud KMS key is provided, you must pass in an encrypted API Key.",
+            "The Cloud KMS key to use to decrypt the API Key. You must provide this parameter if the `apiKeySource` is set to `KMS`. If the Cloud KMS key is provided, you must pass in an encrypted API Key.",
         example =
             "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name")
     ValueProvider<String> getApiKeyKMSEncryptionKey();
@@ -175,7 +175,7 @@ public class DatadogConverters {
         },
         description = "Source of the API key passed. One of PLAINTEXT, KMS or SECRET_MANAGER.",
         helpText =
-            "Source of the API key. The following values are supported: `PLAINTEXT`, `KMS`, and `SECRET_MANAGER`. You must provide this parameter if you're using Secret Manager. If `apiKeySource` is set to `KMS`, you must also provide `apiKeyKMSEncryptionKey` and encrypted `API Key`. If `apiKeySource` is set to `SECRET_MANAGER`, you must also provide `apiKeySecretId`. If `apiKeySource` is set to `PLAINTEXT`, you must also provide`apiKey`")
+            "The source of the API key. The following values are supported: `PLAINTEXT`, `KMS`, and `SECRET_MANAGER`. You must provide this parameter if you're using Secret Manager. If `apiKeySource` is set to `KMS`, you must also provide `apiKeyKMSEncryptionKey` and encrypted `API Key`. If `apiKeySource` is set to `SECRET_MANAGER`, you must also provide `apiKeySecretId`. If `apiKeySource` is set to `PLAINTEXT`, you must also provide`apiKey`.")
     ValueProvider<String> getApiKeySource();
 
     void setApiKeySource(ValueProvider<String> apiKeySource);
