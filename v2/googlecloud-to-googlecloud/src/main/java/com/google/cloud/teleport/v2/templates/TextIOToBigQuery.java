@@ -242,7 +242,7 @@ public class TextIOToBigQuery {
 
     void setOutputTable(String value);
 
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.JavascriptUdfFile(
         order = 4,
         optional = false,
         description = "GCS path to javascript fn for transforming output",

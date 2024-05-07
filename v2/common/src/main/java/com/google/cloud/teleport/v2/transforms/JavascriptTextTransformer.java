@@ -73,7 +73,7 @@ public abstract class JavascriptTextTransformer {
 
   /** Necessary CLI options for running UDF function. */
   public interface JavascriptTextTransformerOptions extends PipelineOptions {
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.JavascriptUdfFile(
         order = 1,
         optional = true,
         description = "Cloud Storage path to Javascript UDF source",
