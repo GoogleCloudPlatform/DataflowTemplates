@@ -266,6 +266,8 @@ public abstract class AvroWriteTransform
       String subDir = avroDestination.name;
       return subDir
           + "/"
+          + outputFilenamePrefix()
+          + "_"
           + defaultNaming.getFilename(window, pane, numShards, shardIndex, compression);
     }
   }
