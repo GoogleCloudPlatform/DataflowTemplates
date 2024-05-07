@@ -166,7 +166,9 @@ public class BigQueryConverters {
         order = 1,
         optional = true,
         description = "BigQuery source table",
-        helpText = "BigQuery source table spec.",
+        helpText = "The BigQuery table to read from. Format: `projectId:datasetId.tablename`. If you specify `inputTableSpec`, the template reads the data directly from BigQuery storage by using the" + "BigQuery Storage Read API. (https://cloud.google.com/bigquery/docs/reference/storage)" + "For information about limitations in the Storage Read API, see"
+        + "Limitations.(https://cloud.google.com/bigquery/docs/reference/storage#limitations)"
+        + "You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter.",
         example = "bigquery-project:dataset.input_table")
     String getInputTableSpec();
 
@@ -177,9 +179,10 @@ public class BigQueryConverters {
         optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched "
-                + "schema, malformed json) are written to this table. If it doesn't exist, it will be "
-                + "created during pipeline execution.",
+            "The BigQuery table for messages that failed to reach the output"
+                + "table, in the format of `my-project:dataset.my-deadletter-table` "
+                + "If it doesn't exist, the table is created during pipeline execution. If"
+                + "not specified, `<outputTableSpec>_error_records` is used instead.",
         example = "your-project-id:your-dataset.your-table-name")
     String getOutputDeadletterTable();
 
@@ -190,7 +193,9 @@ public class BigQueryConverters {
         optional = true,
         regexes = {"^.+$"},
         description = "Input SQL query.",
-        helpText = "Query to be executed on the source to extract the data.",
+        helpText = "The SQL query to use to read data from BigQuery. If the BigQuery dataset is in a different project than the Dataflow job, specify the full dataset name in the SQL query, as follows: `projectId.datasetName.tablename`. By default, the `query` parameter uses" 
+        + "GoogleSQL (https://cloud.google.com/bigquery/docs/introduction-sql)" + ", unless `useLegacySql` is `true`."
+        + "You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter.",
         example = "select * from sampledb.sample_table")
     String getQuery();
 
@@ -200,7 +205,8 @@ public class BigQueryConverters {
         order = 4,
         optional = true,
         description = "Set to true to use legacy SQL",
-        helpText = "Set to true to use legacy SQL (only applicable if supplying query).")
+        helpText = "Set to `true` to use legacy SQL. This parameter only applies when using"
+        + "the `query` parameter. Default: `false`.")
     @Default.Boolean(false)
     Boolean getUseLegacySql();
 

@@ -75,7 +75,7 @@ public class CsvConverters {
         order = 1,
         optional = true,
         description = "Whether input CSV files contain a header record.",
-        helpText = "Input CSV files contain a header record (true/false).")
+        helpText = "Boolean to denote whether headers are included in the CSV. Default `false`.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getContainsHeaders();
 
@@ -85,7 +85,7 @@ public class CsvConverters {
         order = 2,
         description = "Column delimiter of the data files.",
         helpText =
-            "The column delimiter of the input text files. Default: use delimiter provided in csvFormat",
+            "The delimiter that the CSV uses.",
         example = ",")
     ValueProvider<String> getDelimiter();
 
@@ -95,8 +95,7 @@ public class CsvConverters {
         order = 3,
         description = "CSV Format to use for parsing records.",
         helpText =
-            "CSV format specification to use for parsing records. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: "
-                + "https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html")
+            "The CSV format according to Apache Commons CSV format. Default: `Default.`")
     ValueProvider<String> getCsvFormat();
 
     void setCsvFormat(ValueProvider<String> csvFormat);
@@ -107,8 +106,7 @@ public class CsvConverters {
         regexes = {"^(US-ASCII|ISO-8859-1|UTF-8|UTF-16)$"},
         description = "CSV file encoding",
         helpText =
-            "CSV file character encoding format. Allowed Values are US-ASCII"
-                + ", ISO-8859-1, UTF-8, UTF-16")
+            "CSV file encoding.")
     @Default.String("UTF-8")
     ValueProvider<String> getCsvFileEncoding();
 

@@ -85,7 +85,7 @@ public class SpannerConverters {
         order = 1,
         regexes = {"^.+$"},
         description = "Spanner Table",
-        helpText = "Spanner Table to read from")
+        helpText = "The table to read the data from.")
     ValueProvider<String> getSpannerTable();
 
     @SuppressWarnings("unused")
@@ -95,7 +95,7 @@ public class SpannerConverters {
         order = 2,
         description = "Read data from Cloud Spanner Project Id",
         helpText =
-            "The Google Cloud Project Id of the Cloud Spanner database that you want to read data from")
+            "The Google Cloud Project ID of the Spanner database that you want to read data from.")
     ValueProvider<String> getSpannerProjectId();
 
     @SuppressWarnings("unused")
@@ -105,7 +105,7 @@ public class SpannerConverters {
         order = 3,
         regexes = {".+"},
         description = "Read data from Cloud Spanner Instance",
-        helpText = "Instance of requested table.")
+        helpText = "The instance ID of the requested table.")
     ValueProvider<String> getSpannerInstanceId();
 
     @SuppressWarnings("unused")
@@ -115,7 +115,7 @@ public class SpannerConverters {
         order = 4,
         regexes = {".+"},
         description = "Read data from Cloud Spanner Database ",
-        helpText = "Database of requested table.")
+        helpText = "The database ID of the requested table.")
     ValueProvider<String> getSpannerDatabaseId();
 
     @SuppressWarnings("unused")
@@ -141,10 +141,9 @@ public class SpannerConverters {
         },
         description = "Snapshot time",
         helpText =
-            "If set, specifies the time when the snapshot must be taken."
-                + " String is in the RFC 3339 format in UTC time. "
-                + " Timestamp must be in the past and Maximum timestamp staleness applies."
-                + "https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness",
+            "The timestamp that corresponds to the version of the Spanner database that you want to read."
+                + " The timestamp must be specified as per" + "RFC 3339 (https://tools.ietf.org/html/rfc3339)" + "UTC \"Zulu\" format. "
+                + " The timestamp must be in the past and" + "Maximum timestamp staleness (https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness)" + "applies.",
         example = "1990-12-31T23:59:60Z")
     @Default.String(value = "")
     ValueProvider<String> getSpannerSnapshotTime();
@@ -157,9 +156,9 @@ public class SpannerConverters {
         optional = true,
         description = "Use independent compute resource (Spanner DataBoost).",
         helpText =
-            "Use Spanner on-demand compute so the export job will run on independent compute"
-                + " resources and have no impact to current Spanner workloads. This will incur"
-                + " additional charges in Spanner.")
+            "Set to `true` to use the compute resources of Spanner Data Boost to run the job with near-zero"
+                + " impact on Spanner OLTP workflows. This requires the `spanner.databases.useDataBoost` Identity and"
+                + " Access Management (IAM) permission. For more information, see" + "Data Boost overview (https://cloud.google.com/spanner/docs/databoost/databoost-overview).")
     @Default.Boolean(false)
     ValueProvider<Boolean> getDataBoostEnabled();
 

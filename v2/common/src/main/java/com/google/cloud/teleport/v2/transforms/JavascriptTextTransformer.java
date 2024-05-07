@@ -78,8 +78,7 @@ public abstract class JavascriptTextTransformer {
         optional = true,
         description = "Cloud Storage path to Javascript UDF source",
         helpText =
-            "The Cloud Storage path pattern for the JavaScript code containing your user-defined "
-                + "functions.",
+            "The Cloud Storage path pattern for the JavaScript code that contains your user-defined functions. For example: `gs://your-bucket/your-function.js`.",
         example = "gs://your-bucket/your-function.js")
     String getJavascriptTextTransformGcsPath();
 
@@ -91,7 +90,7 @@ public abstract class JavascriptTextTransformer {
         regexes = {"[a-zA-Z0-9_]+"},
         description = "UDF Javascript Function Name",
         helpText =
-            "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores.",
+            "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. For example: `transform` or `transform_udf1`.",
         example = "'transform' or 'transform_udf1'")
     String getJavascriptTextTransformFunctionName();
 
@@ -102,7 +101,7 @@ public abstract class JavascriptTextTransformer {
         optional = true,
         description = "JavaScript UDF auto-reload interval (minutes)",
         helpText =
-            "Define the interval that workers may check for JavaScript UDF changes to reload the files.")
+            "Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is 0, UDF reloading is disabled. The default value is 0.")
     @Default.Integer(0)
     Integer getJavascriptTextTransformReloadIntervalMinutes();
 

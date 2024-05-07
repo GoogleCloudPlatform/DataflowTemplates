@@ -37,8 +37,7 @@ public final class BigQueryCommonOptions {
         order = 1,
         description = "BigQuery output table",
         helpText =
-            "BigQuery table location to write the output to. The name should be in the format "
-                + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
+            "The BigQuery output table location to write the Apache Kafka messages to, in the format of `my-project:dataset.table")
     @Required
     String getOutputTableSpec();
 
