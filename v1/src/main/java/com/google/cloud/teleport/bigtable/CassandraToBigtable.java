@@ -148,7 +148,7 @@ final class CassandraToBigtable {
         regexes = {"[-_.a-zA-Z0-9]+"},
         description = "The Default Bigtable Column Family",
         helpText =
-            "The name of the column family of the Bigtable table. The default value is default).")
+            "The name of the column family of the Bigtable table. The default value is default.")
     @Default.String("default")
     ValueProvider<String> getDefaultColumnFamily();
 

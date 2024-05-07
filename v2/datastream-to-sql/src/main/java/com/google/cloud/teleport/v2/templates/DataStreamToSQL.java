@@ -112,7 +112,7 @@ public class DataStreamToSQL {
         description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
         helpText =
             "The Pub/Sub subscription with Datastream file notifications."
-                + " For example, `projects/my-project-id/subscriptions/my-subscription-id`.")
+                + " For example, `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_ID>`.")
     String getGcsPubSubSubscription();
 
     void setGcsPubSubSubscription(String value);
@@ -123,7 +123,7 @@ public class DataStreamToSQL {
         optional = true,
         description = "Datastream output file format (avro/json).",
         helpText =
-            "The format of the output file produced by Datastream. For example `avro`,`json`. Default, `avro`.")
+            "The format of the output file produced by Datastream. For example, `avro` or `json`. Defaults to `avro`.")
     @Default.String("avro")
     String getInputFileFormat();
 
@@ -206,7 +206,7 @@ public class DataStreamToSQL {
     @TemplateParameter.Password(
         order = 11,
         description = "Database Password for given user.",
-        helpText = "The password for the given SQL user.")
+        helpText = "The password for the SQL user.")
     String getDatabasePassword();
 
     void setDatabasePassword(String value);

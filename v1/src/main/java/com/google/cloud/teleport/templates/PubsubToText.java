@@ -102,7 +102,7 @@ public class PubsubToText {
         description = "Pub/Sub input topic",
         helpText =
             "The Pub/Sub topic to read the input from. The topic name should be in the format "
-                + "`projects/<PROJECT_ID>/topics/<TOPIC_NAME>`")
+                + "`projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.")
     ValueProvider<String> getInputTopic();
 
     void setInputTopic(ValueProvider<String> value);

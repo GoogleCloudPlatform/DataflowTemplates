@@ -54,7 +54,7 @@ public final class BigQueryCommonOptions {
         optional = true,
         description = "Write Disposition to use for BigQuery",
         helpText =
-            "The BigQuery WriteDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload) value. For example, `WRITE_APPEND`, `WRITE_EMPTY`, or `WRITE_TRUNCATE`. Defaults to : `WRITE_APPEND`")
+            "The BigQuery WriteDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload) value. For example, `WRITE_APPEND`, `WRITE_EMPTY`, or `WRITE_TRUNCATE`. Defaults to `WRITE_APPEND`.")
     @Default.String("WRITE_APPEND")
     String getWriteDisposition();
 
@@ -69,7 +69,7 @@ public final class BigQueryCommonOptions {
         optional = true,
         description = "Create Disposition to use for BigQuery",
         helpText =
-            "The BigQuery CreateDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload). For example, `CREATE_IF_NEEDED` and `CREATE_NEVER`. Defaults to : `CREATE_IF_NEEDED`.")
+            "The BigQuery CreateDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload). For example, `CREATE_IF_NEEDED` and `CREATE_NEVER`. Defaults to `CREATE_IF_NEEDED`.")
     @Default.String("CREATE_IF_NEEDED")
     String getCreateDisposition();
 
