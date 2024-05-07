@@ -59,7 +59,7 @@ public class GenericRecordTypeConvertor {
   /**
    * This method takes in a generic record and returns a map between the Spanner column name and the
    * corresponding Spanner column value. This handles the data conversion logic from a GenericRecord
-   * field to a spanner Value.
+   * field to a Map of Spanner column name to spanner Value.
    */
   public Map<String, Value> transformChangeEvent(GenericRecord record, String srcTableName) {
     Map<String, Value> result = new HashMap<>();
@@ -70,14 +70,40 @@ public class GenericRecordTypeConvertor {
        * TODO: Handle columns that will not exist at source - synth id - shard id - multi-column
        * transformations - auto-gen keys - Default columns - generated columns
        */
-      String srcColName =
-          schemaMapper.getSourceColumnName(namespace, spannerTableName, spannerColName);
-      Type spannerColumnType =
-          schemaMapper.getSpannerColumnType(namespace, spannerTableName, spannerColName);
+      try {
+        String srcColName =
+            schemaMapper.getSourceColumnName(namespace, spannerTableName, spannerColName);
+        Type spannerColumnType =
+            schemaMapper.getSpannerColumnType(namespace, spannerTableName, spannerColName);
+        LOG.debug(
+            "Transformer processing srcCol: {} spannerColumnType:{}",
+            srcColName,
+            spannerColumnType);
 
-      Schema schema = record.getSchema().getField(srcColName).schema();
-      Value value = getSpannerValue(record.get(srcColName), schema, srcColName, spannerColumnType);
-      result.put(spannerColName, value);
+        Value value =
+            getSpannerValue(
+                record.get(srcColName),
+                record.getSchema().getField(srcColName).schema(),
+                srcColName,
+                spannerColumnType);
+        result.put(spannerColName, value);
+      } catch (NullPointerException e) {
+        LOG.info("Unable to transform change event: {}", e.getMessage());
+        throw e;
+      } catch (IllegalArgumentException e) {
+        LOG.info("Unable to transform change event: {}", e.getMessage());
+        throw e;
+      } catch (Exception e) {
+        LOG.info(
+            "Unable to convert spanner value for spanner col: {}. {}",
+            spannerColName,
+            e.getMessage());
+        throw new RuntimeException(
+            String.format(
+                "Unable to convert spanner value for spanner col: {}. {}",
+                spannerColName,
+                e.getMessage()));
+      }
     }
     return result;
   }
@@ -86,12 +112,19 @@ public class GenericRecordTypeConvertor {
   Value getSpannerValue(
       Object recordValue, Schema fieldSchema, String recordColName, Type spannerType) {
     // Logical and record types should be converted to string.
+    LOG.debug(
+        "gettingSpannerValue for recordValue: {}, fieldSchema: {}, recordColName: {}, spannerType: {}",
+        recordColName,
+        recordValue,
+        fieldSchema,
+        spannerType);
     if (fieldSchema.getLogicalType() != null) {
       recordValue = handleLogicalFieldType(recordColName, recordValue, fieldSchema);
     } else if (fieldSchema.getType().equals(Schema.Type.RECORD)) {
       // Get the avro field of type record from the whole record.
       recordValue = handleRecordFieldType(recordColName, (GenericRecord) recordValue, fieldSchema);
     }
+    LOG.debug("Updated record value is {} for recordColName {}", recordValue, recordColName);
     Dialect dialect = schemaMapper.getDialect();
     if (dialect == null) {
       throw new NullPointerException("schemaMapper returned null spanner dialect.");
@@ -118,6 +151,7 @@ public class GenericRecordTypeConvertor {
 
   /** Avro logical types are converted to an equivalent string type. */
   static String handleLogicalFieldType(String fieldName, Object recordValue, Schema fieldSchema) {
+    LOG.debug("found logical type for col {} with schema {}", fieldName, fieldSchema);
     if (recordValue == null) {
       return null;
     }
@@ -168,6 +202,7 @@ public class GenericRecordTypeConvertor {
 
   /** Record field types are converted to an equivalent string type. */
   static String handleRecordFieldType(String fieldName, GenericRecord element, Schema fieldSchema) {
+    LOG.debug("found record type for col {} with schema: {}", fieldName, fieldSchema);
     if (element == null) {
       return null;
     }
