@@ -254,7 +254,7 @@ public class KafkaToGcs2 {
           ClientAuthConfig.getSaslPlainConfig(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
     }
 
-    ErrorHandler<BadRecord, ?> errorHandler =  pipeline.registerBadRecordErrorHandler(
+    ErrorHandler<BadRecord, ?> kafkaErrorHandler =  pipeline.registerBadRecordErrorHandler(
             KafkaDLQ
                     .newBuilder()
                     // Change this to a configurable topic
@@ -262,6 +262,18 @@ public class KafkaToGcs2 {
                     .setBootStrapServers(options.getBootstrapServers())
                     .setConfig(kafkaConfig)
                     .build());
+
+    ErrorHandler<BadRecord, ?> gcsErrorHandler = pipeline.registerBadRecordErrorHandler(
+            GcsDeadLetterQueue
+                    .newBuilder()
+                    // TODO: Make this a pipeline option
+                    .setDlqOutputDirectory(options.getOutputDirectory())
+                    .build());
+
+    List<ErrorHandler<BadRecord, ?>> badRecordErrorHandlers = new ArrayList<>();
+    badRecordErrorHandlers.add(kafkaErrorHandler);
+    badRecordErrorHandlers.add(gcsErrorHandler);
+
     // Step 1: Read from Kafka as bytes.
     kafkaRecord =
         pipeline.apply(
@@ -275,10 +287,12 @@ public class KafkaToGcs2 {
                 .withConsumerConfigUpdates(kafkaConfig));
 
     kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options)
-            .setErrorHandler(errorHandler)
+//            .setErrorHandler(kafkaErrorHandler)
+                    .setErrorHandlers(badRecordErrorHandlers)
             .build());
     try {
-      errorHandler.close();
+      kafkaErrorHandler.close();
+      gcsErrorHandler.close();
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

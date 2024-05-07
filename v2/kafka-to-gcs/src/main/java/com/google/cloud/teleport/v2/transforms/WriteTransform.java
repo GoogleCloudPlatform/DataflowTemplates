@@ -25,6 +25,8 @@ import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.POutput;
 
+import java.util.List;
+
 @AutoValue
 public abstract class WriteTransform
     extends PTransform<PCollection<KafkaRecord<byte[], byte[]>>, POutput> {
@@ -33,7 +35,8 @@ public abstract class WriteTransform
     return new AutoValue_WriteTransform.Builder();
   }
   public abstract KafkaToGcs2.KafkaToGcsOptions options();
-  public abstract ErrorHandler<BadRecord, ?> errorHandler();
+//  public abstract ErrorHandler<BadRecord, ?> errorHandler();
+  public abstract List<ErrorHandler<BadRecord, ?>> errorHandlers();
 
   @Override
   public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord) {
@@ -44,6 +47,7 @@ public abstract class WriteTransform
     switch (outputFileFormat) {
       case TEXT:
         pOutput =
+            // TODO: Add ErrorHandler.
             kafkaRecord.apply(
                 JsonWriteTransform.newBuilder()
                     .setOutputFilenamePrefix(options().getOutputFilenamePrefix())
@@ -65,7 +69,8 @@ public abstract class WriteTransform
                     .setSchemaPath(options().getSchemaPath())
                     .setWindowDuration(options().getWindowDuration())
                     .build()
-                    .withBadRecordHandler(errorHandler()));
+                    .withBadRecordErrorHandlers(errorHandlers()));
+//                    .withBadRecordErrorHandler(errorHandler()));
         break;
       case PARQUET:
         throw new UnsupportedOperationException(
@@ -78,7 +83,9 @@ public abstract class WriteTransform
   public abstract static class WriteTransformBuilder {
     public abstract WriteTransformBuilder setOptions(KafkaToGcs2.KafkaToGcsOptions options);
 
-    public abstract WriteTransformBuilder setErrorHandler(ErrorHandler<BadRecord, ?> errorHandler);
+//    public abstract WriteTransformBuilder setErrorHandler(ErrorHandler<BadRecord, ?> errorHandler);
+
+    public abstract WriteTransformBuilder setErrorHandlers(List<ErrorHandler<BadRecord, ?>> errorHandlers);
 
     abstract KafkaToGcs2.KafkaToGcsOptions options();
 

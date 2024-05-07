@@ -27,6 +27,7 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import java.io.IOException;
+import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -69,7 +70,9 @@ public abstract class AvroWriteTransform
         PCollection<KafkaRecord<byte[], byte[]>>, WriteFilesResult<AvroDestination>> {
   private static final String subject = "UNUSED";
   static final int DEFAULT_CACHE_CAPACITY = 1000;
-  private ErrorHandler<BadRecord, ?> errorHandler;
+//  private ErrorHandler<BadRecord, ?> errorHandler;
+
+  private List<ErrorHandler<BadRecord, ?>> errorHandlers;
   private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
 
   public abstract String outputDirectory();
@@ -138,8 +141,14 @@ public abstract class AvroWriteTransform
     return new AutoValue_AvroWriteTransform.Builder();
   }
 
-  public AvroWriteTransform withBadRecordHandler(ErrorHandler<BadRecord, ?> errorHandler) {
-    this.errorHandler = errorHandler;
+//  public AvroWriteTransform withBadRecordErrorHandler(ErrorHandler<BadRecord, ?> errorHandler) {
+//    this.errorHandler = errorHandler;
+//    this.badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
+//    return this;
+//  }
+
+  public AvroWriteTransform withBadRecordErrorHandlers(List<ErrorHandler<BadRecord, ?>> errorHandlers) {
+    this.errorHandlers = errorHandlers;
     this.badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
     return this;
   }
@@ -173,7 +182,9 @@ public abstract class AvroWriteTransform
         // Send the failed elements to the bad record error handler.
         // How does it define the bad record?
         PCollection<BadRecord> failed = genericRecords.get(BadRecordRouter.BAD_RECORD_TAG) ;
-        errorHandler.addErrorCollection(failed.setCoder(BadRecord.getCoder(records.getPipeline())));
+        for (ErrorHandler<BadRecord, ?> errorHandler_: errorHandlers) {
+          errorHandler_.addErrorCollection(failed.setCoder(BadRecord.getCoder(records.getPipeline())));
+        }
 
         PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> success = genericRecords
                 .get(SUCESS_GENERIC_RECORDS)
