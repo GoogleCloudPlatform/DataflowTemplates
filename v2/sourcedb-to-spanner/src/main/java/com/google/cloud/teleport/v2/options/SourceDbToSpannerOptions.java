@@ -103,9 +103,9 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       helpText =
           "The username to be used for the JDBC connection. Can be passed in as a Base64-encoded"
               + " string encrypted with a Cloud KMS key.")
+  @Default.String("")
   String getUsername();
 
-  @Default.String("")
   void setUsername(String username);
 
   @TemplateParameter.Password(

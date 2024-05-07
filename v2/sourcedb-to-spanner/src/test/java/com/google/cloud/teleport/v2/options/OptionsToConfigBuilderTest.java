@@ -40,7 +40,6 @@ public class OptionsToConfigBuilderTest {
     sourceDbToSpannerOptions.setSourceHost(testHost);
     sourceDbToSpannerOptions.setSourcePort(testPort);
     sourceDbToSpannerOptions.setJdbcDriverClassName(testdriverClassName);
-    sourceDbToSpannerOptions.setSourceConnectionURL("jdbc:derby:memory:testDB;create=true");
     sourceDbToSpannerOptions.setSourceConnectionProperties(
         "maxTotal=160;maxpoolsize=160;maxIdle=160;minIdle=160" + ";wait_timeout=57600");
     sourceDbToSpannerOptions.setFetchSize(50000);
