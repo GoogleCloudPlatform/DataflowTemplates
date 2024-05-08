@@ -210,7 +210,7 @@ public class SplunkConverters {
         order = 11,
         optional = true,
         description = "Enable logs for batches written to Splunk.",
-        helpText = "Specifies whether to enable logs for batches written to Splunk. Default: true.")
+        helpText = "Whether to enable logs for batches written to Splunk. Default: true.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getEnableBatchLogs();
 
@@ -222,7 +222,7 @@ public class SplunkConverters {
         description =
             "Enable compression (gzip content encoding) in HTTP requests sent to Splunk HEC.",
         helpText =
-            "Specifies whether to compress HTTP requests sent to Splunk HEC (gzip content encoded). Default: true.")
+            "Whether to compress HTTP requests sent to Splunk HEC (gzip content encoded). Default: true.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getEnableGzipHttpCompression();
 
