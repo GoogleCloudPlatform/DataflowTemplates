@@ -118,6 +118,25 @@ public class GenericRecordTypeConvertor {
         recordValue,
         fieldSchema,
         spannerType);
+    if (fieldSchema.getType().equals(Schema.Type.UNION)) {
+      List<Schema> types = fieldSchema.getTypes();
+      LOG.debug("found union type: {}", types);
+      // Schema types can only union with Type NULL. Any other UNION is unsupported.
+      if (types.size() == 2 && types.stream().anyMatch(s -> s.getType().equals(Schema.Type.NULL))) {
+        if (recordValue == null) {
+          return null;
+        }
+        fieldSchema =
+            types.stream().filter(s -> !s.getType().equals(Schema.Type.NULL)).findFirst().get();
+      } else {
+        throw new IllegalArgumentException(
+            String.format(
+                "Unknown schema field type {} for field {} with value {}.",
+                fieldSchema,
+                recordColName,
+                recordValue));
+      }
+    }
     if (fieldSchema.getLogicalType() != null) {
       recordValue = handleLogicalFieldType(recordColName, recordValue, fieldSchema);
     } else if (fieldSchema.getType().equals(Schema.Type.RECORD)) {

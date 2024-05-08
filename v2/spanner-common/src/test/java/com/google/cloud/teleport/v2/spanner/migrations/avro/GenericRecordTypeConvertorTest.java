@@ -31,11 +31,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import org.apache.avro.LogicalType;
@@ -99,6 +96,47 @@ public class GenericRecordTypeConvertorTest {
         .noDefault()
         .name("varchar_col")
         .type(varcharType)
+        .noDefault()
+        .endRecord();
+  }
+
+  public Schema unionNullType(Schema schema) {
+    return SchemaBuilder.builder().unionOf().nullType().and().type(schema).endUnion();
+  }
+
+  public Schema getAllSpannerTypesSchema() {
+    Schema decimalType =
+        unionNullType(LogicalTypes.decimal(5, 2).addToSchema(Schema.create(Schema.Type.BYTES)));
+    Schema dateType =
+        unionNullType(LogicalTypes.date().addToSchema(Schema.create(Schema.Type.INT)));
+    Schema timestampType =
+        unionNullType(LogicalTypes.timestampMicros().addToSchema(Schema.create(Schema.Type.LONG)));
+    return SchemaBuilder.record("all_types")
+        .namespace("com.test.schema")
+        .fields()
+        .name("bool_col")
+        .type(unionNullType(Schema.create(Schema.Type.BOOLEAN)))
+        .noDefault()
+        .name("int_col")
+        .type(unionNullType(Schema.create(Schema.Type.LONG)))
+        .noDefault()
+        .name("float_col")
+        .type(unionNullType(Schema.create(Schema.Type.DOUBLE)))
+        .noDefault()
+        .name("string_col")
+        .type(unionNullType(Schema.create(Schema.Type.STRING)))
+        .noDefault()
+        .name("numeric_col")
+        .type(decimalType)
+        .noDefault()
+        .name("bytes_col")
+        .type(unionNullType(Schema.create(Schema.Type.BYTES)))
+        .noDefault()
+        .name("timestamp_col")
+        .type(timestampType)
+        .noDefault()
+        .name("date_col")
+        .type(dateType)
         .noDefault()
         .endRecord();
   }
@@ -311,11 +349,8 @@ public class GenericRecordTypeConvertorTest {
   }
 
   @Test
-  public void transformChangeEventTest_identityMapper() throws IOException {
-    GenericRecord genericRecord =
-        new GenericData.Record(
-            SchemaUtils.parseAvroSchema(
-                Files.readString(Paths.get("src/test/resources/avro/all-spanner-types.avsc"))));
+  public void transformChangeEventTest_identityMapper() {
+    GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
     genericRecord.put("bool_col", true);
     genericRecord.put("int_col", 10);
     genericRecord.put("float_col", 10.34);
@@ -323,8 +358,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put(
         "numeric_col", ByteBuffer.wrap(new BigDecimal("12.34").unscaledValue().toByteArray()));
     genericRecord.put("bytes_col", new byte[] {10, 20, 30});
-    genericRecord.put(
-        "timestamp_col", AvroTestingHelper.createTimestampTzRecord(1602599400056483L, 3600000));
+    genericRecord.put("timestamp_col", 1602599400056483L);
     genericRecord.put("date_col", 738991);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
         new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "");
@@ -345,7 +379,7 @@ public class GenericRecordTypeConvertorTest {
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void transformChangeEventTest_incorrectSpannerType() throws IOException {
+  public void transformChangeEventTest_incorrectSpannerType() {
 
     ISchemaMapper mockSchemaMapper = mock(ISchemaMapper.class);
     when(mockSchemaMapper.getDialect()).thenReturn(Dialect.GOOGLE_STANDARD_SQL);
@@ -357,10 +391,7 @@ public class GenericRecordTypeConvertorTest {
     when(mockSchemaMapper.getSpannerColumnType(anyString(), anyString(), anyString()))
         .thenReturn(Type.array(Type.bool()));
 
-    GenericRecord genericRecord =
-        new GenericData.Record(
-            SchemaUtils.parseAvroSchema(
-                Files.readString(Paths.get("src/test/resources/avro/all-spanner-types.avsc"))));
+    GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
     genericRecord.put("bool_col", true);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
         new GenericRecordTypeConvertor(mockSchemaMapper, "");
@@ -369,7 +400,7 @@ public class GenericRecordTypeConvertorTest {
   }
 
   @Test
-  public void transformChangeEventTest_nullDialect() throws IOException {
+  public void transformChangeEventTest_nullDialect() {
     ISchemaMapper mockSchemaMapper = mock(ISchemaMapper.class);
     when(mockSchemaMapper.getDialect()).thenReturn(null);
     when(mockSchemaMapper.getSpannerTableName(anyString(), anyString())).thenReturn("test");
@@ -380,10 +411,7 @@ public class GenericRecordTypeConvertorTest {
     when(mockSchemaMapper.getSpannerColumnType(anyString(), anyString(), anyString()))
         .thenReturn(Type.array(Type.bool()));
 
-    GenericRecord genericRecord =
-        new GenericData.Record(
-            SchemaUtils.parseAvroSchema(
-                Files.readString(Paths.get("src/test/resources/avro/all-spanner-types.avsc"))));
+    GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
     genericRecord.put("bool_col", true);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
         new GenericRecordTypeConvertor(mockSchemaMapper, "");
