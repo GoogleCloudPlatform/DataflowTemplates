@@ -49,35 +49,33 @@ public class ChangeEventContextFactoryTest {
             DatastreamConstants.MYSQL_SOURCE_TYPE);
   }
 
-    @Test
-    public void testCreateChangeEventContextWithNonMatchingSourceType() throws Exception {
-        expectedEx.expect(InvalidChangeEventException.class);
-        expectedEx.expectMessage("Change event with invalid source");
-        JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
-        changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
-        // Test Ddl
-        Ddl ddl = ChangeEventConvertorTest.getTestDdl();
-        ChangeEventContext changeEventContext =
-                ChangeEventContextFactory.createChangeEventContext(
-                        getJsonNode(changeEvent.toString()),
-                        ddl,
-                        "shadow_",
-                        DatastreamConstants.MYSQL_SOURCE_TYPE);
-    }
+  @Test
+  public void testCreateChangeEventContextWithNonMatchingSourceType() throws Exception {
+    expectedEx.expect(InvalidChangeEventException.class);
+    expectedEx.expectMessage("Change event with invalid source");
+    JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
+    changeEvent.put(
+        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
+    // Test Ddl
+    Ddl ddl = ChangeEventConvertorTest.getTestDdl();
+    ChangeEventContext changeEventContext =
+        ChangeEventContextFactory.createChangeEventContext(
+            getJsonNode(changeEvent.toString()),
+            ddl,
+            "shadow_",
+            DatastreamConstants.MYSQL_SOURCE_TYPE);
+  }
 
-    @Test
-    public void testCreateChangeEventContextWithNotSupportedSource() throws Exception {
-        expectedEx.expect(InvalidChangeEventException.class);
-        expectedEx.expectMessage("Unsupported source database");
-        JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
-        changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, "xyz");
-        // Test Ddl
-        Ddl ddl = ChangeEventConvertorTest.getTestDdl();
-        ChangeEventContext changeEventContext =
-                ChangeEventContextFactory.createChangeEventContext(
-                        getJsonNode(changeEvent.toString()),
-                        ddl,
-                        "shadow_",
-                        "xyz");
-    }
+  @Test
+  public void testCreateChangeEventContextWithNotSupportedSource() throws Exception {
+    expectedEx.expect(InvalidChangeEventException.class);
+    expectedEx.expectMessage("Unsupported source database");
+    JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, "xyz");
+    // Test Ddl
+    Ddl ddl = ChangeEventConvertorTest.getTestDdl();
+    ChangeEventContext changeEventContext =
+        ChangeEventContextFactory.createChangeEventContext(
+            getJsonNode(changeEvent.toString()), ddl, "shadow_", "xyz");
+  }
 }
