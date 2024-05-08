@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.transformer;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
@@ -25,6 +26,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import java.io.Serializable;
 import java.util.Map;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +41,9 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, Mutation>
     implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceRowToMutationDoFn.class);
+
+  private final Counter transformerErrors =
+      Metrics.counter(SourceRowToMutationDoFn.class, MetricCounters.TRANSFORMER_ERRORS);
 
   public abstract ISchemaMapper iSchemaMapper();
 
@@ -58,6 +64,7 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, Mutation>
       LOG.error(
           "cannot find valid sourceTable for tableId: {} in tableIdMapper",
           sourceRow.tableSchemaUUID());
+      transformerErrors.inc();
       return;
     }
     try {
@@ -73,7 +80,11 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, Mutation>
       c.output(mutation);
     } catch (Exception e) {
       // TODO: Add DLQ integration once supported.
-      LOG.error("Unable to transform source row to spanner mutation: {}", e.getMessage());
+      LOG.error(
+          "Unable to transform source row to spanner mutation: {} {}",
+          e.getMessage(),
+          e.fillInStackTrace());
+      transformerErrors.inc();
     }
   }
 
