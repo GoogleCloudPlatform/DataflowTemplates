@@ -109,7 +109,7 @@ public class GenericRecordTypeConvertor {
   }
 
   /** Extract the field value from Generic Record and try to convert it to @spannerType. */
-  Value getSpannerValue(
+  public Value getSpannerValue(
       Object recordValue, Schema fieldSchema, String recordColName, Type spannerType) {
     // Logical and record types should be converted to string.
     LOG.debug(

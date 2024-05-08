@@ -378,6 +378,39 @@ public class GenericRecordTypeConvertorTest {
     assertEquals(expected, actual);
   }
 
+  @Test
+  public void transformChangeEventTest_illegalUnionType() {
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "");
+    Schema schema =
+        SchemaBuilder.builder()
+            .unionOf()
+            .nullType()
+            .and()
+            .type(Schema.create(Schema.Type.BOOLEAN))
+            .and()
+            .type(Schema.create(Schema.Type.STRING))
+            .endUnion();
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> genericRecordTypeConvertor.getSpannerValue(null, schema, "union_col", Type.string()));
+  }
+
+  @Test
+  public void transformChangeEventTest_nullType() {
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "");
+    Schema schema =
+        SchemaBuilder.builder()
+            .unionOf()
+            .nullType()
+            .and()
+            .type(Schema.create(Schema.Type.BOOLEAN))
+            .endUnion();
+    assertNull(
+        genericRecordTypeConvertor.getSpannerValue(null, schema, "union_col", Type.string()));
+  }
+
   @Test(expected = IllegalArgumentException.class)
   public void transformChangeEventTest_incorrectSpannerType() {
 
@@ -421,5 +454,23 @@ public class GenericRecordTypeConvertorTest {
         () -> genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types"));
     // Verify that the mock method was called.
     Mockito.verify(mockSchemaMapper).getDialect();
+  }
+
+  @Test
+  public void transformChangeEventTest_catchAllException() {
+    ISchemaMapper mockSchemaMapper = mock(ISchemaMapper.class);
+    when(mockSchemaMapper.getSpannerTableName(anyString(), anyString())).thenReturn("test");
+    when(mockSchemaMapper.getSpannerColumns(anyString(), anyString()))
+        .thenReturn(List.of("bool_col"));
+    when(mockSchemaMapper.getSourceColumnName(anyString(), anyString(), anyString()))
+        .thenThrow(new RuntimeException());
+
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(mockSchemaMapper, "");
+    assertThrows(
+        RuntimeException.class,
+        () -> genericRecordTypeConvertor.transformChangeEvent(null, "all_types"));
+    // Verify that the mock method was called.
+    Mockito.verify(mockSchemaMapper).getSourceColumnName(anyString(), anyString(), anyString());
   }
 }
