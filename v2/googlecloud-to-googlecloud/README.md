@@ -10,5 +10,6 @@ Json etc.) from Google Cloud to Google Cloud.
 * [Bigtable change streams to BigQuery](docs/BigtableChangeStreamsToBigQuery/README.md)
 * [Bigtable change streams to GCS](docs/BigtableChangeStreamsToGcs/README.md)
 * [Bigtable change streams to PubSub](docs/BigtableChangeStreamsToPubSub/README.md)
+* [Bigtable change streams to Vector Search](docs/BigtableChangeStreams/README.md)
 
 Please refer to the links above for more details on the specific template.

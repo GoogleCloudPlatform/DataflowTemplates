@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.options.BigtableChangeStreamsToVectorSearchO
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -118,19 +119,20 @@ public final class BigtableChangeStreamsToVectorSearch {
 
     String bigtableProjectId = getBigtableProjectId(options);
 
-    LOG.info("  - startTimestamp {}", startTimestamp);
-    LOG.info("  - bigtableReadInstanceId {}", options.getBigtableReadInstanceId());
-    LOG.info("  - bigtableReadTableId {}", options.getBigtableReadTableId());
-    LOG.info("  - bigtableChangeStreamAppProfile {}", options.getBigtableChangeStreamAppProfile());
-    LOG.info("  - embeddingColumn {}", options.getEmbeddingColumn());
-    LOG.info("  - crowdingTagColumn {}", options.getCrowdingTagColumn());
-    LOG.info("  - project {}", options.getProject());
-    LOG.info("  - indexName {}", options.getVectorSearchIndex());
+    LOG.debug("  - startTimestamp {}", startTimestamp);
+    LOG.debug("  - bigtableReadInstanceId {}", options.getBigtableReadInstanceId());
+    LOG.debug("  - bigtableReadTableId {}", options.getBigtableReadTableId());
+    LOG.debug("  - bigtableChangeStreamAppProfile {}", options.getBigtableChangeStreamAppProfile());
+    LOG.debug("  - embeddingColumn {}", options.getEmbeddingColumn());
+    LOG.debug("  - crowdingTagColumn {}", options.getCrowdingTagColumn());
+    LOG.debug("  - project {}", options.getProject());
+    LOG.debug("  - indexName {}", options.getVectorSearchIndex());
+    LOG.debug("  - charset {}", options.getBigtableChangeStreamCharset());
 
     String indexName = options.getVectorSearchIndex();
-
     String vertexRegion = Utils.extractRegionFromIndexName(indexName);
     String vertexEndpoint = vertexRegion + "-aiplatform.googleapis.com:443";
+    var charset = Charset.forName(options.getBigtableChangeStreamCharset());
 
     final Pipeline pipeline = Pipeline.create(options);
 
@@ -162,6 +164,7 @@ public final class BigtableChangeStreamsToVectorSearch {
                             options.getEmbeddingColumn(),
                             options.getEmbeddingByteSize(),
                             options.getCrowdingTagColumn(),
+                            charset,
                             Utils.parseColumnMapping(options.getAllowRestrictsMappings()),
                             Utils.parseColumnMapping(options.getDenyRestrictsMappings()),
                             Utils.parseColumnMapping(options.getIntNumericRestrictsMappings()),

@@ -21,6 +21,7 @@ import com.google.cloud.bigtable.data.v2.models.DeleteCells;
 import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
 import com.google.cloud.bigtable.data.v2.models.Entry;
 import com.google.cloud.bigtable.data.v2.models.SetCell;
+import java.nio.charset.Charset;
 import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
@@ -47,6 +48,7 @@ public class ChangeStreamMutationToDatapointOperationFn
   private String embeddingsColumnFamilyName; // "family_name" extracted from embeddingsColumn
   private int embeddingsByteSize; // 4 or 8
   private String crowdingTagColumn;
+  private Charset charset;
   private Map<String, String> allowRestrictsMappings;
   private Map<String, String> denyRestrictsMappings;
   private Map<String, String> intNumericRestrictsMappings;
@@ -57,6 +59,7 @@ public class ChangeStreamMutationToDatapointOperationFn
       String embeddingsColumn,
       int embeddingsByteSize,
       String crowdingTagColumn,
+      Charset charset,
       Map<String, String> allowRestrictsMappings,
       Map<String, String> denyRestrictsMappings,
       Map<String, String> intNumericRestrictsMappings,
@@ -70,6 +73,7 @@ public class ChangeStreamMutationToDatapointOperationFn
             "Invalid embeddingsColumn - should be in the form \"family:qualifier\"");
       }
 
+      this.charset = charset;
       this.embeddingsColumn = embeddingsColumn;
       this.embeddingsColumnFamilyName = parts[0];
     }
@@ -107,7 +111,7 @@ public class ChangeStreamMutationToDatapointOperationFn
 
   private void processInsert(ChangeStreamMutation mutation, MultiOutputReceiver output) {
     IndexDatapoint.Builder datapointBuilder = IndexDatapoint.newBuilder();
-    var datapointId = mutation.getRowKey().toStringUtf8();
+    var datapointId = mutation.getRowKey().toString(charset);
     if (datapointId.isEmpty()) {
       LOG.info("Have a mutation with no rowkey");
       return;
@@ -127,7 +131,7 @@ public class ChangeStreamMutationToDatapointOperationFn
       LOG.info("Have value {}", m.getValue());
 
       var family = m.getFamilyName();
-      var qualifier = m.getQualifier().toStringUtf8();
+      var qualifier = m.getQualifier().toString(charset);
       var col = family + ":" + qualifier;
 
       String mappedColumn;
@@ -137,10 +141,11 @@ public class ChangeStreamMutationToDatapointOperationFn
 
         datapointBuilder.addAllFeatureVector(floats);
       } else if (col.equals(crowdingTagColumn)) {
-        LOG.info("Setting crowding tag {}", m.getValue().toStringUtf8());
-        datapointBuilder.getCrowdingTagBuilder().setCrowdingAttribute(
-          m.getValue().toStringUtf8()
-        ).build();
+        LOG.info("Setting crowding tag {}", m.getValue().toString(charset));
+        datapointBuilder
+            .getCrowdingTagBuilder()
+            .setCrowdingAttribute(m.getValue().toString(charset))
+            .build();
       } else if ((mappedColumn = allowRestrictsMappings.get(col)) != null) {
         datapointBuilder
             .addRestrictsBuilder()
@@ -219,7 +224,7 @@ public class ChangeStreamMutationToDatapointOperationFn
 
     LOG.info("Have isDeleted {}", isDelete);
     if (isDelete) {
-      String rowkey = mutation.getRowKey().toStringUtf8();
+      String rowkey = mutation.getRowKey().toString(charset);
       LOG.info("Emitting a remove datapoint: {}", rowkey);
       output.get(REMOVE_DATAPOINT_TAG).output(rowkey);
     }
