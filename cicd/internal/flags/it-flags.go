@@ -30,6 +30,10 @@ var (
 	dStageBucket         string
 	dHostIp              string
 	dPrivateConnectivity string
+	dCloudProxyHost      string
+	dCloudProxyPort      string
+	dCloudProxyPassword  string
+	dSpannerHost         string
 	dReleaseMode         bool
 	dRetryFailures       string
 )
@@ -42,6 +46,10 @@ func RegisterItFlags() {
 	flag.StringVar(&dStageBucket, "it-stage-bucket", "", "(optional) A GCP bucket to stage templates")
 	flag.StringVar(&dHostIp, "it-host-ip", "", "(optional) The ip that the gitactions runner is listening on")
 	flag.StringVar(&dPrivateConnectivity, "it-private-connectivity", "", "(optional) A GCP private connectivity endpoint")
+	flag.StringVar(&dCloudProxyHost, "it-proxy-host", "", "(optional) The host for a Cloud Auth Proxy.")
+	flag.StringVar(&dCloudProxyPort, "it-proxy-port", "", "(optional) The port for a Cloud Auth Proxy.")
+	flag.StringVar(&dCloudProxyPassword, "it-proxy-password", "", "(optional) The password for a Cloud Auth Proxy.")
+	flag.StringVar(&dSpannerHost, "it-spanner-host", "", "(optional) A custom endpoint to override Spanner API requests")
 	flag.BoolVar(&dReleaseMode, "it-release", false, "(optional) Set if tests are being executed for a release")
 	flag.StringVar(&dRetryFailures, "it-retry-failures", "0", "Number of retries attempts for failing tests")
 }
@@ -82,6 +90,34 @@ func PrivateConnectivity() string {
 		return "-DprivateConnectivity=" + dPrivateConnectivity
 	}
 	return ""
+}
+
+func CloudProxyHost() string {
+	if dCloudProxyHost != "" {
+		return "-DcloudProxyHost=" + dCloudProxyHost
+	}
+	return ""
+}
+
+func CloudProxyPort() string {
+	if dCloudProxyPort != "" {
+		return "-DcloudProxyPort=" + dCloudProxyPort
+	}
+	return ""
+}
+
+func CloudProxyPassword() string {
+	if dCloudProxyPassword != "" {
+		return "-DcloudProxyPassword=" + dCloudProxyPassword
+	}
+	return ""
+}
+
+func SpannerHost() string {
+	if dSpannerHost == "" {
+		return "-DspannerHost=" + "https://staging-wrenchworks.sandbox.googleapis.com/"
+	}
+	return "-DspannerHost=" + dSpannerHost
 }
 
 func FailureMode() string {

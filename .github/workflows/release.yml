@@ -17,6 +17,11 @@ on:
         type: string
         required: false
 
+env:
+  PROXY_PASSWORD: t>5xl%J(&qTK6?FaZ
+  PROXY_HOST: 10.128.0.34
+  PROXY_PORT: 33134
+
 permissions:
   contents: write
 
@@ -78,6 +83,9 @@ jobs:
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-private-connect-us-central1" \
+        --it-proxy-host="${PROXY_HOST}" \
+        --it-proxy-port="${PROXY_PORT}" \
+        --it-proxy-password="${PROXY_PASSWORD}" \
         --it-release=true \
         --it-retry-failures=2
     - name: Run Integration Tests
@@ -87,6 +95,9 @@ jobs:
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-private-connect-us-central1" \
+        --it-proxy-host="${PROXY_HOST}" \
+        --it-proxy-port="${PROXY_PORT}" \
+        --it-proxy-password="${PROXY_PASSWORD}" \
         --it-release=true \
         --it-retry-failures=2
     - name: Upload Tests Report

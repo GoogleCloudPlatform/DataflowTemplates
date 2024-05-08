@@ -59,12 +59,16 @@ func main() {
 		mvnFlags.IntegrationTestParallelism(3),
 		mvnFlags.StaticBigtableInstance("teleport"),
 		mvnFlags.StaticSpannerInstance("teleport"),
+		mvnFlags.StaticOracleInstance("10.128.0.90"),
 		flags.Region(),
 		flags.Project(),
 		flags.ArtifactBucket(),
 		flags.StageBucket(),
 		flags.HostIp(),
 		flags.PrivateConnectivity(),
+		flags.CloudProxyHost(),
+		flags.CloudProxyPort(),
+		flags.CloudProxyPassword(),
 		flags.FailureMode(),
 		flags.RetryFailures())
 	if err != nil {

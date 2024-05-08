@@ -45,6 +45,9 @@ concurrency:
 
 env:
   MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+  PROXY_PASSWORD: t>5xl%J(&qTK6?FaZ
+  PROXY_HOST: 10.128.0.34
+  PROXY_PORT: 33134
 
 permissions: read-all
 
@@ -133,7 +136,10 @@ jobs:
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-          --it-private-connectivity="datastream-private-connect-us-central1"
+          --it-private-connectivity="datastream-private-connect-us-central1" \
+          --it-proxy-host="${PROXY_HOST}" \
+          --it-proxy-port="${PROXY_PORT}" \
+          --it-proxy-password="${PROXY_PASSWORD}"
       - name: Upload Smoke Tests Report
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails
@@ -161,7 +167,10 @@ jobs:
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-          --it-private-connectivity="datastream-private-connect-us-central1"
+          --it-private-connectivity="datastream-private-connect-us-central1" \
+          --it-proxy-host="${PROXY_HOST}" \
+          --it-proxy-port="${PROXY_PORT}" \
+          --it-proxy-password="${PROXY_PASSWORD}"
       - name: Upload Integration Tests Report
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails
@@ -190,6 +199,9 @@ jobs:
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1"
+        --it-private-connectivity="datastream-private-connect-us-central1" \
+        --it-proxy-host="${PROXY_HOST}" \
+        --it-proxy-port="${PROXY_PORT}" \
+        --it-proxy-password="${PROXY_PASSWORD}"
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env

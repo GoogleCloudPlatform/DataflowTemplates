@@ -62,6 +62,9 @@ func main() {
 		flags.StageBucket(),
 		flags.HostIp(),
 		flags.PrivateConnectivity(),
+		flags.CloudProxyHost(),
+		flags.CloudProxyPort(),
+		flags.CloudProxyPassword(),
 		flags.ExportProject(),
 		flags.ExportDataset(),
 		flags.ExportTable())

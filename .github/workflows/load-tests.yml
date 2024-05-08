@@ -6,6 +6,11 @@ on:
   - cron: '0 0 * * 6'
   workflow_dispatch:
 
+env:
+  PROXY_PASSWORD: t>5xl%J(&qTK6?FaZ
+  PROXY_HOST: 10.128.0.34
+  PROXY_PORT: 33134
+
 permissions: read-all
 
 jobs:
@@ -32,6 +37,9 @@ jobs:
         -DartifactBucket=gs://apache-beam-testing-pranavbhandari \
         -DhostIp=${HOST_IP} \
         -DprivateConnectivity="datastream-private-connect-us-central1" \
+        --it-proxy-host="${PROXY_HOST}" \
+        --it-proxy-port="${PROXY_PORT}" \
+        --it-proxy-password="${PROXY_PASSWORD}" \
         -DexportProject=cloud-teleport-testing \
         -DexportDataset=performance_tests \
         -DexportTable=template_performance_metrics -e -fae
