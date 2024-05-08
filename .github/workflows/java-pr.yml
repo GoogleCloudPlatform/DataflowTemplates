@@ -31,6 +31,10 @@ on:
     - cron: "0 */12 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: java-pr-${{ github.event.issue.number || github.run_id }}
+  cancel-in-progress: true
+
 env:
   MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
 
