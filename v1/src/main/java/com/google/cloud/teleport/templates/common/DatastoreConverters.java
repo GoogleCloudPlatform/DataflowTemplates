@@ -88,7 +88,7 @@ public class DatastoreConverters {
         order = 2,
         description = "Project ID",
         helpText =
-            "The Google Cloud project ID that contains the Datastore instance that you want to read data from.")
+            "The ID of the Google Cloud project that contains the Datastore instance that you want to read data from.")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreReadProjectId();
