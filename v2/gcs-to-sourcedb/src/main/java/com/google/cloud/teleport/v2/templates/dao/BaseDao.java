@@ -21,6 +21,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.commons.dbcp2.ConnectionFactory;
 import org.apache.commons.dbcp2.DriverManagerConnectionFactory;
 import org.apache.commons.dbcp2.PoolableConnectionFactory;
@@ -75,11 +76,66 @@ public abstract class BaseDao implements Serializable {
       } catch (org.postgresql.util.PSQLException e) {
         // TODO: retry handling is configurable with retry count
         LOG.warn(
-            "PostgreSQL Connection exception while executing SQL, will retry : " + e.getMessage());
+            "PostgreSQL Connection exception while executing SQL for shard : "
+                + this.shardId
+                + ", will retry : "
+                + e.getMessage());
+        // gives indication that the shard is being retried
+        Metrics.counter(PostgreSQLDao.class, "PostgreSQL_retry_" + shardId).inc();
       } catch (com.mysql.cj.jdbc.exceptions.CommunicationsException e) {
         // TODO: retry handling is configurable with retry count
-        LOG.warn("MySQL Connection exception while executing SQL, will retry : " + e.getMessage());
+        LOG.warn(
+            "MySQL Connection exception while executing SQL for shard : "
+                + this.shardId
+                + ", will retry : "
+                + e.getMessage());
+        // gives indication that the shard is being retried
+        Metrics.counter(MySQLDao.class, "mySQL_retry_" + shardId).inc();
+
+        // handling the connection retry
+        try {
+          Thread.sleep(1000);
+        } catch (java.lang.InterruptedException ex) {
+          throw new RuntimeException(ex);
+        }
+      } catch (java.sql.SQLNonTransientConnectionException e) {
+        if (e.getMessage().contains("Server shutdown in progress")) {
+          LOG.warn(
+              "Connection exception while executing SQL for shard : "
+                  + shardId
+                  + ", will retry : "
+                  + e.getMessage());
+          // gives indication that the shard is being retried
+          Metrics.counter(BaseDao.class, "BaseDao_retry_" + shardId).inc();
+          try {
+            Thread.sleep(1000);
+          } catch (java.lang.InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        } else {
+          throw e;
+        }
+      } catch (java.sql.SQLException e) {
+        // This exception happens when the DB is shutting down
+        if (e.getMessage().contains("No operations allowed after statement closed")) {
+          LOG.warn(
+              "Connection exception while executing SQL for shard : "
+                  + shardId
+                  + ", will retry : "
+                  + e.getMessage());
+          // gives indication that the shard is being retried
+          Metrics.counter(BaseDao.class, "BaseDao_retry_" + shardId).inc();
+          try {
+            Thread.sleep(1000);
+          } catch (java.lang.InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        } else {
+          throw e;
+        }
+
       } finally {
+        // closing the connection and statement objects
         if (statement != null) {
           statement.close();
         }
