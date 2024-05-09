@@ -127,7 +127,7 @@ public class SplunkConverters {
         optional = true,
         description = "Disable SSL certificate validation.",
         helpText =
-            "Whether to disable SSL certificate validation. When set to false, validation is enabled. When set to true, the certificates are not validated, all certificates are trusted, and the `rootCaCertificatePath` parameter is ignored.")
+            "Disable SSL certificate validation. Default false (validation enabled). If true, the certificates are not validated (all certificates are trusted) and `rootCaCertificatePath` parameter is ignored.")
     ValueProvider<Boolean> getDisableCertificateValidation();
 
     void setDisableCertificateValidation(ValueProvider<Boolean> disableCertificateValidation);
@@ -146,7 +146,7 @@ public class SplunkConverters {
         optional = true,
         description = "Include full Pub/Sub message in the payload.",
         helpText =
-            "Whether to include the full Pub/Sub message in the payload. Defaults to false (only the data element is included in the payload).")
+            "Include the full Pub/Sub message in the payload. Default false (only the data element is included in the payload).")
     ValueProvider<Boolean> getIncludePubsubMessage();
 
     void setIncludePubsubMessage(ValueProvider<Boolean> includePubsubMessage);
@@ -159,7 +159,7 @@ public class SplunkConverters {
         },
         description = "Google Cloud KMS encryption key for the token",
         helpText =
-            "The Cloud KMS key to use to decrypt the HEC token string. This parameter must be provided when tokenSource is set to KMS. If the Cloud KMS key is provided, the HEC token string must be passed in encrypted.",
+            "The Cloud KMS key to use to decrypt the HEC token string. This parameter must be provided when tokenSource is set to KMS. If the Cloud KMS key is provided, the HEC token string `must` be passed in encrypted.",
         example =
             "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name")
     ValueProvider<String> getTokenKMSEncryptionKey();
@@ -210,7 +210,7 @@ public class SplunkConverters {
         order = 11,
         optional = true,
         description = "Enable logs for batches written to Splunk.",
-        helpText = "Whether to enable logs for batches written to Splunk. Default: true.")
+        helpText = "Specifies whether logs should be enabled for batches written to Splunk. Default: `true`.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getEnableBatchLogs();
 
@@ -222,7 +222,7 @@ public class SplunkConverters {
         description =
             "Enable compression (gzip content encoding) in HTTP requests sent to Splunk HEC.",
         helpText =
-            "Whether to compress HTTP requests sent to Splunk HEC (gzip content encoded). Default: true.")
+            "Specifies whether HTTP requests sent to Splunk HEC should be compressed (gzip content encoded). Default: `true`.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getEnableGzipHttpCompression();
 
