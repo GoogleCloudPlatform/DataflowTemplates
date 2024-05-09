@@ -44,30 +44,25 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Sharded data migration Integration test for {@link DataStreamToSpanner} Flex template. */
+/**
+ * Sharded data migration Integration test without any migration_shard_id column transformation for
+ * {@link DataStreamToSpanner} Flex template.
+ */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerShardedMigrationIT extends DataStreamToSpannerITBase {
-
+public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
+    extends DataStreamToSpannerITBase {
   private static final Logger LOG =
-      LoggerFactory.getLogger(DataStreamToSpannerShardedMigrationIT.class);
+      LoggerFactory.getLogger(
+          DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT.class);
 
   private static final String TABLE = "Users";
-  private static final String MOVIE_TABLE = "Movie";
-
-  private static final String SESSION_FILE_RESOURCE =
-      "DataStreamToSpannerShardedMigrationIT/mysql-session.json";
-
-  private static final String TRANSFORMATION_CONTEXT_RESOURCE_SHARD1 =
-      "DataStreamToSpannerShardedMigrationIT/transformation-context-shard1.json";
-  private static final String TRANSFORMATION_CONTEXT_RESOURCE_SHARD2 =
-      "DataStreamToSpannerShardedMigrationIT/transformation-context-shard2.json";
-
   private static final String SPANNER_DDL_RESOURCE =
-      "DataStreamToSpannerShardedMigrationIT/spanner-schema.sql";
+      "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/spanner-schema.sql";
 
-  private static HashSet<DataStreamToSpannerShardedMigrationIT> testInstances = new HashSet<>();
+  private static HashSet<DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT>
+      testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo1;
   private static PipelineLauncher.LaunchInfo jobInfo2;
 
@@ -83,7 +78,7 @@ public class DataStreamToSpannerShardedMigrationIT extends DataStreamToSpannerIT
   public void setUp() throws IOException {
     // Prevent cleaning up of dataflow job after a test method is executed.
     skipBaseCleanup = true;
-    synchronized (DataStreamToSpannerShardedMigrationIT.class) {
+    synchronized (DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT.class) {
       testInstances.add(this);
       if (spannerResourceManager == null) {
         spannerResourceManager = setUpSpannerResourceManager();
@@ -96,8 +91,8 @@ public class DataStreamToSpannerShardedMigrationIT extends DataStreamToSpannerIT
         jobInfo1 =
             launchDataflowJob(
                 getClass().getSimpleName() + "shard1",
-                SESSION_FILE_RESOURCE,
-                TRANSFORMATION_CONTEXT_RESOURCE_SHARD1,
+                null,
+                null,
                 "shard1",
                 spannerResourceManager,
                 pubsubResourceManager,
@@ -111,8 +106,8 @@ public class DataStreamToSpannerShardedMigrationIT extends DataStreamToSpannerIT
         jobInfo2 =
             launchDataflowJob(
                 getClass().getSimpleName() + "shard2",
-                SESSION_FILE_RESOURCE,
-                TRANSFORMATION_CONTEXT_RESOURCE_SHARD2,
+                null,
+                null,
                 "shard2",
                 spannerResourceManager,
                 pubsubResourceManager,
@@ -132,7 +127,8 @@ public class DataStreamToSpannerShardedMigrationIT extends DataStreamToSpannerIT
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (DataStreamToSpannerShardedMigrationIT instance : testInstances) {
+    for (DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT instance :
+        testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
@@ -151,17 +147,17 @@ public class DataStreamToSpannerShardedMigrationIT extends DataStreamToSpannerIT
                         jobInfo1,
                         TABLE,
                         "Users-backfill-logical-shard1.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Users-backfill-logical-shard1.jsonl"),
+                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard1.jsonl"),
                     uploadDataStreamFile(
                         jobInfo1,
                         TABLE,
                         "Users-backfill-logical-shard2.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Users-backfill-logical-shard2.jsonl"),
+                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard2.jsonl"),
                     uploadDataStreamFile(
                         jobInfo1,
                         TABLE,
                         "Users-cdc-shard1.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Users-cdc-shard1.jsonl")))
+                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-cdc-shard1.jsonl")))
             .build();
 
     // Wait for conditions
@@ -179,17 +175,17 @@ public class DataStreamToSpannerShardedMigrationIT extends DataStreamToSpannerIT
                         jobInfo2,
                         TABLE,
                         "Users-backfill-logical-shard3.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Users-backfill-logical-shard3.jsonl"),
+                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard3.jsonl"),
                     uploadDataStreamFile(
                         jobInfo2,
                         TABLE,
                         "Users-backfill-logical-shard4.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Users-backfill-logical-shard4.jsonl"),
+                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard4.jsonl"),
                     uploadDataStreamFile(
                         jobInfo2,
                         TABLE,
                         "Users-cdc-shard2.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Users-cdc-shard2.jsonl")))
+                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-cdc-shard2.jsonl")))
             .build();
 
     result =
@@ -211,192 +207,80 @@ public class DataStreamToSpannerShardedMigrationIT extends DataStreamToSpannerIT
     assertUsersTableContents();
   }
 
-  @Test
-  public void pkReorderedMultiShardMigration() {
-    // Migrates Movie table from 4 logical shards. Asserts data from all the shards are going to
-    // Spanner. This test case changes the Primary key order from default to (id,
-    // migration_shard_id). Checks whether migration shard id column is populated properly based on
-    // the transformation context when PK is reordered.
-    ChainedConditionCheck conditionCheck =
-        ChainedConditionCheck.builder(
-                List.of(
-                    uploadDataStreamFile(
-                        jobInfo1,
-                        MOVIE_TABLE,
-                        "Movie-shard1.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Movie-shard1.jsonl"),
-                    uploadDataStreamFile(
-                        jobInfo1,
-                        MOVIE_TABLE,
-                        "Movie-shard2.jsonl",
-                        "DataStreamToSpannerShardedMigrationIT/Movie-shard2.jsonl")))
-            .build();
-
-    // Wait for conditions
-    PipelineOperator.Result result =
-        pipelineOperator()
-            .waitForCondition(createConfig(jobInfo1, Duration.ofMinutes(8)), conditionCheck);
-
-    // Assert Conditions
-    assertThatResult(result).meetsConditions();
-
-    ConditionCheck rowsConditionCheck =
-        SpannerRowsCheck.builder(spannerResourceManager, MOVIE_TABLE)
-            .setMinRows(6)
-            .setMaxRows(6)
-            .build();
-    result =
-        pipelineOperator()
-            .waitForCondition(createConfig(jobInfo1, Duration.ofMinutes(8)), rowsConditionCheck);
-    assertThatResult(result).meetsConditions();
-
-    // Assert specific rows
-    assertMovieTableContents();
-  }
-
   private void assertUsersTableContents() {
     List<Map<String, Object>> events = new ArrayList<>();
 
     Map<String, Object> row = new HashMap<>();
     row.put("id", 1);
     row.put("name", "Tester1");
-    row.put("age_spanner", 20);
-    row.put("migration_shard_id", "L1");
+    row.put("age", 21);
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 2);
-    row.put("name", "Tester2");
-    row.put("age_spanner", 33);
-    row.put("migration_shard_id", "L1");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 10);
-    row.put("name", "Tester10");
-    row.put("age_spanner", 40);
-    row.put("migration_shard_id", "L1");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 1);
-    row.put("name", "Tester1");
-    row.put("age_spanner", 21);
-    row.put("migration_shard_id", "L2");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 4);
-    row.put("name", "Tester4");
-    row.put("age_spanner", 33);
-    row.put("migration_shard_id", "L2");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 20);
-    row.put("name", "Tester20");
-    row.put("age_spanner", 50);
-    row.put("migration_shard_id", "L2");
+    row.put("id", 5);
+    row.put("name", "Tester5");
+    row.put("age", 23);
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 6);
     row.put("name", "Tester6");
-    row.put("age_spanner", 22);
-    row.put("migration_shard_id", "L3");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 3);
-    row.put("name", "Tester3");
-    row.put("age_spanner", 36);
-    row.put("migration_shard_id", "L3");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 30);
-    row.put("name", "Tester30");
-    row.put("age_spanner", 60);
-    row.put("migration_shard_id", "L3");
+    row.put("age", 22);
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 7);
     row.put("name", "Tester7");
-    row.put("age_spanner", 23);
-    row.put("migration_shard_id", "L4");
+    row.put("age", 7);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 8);
+    row.put("name", "Tester8");
+    row.put("age", 8);
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 9);
     row.put("name", "Tester9");
-    row.put("age_spanner", 36);
-    row.put("migration_shard_id", "L4");
+    row.put("age", 9);
+    events.add(row);
+
+    row.put("id", 10);
+    row.put("name", "Tester10");
+    row.put("age", 10);
+    events.add(row);
+
+    row.put("id", 11);
+    row.put("name", "Tester11");
+    row.put("age", 11);
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 40);
-    row.put("name", "Tester40");
-    row.put("age_spanner", 70);
-    row.put("migration_shard_id", "L4");
+    row.put("id", 12);
+    row.put("name", "Tester12");
+    row.put("age", 12);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 13);
+    row.put("name", "Tester13");
+    row.put("age", 13);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 14);
+    row.put("name", "Tester14");
+    row.put("age", 14);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 15);
+    row.put("name", "Tester15");
+    row.put("age", 15);
     events.add(row);
 
     SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Users"))
-        .hasRecordsUnorderedCaseInsensitiveColumns(events);
-  }
-
-  private void assertMovieTableContents() {
-    List<Map<String, Object>> events = new ArrayList<>();
-
-    Map<String, Object> row = new HashMap<>();
-    row.put("id1", 1);
-    row.put("id2", 1);
-    row.put("name", "Mov123");
-    row.put("actor", 27);
-    row.put("migration_shard_id", "L1");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id1", 26);
-    row.put("id2", 3);
-    row.put("name", "Mov637");
-    row.put("actor", 3);
-    row.put("migration_shard_id", "L1");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id1", 18);
-    row.put("id2", 12);
-    row.put("name", "Tester363");
-    row.put("actor", 40);
-    row.put("migration_shard_id", "L1");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id1", 18);
-    row.put("id2", 23);
-    row.put("name", "Mov945");
-    row.put("actor", 18);
-    row.put("migration_shard_id", "L2");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id1", 26);
-    row.put("id2", 12);
-    row.put("name", "Mov764");
-    row.put("actor", 8);
-    row.put("migration_shard_id", "L2");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id1", 13);
-    row.put("id2", 8);
-    row.put("name", "Tester828");
-    row.put("actor", 15);
-    row.put("migration_shard_id", "L2");
-    events.add(row);
-
-    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Movie"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 }
