@@ -210,7 +210,8 @@ public class SplunkConverters {
         order = 11,
         optional = true,
         description = "Enable logs for batches written to Splunk.",
-        helpText = "Specifies whether logs should be enabled for batches written to Splunk. Default: `true`.")
+        helpText =
+            "Specifies whether logs should be enabled for batches written to Splunk. Default: `true`.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getEnableBatchLogs();
 

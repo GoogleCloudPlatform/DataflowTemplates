@@ -225,7 +225,8 @@ public class TextIOToBigQuery {
         order = 2,
         optional = false,
         description = "JSON file with BigQuery Schema description",
-        helpText = "The gs:// path to the JSON file that defines your BigQuery schema, stored in Cloud Storage.",
+        helpText =
+            "The gs:// path to the JSON file that defines your BigQuery schema, stored in Cloud Storage.",
         example = "gs://your-bucket/your-schema.json")
     String getJSONPath();
 
