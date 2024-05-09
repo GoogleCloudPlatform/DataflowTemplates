@@ -18,14 +18,13 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.templates.KafkaToGcs2;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
+import java.util.List;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
 import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.POutput;
-
-import java.util.List;
 
 @AutoValue
 public abstract class WriteTransform
@@ -34,8 +33,10 @@ public abstract class WriteTransform
   public static WriteTransformBuilder newBuilder() {
     return new AutoValue_WriteTransform.Builder();
   }
+
   public abstract KafkaToGcs2.KafkaToGcsOptions options();
-//  public abstract ErrorHandler<BadRecord, ?> errorHandler();
+
+  //  public abstract ErrorHandler<BadRecord, ?> errorHandler();
   public abstract List<ErrorHandler<BadRecord, ?>> errorHandlers();
 
   @Override
@@ -70,7 +71,6 @@ public abstract class WriteTransform
                     .setWindowDuration(options().getWindowDuration())
                     .build()
                     .withBadRecordErrorHandlers(errorHandlers()));
-//                    .withBadRecordErrorHandler(errorHandler()));
         break;
       case PARQUET:
         throw new UnsupportedOperationException(
@@ -83,9 +83,11 @@ public abstract class WriteTransform
   public abstract static class WriteTransformBuilder {
     public abstract WriteTransformBuilder setOptions(KafkaToGcs2.KafkaToGcsOptions options);
 
-//    public abstract WriteTransformBuilder setErrorHandler(ErrorHandler<BadRecord, ?> errorHandler);
+    //    public abstract WriteTransformBuilder setErrorHandler(ErrorHandler<BadRecord, ?>
+    // errorHandler);
 
-    public abstract WriteTransformBuilder setErrorHandlers(List<ErrorHandler<BadRecord, ?>> errorHandlers);
+    public abstract WriteTransformBuilder setErrorHandlers(
+        List<ErrorHandler<BadRecord, ?>> errorHandlers);
 
     abstract KafkaToGcs2.KafkaToGcsOptions options();
 

@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.transforms;
+package com.google.cloud.teleport.v2.dlq;
 
 import com.google.auto.value.AutoValue;
 import java.io.ByteArrayInputStream;
@@ -43,9 +43,6 @@ public abstract class KafkaDeadLetterQueue extends PTransform<PCollection<BadRec
   private static final Coder<KV<byte[], byte[]>> KvByteCoder =
       KvCoder.of(ByteArrayCoder.of(), ByteArrayCoder.of());
 
-  //    private static final Coder<KafkaRecord<String, String>> stringCoder = KafkaRecordCoder.of(
-  //            StringUtf8Coder.of(), StringUtf8Coder.of()
-  //    );
   public abstract String bootStrapServers();
 
   public abstract String topic();
@@ -53,7 +50,7 @@ public abstract class KafkaDeadLetterQueue extends PTransform<PCollection<BadRec
   public abstract @NonNull Map<String, Object> config();
 
   public static KafkaDLQBuilder newBuilder() {
-    return new AutoValue_KafkaDLQ.Builder();
+    return new AutoValue_KafkaDeadLetterQueue.Builder();
   }
 
   @AutoValue.Builder
@@ -70,18 +67,6 @@ public abstract class KafkaDeadLetterQueue extends PTransform<PCollection<BadRec
       return autoBuild();
     }
   }
-
-  //    @Override
-  //    public POutput expand(PCollection<BadRecord> input) {
-  //        return input.apply(ParDo.of(new DlqUtils.GetPayLoadStringFromBadRecord()))
-  //                .apply(KafkaIO.<String, String>write()
-  //                        .withBootstrapServers(bootStrapServers())
-  //                        .withTopic(topic())
-  //                        .withProducerConfigUpdates(config())
-  //                        .withKeySerializer(StringSerializer.class)
-  //                        .withValueSerializer(StringSerializer.class));
-  //    }
-
   @Override
   public POutput expand(PCollection<BadRecord> input) {
     return input

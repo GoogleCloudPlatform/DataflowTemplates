@@ -19,6 +19,9 @@ import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.dlq.DeadLetterQueueOptions;
+import com.google.cloud.teleport.v2.dlq.GcsDeadLetterQueue;
+import com.google.cloud.teleport.v2.dlq.KafkaDeadLetterQueue;
 import com.google.cloud.teleport.v2.transforms.*;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.collect.ImmutableMap;
@@ -27,7 +30,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
@@ -37,7 +39,6 @@ import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
 import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.PCollection;
@@ -65,10 +66,10 @@ public class KafkaToGcs2 {
    */
   public interface KafkaToGcsOptions
       extends PipelineOptions,
-//          DataflowPipelineOptions,
+          //          DataflowPipelineOptions,
           WriteToGCSText.WriteToGCSTextOptions,
-          WriteToGCSParquet.WriteToGCSParquetOptions,
-          WriteToGCSAvro.WriteToGCSAvroOptions {
+          WriteToGCSAvro.WriteToGCSAvroOptions,
+          DeadLetterQueueOptions {
 
     @TemplateParameter.Text(
         order = 1,
@@ -76,7 +77,7 @@ public class KafkaToGcs2 {
         description = "Kafka Bootstrap Server list",
         helpText = "Kafka Bootstrap Server list, separated by commas.",
         example = "localhost:9092,127.0.0.1:9093")
-//    @Validation.Required
+    //    @Validation.Required
     String getBootstrapServers();
 
     void setBootstrapServers(String bootstrapServers);
@@ -87,7 +88,7 @@ public class KafkaToGcs2 {
         description = "Kafka topic(s) to read the input from",
         helpText = "Kafka topic(s) to read the input from.",
         example = "topic1,topic2")
-//    @Validation.Required
+    //    @Validation.Required
     String getInputTopics();
 
     void setInputTopics(String inputTopics);
@@ -211,6 +212,8 @@ public class KafkaToGcs2 {
   /* Logger for class */
   private static final String topicsSplitDelimiter = ",";
   private static boolean useKafkaAuth = true;
+  // TODO: Add a DefaultErrorSink when no DLQ is specified.
+  private static List<ErrorHandler<BadRecord, ?>> badRecordErrorHandlers = new ArrayList<>();
 
   public static class ClientAuthConfig {
     public static ImmutableMap<String, Object> getSaslPlainConfig(
@@ -241,7 +244,7 @@ public class KafkaToGcs2 {
     List<String> topics =
         new ArrayList<>(Arrays.asList(options.getInputTopics().split(topicsSplitDelimiter)));
 
-//    options.setStreaming(true);
+    //    options.setStreaming(true);
 
     Map<String, Object> kafkaConfig = new HashMap<>();
     // Set offset to either earliest or latest.
@@ -254,27 +257,26 @@ public class KafkaToGcs2 {
           ClientAuthConfig.getSaslPlainConfig(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
     }
 
-    ErrorHandler<BadRecord, ?> kafkaErrorHandler =  pipeline.registerBadRecordErrorHandler(
-            KafkaDLQ
-                    .newBuilder()
-                    // Change this to a configurable topic
-                    .setTopics(topics.get(0) + "-dlq")
-                    .setBootStrapServers(options.getBootstrapServers())
-                    .setConfig(kafkaConfig)
-                    .build());
-
-    ErrorHandler<BadRecord, ?> gcsErrorHandler = pipeline.registerBadRecordErrorHandler(
-            GcsDeadLetterQueue
-                    .newBuilder()
-                    // TODO: Make this a pipeline option
-                    .setDlqOutputDirectory(options.getOutputDirectory())
-                    .build());
-
-    List<ErrorHandler<BadRecord, ?>> badRecordErrorHandlers = new ArrayList<>();
+    // TODO:  Have a boolean in the pipeline options for each DLQ sink and if enabled, register
+    // the sink to ErrorHandler.
+    ErrorHandler<BadRecord, ?> kafkaErrorHandler =
+        pipeline.registerBadRecordErrorHandler(
+            KafkaDeadLetterQueue.newBuilder()
+                .setTopic(options.getDeadLetterQueueKafkaTopic())
+                .setBootStrapServers(options.getBootstrapServers())
+                .setConfig(kafkaConfig)
+                .build());
     badRecordErrorHandlers.add(kafkaErrorHandler);
+
+    ErrorHandler<BadRecord, ?> gcsErrorHandler =
+        pipeline.registerBadRecordErrorHandler(
+            GcsDeadLetterQueue.newBuilder()
+                .setDlqOutputDirectory(options.getDeadLetterQueueDirectory())
+                .setWindowDuration(options.getWindowDuration())
+                .build());
     badRecordErrorHandlers.add(gcsErrorHandler);
 
-    // Step 1: Read from Kafka as bytes.
+    // Read from Kafka as bytes.
     kafkaRecord =
         pipeline.apply(
             KafkaIO.<byte[], byte[]>read()
@@ -286,13 +288,18 @@ public class KafkaToGcs2 {
                     ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
                 .withConsumerConfigUpdates(kafkaConfig));
 
-    kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options)
-//            .setErrorHandler(kafkaErrorHandler)
-                    .setErrorHandlers(badRecordErrorHandlers)
+    // Write to Avro, Json or Parquet using WriteTransform.
+    kafkaRecord.apply(
+        WriteTransform.newBuilder()
+            .setOptions(options)
+            .setErrorHandlers(badRecordErrorHandlers)
             .build());
+
+    //     Close all the error handlers at the end of the pipeline.
     try {
-      kafkaErrorHandler.close();
-      gcsErrorHandler.close();
+      for (ErrorHandler<BadRecord, ?> errorHandler : badRecordErrorHandlers) {
+        errorHandler.close();
+      }
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

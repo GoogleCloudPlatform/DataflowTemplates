@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.transforms;
+package com.google.cloud.teleport.v2.dlq;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
@@ -31,6 +31,8 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.POutput;
 
+import javax.annotation.Nullable;
+
 @AutoValue
 public abstract class GcsDeadLetterQueue extends PTransform<PCollection<BadRecord>, POutput> {
   private final int NUM_SHARDS = 20;
@@ -45,7 +47,7 @@ public abstract class GcsDeadLetterQueue extends PTransform<PCollection<BadRecor
   public abstract static class GcsDeadLetterQueueBuilder {
     public abstract GcsDeadLetterQueueBuilder setDlqOutputDirectory(String value);
 
-    public abstract GcsDeadLetterQueueBuilder setWindowDuration(String value);
+    public abstract GcsDeadLetterQueueBuilder setWindowDuration(@Nullable String value);
 
     abstract GcsDeadLetterQueue autoBuild();
 
