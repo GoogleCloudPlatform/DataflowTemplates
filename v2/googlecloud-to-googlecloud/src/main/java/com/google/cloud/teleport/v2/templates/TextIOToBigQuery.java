@@ -215,7 +215,7 @@ public class TextIOToBigQuery {
         optional = false,
         regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         description = "The GCS location of the text you'd like to process",
-        helpText = "The path to the Cloud Storage text to read.",
+        helpText = "The gs:// path to the text in Cloud Storage you'd like to process.",
         example = "gs://your-bucket/your-file.txt")
     String getInputFilePattern();
 
@@ -225,7 +225,7 @@ public class TextIOToBigQuery {
         order = 2,
         optional = false,
         description = "JSON file with BigQuery Schema description",
-        helpText = "The Cloud Storage path to the JSON file that defines your BigQuery schema.",
+        helpText = "The gs:// path to the JSON file that defines your BigQuery schema, stored in Cloud Storage.",
         example = "gs://your-bucket/your-schema.json")
     String getJSONPath();
 
@@ -237,7 +237,7 @@ public class TextIOToBigQuery {
         regexes = {".+:.+\\..+"},
         description = "Output table to write to",
         helpText =
-            "The location of the BigQuery table to use to store the processed data. If you reuse an existing table, the table is overwritten.",
+            "The BigQuery table name you want to create to store your processed data in. If you reuse an existing BigQuery table, the data is appended to the destination table.",
         example = "your-project:your-dataset.your-table")
     String getOutputTable();
 
@@ -249,7 +249,7 @@ public class TextIOToBigQuery {
         regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         description = "GCS path to javascript fn for transforming output",
         helpText =
-            "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.",
+            "The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) you want to use.",
         example = "gs://your-bucket/your-transforms/*.js")
     String getJavascriptTextTransformGcsPath();
 
@@ -261,7 +261,7 @@ public class TextIOToBigQuery {
         regexes = {"[a-zA-Z0-9_]+"},
         description = "UDF Javascript Function Name",
         helpText =
-            "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores.",
+            "The name of the JavaScript user-defined function (UDF) that you want to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)",
         example = "transform_udf1")
     String getJavascriptTextTransformFunctionName();
 
