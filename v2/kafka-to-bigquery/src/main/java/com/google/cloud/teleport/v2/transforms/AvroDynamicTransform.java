@@ -27,6 +27,7 @@ import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientExcept
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.List;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -48,8 +49,10 @@ import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.transforms.DoFn.Setup;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.values.KV;
-import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecordRouter;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
+import org.apache.beam.sdk.values.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,6 +69,13 @@ public class AvroDynamicTransform
   private static final Logger LOG = LoggerFactory.getLogger(AvroDynamicTransform.class);
 
   private KafkaToBigQueryFlexOptions options;
+  private static final TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
+      SUCESS_GENERIC_RECORDS = new TupleTag<>();
+  private static final TupleTag<
+          FailsafeElement<KafkaRecord<byte[], byte[]>, KV<GenericRecord, TableRow>>>
+      SUCCESS_GENERIC_RECORDS_1 = new TupleTag<>();
+  private List<ErrorHandler<BadRecord, ?>> errorHandlers;
+  private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
 
   private AvroDynamicTransform(KafkaToBigQueryFlexOptions options) {
     this.options = options;
@@ -90,19 +100,49 @@ public class AvroDynamicTransform
             .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
             .withFormatFunction(kv -> kv.getValue())
             .withExtendedErrorInfo();
+    PCollectionTuple genericRecords;
 
-    writeResult =
-        kafkaRecords
-            .apply(
-                "ConvertKafkaRecordsToGenericRecordsWrappedinFailsafeElement",
-                ParDo.of(
+    genericRecords =
+        kafkaRecords.apply(
+            "ConvertKafkaRecordsToGenericRecordsWrappedinFailsafeElement",
+            ParDo.of(
                     new KafkaRecordToGenericRecordFailsafeElementFn(
-                        options.getSchemaRegistryConnectionUrl())))
+                        options.getSchemaRegistryConnectionUrl(), badRecordRouter))
+                .withOutputTags(
+                    SUCESS_GENERIC_RECORDS, TupleTagList.of(BadRecordRouter.BAD_RECORD_TAG)));
+
+    PCollection<BadRecord> failedGenericRecords =
+        genericRecords.get(BadRecordRouter.BAD_RECORD_TAG);
+    for (ErrorHandler<BadRecord, ?> errorHandler : errorHandlers) {
+      errorHandler.addErrorCollection(
+          failedGenericRecords.setCoder(BadRecord.getCoder(kafkaRecords.getPipeline())));
+    }
+    // TODO: Change the name.
+    PCollectionTuple genericRecords1;
+    genericRecords1 =
+        genericRecords
+            .get(SUCESS_GENERIC_RECORDS)
             .setCoder(
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
                     GenericRecordCoder.of()))
-            .apply("ConvertGenericRecordToTableRow", ParDo.of(new GenericRecordToTableRowFn()))
+            .apply(
+                "ConvertGenericRecordToTableRow",
+                ParDo.of(new GenericRecordToTableRowFn(badRecordRouter))
+                    .withOutputTags(
+                        SUCCESS_GENERIC_RECORDS_1,
+                        TupleTagList.of(BadRecordRouter.BAD_RECORD_TAG)));
+
+    for (ErrorHandler<BadRecord, ?> errorHandler : errorHandlers) {
+      errorHandler.addErrorCollection(
+          genericRecords1
+              .get(BadRecordRouter.BAD_RECORD_TAG)
+              .setCoder(BadRecord.getCoder(genericRecords.getPipeline())));
+    }
+
+    writeResult =
+        genericRecords1
+            .get(SUCCESS_GENERIC_RECORDS_1)
             .setCoder(
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
@@ -121,9 +161,12 @@ public class AvroDynamicTransform
     private transient KafkaAvroDeserializer deserializer;
     private transient SchemaRegistryClient schemaRegistryClient;
     private String schemaRegistryConnectionUrl = null;
+    private final BadRecordRouter badRecordRouter;
 
-    KafkaRecordToGenericRecordFailsafeElementFn(String schemaRegistryConnectionUrl) {
+    KafkaRecordToGenericRecordFailsafeElementFn(
+        String schemaRegistryConnectionUrl, BadRecordRouter badRecordRouter) {
       this.schemaRegistryConnectionUrl = schemaRegistryConnectionUrl;
+      this.badRecordRouter = badRecordRouter;
     }
 
     @Setup
@@ -138,20 +181,28 @@ public class AvroDynamicTransform
       }
     }
 
+    /*
+     * This method excludes the key of the KafkaRecord and uses the value of the KafkaRecord
+     * to get the GenericRecord from bytes.
+     */
     @ProcessElement
-    public void processElement(ProcessContext context) {
-      KafkaRecord<byte[], byte[]> element = context.element();
+    public void processElement(
+        @Element KafkaRecord<byte[], byte[]> kafkaRecord, MultiOutputReceiver receiver)
+        throws Exception {
       GenericRecord result = null;
       try {
-        // Serialize to Generic Record
         result =
             (GenericRecord)
                 this.deserializer.deserialize(
-                    element.getTopic(), element.getHeaders(), element.getKV().getValue());
+                    kafkaRecord.getTopic(),
+                    kafkaRecord.getHeaders(),
+                    kafkaRecord.getKV().getValue());
+        receiver.get(SUCESS_GENERIC_RECORDS).output(FailsafeElement.of(kafkaRecord, result));
       } catch (Exception e) {
-        LOG.error("Failed during deserialization: " + e.toString());
+        ByteArrayCoder valueCoder = ByteArrayCoder.of();
+        badRecordRouter.route(
+            receiver, kafkaRecord.getKV().getValue(), valueCoder, e, e.toString());
       }
-      context.output(FailsafeElement.of(element, result));
     }
   }
 
@@ -160,17 +211,36 @@ public class AvroDynamicTransform
           FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>,
           FailsafeElement<KafkaRecord<byte[], byte[]>, KV<GenericRecord, TableRow>>>
       implements Serializable {
+    private final BadRecordRouter badRecordRouter;
 
+    public GenericRecordToTableRowFn(BadRecordRouter badRecordRouter) {
+      this.badRecordRouter = badRecordRouter;
+    }
+
+    /*
+     * This method ignores the key of the failed KafkaRecord while sending it to the DLQ.
+     */
     @ProcessElement
-    public void processElement(ProcessContext context) {
-      FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord> element = context.element();
-      TableRow row =
-          BigQueryAvroUtils.convertGenericRecordToTableRow(
-              element.getPayload(),
-              BigQueryUtils.toTableSchema(
-                  AvroUtils.toBeamSchema(element.getPayload().getSchema())));
-      context.output(
-          FailsafeElement.of(element.getOriginalPayload(), KV.of(element.getPayload(), row)));
+    public void processElement(
+        @Element FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord> element,
+        MultiOutputReceiver receiver)
+        throws Exception {
+      try {
+        TableRow row =
+            BigQueryAvroUtils.convertGenericRecordToTableRow(
+                element.getPayload(),
+                BigQueryUtils.toTableSchema(
+                    AvroUtils.toBeamSchema(element.getPayload().getSchema())));
+        // TODO: Refactor name
+        receiver
+            .get(SUCCESS_GENERIC_RECORDS_1)
+            .output(
+                FailsafeElement.of(element.getOriginalPayload(), KV.of(element.getPayload(), row)));
+      } catch (Exception e) {
+        ByteArrayCoder valueCoder = ByteArrayCoder.of();
+        badRecordRouter.route(
+            receiver, element.getOriginalPayload().getKV().getValue(), valueCoder, e, e.toString());
+      }
     }
   }
 
@@ -183,5 +253,12 @@ public class AvroDynamicTransform
     public void processElement(ProcessContext context) {
       context.output(context.element().getPayload());
     }
+  }
+
+  public AvroDynamicTransform withBadRecordErrorHanlder(
+      List<ErrorHandler<BadRecord, ?>> errorHandlers) {
+    this.errorHandlers = errorHandlers;
+    this.badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
+    return this;
   }
 }
