@@ -326,6 +326,8 @@ public class DataStreamToBigQuery {
     @TemplateParameter.Integer(
         order = 18,
         optional = true,
+        parentName = "applyMerge",
+        parentTriggerValues = {"true"},
         description = "Concurrent queries for merge.",
         helpText =
             "The number of concurrent BigQuery MERGE queries. Only effective when applyMerge is set to true. Defaults to: 30.")
@@ -348,6 +350,8 @@ public class DataStreamToBigQuery {
     @TemplateParameter.Boolean(
         order = 20,
         optional = true,
+        parentName = "useStorageWriteApi",
+        parentTriggerValues = {"true"},
         description = "Use at at-least-once semantics in BigQuery Storage Write API",
         helpText =
             "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If true, at-least-once semantics are used for the Storage Write API. Otherwise, exactly-once semantics are used. Defaults to: false.",

@@ -133,6 +133,8 @@ public interface BigtableChangeStreamsToPubSubOptions
   @TemplateParameter.Boolean(
       order = 8,
       optional = true,
+      parentName = "messageFormat",
+      parentTriggerValues = {"JSON"},
       description = "Write Base64-encoded row keys",
       helpText =
           "Only supported for the JSON messageFormat. When set to true, row keys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String row keys"
@@ -145,6 +147,8 @@ public interface BigtableChangeStreamsToPubSubOptions
   @TemplateParameter.Boolean(
       order = 9,
       optional = true,
+      parentName = "messageFormat",
+      parentTriggerValues = {"JSON"},
       description = "Write Base64-encoded column qualifiers",
       helpText =
           "Only supported for the JSON messageFormat. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiers"
@@ -157,6 +161,8 @@ public interface BigtableChangeStreamsToPubSubOptions
   @TemplateParameter.Boolean(
       order = 10,
       optional = true,
+      parentName = "messageFormat",
+      parentTriggerValues = {"JSON"},
       description = "Write Base64-encoded values",
       helpText =
           "Only supported for the JSON messageFormat. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String values"

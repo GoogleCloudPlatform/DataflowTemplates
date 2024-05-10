@@ -127,6 +127,8 @@ public interface BigtableChangeStreamsToGcsOptions
   @TemplateParameter.Boolean(
       order = 8,
       optional = true,
+      parentName = "outputFileFormat",
+      parentTriggerValues = {"TEXT"},
       description = "Write Base64-encoded rowkeys",
       helpText =
           "Only supported for the TEXT output file format. When set to true, rowkeys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String rowkeys"
@@ -139,6 +141,8 @@ public interface BigtableChangeStreamsToGcsOptions
   @TemplateParameter.Boolean(
       order = 9,
       optional = true,
+      parentName = "outputFileFormat",
+      parentTriggerValues = {"TEXT"},
       description = "Write Base64-encoded column qualifiers",
       helpText =
           "Only supported for the TEXT output file format. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiers"
@@ -151,6 +155,8 @@ public interface BigtableChangeStreamsToGcsOptions
   @TemplateParameter.Boolean(
       order = 10,
       optional = true,
+      parentName = "outputFileFormat",
+      parentTriggerValues = {"TEXT"},
       description = "Write Base64-encoded value",
       helpText =
           "Only supported for the TEXT output file format. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String values"
