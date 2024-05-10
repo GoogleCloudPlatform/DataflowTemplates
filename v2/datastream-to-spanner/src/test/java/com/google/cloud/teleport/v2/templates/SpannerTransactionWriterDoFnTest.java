@@ -42,12 +42,12 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
 public class SpannerTransactionWriterDoFnTest {
   @Test
-  void testGetTxnTag() {
+  public void testGetTxnTag() {
     String[] args = new String[] {"--jobId=123"};
     SpannerConfig spannerConfig = mock(SpannerConfig.class);
     DataflowWorkerHarnessOptions options =
@@ -102,7 +102,7 @@ public class SpannerTransactionWriterDoFnTest {
   }
 
   @Test
-  void testProcessElement() throws Exception {
+  public void testProcessElement() throws Exception {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     SpannerConfig spannerConfig = mock(SpannerConfig.class);
@@ -157,7 +157,7 @@ public class SpannerTransactionWriterDoFnTest {
   }
 
   @Test
-  void testProcessElementWithInvalidChangeEvent() throws Exception {
+  public void testProcessElementWithInvalidChangeEvent() throws Exception {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     SpannerConfig spannerConfig = mock(SpannerConfig.class);
