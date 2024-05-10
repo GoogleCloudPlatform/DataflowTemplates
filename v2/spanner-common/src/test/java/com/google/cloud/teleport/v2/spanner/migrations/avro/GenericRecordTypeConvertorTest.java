@@ -379,6 +379,42 @@ public class GenericRecordTypeConvertorTest {
   }
 
   @Test
+  public void transformChangeEventTest_nullValues() {
+    GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
+    genericRecord.put("bool_col", null);
+    genericRecord.put("int_col", null);
+    genericRecord.put("float_col", null);
+    genericRecord.put("string_col", null);
+    genericRecord.put("numeric_col", null);
+    genericRecord.put("bytes_col", null);
+    genericRecord.put("timestamp_col", null);
+    genericRecord.put("date_col", null);
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "");
+    Map<String, Value> actual =
+        genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
+    Map<String, Value> expected =
+        Map.of(
+            "bool_col",
+            Value.bool(null),
+            "int_col",
+            Value.int64(null),
+            "float_col",
+            Value.float64(null),
+            "string_col",
+            Value.string(null),
+            "numeric_col",
+            Value.numeric(null),
+            "bytes_col",
+            Value.bytes(null),
+            "timestamp_col",
+            Value.timestamp(null),
+            "date_col",
+            Value.date(null));
+    assertEquals(expected, actual);
+  }
+
+  @Test
   public void transformChangeEventTest_illegalUnionType() {
     GenericRecordTypeConvertor genericRecordTypeConvertor =
         new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "");
@@ -394,21 +430,6 @@ public class GenericRecordTypeConvertorTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> genericRecordTypeConvertor.getSpannerValue(null, schema, "union_col", Type.string()));
-  }
-
-  @Test
-  public void transformChangeEventTest_nullType() {
-    GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "");
-    Schema schema =
-        SchemaBuilder.builder()
-            .unionOf()
-            .nullType()
-            .and()
-            .type(Schema.create(Schema.Type.BOOLEAN))
-            .endUnion();
-    assertNull(
-        genericRecordTypeConvertor.getSpannerValue(null, schema, "union_col", Type.string()));
   }
 
   @Test(expected = IllegalArgumentException.class)

@@ -80,10 +80,7 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, Mutation>
       c.output(mutation);
     } catch (Exception e) {
       // TODO: Add DLQ integration once supported.
-      LOG.error(
-          "Unable to transform source row to spanner mutation: {} {}",
-          e.getMessage(),
-          e.fillInStackTrace());
+      LOG.error("Unable to transform source row to spanner mutation", e);
       transformerErrors.inc();
     }
   }
