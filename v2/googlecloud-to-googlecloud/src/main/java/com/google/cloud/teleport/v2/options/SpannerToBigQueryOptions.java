@@ -27,6 +27,7 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.ProjectId(
       order = 1,
+      groupName = "Source",
       optional = true,
       description = "Spanner Project ID",
       helpText =
@@ -39,6 +40,7 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       description = "Spanner instance ID",
       helpText = "The instance ID of the Spanner database to read from.")
   String getSpannerInstanceId();
@@ -47,6 +49,7 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 3,
+      groupName = "Source",
       description = "Spanner database ID",
       helpText = "The database ID of the Spanner database to export.")
   String getSpannerDatabaseId();
@@ -55,6 +58,7 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 4,
+      groupName = "Source",
       description = "Spanner table name",
       helpText = "The table name of the Spanner database to export.")
   String getSpannerTableId();
@@ -63,6 +67,7 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.Enum(
       order = 5,
+      groupName = "Source",
       enumOptions = {
         @TemplateParameter.TemplateEnumOption("HIGH"),
         @TemplateParameter.TemplateEnumOption("MEDIUM"),
@@ -78,6 +83,7 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 6,
+      groupName = "Source",
       description = "Spanner query",
       helpText = "The SQL query to use to read data from the Spanner database.")
   String getSqlQuery();
@@ -86,6 +92,7 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.GcsReadFile(
       order = 7,
+      groupName = "Target",
       optional = true,
       description = "Cloud Storage path to BigQuery JSON schema",
       helpText =

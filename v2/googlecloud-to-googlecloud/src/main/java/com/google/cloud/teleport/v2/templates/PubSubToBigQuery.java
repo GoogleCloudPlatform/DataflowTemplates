@@ -181,6 +181,7 @@ public class PubSubToBigQuery {
           DataflowPipelineWorkerPoolOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
+        groupName = "Target",
         description = "BigQuery output table",
         helpText =
             "The BigQuery table to write to, formatted as `\"PROJECT_ID:DATASET_NAME.TABLE_NAME\"`.")
@@ -190,6 +191,7 @@ public class PubSubToBigQuery {
 
     @TemplateParameter.PubsubTopic(
         order = 2,
+        groupName = "Source",
         optional = true,
         description = "Input Pub/Sub topic",
         helpText =
@@ -200,6 +202,7 @@ public class PubSubToBigQuery {
 
     @TemplateParameter.PubsubSubscription(
         order = 3,
+        groupName = "Source",
         optional = true,
         description = "Pub/Sub input subscription",
         helpText =
@@ -211,6 +214,7 @@ public class PubSubToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 4,
+        groupName = "Target",
         optional = true,
         description =
             "Table for messages failed to reach the output table (i.e., Deadletter table)",
@@ -226,6 +230,7 @@ public class PubSubToBigQuery {
 
     @TemplateParameter.Boolean(
         order = 5,
+        groupName = "Target",
         optional = true,
         parentName = "useStorageWriteApi",
         parentTriggerValues = {"true"},

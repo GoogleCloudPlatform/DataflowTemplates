@@ -77,6 +77,7 @@ public class PubsubToText {
 
     @TemplateParameter.PubsubTopic(
         order = 1,
+        groupName = "Source",
         optional = true,
         description = "Pub/Sub input topic",
         helpText =
@@ -90,6 +91,7 @@ public class PubsubToText {
 
     @TemplateParameter.PubsubSubscription(
         order = 2,
+        groupName = "Source",
         optional = true,
         description = "Pub/Sub input subscription",
         helpText =
@@ -103,6 +105,7 @@ public class PubsubToText {
 
     @TemplateParameter.GcsWriteFolder(
         order = 3,
+        groupName = "Target",
         description = "Output file directory in Cloud Storage",
         helpText =
             "The path and filename prefix to write write output files to. "
@@ -115,6 +118,7 @@ public class PubsubToText {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
+        groupName = "Target",
         optional = true,
         description = "User provided temp location",
         helpText =
@@ -125,6 +129,7 @@ public class PubsubToText {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         optional = true,
         description = "Output filename prefix of the files to write",
         helpText = "The prefix to place on each windowed file.",
@@ -137,6 +142,7 @@ public class PubsubToText {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Target",
         optional = true,
         description = "Output filename suffix of the files to write",
         helpText =

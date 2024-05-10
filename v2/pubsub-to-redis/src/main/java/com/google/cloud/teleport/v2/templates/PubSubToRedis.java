@@ -133,6 +133,7 @@ public class PubSubToRedis {
       extends JavascriptTextTransformer.JavascriptTextTransformerOptions, PipelineOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input subscription",
         helpText =
             "The Pub/Sub subscription to read the input from, in the format"
@@ -144,6 +145,7 @@ public class PubSubToRedis {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         description = "Redis DB Host",
         helpText = "The Redis database host.",
         example = "your.cloud.db.redislabs.com")
@@ -155,6 +157,7 @@ public class PubSubToRedis {
 
     @TemplateParameter.Integer(
         order = 3,
+        groupName = "Target",
         description = "Redis DB Port",
         helpText = "The Redis database port.",
         example = "12345")
@@ -166,6 +169,7 @@ public class PubSubToRedis {
 
     @TemplateParameter.Password(
         order = 4,
+        groupName = "Target",
         description = "Redis DB Password",
         helpText = "The Redis database password. Defaults to empty.")
     @Default.String("")
@@ -176,6 +180,7 @@ public class PubSubToRedis {
 
     @TemplateParameter.Boolean(
         order = 5,
+        groupName = "Target",
         optional = true,
         description = "Redis ssl enabled",
         helpText = "The Redis database SSL parameter.")
@@ -189,6 +194,7 @@ public class PubSubToRedis {
 
     @TemplateParameter.Enum(
         order = 6,
+        groupName = "Target",
         optional = true,
         enumOptions = {
           @TemplateEnumOption("STRING_SINK"),
@@ -207,6 +213,7 @@ public class PubSubToRedis {
 
     @TemplateParameter.Integer(
         order = 7,
+        groupName = "Target",
         optional = true,
         description = "Redis connection timeout in milliseconds",
         helpText = "The Redis connection timeout in milliseconds. ",
@@ -218,6 +225,7 @@ public class PubSubToRedis {
 
     @TemplateParameter.Long(
         order = 8,
+        groupName = "Target",
         optional = true,
         parentName = "redisSinkType",
         parentTriggerValues = {"HASH_SINK", "LOGGING_SINK"},

@@ -110,6 +110,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 8,
+      groupName = "Target",
       description = "Cloud Spanner Instance Id.",
       helpText = "The destination Cloud Spanner instance.")
   String getInstanceId();
@@ -118,6 +119,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 9,
+      groupName = "Target",
       regexes = {"^[a-z]([a-z0-9_-]{0,28})[a-z0-9]$"},
       description = "Cloud Spanner Database Id.",
       helpText = "The destination Cloud Spanner database.")
@@ -127,6 +129,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.ProjectId(
       order = 10,
+      groupName = "Target",
       description = "Cloud Spanner Project Id.",
       helpText = "This is the name of the Cloud Spanner project.")
   String getProjectId();
@@ -135,6 +138,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 11,
+      groupName = "Target",
       optional = true,
       description = "Cloud Spanner Endpoint to call",
       helpText = "The Cloud Spanner endpoint to call in the template.",
@@ -146,6 +150,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Integer(
       order = 12,
+      groupName = "Source",
       optional = true,
       description = "Maximum number of connections to Source database per worker",
       helpText =

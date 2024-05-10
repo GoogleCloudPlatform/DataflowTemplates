@@ -171,6 +171,7 @@ public class PubSubToMongoDB {
       extends PythonExternalTextTransformer.PythonExternalTextTransformerOptions, PipelineOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input subscription",
         helpText = "Name of the Pub/Sub subscription.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
@@ -181,6 +182,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         description = "MongoDB Connection URI",
         helpText = "Comma separated list of MongoDB servers.",
         example = "host1:port,host2:port,host3:port")
@@ -191,6 +193,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Target",
         description = "MongoDB Database",
         helpText = "Database in MongoDB to store the collection.",
         example = "my-db")
@@ -201,6 +204,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         description = "MongoDB collection",
         helpText = "Name of the collection in the MongoDB database.",
         example = "my-collection")
@@ -211,6 +215,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.BigQueryTable(
         order = 5,
+        groupName = "Target",
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
             "The BigQuery table that stores messages caused by failures, such as mismatched schema, malformed JSON, and so on.",
@@ -222,6 +227,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Long(
         order = 6,
+        groupName = "Target",
         optional = true,
         description = "Batch Size",
         helpText = "Batch size used for batch insertion of documents into MongoDB.")
@@ -232,6 +238,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Long(
         order = 7,
+        groupName = "Target",
         optional = true,
         description = "Batch Size in Bytes",
         helpText = "Batch size in bytes.")
@@ -242,6 +249,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Integer(
         order = 8,
+        groupName = "Target",
         optional = true,
         description = "Max Connection idle time",
         helpText = "Maximum idle time allowed in seconds before connection timeout occurs.")
@@ -252,6 +260,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Boolean(
         order = 9,
+        groupName = "Target",
         optional = true,
         description = "SSL Enabled",
         helpText = "Boolean value indicating whether the connection to MongoDB is SSL enabled.")
@@ -262,6 +271,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Boolean(
         order = 10,
+        groupName = "Target",
         optional = true,
         description = "Ignore SSL Certificate",
         helpText = "Boolean value indicating whether to ignore the SSL certificate.")
@@ -272,6 +282,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Boolean(
         order = 11,
+        groupName = "Target",
         optional = true,
         description = "withOrdered",
         helpText = "Boolean value enabling ordered bulk insertions into MongoDB.")
@@ -282,6 +293,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Boolean(
         order = 12,
+        groupName = "Target",
         optional = true,
         description = "withSSLInvalidHostNameAllowed",
         helpText =

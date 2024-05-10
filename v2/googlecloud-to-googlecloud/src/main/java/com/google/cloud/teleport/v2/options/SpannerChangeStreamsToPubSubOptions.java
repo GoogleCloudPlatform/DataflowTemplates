@@ -30,6 +30,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.ProjectId(
       order = 1,
+      groupName = "Source",
       optional = true,
       description = "Spanner Project ID",
       helpText =
@@ -42,6 +43,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       description = "Spanner instance ID",
       helpText = "The Spanner instance to read change streams from.")
   @Validation.Required
@@ -51,6 +53,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 3,
+      groupName = "Source",
       description = "Spanner database",
       helpText = "The Spanner database to read change streams from.")
   @Validation.Required
@@ -60,6 +63,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 4,
+      groupName = "Source",
       optional = true,
       description = "Spanner database role",
       helpText =
@@ -73,6 +77,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 5,
+      groupName = "Source",
       description = "Spanner metadata instance ID",
       helpText = "The Spanner instance to use for the change streams connector metadata table.")
   @Validation.Required
@@ -82,6 +87,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 6,
+      groupName = "Source",
       description = "Spanner metadata database",
       helpText = "The Spanner database to use for the change streams connector metadata table.")
   @Validation.Required
@@ -91,6 +97,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 7,
+      groupName = "Source",
       optional = true,
       description = "Cloud Spanner metadata table name",
       helpText =
@@ -104,6 +111,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 8,
+      groupName = "Source",
       description = "Spanner change stream",
       helpText = "The name of the Spanner change stream to read from.")
   @Validation.Required
@@ -113,6 +121,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.DateTime(
       order = 9,
+      groupName = "Source",
       optional = true,
       description = "The timestamp to read change streams from",
       helpText =
@@ -126,6 +135,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.DateTime(
       order = 10,
+      groupName = "Source",
       optional = true,
       description = "The timestamp to read change streams to",
       helpText =
@@ -138,6 +148,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 11,
+      groupName = "Source",
       optional = true,
       description = "Cloud Spanner Endpoint to call",
       helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
@@ -150,6 +161,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   @TemplateParameter.Enum(
       order = 12,
       enumOptions = {@TemplateEnumOption("JSON"), @TemplateEnumOption("AVRO")},
+      groupName = "Target",
       optional = true,
       description = "Output data format",
       helpText =
@@ -161,6 +173,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 13,
+      groupName = "Target",
       optional = true,
       description = "Pub/Sub API",
       helpText =
@@ -174,6 +187,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.ProjectId(
       order = 14,
+      groupName = "Target",
       optional = true,
       description = "Pub/Sub Project ID",
       helpText =
@@ -186,6 +200,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 15,
+      groupName = "Target",
       description = "The output Pub/Sub topic",
       helpText = "The Pub/Sub topic for change streams output.")
   @Validation.Required
@@ -195,6 +210,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Enum(
       order = 16,
+      groupName = "Source",
       enumOptions = {
         @TemplateEnumOption("LOW"),
         @TemplateEnumOption("MEDIUM"),

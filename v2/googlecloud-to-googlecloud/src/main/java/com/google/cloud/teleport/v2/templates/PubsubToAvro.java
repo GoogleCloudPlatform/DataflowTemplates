@@ -90,6 +90,7 @@ public class PubsubToAvro {
       extends PipelineOptions, StreamingOptions, WindowedFilenamePolicyOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         optional = true,
         description = "Pub/Sub input subscription",
         helpText =
@@ -102,6 +103,7 @@ public class PubsubToAvro {
 
     @TemplateParameter.PubsubTopic(
         order = 2,
+        groupName = "Source",
         optional = true,
         description = "Pub/Sub input topic",
         helpText =
@@ -113,6 +115,7 @@ public class PubsubToAvro {
 
     @TemplateParameter.GcsWriteFolder(
         order = 3,
+        groupName = "Target",
         optional = false,
         description = "Output file directory in Cloud Storage",
         helpText =
@@ -125,6 +128,7 @@ public class PubsubToAvro {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         optional = true,
         description = "Output filename prefix of the files to write",
         helpText = "The prefix to place on each windowed file.",
@@ -136,6 +140,7 @@ public class PubsubToAvro {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         optional = true,
         description = "Output filename suffix of the files to write",
         helpText =
@@ -148,6 +153,7 @@ public class PubsubToAvro {
 
     @TemplateParameter.GcsWriteFolder(
         order = 6,
+        groupName = "Target",
         optional = false,
         description = "Temporary Avro write directory",
         helpText = "Directory for temporary Avro files.")

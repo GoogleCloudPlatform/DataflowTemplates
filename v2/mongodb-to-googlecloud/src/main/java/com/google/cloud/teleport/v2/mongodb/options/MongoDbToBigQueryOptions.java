@@ -31,6 +31,7 @@ public class MongoDbToBigQueryOptions {
   public interface MongoDbOptions extends PipelineOptions, DataflowPipelineOptions {
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         description = "MongoDB Connection URI",
         helpText = "The MongoDB connection URI in the format `mongodb+srv://:@.`")
     String getMongoDbUri();
@@ -39,6 +40,7 @@ public class MongoDbToBigQueryOptions {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         description = "MongoDB database",
         helpText = "Database in MongoDB to read the collection from.",
         example = "my-db")
@@ -48,6 +50,7 @@ public class MongoDbToBigQueryOptions {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         description = "MongoDB collection",
         helpText = "Name of the collection inside MongoDB database.",
         example = "my-collection")
@@ -57,6 +60,7 @@ public class MongoDbToBigQueryOptions {
 
     @TemplateParameter.Enum(
         order = 4,
+        groupName = "Source",
         enumOptions = {@TemplateEnumOption("FLATTEN"), @TemplateEnumOption("NONE")},
         description = "User option",
         helpText =
@@ -68,6 +72,7 @@ public class MongoDbToBigQueryOptions {
 
     @TemplateParameter.KmsEncryptionKey(
         order = 5,
+        groupName = "Source",
         optional = true,
         description = "Google Cloud KMS key",
         helpText =
@@ -84,6 +89,7 @@ public class MongoDbToBigQueryOptions {
   public interface PubSubOptions extends PipelineOptions, DataflowPipelineOptions {
     @TemplateParameter.PubsubTopic(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input topic",
         helpText =
             "The Pub/Sub input topic to read from, in the format of projects/<PROJECT_ID>/topics/<TOPIC_NAME>.")
@@ -97,6 +103,7 @@ public class MongoDbToBigQueryOptions {
 
     @TemplateParameter.BigQueryTable(
         order = 1,
+        groupName = "Target",
         description = "BigQuery output table",
         helpText =
             "The BigQuery table to write to. For example, `bigquery-project:dataset.output_table`.")
@@ -109,6 +116,7 @@ public class MongoDbToBigQueryOptions {
   public interface JavascriptDocumentTransformerOptions extends PipelineOptions {
     @TemplateParameter.JavascriptUdfFile(
         order = 1,
+        groupName = "Source",
         optional = true,
         description = "JavaScript UDF path in Cloud Storage.",
         helpText =
@@ -120,6 +128,7 @@ public class MongoDbToBigQueryOptions {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = true,
         description = "The name of the JavaScript function to call as your UDF.",
         helpText =

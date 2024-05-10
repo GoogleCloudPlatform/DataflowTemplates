@@ -90,6 +90,7 @@ public class MongoDbToBigQueryCdc {
     // on when pipeline is running on ALO mode and using the Storage Write API
     @TemplateParameter.Boolean(
         order = 1,
+        groupName = "Target",
         optional = true,
         parentName = "useStorageWriteApi",
         parentTriggerValues = {"true"},
