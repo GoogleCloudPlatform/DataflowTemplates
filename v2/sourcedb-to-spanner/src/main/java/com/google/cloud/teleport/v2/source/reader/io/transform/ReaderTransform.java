@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source.reader.io.transform;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
+import java.io.Serializable;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -56,12 +57,12 @@ import org.apache.beam.sdk.values.TupleTag;
  * table separately in the `PCollectionTuple`.
  */
 @AutoValue
-public abstract class ReaderTransform {
-  abstract TupleTag<SourceRow> sourceRowTag();
+public abstract class ReaderTransform implements Serializable {
+  public abstract TupleTag<SourceRow> sourceRowTag();
 
-  abstract TupleTag<SourceTableReference> sourceTableReferenceTag();
+  public abstract TupleTag<SourceTableReference> sourceTableReferenceTag();
 
-  abstract PTransform<PBegin, PCollectionTuple> readTransform();
+  public abstract PTransform<PBegin, PCollectionTuple> readTransform();
 
   public static Builder builder() {
     TupleTag<SourceRow> sourceRowTupleTag = new TupleTag<>();

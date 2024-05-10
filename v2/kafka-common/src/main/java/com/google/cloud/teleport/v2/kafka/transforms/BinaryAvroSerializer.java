@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.kafka.transforms;
 
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import org.apache.avro.Schema;
@@ -25,8 +24,10 @@ import org.apache.avro.io.DatumWriter;
 import org.apache.avro.io.Encoder;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.kafka.common.errors.SerializationException;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.serialization.Serializer;
 
-public class BinaryAvroSerializer extends KafkaAvroSerializer {
+public class BinaryAvroSerializer implements Serializer<GenericRecord> {
   private Schema schema;
 
   public BinaryAvroSerializer() {}
@@ -35,7 +36,13 @@ public class BinaryAvroSerializer extends KafkaAvroSerializer {
     this.schema = schema;
   }
 
-  public byte[] serialize(String subject, GenericRecord record) {
+  @Override
+  public byte[] serialize(String subject, Headers headers, GenericRecord record) {
+    return serialize(subject, record);
+  }
+
+  @Override
+  public byte[] serialize(String topic, GenericRecord record) {
     try {
       ByteArrayOutputStream out = new ByteArrayOutputStream();
       Encoder encoder = EncoderFactory.get().binaryEncoder(out, null);

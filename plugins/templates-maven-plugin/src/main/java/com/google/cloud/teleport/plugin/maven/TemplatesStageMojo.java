@@ -30,6 +30,7 @@ import com.google.cloud.teleport.plugin.PythonDockerfileGenerator;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
 import com.google.cloud.teleport.plugin.TemplatePluginUtils;
 import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
+import com.google.cloud.teleport.plugin.XlangDockerfileGenerator;
 import com.google.cloud.teleport.plugin.YamlDockerfileGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
@@ -483,15 +484,17 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String dockerfileContainer = outputClassesDirectory.getPath() + "/" + containerName;
       String dockerfilePath = dockerfileContainer + "/Dockerfile";
       String xlangCommandSpec = "/template/" + containerName + "/resources/" + commandSpecFileName;
+      String beamVersion = project.getProperties().getProperty("beam.version");
       File dockerfile = new File(dockerfilePath);
       if (!dockerfile.exists()) {
-        PythonDockerfileGenerator.generateXlangDockerfile(
-            basePythonContainerImage,
+        XlangDockerfileGenerator.generateDockerfile(
+            baseContainerImage,
+            beamVersion,
+            pythonVersion,
             containerName,
             targetDirectory,
             project.getArtifact().getFile(),
-            xlangCommandSpec,
-            project.getProperties().getProperty("beam.version"));
+            xlangCommandSpec);
       }
       LOG.info("Staging XLANG image using Dockerfile");
       stageXlangUsingDockerfile(imagePath, containerName + "/Dockerfile");
