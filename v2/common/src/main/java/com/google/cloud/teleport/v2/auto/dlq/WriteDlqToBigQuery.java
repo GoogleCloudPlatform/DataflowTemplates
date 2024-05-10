@@ -34,6 +34,7 @@ public class WriteDlqToBigQuery implements TemplateTransform<BigQueryDlqOptions>
     @TemplateParameter.BigQueryTable(
         order = 4,
         optional = true,
+        groupName = "Target",
         description =
             "Table for messages failed to reach the output table (i.e., Deadletter table)",
         helpText =

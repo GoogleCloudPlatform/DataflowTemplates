@@ -133,6 +133,7 @@ public class PubSubToRedis {
       extends JavascriptTextTransformer.JavascriptTextTransformerOptions, PipelineOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input subscription",
         helpText =
             "Pub/Sub subscription to read the input from, in the format of"
@@ -144,6 +145,7 @@ public class PubSubToRedis {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         description = "Redis DB Host",
         helpText = "Redis database host.",
         example = "your.cloud.db.redislabs.com")
@@ -155,6 +157,7 @@ public class PubSubToRedis {
 
     @TemplateParameter.Integer(
         order = 3,
+        groupName = "Target",
         description = "Redis DB Port",
         helpText = "Redis database port.",
         example = "12345")
@@ -166,6 +169,7 @@ public class PubSubToRedis {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         description = "Redis DB Password",
         helpText = "Redis database password.")
     @Default.String("")
@@ -176,6 +180,7 @@ public class PubSubToRedis {
 
     @TemplateParameter.Boolean(
         order = 5,
+        groupName = "Target",
         optional = true,
         description = "Redis ssl enabled",
         helpText = "Redis database ssl parameter.")
@@ -189,6 +194,7 @@ public class PubSubToRedis {
 
     @TemplateParameter.Enum(
         order = 6,
+        groupName = "Target",
         optional = true,
         enumOptions = {
           @TemplateEnumOption("STRING_SINK"),
@@ -207,6 +213,7 @@ public class PubSubToRedis {
 
     @TemplateParameter.Integer(
         order = 7,
+        groupName = "Target",
         optional = true,
         description = "Redis connection timeout in milliseconds",
         helpText = "Redis connection timeout in milliseconds.",
@@ -218,6 +225,7 @@ public class PubSubToRedis {
 
     @TemplateParameter.Long(
         order = 8,
+        groupName = "Target",
         optional = true,
         description = "Hash key expiration time in sec (ttl)",
         helpText =

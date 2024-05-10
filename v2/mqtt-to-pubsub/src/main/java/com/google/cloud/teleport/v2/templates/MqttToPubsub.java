@@ -121,6 +121,7 @@ public class MqttToPubsub {
   public interface MqttToPubsubOptions extends PipelineOptions {
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         optional = true,
         regexes = {"[,\\/:a-zA-Z0-9._-]+"},
         description = "MQTT Broker IP",
@@ -133,6 +134,7 @@ public class MqttToPubsub {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = false,
         regexes = {"[\\/a-zA-Z0-9._-]+"},
         description = "MQTT topic(s) to read the input from",
@@ -145,6 +147,7 @@ public class MqttToPubsub {
 
     @TemplateParameter.PubsubTopic(
         order = 3,
+        groupName = "Target",
         description = "Output Pub/Sub topic",
         helpText =
             "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
@@ -156,6 +159,7 @@ public class MqttToPubsub {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Source",
         description = "MQTT Username",
         helpText = "MQTT username for authentication with MQTT server",
         example = "sampleusername")
@@ -165,6 +169,7 @@ public class MqttToPubsub {
 
     @TemplateParameter.Password(
         order = 5,
+        groupName = "Source",
         description = "MQTT Password",
         helpText = "Password for username provided for authentication with MQTT server",
         example = "samplepassword")
