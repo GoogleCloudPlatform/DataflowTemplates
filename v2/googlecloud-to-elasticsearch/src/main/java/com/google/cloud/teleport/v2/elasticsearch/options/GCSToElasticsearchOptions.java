@@ -32,6 +32,7 @@ public interface GCSToElasticsearchOptions
 
   @TemplateParameter.BigQueryTable(
       order = 1,
+      groupName = "Target",
       description = "BigQuery Deadletter table to send failed inserts.",
       helpText = "The BigQuery dead-letter table to send failed inserts to.",
       example = "your-project:your-dataset.your-table-name")
@@ -42,6 +43,7 @@ public interface GCSToElasticsearchOptions
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       optional = true,
       regexes = {"[a-zA-Z0-9._-]+"},
       description = "Input file format",
