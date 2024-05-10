@@ -469,6 +469,23 @@ public class ImageSpecParameter {
         this.setHiddenUi(kmsEncryptionKeyParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
         break;
+      case "MachineType":
+        TemplateParameter.MachineType machineTypeParam =
+            (TemplateParameter.MachineType) parameterAnnotation;
+        if (!machineTypeParam.name().isEmpty()) {
+          this.setName(machineTypeParam.name());
+        }
+        processDescriptions(
+            machineTypeParam.groupName(),
+            machineTypeParam.description(),
+            machineTypeParam.helpText(),
+            machineTypeParam.example());
+        this.setParentName(machineTypeParam.parentName());
+        this.setParentTriggerValues(machineTypeParam.parentTriggerValues());
+        this.setOptional(machineTypeParam.optional());
+        this.setHiddenUi(machineTypeParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.TEXT);
+        break;
       case "Duration":
         TemplateParameter.Duration durationParam = (TemplateParameter.Duration) parameterAnnotation;
         if (!durationParam.name().isEmpty()) {

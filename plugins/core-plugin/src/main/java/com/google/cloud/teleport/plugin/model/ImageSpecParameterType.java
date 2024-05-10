@@ -45,6 +45,9 @@ public enum ImageSpecParameterType {
   /** Pub/Sub Topic to read or write. */
   PUBSUB_TOPIC,
 
+  /** Machine Type parameter. */
+  MACHINE_TYPE,
+
   /** Boolean parameter. */
   BOOLEAN,
 
