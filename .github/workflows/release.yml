@@ -23,7 +23,7 @@ permissions:
 jobs:
   release:
     name: Create Release
-    runs-on: [self-hosted, release]
+    runs-on: [self-hosted, it]
     steps:
     - name: Get releaser identity
       run: |

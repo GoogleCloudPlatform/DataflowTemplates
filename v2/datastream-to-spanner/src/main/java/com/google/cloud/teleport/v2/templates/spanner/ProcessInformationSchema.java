@@ -199,19 +199,5 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
           .filter(f -> !existingShadowTables.contains(shadowTablePrefix + f))
           .collect(Collectors.toList());
     }
-
-    /*
-      Added for the purpose of unit testing
-    */
-    public void setDialect(Dialect dialect) {
-      this.dialect = dialect;
-    }
-
-    /*
-      Added for the purpose of unit testing
-    */
-    public void setSpannerAccessor(SpannerAccessor spannerAccessor) {
-      this.spannerAccessor = spannerAccessor;
-    }
   }
 }

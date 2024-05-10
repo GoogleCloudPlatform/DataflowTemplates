@@ -358,7 +358,6 @@
           <excludes>
             <!-- Excluding auto-generated classes. -->
             <exclude>**/*AutoValue_*</exclude>
-            <exclude>**/*Exception.*</exclude>
           </excludes>
         </configuration>
         <executions>

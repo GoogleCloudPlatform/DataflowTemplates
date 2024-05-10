@@ -87,7 +87,7 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
                 pubsubResourceManager,
                 new HashMap<>() {
                   {
-                    put("inputFileFormat", "avro");
+                    put("inputFileFormat", "json");
                   }
                 });
       }
@@ -108,7 +108,7 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
   }
 
   @Test
-  public void migrationTestWithAllDatatypeConversionMapping() {
+  public void migrationTestWithAllDatatypeDefaultMapping() {
     // Construct a ChainedConditionCheck with 4 stages.
     // 1. Send initial wave of events
     // 2. Wait on Spanner to have events
@@ -118,8 +118,8 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE1,
-                        "backfill.avro",
-                        "DataStreamToSpannerDatatypeIT/mysql-backfill-AllDatatypeColumns.avro"),
+                        "backfill.jsonl",
+                        "DataStreamToSpannerDatatypeIT/mysql-backfill-AllDatatypeColumns.jsonl"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -142,13 +142,8 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE1,
-                        "cdc1.avro",
-                        "DataStreamToSpannerDatatypeIT/mysql-cdc1-AllDatatypeColumns.avro"),
-                    uploadDataStreamFile(
-                        jobInfo,
-                        TABLE1,
-                        "cdc2.avro",
-                        "DataStreamToSpannerDatatypeIT/mysql-cdc2-AllDatatypeColumns.avro"),
+                        "cdc1.jsonl",
+                        "DataStreamToSpannerDatatypeIT/mysql-cdc-AllDatatypeColumns.jsonl"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(1)
                         .setMaxRows(1)
@@ -166,7 +161,7 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
   }
 
   @Test
-  public void migrationTestWithAllDatatypeDefaultMapping() {
+  public void migrationTestWithAllDatatypeConversionMapping() {
     // Construct a ChainedConditionCheck with 4 stages.
     // 1. Send initial wave of events
     // 2. Wait on Spanner to have events
@@ -176,8 +171,8 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE2,
-                        "backfill.avro",
-                        "DataStreamToSpannerDatatypeIT/mysql-backfill-AllDatatypeColumns2.avro"),
+                        "backfill.jsonl",
+                        "DataStreamToSpannerDatatypeIT/mysql-backfill-AllDatatypeColumns2.jsonl"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE2)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -200,8 +195,8 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE2,
-                        "cdc1.avro",
-                        "DataStreamToSpannerDatatypeIT/mysql-cdc-AllDatatypeColumns2.avro"),
+                        "cdc1.jsonl",
+                        "DataStreamToSpannerDatatypeIT/mysql-cdc-AllDatatypeColumns2.jsonl"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE2)
                         .setMinRows(1)
                         .setMaxRows(1)
@@ -224,83 +219,72 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
     Map<String, Object> row = new HashMap<>();
     row.put("varchar_column", "value1");
     row.put("tinyint_column", "10");
-    row.put("date_column", "2024-02-08T00:00:00Z");
+    row.put("text_column", "dGV4dF9kYXRhXzEK");
+    row.put("date_column", "2024-02-08T00:00:00.000Z");
     row.put("smallint_column", "50");
     row.put("mediumint_column", "1000");
     row.put("int_column", "50000");
     row.put("bigint_column", "987654321");
     row.put("float_column", "45.67");
     row.put("double_column", "123.789");
-    row.put("decimal_column", "456.12");
-    row.put("datetime_column", "2024-02-08T08:15:30Z");
-    row.put("timestamp_column", "2024-02-08T08:15:30Z");
+    row.put("datetime_column", "2024-02-08T08:15:30.000Z");
+    row.put("timestamp_column", "2024-02-08T08:15:30.000Z");
     row.put("time_column", "29730000000");
     row.put("year_column", "2022");
-    // text, char, tinytext, mediumtext, longtext are BYTE columns
-    row.put("text_column", "/u/9n58P");
-    row.put("char_column", "v58P");
-    row.put("tinytext_column", "7+/+7/2fnw8=");
-    row.put("mediumtext_column", "/+3v79/v2vrx");
-    row.put("longtext_column", "/+/v3+/a+vE=");
+    row.put("char_column", "Y2hhcjEK");
     row.put("tinyblob_column", "74696e79626c6f625f646174615f31");
+    row.put("tinytext_column", "dGlueXRleHRfZGF0YV8xCg==");
     row.put("blob_column", "626c6f625f646174615f31");
     row.put("mediumblob_column", "6d656469756d626c6f625f646174615f31");
+    row.put("mediumtext_column", "bWVkaXVtdGV4dF9kYXRhXzE=");
     row.put("longblob_column", "6c6f6e67626c6f625f646174615f31");
+    row.put("longtext_column", "bG9uZ3RleHRfZGF0YV8x");
     row.put("enum_column", "2");
     row.put("bool_column", 0);
     row.put("other_bool_column", "1");
-    // The result which is shown in the matcher does not contain the full 40 characters
-    // of the binary and the ending characters seem to be getting truncated.
-    // Have manually verified that the values in spanner and source are identical for all the
-    // 40 characters.
-    // TODO: This is likely an issue with the matcher, figure out why this is happening.
-    row.put("binary_column", "62696e6172795f3100000000000000000...");
+    row.put("binary_column", "62696e6172795f31");
     row.put("varbinary_column", "76617262696e6172795f646174615f31");
     row.put("bit_column", "102");
     events.add(row);
 
-    row.clear();
     row.put("varchar_column", "value2");
     row.put("tinyint_column", "5");
-    row.put("date_column", "2024-02-09T00:00:00Z");
+    row.put("text_column", "dGV4dF9kYXRhXzIK");
+    row.put("date_column", "2024-02-09T00:00:00.000Z");
     row.put("smallint_column", "25");
     row.put("mediumint_column", "500");
     row.put("int_column", "25000");
     row.put("bigint_column", "987654");
     row.put("float_column", "12.34");
     row.put("double_column", "56.789");
-    row.put("decimal_column", 123.45);
-    row.put("datetime_column", "2024-02-09T15:30:45Z");
-    row.put("timestamp_column", "2024-02-09T15:30:45Z");
+    row.put("datetime_column", "2024-02-09T15:30:45.000Z");
+    row.put("timestamp_column", "2024-02-09T15:30:45.000Z");
     row.put("time_column", "55845000000");
     row.put("year_column", "2023");
-    // text, char, tinytext, mediumtext, longtext are BYTE columns
-    row.put("text_column", "/u/9n58f");
-    row.put("char_column", "v58f");
-    row.put("tinytext_column", "7+/+7/2fnx8=");
-    row.put("mediumtext_column", "/+3v79/v2vry");
-    row.put("longtext_column", "/+/v3+/a+vI=");
+    row.put("char_column", "Y2hhcjIK");
     row.put("tinyblob_column", "74696e79626c6f625f646174615f32");
+    row.put("tinytext_column", "dGlueXRleHRfZGF0YV8yCg==");
     row.put("blob_column", "626c6f625f646174615f32");
     row.put("mediumblob_column", "6d656469756d626c6f625f646174615f32");
+    row.put("mediumtext_column", "bWVkaXVtdGV4dF9kYXRhXzI=");
     row.put("longblob_column", "6c6f6e67626c6f625f646174615f32");
+    row.put("longtext_column", "bG9uZ3RleHRfZGF0YV8y");
     row.put("enum_column", "3");
     row.put("bool_column", 1);
     row.put("other_bool_column", "0");
-    row.put("binary_column", "62696e6172795f3200000000000000000...");
+    row.put("binary_column", "62696e6172795f32");
     row.put("varbinary_column", "76617262696e6172795f646174615f32");
     row.put("bit_column", "25");
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery(
-                "select varchar_column, tinyint_column, date_column"
+                "select varchar_column, tinyint_column, text_column, date_column"
                     + ", smallint_column, mediumint_column, int_column, bigint_column, float_column"
-                    + ", double_column, datetime_column, timestamp_column, time_column, year_column"
-                    + ", tinyblob_column, blob_column, mediumblob_column"
-                    + ", longblob_column, enum_column, bool_column, other_bool_column"
-                    + ", varbinary_column, bit_column, decimal_column, text_column, binary_column"
-                    + ", char_column, tinytext_column, mediumtext_column, longtext_column from AllDatatypeColumns"))
+                    + ", double_column, datetime_column, timestamp_column, time_column, year_column, char_column"
+                    + ", tinyblob_column, tinytext_column, blob_column, mediumblob_column, mediumtext_column, "
+                    + " longblob_column, longtext_column, enum_column, bool_column, other_bool_column, binary_column"
+                    + ", varbinary_column, bit_column from AllDatatypeColumns"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
@@ -310,45 +294,42 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
     Map<String, Object> row = new HashMap<>();
     row.put("varchar_column", "value1");
     row.put("tinyint_column", "15");
-    row.put("date_column", "2024-02-08T00:00:00Z");
+    row.put("text_column", "dGV4dF9kYXRhXzEK");
+    row.put("date_column", "2024-02-08T00:00:00.000Z");
     row.put("smallint_column", "50");
     row.put("mediumint_column", "1000");
     row.put("int_column", "50000");
     row.put("bigint_column", "987654321");
     row.put("float_column", "45.67");
     row.put("double_column", "123.789");
-    row.put("decimal_column", "456.12");
-    row.put("datetime_column", "2024-02-08T08:15:30Z");
-    row.put("timestamp_column", "2024-02-08T08:15:30Z");
+    row.put("datetime_column", "2024-02-08T08:15:30.000Z");
+    row.put("timestamp_column", "2024-02-08T08:15:30.000Z");
     row.put("time_column", "29730000000");
     row.put("year_column", "2022");
-    // text, char, tinytext, mediumtext, longtext are BYTE columns
-    row.put("text_column", "/u/9n58P");
-    row.put("char_column", "v58P");
-    row.put("tinytext_column", "7+/+7/2fnw8=");
-    row.put("mediumtext_column", "/+3v79/v2vrx");
-    row.put("longtext_column", "/+/v3+/a+vE=");
+    row.put("char_column", "Y2hhcjEK");
     row.put("tinyblob_column", "74696e79626c6f625f646174615f31");
+    row.put("tinytext_column", "dGlueXRleHRfZGF0YV8xCg==");
     row.put("blob_column", "626c6f625f646174615f31");
     row.put("mediumblob_column", "6d656469756d626c6f625f646174615f31");
+    row.put("mediumtext_column", "bWVkaXVtdGV4dF9kYXRhXzE=");
     row.put("longblob_column", "6c6f6e67626c6f625f646174615f31");
+    row.put("longtext_column", "bG9uZ3RleHRfZGF0YV8x");
     row.put("enum_column", "2");
     row.put("bool_column", 0);
     row.put("other_bool_column", "1");
-    row.put("binary_column", "62696e6172795f3100000000000000000...");
+    row.put("binary_column", "62696e6172795f31");
     row.put("varbinary_column", "76617262696e6172795f646174615f31");
     row.put("bit_column", "102");
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery(
-                "select varchar_column, tinyint_column, date_column"
+                "select varchar_column, tinyint_column, text_column, date_column"
                     + ", smallint_column, mediumint_column, int_column, bigint_column, float_column"
-                    + ", double_column, datetime_column, timestamp_column, time_column, year_column"
-                    + ", tinyblob_column, blob_column, mediumblob_column"
-                    + ", longblob_column, enum_column, bool_column, other_bool_column"
-                    + ", varbinary_column, bit_column, decimal_column, text_column, binary_column"
-                    + ", char_column, tinytext_column, mediumtext_column, longtext_column from AllDatatypeColumns"))
+                    + ", double_column, datetime_column, timestamp_column, time_column, year_column, char_column"
+                    + ", tinyblob_column, tinytext_column, blob_column, mediumblob_column, mediumtext_column, "
+                    + " longblob_column, longtext_column, enum_column, bool_column, other_bool_column, binary_column"
+                    + ", varbinary_column, bit_column from AllDatatypeColumns"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
@@ -366,7 +347,6 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
     row.put("bigint_column", 987654321);
     row.put("float_column", 45.67);
     row.put("double_column", 123.789);
-    row.put("decimal_column", 456.12);
     row.put("datetime_column", "2024-02-08T08:15:30Z");
     row.put("timestamp_column", "2024-02-08T08:15:30Z");
     row.put("time_column", "29730000000");
@@ -388,7 +368,6 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
     row.put("bit_column", "AQI=");
     events.add(row);
 
-    row.clear();
     row.put("varchar_column", "value2");
     row.put("tinyint_column", 5);
     row.put("text_column", "text2");
@@ -399,7 +378,6 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
     row.put("bigint_column", 987654);
     row.put("float_column", 12.34);
     row.put("double_column", 56.789);
-    row.put("decimal_column", 123.45);
     row.put("datetime_column", "2024-02-09T15:30:45Z");
     row.put("timestamp_column", "2024-02-09T15:30:45Z");
     row.put("time_column", "55845000000");
@@ -424,9 +402,9 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
                 "select varchar_column, tinyint_column, text_column, date_column"
                     + ", smallint_column, mediumint_column, int_column, bigint_column, float_column"
                     + ", double_column, datetime_column, timestamp_column, time_column, year_column, char_column"
-                    + ", tinyblob_column, tinytext_column, blob_column, mediumblob_column, mediumtext_column"
-                    + ", longblob_column, longtext_column, enum_column, bool_column, binary_column"
-                    + ", varbinary_column, bit_column, decimal_column from AllDatatypeColumns2"))
+                    + ", tinyblob_column, tinytext_column, blob_column, mediumblob_column, mediumtext_column, "
+                    + " longblob_column, longtext_column, enum_column, bool_column, binary_column"
+                    + ", varbinary_column, bit_column from AllDatatypeColumns2"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
@@ -443,7 +421,6 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
     row.put("bigint_column", 987654321);
     row.put("float_column", 45.67);
     row.put("double_column", 123.789);
-    row.put("decimal_column", 456.12);
     row.put("datetime_column", "2024-02-08T08:15:30Z");
     row.put("timestamp_column", "2024-02-08T08:15:30Z");
     row.put("time_column", "29730000000");
@@ -470,9 +447,9 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
                 "select varchar_column, tinyint_column, text_column, date_column"
                     + ", smallint_column, mediumint_column, int_column, bigint_column, float_column"
                     + ", double_column, datetime_column, timestamp_column, time_column, year_column, char_column"
-                    + ", tinyblob_column, tinytext_column, blob_column, mediumblob_column, mediumtext_column"
-                    + ", longblob_column, longtext_column, enum_column, bool_column, binary_column"
-                    + ", varbinary_column, bit_column, decimal_column from AllDatatypeColumns2"))
+                    + ", tinyblob_column, tinytext_column, blob_column, mediumblob_column, mediumtext_column, "
+                    + " longblob_column, longtext_column, enum_column, bool_column, binary_column"
+                    + ", varbinary_column, bit_column from AllDatatypeColumns2"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 }

@@ -51,8 +51,6 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, Mutation>
   @ProcessElement
   public void processElement(ProcessContext c) {
     SourceRow sourceRow = c.element();
-    LOG.debug("Starting transformation for Source Row {}", sourceRow);
-
     if (!tableIdMapper().containsKey(sourceRow.tableSchemaUUID())) {
       // TODO: Remove LOG statements from processElement once counters and DLQ is supported.
       LOG.error(
@@ -73,7 +71,10 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, Mutation>
       c.output(mutation);
     } catch (Exception e) {
       // TODO: Add DLQ integration once supported.
-      LOG.error("Unable to transform source row to spanner mutation: {}", e.getMessage());
+      LOG.error(
+          "Unable to transform source row to spanner mutation: {} {}",
+          e.getMessage(),
+          e.fillInStackTrace());
     }
   }
 
