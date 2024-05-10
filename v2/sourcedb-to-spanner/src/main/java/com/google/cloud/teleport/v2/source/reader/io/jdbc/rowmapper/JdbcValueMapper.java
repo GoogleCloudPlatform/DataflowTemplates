@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper;
 
+import java.io.Serializable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import org.apache.avro.Schema;
@@ -25,7 +26,7 @@ import org.apache.avro.Schema;
  *
  * @param <T>
  */
-public class JdbcValueMapper<T extends Object> {
+public class JdbcValueMapper<T extends Object> implements Serializable {
 
   private ResultSetValueExtractor<T> valueExtractor;
   private ResultSetValueMapper<T> valueMapper;

@@ -148,7 +148,8 @@ public class DataStreamToBigQuery {
         order = 1,
         description = "File location for Datastream file output in Cloud Storage.",
         helpText =
-            "The file location for Datastream file output in Cloud Storage, in the format: gs://<BUCKET_NAME>/<ROOT_PATH>/.")
+            "This is the file location for Datastream file output in Cloud Storage, in the "
+                + "format: gs://${BUCKET}/${ROOT_PATH}/.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -158,7 +159,7 @@ public class DataStreamToBigQuery {
         enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("json")},
         description = "Datastream output file format (avro/json).",
         helpText =
-            "The format of the output files produced by Datastream. Value can be 'avro' or 'json'. Defaults to: avro.")
+            "The format of the output files produced by Datastream. Value can be 'avro' or 'json'.")
     @Default.String("avro")
     String getInputFileFormat();
 
@@ -168,7 +169,9 @@ public class DataStreamToBigQuery {
         order = 3,
         description = "The Pub/Sub subscription on the Cloud Storage bucket.",
         helpText =
-            "The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files available for processing, in the format: projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>.")
+            "The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files"
+                + " available for processing, in the format: "
+                + "projects/{PROJECT_NAME}/subscriptions/{SUBSCRIPTION_NAME}")
     String getGcsPubSubSubscription();
 
     void setGcsPubSubSubscription(String value);
@@ -178,7 +181,8 @@ public class DataStreamToBigQuery {
         optional = true,
         description = "Name or template for the stream to poll for schema information.",
         helpText =
-            "The name or the template for the stream to poll for schema information. Defaults to: {_metadata_stream}. The default value is usually enough.")
+            "This is the name or template for the stream to poll for schema information. Default is"
+                + " {_metadata_stream}. The default value is enough under most conditions.")
     String getStreamName();
 
     void setStreamName(String value);
@@ -190,7 +194,8 @@ public class DataStreamToBigQuery {
             "The starting DateTime used to fetch from Cloud Storage "
                 + "(https://tools.ietf.org/html/rfc3339).",
         helpText =
-            "The starting DateTime to use to fetch data from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z.")
+            "The starting DateTime used to fetch from Cloud Storage "
+                + "(https://tools.ietf.org/html/rfc3339).")
     @Default.String("1970-01-01T00:00:00.00Z")
     String getRfcStartDateTime();
 
@@ -211,7 +216,8 @@ public class DataStreamToBigQuery {
         optional = true,
         description = "Project Id for BigQuery datasets.",
         helpText =
-            "The ID of the Google Cloud project that contains the BigQuery datasets to output data into. The default for this parameter is the project where the Dataflow pipeline is running.")
+            "Project for BigQuery datasets to output data into. The default for this parameter "
+                + "is the project where the Dataflow pipeline is running.")
     String getOutputProjectId();
 
     void setOutputProjectId(String projectId);
@@ -220,7 +226,9 @@ public class DataStreamToBigQuery {
         order = 8,
         description = "Name or template for the dataset to contain staging tables.",
         helpText =
-            "The name of the dataset that contains staging tables. This parameter supports templates, for example {_metadata_dataset}_log or my_dataset_log. Normally, this parameter is a dataset name. Defaults to: {_metadata_dataset}.")
+            "This is the name for the dataset to contain staging tables. This parameter supports "
+                + "templates (e.g. {_metadata_dataset}_log or my_dataset_log). Normally, this "
+                + "parameter is a dataset name.")
     @Default.String("{_metadata_dataset}")
     String getOutputStagingDatasetTemplate();
 
@@ -231,7 +239,8 @@ public class DataStreamToBigQuery {
         optional = true,
         description = "Template for the name of staging tables.",
         helpText =
-            "The template to use to name the staging tables. For example, {_metadata_table}). Defaults to: {_metadata_table}_log.")
+            "This is the template for the name of staging tables (e.g. {_metadata_table}). "
+                + "Default is {_metadata_table}_log.")
     @Default.String("{_metadata_table}_log")
     String getOutputStagingTableNameTemplate();
 
@@ -241,7 +250,9 @@ public class DataStreamToBigQuery {
         order = 10,
         description = "Template for the dataset to contain replica tables.",
         helpText =
-            "The name of the dataset that contains the replica tables. This parameter supports templates, for example {_metadata_dataset} or my_dataset. Normally, this parameter is a dataset name. Defaults to: {_metadata_dataset}.")
+            "This is the name for the dataset to contain replica tables. This parameter supports"
+                + " templates (e.g. {_metadata_dataset} or my_dataset). Normally, this parameter is"
+                + " a dataset name.")
     @Default.String("{_metadata_dataset}")
     String getOutputDatasetTemplate();
 
@@ -252,7 +263,8 @@ public class DataStreamToBigQuery {
         optional = true,
         description = "Template for the name of replica tables.",
         helpText =
-            "The template to use for the name of the replica tables, for example {_metadata_table}. Defaults to: {_metadata_table}.")
+            "This is the template for the name of replica tables (e.g. {_metadata_table}). "
+                + "Default is {_metadata_table}.")
     @Default.String("{_metadata_table}")
     String getOutputTableNameTemplate();
 
@@ -262,8 +274,7 @@ public class DataStreamToBigQuery {
         order = 12,
         optional = true,
         description = "Fields to be ignored",
-        helpText =
-            "Comma-separated fields to ignore in BigQuery. Defaults to: _metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count.",
+        helpText = "Fields to ignore in BigQuery (comma separator).",
         example = "_metadata_stream,_metadata_schema")
     @Default.String(
         "_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,"
@@ -277,7 +288,7 @@ public class DataStreamToBigQuery {
         order = 13,
         optional = true,
         description = "The number of minutes between merges for a given table",
-        helpText = "The number of minutes between merges for a given table. Defaults to: 5.")
+        helpText = "The number of minutes between merges for a given table.")
     @Default.Integer(5)
     Integer getMergeFrequencyMinutes();
 
@@ -287,7 +298,8 @@ public class DataStreamToBigQuery {
         order = 14,
         description = "Dead letter queue directory.",
         helpText =
-            "The path that Dataflow uses to write the dead-letter queue output. This path must not be in the same path as the Datastream file output. Defaults to empty.")
+            "This is the file path for Dataflow to write the dead letter queue output. This "
+                + "path should not be in the same path as the Datastream file output.")
     @Default.String("")
     String getDeadLetterQueueDirectory();
 
@@ -297,7 +309,7 @@ public class DataStreamToBigQuery {
         order = 15,
         optional = true,
         description = "The number of minutes between DLQ Retries.",
-        helpText = "The number of minutes between DLQ Retries. Defaults to: 10.")
+        helpText = "The number of minutes between DLQ Retries.")
     @Default.Integer(10)
     Integer getDlqRetryMinutes();
 
@@ -307,7 +319,7 @@ public class DataStreamToBigQuery {
         order = 16,
         optional = true,
         description = "Datastream API Root URL (only required for testing)",
-        helpText = "The Datastream API root URL. Defaults to: https://datastream.googleapis.com/.")
+        helpText = "Datastream API Root URL")
     @Default.String("https://datastream.googleapis.com/")
     String getDataStreamRootUrl();
 
@@ -317,7 +329,7 @@ public class DataStreamToBigQuery {
         order = 17,
         optional = true,
         description = "A switch to disable MERGE queries for the job.",
-        helpText = "Whether to disable MERGE queries for the job. Defaults to: true.")
+        helpText = "A switch to disable MERGE queries for the job.")
     @Default.Boolean(true)
     Boolean getApplyMerge();
 
@@ -328,7 +340,8 @@ public class DataStreamToBigQuery {
         optional = true,
         description = "Concurrent queries for merge.",
         helpText =
-            "The number of concurrent BigQuery MERGE queries. Only effective when applyMerge is set to true. Defaults to: 30.")
+            "The number of concurrent BigQuery MERGE queries. Only effective when applyMerge is set"
+                + " to true. Default is 30.")
     @Default.Integer(MergeConfiguration.DEFAULT_MERGE_CONCURRENCY)
     Integer getMergeConcurrency();
 
@@ -339,7 +352,8 @@ public class DataStreamToBigQuery {
         optional = true,
         description = "Partition retention days.",
         helpText =
-            "The number of days to use for partition retention when running BigQuery merges. Defaults to: 1.")
+            "The number of days to use for partition retention when running BigQuery merges."
+                + " Default is 1.")
     @Default.Integer(MergeConfiguration.DEFAULT_PARTITION_RETENTION_DAYS)
     Integer getPartitionRetentionDays();
 
@@ -350,7 +364,9 @@ public class DataStreamToBigQuery {
         optional = true,
         description = "Use at at-least-once semantics in BigQuery Storage Write API",
         helpText =
-            "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If true, at-least-once semantics are used for the Storage Write API. Otherwise, exactly-once semantics are used. Defaults to: false.",
+            "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"
+                + " enabled the at-least-once semantics will be used for Storage Write API, otherwise"
+                + " exactly-once semantics will be used.",
         hiddenUi = true)
     @Default.Boolean(false)
     @Override

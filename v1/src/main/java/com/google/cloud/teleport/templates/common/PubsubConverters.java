@@ -45,7 +45,8 @@ public class PubsubConverters {
     @TemplateParameter.PubsubSubscription(
         order = 1,
         description = "Pub/Sub input subscription",
-        helpText = "The Pub/Sub subscription to read the input from.",
+        helpText =
+            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     ValueProvider<String> getInputSubscription();
 
@@ -58,7 +59,7 @@ public class PubsubConverters {
         order = 1,
         description = "Output deadletter Pub/Sub topic",
         helpText =
-            "The Pub/Sub topic to forward undeliverable messages to. For example, projects/<PROJECT_ID>/topics/<TOPIC_NAME>.")
+            "The Pub/Sub topic to publish deadletter records to. The name should be in the format of `projects/your-project-id/topics/your-topic-name`.")
     @Validation.Required
     ValueProvider<String> getOutputDeadletterTopic();
 
