@@ -45,15 +45,14 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
+/** Unit tests for SpannerTransactionWriterDoFn class. */
 public class SpannerTransactionWriterDoFnTest {
   @Test
   public void testGetTxnTag() {
     String[] args = new String[] {"--jobId=123"};
     SpannerConfig spannerConfig = mock(SpannerConfig.class);
     DataflowWorkerHarnessOptions options =
-        PipelineOptionsFactory.fromArgs(args)
-            .withValidation()
-            .as(DataflowWorkerHarnessOptions.class);
+        PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
         new SpannerTransactionWriterDoFn(spannerConfig, null, null, null, "", "mysql", false, true);
     String result = spannerTransactionWriterDoFn.getTxnTag(options);
@@ -118,9 +117,7 @@ public class SpannerTransactionWriterDoFnTest {
 
     String[] args = new String[] {"--jobId=123"};
     DataflowWorkerHarnessOptions options =
-        PipelineOptionsFactory.fromArgs(args)
-            .withValidation()
-            .as(DataflowWorkerHarnessOptions.class);
+        PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
     outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
