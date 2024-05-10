@@ -87,6 +87,7 @@ public class SpannerConverters {
   public interface SpannerReadOptions extends PipelineOptions {
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         regexes = {"^.+$"},
         description = "Spanner Table",
         helpText = "The Spanner table to read the data from.")
@@ -97,6 +98,7 @@ public class SpannerConverters {
 
     @TemplateParameter.ProjectId(
         order = 2,
+        groupName = "Source",
         description = "Read data from Cloud Spanner Project Id",
         helpText =
             "The ID of the Google Cloud project that contains the Spanner database to read data from.")
@@ -107,6 +109,7 @@ public class SpannerConverters {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {".+"},
         description = "Read data from Cloud Spanner Instance",
         helpText = "The instance ID of the requested table.")
@@ -117,6 +120,7 @@ public class SpannerConverters {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Source",
         regexes = {".+"},
         description = "Read data from Cloud Spanner Database ",
         helpText = "The database ID of the requested table.")
@@ -127,6 +131,7 @@ public class SpannerConverters {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Source",
         optional = true,
         description = "Cloud Spanner Endpoint to call",
         helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
@@ -139,6 +144,7 @@ public class SpannerConverters {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Source",
         optional = true,
         regexes = {
           "^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):(([0-9]{2})(\\.[0-9]+)?)Z$"
@@ -158,6 +164,7 @@ public class SpannerConverters {
 
     @TemplateParameter.Boolean(
         order = 7,
+        groupName = "Source",
         optional = true,
         description = "Use independent compute resource (Spanner DataBoost).",
         helpText =

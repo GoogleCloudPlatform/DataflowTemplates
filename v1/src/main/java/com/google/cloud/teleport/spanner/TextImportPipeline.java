@@ -107,6 +107,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Target",
         regexes = {"^[a-z0-9\\-]+$"},
         description = "Cloud Spanner instance ID",
         helpText = "The instance ID of the Spanner database.")
@@ -116,6 +117,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         regexes = {"^[a-z_0-9\\-]+$"},
         description = "Cloud Spanner database ID",
         helpText = "The database ID of the Spanner database.")
@@ -125,6 +127,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Target",
         optional = true,
         description = "Cloud Spanner Endpoint to call",
         helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
@@ -136,6 +139,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.GcsReadFile(
         order = 4,
+        groupName = "Source",
         description = "Text Import Manifest file",
         helpText = "The path in Cloud Storage to use when importing manifest files.",
         example = "gs://your-bucket/your-folder/your-manifest.json")
@@ -145,6 +149,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Source",
         optional = true,
         description = "Column delimiter of the data files",
         helpText = "The column delimiter that the source file uses. The default value is ','.",
@@ -156,6 +161,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Source",
         optional = true,
         description = "Field qualifier used by the source file",
         helpText =
@@ -168,6 +174,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.Boolean(
         order = 7,
+        groupName = "Source",
         optional = true,
         description = "If true, the lines has trailing delimiters",
         helpText =
@@ -181,6 +188,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Source",
         optional = true,
         description = "Escape character",
         helpText =
@@ -192,6 +200,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.Text(
         order = 9,
+        groupName = "Source",
         optional = true,
         description = "Null String",
         helpText =
@@ -204,6 +213,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.Text(
         order = 10,
+        groupName = "Source",
         optional = true,
         description = "Date format",
         helpText =
@@ -217,6 +227,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.Text(
         order = 11,
+        groupName = "Source",
         optional = true,
         description = "Timestamp format",
         helpText =
@@ -239,6 +250,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.ProjectId(
         order = 13,
+        groupName = "Target",
         optional = true,
         description = "Cloud Spanner Project Id",
         helpText =
@@ -249,6 +261,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.Enum(
         order = 14,
+        groupName = "Target",
         enumOptions = {
           @TemplateEnumOption("LOW"),
           @TemplateEnumOption("MEDIUM"),
@@ -265,6 +278,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.Boolean(
         order = 15,
+        groupName = "Source",
         optional = true,
         description = "Handle new line",
         helpText =
@@ -277,6 +291,7 @@ public class TextImportPipeline {
 
     @TemplateParameter.GcsWriteFolder(
         order = 16,
+        groupName = "Target",
         description = "Invalid rows output path",
         optional = true,
         helpText = "The Cloud Storage path to use when writing rows that cannot be imported.",

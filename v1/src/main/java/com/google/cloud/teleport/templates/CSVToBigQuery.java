@@ -101,6 +101,7 @@ public class CSVToBigQuery {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         description = "Cloud Storage Input File(s)",
         helpText = "The Cloud Storage path to the CSV file that contains the text to process.",
         regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
@@ -111,6 +112,7 @@ public class CSVToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 2,
+        groupName = "Target",
         description = "Cloud Storage location of your BigQuery schema file, described as a JSON",
         helpText = "The Cloud Storage path to the JSON file that defines your BigQuery schema.")
     ValueProvider<String> getSchemaJSONPath();
@@ -119,6 +121,7 @@ public class CSVToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 3,
+        groupName = "Target",
         description = "BigQuery output table",
         helpText =
             "The name of the BigQuery table that stores your processed data. If you reuse an existing "
@@ -129,6 +132,7 @@ public class CSVToBigQuery {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
+        groupName = "Target",
         description = "Temporary directory for BigQuery loading process",
         helpText = "The temporary directory to use during the BigQuery loading process.",
         example = "gs://your-bucket/your-files/temp_dir")
@@ -139,6 +143,7 @@ public class CSVToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 5,
+        groupName = "Target",
         description = "BigQuery output table for bad records",
         helpText =
             "The name of the BigQuery table to use to store the rejected data when processing the"
