@@ -31,6 +31,7 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
         description = "BigQuery output table",
+        groupName = "Target",
         optional = true,
         helpText =
             "The BigQuery table location to write the output to. "
@@ -47,6 +48,7 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 1,
         description = "Astra token",
+        groupName = "Source",
         helpText = "Token value or secret resource ID",
         example = "AstraCS:abcdefghij")
     @Validation.Required
@@ -59,6 +61,7 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 2,
         description = "Database identifier",
+        groupName = "Source",
         helpText = "Database unique identifier (uuid)",
         example = "cf7af129-d33a-498f-ad06-d97a6ee6eb7")
     @Validation.Required
@@ -71,6 +74,7 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 3,
         description = "Cassandra keyspace",
+        groupName = "Source",
         regexes = {"^[a-zA-Z0-9][a-zA-Z0-9_]{0,47}$"},
         helpText = "Name of the Cassandra keyspace inside Astra database")
     String getAstraKeyspace();
@@ -81,6 +85,7 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 4,
         description = "Cassandra table",
+        groupName = "Source",
         regexes = {"^[a-zA-Z][a-zA-Z0-9_]*$"},
         helpText = "Name of the table inside the Cassandra database",
         example = "my_table")
@@ -93,6 +98,7 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 5,
         optional = true,
+        groupName = "Source",
         description = "Cassandra CQL Query",
         helpText = "Query to filter rows instead of reading the whole table")
     @SuppressWarnings("unused")
@@ -104,6 +110,7 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 6,
         optional = true,
+        groupName = "Source",
         description = "Astra Database Region",
         helpText =
             "If not provided, a default is chosen, which is useful with multi-region databases")

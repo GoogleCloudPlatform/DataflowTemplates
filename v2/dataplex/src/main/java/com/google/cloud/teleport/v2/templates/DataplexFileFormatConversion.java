@@ -126,6 +126,7 @@ public class DataplexFileFormatConversion {
           "^(projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/assets\\/[^\\n\\r\\/]+|projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/entities\\/[^\\n\\r\\/,]+(,projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/entities\\/[^\\n\\r\\/,]+)*)$"
         },
         description = "Dataplex asset name or Dataplex entity names for the files to be converted.",
+        groupName = "Source",
         helpText =
             "Dataplex asset or Dataplex entities that contain the input files. Format:"
                 + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
@@ -140,6 +141,7 @@ public class DataplexFileFormatConversion {
     @TemplateParameter.Enum(
         order = 2,
         enumOptions = {@TemplateEnumOption("AVRO"), @TemplateEnumOption("PARQUET")},
+        groupName = "Target",
         description = "Output file format in Cloud Storage.",
         helpText = "Output file format in Cloud Storage. Format: PARQUET or AVRO.")
     @Required
@@ -156,6 +158,7 @@ public class DataplexFileFormatConversion {
           @TemplateEnumOption("BZIP2")
         },
         optional = true,
+        groupName = "Target",
         description = "Output file compression in Cloud Storage.",
         helpText =
             "Output file compression. Format: UNCOMPRESSED, SNAPPY, GZIP, or BZIP2. BZIP2 not"
@@ -170,6 +173,7 @@ public class DataplexFileFormatConversion {
         regexes = {
           "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/assets\\/[^\\n\\r\\/]+$"
         },
+        groupName = "Target",
         description = "Dataplex asset name for the destination Cloud Storage bucket.",
         helpText =
             "Name of the Dataplex asset that contains Cloud Storage bucket where output files will"
@@ -189,6 +193,7 @@ public class DataplexFileFormatConversion {
           @TemplateEnumOption("SKIP")
         },
         optional = true,
+        groupName = "Target",
         description = "Action that occurs if a destination file already exists.",
         helpText =
             "Specifies the action that occurs if a destination file already exists. Format:"

@@ -89,6 +89,7 @@ public class DataStreamToMongoDB {
     @TemplateParameter.GcsReadFile(
         order = 1,
         description = "Cloud Storage Input File(s)",
+        groupName = "Source",
         helpText = "Path of the file pattern glob to read from.",
         example = "gs://your-bucket/path/*.avro")
     String getInputFilePattern();
@@ -97,6 +98,7 @@ public class DataStreamToMongoDB {
 
     @TemplateParameter.Enum(
         order = 2,
+        groupName = "Source",
         enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("json")},
         optional = false,
         description = "The GCS input format avro/json",
@@ -108,6 +110,7 @@ public class DataStreamToMongoDB {
 
     @TemplateParameter.PubsubSubscription(
         order = 3,
+        groupName = "Source",
         optional = false,
         description = "Pub/Sub input subscription",
         helpText =
@@ -125,6 +128,7 @@ public class DataStreamToMongoDB {
 
     @TemplateParameter.DateTime(
         order = 5,
+        groupName = "Source",
         optional = true,
         description =
             "The starting DateTime used to fetch from Cloud Storage "
@@ -139,6 +143,7 @@ public class DataStreamToMongoDB {
 
     @TemplateParameter.Integer(
         order = 6,
+        groupName = "Source",
         optional = true,
         description = "File read concurrency",
         helpText = "The number of concurrent DataStream files to read.")
@@ -148,6 +153,7 @@ public class DataStreamToMongoDB {
     void setFileReadConcurrency(Integer value);
 
     @TemplateParameter.Text(
+        groupName = "Target",
         order = 7,
         description = "MongoDB Connection URI",
         helpText = "URI to connect to MongoDB Atlas.")
@@ -156,6 +162,7 @@ public class DataStreamToMongoDB {
     void setMongoDBUri(String value);
 
     @TemplateParameter.Text(
+        groupName = "Target",
         order = 8,
         description = "MongoDB Database",
         helpText = "Database in MongoDB to store the collection.",
@@ -165,6 +172,7 @@ public class DataStreamToMongoDB {
     void setDatabase(String value);
 
     @TemplateParameter.Text(
+        groupName = "Target",
         order = 9,
         description = "MongoDB collection",
         helpText = "Name of the collection inside MongoDB database.",

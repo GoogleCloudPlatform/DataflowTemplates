@@ -146,6 +146,7 @@ public class BigQueryToParquet {
     @TemplateParameter.BigQueryTable(
         order = 1,
         description = "BigQuery table to export",
+        groupName = "Source",
         helpText = "BigQuery table location to export in the format <project>:<dataset>.<table>.",
         example = "your-project:your-dataset.your-table-name")
     @Required
@@ -156,6 +157,7 @@ public class BigQueryToParquet {
     @TemplateParameter.GcsWriteFile(
         order = 2,
         description = "Output Cloud Storage file(s)",
+        groupName = "Target",
         helpText = "Path and filename prefix for writing output files.",
         example = "gs://your-bucket/export/")
     @Required
@@ -166,6 +168,7 @@ public class BigQueryToParquet {
     @TemplateParameter.Integer(
         order = 3,
         optional = true,
+        groupName = "Target",
         description = "Maximum output shards",
         helpText =
             "The maximum number of output shards produced when writing. A higher number of shards"

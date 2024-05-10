@@ -25,6 +25,7 @@ import org.apache.beam.sdk.options.Validation;
 public interface JdbcToPubsubOptions extends CommonTemplateOptions {
   @TemplateParameter.Text(
       order = 1,
+      groupName = "Source",
       optional = false,
       regexes = {"^.+$"},
       description = "JDBC driver class name.",
@@ -36,6 +37,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       optional = false,
       regexes = {
         "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
@@ -51,6 +53,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 3,
+      groupName = "Source",
       optional = true,
       regexes = {"^.+$"},
       description = "JDBC connection username.",
@@ -63,6 +66,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Password(
       order = 4,
+      groupName = "Source",
       optional = true,
       description = "JDBC connection password.",
       helpText =
@@ -74,6 +78,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 5,
+      groupName = "Source",
       optional = false,
       regexes = {"^.+$"},
       description = "Cloud Storage paths for JDBC drivers",
@@ -85,6 +90,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 6,
+      groupName = "Source",
       optional = true,
       regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
       description = "JDBC connection property string.",
@@ -97,6 +103,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 7,
+      groupName = "Source",
       optional = false,
       regexes = {"^.+$"},
       description = "JDBC source SQL query.",
@@ -108,6 +115,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
 
   @TemplateParameter.PubsubTopic(
       order = 8,
+      groupName = "Target",
       description = "Output Pub/Sub topic",
       helpText =
           "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
@@ -119,6 +127,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
 
   @TemplateParameter.KmsEncryptionKey(
       order = 9,
+      groupName = "Source",
       optional = true,
       description = "Google Cloud KMS key",
       helpText =

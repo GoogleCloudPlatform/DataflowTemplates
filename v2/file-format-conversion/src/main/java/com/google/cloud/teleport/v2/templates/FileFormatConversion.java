@@ -90,6 +90,7 @@ public class FileFormatConversion {
       extends PipelineOptions, CsvPipelineOptions, AvroOptions, ParquetOptions {
     @TemplateParameter.Enum(
         order = 1,
+        groupName = "Source",
         enumOptions = {
           @TemplateEnumOption("avro"),
           @TemplateEnumOption("csv"),
@@ -104,6 +105,7 @@ public class FileFormatConversion {
 
     @TemplateParameter.Enum(
         order = 2,
+        groupName = "Target",
         enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("parquet")},
         description = "File format of the output files.",
         helpText = "File format of the output files. Needs to be either avro or parquet.")

@@ -36,6 +36,7 @@ public interface KafkaToGCSOptions
 
   @TemplateParameter.Text(
       order = 1,
+      groupName = "Source",
       optional = false,
       regexes = {"[,:a-zA-Z0-9._-]+"},
       description = "Kafka Bootstrap Server list",
@@ -48,6 +49,7 @@ public interface KafkaToGCSOptions
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       optional = false,
       regexes = {"[,a-zA-Z0-9._-]+"},
       description = "Kafka topic(s) to read the input from",
@@ -60,6 +62,7 @@ public interface KafkaToGCSOptions
 
   @TemplateParameter.Enum(
       order = 3,
+      groupName = "Target",
       enumOptions = {
         @TemplateEnumOption("TEXT"),
         @TemplateEnumOption("AVRO"),
@@ -76,6 +79,7 @@ public interface KafkaToGCSOptions
 
   @TemplateParameter.Duration(
       order = 4,
+      groupName = "Target",
       optional = true,
       description = "Window duration",
       helpText =

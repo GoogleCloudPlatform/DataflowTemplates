@@ -99,6 +99,7 @@ public class DataStreamToSQL {
   public interface Options extends PipelineOptions, StreamingOptions {
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         description = "File location for Datastream file input in Cloud Storage.",
         helpText =
             "This is the file location for Datastream file input in Cloud Storage. Normally, this"
@@ -109,6 +110,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.PubsubSubscription(
         order = 2,
+        groupName = "Source",
         optional = true,
         description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
         helpText =
@@ -121,6 +123,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Enum(
         order = 3,
+        groupName = "Source",
         enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("json")},
         optional = true,
         description = "Datastream output file format (avro/json).",
@@ -134,6 +137,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Source",
         optional = true,
         description = "Name or template for the stream to poll for schema information.",
         helpText =
@@ -145,6 +149,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.DateTime(
         order = 5,
+        groupName = "Source",
         optional = true,
         description =
             "The starting DateTime used to fetch from Cloud Storage "
@@ -160,6 +165,7 @@ public class DataStreamToSQL {
     // DataStream API Root Url (only used for testing)
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Source",
         optional = true,
         description = "Datastream API Root URL (only required for testing)",
         helpText = "Datastream API Root URL")
@@ -171,6 +177,7 @@ public class DataStreamToSQL {
     // SQL Connection Parameters
     @TemplateParameter.Enum(
         order = 7,
+        groupName = "Target",
         optional = true,
         enumOptions = {@TemplateEnumOption("postgres"), @TemplateEnumOption("mysql")},
         description = "SQL Database Type (postgres or mysql).",
@@ -182,6 +189,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Target",
         description = "Database Host to connect on.",
         helpText = "Database Host to connect on.")
     String getDatabaseHost();
@@ -190,6 +198,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 9,
+        groupName = "Target",
         optional = true,
         description = "Database Port to connect on.",
         helpText = "Database Port to connect on (default 5432).")
@@ -200,6 +209,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 10,
+        groupName = "Target",
         description = "Database User to connect with.",
         helpText = "Database User to connect with.")
     String getDatabaseUser();
@@ -208,6 +218,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Password(
         order = 11,
+        groupName = "Target",
         description = "Database Password for given user.",
         helpText = "Database Password for given user.")
     String getDatabasePassword();
@@ -216,6 +227,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 12,
+        groupName = "Target",
         optional = true,
         description = "SQL Database Name.",
         helpText = "The database name to connect to.")
@@ -226,6 +238,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 13,
+        groupName = "Target",
         optional = true,
         description = "A map of key/values used to dictate schema name changes",
         helpText =
@@ -238,6 +251,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 14,
+        groupName = "Target",
         optional = true,
         description = "Custom connection string.",
         helpText =

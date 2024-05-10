@@ -39,6 +39,7 @@ public interface DataplexBigQueryToGcsOptions
   @TemplateParameter.Text(
       order = 1,
       optional = false,
+      groupName = "Source",
       regexes = {
         "^(projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/assets\\/[^\\n\\r\\/]+|projects\\/[^\\n\\r\\/]+\\/datasets\\/[^\\n\\r\\/]+)$"
       },
@@ -54,6 +55,7 @@ public interface DataplexBigQueryToGcsOptions
       order = 2,
       optional = true,
       regexes = {"^[a-zA-Z0-9_-]+(,[a-zA-Z0-9_-]+)*$"},
+      groupName = "Source",
       description = "Source BigQuery tables to tier.",
       helpText =
           "A comma-separated list of BigQuery tables to tier. If none specified, all tables will be tiered. Tables should be specified by their name only (no project/dataset prefix). Case-sensitive!")
@@ -67,6 +69,7 @@ public interface DataplexBigQueryToGcsOptions
       regexes = {
         "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/assets\\/[^\\n\\r\\/]+$"
       },
+      groupName = "Target",
       description = "Dataplex asset name for the destination Cloud Storage bucket.",
       helpText =
           "Dataplex asset name for the Cloud Storage bucket to tier data to. Format: projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset name>.")
@@ -90,6 +93,7 @@ public interface DataplexBigQueryToGcsOptions
 
   @TemplateParameter.Integer(
       order = 5,
+      groupName = "Source",
       description = "Maximum number of parallel requests.",
       helpText =
           "The maximum number of parallel requests that will be sent to BigQuery when loading table/partition metadata.")
@@ -103,6 +107,7 @@ public interface DataplexBigQueryToGcsOptions
       order = 6,
       enumOptions = {@TemplateEnumOption("AVRO"), @TemplateEnumOption("PARQUET")},
       optional = true,
+      groupName = "Target",
       description = "Output file format in Cloud Storage.",
       helpText = "Output file format in Cloud Storage. Format: PARQUET or AVRO.")
   @Default.Enum("PARQUET")
@@ -120,6 +125,7 @@ public interface DataplexBigQueryToGcsOptions
         @TemplateEnumOption("BZIP2")
       },
       optional = true,
+      groupName = "Target",
       description = "Output file compression in Cloud Storage.",
       helpText =
           "Output file compression. Format: UNCOMPRESSED, SNAPPY, GZIP, or BZIP2. BZIP2 not supported for PARQUET files.")
@@ -146,6 +152,7 @@ public interface DataplexBigQueryToGcsOptions
         @TemplateEnumOption("SKIP")
       },
       optional = true,
+      groupName = "Target",
       description = "Action that occurs if a destination file already exists.",
       helpText =
           "Specifies the action that occurs if a destination file already exists. Format: OVERWRITE, FAIL, SKIP. If SKIP, only files that don't exist in the destination directory will be processed. If FAIL and at least one file already exists, no data will be processed and an error will be produced.")
