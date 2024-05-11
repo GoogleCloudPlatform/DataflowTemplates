@@ -33,9 +33,8 @@ public final class PubsubCommonOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
         description = "Pub/Sub input subscription",
-        helpText =
-            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
-        example = "projects/your-project-id/subscriptions/your-subscription-name")
+        helpText = "The Pub/Sub input subscription to read from.",
+        example = "projects/<PROJECT_ID>/subscription/<SUBSCRIPTION_ID>")
     @Required
     String getInputSubscription();
 
@@ -64,9 +63,8 @@ public final class PubsubCommonOptions {
     @TemplateParameter.PubsubTopic(
         order = 3,
         description = "Output Pub/Sub topic",
-        helpText =
-            "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
-        example = "projects/your-project-id/topics/your-topic-name")
+        helpText = "The Pub/Sub topic to use for unprocessed records.",
+        example = "projects/<PROJECT_ID>/topics/<TOPIC_NAME>")
     @Required
     String getOutputTopic();
 
