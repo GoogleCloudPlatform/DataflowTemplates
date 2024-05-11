@@ -108,7 +108,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         .append(String.join(",", InformationSchemaCols.colList()))
         .append(
             String.format(
-                " FROM INFORMATION_SCHEMA.Columns WHERE TABLE_SCHEMA = '%s' AND",
+                " FROM INFORMATION_SCHEMA.Columns WHERE TABLE_SCHEMA = %s AND",
                 sourceSchemaReference.dbName()))
         .append(" TABLE_NAME = ?")
         .toString();

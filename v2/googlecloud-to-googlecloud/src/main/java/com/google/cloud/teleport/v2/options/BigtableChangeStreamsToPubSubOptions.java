@@ -130,6 +130,8 @@ public interface BigtableChangeStreamsToPubSubOptions
   @TemplateParameter.Boolean(
       order = 8,
       optional = true,
+      parentName = "messageFormat",
+      parentTriggerValues = {"JSON"},
       description = "Write Base64-encoded row keys",
       helpText =
           "Used with JSON message encoding. When set to `true`, the `rowKey` field is a Base64-encoded string. Otherwise, the `rowKey`"
@@ -142,6 +144,8 @@ public interface BigtableChangeStreamsToPubSubOptions
   @TemplateParameter.Boolean(
       order = 9,
       optional = true,
+      parentName = "messageFormat",
+      parentTriggerValues = {"JSON"},
       description = "Write Base64-encoded column qualifiers",
       helpText =
           "Used with JSON message encoding. When set to `true`, the `column` field is a Base64-encoded string. Otherwise, the column "
@@ -154,6 +158,8 @@ public interface BigtableChangeStreamsToPubSubOptions
   @TemplateParameter.Boolean(
       order = 10,
       optional = true,
+      parentName = "messageFormat",
+      parentTriggerValues = {"JSON"},
       description = "Write Base64-encoded values",
       helpText =
           "Used with JSON message encoding. When set to `true`, the value field is a Base64-encoded string. Otherwise, the value is"

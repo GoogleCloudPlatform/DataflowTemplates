@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper;
 
-import java.io.Serializable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import javax.annotation.Nullable;
@@ -25,7 +24,7 @@ import javax.annotation.Nullable;
  *
  * @param <T> type of the value extracted.
  */
-public interface ResultSetValueExtractor<T extends Object> extends Serializable {
+public interface ResultSetValueExtractor<T extends Object> {
 
   /**
    * Extract the requested field from the result set.

@@ -424,12 +424,12 @@ public class DataStreamToSpanner {
     options.setDatastreamSourceType(sourceType);
   }
 
-  static String getSourceType(Options options) {
+  private static String getSourceType(Options options) {
     if (options.getDatastreamSourceType() != null) {
       return options.getDatastreamSourceType();
     }
     if (options.getStreamName() == null) {
-      throw new IllegalArgumentException("Stream name cannot be empty.");
+      throw new IllegalArgumentException("Stream name cannot be empty. ");
     }
     GcpOptions gcpOptions = options.as(GcpOptions.class);
     DataStreamClient datastreamClient;

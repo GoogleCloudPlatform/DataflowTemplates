@@ -38,17 +38,12 @@ public class ChangeEventContextFactory {
   public static ChangeEventContext createChangeEventContext(
       JsonNode changeEvent, Ddl ddl, String shadowTablePrefix, String sourceType)
       throws ChangeEventConvertorException, InvalidChangeEventException {
-    String sourceTypeFromChangeEvent;
-    try {
-      sourceTypeFromChangeEvent = getSourceType(changeEvent);
-    } catch (Exception e) {
-      throw new InvalidChangeEventException(e);
-    }
-    if (!sourceType.equals(sourceTypeFromChangeEvent)) {
+
+    if (!sourceType.equals(getSourceType(changeEvent))) {
       throw new InvalidChangeEventException(
           "Change event with invalid source. "
               + "Actual("
-              + sourceTypeFromChangeEvent
+              + getSourceType(changeEvent)
               + "), Expected("
               + sourceType
               + ")");

@@ -22,28 +22,30 @@ ulimit -n 65536
 # increase max virtual memory
 sudo sysctl -w vm.max_map_count=262144
 
-# update git
-sudo add-apt-repository ppa:git-core/ppa -y
-sudo apt update
-sudo apt install git -y
-
 # install jq
-sudo apt install jq -y
+apt-get update
+apt-get -y install jq
 
 # install maven
+sudo apt update
 sudo apt install git maven -y
 
+# update git
+sudo add-apt-repository ppa:git-core/ppa -y
+sudo apt-get update
+sudo apt-get install git -y
+
 # install gh
-sudo apt install curl -y \
-&& sudo curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+sudo type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
+sudo curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
 && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
 && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
 && sudo apt update \
 && sudo apt install gh -y
 
 # install docker
-sudo apt update
-sudo apt install \
+sudo apt-get update
+sudo apt-get install \
     ca-certificates \
     curl \
     gnupg \
@@ -53,8 +55,8 @@ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o 
 echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
   $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt update
-sudo apt install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
 
 # add user to docker group
 sudo groupadd docker
