@@ -188,7 +188,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   void setPubsubProjectId(String pubsubProjectId);
 
-  @TemplateParameter.PubsubTopic(
+  @TemplateParameter.Text(
       order = 15,
       description = "The output Pub/Sub topic",
       helpText = "The Pub/Sub topic to publish PubsubMessage.")
