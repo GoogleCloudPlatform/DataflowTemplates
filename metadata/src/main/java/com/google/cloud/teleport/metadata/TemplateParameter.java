@@ -132,7 +132,7 @@ public final class TemplateParameter {
   }
 
   /**
-   * Template Parameter containing machine type. See
+   * Template Parameter containing worker region. See
    * https://cloud.google.com/compute/docs/regions-zones for a list of valid options.
    */
   @Retention(RetentionPolicy.RUNTIME)
@@ -170,7 +170,7 @@ public final class TemplateParameter {
   }
 
   /**
-   * Template Parameter containing machine type. See
+   * Template Parameter containing worker zone. See
    * https://cloud.google.com/compute/docs/regions-zones for a list of valid options.
    */
   @Retention(RetentionPolicy.RUNTIME)
