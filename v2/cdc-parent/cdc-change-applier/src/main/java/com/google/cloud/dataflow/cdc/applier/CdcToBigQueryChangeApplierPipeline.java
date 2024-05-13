@@ -107,7 +107,8 @@ public class CdcToBigQueryChangeApplierPipeline {
         order = 2,
         regexes = {"[^/]+"},
         description = "Input subscriptions to the template",
-        helpText = "Comma-separated list of Pub/Sub subscriptions where CDC data is available.")
+        helpText =
+            "The comma-separated list of Pub/Sub input subscriptions to read from, in the format `<SUBSCRIPTION_NAME>,<SUBSCRIPTION_NAME>, ...`")
     String getInputSubscriptions();
 
     void setInputSubscriptions(String subscriptions);
@@ -116,7 +117,8 @@ public class CdcToBigQueryChangeApplierPipeline {
         order = 3,
         regexes = {".+"},
         description = "Output BigQuery dataset for Changelog tables",
-        helpText = "Name of the BigQuery dataset where Staging / Change Log tables are to be kept.")
+        helpText =
+            "The BigQuery dataset to store the staging tables in, in the format <DATASET_NAME>.")
     String getChangeLogDataset();
 
     void setChangeLogDataset(String dataset);
@@ -125,7 +127,8 @@ public class CdcToBigQueryChangeApplierPipeline {
         order = 4,
         regexes = {".+"},
         description = "Output BigQuery dataset for replica tables",
-        helpText = "Name of the BigQuery dataset where the Replica tables are to be kept.")
+        helpText =
+            "The location of the BigQuery dataset to store the replica tables in, in the format <DATASET_NAME>.")
     String getReplicaDataset();
 
     void setReplicaDataset(String dataset);
@@ -134,7 +137,8 @@ public class CdcToBigQueryChangeApplierPipeline {
         order = 5,
         optional = true,
         description = "Frequency to issue updates to BigQuery tables (seconds).",
-        helpText = "How often the pipeline will issue updates to the BigQuery replica table.")
+        helpText =
+            "The interval at which the pipeline updates the BigQuery table replicating the MySQL database.")
     Integer getUpdateFrequencySecs();
 
     void setUpdateFrequencySecs(Integer frequency);

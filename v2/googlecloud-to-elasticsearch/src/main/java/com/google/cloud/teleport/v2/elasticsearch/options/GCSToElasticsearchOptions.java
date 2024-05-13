@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.elasticsearch.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.PythonExternalTextTransformerOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
@@ -28,7 +28,7 @@ import org.apache.beam.sdk.options.Validation;
 public interface GCSToElasticsearchOptions
     extends CsvConverters.CsvPipelineOptions,
         ElasticsearchWriteOptions,
-        JavascriptTextTransformerOptions {
+        PythonExternalTextTransformerOptions {
 
   @TemplateParameter.BigQueryTable(
       order = 1,

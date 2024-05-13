@@ -68,7 +68,8 @@ public class DatastoreConverters {
         order = 1,
         regexes = {"^.+$"},
         description = "GQL Query",
-        helpText = "Specifies which Datastore entities to read. Ex: ‘SELECT * FROM MyKind’")
+        helpText =
+            "A GQL (https://cloud.google.com/datastore/docs/reference/gql_reference) query that specifies which entities to grab. For example, `SELECT * FROM MyKind`.")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreReadGqlQuery();
@@ -86,7 +87,8 @@ public class DatastoreConverters {
     @TemplateParameter.ProjectId(
         order = 2,
         description = "Project ID",
-        helpText = "The Google Cloud project ID of the Datastore instance to read from")
+        helpText =
+            "The ID of the Google Cloud project that contains the Datastore instance that you want to read data from.")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreReadProjectId();
@@ -107,7 +109,7 @@ public class DatastoreConverters {
         regexes = {"^[0-9A-Za-z._-]{0,100}$"},
         description = "Namespace",
         helpText =
-            "Namespace of requested Datastore entities. Leave blank to use default namespace.")
+            "The namespace of the requested entities. To use the default namespace, leave this parameter blank.")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreReadNamespace();
@@ -123,7 +125,9 @@ public class DatastoreConverters {
         order = 4,
         regexes = {"^.+$"},
         description = "GQL Query",
-        helpText = "Specifies which Firestore entities to read. Ex: ‘SELECT * FROM MyKind’")
+        helpText =
+            "A GQL (https://cloud.google.com/datastore/docs/reference/gql_reference) query that specifies "
+                + "which entities to grab. For example, `SELECT * FROM MyKind`.")
     ValueProvider<String> getFirestoreReadGqlQuery();
 
     void setFirestoreReadGqlQuery(ValueProvider<String> firestoreReadGqlQuery);
@@ -131,7 +135,8 @@ public class DatastoreConverters {
     @TemplateParameter.ProjectId(
         order = 5,
         description = "Project ID",
-        helpText = "The Google Cloud project ID of the Firestore instance to read from")
+        helpText =
+            "The ID of the Google Cloud project that contains the Firestore instance that you want to read data from.")
     ValueProvider<String> getFirestoreReadProjectId();
 
     void setFirestoreReadProjectId(ValueProvider<String> firestoreReadProjectId);
@@ -142,7 +147,7 @@ public class DatastoreConverters {
         regexes = {"^[0-9A-Za-z._-]{0,100}$"},
         description = "Namespace",
         helpText =
-            "Namespace of requested Firestore entities. Leave blank to use default namespace.")
+            "The namespace of the requested entities. To use the default namespace, leave this parameter blank.")
     ValueProvider<String> getFirestoreReadNamespace();
 
     void setFirestoreReadNamespace(ValueProvider<String> firestoreReadNamespace);
@@ -156,7 +161,7 @@ public class DatastoreConverters {
     @TemplateParameter.ProjectId(
         order = 1,
         description = "Project ID",
-        helpText = "The Google Cloud project ID of where to write Datastore entities")
+        helpText = "The ID of the Google Cloud project to write the Datastore entities to.")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreWriteProjectId();
@@ -217,7 +222,7 @@ public class DatastoreConverters {
         regexes = {"^[1-9]+[0-9]*$"},
         description = "Expected number of workers",
         helpText =
-            "Hint for the expected number of workers in the Datastore ramp-up throttling step.")
+            "Hint for the expected number of workers in the Datastore ramp-up throttling step. Default is `500`.")
     @Default.Integer(500)
     @Hidden
     @Deprecated

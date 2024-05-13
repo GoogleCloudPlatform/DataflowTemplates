@@ -55,8 +55,8 @@ func main() {
 		mvnFlags.SkipJib(),
 		mvnFlags.SkipShade(),
 		mvnFlags.RunIntegrationTests(),
-		mvnFlags.ThreadCount(4),
-		mvnFlags.IntegrationTestParallelism(3),
+		mvnFlags.ThreadCount(3),
+		mvnFlags.IntegrationTestParallelism(2),
 		mvnFlags.StaticBigtableInstance("teleport"),
 		mvnFlags.StaticSpannerInstance("teleport"),
 		flags.Region(),
@@ -65,7 +65,8 @@ func main() {
 		flags.StageBucket(),
 		flags.HostIp(),
 		flags.PrivateConnectivity(),
-		flags.FailureMode())
+		flags.FailureMode(),
+		flags.RetryFailures())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}

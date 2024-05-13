@@ -32,7 +32,7 @@ public class MongoDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 1,
         description = "MongoDB Connection URI",
-        helpText = "MongoDB connection URI in the format `mongodb+srv://:@`.")
+        helpText = "The MongoDB connection URI in the format `mongodb+srv://:@.`")
     String getMongoDbUri();
 
     void setMongoDbUri(String getMongoDbUri);
@@ -60,7 +60,7 @@ public class MongoDbToBigQueryOptions {
         enumOptions = {@TemplateEnumOption("FLATTEN"), @TemplateEnumOption("NONE")},
         description = "User option",
         helpText =
-            "`FLATTEN` or `NONE`. `FLATTEN` flattens the documents to the first level. `NONE` stores the whole document as a JSON string.")
+            "`FLATTEN` or `NONE`. `FLATTEN` flattens the documents to the single level. `NONE` stores the whole document as a JSON string.")
     @Default.String("NONE")
     String getUserOption();
 
@@ -99,7 +99,7 @@ public class MongoDbToBigQueryOptions {
         order = 1,
         description = "BigQuery output table",
         helpText =
-            "BigQuery table to write to. For example, `bigquery-project:dataset.output_table`.")
+            "The BigQuery table to write to. For example, `bigquery-project:dataset.output_table`.")
     String getOutputTableSpec();
 
     void setOutputTableSpec(String outputTableSpec);
@@ -112,7 +112,7 @@ public class MongoDbToBigQueryOptions {
         optional = true,
         description = "JavaScript UDF path in Cloud Storage.",
         helpText =
-            "The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) you want to use.",
+            "The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) to use.",
         example = "gs://your-bucket/your-transforms/*.js")
     String getJavascriptDocumentTransformGcsPath();
 
@@ -123,10 +123,7 @@ public class MongoDbToBigQueryOptions {
         optional = true,
         description = "The name of the JavaScript function to call as your UDF.",
         helpText =
-            "The name of the JavaScript user-defined function (UDF) that you"
-            + "want to use. For example, if your JavaScript function code is `myTransform(`"
-            + "`inJson) { /*...do stuff...*/ }`, then the function name is"
-            + "`myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).",
+            "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is myTransform. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).",
         example = "transform")
     String getJavascriptDocumentTransformFunctionName();
 

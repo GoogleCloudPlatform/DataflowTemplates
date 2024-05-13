@@ -167,7 +167,8 @@ public class TemplateDefinitionsTest {
       displayName = "",
       description = {},
       streaming = false,
-      category = TemplateCategory.BATCH)
+      category = TemplateCategory.BATCH,
+      testOnly = true)
   private static class Batch {}
 
   @Template(
@@ -176,7 +177,8 @@ public class TemplateDefinitionsTest {
       displayName = "",
       description = {},
       streaming = false,
-      category = TemplateCategory.BATCH)
+      category = TemplateCategory.BATCH,
+      testOnly = true)
   private static class BatchSupportsALO {}
 
   @Template(
@@ -185,7 +187,8 @@ public class TemplateDefinitionsTest {
       displayName = "",
       description = {},
       streaming = false,
-      category = TemplateCategory.BATCH)
+      category = TemplateCategory.BATCH,
+      testOnly = true)
   private static class BatchStreamingModeALO {}
 
   @Template(
@@ -194,7 +197,8 @@ public class TemplateDefinitionsTest {
       displayName = "",
       description = {},
       streaming = false,
-      category = TemplateCategory.BATCH)
+      category = TemplateCategory.BATCH,
+      testOnly = true)
   private static class BatchStreamingModeEO {}
 
   @Template(
@@ -202,7 +206,8 @@ public class TemplateDefinitionsTest {
       displayName = "",
       description = {},
       streaming = true,
-      category = TemplateCategory.STREAMING)
+      category = TemplateCategory.STREAMING,
+      testOnly = true)
   private static class Streaming {}
 
   @Template(
@@ -212,7 +217,8 @@ public class TemplateDefinitionsTest {
       displayName = "",
       description = {},
       streaming = true,
-      category = TemplateCategory.STREAMING)
+      category = TemplateCategory.STREAMING,
+      testOnly = true)
   private static class StreamingALOEOEnabledDefaultNone {}
 
   @Template(
@@ -223,7 +229,8 @@ public class TemplateDefinitionsTest {
       displayName = "",
       description = {},
       streaming = true,
-      category = TemplateCategory.STREAMING)
+      category = TemplateCategory.STREAMING,
+      testOnly = true)
   private static class StreamingALOEOEnabledDefaultALO {}
 
   @Template(
@@ -234,7 +241,8 @@ public class TemplateDefinitionsTest {
       displayName = "",
       description = {},
       streaming = true,
-      category = TemplateCategory.STREAMING)
+      category = TemplateCategory.STREAMING,
+      testOnly = true)
   private static class StreamingALOEOEnabledDefaultEO {}
 
   @Template(
@@ -244,7 +252,8 @@ public class TemplateDefinitionsTest {
       displayName = "",
       description = {},
       streaming = true,
-      category = TemplateCategory.STREAMING)
+      category = TemplateCategory.STREAMING,
+      testOnly = true)
   private static class StreamingNotALONotEO {}
 
   @Template(
@@ -254,7 +263,8 @@ public class TemplateDefinitionsTest {
       displayName = "",
       description = {},
       streaming = true,
-      category = TemplateCategory.STREAMING)
+      category = TemplateCategory.STREAMING,
+      testOnly = true)
   private static class StreamingALOMismatch {}
 
   @Template(
@@ -264,6 +274,7 @@ public class TemplateDefinitionsTest {
       displayName = "",
       description = {},
       streaming = true,
-      category = TemplateCategory.STREAMING)
+      category = TemplateCategory.STREAMING,
+      testOnly = true)
   private static class StreamingEOMismatch {}
 }
