@@ -50,7 +50,9 @@ public final class MetadataUtils {
         TemplateParameter.ProjectId.class,
         TemplateParameter.PubsubSubscription.class,
         TemplateParameter.PubsubTopic.class,
-        TemplateParameter.Text.class
+        TemplateParameter.Text.class,
+        TemplateParameter.WorkerRegion.class,
+        TemplateParameter.WorkerZone.class
       };
   public static final String BIGQUERY_TABLE_PATTERN = ".+[\\.:].+\\..+";
 
@@ -164,6 +166,14 @@ public final class MetadataUtils {
         TemplateParameter.ProjectId projectIdParam =
             (TemplateParameter.ProjectId) parameterAnnotation;
         return List.of("[a-z0-9\\-\\.\\:]+");
+      case "WorkerRegion":
+        TemplateParameter.WorkerRegion workerRegionParam =
+            (TemplateParameter.WorkerRegion) parameterAnnotation;
+        return List.of("[a-z]+-[a-z]+[0-9]+");
+      case "WorkerZone":
+        TemplateParameter.WorkerZone workerZoneParam =
+            (TemplateParameter.WorkerZone) parameterAnnotation;
+        return List.of("[a-z]+-[a-z]+[0-9]+-[a-z]");
       case "Boolean":
         TemplateParameter.Boolean booleanParam = (TemplateParameter.Boolean) parameterAnnotation;
         return List.of("^(true|false)$");

@@ -322,6 +322,40 @@ public class ImageSpecParameter {
         this.setHiddenUi(projectIdParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
         break;
+      case "WorkerRegion":
+        TemplateParameter.WorkerRegion workerRegionParam =
+            (TemplateParameter.WorkerRegion) parameterAnnotation;
+        if (!workerRegionParam.name().isEmpty()) {
+          this.setName(workerRegionParam.name());
+        }
+        processDescriptions(
+            workerRegionParam.groupName(),
+            workerRegionParam.description(),
+            workerRegionParam.helpText(),
+            workerRegionParam.example());
+        this.setParentName(workerRegionParam.parentName());
+        this.setParentTriggerValues(workerRegionParam.parentTriggerValues());
+        this.setOptional(workerRegionParam.optional());
+        this.setHiddenUi(workerRegionParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.WORKER_REGION);
+        break;
+      case "WorkerZone":
+        TemplateParameter.WorkerZone workerZoneParam =
+            (TemplateParameter.WorkerZone) parameterAnnotation;
+        if (!workerZoneParam.name().isEmpty()) {
+          this.setName(workerZoneParam.name());
+        }
+        processDescriptions(
+            workerZoneParam.groupName(),
+            workerZoneParam.description(),
+            workerZoneParam.helpText(),
+            workerZoneParam.example());
+        this.setParentName(workerZoneParam.parentName());
+        this.setParentTriggerValues(workerZoneParam.parentTriggerValues());
+        this.setOptional(workerZoneParam.optional());
+        this.setHiddenUi(workerZoneParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.WORKER_ZONE);
+        break;
       case "Boolean":
         TemplateParameter.Boolean booleanParam = (TemplateParameter.Boolean) parameterAnnotation;
         if (!booleanParam.name().isEmpty()) {

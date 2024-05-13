@@ -45,6 +45,12 @@ public enum ImageSpecParameterType {
   /** Pub/Sub Topic to read or write. */
   PUBSUB_TOPIC,
 
+  /** Worker Region parameter. */
+  WORKER_REGION,
+
+  /** Worker Zone parameter. */
+  WORKER_ZONE,
+
   /** Boolean parameter. */
   BOOLEAN,
 
