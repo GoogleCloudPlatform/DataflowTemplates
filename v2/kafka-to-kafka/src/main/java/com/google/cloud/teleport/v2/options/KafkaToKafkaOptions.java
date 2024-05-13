@@ -32,6 +32,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
 
   void setSourceTopic(String sourceTopic);
 
+
   @TemplateParameter.Enum(
       groupName = "Source",
       order = 2,
@@ -65,14 +66,16 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
 
   void setSourceAuthenticationMethod(String sourceAuthenticationMethod);
 
+
+
   @TemplateParameter.Text(
-      groupName = "Source",
       order = 4,
-      optional = true,
+      groupName = "Source",
       parentName = "sourceAuthenticationMethod",
       parentTriggerValues = {"SASL_PLAIN"},
-      helpText = "Secret version id for Username",
-      description =
+      optional = true,
+      description = "Secret version id of Kafka source username",
+      helpText =
           "Secret version id from the secret manager to get Kafka SASL_PLAIN username for source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
@@ -221,8 +224,10 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       name = "destinationPasswordSecretId",
       parentName = "destinationAuthenticationMethod",
       parentTriggerValues = {"SASL_PLAIN"},
-      description = "Secret version Id for destination Kafka password.",
-      helpText = " Secret version id of SASL_PLAIN password",
+      optional = true,
+      description = "Secret version Id for destination Kafka password",
+      helpText =
+          " Secret version id from the secret manager to get Kafka SASL_PLAIN password for the destination Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
   @Validation.Required
@@ -230,16 +235,25 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
 
   void setDestinationPasswordSecretId(String destinationPasswordSecretId);
 
+
+
+
+
+
   @TemplateParameter.Text(
       order = 15,
       optional = true,
-      name = "truststoredestination",
+      name = "destinationTrustostoreLocation",
       groupName = "Destination",
       parentName = "destinationAuthenticationMethod",
       parentTriggerValues = {"SSL"},
-      description = "Location of the jks file in GCS with SSL certificate to verify identity.",
-      helpText = "Truststore File Location",
-      example = "/your-bucket/truststore.jks")
+      description = "Location of the jks file in GCS with SSL certificate to verify identity",
+      helpText =
+          "Location of the SSL certificate where the trust store for authentication to Kafka are stored.",
+      example =
+          "/your-bucket/truststore.jks"
+  )
+
   String getDestinationTruststoreLocation();
 
   void setDestinationTruststoreLocation(String destinationTruststoreLocation);
@@ -289,6 +303,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
 
   void setDestinationKeystorePasswordSecretId(String destinationKeystorePasswordSecretId);
 
+
   @TemplateParameter.Text(
       order = 19,
       optional = true,
@@ -301,63 +316,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
   String getDestinationKeyPasswordSecretId();
-
   void setDestinationKeyPasswordSecretId(String destinationKeyPasswordSecretId);
+
+
 }
-//   //TO-DO:remove the code below
-//
-//   @TemplateParameter.Text(
-//       order = 14,
-//       optional = false,
-//       groupName ="removeLater",
-//       regexes = {"[,:a-zA-Z0-9._-]+"},
-//       description = "Kafka Bootstrap Server List to read from",
-//       helpText =
-//           "Kafka Bootstrap Server List, separated by commas to read messages from the given input
-// topic.",
-//       example = "localhost:9092, 127.0.0.1:9093")
-//   @Validation.Required
-//   String getSourceBootstrapServers();
-//
-//   void setSourceBootstrapServers(String sourceBootstrapServers);
-//
-//   @TemplateParameter.Text(
-//       order = 15,
-//       optional = false,
-//       groupName ="removeLater",
-//       regexes = {"[,a-zA-Z0-9._-]+"},
-//       description = "Kafka topic(s) to read the input from",
-//       helpText = "Kafka topic(s) to read the input from the given source bootstrap server.",
-//       example = "topic1,topic2")
-//   @Validation.Required
-//   String getInputTopic();
-//
-//   void setInputTopic(String inputTopic);
-//
-//   @TemplateParameter.Text(
-//       order = 16,
-//       optional = false,
-//       groupName ="removeLater",
-//       regexes = {"[,:a-zA-Z0-9._-]+"},
-//       description = "Output topics to write to",
-//       helpText =
-//           "Topics to write to in the destination Kafka for the data read from the source Kafka.",
-//       example = "topic1,topic2")
-//   @Validation.Required
-//   String getOutputTopic();
-//
-//   void setOutputTopic(String outputTopic);
-//
-//   @TemplateParameter.Text(
-//       order = 17,
-//       optional = false,
-//       groupName = "removeLater",
-//       regexes = {"[,:a-zA-Z0-9._-]+"},
-//       description = "Destination kafka Bootstrap Server",
-//       helpText = "Destination kafka Bootstrap Server to write data to.",
-//       example = "localhost:9092")
-//   @Validation.Required
-//   String getDestinationBootstrapServer();
-//
-//   void setDestinationBootstrapServer(String destinationBootstrapServer);
-// }
