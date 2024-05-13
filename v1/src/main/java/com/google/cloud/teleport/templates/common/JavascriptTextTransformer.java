@@ -78,7 +78,8 @@ public abstract class JavascriptTextTransformer {
         optional = true,
         description = "JavaScript UDF path in Cloud Storage",
         helpText =
-            "The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) you want to use. For example, `gs://my-bucket/my-udfs/my_file.js`.")
+            "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function "
+                + "(UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.")
     ValueProvider<String> getJavascriptTextTransformGcsPath();
 
     void setJavascriptTextTransformGcsPath(ValueProvider<String> javascriptTextTransformGcsPath);
@@ -89,8 +90,10 @@ public abstract class JavascriptTextTransformer {
         regexes = {"[a-zA-Z0-9_]+"},
         description = "JavaScript UDF name",
         helpText =
-            "The name of the JavaScript user-defined function (UDF) that you want to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)",
-        example = "transform_udf1")
+            "The name of the JavaScript user-defined function (UDF) to use. For example, if your "
+                + "JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name "
+                + "is `myTransform`. For sample JavaScript UDFs, see "
+                + "UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).")
     ValueProvider<String> getJavascriptTextTransformFunctionName();
 
     void setJavascriptTextTransformFunctionName(

@@ -265,6 +265,8 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 24,
       optional = true,
+      parentName = "apiKeySource",
+      parentTriggerValues = {"KMS"},
       regexes = {
         "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/keyRings\\/[^\\n\\r\\/]+\\/cryptoKeys\\/[^\\n\\r\\/]+$"
       },
@@ -285,6 +287,8 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 25,
       optional = true,
+      parentName = "apiKeySource",
+      parentTriggerValues = {"SECRET_MANAGER"},
       regexes = {"^projects\\/[^\\n\\r\\/]+\\/secrets\\/[^\\n\\r\\/]+\\/versions\\/[^\\n\\r\\/]+$"},
       description = "Google Cloud Secret Manager ID.",
       helpText =

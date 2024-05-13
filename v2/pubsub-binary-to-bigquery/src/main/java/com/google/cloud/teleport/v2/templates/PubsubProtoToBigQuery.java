@@ -227,6 +227,8 @@ public final class PubsubProtoToBigQuery {
     @TemplateParameter.Boolean(
         order = 6,
         optional = true,
+        parentName = "useStorageWriteApi",
+        parentTriggerValues = {"true"},
         description = "Use at at-least-once semantics in BigQuery Storage Write API",
         helpText =
             "When using the Storage Write API, specifies the write semantics."

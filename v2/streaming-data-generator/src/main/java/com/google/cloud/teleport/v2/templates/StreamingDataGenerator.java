@@ -164,6 +164,8 @@ public class StreamingDataGenerator {
     @TemplateParameter.GcsReadFile(
         order = 7,
         optional = true,
+        parentName = "outputType",
+        parentTriggerValues = {"AVRO", "PARQUET"},
         description = "Location of Avro Schema file",
         helpText =
             "Cloud Storage path of Avro schema location. Mandatory when output type is AVRO or"
@@ -194,6 +196,8 @@ public class StreamingDataGenerator {
     @TemplateParameter.BigQueryTable(
         order = 9,
         optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"BIGQUERY"},
         description = "Output BigQuery table",
         helpText = "Output BigQuery table. Mandatory when sinkType is BIGQUERY",
         example = "<project>:<dataset>.<table_name>")
@@ -209,6 +213,8 @@ public class StreamingDataGenerator {
           @TemplateEnumOption("WRITE_TRUNCATE")
         },
         optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"BIGQUERY"},
         description = "Write Disposition to use for BigQuery",
         helpText =
             "BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE.")
@@ -220,6 +226,8 @@ public class StreamingDataGenerator {
     @TemplateParameter.BigQueryTable(
         order = 11,
         optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"BIGQUERY"},
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
             "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"
@@ -233,6 +241,8 @@ public class StreamingDataGenerator {
     @TemplateParameter.Duration(
         order = 12,
         optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"GCS"},
         description = "Window duration",
         helpText =
             "The window duration/size in which data will be written to Cloud Storage. Allowed"
@@ -354,6 +364,8 @@ public class StreamingDataGenerator {
     @TemplateParameter.Text(
         order = 22,
         optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"SPANNER"},
         regexes = {"^.+$"},
         description = "GCP Project Id of where the Spanner table lives.",
         helpText = "GCP Project Id of where the Spanner table lives.")
@@ -364,6 +376,8 @@ public class StreamingDataGenerator {
     @TemplateParameter.Text(
         order = 23,
         optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"SPANNER"},
         regexes = {"^.+$"},
         description = "Cloud Spanner instance name.",
         helpText = "Cloud Spanner instance name.")
@@ -374,6 +388,8 @@ public class StreamingDataGenerator {
     @TemplateParameter.Text(
         order = 24,
         optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"SPANNER"},
         regexes = {"^.+$"},
         description = "Cloud Spanner database name.",
         helpText = "Cloud Spanner database name.")
@@ -384,6 +400,8 @@ public class StreamingDataGenerator {
     @TemplateParameter.Text(
         order = 25,
         optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"SPANNER"},
         regexes = {"^.+$"},
         description = "Cloud Spanner table name.",
         helpText = "Cloud Spanner table name.")
@@ -394,6 +412,8 @@ public class StreamingDataGenerator {
     @TemplateParameter.Text(
         order = 26,
         optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"SPANNER"},
         regexes = {"^[1-9][0-9]*$"},
         description = "Max mutatated cells per batch.",
         helpText =
@@ -405,6 +425,8 @@ public class StreamingDataGenerator {
     @TemplateParameter.Text(
         order = 27,
         optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"SPANNER"},
         regexes = {"^[1-9][0-9]*$"},
         description = "Max rows per batch.",
         helpText =
@@ -416,6 +438,8 @@ public class StreamingDataGenerator {
     @TemplateParameter.Text(
         order = 28,
         optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"SPANNER"},
         regexes = {"^[1-9][0-9]*$"},
         description = "Max batch size in bytes.",
         helpText =
@@ -427,6 +451,8 @@ public class StreamingDataGenerator {
     @TemplateParameter.Text(
         order = 29,
         optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"SPANNER"},
         regexes = {"^[1-9][0-9]*$"},
         description = "Commit deadline in seconds for write requests.",
         helpText = "Specifies the deadline in seconds for the Commit API call.")
@@ -437,6 +463,8 @@ public class StreamingDataGenerator {
     @TemplateParameter.Text(
         order = 30,
         optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"KAFKA"},
         regexes = {"[,:a-zA-Z0-9._-]+"},
         description = "Output Kafka Bootstrap Server",
         helpText = "Kafka Bootstrap Server ",
@@ -448,6 +476,8 @@ public class StreamingDataGenerator {
     @TemplateParameter.Text(
         order = 31,
         optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"KAFKA"},
         regexes = {"[a-zA-Z0-9._-]+"},
         description = "Kafka topic to write to",
         helpText = "Kafka topic to write to.",
