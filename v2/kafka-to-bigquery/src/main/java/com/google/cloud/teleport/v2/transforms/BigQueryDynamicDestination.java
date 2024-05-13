@@ -58,7 +58,7 @@ public class BigQueryDynamicDestination
     // tablename + record name (same across schemas) + schema id?
     String bqQualifiedFullName = element.getSchema().getFullName().replace(".", "-");
     String tableName =
-        this.tableNamePrefix + (this.tableNamePrefix == "" ? "" : "-") + bqQualifiedFullName;
+        this.tableNamePrefix + (this.tableNamePrefix.isBlank() ? "" : "-") + bqQualifiedFullName;
     String tableSpec = this.projectName + ":" + this.datasetName + "." + tableName;
     return new TableDestination(tableSpec, null);
   }
