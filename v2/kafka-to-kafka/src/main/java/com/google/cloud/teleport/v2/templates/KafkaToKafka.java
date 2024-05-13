@@ -58,6 +58,7 @@ public class KafkaToKafka {
     run(options);
   }
 
+
   public static PipelineResult run(KafkaToKafkaOptions options) throws IOException {
 
     if (options.getSourceAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
@@ -114,6 +115,7 @@ public class KafkaToKafka {
             "Authentication method not supported: " + options.getDestinationAuthenticationMethod());
       }
 
+
     String sourceTopic;
     String sourceBootstrapServers;
     List<String> sourceBootstrapServerAndTopicList =
@@ -154,3 +156,4 @@ public class KafkaToKafka {
     return pipeline.run();
   }
 }
+

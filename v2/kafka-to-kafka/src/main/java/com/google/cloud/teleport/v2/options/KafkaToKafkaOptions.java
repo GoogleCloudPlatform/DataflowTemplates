@@ -36,16 +36,18 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
 
   void setSourceTopic(String sourceTopic);
 
+
   @TemplateParameter.Enum(
       groupName = "Source",
       order = 2,
       name = "sourceAuthenticationMethod",
+
       optional = false,
       description = "Source Authentication Mode",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
+          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
+          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
+          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
       helpText = "Type of authentication mechanism to use with the source Kafka.")
   @Validation.Required
@@ -59,7 +61,8 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
       groupName = "Source",
       order = 3,
       optional = true,
-      parentName = "sourceAuthenticationMethod",
+
+      parentName="sourceAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       description = "Secret Version ID for Username",
       helpText =
@@ -71,11 +74,13 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
   void setSourceUsernameSecretId(String sourceUsernameSecretId);
 
   @TemplateParameter.Text(
-      order = 4,
+
+      order=4,
       groupName = "Source",
       parentName = "sourceAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
-      optional = true,
+
+          optional=true,
       description = "Secret version id of password",
       helpText =
           "Secret version id from the secret manager to get Kafka SASL_PLAIN password for the source Kafka.",
@@ -147,7 +152,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
   void setSourceKeystorePasswordSecretId(String sourceKeystorePasswordSecretId);
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 10,
       optional = true,
       name = "sourceKey",
       parentName = "sourceAuthenticationMethod",
@@ -161,7 +166,5 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
   String getSourceKeyPasswordSecretId();
 
   void setSourceKeyPasswordSecretId(String sourceKeyPasswordSecretId);
-
-
 
 }
