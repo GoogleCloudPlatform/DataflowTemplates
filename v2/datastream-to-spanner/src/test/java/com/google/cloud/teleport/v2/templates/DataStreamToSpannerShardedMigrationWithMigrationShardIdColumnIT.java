@@ -282,77 +282,77 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     row.put("migration_shard_id", "L1");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 3);
     row.put("name", "Tester3");
     row.put("age_spanner", 103);
     row.put("migration_shard_id", "L1");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 13);
     row.put("name", "Tester13");
     row.put("age_spanner", 113);
     row.put("migration_shard_id", "L1");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 4);
     row.put("name", "Tester4");
     row.put("age_spanner", 21);
     row.put("migration_shard_id", "L2");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 6);
     row.put("name", "Tester6");
     row.put("age_spanner", 106);
     row.put("migration_shard_id", "L2");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 14);
     row.put("name", "Tester14");
     row.put("age_spanner", 114);
     row.put("migration_shard_id", "L2");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 7);
     row.put("name", "Tester7");
     row.put("age_spanner", 22);
     row.put("migration_shard_id", "L3");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 9);
     row.put("name", "Tester9");
     row.put("age_spanner", 109);
     row.put("migration_shard_id", "L3");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 15);
     row.put("name", "Tester15");
     row.put("age_spanner", 115);
     row.put("migration_shard_id", "L3");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 10);
     row.put("name", "Tester10");
     row.put("age_spanner", 23);
     row.put("migration_shard_id", "L4");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 12);
     row.put("name", "Tester12");
     row.put("age_spanner", 12);
     row.put("migration_shard_id", "L4");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 16);
     row.put("name", "Tester16");
     row.put("age_spanner", 116);

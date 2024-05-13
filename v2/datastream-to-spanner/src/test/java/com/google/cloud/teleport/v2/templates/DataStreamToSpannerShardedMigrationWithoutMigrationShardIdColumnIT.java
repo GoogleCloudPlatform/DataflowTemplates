@@ -226,67 +226,67 @@ public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
     row.put("age", 20);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 3);
     row.put("name", "Tester3");
     row.put("age", 103);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 13);
     row.put("name", "Tester13");
     row.put("age", 113);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 4);
     row.put("name", "Tester4");
     row.put("age", 21);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 6);
     row.put("name", "Tester6");
     row.put("age", 106);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 14);
     row.put("name", "Tester14");
     row.put("age", 114);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 7);
     row.put("name", "Tester7");
     row.put("age", 22);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 9);
     row.put("name", "Tester9");
     row.put("age", 109);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 15);
     row.put("name", "Tester15");
     row.put("age", 115);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 10);
     row.put("name", "Tester10");
     row.put("age", 23);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 12);
     row.put("name", "Tester12");
     row.put("age", 12);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 16);
     row.put("name", "Tester16");
     row.put("age", 116);
