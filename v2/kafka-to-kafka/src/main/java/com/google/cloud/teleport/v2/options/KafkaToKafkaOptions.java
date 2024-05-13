@@ -35,7 +35,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
   void setSourceBootstrapServers(String sourceBootstrapServers);
 
   @TemplateParameter.Text(
-      order = 2,
+      groupName = "Source",
       optional = false,
       regexes = {"[,a-zA-Z0-9._-]+"},
       description = "Kafka topic(s) to read the input from",
@@ -48,13 +48,12 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
 
   @TemplateParameter.Text(
       order = 3,
-      optional = false,
+      optional = true,
       regexes = {"[,:a-zA-Z0-9._-]+"},
       description = "Output topics to write to",
       helpText =
           "Topics to write to in the destination Kafka for the data read from the source Kafka.",
       example = "topic1,topic2")
-  @Validation.Required
   String getOutputTopic();
 
   void setOutputTopic(String outputTopic);
@@ -74,9 +73,9 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
   @TemplateParameter.Enum(
       order = 5,
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption("nonGMK-to-nonGMK"),
-        @TemplateParameter.TemplateEnumOption("GMK-to-GMK"),
-        @TemplateParameter.TemplateEnumOption("nonGMK-to-GMK")
+          @TemplateParameter.TemplateEnumOption("nonGMK-to-nonGMK"),
+          @TemplateParameter.TemplateEnumOption("GMK-to-GMK"),
+          @TemplateParameter.TemplateEnumOption("nonGMK-to-GMK")
       },
       optional = true,
       description = "The type of kafka-to-kafka migration",
@@ -89,19 +88,35 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
   @TemplateParameter.Enum(
       order = 6,
       optional = true,
-      description = "Method for kafka authentication",
+      description = "Method for source kafka authentication",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption("secret manager"),
-        @TemplateParameter.TemplateEnumOption("no authentication (only for non-GMK)"),
+          @TemplateParameter.TemplateEnumOption("SASL_PLAIN"),
+          @TemplateParameter.TemplateEnumOption("SSL"),
       },
-      helpText = "Type of authentication mechanism to authenticate to Kafka.")
+      helpText = "Type of authentication mechanism to authenticate to source Kafka."
+  )
   @Validation.Required
-  String getAuthenticationMethod();
+  String getSourceAuthenticationMethod();
 
-  void setAuthenticationMethod(String authenticationMethod);
+  void setSourceAuthenticationMethod(String sourceAuthenticationMethod);
+
+  @TemplateParameter.Enum(
+      order = 7,
+      optional = true,
+      description = "Method for sink kafka authentication",
+      enumOptions = {
+          @TemplateParameter.TemplateEnumOption("SASL_PLAIN"),
+          @TemplateParameter.TemplateEnumOption("SSL"),
+      },
+      helpText = "Type of authentication mechanism to authenticate to sink Kafka."
+  )
+  @Validation.Required
+  String getDestinationAuthenticationMethod();
+
+  void setDestinationAuthenticationMethod(String destinationAuthenticationMethod);
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 8,
       optional = true,
       description = "Secret version id of Kafka source username",
       helpText =
@@ -114,7 +129,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
   void setSourceUsernameSecretId(String sourceUsernameSecretId);
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 9,
       optional = true,
       description = "Secret version of Kafka source password",
       helpText =
@@ -127,7 +142,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
   void setSourcePasswordSecretId(String sourcePasswordSecretId);
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 10,
       optional = true,
       description = "Secret version id for destination Kafka username",
       helpText =
@@ -140,7 +155,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
   void setDestinationUsernameSecretId(String destinationUsernameSecretId);
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 11,
       optional = true,
       description = "Secret version Id for destination Kafka password",
       helpText =
@@ -151,4 +166,137 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
   String getDestinationPasswordSecretId();
 
   void setDestinationPasswordSecretId(String destinationPasswordSecretId);
+
+  @TemplateParameter.Text(
+      order = 12,
+      optional = true,
+      description = "Location of the jks file in GCS with SSL certificate to verify identity",
+      helpText =
+          "Location of the SSL certificate where the trust store for authentication to Kafka are stored.",
+      example =
+          "/your-bucket/truststore.jks"
+  )
+  String getSourceTruststoreLocation();
+
+  void setSourceTruststoreLocation(String sourceTruststoreLocation);
+
+  @TemplateParameter.Text(
+      order = 13,
+      optional = true,
+      description = "SecretId to get password to access secret in truststore for source kafka",
+      helpText =
+          "SecretId in secret manager where the password to access secret in truststore is stored.",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
+  )
+
+  String getSourceTruststorePasswordSecretId();
+  void setSourceTruststorePasswordSecretId(String sourceTruststorePasswordSecretId);
+
+  @TemplateParameter.Text(
+      order = 14,
+      optional = true,
+      description = "Path to keystore",
+      helpText =
+          "Keystore location that contains the SSL certificate and private key.",
+      example =
+          "/your-bucket/keystore.jks"
+  )
+
+  String getSourceKeystoreLocation();
+  void setSourceKeystoreLocation(String sourceKeystoreLocation);
+
+  @TemplateParameter.Text(
+      order = 15,
+      optional = true,
+      description = "SecretId to get password to access secret in truststore for source kafka",
+      helpText =
+          "SecretId in secret manager where the password to access the keystore file",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
+  )
+
+  String getSourceKeystorePasswordSecretId();
+  void setSourceKeystorePasswordSecretId(String sourceKeystorePasswordSecretId);
+
+  @TemplateParameter.Text(
+      order = 16,
+      optional = true,
+      description = "SecretId of password to access private key inside the keystore",
+      helpText =
+          "SecretId of password required to access the client's private key stored within the keystore",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
+
+  )
+
+  String getSourceKeyPasswordSecretId();
+  void setSourceKeyPasswordSecretId(String sourceKeyPasswordSecretId);
+
+  @TemplateParameter.Text(
+      order = 17,
+      optional = true,
+      description = "Location of the jks file in GCS with SSL certificate to verify identity",
+      helpText =
+          "Location of the SSL certificate where the trust store for authentication to Kafka are stored.",
+      example =
+          "/your-bucket/truststore.jks"
+  )
+
+  String getDestinationTruststoreLocation();
+
+  void setDestinationTruststoreLocation(String destinationTruststoreLocation);
+
+  @TemplateParameter.Text(
+      order = 18,
+      optional = true,
+      description = "SecretId to get password to access secret in truststore for source kafka",
+      helpText =
+          "SecretId in secret manager where the password to access secret in truststore is stored.",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
+  )
+
+  String getDestinationTruststorePasswordSecretId();
+  void setDestinationTruststorePasswordSecretId(String destinationTruststorePasswordSecretId);
+
+  @TemplateParameter.Text(
+      order = 19,
+      optional = true,
+      description = "Path to keystore",
+      helpText =
+          "Keystore location that contains the SSL certificate and private key.",
+      example =
+          "/your-bucket/keystore.jks"
+  )
+
+  String getDestinationKeystoreLocation();
+  void setDestinationKeystoreLocation(String destinationKeystoreLocation);
+
+  @TemplateParameter.Text(
+      order = 20,
+      optional = true,
+      description = "SecretId to get password to access secret in truststore for source kafka",
+      helpText =
+          "SecretId in secret manager where the password to access the keystore file",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
+  )
+
+  String getDestinationKeystorePasswordSecretId();
+  void setDestinationKeystorePasswordSecretId(String destinationKeystorePasswordSecretId);
+
+  @TemplateParameter.Text(
+      order = 21,
+      optional = true,
+      description = "SecretId of password to access private key inside the keystore",
+      helpText =
+          "SecretId of password required to access the client's private key stored within the keystore",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
+
+  )
+
+  String getDestinationKeyPasswordSecretId();
+  void setDestinationKeyPasswordSecretId(String destinationKeyPasswordSecretId);
 }
