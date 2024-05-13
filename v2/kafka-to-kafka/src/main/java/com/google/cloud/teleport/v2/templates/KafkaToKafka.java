@@ -65,6 +65,7 @@ public class KafkaToKafka {
     run(options);
   }
 
+
   public static PipelineResult run(KafkaToKafkaOptions options) throws IOException {
 
     if (options.getSourceAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {

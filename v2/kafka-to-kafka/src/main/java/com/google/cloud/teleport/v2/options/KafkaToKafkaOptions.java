@@ -38,6 +38,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
   void setSourceTopic(String sourceTopic);
 
 
+
   @TemplateParameter.Enum(
       groupName = "Source",
       order = 2,
@@ -62,11 +63,13 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       groupName = "Source",
       order = 3,
       optional = true,
+
       parentName = "sourceAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       description = "Secret Version ID for Username",
       helpText =
           "Secret Version ID from the secret manager to get Kafka SASL_PLAIN username for source Kafka.",
+
 
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
@@ -80,6 +83,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       groupName = "Source",
       parentName = "sourceAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
+
       optional = true,
       helpText = "Secret version id of password",
       description =
@@ -141,7 +145,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
   void setSourceKeystoreLocation(String sourceKeystoreLocation);
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 10,
       optional = true,
       name = "sourceKeystorePassword",
       groupName = "Source",
@@ -269,11 +273,13 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       helpText =
           "Location of the jks file in Cloud Storage with SSL certificate to verify identity.")
+
   String getDestinationTruststoreLocation();
 
   void setDestinationTruststoreLocation(String destinationTruststoreLocation);
 
   @TemplateParameter.Text(
+
       order = 16,
       optional = true,
       name = "destinationTruststorePassword",
@@ -328,6 +334,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 19,
       optional = true,
+
       name = "destinationKey",
       parentName = "destinationAuthenticationMethod",
       groupName = "Destination",
