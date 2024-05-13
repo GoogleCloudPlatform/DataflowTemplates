@@ -68,7 +68,11 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "JDBC connection property string.",
       helpText =
-          "The properties string to use for the JDBC connection. Use the string format `[propertyName=property;]*.`",
+          "The properties string to use for the JDBC connection. The format of the string must "
+              + "be `[propertyName=property;]*`."
+              + "For more information, see "
+              + "Configuration Properties (https://dev.mysql.com/doc/connector-j/8.1/en/connector-j-reference-configuration-properties.html) "
+              + "in the MySQL documentation.",
       example = "unicode=true;characterEncoding=UTF-8")
   String getConnectionProperties();
 
@@ -115,10 +119,8 @@ public interface JdbcToBigQueryOptions
       order = 8,
       groupName = "Target",
       description = "BigQuery output table",
-      helpText =
-          "The BigQuery table location to write the output to. Use the format"
-              + " `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`. The table's schema must match input objects.",
-      example = "<my-project>:<my-dataset>.<my-table>")
+      helpText = "The BigQuery output table location.",
+      example = "<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>")
   String getOutputTable();
 
   @TemplateParameter.GcsWriteFolder(
@@ -138,7 +140,8 @@ public interface JdbcToBigQueryOptions
       groupName = "Source",
       description = "Google Cloud KMS key",
       helpText =
-          "The Cloud KMS encryption key to use to decrypt the username, password, and connection string. If you pass in a Cloud KMS key, the username, password, and connection string must all be passed in encrypted.",
+          "The Cloud KMS encryption key to use to decrypt the username, password, and connection string. If you  "
+              + "pass in a Cloud KMS key, you must also encrypt the username, password, and connection string.",
       example = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
   String getKMSEncryptionKey();
 
