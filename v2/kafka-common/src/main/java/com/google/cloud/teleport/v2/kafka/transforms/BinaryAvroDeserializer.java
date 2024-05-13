@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.kafka.transforms;
 
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import java.io.IOException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
@@ -25,8 +24,9 @@ import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.serialization.Deserializer;
 
-public class BinaryAvroDeserializer extends KafkaAvroDeserializer {
+public class BinaryAvroDeserializer implements Deserializer<GenericRecord> {
   private Schema schema;
 
   public BinaryAvroDeserializer() {}
@@ -35,7 +35,13 @@ public class BinaryAvroDeserializer extends KafkaAvroDeserializer {
     this.schema = schema;
   }
 
+  @Override
   public GenericRecord deserialize(String topic, Headers header, byte[] bytes) {
+    return deserialize(topic, bytes);
+  }
+
+  @Override
+  public GenericRecord deserialize(String topic, byte[] bytes) {
     try {
       Decoder decoder = DecoderFactory.get().binaryDecoder(bytes, null);
       DatumReader<GenericRecord> reader = new GenericDatumReader<GenericRecord>(this.schema);

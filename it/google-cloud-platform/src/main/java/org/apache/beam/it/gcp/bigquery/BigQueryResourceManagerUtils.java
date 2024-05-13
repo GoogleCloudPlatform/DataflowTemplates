@@ -22,17 +22,18 @@ import static org.apache.beam.it.common.utils.ResourceManagerUtils.generateResou
 import com.google.cloud.bigquery.TableId;
 import java.time.format.DateTimeFormatter;
 import java.util.regex.Pattern;
+import org.apache.commons.lang3.RandomStringUtils;
 
 /** Utilities for {@link BigQueryResourceManager} implementations. */
 public final class BigQueryResourceManagerUtils {
 
   private static final int MAX_DATASET_ID_LENGTH = 1024;
   private static final Pattern ILLEGAL_DATASET_ID_CHARS = Pattern.compile("[^a-zA-Z0-9_]");
+  private static final String REPLACE_CHAR = "_";
   private static final int MIN_TABLE_ID_LENGTH = 1;
   private static final int MAX_TABLE_ID_LENGTH = 1024;
   private static final Pattern ILLEGAL_TABLE_CHARS = Pattern.compile("[^a-zA-Z0-9-_]");
-  private static final DateTimeFormatter TIME_FORMAT =
-      DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSSSSS");
+  private static final String TIME_FORMAT = "yyyyMMdd_HHmmss";
 
   private BigQueryResourceManagerUtils() {}
 
@@ -46,8 +47,31 @@ public final class BigQueryResourceManagerUtils {
    * @return a BigQuery compatible dataset name.
    */
   static String generateDatasetId(String datasetName) {
+
+    // Take substring of datasetName to account for random suffix
+    // TODO(polber) - remove with Beam 2.57.0
+    int randomSuffixLength = 6;
+    datasetName =
+        datasetName.substring(
+            0,
+            Math.min(
+                datasetName.length(),
+                MAX_DATASET_ID_LENGTH
+                    - REPLACE_CHAR.length()
+                    - TIME_FORMAT.length()
+                    - REPLACE_CHAR.length()
+                    - randomSuffixLength));
+
+    // Add random suffix to avoid collision
+    // TODO(polber) - remove with Beam 2.57.0
     return generateResourceId(
-        datasetName, ILLEGAL_DATASET_ID_CHARS, "_", MAX_DATASET_ID_LENGTH, TIME_FORMAT);
+            datasetName,
+            ILLEGAL_DATASET_ID_CHARS,
+            REPLACE_CHAR,
+            MAX_DATASET_ID_LENGTH,
+            DateTimeFormatter.ofPattern(TIME_FORMAT))
+        + REPLACE_CHAR
+        + RandomStringUtils.randomAlphanumeric(6).toLowerCase();
   }
 
   /**

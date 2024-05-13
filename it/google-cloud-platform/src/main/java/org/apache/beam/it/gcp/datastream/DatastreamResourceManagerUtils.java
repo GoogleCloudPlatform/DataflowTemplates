@@ -21,13 +21,14 @@ import static org.apache.beam.it.common.utils.ResourceManagerUtils.generateResou
 
 import java.time.format.DateTimeFormatter;
 import java.util.regex.Pattern;
+import org.apache.commons.lang3.RandomStringUtils;
 
 public class DatastreamResourceManagerUtils {
 
   private static final int MAX_RESOURCE_ID_LENGTH = 60;
   private static final Pattern ILLEGAL_RESOURCE_ID_CHARS = Pattern.compile("[^a-zA-Z0-9- ]");
-  private static final DateTimeFormatter TIME_FORMAT =
-      DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSSSSS");
+  private static final String REPLACE_CHAR = "_";
+  private static final String TIME_FORMAT = "yyyyMMdd-HHmmss";
 
   private DatastreamResourceManagerUtils() {}
 
@@ -41,7 +42,30 @@ public class DatastreamResourceManagerUtils {
    * @return a Datastream compatible resource ID.
    */
   static String generateDatastreamId(String resourceId) {
+
+    // Take substring of baseString to account for random suffix
+    // TODO(polber) - remove with Beam 2.57.0
+    int randomSuffixLength = 6;
+    resourceId =
+        resourceId.substring(
+            0,
+            Math.min(
+                resourceId.length(),
+                MAX_RESOURCE_ID_LENGTH
+                    - REPLACE_CHAR.length()
+                    - TIME_FORMAT.length()
+                    - REPLACE_CHAR.length()
+                    - randomSuffixLength));
+
+    // Add random suffix to avoid collision
+    // TODO(polber) - remove with Beam 2.57.0
     return generateResourceId(
-        resourceId, ILLEGAL_RESOURCE_ID_CHARS, "-", MAX_RESOURCE_ID_LENGTH, TIME_FORMAT);
+            resourceId,
+            ILLEGAL_RESOURCE_ID_CHARS,
+            REPLACE_CHAR,
+            MAX_RESOURCE_ID_LENGTH,
+            DateTimeFormatter.ofPattern(TIME_FORMAT))
+        + REPLACE_CHAR
+        + RandomStringUtils.randomAlphanumeric(6).toLowerCase();
   }
 }
