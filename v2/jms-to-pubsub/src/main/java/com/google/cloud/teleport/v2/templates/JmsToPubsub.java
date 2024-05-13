@@ -141,8 +141,8 @@ public class JmsToPubsub {
         optional = true,
         regexes = {"[,\\/:a-zA-Z0-9._-]+"},
         description = "JMS Host IP",
-        helpText = "Server IP for JMS Host",
-        example = "host:5672")
+        helpText = "The JMS (ActiveMQ) Server IP.",
+        example = "tcp://10.0.0.1:61616")
     @Validation.Required
     String getJmsServer();
 
@@ -153,7 +153,7 @@ public class JmsToPubsub {
         optional = false,
         regexes = {"[a-zA-Z0-9._-]+"},
         description = "JMS Queue/Topic Name to read the input from",
-        helpText = "JMS Queue/Topic Name to read the input from.",
+        helpText = "The name of the JMS topic or queue that data is read from.",
         example = "queue")
     @Validation.Required
     String getInputName();
@@ -165,7 +165,7 @@ public class JmsToPubsub {
         optional = false,
         regexes = {"[a-zA-Z0-9._-]+"},
         description = "JMS Destination Type to read the input from",
-        helpText = "JMS Destination Type to read the input from.",
+        helpText = "The JMS destination type to read data from. Can be a queue or a topic.",
         example = "queue")
     @Validation.Required
     String getInputType();
@@ -176,8 +176,7 @@ public class JmsToPubsub {
         order = 4,
         description = "Output Pub/Sub topic",
         helpText =
-            "The name of the topic to which data should published, in the format of"
-                + " 'projects/your-project-id/topics/your-topic-name'",
+            "The name of the Pub/Sub topic to publish data to, in the format `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.",
         example = "projects/your-project-id/topics/your-topic-name")
     @Validation.Required
     String getOutputTopic();
@@ -187,7 +186,7 @@ public class JmsToPubsub {
     @TemplateParameter.Text(
         order = 5,
         description = "JMS Username",
-        helpText = "JMS username for authentication with JMS server",
+        helpText = "The username to use for authentication on the JMS server.",
         example = "sampleusername")
     String getUsername();
 
@@ -196,7 +195,7 @@ public class JmsToPubsub {
     @TemplateParameter.Text(
         order = 6,
         description = "JMS Password",
-        helpText = "Password for username provided for authentication with JMS server",
+        helpText = "The password associated with the provided username.",
         example = "samplepassword")
     String getPassword();
 
