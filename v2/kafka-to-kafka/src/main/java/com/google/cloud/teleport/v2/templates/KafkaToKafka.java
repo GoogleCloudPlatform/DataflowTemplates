@@ -24,7 +24,7 @@ import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.utils.FileAwareProducerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
-import com.google.common.collect.ImmutableMap;
+
 import java.io.IOException;
 
 
