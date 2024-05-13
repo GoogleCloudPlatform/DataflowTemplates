@@ -238,7 +238,7 @@ public class TextIOToBigQuery {
         regexes = {".+:.+\\..+"},
         description = "Output table to write to",
         helpText =
-            "The BigQuery table name you want to create to store your processed data in. If you reuse an existing BigQuery table, the data is appended to the destination table.",
+            "The location of the BigQuery table to use to store the processed data. If you reuse an existing table, it is overwritten.",
         example = "<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>")
     String getOutputTable();
 
