@@ -308,17 +308,17 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
     row.put("name", "a1");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("author_id", 2);
     row.put("name", "a2");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("author_id", 3);
     row.put("name", "a3");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("author_id", 4);
     row.put("name", "a4");
     events.add(row);
@@ -336,19 +336,19 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
     row.put("author_id", 3);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 2);
     row.put("title", "Book002");
     row.put("author_id", 3);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 3);
     row.put("title", "Book004");
     row.put("author_id", 4);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 4);
     row.put("title", "Book005");
     row.put("author_id", 2);
@@ -369,21 +369,21 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
     row.put("author_id", 1);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 2);
     row.put("name", "Article002");
     row.put("published_date", Date.parseDate("2024-01-01"));
     row.put("author_id", 1);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 3);
     row.put("name", "Article004");
     row.put("published_date", Date.parseDate("2024-01-01"));
     row.put("author_id", 4);
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("id", 4);
     row.put("name", "Article005");
     row.put("published_date", Date.parseDate("2024-01-01"));
