@@ -484,7 +484,7 @@ public class ImageSpecParameter {
         this.setParentTriggerValues(machineTypeParam.parentTriggerValues());
         this.setOptional(machineTypeParam.optional());
         this.setHiddenUi(machineTypeParam.hiddenUi());
-        this.setParamType(ImageSpecParameterType.TEXT);
+        this.setParamType(ImageSpecParameterType.MACHINE_TYPE);
         break;
       case "Duration":
         TemplateParameter.Duration durationParam = (TemplateParameter.Duration) parameterAnnotation;
