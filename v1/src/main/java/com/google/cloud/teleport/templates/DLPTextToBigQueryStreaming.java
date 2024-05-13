@@ -314,7 +314,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Text(
         order = 3,
-        groupName = "Source",
+        groupName = "DLP Configuration",
         optional = true,
         regexes = {
           "^projects\\/[^\\n\\r\\/]+(\\/locations\\/[^\\n\\r\\/]+)?\\/inspectTemplates\\/[^\\n\\r\\/]+$"
@@ -331,7 +331,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Integer(
         order = 4,
-        groupName = "Source",
+        groupName = "DLP Configuration",
         optional = true,
         description = "Batch size",
         helpText =
@@ -356,7 +356,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.ProjectId(
         order = 6,
-        groupName = "Source",
+        groupName = "DLP Configuration",
         description = "Cloud DLP project ID",
         helpText =
             "The ID for the Google Cloud project that owns the DLP API resource. This project"

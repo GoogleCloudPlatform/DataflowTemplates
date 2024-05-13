@@ -137,7 +137,6 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 6,
-        groupName = "Target",
         description = "ID column",
         helpText =
             "The fully qualified column name where the ID is stored. In the format cf:col or _key.")
@@ -148,7 +147,6 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 7,
-        groupName = "Target",
         description = "Embedding column",
         helpText =
             "The fully qualified column name where the embeddings are stored. In the format cf:col or _key.")
@@ -159,7 +157,6 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 8,
-        groupName = "Target",
         optional = true,
         description = "Crowding tag column",
         helpText =
@@ -171,7 +168,6 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Integer(
         order = 9,
-        groupName = "Target",
         optional = true,
         description = "The byte size of the embeddings array. Can be 4 or 8.",
         helpText =
@@ -184,7 +180,6 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 10,
-        groupName = "Target",
         optional = true,
         description = "Allow restricts mappings",
         helpText =
@@ -196,7 +191,6 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 11,
-        groupName = "Target",
         optional = true,
         description = "Deny restricts mappings",
         helpText =
@@ -208,7 +202,6 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 12,
-        groupName = "Target",
         optional = true,
         description = "Integer numeric restricts mappings",
         helpText =
@@ -220,7 +213,6 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 13,
-        groupName = "Target",
         optional = true,
         description = "Float numeric restricts mappings",
         helpText =
@@ -232,7 +224,6 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 14,
-        groupName = "Target",
         optional = true,
         description = "Double numeric restricts mappings",
         helpText =

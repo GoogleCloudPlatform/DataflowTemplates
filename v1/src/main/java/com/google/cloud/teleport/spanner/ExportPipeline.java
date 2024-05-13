@@ -108,7 +108,6 @@ public class ExportPipeline {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
-        groupName = "Target",
         optional = true,
         description = "Cloud Storage temp directory for storing Avro files",
         helpText = "The Cloud Storage path where temporary Avro files are written.")

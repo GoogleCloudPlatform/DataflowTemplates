@@ -184,7 +184,6 @@ public class BulkDecompressor {
 
     @TemplateParameter.GcsWriteFile(
         order = 3,
-        groupName = "Target",
         description = "The output file for failures during the decompression process",
         helpText =
             "The output file to write failures to during the decompression process. If there are no failures, the file will still be created but will be empty. The contents will be one line for each file which failed decompression in CSV format (Filename, Error). Note that this parameter will allow the pipeline to continue processing in the event of a failure.",

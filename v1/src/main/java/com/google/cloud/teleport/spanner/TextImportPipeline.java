@@ -291,7 +291,6 @@ public class TextImportPipeline {
 
     @TemplateParameter.GcsWriteFolder(
         order = 16,
-        groupName = "Target",
         description = "Invalid rows output path",
         optional = true,
         helpText = "The Cloud Storage path to use when writing rows that cannot be imported.",

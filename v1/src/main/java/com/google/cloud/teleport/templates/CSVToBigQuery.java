@@ -132,7 +132,6 @@ public class CSVToBigQuery {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
-        groupName = "Target",
         description = "Temporary directory for BigQuery loading process",
         helpText = "The temporary directory to use during the BigQuery loading process.",
         example = "gs://your-bucket/your-files/temp_dir")
@@ -143,7 +142,6 @@ public class CSVToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 5,
-        groupName = "Target",
         description = "BigQuery output table for bad records",
         helpText =
             "The name of the BigQuery table to use to store the rejected data when processing the"
