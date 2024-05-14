@@ -323,6 +323,33 @@ BulkInsertMethodOptions getBulkInsertMethod();
 Note: `order` is relevant for templates that can be used from the UI, and
 specify the relative order of parameters.
 
+#### Template Parameter Compatibility/Deprecation
+
+Dataflow Templates attempt to maintain full backwards compatibility with previous versions of the template, such that templates launched by automation or a schedule will continue to function indefinitely. If you need to deprecate a TemplateParameter, you can do so by adding the `@Deprecated` annotation to the template, for example:
+
+```java
+@TemplateParameter.Text(
+    order = 21,
+    optional = true,
+    description = "Deprecated, use XYZ instead",
+    helpText = "This parameter has been deprecated, please use XYZ parameter instead")
+@Deprecated
+BulkInsertMethodOptions getBulkInsertMethod();
+```
+
+You can optionally add a `hiddenUi` attribute to hide it in the UI. This will still keep it available via gcloud/REST API calls:
+
+```java
+@TemplateParameter.Text(
+    order = 21,
+    optional = true,
+    description = "Deprecated, use XYZ instead",
+    helpText = "This parameter has been deprecated, please use XYZ parameter instead",
+    hiddenUi = true)
+@Deprecated
+BulkInsertMethodOptions getBulkInsertMethod();
+```
+
 #### @TemplateIntegrationTest Annotation
 
 This annotation should be used by classes that are used for integration tests of
