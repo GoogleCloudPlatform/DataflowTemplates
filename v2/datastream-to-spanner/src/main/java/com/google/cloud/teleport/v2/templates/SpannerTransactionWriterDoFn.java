@@ -33,7 +33,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventCon
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.AdvancedTransformationImplFetcher;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
@@ -129,12 +129,12 @@ public class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, S
   private final Counter retryableErrors =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Retryable errors");
 
-  private final Counter transformationException =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Transformation Exceptions");
+  private final Counter customTransformationException =
+      Metrics.counter(SpannerTransactionWriterDoFn.class, "Custom Transformation Exceptions");
 
-  private final Distribution applyTransformationResponseTimeMetric =
+  private final Distribution applyCustomTransformationResponseTimeMetric =
       Metrics.distribution(
-          SpannerTransactionWriterDoFn.class, "apply_transformation_impl_latency_ms");
+          SpannerTransactionWriterDoFn.class, "apply_custom_transformation_impl_latency_ms");
   // The max length of tag allowed in Spanner Transaction tags.
   private static final int MAX_TXN_TAG_LENGTH = 50;
 
@@ -182,7 +182,7 @@ public class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, S
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     datastreamToSpannerTransformation =
-        AdvancedTransformationImplFetcher.getApplyTransformationImpl(
+        CustomTransformationImplFetcher.getCustomTransformationLogicImpl(
             customJarPath, customClassName, customParameters);
     changeEventSessionConvertor =
         new ChangeEventSessionConvertor(schema, transformationContext, sourceType);
@@ -231,7 +231,7 @@ public class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, S
         MigrationTransformationResponse migrationTransformationResponse =
             datastreamToSpannerTransformation.toSpannerRow(migrationTransformationRequest);
         Instant endTimestamp = Instant.now();
-        applyTransformationResponseTimeMetric.update(
+        applyCustomTransformationResponseTimeMetric.update(
             new Duration(startTimestamp, endTimestamp).getMillis());
         if (migrationTransformationResponse.isEventFiltered()) {
           filteredEvents.inc();
@@ -239,7 +239,7 @@ public class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, S
           return;
         }
         changeEvent =
-            transformChangeEventViaAdvancedTransformation(
+            transformChangeEventViaCustomTransformation(
                 changeEvent, migrationTransformationResponse.getResponseRow());
       }
       ChangeEventContext changeEventContext =
@@ -316,11 +316,12 @@ public class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, S
       // do not increment the retry error count if this was retry attempt
       if (!isRetryRecord) {
         retryableErrors.inc();
+        retryableErrors.inc();
       }
     } catch (TransformationException e) {
       // Errors that result from the custom JAR during transformation are not retryable.
       outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
-      transformationException.inc();
+      customTransformationException.inc();
     } catch (Exception e) {
       // Any other errors are considered severe and not retryable.
       outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
@@ -328,7 +329,7 @@ public class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, S
     }
   }
 
-  public JsonNode transformChangeEventViaAdvancedTransformation(
+  public JsonNode transformChangeEventViaCustomTransformation(
       JsonNode changeEvent, Map<String, Object> spannerRecord) throws IllegalArgumentException {
     for (Map.Entry<String, Object> entry : spannerRecord.entrySet()) {
       String columnName = entry.getKey();
