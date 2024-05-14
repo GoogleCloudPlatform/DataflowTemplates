@@ -15,9 +15,11 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql;
 
+import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
@@ -29,6 +31,8 @@ import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTransientConnectionException;
 import javax.sql.DataSource;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +41,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   private final MySqlVersion mySqlVersion;
 
   private static final Logger logger = LoggerFactory.getLogger(MysqlDialectAdapter.class);
+
+  private final Counter schemaDiscoveryErrors =
+      Metrics.counter(JdbcSourceRowMapper.class, MetricCounters.READER_SCHEMA_DISCOVERY_ERRORS);
 
   public MysqlDialectAdapter(MySqlVersion mySqlVersion) {
     this.mySqlVersion = mySqlVersion;
@@ -79,24 +86,25 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           String.format(
               "Transient connection error while discovering table schema for datasource=%s db=%s tables=%s, cause=%s",
               dataSource, sourceSchemaReference, tables, e));
-      // TODO: Add metrics for transient connection errors.
+      schemaDiscoveryErrors.inc();
       throw new RetriableSchemaDiscoveryException(e);
     } catch (SQLNonTransientConnectionException e) {
       logger.error(
           String.format(
               "Non Transient connection error while discovering table schema for datasource=%s, db=%s tables=%s, cause=%s",
               dataSource, sourceSchemaReference, tables, e));
-      // TODO: Add metrics for non-transient connection errors.
+      schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
     } catch (SQLException e) {
       logger.error(
           String.format(
               "Sql exception while discovering table schema for datasource=%s db=%s tables=%s, cause=%s",
               dataSource, sourceSchemaReference, tables, e));
-      // TODO: Add metrics for SQL exceptions.
+      schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
     } catch (SchemaDiscoveryException e) {
       // Already logged.
+      schemaDiscoveryErrors.inc();
       throw e;
     }
     return tablesBuilder.build();
