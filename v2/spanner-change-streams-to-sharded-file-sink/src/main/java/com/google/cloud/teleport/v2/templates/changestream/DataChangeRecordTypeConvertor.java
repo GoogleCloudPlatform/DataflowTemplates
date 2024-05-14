@@ -157,6 +157,9 @@ public class DataChangeRecordTypeConvertor {
       throws DataChangeRecordConvertorException {
 
     String value = toString(changeEvent, key, requiredField);
+    if (value == null) {
+      return null;
+    }
     if (NumberUtils.isCreatable(value) || NumberUtils.isParsable(value) || isNumeric(value)) {
       return new BigDecimal(value).setScale(9, RoundingMode.HALF_UP);
     }
