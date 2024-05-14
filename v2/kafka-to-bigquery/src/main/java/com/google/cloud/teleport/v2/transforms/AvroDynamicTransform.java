@@ -84,7 +84,7 @@ public class AvroDynamicTransform
                 BigQueryDynamicDestination.of(
                     options.getProject(),
                     options.getOutputDataset(),
-                    options.getBQTableNamePrefix()))
+                    options.getBqTableNamePrefix()))
             .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
             .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
             .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())

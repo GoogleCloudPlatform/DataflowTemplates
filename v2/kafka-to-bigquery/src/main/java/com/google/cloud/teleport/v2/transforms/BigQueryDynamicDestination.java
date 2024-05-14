@@ -65,7 +65,7 @@ public class BigQueryDynamicDestination
 
   @Override
   public TableSchema getSchema(GenericRecord element) {
-    // TODO: Test if sending null can work here, might be mroe efficient.
+    // TODO: Test if sending null can work here, might be more efficient.
     return BigQueryUtils.toTableSchema(AvroUtils.toBeamSchema(element.getSchema()));
   }
 
