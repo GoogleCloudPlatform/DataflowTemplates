@@ -24,12 +24,12 @@ import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class AdvancedTransformationImplFetcher {
+public class CustomTransformationImplFetcher {
   private static final Logger LOG =
-      LoggerFactory.getLogger(AdvancedTransformationImplFetcher.class);
+      LoggerFactory.getLogger(CustomTransformationImplFetcher.class);
   private static ISpannerMigrationTransformer spannerMigrationTransformer = null;
 
-  public static synchronized ISpannerMigrationTransformer getAdvancedTransformationLogicImpl(
+  public static synchronized ISpannerMigrationTransformer getCustomTransformationLogicImpl(
       String customJarPath, String customClassName, String customParameters) {
 
     if (spannerMigrationTransformer == null) {
@@ -58,10 +58,10 @@ public class AdvancedTransformationImplFetcher {
         URLClassLoader urlClassLoader = new URLClassLoader(classLoaderUrls);
 
         // Load the target class
-        Class<?> advancedTransformationClass = urlClassLoader.loadClass(customClassName);
+        Class<?> customTransformationClass = urlClassLoader.loadClass(customClassName);
 
         // Create a new instance from the loaded class
-        Constructor<?> constructor = advancedTransformationClass.getConstructor();
+        Constructor<?> constructor = customTransformationClass.getConstructor();
         ISpannerMigrationTransformer datastreamToSpannerTransformation =
             (ISpannerMigrationTransformer) constructor.newInstance();
         // Get the end time of loading the custom class

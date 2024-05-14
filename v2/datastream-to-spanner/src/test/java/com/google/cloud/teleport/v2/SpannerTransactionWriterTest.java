@@ -86,7 +86,7 @@ public class SpannerTransactionWriterTest {
   }
 
   @Test
-  public void testTransformChangeEventViaAdvancedTransformation() {
+  public void testTransformChangeEventViaCustomTransformation() {
     JSONObject changeEvent = getTestChangeEvent();
     JsonNode ce = parseChangeEvent(changeEvent.toString());
 
@@ -100,7 +100,7 @@ public class SpannerTransactionWriterTest {
         new SpannerTransactionWriterDoFn(
             SpannerConfig.create(), null, null, null, "shadow_", "mysql", true, "", "", "");
     JsonNode result =
-        spannerTransactionWriterDoFn.transformChangeEventViaAdvancedTransformation(
+        spannerTransactionWriterDoFn.transformChangeEventViaCustomTransformation(
             ce, spannerRecord);
 
     // Verify the result
@@ -122,7 +122,7 @@ public class SpannerTransactionWriterTest {
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testTransformChangeEventViaAdvancedTransformationUnsupportedType() {
+  public void testTransformChangeEventViaCustomTransformationUnsupportedType() {
     JSONObject changeEvent = getTestChangeEvent();
     JsonNode ce = parseChangeEvent(changeEvent.toString());
 
@@ -136,7 +136,7 @@ public class SpannerTransactionWriterTest {
         new SpannerTransactionWriterDoFn(
             SpannerConfig.create(), null, null, null, "shadow_", "mysql", true, "", "", "");
     JsonNode result =
-        spannerTransactionWriterDoFn.transformChangeEventViaAdvancedTransformation(
+        spannerTransactionWriterDoFn.transformChangeEventViaCustomTransformation(
             ce, spannerRecord);
   }
 }
