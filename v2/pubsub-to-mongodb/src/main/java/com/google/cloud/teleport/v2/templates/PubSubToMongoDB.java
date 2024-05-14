@@ -213,7 +213,7 @@ public class PubSubToMongoDB {
         order = 5,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "The BigQuery table that stores messages caused by failures such as mismatched schema, malformed JSON and so on.",
+            "The BigQuery table that stores messages caused by failures, such as mismatched schema, malformed JSON, and so on.",
         example = "your-project-id:your-dataset.your-table-name")
     @Validation.Required
     String getDeadletterTable();
