@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper;
 
+import java.io.Serializable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import org.apache.avro.Schema;
@@ -27,7 +28,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  *
  * @param <T> Type of the filed extracted from {@link ResultSet}.
  */
-public interface ResultSetValueMapper<T> {
+public interface ResultSetValueMapper<T> extends Serializable {
 
   /**
    * Map the extracted value to an object accepted by {@link

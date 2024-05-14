@@ -119,7 +119,8 @@ public class AvroTransform
           KafkaRecord<byte[], byte[]>, FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
       implements Serializable {
 
-    private transient KafkaAvroDeserializer deserializer;
+    private transient KafkaAvroDeserializer kafkaDeserializer;
+    private transient BinaryAvroDeserializer binaryDeserializer;
     private transient SchemaRegistryClient schemaRegistryClient;
     private Schema schema = null;
     private String topicName;
@@ -135,12 +136,12 @@ public class AvroTransform
     @Setup
     public void setup() throws IOException, RestClientException {
       if (this.schema != null && this.useConfluentWireFormat.equals("NON_WIRE_FORMAT")) {
-        this.deserializer = new BinaryAvroDeserializer(this.schema);
+        this.binaryDeserializer = new BinaryAvroDeserializer(this.schema);
       } else if (this.schema != null
           && this.useConfluentWireFormat.equals("CONFLUENT_WIRE_FORMAT")) {
         this.schemaRegistryClient = new MockSchemaRegistryClient();
         this.schemaRegistryClient.register(this.topicName, this.schema, 1, 1);
-        this.deserializer = new KafkaAvroDeserializer(schemaRegistryClient);
+        this.kafkaDeserializer = new KafkaAvroDeserializer(schemaRegistryClient);
       } else {
         throw new IllegalArgumentException(
             "An Avro schema is needed in order to deserialize values.");
@@ -153,10 +154,16 @@ public class AvroTransform
       GenericRecord result = null;
       try {
         // Serialize to Generic Record
-        result =
-            (GenericRecord)
-                this.deserializer.deserialize(
-                    element.getTopic(), element.getHeaders(), element.getKV().getValue());
+        if (this.useConfluentWireFormat.equals("NON_WIRE_FORMAT")) {
+          result =
+              this.binaryDeserializer.deserialize(
+                  element.getTopic(), element.getHeaders(), element.getKV().getValue());
+        } else {
+          result =
+              (GenericRecord)
+                  this.kafkaDeserializer.deserialize(
+                      element.getTopic(), element.getHeaders(), element.getKV().getValue());
+        }
       } catch (Exception e) {
         LOG.error("Failed during deserialization: " + e.toString());
       }
