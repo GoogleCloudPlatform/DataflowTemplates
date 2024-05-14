@@ -283,7 +283,7 @@ public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
     row = new HashMap<>();
     row.put("id", 12);
     row.put("name", "Tester12");
-    row.put("age", 12);
+    row.put("age", 112);
     events.add(row);
 
     row = new HashMap<>();
