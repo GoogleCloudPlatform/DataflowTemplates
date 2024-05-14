@@ -60,3 +60,33 @@ CREATE TABLE IF NOT EXISTS AllDatatypeColumns2 (
   varbinary_column BYTES(MAX),
   bit_column BYTES(MAX),
 ) PRIMARY KEY(varchar_column);
+
+CREATE TABLE IF NOT EXISTS DatatypeColumnsWithSizes (
+   varchar_column STRING(30) NOT NULL,
+   float_column FLOAT64,
+   decimal_column NUMERIC,
+   char_column STRING(50),
+   bool_column BOOL,
+   binary_column BYTES(30),
+   varbinary_column BYTES(30),
+   bit_column BYTES(10),
+) PRIMARY KEY(varchar_column);
+
+CREATE TABLE IF NOT EXISTS DatatypeColumnsReducedSizes (
+    varchar_column STRING(10) NOT NULL,
+    float_column FLOAT64,
+    decimal_column NUMERIC,
+    char_column STRING(20),
+    bool_column BOOL,
+    binary_column BYTES(MAX),
+    varbinary_column BYTES(MAX),
+    bit_column BYTES(MAX),
+) PRIMARY KEY(varchar_column);
+
+CREATE TABLE Users (
+   user_id INT64 NOT NULL,
+   first_name STRING(50),
+   last_name STRING(50),
+   age INT64,
+   full_name STRING(100) AS (ARRAY_TO_STRING([first_name, last_name], " ")) STORED,
+) PRIMARY KEY (user_id);

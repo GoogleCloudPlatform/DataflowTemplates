@@ -1,0 +1,1 @@
+Insert into Users values(1, 'Lorem', 'Epsum', 20); Insert into Users values(2, 'Jane', 'Doe', 21); Insert into Users values(9, 'James', 'Dove', 22);
