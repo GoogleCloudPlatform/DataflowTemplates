@@ -226,6 +226,8 @@ Notes:
 
 ### Running Integration Tests
 
+For information on adding integration tests, see [Adding an Integration or Load Test](./add-integration-or-load-test.md)
+
 To run integration tests, the developer plugin can be also used to stage template on-demand (in case the parameter `-DspecPath=` is not specified).
 
 For example, to run all the integration tests in a specific module (in the example below, `v2/googlecloud-to-googlecloud`):
@@ -245,7 +247,7 @@ The same happens when the test is executed from an IDE, just make sure to add th
 
 ### Running Load Tests
 
-For information on adding and running load tests, see [Adding a Load Test](./add-load-test.md).
+For information on adding and running load tests, see [Adding a Load Test](./add-integration-or-load-test.md).
 
 ### Adding New Templates
 
