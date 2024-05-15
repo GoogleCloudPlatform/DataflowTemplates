@@ -143,7 +143,7 @@ public class SpannerConverters {
         helpText =
             "The timestamp that corresponds to the version of the Spanner database that you want to read."
                 + " The timestamp must be specified as per RFC 3339 (https://tools.ietf.org/html/rfc3339) UTC \"Zulu\" format."
-                + " The timestamp must be in the past and" 
+                + " The timestamp must be in the past and"
                 + " Maximum timestamp staleness (https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness) applies.",
         example = "1990-12-31T23:59:60Z")
     @Default.String(value = "")
@@ -159,7 +159,7 @@ public class SpannerConverters {
         helpText =
             "Set to `true` to use the compute resources of Spanner Data Boost to run the job with near-zero"
                 + " impact on Spanner OLTP workflows. When true, requires the `spanner.databases.useDataBoost` Identity and"
-                + " Access Management (IAM) permission. For more information, see" 
+                + " Access Management (IAM) permission. For more information, see"
                 + " Data Boost overview (https://cloud.google.com/spanner/docs/databoost/databoost-overview).")
     @Default.Boolean(false)
     ValueProvider<Boolean> getDataBoostEnabled();

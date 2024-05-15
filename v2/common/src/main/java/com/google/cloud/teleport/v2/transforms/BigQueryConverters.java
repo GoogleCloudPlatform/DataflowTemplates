@@ -166,11 +166,12 @@ public class BigQueryConverters {
         order = 1,
         optional = true,
         description = "BigQuery source table",
-        helpText = "The BigQuery table to read from. Format: `projectId:datasetId.tablename`. If you specify `inputTableSpec`, the template reads the data directly from BigQuery storage by using the" 
-        + " BigQuery Storage Read API. (https://cloud.google.com/bigquery/docs/reference/storage)" 
-        + " For information about limitations in the Storage Read API, see"
-        + " Limitations.(https://cloud.google.com/bigquery/docs/reference/storage#limitations)"
-        + " You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter.",
+        helpText =
+            "The BigQuery table to read from. Format: `projectId:datasetId.tablename`. If you specify `inputTableSpec`, the template reads the data directly from BigQuery storage by using the"
+                + " BigQuery Storage Read API. (https://cloud.google.com/bigquery/docs/reference/storage)"
+                + " For information about limitations in the Storage Read API, see"
+                + " Limitations.(https://cloud.google.com/bigquery/docs/reference/storage#limitations)"
+                + " You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter.",
         example = "bigquery-project:dataset.input_table")
     String getInputTableSpec();
 
@@ -195,10 +196,11 @@ public class BigQueryConverters {
         optional = true,
         regexes = {"^.+$"},
         description = "Input SQL query.",
-        helpText = "The SQL query to use to read data from BigQuery. If the BigQuery dataset is in a different project than the Dataflow job,"
-        + " specify the full dataset name in the SQL query, for example: <PROJECT_ID>.<DATASET_NAME>.<TABLE_NAME>. By default, the `query` parameter uses" 
-        + " GoogleSQL (https://cloud.google.com/bigquery/docs/introduction-sql), unless `useLegacySql` is `true`."
-        + " You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter.",
+        helpText =
+            "The SQL query to use to read data from BigQuery. If the BigQuery dataset is in a different project than the Dataflow job,"
+                + " specify the full dataset name in the SQL query, for example: <PROJECT_ID>.<DATASET_NAME>.<TABLE_NAME>. By default, the `query` parameter uses"
+                + " GoogleSQL (https://cloud.google.com/bigquery/docs/introduction-sql), unless `useLegacySql` is `true`."
+                + " You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter.",
         example = "select * from sampledb.sample_table")
     String getQuery();
 
@@ -208,8 +210,9 @@ public class BigQueryConverters {
         order = 4,
         optional = true,
         description = "Set to true to use legacy SQL",
-        helpText = "Set to true to use legacy SQL. This parameter only applies when using"
-        + "the `query` parameter. Defaults to: false.")
+        helpText =
+            "Set to true to use legacy SQL. This parameter only applies when using"
+                + "the `query` parameter. Defaults to: false.")
     @Default.Boolean(false)
     Boolean getUseLegacySql();
 

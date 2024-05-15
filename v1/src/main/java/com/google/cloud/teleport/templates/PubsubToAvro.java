@@ -146,8 +146,7 @@ public class PubsubToAvro {
         order = 6,
         optional = true,
         description = "Output filename suffix of the files to write",
-        helpText =
-            "The output filename suffix for the Avro files.")
+        helpText = "The output filename suffix for the Avro files.")
     @Default.String("")
     ValueProvider<String> getOutputFilenameSuffix();
 
@@ -156,7 +155,8 @@ public class PubsubToAvro {
     @TemplateParameter.GcsWriteFolder(
         order = 7,
         description = "Temporary Avro write directory",
-        helpText = "The directory for temporary Avro files. Must contain / at the end. For example: gs://example-bucket/example-directory/.")
+        helpText =
+            "The directory for temporary Avro files. Must contain / at the end. For example: gs://example-bucket/example-directory/.")
     @Required
     ValueProvider<String> getAvroTempDirectory();
 

@@ -183,7 +183,8 @@ public class CsvConverters {
     @TemplateParameter.GcsReadFile(
         order = 1,
         description = "The input filepattern to read from.",
-        helpText = "The Cloud Storage file pattern to search for CSV files. Example: gs://mybucket/test-*.csv.")
+        helpText =
+            "The Cloud Storage file pattern to search for CSV files. Example: gs://mybucket/test-*.csv.")
     String getInputFileSpec();
 
     void setInputFileSpec(String inputFileSpec);
@@ -247,7 +248,8 @@ public class CsvConverters {
         order = 7,
         optional = true,
         description = "Set to true if number of files is in the tens of thousands",
-        helpText = "Set to true if number of files is in the tens of thousands. Defaults to: false.")
+        helpText =
+            "Set to true if number of files is in the tens of thousands. Defaults to: false.")
     @Default.Boolean(false)
     Boolean getLargeNumFiles();
 

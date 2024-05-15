@@ -84,8 +84,7 @@ public class CsvConverters {
     @TemplateParameter.Text(
         order = 2,
         description = "Column delimiter of the data files.",
-        helpText =
-            "The column delimiter that the CSV file uses.",
+        helpText = "The column delimiter that the CSV file uses.",
         example = ",")
     ValueProvider<String> getDelimiter();
 
@@ -94,8 +93,7 @@ public class CsvConverters {
     @TemplateParameter.Text(
         order = 3,
         description = "CSV Format to use for parsing records.",
-        helpText =
-            "The CSV format according to Apache Commons CSV format. Defaults to: Default.")
+        helpText = "The CSV format according to Apache Commons CSV format. Defaults to: Default.")
     ValueProvider<String> getCsvFormat();
 
     void setCsvFormat(ValueProvider<String> csvFormat);
