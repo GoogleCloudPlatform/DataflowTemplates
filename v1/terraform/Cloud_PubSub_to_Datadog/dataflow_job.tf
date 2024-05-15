@@ -65,7 +65,7 @@ variable "parallelism" {
 
 variable "includePubsubMessage" {
   type        = bool
-  description = "Include full Pub/Sub message in the payload (true/false). Defaults to false (only data element is included in the payload)."
+  description = "Include full Pub/Sub message in the payload (true/false). Defaults to true (all elements, including data element, are included in the payload)."
   default     = null
 }
 
