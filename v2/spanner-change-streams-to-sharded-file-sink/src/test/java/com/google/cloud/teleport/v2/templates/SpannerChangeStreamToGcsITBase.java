@@ -15,10 +15,17 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.utils.IORedirectUtil;
+import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -104,6 +111,59 @@ public class SpannerChangeStreamToGcsITBase extends TemplateTestBase {
   public String getGcsFullPath(
       GcsResourceManager gcsResourceManager, String artifactId, String identifierSuffix) {
     return ArtifactUtils.getFullGcsPath(
-        artifactBucketName, getClass().getSimpleName(), gcsResourceManager.runId(), artifactId);
+        artifactBucketName, identifierSuffix, gcsResourceManager.runId(), artifactId);
+  }
+
+  public PipelineLauncher.LaunchInfo launchReaderDataflowJob(
+      GcsResourceManager gcsResourceManager,
+      SpannerResourceManager spannerResourceManager,
+      SpannerResourceManager spannerMetadataResourceManager,
+      String identifierSuffix,
+      String shardingCustomJarPath,
+      String shardingCustomClassName)
+      throws IOException {
+    // default parameters
+    Map<String, String> params =
+        new HashMap<>() {
+          {
+            put(
+                "sessionFilePath",
+                getGcsFullPath(gcsResourceManager, "input/session.json", identifierSuffix));
+            put("instanceId", spannerResourceManager.getInstanceId());
+            put("databaseId", spannerResourceManager.getDatabaseId());
+            put("spannerProjectId", PROJECT);
+            put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
+            put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
+            put(
+                "sourceShardsFilePath",
+                getGcsFullPath(gcsResourceManager, "input/shard.json", identifierSuffix));
+            put("changeStreamName", "allstream");
+            put("runIdentifier", "run1");
+            put(
+                "gcsOutputDirectory",
+                getGcsFullPath(gcsResourceManager, "output", identifierSuffix));
+          }
+        };
+
+    if (shardingCustomJarPath != null) {
+      params.put(
+          "shardingCustomJarPath",
+          getGcsFullPath(gcsResourceManager, shardingCustomJarPath, identifierSuffix));
+    }
+    if (shardingCustomClassName != null) {
+      params.put("shardingCustomClassName", shardingCustomClassName);
+    }
+
+    // Construct template
+    String jobName = PipelineUtils.createJobName("rr-it");
+    // /-DunifiedWorker=true when using runner v2
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(jobName, specPath);
+    options.setParameters(params);
+    options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+    // Run
+    PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
+    assertThatPipeline(jobInfo).isRunning();
+    return jobInfo;
   }
 }

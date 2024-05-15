@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatArtifacts;
-import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Mutation;
@@ -31,16 +30,11 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.gcp.artifacts.Artifact;
@@ -98,7 +92,14 @@ public class SpannerChangeStreamToGcsSimpleIT extends SpannerChangeStreamToGcsIT
         spannerMetadataResourceManager = createSpannerMetadataResourceManager();
         createSpannerMetadataDatabase(spannerMetadataResourceManager);
         createAndUploadShardConfigToGcs();
-        launchReaderDataflowJob();
+        jobInfo =
+            launchReaderDataflowJob(
+                gcsResourceManager,
+                spannerResourceManager,
+                spannerMetadataResourceManager,
+                getClass().getSimpleName(),
+                null,
+                null);
       }
     }
   }
@@ -163,42 +164,6 @@ public class SpannerChangeStreamToGcsSimpleIT extends SpannerChangeStreamToGcsIT
     LOG.info("Shard file contents: {}", shardFileContents);
     // -DartifactBucket has the bucket name
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
-  }
-
-  private void launchReaderDataflowJob() throws IOException {
-    // default parameters
-    Map<String, String> params =
-        new HashMap<>() {
-          {
-            put(
-                "sessionFilePath",
-                getGcsFullPath(
-                    gcsResourceManager, "input/session.json", getClass().getSimpleName()));
-            put("instanceId", spannerResourceManager.getInstanceId());
-            put("databaseId", spannerResourceManager.getDatabaseId());
-            put("spannerProjectId", PROJECT);
-            put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
-            put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put(
-                "sourceShardsFilePath",
-                getGcsFullPath(gcsResourceManager, "input/shard.json", getClass().getSimpleName()));
-            put("changeStreamName", "allstream");
-            put("runIdentifier", "run1");
-            put(
-                "gcsOutputDirectory",
-                getGcsFullPath(gcsResourceManager, "output", getClass().getSimpleName()));
-          }
-        };
-
-    // Construct template
-    String jobName = PipelineUtils.createJobName("rr-it");
-    // /-DunifiedWorker=true when using runner v2
-    LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
-    options.setParameters(params);
-    options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
-    // Run
-    jobInfo = launchTemplate(options, false);
-    assertThatPipeline(jobInfo).isRunning();
   }
 
   private void writeSpannerDataForSingers(int singerId, String firstName, String shardId) {
