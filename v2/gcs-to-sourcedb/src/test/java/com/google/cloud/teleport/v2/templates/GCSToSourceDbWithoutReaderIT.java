@@ -26,7 +26,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -57,15 +56,11 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSToSourceDbWithoutReaderIT.class);
 
-  private static final String SPANNER_DDL_RESOURCE =
-      "GCSToSourceDbWithoutReaderIT/spanner-schema.sql";
-
   private static final String SESSION_FILE_RESOURSE = "GCSToSourceDbWithoutReaderIT/session.json";
 
   private static final String TABLE = "Users";
   private static HashSet<GCSToSourceDbWithoutReaderIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
-  public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
   private static CustomMySQLResourceManager jdbcResourceManager;
   private static GcsResourceManager gcsResourceManager;
@@ -81,7 +76,6 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     synchronized (GCSToSourceDbWithoutReaderIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = CustomMySQLResourceManager.builder(testName).build();
@@ -110,10 +104,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        jdbcResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager);
+        jdbcResourceManager, spannerMetadataResourceManager, gcsResourceManager);
   }
 
   @Test
@@ -121,7 +112,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     assertThatPipeline(jobInfo).isRunning();
     // Write events to GCS
     gcsClient.uploadArtifact(
-        "cdc/Shard1/2024-05-13T08:43:10.000Z-2024-05-13T08:43:20.000Z-pane-0-last-0-of-1.txt",
+        "output/Shard1/2024-05-13T08:43:10.000Z-2024-05-13T08:43:20.000Z-pane-0-last-0-of-1.txt",
         Resources.getResource("GCSToSourceDbWithoutReaderIT/events.txt").getPath());
 
     // Assert events on Mysql
@@ -140,27 +131,6 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     assertThat(rows).hasSize(1);
     assertThat(rows.get(0).get("id")).isEqualTo(1);
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
-  }
-
-  private SpannerResourceManager createSpannerDatabase(String spannerDdlResourceFile)
-      throws IOException {
-    SpannerResourceManager spannerResourceManager =
-        SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build(); // DB name is appended with prefix to avoid clashes
-    String ddl =
-        String.join(
-            " ",
-            Resources.readLines(
-                Resources.getResource(spannerDdlResourceFile), StandardCharsets.UTF_8));
-    ddl = ddl.trim();
-    String[] ddls = ddl.split(";");
-    for (String d : ddls) {
-      if (!d.isBlank()) {
-        spannerResourceManager.executeDdlStatement(d);
-      }
-    }
-    return spannerResourceManager;
   }
 
   private SpannerResourceManager createSpannerMetadataDatabase() throws IOException {
@@ -186,13 +156,13 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     Map<String, String> params =
         new HashMap<>() {
           {
-            put("sessionFilePath", getGcsPath("input/session.json"));
+            put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
             put("spannerProjectId", PROJECT);
             put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put("sourceShardsFilePath", getGcsPath("input/shard.json"));
+            put("sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager));
             put("runIdentifier", "run1");
-            put("GCSInputDirectoryPath", getGcsPath("cdc"));
+            put("GCSInputDirectoryPath", getGcsPath("output", gcsResourceManager));
             put("startTimestamp", "2024-05-13T08:43:10.000Z");
             put("windowDuration", "10s");
           }
