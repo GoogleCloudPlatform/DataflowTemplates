@@ -33,8 +33,9 @@ must be maintained across all Templates:
 
 ### Introducing New Templates
 
-If you are interested in introducing a new template, please send an email to the core Dataflow Templates
-team before doing so. Any new templates must be flex templates in the v2 directory
+If you are interested in introducing a new template, please file an issue using the [Google Issue Tracker](https://issuetracker.google.com/issues/new?component=187168&template=0) before doing so. Any new templates must be flex templates in the v2 directory.
+
+For documentation on adding new templates, see the [code contribution guide](./code-contributions.md).
 
 ### Forking Beam Code
 
