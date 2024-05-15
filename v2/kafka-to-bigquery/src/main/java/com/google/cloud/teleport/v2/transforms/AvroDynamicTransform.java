@@ -69,6 +69,10 @@ public class AvroDynamicTransform
   private static final Logger LOG = LoggerFactory.getLogger(AvroDynamicTransform.class);
 
   private KafkaToBigQueryFlexOptions options;
+
+  private static final KafkaRecordCoder<byte[], byte[]> kafkaRecordCoder = KafkaRecordCoder.of(
+          NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of())
+  );
   private static final TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
       SUCESS_GENERIC_RECORDS = new TupleTag<>();
   private static final TupleTag<
@@ -170,7 +174,7 @@ public class AvroDynamicTransform
     }
 
     @Setup
-    public void setup() throws IOException, RestClientException {
+    public void setup() {
       if (this.schemaRegistryConnectionUrl != null) {
         this.schemaRegistryClient =
             new CachedSchemaRegistryClient(this.schemaRegistryConnectionUrl, 1000);
@@ -199,9 +203,9 @@ public class AvroDynamicTransform
                     kafkaRecord.getKV().getValue());
         receiver.get(SUCESS_GENERIC_RECORDS).output(FailsafeElement.of(kafkaRecord, result));
       } catch (Exception e) {
-        ByteArrayCoder valueCoder = ByteArrayCoder.of();
+        LOG.error(String.format("Exception raised: %s", e.toString()));
         badRecordRouter.route(
-            receiver, kafkaRecord.getKV().getValue(), valueCoder, e, e.toString());
+            receiver, kafkaRecord, kafkaRecordCoder, e, e.toString());
       }
     }
   }
@@ -237,9 +241,8 @@ public class AvroDynamicTransform
             .output(
                 FailsafeElement.of(element.getOriginalPayload(), KV.of(element.getPayload(), row)));
       } catch (Exception e) {
-        ByteArrayCoder valueCoder = ByteArrayCoder.of();
         badRecordRouter.route(
-            receiver, element.getOriginalPayload().getKV().getValue(), valueCoder, e, e.toString());
+            receiver, element.getOriginalPayload(), kafkaRecordCoder, e, e.toString());
       }
     }
   }

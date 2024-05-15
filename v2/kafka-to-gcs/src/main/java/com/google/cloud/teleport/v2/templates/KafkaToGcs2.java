@@ -20,7 +20,6 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.dlq.DeadLetterQueueOptions;
-import com.google.cloud.teleport.v2.dlq.GcsDeadLetterQueue;
 import com.google.cloud.teleport.v2.dlq.KafkaDeadLetterQueue;
 import com.google.cloud.teleport.v2.transforms.*;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;

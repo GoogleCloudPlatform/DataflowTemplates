@@ -29,6 +29,8 @@ import org.apache.beam.sdk.values.POutput;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.joda.time.Duration;
 
+// TODO: add a method that accepts a coder for the input element. Right now, it is hardcoded
+// to Kafka record.
 @AutoValue
 public abstract class KafkaDeadLetterQueue extends PTransform<PCollection<BadRecord>, POutput> {
   public abstract String bootStrapServers();

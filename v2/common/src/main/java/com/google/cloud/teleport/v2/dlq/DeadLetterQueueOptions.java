@@ -27,13 +27,12 @@ public interface DeadLetterQueueOptions extends PipelineOptions {
   @TemplateParameter.Boolean(
       description = "Enable Kafka Dead Letter Queue.",
       groupName = KAFKA_DLQ_GROUP_NAME,
-      optional = true,
       helpText =
           "Enable Kafka Dead Letter Queue. The pipeline must have Kafka as Source or Sink.")
   @Default.Boolean(false)
   Boolean getEnableKafkaDlq();
 
-  void setEnableKafkaDlq(boolean value);
+  void setEnableKafkaDlq(Boolean value);
   @TemplateParameter.Text(
           groupName = KAFKA_DLQ_GROUP_NAME,
           description = "Kafka dead letter queue topic",
