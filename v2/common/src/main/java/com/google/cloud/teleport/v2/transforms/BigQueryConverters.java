@@ -180,9 +180,9 @@ public class BigQueryConverters {
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
             "The BigQuery table for messages that failed to reach the output"
-                + "table, in the format of `my-project:dataset.my-deadletter-table` "
-                + "If it doesn't exist, the table is created during pipeline execution. If"
-                + "not specified, `<outputTableSpec>_error_records` is used instead.",
+                + "table, in the format <PROJECT_ID>:<DATASET_NAME>.<DEADLETTER_TABLE>.` "
+                + "If a table doesn't exist, is is created during pipeline execution. If"
+                + "not specified, `<outputTableSpec>_error_records` is used.",
         example = "your-project-id:your-dataset.your-table-name")
     String getOutputDeadletterTable();
 
@@ -193,7 +193,7 @@ public class BigQueryConverters {
         optional = true,
         regexes = {"^.+$"},
         description = "Input SQL query.",
-        helpText = "The SQL query to use to read data from BigQuery. If the BigQuery dataset is in a different project than the Dataflow job, specify the full dataset name in the SQL query, as follows: `projectId.datasetName.tablename`. By default, the `query` parameter uses" 
+        helpText = "The SQL query to use to read data from BigQuery. If the BigQuery dataset is in a different project than the Dataflow job, specify the full dataset name in the SQL query, for example: <PROJECT_ID>.<DATASET_NAME>.<TABLE_NAME>. By default, the `query` parameter uses" 
         + "GoogleSQL (https://cloud.google.com/bigquery/docs/introduction-sql)" + ", unless `useLegacySql` is `true`."
         + "You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter.",
         example = "select * from sampledb.sample_table")
@@ -205,8 +205,8 @@ public class BigQueryConverters {
         order = 4,
         optional = true,
         description = "Set to true to use legacy SQL",
-        helpText = "Set to `true` to use legacy SQL. This parameter only applies when using"
-        + "the `query` parameter. Default: `false`.")
+        helpText = "Set to true to use legacy SQL. This parameter only applies when using"
+        + "the `query` parameter. Defaults to: false.")
     @Default.Boolean(false)
     Boolean getUseLegacySql();
 

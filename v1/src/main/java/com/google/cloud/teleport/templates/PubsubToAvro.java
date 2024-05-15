@@ -108,7 +108,7 @@ public class PubsubToAvro {
         order = 2,
         description = "Pub/Sub input topic",
         helpText =
-            "Pub/Sub topic to subscribe for message consumption. The topic name must be in the format of `projects/<project-id>/topics/<topic-name>`.")
+            "The Pub/Sub topic to subscribe to for message consumption. The topic name must be in the format projects/<PROJECT_ID>/topics/<TOPIC_NAME>.")
     ValueProvider<String> getInputTopic();
 
     void setInputTopic(ValueProvider<String> value);
@@ -125,7 +125,7 @@ public class PubsubToAvro {
         order = 4,
         description = "Output file directory in Cloud Storage",
         helpText =
-            "Output directory where output Avro files are archived. Must contain / at the end. For example: `gs://example-bucket/example-directory/`")
+            "The output directory where output Avro files are archived. Must contain / at the end. For example: gs://example-bucket/example-directory/")
     @Required
     ValueProvider<String> getOutputDirectory();
 
@@ -135,7 +135,7 @@ public class PubsubToAvro {
         order = 5,
         optional = true,
         description = "Output filename prefix of the files to write",
-        helpText = "Output filename prefix for the Avro files.",
+        helpText = "The output filename prefix for the Avro files.",
         regexes = "^[a-zA-Z\\-]+$")
     @Default.String("output")
     ValueProvider<String> getOutputFilenamePrefix();
@@ -147,7 +147,7 @@ public class PubsubToAvro {
         optional = true,
         description = "Output filename suffix of the files to write",
         helpText =
-            "Output filename suffix for the Avro files.")
+            "The output filename suffix for the Avro files.")
     @Default.String("")
     ValueProvider<String> getOutputFilenameSuffix();
 
@@ -156,7 +156,7 @@ public class PubsubToAvro {
     @TemplateParameter.GcsWriteFolder(
         order = 7,
         description = "Temporary Avro write directory",
-        helpText = "Directory for temporary Avro files. Must contain / at the end. For example: `gs://example-bucket/example-directory/`.")
+        helpText = "The directory for temporary Avro files. Must contain / at the end. For example: gs://example-bucket/example-directory/.")
     @Required
     ValueProvider<String> getAvroTempDirectory();
 

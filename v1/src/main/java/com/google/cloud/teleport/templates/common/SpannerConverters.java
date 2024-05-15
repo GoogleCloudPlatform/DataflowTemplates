@@ -85,7 +85,7 @@ public class SpannerConverters {
         order = 1,
         regexes = {"^.+$"},
         description = "Spanner Table",
-        helpText = "The table to read the data from.")
+        helpText = "The Spanner table to read the data from.")
     ValueProvider<String> getSpannerTable();
 
     @SuppressWarnings("unused")
@@ -95,7 +95,7 @@ public class SpannerConverters {
         order = 2,
         description = "Read data from Cloud Spanner Project Id",
         helpText =
-            "The Google Cloud Project ID of the Spanner database that you want to read data from.")
+            "The ID of the Google Cloud project that contains the Spanner database to read data from.")
     ValueProvider<String> getSpannerProjectId();
 
     @SuppressWarnings("unused")
@@ -157,7 +157,7 @@ public class SpannerConverters {
         description = "Use independent compute resource (Spanner DataBoost).",
         helpText =
             "Set to `true` to use the compute resources of Spanner Data Boost to run the job with near-zero"
-                + " impact on Spanner OLTP workflows. This requires the `spanner.databases.useDataBoost` Identity and"
+                + " impact on Spanner OLTP workflows. When true, requires the `spanner.databases.useDataBoost` Identity and"
                 + " Access Management (IAM) permission. For more information, see" + "Data Boost overview (https://cloud.google.com/spanner/docs/databoost/databoost-overview).")
     @Default.Boolean(false)
     ValueProvider<Boolean> getDataBoostEnabled();

@@ -34,7 +34,7 @@ public interface GCSToElasticsearchOptions
       order = 1,
       description = "BigQuery Deadletter table to send failed inserts.",
       helpText =
-          "The BigQuery Deadletter table to send failed inserts to.",
+          "The BigQuery dead-letter table to send failed inserts to.",
       example = "your-project:your-dataset.your-table-name")
   @Validation.Required
   String getDeadletterTable();

@@ -94,7 +94,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Bigtable App Profile",
         helpText =
-            "The ID of the Bigtable application profile to be used for the export. If you" + 
+            "The ID of the Bigtable application profile to use for the export. If you" + 
             "do not specify an app profile, Bigtable uses the" + "default app profile (https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile)" + "of the instance.")
     @Default.String("default")
     String getBigtableWriteAppProfile();
@@ -106,7 +106,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         optional = true,
         description = "Bigtable Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Bigtable instance that you want" + 
+            "The ID of the Google Cloud project that contains the Bigtable instance" + 
             "to write data to.")
     String getBigtableWriteProjectId();
 
@@ -125,7 +125,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 7,
         optional = true,
         description = "The max number of row keys in a Bigtable batch write operation",
-        helpText = "The max number of row keys in a Bigtable batch write operation.")
+        helpText = "The maximum number of row keys in a Bigtable batch write operation.")
     Integer getBigtableBulkWriteMaxRowKeyCount();
 
     void setBigtableBulkWriteMaxRowKeyCount(Integer value);
@@ -134,7 +134,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 8,
         optional = true,
         description = "The max amount of bytes in a Bigtable batch write operation",
-        helpText = "The max amount of bytes to include per Bigtable batch write operation.")
+        helpText = "The maximum bytes to include per Bigtable batch write operation.")
     Integer getBigtableBulkWriteMaxRequestSizeBytes();
 
     void setBigtableBulkWriteMaxRequestSizeBytes(Integer value);

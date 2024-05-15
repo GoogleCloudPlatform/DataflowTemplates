@@ -33,7 +33,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
       optional = true,
       description = "Spanner Project ID",
       helpText =
-          "The project to read change streams from. This is also the project where the change "
+          "The project to read change streams from. This project is also where the change "
               + "streams connector metadata table is created. The default for this parameter is the project where the Dataflow pipeline is running.")
   @Default.String("")
   String getSpannerProjectId();
@@ -84,7 +84,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
       order = 6,
       description = "Spanner metadata database",
       helpText =
-          "TThe Spanner database to use for the change streams connector metadata table.")
+          "The Spanner database to use for the change streams connector metadata table.")
   @Validation.Required
   String getSpannerMetadataDatabase();
 
@@ -164,7 +164,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
       optional = true,
       description = "Pub/Sub API",
       helpText =
-          "Pub/Sub API used to implement the pipeline. Allowed APIs are `pubsubio` and `native_client`."
+          "The Pub/Sub API used to implement the pipeline. Allowed APIs are `pubsubio` and `native_client`."
               + " For a small number of queries per second (QPS), `native_client` has less latency. For a"
               + " large number of QPS, `pubsubio` provides better and more stable performance. The default is `pubsubio`.")
   @Default.String("pubsubio")
@@ -203,7 +203,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
       optional = true,
       description = "Priority for Spanner RPC invocations",
       helpText =
-          "The request priority for Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]. (Default: HIGH)")
+          "The request priority for Spanner calls. Allowed values are HIGH, MEDIUM, and LOW. Defaults to: HIGH)")
   @Default.Enum("HIGH")
   RpcPriority getRpcPriority();
 
