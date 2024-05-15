@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
+import com.google.cloud.teleport.v2.dlq.KafkaDeadLetterQueue;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -29,6 +30,7 @@ import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import java.io.IOException;
 import java.util.List;
 import javax.annotation.Nullable;
+
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
@@ -52,8 +54,11 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.*;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * {@link PTransform} for converting the {@link KafkaRecord} into {@link GenericRecord} using Schema
@@ -69,6 +74,8 @@ public abstract class AvroWriteTransform
   static final int DEFAULT_CACHE_CAPACITY = 1000;
   private List<ErrorHandler<BadRecord, ?>> errorHandlers;
   private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
+  private static Logger LOG = LoggerFactory.getLogger(KafkaDeadLetterQueue.class);
+
 
   public abstract String outputDirectory();
 
@@ -311,11 +318,9 @@ public abstract class AvroWriteTransform
         }
         receiver.get(SUCESS_GENERIC_RECORDS).output(FailsafeElement.of(kafkaRecord, genericRecord));
       } catch (Exception e) {
-
-        ByteArrayCoder valueCoder = ByteArrayCoder.of();
-        //        byte[] valueByteArray = CoderUtils.encodeToByteArray(valueCoder,
-        // kafkaRecordValueInBytes);
-        badRecordRouter.route(receiver, kafkaRecordValueInBytes, valueCoder, e, e.toString());
+        KafkaRecordCoder<byte[], byte[]> valueCoder = KafkaRecordCoder.of(
+                NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of()));
+        badRecordRouter.route(receiver, kafkaRecord, valueCoder, e, e.toString());
       }
     }
   }

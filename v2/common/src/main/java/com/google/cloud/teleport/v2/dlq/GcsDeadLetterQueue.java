@@ -47,7 +47,7 @@ public abstract class GcsDeadLetterQueue extends PTransform<PCollection<BadRecor
   public abstract static class GcsDeadLetterQueueBuilder {
     public abstract GcsDeadLetterQueueBuilder setDlqOutputDirectory(String value);
 
-    public abstract GcsDeadLetterQueueBuilder setWindowDuration(@Nullable String value);
+    public abstract GcsDeadLetterQueueBuilder setWindowDuration(String value);
 
     abstract GcsDeadLetterQueue autoBuild();
 

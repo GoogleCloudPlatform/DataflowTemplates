@@ -22,32 +22,34 @@ import java.io.InputStream;
 import java.util.Map;
 import org.apache.beam.sdk.coders.*;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
+import org.apache.beam.sdk.io.kafka.KafkaRecord;
+import org.apache.beam.sdk.io.kafka.KafkaRecordCoder;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollection.IsBounded;
 import org.apache.beam.sdk.values.POutput;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.lang.NonNull;
-
 @AutoValue
 public abstract class KafkaDeadLetterQueue extends PTransform<PCollection<BadRecord>, POutput> {
 
   private static Logger LOG = LoggerFactory.getLogger(KafkaDeadLetterQueue.class);
-  private static final Coder<KV<byte[], byte[]>> KvByteCoder =
-      KvCoder.of(ByteArrayCoder.of(), ByteArrayCoder.of());
+  private static final KafkaRecordCoder<byte[], byte[]> kafkaRecordCoder =
+      KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of()));
 
   public abstract String bootStrapServers();
 
   public abstract String topic();
 
-  public abstract @NonNull Map<String, Object> config();
+  public abstract Map<String, Object> config();
 
   public static KafkaDLQBuilder newBuilder() {
     return new AutoValue_KafkaDeadLetterQueue.Builder();
@@ -71,7 +73,9 @@ public abstract class KafkaDeadLetterQueue extends PTransform<PCollection<BadRec
   public POutput expand(PCollection<BadRecord> input) {
     return input
         .apply(Window.into(FixedWindows.of(Duration.standardSeconds(5))))
-        .apply(ParDo.of(new GetPayloadFromBadRecord()))
+        .apply(ParDo.of(new GetPayloadFromBadRecord())).setCoder(KvCoder.of(
+                NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of())
+            ))
         .apply(
             KafkaIO.<byte[], byte[]>write()
                 .withBootstrapServers(bootStrapServers())
@@ -84,17 +88,11 @@ public abstract class KafkaDeadLetterQueue extends PTransform<PCollection<BadRec
   public static class GetPayloadFromBadRecord extends DoFn<BadRecord, KV<byte[], byte[]>> {
     @ProcessElement
     public void processElement(
-        @Element BadRecord badRecord, OutputReceiver<KV<byte[], byte[]>> receiver)
+            @Element BadRecord badRecord, OutputReceiver<KV<byte[], byte[]>> receiver)
         throws IOException {
-      LOG.error("Encoded Record: %s", badRecord.getRecord().getEncodedRecord());
-      LOG.error("Coder: %s", badRecord.getRecord().getCoder());
       byte[] encodedRecord = badRecord.getRecord().getEncodedRecord();
-      InputStream inputStream = new ByteArrayInputStream(encodedRecord);
-      // We get the coder from the record, but it is returned as string. Maybe the class name which
-      // we
-      // can import?
-      KV<byte[], byte[]> record = KvByteCoder.decode(inputStream);
-      receiver.output(record);
+      KafkaRecord<byte[], byte[]> record = CoderUtils.decodeFromByteArray(kafkaRecordCoder, encodedRecord);
+      receiver.output(record.getKV());
     }
   }
 
