@@ -23,12 +23,10 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,15 +37,14 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
-import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -60,19 +57,18 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerChangeStreamsToShardedFileSink.class)
 @RunWith(JUnit4.class)
-public class SpannerChangeStreamToGcsCustomShardIT extends TemplateTestBase {
+public class SpannerChangeStreamToGcsCustomShardIT extends SpannerChangeStreamToGcsITBase {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamToGcsSimpleIT.class);
+  private static HashSet<SpannerChangeStreamToGcsCustomShardIT> testInstances = new HashSet<>();
+
+  private static GcsResourceManager gcsResourceManager;
   private static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
-  private static HashSet<SpannerChangeStreamToGcsCustomShardIT> testInstances = new HashSet<>();
   private static final String spannerDdl =
       "SpannerChangeStreamToGcsCustomShardIT/spanner-schema.sql";
   private static final String sessionFileResourceName =
       "SpannerChangeStreamToGcsCustomShardIT/session.json";
   private static PipelineLauncher.LaunchInfo jobInfo;
-  private static String spannerDatabaseName = "";
-  private static String spannerMetadataDatabaseName = "";
-  private static GcsResourceManager gcsResourceManager;
 
   /**
    * Does the following setup:
@@ -92,20 +88,31 @@ public class SpannerChangeStreamToGcsCustomShardIT extends TemplateTestBase {
     synchronized (SpannerChangeStreamToGcsSimpleIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        createGcsResourceManager();
-        createSpannerDatabase();
+        gcsResourceManager = createGcsResourceManager(getClass().getSimpleName());
+        spannerResourceManager = createSpannerResourceManager();
+        createSpannerDatabase(spannerResourceManager, spannerDdl);
+        uploadSessionFileToGcs(gcsResourceManager, sessionFileResourceName);
+        spannerMetadataResourceManager = createSpannerMetadataResourceManager();
+        createSpannerMetadataDatabase(spannerMetadataResourceManager);
+        createAndUploadJarToGcs(gcsResourceManager);
         createAndUploadShardConfigToGcs();
-        uploadSessionFileToGcs();
-        createSpannerMetadataDatabase();
-        createAndUploadJarToGcs();
         launchReaderDataflowJob();
       }
     }
   }
 
+  @AfterClass
+  public static void cleanUp() throws IOException {
+    for (SpannerChangeStreamToGcsCustomShardIT instance : testInstances) {
+      instance.tearDownBase();
+    }
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager, spannerMetadataResourceManager, gcsResourceManager);
+  }
+
   @Test
   public void testMultiShardsRecordWrittenToGcsWithCustomShardId()
-      throws IOException, java.lang.InterruptedException {
+      throws java.lang.InterruptedException {
     // Construct a ChainedConditionCheck with below stages.
     // 1. Wait for the metadata table to have the start time of reader job
     // 2. Write 2 records per shard to Spanner
@@ -193,7 +200,6 @@ public class SpannerChangeStreamToGcsCustomShardIT extends TemplateTestBase {
       shard.setPassword("dummy");
       shard.setPort("3306");
       JsonObject jsObj = (JsonObject) new Gson().toJsonTree(shard).getAsJsonObject();
-      jsObj.remove("secretManagerUri"); // remove field secretManagerUri
       ja.add(jsObj);
     }
 
@@ -203,38 +209,32 @@ public class SpannerChangeStreamToGcsCustomShardIT extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 
-  private void uploadSessionFileToGcs() throws IOException {
-    gcsResourceManager.uploadArtifact(
-        "input/session.json", Resources.getResource(sessionFileResourceName).getPath());
-  }
-
-  private void createSpannerMetadataDatabase() throws IOException {
-    spannerMetadataResourceManager =
-        SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build(); // DB name is appended with prefix to avoid clashes
-    String dummy = "create table t1(id INT64 ) primary key(id)";
-    spannerMetadataResourceManager.executeDdlStatement(dummy);
-    // needed to create separate metadata database
-    spannerMetadataDatabaseName = spannerMetadataResourceManager.getDatabaseId();
-  }
-
   private void launchReaderDataflowJob() throws IOException {
     // default parameters
     Map<String, String> params =
         new HashMap<>() {
           {
-            put("sessionFilePath", getGcsFullPath("input/session.json"));
+            put(
+                "sessionFilePath",
+                getGcsFullPath(
+                    gcsResourceManager, "input/session.json", getClass().getSimpleName()));
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
             put("spannerProjectId", PROJECT);
             put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put("sourceShardsFilePath", getGcsFullPath("input/shard.json"));
+            put(
+                "sourceShardsFilePath",
+                getGcsFullPath(gcsResourceManager, "input/shard.json", getClass().getSimpleName()));
             put("changeStreamName", "allstream");
             put("runIdentifier", "run1");
-            put("gcsOutputDirectory", getGcsFullPath("output"));
-            put("shardingCustomJarPath", getGcsFullPath("input/customShard.jar"));
+            put(
+                "gcsOutputDirectory",
+                getGcsFullPath(gcsResourceManager, "output", getClass().getSimpleName()));
+            put(
+                "shardingCustomJarPath",
+                getGcsFullPath(
+                    gcsResourceManager, "input/customShard.jar", getClass().getSimpleName()));
             put("shardingCustomClassName", "com.custom.CustomShardIdFetcherForIT");
           }
         };
@@ -249,53 +249,5 @@ public class SpannerChangeStreamToGcsCustomShardIT extends TemplateTestBase {
     // Run
     jobInfo = launchTemplate(options, false);
     assertThatPipeline(jobInfo).isRunning();
-  }
-
-  private void createSpannerDatabase() throws IOException {
-    spannerResourceManager =
-        SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build(); // DB name is appended with prefix to avoid clashes
-    String ddl =
-        String.join(
-            " ", Resources.readLines(Resources.getResource(spannerDdl), StandardCharsets.UTF_8));
-    ddl = ddl.trim();
-    String[] ddls = ddl.split(";");
-    for (String d : ddls) {
-      if (!d.isBlank()) {
-        spannerResourceManager.executeDdlStatement(d);
-      }
-    }
-    spannerDatabaseName = spannerResourceManager.getDatabaseId();
-  }
-
-  private void createAndUploadJarToGcs() throws IOException, InterruptedException {
-    String[] commands = {"cd ../spanner-custom-shard", "mvn install"};
-
-    // Join the commands with && to execute them sequentially
-    String[] shellCommand = {"/bin/bash", "-c", String.join(" && ", commands)};
-
-    Process exec = Runtime.getRuntime().exec(shellCommand);
-
-    IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
-    IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
-
-    if (exec.waitFor() != 0) {
-      throw new RuntimeException("Error staging template, check Maven logs.");
-    }
-    gcsResourceManager.uploadArtifact(
-        "input/customShard.jar",
-        "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
-  }
-
-  private void createGcsResourceManager() {
-    gcsResourceManager =
-        GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-            .build(); // DB name is appended with prefix to avoid clashes
-  }
-
-  private String getGcsFullPath(String artifactId) {
-    return ArtifactUtils.getFullGcsPath(
-        artifactBucketName, getClass().getSimpleName(), gcsResourceManager.runId(), artifactId);
   }
 }

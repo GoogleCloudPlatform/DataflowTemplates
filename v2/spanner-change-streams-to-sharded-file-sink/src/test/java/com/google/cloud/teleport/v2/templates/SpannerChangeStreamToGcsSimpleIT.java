@@ -24,12 +24,10 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -45,9 +43,7 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
-import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
@@ -64,7 +60,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerChangeStreamsToShardedFileSink.class)
 @RunWith(JUnit4.class)
-public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
+public class SpannerChangeStreamToGcsSimpleIT extends SpannerChangeStreamToGcsITBase {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamToGcsSimpleIT.class);
   private static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
@@ -94,11 +90,13 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
     synchronized (SpannerChangeStreamToGcsSimpleIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        createGcsResourceManager();
-        createSpannerDatabase();
+        gcsResourceManager = createGcsResourceManager(getClass().getSimpleName());
+        spannerResourceManager = createSpannerResourceManager();
+        createSpannerDatabase(spannerResourceManager, spannerDdl);
+        uploadSessionFileToGcs(gcsResourceManager, sessionFileResourceName);
+        spannerMetadataResourceManager = createSpannerMetadataResourceManager();
+        createSpannerMetadataDatabase(spannerMetadataResourceManager);
         createAndUploadShardConfigToGcs();
-        uploadSessionFileToGcs();
-        createSpannerMetadataDatabase();
         launchReaderDataflowJob();
       }
     }
@@ -141,30 +139,6 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
     assertFileContentsInGCS();
   }
 
-  private void createGcsResourceManager() {
-    gcsResourceManager =
-        GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-            .build(); // DB name is appended with prefix to avoid clashes
-  }
-
-  private void createSpannerDatabase() throws IOException {
-    spannerResourceManager =
-        SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build(); // DB name is appended with prefix to avoid clashes
-    String ddl =
-        String.join(
-            " ", Resources.readLines(Resources.getResource(spannerDdl), StandardCharsets.UTF_8));
-    ddl = ddl.trim();
-    String[] ddls = ddl.split(";");
-    for (String d : ddls) {
-      if (!d.isBlank()) {
-        spannerResourceManager.executeDdlStatement(d);
-      }
-    }
-    spannerDatabaseName = spannerResourceManager.getDatabaseId();
-  }
-
   private void createAndUploadShardConfigToGcs() throws IOException {
     List<String> shardNames = new ArrayList<>();
     shardNames.add("testShardA");
@@ -191,37 +165,28 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 
-  private void uploadSessionFileToGcs() throws IOException {
-    gcsResourceManager.uploadArtifact(
-        "input/session.json", Resources.getResource(sessionFileResourceName).getPath());
-  }
-
-  private void createSpannerMetadataDatabase() throws IOException {
-    spannerMetadataResourceManager =
-        SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build(); // DB name is appended with prefix to avoid clashes
-    String dummy = "create table t1(id INT64 ) primary key(id)";
-    spannerMetadataResourceManager.executeDdlStatement(dummy);
-    // needed to create separate metadata database
-    spannerMetadataDatabaseName = spannerMetadataResourceManager.getDatabaseId();
-  }
-
   private void launchReaderDataflowJob() throws IOException {
     // default parameters
     Map<String, String> params =
         new HashMap<>() {
           {
-            put("sessionFilePath", getGcsFullPath("input/session.json"));
+            put(
+                "sessionFilePath",
+                getGcsFullPath(
+                    gcsResourceManager, "input/session.json", getClass().getSimpleName()));
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
             put("spannerProjectId", PROJECT);
             put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put("sourceShardsFilePath", getGcsFullPath("input/shard.json"));
+            put(
+                "sourceShardsFilePath",
+                getGcsFullPath(gcsResourceManager, "input/shard.json", getClass().getSimpleName()));
             put("changeStreamName", "allstream");
             put("runIdentifier", "run1");
-            put("gcsOutputDirectory", getGcsFullPath("output"));
+            put(
+                "gcsOutputDirectory",
+                getGcsFullPath(gcsResourceManager, "output", getClass().getSimpleName()));
           }
         };
 
@@ -444,10 +409,5 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
     assertThatArtifacts(artifacts).hasContent("update_ts\\\":null");
     assertThatArtifacts(artifacts).hasContent("varbinary_column\\\":null");
     assertThatArtifacts(artifacts).hasContent("varchar_column\\\":\\\"abc");
-  }
-
-  private String getGcsFullPath(String artifactId) {
-    return ArtifactUtils.getFullGcsPath(
-        artifactBucketName, getClass().getSimpleName(), gcsResourceManager.runId(), artifactId);
   }
 }
