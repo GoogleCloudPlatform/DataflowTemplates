@@ -47,6 +47,7 @@ import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.beam.it.gcp.storage.conditions.GCSArtifactsCheck;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -155,7 +156,6 @@ public class SpannerChangeStreamToGcsSimpleIT extends SpannerChangeStreamToGcsIT
       shard.setPassword("dummy");
       shard.setPort("3306");
       JsonObject jsObj = (JsonObject) new Gson().toJsonTree(shard).getAsJsonObject();
-      jsObj.remove("secretManagerUri"); // remove field secretManagerUri
       ja.add(jsObj);
     }
 
@@ -216,18 +216,25 @@ public class SpannerChangeStreamToGcsSimpleIT extends SpannerChangeStreamToGcsIT
   }
 
   private void assertFileContentsInGCS() throws IOException, java.lang.InterruptedException {
-    List<Artifact> artifacts = null;
-    Thread.sleep(
-        180000); // wait sufficiently for the file to be generated. It takes about 3 minutes
-    // at-least. If not present wait additional 3 minutes before failing
-    for (int i = 0; i < 10; i++) {
-      Thread.sleep(18000); // wait for total 3 minutes over an interval of 18 seconds
-      artifacts =
-          gcsResourceManager.listArtifacts("output/testShardA/", Pattern.compile(".*\\.txt$"));
-      if (artifacts.size() == 1) {
-        break;
-      }
-    }
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    GCSArtifactsCheck.builder(
+                            gcsResourceManager, "output/testShardA/", Pattern.compile(".*\\.txt$"))
+                        .setMinSize(1)
+                        .setMaxSize(1)
+                        .build()))
+            .build();
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(6)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    List<Artifact> artifacts =
+        gcsResourceManager.listArtifacts("output/testShardA/", Pattern.compile(".*\\.txt$"));
     assertThat(artifacts).hasSize(1);
     assertThatArtifacts(artifacts).hasContent("SingerId\\\":\\\"1");
   }
@@ -265,27 +272,31 @@ public class SpannerChangeStreamToGcsSimpleIT extends SpannerChangeStreamToGcsIT
     assertFileContentsInGCSForMultipleShards();
   }
 
-  private void assertFileContentsInGCSForMultipleShards()
-      throws IOException, java.lang.InterruptedException {
-    List<Artifact> artifactsShardB = null;
-    List<Artifact> artifactsShardC = null;
-    Thread.sleep(
-        180000); // wait sufficiently for the file to be generated. It takes about 3 minutes
-    // at-least. If not present wait additional 3 minutes before failing
-    for (int i = 0; i < 10; i++) {
-      Thread.sleep(18000); // wait for total 3 minutes over an interval of 18 seconds
-      artifactsShardB =
-          gcsResourceManager.listArtifacts("output/testShardB/", Pattern.compile(".*\\.txt$"));
-      artifactsShardC =
-          gcsResourceManager.listArtifacts("output/testShardC/", Pattern.compile(".*\\.txt$"));
+  private void assertFileContentsInGCSForMultipleShards() {
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    GCSArtifactsCheck.builder(
+                            gcsResourceManager, "output/testShardB/", Pattern.compile(".*\\.txt$"))
+                        .setMinSize(1)
+                        .build(),
+                    GCSArtifactsCheck.builder(
+                            gcsResourceManager, "output/testShardC/", Pattern.compile(".*\\.txt$"))
+                        .setMinSize(1)
+                        .build()))
+            .build();
 
-      // Ideally both the mutations written to spanner per shard will commit within 10 seconds.
-      // But that does not guarantee that they will be in the same file, since they can commit
-      // within 1 second interval boundary
-      if (artifactsShardB.size() >= 1 && artifactsShardC.size() >= 1) {
-        break;
-      }
-    }
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(6)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    List<Artifact> artifactsShardB =
+        gcsResourceManager.listArtifacts("output/testShardB/", Pattern.compile(".*\\.txt$"));
+    List<Artifact> artifactsShardC =
+        gcsResourceManager.listArtifacts("output/testShardC/", Pattern.compile(".*\\.txt$"));
     assertThatArtifacts(artifactsShardB).hasFiles();
     assertThatArtifacts(artifactsShardC).hasFiles();
     // checks that any of the artifact has the given content
@@ -363,20 +374,27 @@ public class SpannerChangeStreamToGcsSimpleIT extends SpannerChangeStreamToGcsIT
     spannerResourceManager.write(m);
   }
 
-  private void assertFileContentsInGCSForAllDatatypes()
-      throws IOException, java.lang.InterruptedException {
-    List<Artifact> artifacts = null;
-    Thread.sleep(
-        180000); // wait sufficiently for the file to be generated. It takes about 3 minutes
-    // at-least. If not present wait additional 3 minutes before failing
-    for (int i = 0; i < 10; i++) {
-      Thread.sleep(18000); // wait for total 3 minutes over an interval of 18 seconds
-      artifacts =
-          gcsResourceManager.listArtifacts("output/testShardD/", Pattern.compile(".*\\.txt$"));
-      if (artifacts.size() == 1) {
-        break;
-      }
-    }
+  private void assertFileContentsInGCSForAllDatatypes() {
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    GCSArtifactsCheck.builder(
+                            gcsResourceManager, "output/testShardD/", Pattern.compile(".*\\.txt$"))
+                        .setMinSize(1)
+                        .setMaxSize(1)
+                        .build()))
+            .build();
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(6)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    List<Artifact> artifacts =
+        gcsResourceManager.listArtifacts("output/testShardD/", Pattern.compile(".*\\.txt$"));
+
     assertThat(artifacts).hasSize(1);
     assertThatArtifacts(artifacts).hasContent("id\\\":\\\"1");
     assertThatArtifacts(artifacts).hasContent("year_column\\\":\\\"2023");

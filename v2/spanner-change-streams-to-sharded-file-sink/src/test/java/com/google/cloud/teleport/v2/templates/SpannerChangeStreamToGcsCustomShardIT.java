@@ -44,6 +44,7 @@ import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.beam.it.gcp.storage.conditions.GCSArtifactsCheck;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -158,25 +159,30 @@ public class SpannerChangeStreamToGcsCustomShardIT extends SpannerChangeStreamTo
   }
 
   private void assertFileContentsInGCSForMultipleShards() throws java.lang.InterruptedException {
-    List<Artifact> artifactsShardA = null;
-    List<Artifact> artifactsShardB = null;
-    Thread.sleep(
-        180000); // wait sufficiently for the file to be generated. It takes about 3 minutes
-    // at-least. If not present wait additional 3 minutes before failing
-    for (int i = 0; i < 10; i++) {
-      Thread.sleep(18000); // wait for total 3 minutes over an interval of 18 seconds
-      artifactsShardA =
-          gcsResourceManager.listArtifacts("output/testShardA/", Pattern.compile(".*\\.txt$"));
-      artifactsShardB =
-          gcsResourceManager.listArtifacts("output/testShardB/", Pattern.compile(".*\\.txt$"));
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    GCSArtifactsCheck.builder(
+                            gcsResourceManager, "output/testShardA/", Pattern.compile(".*\\.txt$"))
+                        .setMinSize(1)
+                        .build(),
+                    GCSArtifactsCheck.builder(
+                            gcsResourceManager, "output/testShardB/", Pattern.compile(".*\\.txt$"))
+                        .setMinSize(1)
+                        .build()))
+            .build();
 
-      // Ideally both the mutations written to spanner per shard will commit within 10 seconds.
-      // But that does not guarantee that they will be in the same file, since they can commit
-      // within 1 second interval boundary
-      if (artifactsShardB.size() >= 1 && artifactsShardA.size() >= 1) {
-        break;
-      }
-    }
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(6)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    List<Artifact> artifactsShardA =
+        gcsResourceManager.listArtifacts("output/testShardA/", Pattern.compile(".*\\.txt$"));
+    List<Artifact> artifactsShardB =
+        gcsResourceManager.listArtifacts("output/testShardB/", Pattern.compile(".*\\.txt$"));
     assertThatArtifacts(artifactsShardB).hasFiles();
     assertThatArtifacts(artifactsShardA).hasFiles();
     // checks that any of the artifact has the given content

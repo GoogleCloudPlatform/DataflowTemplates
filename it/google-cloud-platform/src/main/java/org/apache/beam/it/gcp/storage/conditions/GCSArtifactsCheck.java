@@ -60,10 +60,11 @@ public abstract class GCSArtifactsCheck extends ConditionCheck {
   }
 
   public static GCSArtifactsCheck.Builder builder(
-      GcsResourceManager resourceManager, String prefix) {
+      GcsResourceManager resourceManager, String prefix, Pattern regex) {
     return new AutoValue_GCSArtifactsCheck.Builder()
         .setGcsResourceManager(resourceManager)
-        .setPrefix(prefix);
+        .setPrefix(prefix)
+        .setRegex(regex);
   }
 
   /** Builder for {@link GCSArtifactsCheck}. */
