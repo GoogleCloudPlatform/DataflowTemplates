@@ -107,10 +107,11 @@ public interface JdbcToBigQueryOptions
       regexes = {"^.+$"},
       groupName = "Source",
       description = "JDBC source SQL query",
-      helpText = "The query to run on the source to extract the data. Note that some JDBC SQL and BigQuery types, although sharing the same name, have some differences. " +
-              "Some important SQL -> BigQuery type mappings to keep in mind are:\n" +
-              "DATETIME --> TIMESTAMP\n" +
-              "\nSome type casting may be required if your schemas do not match.",
+      helpText =
+          "The query to run on the source to extract the data. Note that some JDBC SQL and BigQuery types, although sharing the same name, have some differences. "
+              + "Some important SQL -> BigQuery type mappings to keep in mind are:\n"
+              + "DATETIME --> TIMESTAMP\n"
+              + "\nType casting may be required if your schemas do not match.",
       example = "select * from sampledb.sample_table")
   String getQuery();
 
