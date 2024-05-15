@@ -56,7 +56,8 @@ public abstract class GCSArtifactsCheck extends ConditionCheck {
     }
 
     return new CheckResult(
-        true, String.format("Expected at least %d artifacts and found %d", minSize(), artifacts.size()));
+        true,
+        String.format("Expected at least %d artifacts and found %d", minSize(), artifacts.size()));
   }
 
   public static GCSArtifactsCheck.Builder builder(
