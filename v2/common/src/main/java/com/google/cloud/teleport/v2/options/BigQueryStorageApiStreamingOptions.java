@@ -35,7 +35,7 @@ public interface BigQueryStorageApiStreamingOptions extends BigQueryOptions {
   Boolean getUseStorageWriteApi();
 
   @TemplateParameter.Boolean(
-      order = 2
+      order = 2,
       optional = true,
       parentName = "useStorageWriteApi",
       parentTriggerValues = {"true"},

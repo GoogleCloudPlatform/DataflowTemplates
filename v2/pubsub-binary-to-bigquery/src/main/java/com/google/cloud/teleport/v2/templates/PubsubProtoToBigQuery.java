@@ -190,9 +190,9 @@ public final class PubsubProtoToBigQuery {
         optional = true,
         description = "Preserve Proto Field Names",
         helpText =
-            "`true` to preserve the original Proto field name in JSON. "
-                + "`false` to use more standard JSON names."
-                + " For example, `false` would change `field_name` to `fieldName`. (Default: `false`)")
+            "This property should be set to `true` to preserve the original Proto field name in JSON. "
+                + "and should be set to `false` to use more standard JSON names."
+                + " For example, `false` would change `field_name` to `fieldName`. Defaults to `false`")
     @Default.Boolean(false)
     Boolean getPreserveProtoFieldNames();
 

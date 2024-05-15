@@ -39,8 +39,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 2,
       description = "Base64 Encoded API Key for access without requiring basic authentication",
-      helpText =
-          "The Base64-encoded API key to use for authentication.")
+      helpText = "The Base64-encoded API key to use for authentication.")
   @Validation.Required
   String getApiKey();
 
@@ -91,8 +90,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 7,
       optional = true,
       description = "Batch Size in Bytes",
-      helpText =
-          "The batch size, in number of bytes. Default to 5242880 (5mb).")
+      helpText = "The batch size, in number of bytes. Default to 5242880 (5mb).")
   @Default.Long(5242880)
   Long getBatchSizeBytes();
 
@@ -102,7 +100,8 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 8,
       optional = true,
       description = "Max retry attempts.",
-      helpText = "The maximum number of retry attempts. Must be greater than zero. Defaults to: no retries.")
+      helpText =
+          "The maximum number of retry attempts. Must be greater than zero. Defaults to: no retries.")
   Integer getMaxRetryAttempts();
 
   void setMaxRetryAttempts(Integer maxRetryAttempts);
@@ -111,7 +110,8 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 9,
       optional = true,
       description = "Max retry duration.",
-      helpText = "The maximum retry duration in milliseconds. Must be greater than zero. Defaults to: no retries.")
+      helpText =
+          "The maximum retry duration in milliseconds. Must be greater than zero. Defaults to: no retries.")
   Long getMaxRetryDuration();
 
   void setMaxRetryDuration(Long maxRetryDuration);
@@ -201,7 +201,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Cloud Storage path to JavaScript UDF source for isDelete function",
       helpText =
-          "The Cloud Storage path to the JavaScript UDF source for the function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of \`true\` or \`false\`. Defaults to: none.")
+          "The Cloud Storage path to the JavaScript UDF source for the function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to: none.")
   String getJavaScriptIsDeleteFnGcsPath();
 
   void setJavaScriptIsDeleteFnGcsPath(String javaScriptTextTransformGcsPath);
@@ -211,7 +211,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "UDF JavaScript Function Name for isDelete",
       helpText =
-          "The name of the UDF JavaScript function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of \`true\` or \`false\`. Defaults to: none.")
+          "The name of the UDF JavaScript function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to: none.")
   String getJavaScriptIsDeleteFnName();
 
   void setJavaScriptIsDeleteFnName(String javaScriptTextTransformFunctionName);

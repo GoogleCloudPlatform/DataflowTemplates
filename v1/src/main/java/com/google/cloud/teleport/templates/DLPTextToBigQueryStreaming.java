@@ -317,7 +317,8 @@ public class DLPTextToBigQueryStreaming {
           "^projects\\/[^\\n\\r\\/]+(\\/locations\\/[^\\n\\r\\/]+)?\\/inspectTemplates\\/[^\\n\\r\\/]+$"
         },
         description = "Cloud DLP inspect template name",
-        helpText = "The sensitive data protection inspection template to use for API requests, specified"
+        helpText =
+            "The sensitive data protection inspection template to use for API requests, specified"
                 + " with the pattern projects/<PROJECT_ID>/identifyTemplates/<TEMPLATE_ID>.",
         example =
             "projects/your-project-id/locations/global/inspectTemplates/generated_template_id")

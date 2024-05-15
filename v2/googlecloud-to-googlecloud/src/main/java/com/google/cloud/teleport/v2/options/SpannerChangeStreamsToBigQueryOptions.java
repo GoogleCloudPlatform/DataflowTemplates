@@ -84,8 +84,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
   @TemplateParameter.Text(
       order = 6,
       description = "Spanner metadata database",
-      helpText =
-          "The Spanner database to use for the change streams connector metadata table.")
+      helpText = "The Spanner database to use for the change streams connector metadata table.")
   @Validation.Required
   String getSpannerMetadataDatabase();
 
@@ -168,8 +167,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
   @TemplateParameter.Text(
       order = 13,
       description = "BigQuery dataset",
-      helpText =
-          "The BigQuery dataset for change streams output.")
+      helpText = "The BigQuery dataset for change streams output.")
   @Validation.Required
   String getBigQueryDataset();
 
@@ -211,7 +209,8 @@ public interface SpannerChangeStreamsToBigQueryOptions
       order = 17,
       optional = true,
       description = "Dead letter queue retry minutes",
-      helpText = "The number of minutes between dead-letter queue retries. The default value is 10.")
+      helpText =
+          "The number of minutes between dead-letter queue retries. The default value is 10.")
   @Default.Integer(10)
   Integer getDlqRetryMinutes();
 
