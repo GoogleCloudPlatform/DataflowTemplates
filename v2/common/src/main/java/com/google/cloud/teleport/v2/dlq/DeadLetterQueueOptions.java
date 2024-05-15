@@ -22,26 +22,56 @@ import org.apache.beam.sdk.options.PipelineOptions;
 public interface DeadLetterQueueOptions extends PipelineOptions {
   // TODO: These options are visible on top of the Required Parameters.
   // Figure out ordering of the parameters on the UI.
-  @TemplateParameter.Text(
-      groupName = "Google Cloud Storage Dead Letter Queue.",
-      description = "Dead letter queue directory.",
+
+  public static final String GCS_DLQ_GROUP_NAME = "Google Cloud Storage Dead Letter Queue";
+  public static final String KAFKA_DLQ_GROUP_NAME = "Kafka Dead Letter Queue";
+
+  @TemplateParameter.Boolean(
+      order = 1,
       optional = true,
+      description = "Enable Google Cloud Storage Dead Letter Queue.",
+      groupName = GCS_DLQ_GROUP_NAME,
+      helpText =
+          "Enable Google Cloud Storage Dead Letter Queue. This will write the failed records to ")
+  @Default.Boolean(false)
+  Boolean getEnableGcsDlq();
+
+  void setEnableGcsDlq(boolean value);
+
+  @TemplateParameter.Text(
+      order = 2,
+      groupName = GCS_DLQ_GROUP_NAME,
+      description = "Dead letter queue directory.",
+      parentName = "enableGcsDlq",
+      parentTriggerValues = {"true"},
       helpText = "This is the file path for Dataflow to write the dead letter queue output.")
   @Default.String("")
   String getDeadLetterQueueDirectory();
 
   void setDeadLetterQueueDirectory(String value);
 
-  @TemplateParameter.Text(
-      groupName = "Kafka Dead Letter Queue",
-      description = "Kafka topic for Dead letter queue",
+  @TemplateParameter.Boolean(
+      order = 3,
+      description = "Enable Kafka Dead Letter Queue.",
+      groupName = KAFKA_DLQ_GROUP_NAME,
       optional = true,
       helpText =
-          "This is the Kafka topic for Dataflow to write the dead letter queue output."
-              + "Kafka DLQ can only be enabled if your pipeline has kafka as source or sink. Kafka DLQ"
-              + " uses the same bootstrap servers and authentication config as in Kafka Source/Sink.")
+          "Enable Kafka Dead Letter Queue. The pipeline must have Kafka as Source or Sink.")
+  @Default.Boolean(false)
+  Boolean getEnableKafkaDlq();
+
+  void setEnableKafkaDlq(boolean value);
+  @TemplateParameter.Text(
+          order = 4,
+          groupName = KAFKA_DLQ_GROUP_NAME,
+          description = "Kafka dead letter queue topic",
+          parentName = "enableKafkaDlq",
+          parentTriggerValues = {"true"},
+          helpText = "Kafka topic for Dataflow to write dead letter queue "
+                  + "output. Requires Kafka as source or sink. Uses the same "
+                  + "bootstrap servers and authentication as Kafka Source/Sink."
+  )
   @Default.String("")
   String getDeadLetterQueueKafkaTopic();
-
   void setDeadLetterQueueKafkaTopic(String value);
 }

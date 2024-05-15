@@ -257,24 +257,26 @@ public class KafkaToGcs2 {
           ClientAuthConfig.getSaslPlainConfig(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
     }
 
-    // TODO:  Have a boolean in the pipeline options for each DLQ sink and if enabled, register
-    // the sink to ErrorHandler.
-    ErrorHandler<BadRecord, ?> kafkaErrorHandler =
-        pipeline.registerBadRecordErrorHandler(
-            KafkaDeadLetterQueue.newBuilder()
-                .setTopic(options.getDeadLetterQueueKafkaTopic())
-                .setBootStrapServers(options.getBootstrapServers())
-                .setConfig(kafkaConfig)
-                .build());
-    badRecordErrorHandlers.add(kafkaErrorHandler);
+    if (options.getEnableKafkaDlq()) {
+      ErrorHandler<BadRecord, ?> kafkaErrorHandler =
+              pipeline.registerBadRecordErrorHandler(
+                      KafkaDeadLetterQueue.newBuilder()
+                              .setTopic(options.getDeadLetterQueueKafkaTopic())
+                              .setBootStrapServers(options.getBootstrapServers())
+                              .setConfig(kafkaConfig)
+                              .build());
+      badRecordErrorHandlers.add(kafkaErrorHandler);
+    }
 
-    ErrorHandler<BadRecord, ?> gcsErrorHandler =
-        pipeline.registerBadRecordErrorHandler(
-            GcsDeadLetterQueue.newBuilder()
-                .setDlqOutputDirectory(options.getDeadLetterQueueDirectory())
-                .setWindowDuration(options.getWindowDuration())
-                .build());
-    badRecordErrorHandlers.add(gcsErrorHandler);
+    if (options.getEnableGcsDlq()) {
+      ErrorHandler<BadRecord, ?> gcsErrorHandler =
+              pipeline.registerBadRecordErrorHandler(
+                      GcsDeadLetterQueue.newBuilder()
+                              .setDlqOutputDirectory(options.getDeadLetterQueueDirectory())
+                              .setWindowDuration(options.getWindowDuration())
+                              .build());
+      badRecordErrorHandlers.add(gcsErrorHandler);
+    }
 
     // Read from Kafka as bytes.
     kafkaRecord =
@@ -295,7 +297,7 @@ public class KafkaToGcs2 {
             .setErrorHandlers(badRecordErrorHandlers)
             .build());
 
-    //     Close all the error handlers at the end of the pipeline.
+    // Close all the error handlers at the end of the pipeline.
     try {
       for (ErrorHandler<BadRecord, ?> errorHandler : badRecordErrorHandlers) {
         errorHandler.close();

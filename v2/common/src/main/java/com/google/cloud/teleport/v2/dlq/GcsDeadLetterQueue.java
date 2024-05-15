@@ -58,7 +58,7 @@ public abstract class GcsDeadLetterQueue extends PTransform<PCollection<BadRecor
   public POutput expand(PCollection<BadRecord> input) {
     return input
         .apply(Window.into(FixedWindows.of(DurationUtils.parseDuration(windowDuration()))))
-        .apply(ParDo.of(new DlqUtils.GetPayLoadStringFromBadRecord()))
+        .apply(ParDo.of(new DlqUtils.getPayLoadStringFromBadRecord()))
         .apply(
             ParDo.of(
                 new DoFn<KV<String, String>, String>() {
