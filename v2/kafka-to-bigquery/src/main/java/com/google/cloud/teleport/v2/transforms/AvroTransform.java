@@ -64,6 +64,8 @@ public class AvroTransform
 
   private static final Logger LOG = LoggerFactory.getLogger(AvroTransform.class);
 
+  private static final String kafkaKeyField = "_key";
+
   private KafkaToBigQueryFlexOptions options;
 
   private AvroTransform(KafkaToBigQueryFlexOptions options) {
@@ -81,7 +83,9 @@ public class AvroTransform
 
     Write<TableRow> writeToBQ =
         BigQueryIO.<TableRow>write()
-            .withSchema(BigQueryUtils.toTableSchema(AvroUtils.toBeamSchema(schema)))
+            .withSchema(
+                BigQueryAvroUtils.convertAvroSchemaToTableSchema(
+                    schema, options.getPersistKafkaKey()))
             .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
             .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
             .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
@@ -103,7 +107,9 @@ public class AvroTransform
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
                     GenericRecordCoder.of()))
-            .apply("ConvertGenericRecordToTableRow", ParDo.of(new GenericRecordToTableRowFn()))
+            .apply(
+                "ConvertGenericRecordToTableRow",
+                ParDo.of(new GenericRecordToTableRowFn(options.getPersistKafkaKey())))
             .setCoder(
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
@@ -177,6 +183,12 @@ public class AvroTransform
           FailsafeElement<KafkaRecord<byte[], byte[]>, TableRow>>
       implements Serializable {
 
+    private boolean persistKafkaKey;
+
+    GenericRecordToTableRowFn(boolean persistKafkaKey) {
+      this.persistKafkaKey = persistKafkaKey;
+    }
+
     @ProcessElement
     public void processElement(ProcessContext context) {
       FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord> element = context.element();
@@ -185,6 +197,9 @@ public class AvroTransform
               element.getPayload(),
               BigQueryUtils.toTableSchema(
                   AvroUtils.toBeamSchema(element.getPayload().getSchema())));
+      if (this.persistKafkaKey) {
+        row.set(kafkaKeyField, element.getOriginalPayload().getKV().getKey());
+      }
       context.output(FailsafeElement.of(element.getOriginalPayload(), row));
     }
   }
