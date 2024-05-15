@@ -242,15 +242,16 @@ public class KafkaToBigQueryFlex {
           "Schema Registry Connection URL OR Avro schema is needed in order to read confluent wire format messages.");
     }
 
-    ErrorHandler<BadRecord, ?> kafkaErrorHandler =
-        pipeline.registerBadRecordErrorHandler(
-            KafkaDeadLetterQueue.newBuilder()
-                .setTopic(options.getDeadLetterQueueKafkaTopic())
-                .setBootStrapServers(options.getReadBootstrapServers())
-                .setConfig(kafkaConfig)
-                .build());
-    badRecordErrorHandlers.add(kafkaErrorHandler);
-
+    if (options.getEnableKafkaDlq()) {
+      ErrorHandler<BadRecord, ?> kafkaErrorHandler =
+              pipeline.registerBadRecordErrorHandler(
+                      KafkaDeadLetterQueue.newBuilder()
+                              .setTopic(options.getDeadLetterQueueKafkaTopic())
+                              .setBootStrapServers(options.getReadBootstrapServers())
+                              .setConfig(kafkaConfig)
+                              .build());
+      badRecordErrorHandlers.add(kafkaErrorHandler);
+    }
     PCollection<KafkaRecord<byte[], byte[]>> kafkaRecords;
 
     kafkaRecords =

@@ -268,16 +268,6 @@ public class KafkaToGcs2 {
       badRecordErrorHandlers.add(kafkaErrorHandler);
     }
 
-    if (options.getEnableGcsDlq()) {
-      ErrorHandler<BadRecord, ?> gcsErrorHandler =
-              pipeline.registerBadRecordErrorHandler(
-                      GcsDeadLetterQueue.newBuilder()
-                              .setDlqOutputDirectory(options.getDeadLetterQueueDirectory())
-                              .setWindowDuration(options.getWindowDuration())
-                              .build());
-      badRecordErrorHandlers.add(gcsErrorHandler);
-    }
-
     // Read from Kafka as bytes.
     kafkaRecord =
         pipeline.apply(

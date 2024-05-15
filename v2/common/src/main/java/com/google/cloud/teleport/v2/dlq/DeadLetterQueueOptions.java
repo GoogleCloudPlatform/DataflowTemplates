@@ -19,39 +19,12 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 
+/**
+ * {@link DeadLetterQueueOptions} is used for any Dead letter queue sinks for the failed records.
+ */
 public interface DeadLetterQueueOptions extends PipelineOptions {
-  // TODO: These options are visible on top of the Required Parameters.
-  // Figure out ordering of the parameters on the UI.
-
-  public static final String GCS_DLQ_GROUP_NAME = "Google Cloud Storage Dead Letter Queue";
-  public static final String KAFKA_DLQ_GROUP_NAME = "Kafka Dead Letter Queue";
-
+  String KAFKA_DLQ_GROUP_NAME = "Kafka Dead Letter Queue";
   @TemplateParameter.Boolean(
-      order = 1,
-      optional = true,
-      description = "Enable Google Cloud Storage Dead Letter Queue.",
-      groupName = GCS_DLQ_GROUP_NAME,
-      helpText =
-          "Enable Google Cloud Storage Dead Letter Queue. This will write the failed records to ")
-  @Default.Boolean(false)
-  Boolean getEnableGcsDlq();
-
-  void setEnableGcsDlq(boolean value);
-
-  @TemplateParameter.Text(
-      order = 2,
-      groupName = GCS_DLQ_GROUP_NAME,
-      description = "Dead letter queue directory.",
-      parentName = "enableGcsDlq",
-      parentTriggerValues = {"true"},
-      helpText = "This is the file path for Dataflow to write the dead letter queue output.")
-  @Default.String("")
-  String getDeadLetterQueueDirectory();
-
-  void setDeadLetterQueueDirectory(String value);
-
-  @TemplateParameter.Boolean(
-      order = 3,
       description = "Enable Kafka Dead Letter Queue.",
       groupName = KAFKA_DLQ_GROUP_NAME,
       optional = true,
@@ -62,7 +35,6 @@ public interface DeadLetterQueueOptions extends PipelineOptions {
 
   void setEnableKafkaDlq(boolean value);
   @TemplateParameter.Text(
-          order = 4,
           groupName = KAFKA_DLQ_GROUP_NAME,
           description = "Kafka dead letter queue topic",
           parentName = "enableKafkaDlq",
