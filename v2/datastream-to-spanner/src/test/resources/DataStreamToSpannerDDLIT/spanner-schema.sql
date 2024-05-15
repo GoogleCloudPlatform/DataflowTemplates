@@ -90,3 +90,8 @@ CREATE TABLE Users (
    age INT64,
    full_name STRING(100) AS (ARRAY_TO_STRING([first_name, last_name], " ")) STORED,
 ) PRIMARY KEY (user_id);
+
+CREATE TABLE Authors (
+   id INT64 NOT NULL,
+   name STRING(200),
+) PRIMARY KEY (id);

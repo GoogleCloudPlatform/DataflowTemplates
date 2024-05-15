@@ -95,3 +95,9 @@ CREATE TABLE `Users` (
     `age` int,
     PRIMARY KEY (`user_id`)
 );
+
+CREATE TABLE `Authors` (
+    `id` int NOT NULL,
+    `name` varchar(200),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARSET=latin1;

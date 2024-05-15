@@ -4,3 +4,9 @@ CREATE TABLE `Category` (
   `last_update` timestamp,        -- To: Column dropped in spanner
   PRIMARY KEY (`category_id`)
 );
+
+CREATE TABLE `Books` (
+ `id` int NOT NULL,
+ `title` varchar(200),
+ `author_id` int
+);
