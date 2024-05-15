@@ -105,7 +105,8 @@ public class SpannerToText {
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
-            "The" + "request priority (https://cloud.google.com/spanner/docs/reference/rest/v1/RequestOptions)" + "for Spanner calls. Possible values are `HIGH`, `MEDIUM`, `LOW`. The default value is `MEDIUM`.")
+            "The request priority (https://cloud.google.com/spanner/docs/reference/rest/v1/RequestOptions)" 
+                + " for Spanner calls. Possible values are `HIGH`, `MEDIUM`, `LOW`. The default value is `MEDIUM`.")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);

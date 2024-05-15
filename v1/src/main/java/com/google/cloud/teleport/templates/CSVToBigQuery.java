@@ -143,8 +143,9 @@ public class CSVToBigQuery {
         description = "BigQuery output table for bad records",
         helpText =
             "The name of the BigQuery table to use to store the rejected data when processing the"
-            + " CSV files. If you reuse an existing BigQuery table, the data is appended to the"
-            + " destination table. The schema of this table must match the" + "error table schema (https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-csv-to-bigquery#GcsCSVToBigQueryBadRecordsSchema).")
+              + " CSV files. If you reuse an existing BigQuery table, the data is appended to the"
+              + " destination table. The schema of this table must match the" 
+              + " error table schema (https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-csv-to-bigquery#GcsCSVToBigQueryBadRecordsSchema).")
     ValueProvider<String> getBadRecordsOutputTable();
 
     void setBadRecordsOutputTable(ValueProvider<String> value);
