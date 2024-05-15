@@ -301,4 +301,17 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     }
     return txnTag;
   }
+
+  public void setMapper(ObjectMapper mapper) {
+    this.mapper = mapper;
+  }
+
+  public void setSpannerAccessor(SpannerAccessor spannerAccessor) {
+    this.spannerAccessor = spannerAccessor;
+  }
+
+  public void setChangeEventSessionConvertor(
+      ChangeEventSessionConvertor changeEventSessionConvertor) {
+    this.changeEventSessionConvertor = changeEventSessionConvertor;
+  }
 }
