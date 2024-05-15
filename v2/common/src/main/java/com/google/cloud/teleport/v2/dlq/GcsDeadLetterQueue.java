@@ -31,8 +31,6 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.POutput;
 
-import javax.annotation.Nullable;
-
 @AutoValue
 public abstract class GcsDeadLetterQueue extends PTransform<PCollection<BadRecord>, POutput> {
   private final int NUM_SHARDS = 20;

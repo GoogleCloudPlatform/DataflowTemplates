@@ -16,9 +16,7 @@
 package com.google.cloud.teleport.v2.dlq;
 
 import com.google.auto.value.AutoValue;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Map;
 import org.apache.beam.sdk.coders.*;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
@@ -34,16 +32,17 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollection.IsBounded;
 import org.apache.beam.sdk.values.POutput;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 @AutoValue
 public abstract class KafkaDeadLetterQueue extends PTransform<PCollection<BadRecord>, POutput> {
 
   private static Logger LOG = LoggerFactory.getLogger(KafkaDeadLetterQueue.class);
   private static final KafkaRecordCoder<byte[], byte[]> kafkaRecordCoder =
-      KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of()));
+      KafkaRecordCoder.of(
+          NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of()));
 
   public abstract String bootStrapServers();
 
@@ -69,13 +68,15 @@ public abstract class KafkaDeadLetterQueue extends PTransform<PCollection<BadRec
       return autoBuild();
     }
   }
+
   @Override
   public POutput expand(PCollection<BadRecord> input) {
     return input
         .apply(Window.into(FixedWindows.of(Duration.standardSeconds(5))))
-        .apply(ParDo.of(new GetPayloadFromBadRecord())).setCoder(KvCoder.of(
-                NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of())
-            ))
+        .apply(ParDo.of(new GetPayloadFromBadRecord()))
+        .setCoder(
+            KvCoder.of(
+                NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of())))
         .apply(
             KafkaIO.<byte[], byte[]>write()
                 .withBootstrapServers(bootStrapServers())
@@ -88,10 +89,11 @@ public abstract class KafkaDeadLetterQueue extends PTransform<PCollection<BadRec
   public static class GetPayloadFromBadRecord extends DoFn<BadRecord, KV<byte[], byte[]>> {
     @ProcessElement
     public void processElement(
-            @Element BadRecord badRecord, OutputReceiver<KV<byte[], byte[]>> receiver)
+        @Element BadRecord badRecord, OutputReceiver<KV<byte[], byte[]>> receiver)
         throws IOException {
       byte[] encodedRecord = badRecord.getRecord().getEncodedRecord();
-      KafkaRecord<byte[], byte[]> record = CoderUtils.decodeFromByteArray(kafkaRecordCoder, encodedRecord);
+      KafkaRecord<byte[], byte[]> record =
+          CoderUtils.decodeFromByteArray(kafkaRecordCoder, encodedRecord);
       receiver.output(record.getKV());
     }
   }

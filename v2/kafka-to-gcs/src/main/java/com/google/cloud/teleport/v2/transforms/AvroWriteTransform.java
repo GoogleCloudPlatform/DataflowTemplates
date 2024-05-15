@@ -30,7 +30,6 @@ import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import java.io.IOException;
 import java.util.List;
 import javax.annotation.Nullable;
-
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
@@ -54,7 +53,6 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.transforms.windowing.Window;
-import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.*;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
@@ -75,7 +73,6 @@ public abstract class AvroWriteTransform
   private List<ErrorHandler<BadRecord, ?>> errorHandlers;
   private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
   private static Logger LOG = LoggerFactory.getLogger(KafkaDeadLetterQueue.class);
-
 
   public abstract String outputDirectory();
 
@@ -318,7 +315,8 @@ public abstract class AvroWriteTransform
         }
         receiver.get(SUCESS_GENERIC_RECORDS).output(FailsafeElement.of(kafkaRecord, genericRecord));
       } catch (Exception e) {
-        KafkaRecordCoder<byte[], byte[]> valueCoder = KafkaRecordCoder.of(
+        KafkaRecordCoder<byte[], byte[]> valueCoder =
+            KafkaRecordCoder.of(
                 NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of()));
         badRecordRouter.route(receiver, kafkaRecord, valueCoder, e, e.toString());
       }

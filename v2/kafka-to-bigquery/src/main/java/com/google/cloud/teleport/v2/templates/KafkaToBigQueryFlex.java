@@ -127,7 +127,8 @@ public class KafkaToBigQueryFlex {
 
   /** The default suffix for error tables if dead letter table is not specified. */
   private static final String DEFAULT_DEADLETTER_TABLE_SUFFIX = "_error_records";
-  /** The Bad record handler for failed records **/
+
+  /** The Bad record handler for failed records * */
   private static List<ErrorHandler<BadRecord, ?>> badRecordErrorHandlers = new ArrayList<>();
 
   /** String/String Coder for FailsafeElement. */
@@ -242,12 +243,12 @@ public class KafkaToBigQueryFlex {
     }
 
     ErrorHandler<BadRecord, ?> kafkaErrorHandler =
-            pipeline.registerBadRecordErrorHandler(
-                    KafkaDeadLetterQueue.newBuilder()
-                            .setTopic(options.getDeadLetterQueueKafkaTopic())
-                            .setBootStrapServers(options.getReadBootstrapServers())
-                            .setConfig(kafkaConfig)
-                            .build());
+        pipeline.registerBadRecordErrorHandler(
+            KafkaDeadLetterQueue.newBuilder()
+                .setTopic(options.getDeadLetterQueueKafkaTopic())
+                .setBootStrapServers(options.getReadBootstrapServers())
+                .setConfig(kafkaConfig)
+                .build());
     badRecordErrorHandlers.add(kafkaErrorHandler);
 
     PCollection<KafkaRecord<byte[], byte[]>> kafkaRecords;
@@ -286,7 +287,9 @@ public class KafkaToBigQueryFlex {
       }
 
       if (options.getSchemaRegistryConnectionUrl() != null && options.getOutputDataset() != null) {
-        writeResult = kafkaRecords.apply(AvroDynamicTransform.of(options).withBadRecordErrorHanlder(badRecordErrorHandlers));
+        writeResult =
+            kafkaRecords.apply(
+                AvroDynamicTransform.of(options).withBadRecordErrorHanlder(badRecordErrorHandlers));
       }
     }
 
@@ -322,7 +325,6 @@ public class KafkaToBigQueryFlex {
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
-
 
     return pipeline.run();
   }
