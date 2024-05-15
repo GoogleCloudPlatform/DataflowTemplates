@@ -24,6 +24,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
+import org.apache.commons.lang3.RandomStringUtils;
 
 /** Utilities for {@link BigtableResourceManager} implementations. */
 public final class BigtableResourceManagerUtils {
@@ -39,8 +40,7 @@ public final class BigtableResourceManagerUtils {
   private static final Pattern ILLEGAL_TABLE_CHARS = Pattern.compile("[^a-zA-Z0-9-_.]");
   private static final String REPLACE_TABLE_ID_CHAR = "-";
 
-  private static final DateTimeFormatter TIME_FORMAT =
-      DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSSSSS");
+  private static final String TIME_FORMAT = "yyyyMMdd-HHmmss";
 
   private BigtableResourceManagerUtils() {}
 
@@ -57,13 +57,35 @@ public final class BigtableResourceManagerUtils {
   static List<BigtableResourceManagerCluster> generateDefaultClusters(
       String baseString, String zone, int numNodes, StorageType storageType) {
 
+    // Take substring of baseString to account for random suffix
+    // TODO(polber) - remove with Beam 2.57.0
+    int randomSuffixLength = 6;
+    baseString =
+        baseString
+            .toLowerCase()
+            .substring(
+                0,
+                Math.min(
+                    baseString.length(),
+                    MAX_CLUSTER_ID_LENGTH
+                        - REPLACE_CLUSTER_CHAR.length()
+                        - TIME_FORMAT.length()
+                        - REPLACE_CLUSTER_CHAR.length()
+                        - randomSuffixLength));
+
     String clusterId =
         generateResourceId(
             baseString.toLowerCase(),
             ILLEGAL_CLUSTER_CHARS,
             REPLACE_CLUSTER_CHAR,
             MAX_CLUSTER_ID_LENGTH,
-            TIME_FORMAT);
+            DateTimeFormatter.ofPattern(TIME_FORMAT));
+
+    // Add random suffix to avoid collision
+    // TODO(polber) - remove with Beam 2.57.0
+    clusterId =
+        clusterId + REPLACE_CLUSTER_CHAR + RandomStringUtils.randomAlphanumeric(6).toLowerCase();
+
     BigtableResourceManagerCluster cluster =
         BigtableResourceManagerCluster.create(clusterId, zone, numNodes, storageType);
 
@@ -77,12 +99,31 @@ public final class BigtableResourceManagerUtils {
    * @return The instance id string.
    */
   static String generateInstanceId(String baseString) {
+
+    // Take substring of baseString to account for random suffix
+    // TODO(polber) - remove with Beam 2.57.0
+    int randomSuffixLength = 6;
+    baseString =
+        baseString.substring(
+            0,
+            Math.min(
+                baseString.length(),
+                MAX_INSTANCE_ID_LENGTH
+                    - REPLACE_INSTANCE_ID_CHAR.length()
+                    - TIME_FORMAT.length()
+                    - REPLACE_INSTANCE_ID_CHAR.length()
+                    - randomSuffixLength));
+
+    // Add random suffix to avoid collision
+    // TODO(polber) - remove with Beam 2.57.0
     return generateResourceId(
-        baseString.toLowerCase(),
-        ILLEGAL_INSTANCE_ID_CHARS,
-        REPLACE_INSTANCE_ID_CHAR,
-        MAX_INSTANCE_ID_LENGTH,
-        TIME_FORMAT);
+            baseString.toLowerCase(),
+            ILLEGAL_INSTANCE_ID_CHARS,
+            REPLACE_INSTANCE_ID_CHAR,
+            MAX_INSTANCE_ID_LENGTH,
+            DateTimeFormatter.ofPattern(TIME_FORMAT))
+        + REPLACE_INSTANCE_ID_CHAR
+        + RandomStringUtils.randomAlphanumeric(6).toLowerCase();
   }
 
   /**
@@ -92,12 +133,31 @@ public final class BigtableResourceManagerUtils {
    * @return The instance id string.
    */
   public static String generateTableId(String baseString) {
+
+    // Take substring of baseString to account for random suffix
+    // TODO(polber) - remove with Beam 2.57.0
+    int randomSuffixLength = 6;
+    baseString =
+        baseString.substring(
+            0,
+            Math.min(
+                baseString.length(),
+                MAX_TABLE_ID_LENGTH
+                    - REPLACE_TABLE_ID_CHAR.length()
+                    - TIME_FORMAT.length()
+                    - REPLACE_TABLE_ID_CHAR.length()
+                    - randomSuffixLength));
+
+    // Add random suffix to avoid collision
+    // TODO(polber) - remove with Beam 2.57.0
     return generateResourceId(
-        baseString.toLowerCase(),
-        ILLEGAL_TABLE_CHARS,
-        REPLACE_TABLE_ID_CHAR,
-        MAX_TABLE_ID_LENGTH,
-        TIME_FORMAT);
+            baseString.toLowerCase(),
+            ILLEGAL_TABLE_CHARS,
+            REPLACE_TABLE_ID_CHAR,
+            MAX_TABLE_ID_LENGTH,
+            DateTimeFormatter.ofPattern(TIME_FORMAT))
+        + REPLACE_TABLE_ID_CHAR
+        + RandomStringUtils.randomAlphanumeric(6).toLowerCase();
   }
 
   /**

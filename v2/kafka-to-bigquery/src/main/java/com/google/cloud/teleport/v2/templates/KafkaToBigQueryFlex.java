@@ -269,8 +269,7 @@ public class KafkaToBigQueryFlex {
 
     if (options.getAvroFormat().equals("NON_WIRE_FORMAT") && options.getAvroSchemaPath() != null) {
 
-      throw new UnsupportedOperationException("Only Confluent Wire Format is supported");
-      // writeResult = kafkaRecords.apply(AvroTransform.of(options));
+      writeResult = kafkaRecords.apply(AvroTransform.of(options));
 
     } else {
 
@@ -407,10 +406,7 @@ public class KafkaToBigQueryFlex {
       failedInserts.apply(
           "WriteInsertionFailedRecords",
           ErrorConverters.WriteStringMessageErrors.newBuilder()
-              .setErrorRecordsTable(
-                  ObjectUtils.firstNonNull(
-                      options.getOutputDeadletterTable(),
-                      options.getOutputTableSpec() + DEFAULT_DEADLETTER_TABLE_SUFFIX))
+              .setErrorRecordsTable(ObjectUtils.firstNonNull(options.getOutputDeadletterTable()))
               .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
               .build());
     } else {

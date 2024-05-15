@@ -132,18 +132,18 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
     }
 
     String shardId = keyString.read();
-    // Set timer if not already running.
-    if (shardId == null) {
-
-      Instant outputTimestamp =
-          Instant.now().plus(Duration.millis(incrementIntervalInMilliSeconds));
-      timer.set(outputTimestamp);
-      keyString.write(element.getKey());
-    }
 
     String storedStartTime = startString.read();
     if (storedStartTime == null) {
       startString.write(element.getValue().getStartTimestamp());
+    }
+
+    // Set timer if not already running.
+    if (shardId == null) {
+      keyString.write(element.getKey());
+      Instant outputTimestamp =
+          Instant.now().plus(Duration.millis(incrementIntervalInMilliSeconds));
+      timer.set(outputTimestamp);
     }
     num_shards.inc();
   }
@@ -169,10 +169,10 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
       try {
         taskContext.setStartTimestamp(startString.read());
 
-        GCSToSourceStreamingHandler.process(taskContext, spannerDao);
+        String processedStartTs = GCSToSourceStreamingHandler.process(taskContext, spannerDao);
         Instant nextTimer = Instant.now().plus(Duration.millis(incrementIntervalInMilliSeconds));
         com.google.cloud.Timestamp startTs =
-            com.google.cloud.Timestamp.parseTimestamp(startString.read());
+            com.google.cloud.Timestamp.parseTimestamp(processedStartTs);
         Instant startInst = new Instant(startTs.toSqlTimestamp());
         Instant endInst = startInst.plus(taskContext.getWindowDuration());
         startString.write(endInst.toString());

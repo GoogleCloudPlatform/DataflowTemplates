@@ -101,8 +101,8 @@ public class PubsubToText {
         optional = true,
         description = "Pub/Sub input topic",
         helpText =
-            "Pub/Sub topic to read the input from, in the format of "
-                + "'projects/your-project-id/topics/your-topic-name'")
+            "The Pub/Sub topic to read the input from. The topic name should be in the format "
+                + "`projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.")
     ValueProvider<String> getInputTopic();
 
     void setInputTopic(ValueProvider<String> value);
@@ -119,8 +119,7 @@ public class PubsubToText {
         order = 3,
         description = "Output file directory in Cloud Storage",
         helpText =
-            "The path and filename prefix for writing output files. Must end with a slash. DateTime"
-                + " formatting is used to parse directory path for date & time formatters.")
+            "The path and filename prefix for writing output files. For example, `gs://bucket-name/path/`. This value must end in a slash.")
     @Required
     ValueProvider<String> getOutputDirectory();
 
@@ -139,7 +138,7 @@ public class PubsubToText {
     @TemplateParameter.Text(
         order = 5,
         description = "Output filename prefix of the files to write",
-        helpText = "The prefix to place on each windowed file.")
+        helpText = "The prefix to place on each windowed file. For example, `output-`.")
     @Default.String("output")
     @Required
     ValueProvider<String> getOutputFilenamePrefix();
@@ -151,8 +150,7 @@ public class PubsubToText {
         optional = true,
         description = "Output filename suffix of the files to write",
         helpText =
-            "The suffix to place on each windowed file. Typically a file extension such "
-                + "as .txt or .csv.")
+            "The suffix to place on each windowed file. Typically a file extension such as `.txt` or `.csv`.")
     @Default.String("")
     ValueProvider<String> getOutputFilenameSuffix();
 

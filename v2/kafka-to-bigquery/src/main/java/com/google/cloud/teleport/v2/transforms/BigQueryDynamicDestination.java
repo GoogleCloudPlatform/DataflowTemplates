@@ -58,14 +58,14 @@ public class BigQueryDynamicDestination
     // tablename + record name (same across schemas) + schema id?
     String bqQualifiedFullName = element.getSchema().getFullName().replace(".", "-");
     String tableName =
-        this.tableNamePrefix + (this.tableNamePrefix == "" ? "" : "-") + bqQualifiedFullName;
+        this.tableNamePrefix + (this.tableNamePrefix.isBlank() ? "" : "-") + bqQualifiedFullName;
     String tableSpec = this.projectName + ":" + this.datasetName + "." + tableName;
     return new TableDestination(tableSpec, null);
   }
 
   @Override
   public TableSchema getSchema(GenericRecord element) {
-    // TODO: Test if sending null can work here, might be mroe efficient.
+    // TODO: Test if sending null can work here, might be more efficient.
     return BigQueryUtils.toTableSchema(AvroUtils.toBeamSchema(element.getSchema()));
   }
 

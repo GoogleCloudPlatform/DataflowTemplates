@@ -140,6 +140,8 @@ public class BigtableToJson {
     @TemplateParameter.Text(
         order = 7,
         optional = true,
+        parentName = "userOption",
+        parentTriggerValues = {"FLATTEN"},
         description = "Columns aliases",
         helpText =
             "Comma separated list of columns which are required for Vertex AI Vector Search Index."
