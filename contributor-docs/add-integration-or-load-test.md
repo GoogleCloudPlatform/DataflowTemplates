@@ -462,7 +462,7 @@ public void testBacklog() {
   TableId table = bigQueryResourceManager.createTable(testName, SCHEMA);
   
   // Generate fake data to Pub/Sub topic
-  // In a normal integration test (non-load test), you can use the resource manager
+  // In a normal integration test (small amount of data), you can use the resource manager
   // directly. For example:
   // pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
   DataGenerator dataGenerator =
@@ -513,7 +513,7 @@ public void testSteadyState1hr() {
   TableId table = bigQueryResourceManager.createTable(
         testName, SCHEMA, System.currentTimeMillis() + 7200000); // expire in 2 hrs
   // Generate fake data to Pub/Sub topic at 100,000 QPS
-  // In a normal integration test (non-load test), you can use the resource manager
+  // In a normal integration test (small amount of data), you can use the resource manager
   // directly. For example:
   // pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
   DataGenerator dataGenerator = 
