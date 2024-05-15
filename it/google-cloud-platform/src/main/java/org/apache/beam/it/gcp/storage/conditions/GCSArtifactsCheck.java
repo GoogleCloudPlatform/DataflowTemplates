@@ -25,7 +25,7 @@ public abstract class GCSArtifactsCheck extends ConditionCheck {
   public String getDescription() {
     if (maxSize() != null) {
       return String.format(
-          "GCS resource check if folder %s with regex %s has between %d and %d artifacts",
+          "GCS resource check if folder path %s with regex %s has between %d and %d artifacts",
           prefix(), regex(), minSize(), maxSize());
     }
     return String.format(
@@ -56,7 +56,7 @@ public abstract class GCSArtifactsCheck extends ConditionCheck {
     }
 
     return new CheckResult(
-        true, String.format("Expected at least %d rows and found %d", minSize(), artifacts.size()));
+        true, String.format("Expected at least %d artifacts and found %d", minSize(), artifacts.size()));
   }
 
   public static GCSArtifactsCheck.Builder builder(
