@@ -257,8 +257,8 @@ First, install the [maven plugin](#templates-plugin), then create a subdirectory
 
 All new templates must comply with the following guidance:
 
-- [ ] Template addition has been approved by the core Dataflow Templates team.
-- [ ] The template must be a Flex Template located in the `v2/<template name>` directory
+- [ ] Template addition has been approved by the Dataflow team in a [Google Issue Tracker Issue](https://issuetracker.google.com/issues/new?component=187168&template=0).
+- [ ] The template must be a Flex Template located in the `v2/<template name>` directory.
 - [ ] The template does not contain a duplicated/fork of a Beam IO.
 - [ ] The template contains integration tests.
 - [ ] The template contains load tests.
