@@ -84,7 +84,7 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
    * <p>1. Creates a Spanner database with a given table 2. Creates a shard file with the connection
    * details 3. The session file for the same is taken from the resources and uploaded to GCS 4.
    * Places the session file and shard file in GCS 5. Creates the change stream in Spanner database
-   * 6. Creates the metadata database 8. Launches the job to read from Spanner and write to GCS
+   * 6. Creates the metadata database 7. Launches the job to read from Spanner and write to GCS
    *
    * @throws IOException
    */
@@ -272,7 +272,7 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
       throws IOException, java.lang.InterruptedException {
     // Construct a ChainedConditionCheck with below stages.
     // 1. Wait for the metadata table to have the start time of reader job
-    // 2. Write a 2 records per shard to Spanner
+    // 2. Write 2 records per shard to Spanner
     // 3. Wait on GCS to have the files
     // 4. Match the PK in GCS with the PK written to Spanner
     ChainedConditionCheck conditionCheck =
