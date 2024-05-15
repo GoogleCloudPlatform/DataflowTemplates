@@ -179,7 +179,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
       order = 14,
       optional = true,
       description = "BigQuery project ID",
-      helpText = "The BigQuery Project. The default value is the project for the Dataflow job.")
+      helpText = "The BigQuery project. The default value is the project for the Dataflow job.")
   @Default.String("")
   String getBigQueryProjectId();
 
@@ -189,7 +189,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
       order = 15,
       optional = true,
       description = "BigQuery table name Template",
-      helpText = "The template for the name of BigQuery changelog tables.")
+      helpText = "The template for the name of the BigQuery table that contains the changelog.")
   @Default.String("{_metadata_spanner_table_name}_changelog")
   String getBigQueryChangelogTableNameTemplate();
 
@@ -200,7 +200,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
       optional = true,
       description = "Dead letter queue directory",
       helpText =
-          "The path to store any unprocessed records that failed to be processed."
+          "The path to store any unprocessed records."
               + " The default path is a directory under the Dataflow job's temp location. The default value is usually sufficient.")
   @Default.String("")
   String getDeadLetterQueueDirectory();

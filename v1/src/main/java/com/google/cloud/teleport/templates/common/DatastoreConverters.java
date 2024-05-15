@@ -238,7 +238,7 @@ public class DatastoreConverters {
     @TemplateParameter.ProjectId(
         order = 5,
         description = "Project ID",
-        helpText = "The Google Cloud project id of where to write the Firestore entities")
+        helpText = "The ID of the Google Cloud project to write the Firestore entities to.")
     ValueProvider<String> getFirestoreWriteProjectId();
 
     void setFirestoreWriteProjectId(ValueProvider<String> firestoreWriteProjectId);

@@ -166,7 +166,7 @@ public class BigQueryConverters {
         order = 1,
         optional = true,
         description = "BigQuery source table",
-        helpText = "BigQuery table to read from to insert into Elasticsearch. Either table or query must be provided.",
+        helpText = "The BigQuery table to read from to insert data into Elasticsearch. You must provide either the table or the query.",
         example = "bigquery-project:dataset.input_table")
     String getInputTableSpec();
 
@@ -190,7 +190,7 @@ public class BigQueryConverters {
         optional = true,
         regexes = {"^.+$"},
         description = "Input SQL query.",
-        helpText = "SQL query to pull data from BigQuery. Either table or query must be provided.",
+        helpText = "The SQL query to use to pull data from BigQuery. You must provide either the table or the query.",
         example = "select * from sampledb.sample_table")
     String getQuery();
 
@@ -200,7 +200,7 @@ public class BigQueryConverters {
         order = 4,
         optional = true,
         description = "Set to true to use legacy SQL",
-        helpText = "Set to true to use legacy SQL (only applicable if supplying query). Default: `false`.")
+        helpText = "Set to true to use legacy SQL (only applicable if supplying query). Defaults to false.")
     @Default.Boolean(false)
     Boolean getUseLegacySql();
 

@@ -164,7 +164,7 @@ public final class PubsubProtoToBigQuery {
         description = "Cloud Storage Path to the Proto Schema File",
         helpText =
             "The Cloud Storage location of the self-contained proto schema file. For example,"
-                + " `gs://path/to/my/file.pb`. This file can be generated with"
+                + " gs://path/to/my/file.pb. You can generate this file with"
                 + " the `--descriptor_set_out` flag of the protoc command."
                 + " The `--include_imports` flag guarantees that the file is self-contained.")
     @Required
@@ -203,8 +203,8 @@ public final class PubsubProtoToBigQuery {
         optional = true,
         description = "BigQuery Table Schema Path",
         helpText =
-            "Cloud Storage path to BigQuery schema path. "
-                + "If this is not provided, then the schema is inferred from the Proto schema.",
+            "The Cloud Storage path to the BigQuery schema path. "
+                + "If this value isn't provided, then the schema is inferred from the Proto schema.",
         example = "gs://MyBucket/bq_schema.json")
     String getBigQueryTableSchemaPath();
 
@@ -216,7 +216,7 @@ public final class PubsubProtoToBigQuery {
         description = "Pub/Sub output topic for UDF failures",
         helpText =
             "The Pub/Sub topic storing the UDF errors."
-                + " If this is not provided, UDF errors are sent to the same topic as `outputTopic`.",
+                + " If this value isn't provided, UDF errors are sent to the same topic as `outputTopic`.",
         example = "projects/your-project-id/topics/your-topic-name")
     String getUdfOutputTopic();
 
