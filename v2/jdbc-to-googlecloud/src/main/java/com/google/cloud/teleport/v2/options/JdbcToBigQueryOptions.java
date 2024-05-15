@@ -107,7 +107,8 @@ public interface JdbcToBigQueryOptions
       regexes = {"^.+$"},
       groupName = "Source",
       description = "JDBC source SQL query",
-      helpText = "The query to run on the source to extract the data.",
+      helpText = "The query to run on the source to extract the data. Important SQL to BigQuery type mappings to keep in mind:\n" +
+              "DATETIME --> TIMESTAMP",
       example = "select * from sampledb.sample_table")
   String getQuery();
 
