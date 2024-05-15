@@ -86,10 +86,13 @@ public class SpannerChangeStreamToGcsCustomShardIT extends SpannerChangeStreamTo
       if (jobInfo == null) {
         gcsResourceManager = createGcsResourceManager(getClass().getSimpleName());
         spannerResourceManager = createSpannerResourceManager();
-        createSpannerDatabase(spannerResourceManager, spannerDdl);
-        uploadSessionFileToGcs(gcsResourceManager, sessionFileResourceName);
         spannerMetadataResourceManager = createSpannerMetadataResourceManager();
-        createSpannerMetadataDatabase(spannerMetadataResourceManager);
+        prepareLaunchParameters(
+            gcsResourceManager,
+            spannerResourceManager,
+            spannerMetadataResourceManager,
+            spannerDdl,
+            sessionFileResourceName);
         createAndUploadJarToGcs(gcsResourceManager);
         createAndUploadShardConfigToGcs();
         jobInfo =
@@ -167,10 +170,12 @@ public class SpannerChangeStreamToGcsCustomShardIT extends SpannerChangeStreamTo
                     GCSArtifactsCheck.builder(
                             gcsResourceManager, "output/testShardA/", Pattern.compile(".*\\.txt$"))
                         .setMinSize(1)
+                        .setMaxSize(2)
                         .build(),
                     GCSArtifactsCheck.builder(
                             gcsResourceManager, "output/testShardB/", Pattern.compile(".*\\.txt$"))
                         .setMinSize(1)
+                        .setMaxSize(2)
                         .build()))
             .build();
 

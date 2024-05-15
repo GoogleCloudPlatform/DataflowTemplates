@@ -87,10 +87,13 @@ public class SpannerChangeStreamToGcsSimpleIT extends SpannerChangeStreamToGcsIT
       if (jobInfo == null) {
         gcsResourceManager = createGcsResourceManager(getClass().getSimpleName());
         spannerResourceManager = createSpannerResourceManager();
-        createSpannerDatabase(spannerResourceManager, spannerDdl);
-        uploadSessionFileToGcs(gcsResourceManager, sessionFileResourceName);
         spannerMetadataResourceManager = createSpannerMetadataResourceManager();
-        createSpannerMetadataDatabase(spannerMetadataResourceManager);
+        prepareLaunchParameters(
+            gcsResourceManager,
+            spannerResourceManager,
+            spannerMetadataResourceManager,
+            spannerDdl,
+            sessionFileResourceName);
         createAndUploadShardConfigToGcs();
         jobInfo =
             launchReaderDataflowJob(
@@ -244,10 +247,12 @@ public class SpannerChangeStreamToGcsSimpleIT extends SpannerChangeStreamToGcsIT
                     GCSArtifactsCheck.builder(
                             gcsResourceManager, "output/testShardB/", Pattern.compile(".*\\.txt$"))
                         .setMinSize(1)
+                        .setMaxSize(2)
                         .build(),
                     GCSArtifactsCheck.builder(
                             gcsResourceManager, "output/testShardC/", Pattern.compile(".*\\.txt$"))
                         .setMinSize(1)
+                        .setMaxSize(2)
                         .build()))
             .build();
 

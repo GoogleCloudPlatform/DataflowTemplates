@@ -114,6 +114,18 @@ public class SpannerChangeStreamToGcsITBase extends TemplateTestBase {
         artifactBucketName, identifierSuffix, gcsResourceManager.runId(), artifactId);
   }
 
+  public void prepareLaunchParameters(
+      GcsResourceManager gcsResourceManager,
+      SpannerResourceManager spannerResourceManager,
+      SpannerResourceManager spannerMetadataResourceManager,
+      String spannerDdl,
+      String sessionFileResourceName)
+      throws IOException {
+    createSpannerDatabase(spannerResourceManager, spannerDdl);
+    uploadSessionFileToGcs(gcsResourceManager, sessionFileResourceName);
+    createSpannerMetadataDatabase(spannerMetadataResourceManager);
+  }
+
   public PipelineLauncher.LaunchInfo launchReaderDataflowJob(
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerResourceManager,
