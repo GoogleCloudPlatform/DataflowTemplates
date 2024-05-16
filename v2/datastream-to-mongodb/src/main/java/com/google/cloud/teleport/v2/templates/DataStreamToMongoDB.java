@@ -98,7 +98,6 @@ public class DataStreamToMongoDB {
 
     @TemplateParameter.Enum(
         order = 2,
-        groupName = "Source",
         enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("json")},
         optional = false,
         description = "The GCS input format avro/json",
@@ -128,7 +127,6 @@ public class DataStreamToMongoDB {
 
     @TemplateParameter.DateTime(
         order = 5,
-        groupName = "Source",
         optional = true,
         description =
             "The starting DateTime used to fetch from Cloud Storage "
@@ -143,7 +141,6 @@ public class DataStreamToMongoDB {
 
     @TemplateParameter.Integer(
         order = 6,
-        groupName = "Source",
         optional = true,
         description = "File read concurrency",
         helpText = "The number of concurrent DataStream files to read.")

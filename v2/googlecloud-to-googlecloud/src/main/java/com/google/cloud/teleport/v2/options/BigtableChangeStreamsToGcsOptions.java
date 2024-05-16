@@ -29,7 +29,6 @@ public interface BigtableChangeStreamsToGcsOptions
 
   @TemplateParameter.Enum(
       order = 1,
-      groupName = "Target",
       enumOptions = {@TemplateEnumOption("TEXT"), @TemplateEnumOption("AVRO")},
       optional = true,
       description = "Output file format",
@@ -42,7 +41,6 @@ public interface BigtableChangeStreamsToGcsOptions
 
   @TemplateParameter.Duration(
       order = 2,
-      groupName = "Target",
       optional = true,
       description = "Window duration",
       helpText =
@@ -56,7 +54,6 @@ public interface BigtableChangeStreamsToGcsOptions
 
   @TemplateParameter.Text(
       order = 3,
-      groupName = "Source",
       optional = true,
       description = "Bigtable Metadata Table Id",
       helpText = "Table ID used for creating the metadata table.")
@@ -66,7 +63,6 @@ public interface BigtableChangeStreamsToGcsOptions
 
   @TemplateParameter.Enum(
       order = 4,
-      groupName = "Target",
       enumOptions = {@TemplateEnumOption("CHANGELOG_ENTRY"), @TemplateEnumOption("BIGTABLE_ROW")},
       optional = true,
       description = "Output schema format",
@@ -93,7 +89,6 @@ public interface BigtableChangeStreamsToGcsOptions
 
   @TemplateParameter.Text(
       order = 6,
-      groupName = "Target",
       optional = true,
       description = "Output filename prefix of the files to write",
       helpText = "The prefix to place on each windowed file. Defaults to \"changelog-\"",
@@ -105,7 +100,6 @@ public interface BigtableChangeStreamsToGcsOptions
 
   @TemplateParameter.Integer(
       order = 7,
-      groupName = "Target",
       optional = true,
       description = "Number of output file shards",
       helpText =
@@ -120,7 +114,6 @@ public interface BigtableChangeStreamsToGcsOptions
 
   @TemplateParameter.Integer(
       order = 7,
-      groupName = "Target",
       optional = true,
       description = "Maximum number of mutations in a batch",
       helpText =
@@ -134,7 +127,6 @@ public interface BigtableChangeStreamsToGcsOptions
 
   @TemplateParameter.Boolean(
       order = 8,
-      groupName = "Target",
       optional = true,
       parentName = "outputFileFormat",
       parentTriggerValues = {"TEXT"},
@@ -149,7 +141,6 @@ public interface BigtableChangeStreamsToGcsOptions
 
   @TemplateParameter.Boolean(
       order = 9,
-      groupName = "Target",
       optional = true,
       parentName = "outputFileFormat",
       parentTriggerValues = {"TEXT"},
@@ -164,7 +155,6 @@ public interface BigtableChangeStreamsToGcsOptions
 
   @TemplateParameter.Boolean(
       order = 10,
-      groupName = "Target",
       optional = true,
       parentName = "outputFileFormat",
       parentTriggerValues = {"TEXT"},

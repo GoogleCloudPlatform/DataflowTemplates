@@ -140,7 +140,6 @@ public class CdcToBigQueryChangeApplierPipeline {
     @TemplateParameter.Integer(
         order = 5,
         optional = true,
-        groupName = "Target",
         description = "Frequency to issue updates to BigQuery tables (seconds).",
         helpText =
             "The interval at which the pipeline updates the BigQuery table replicating the MySQL database.")
@@ -151,7 +150,6 @@ public class CdcToBigQueryChangeApplierPipeline {
     @TemplateParameter.Boolean(
         order = 6,
         optional = true,
-        groupName = "Source",
         description = "Whether to use a single topic for all MySQL table changes.",
         helpText =
             "Set this to true if you have configured your Debezium connector to publish all table"

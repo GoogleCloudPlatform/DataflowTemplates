@@ -78,7 +78,6 @@ public class GCSToSourceDb {
 
     @TemplateParameter.GcsReadFile(
         order = 1,
-        groupName = "Source",
         optional = false,
         description = "Source shard details file path in Cloud Storage",
         helpText =
@@ -90,7 +89,6 @@ public class GCSToSourceDb {
 
     @TemplateParameter.GcsReadFile(
         order = 2,
-        groupName = "Source",
         optional = false,
         description = "Session File Path in Cloud Storage",
         helpText =
@@ -102,7 +100,6 @@ public class GCSToSourceDb {
 
     @TemplateParameter.Enum(
         order = 3,
-        groupName = "Target",
         optional = true,
         description = "Destination source type",
         enumOptions = {@TemplateEnumOption("mysql")},
@@ -114,7 +111,6 @@ public class GCSToSourceDb {
 
     @TemplateParameter.Text(
         order = 4,
-        groupName = "Target",
         optional = true,
         description = "SourceDB timezone offset",
         helpText =
@@ -181,7 +177,6 @@ public class GCSToSourceDb {
 
     @TemplateParameter.ProjectId(
         order = 9,
-        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Project Id.",
         helpText = "This is the name of the Cloud Spanner project.")
@@ -191,7 +186,6 @@ public class GCSToSourceDb {
 
     @TemplateParameter.Text(
         order = 10,
-        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Instance to store the shard progress when reading from gcs",
         helpText = "This is the instance to store the shard progress of the files processed.")
@@ -201,7 +195,6 @@ public class GCSToSourceDb {
 
     @TemplateParameter.Text(
         order = 11,
-        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Database to store the shard progress when reading from gcs",
         helpText = "This is the database to store  the shard progress of the files processed..")

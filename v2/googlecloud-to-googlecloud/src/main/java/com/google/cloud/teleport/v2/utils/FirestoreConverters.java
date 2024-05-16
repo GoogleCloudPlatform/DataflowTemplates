@@ -72,7 +72,6 @@ public class FirestoreConverters {
      */
     @TemplateParameter.Text(
         order = 1,
-        groupName = "Source",
         regexes = {"^.+$"},
         description = "GQL Query",
         helpText = "Specifies which Datastore entities to read. Ex: ‘SELECT * FROM MyKind’")
@@ -129,7 +128,6 @@ public class FirestoreConverters {
 
     @TemplateParameter.Text(
         order = 4,
-        groupName = "Source",
         regexes = {"^.+$"},
         description = "GQL Query",
         helpText = "Specifies which Firestore entities to read. Ex: ‘SELECT * FROM MyKind’")
@@ -148,7 +146,6 @@ public class FirestoreConverters {
 
     @TemplateParameter.Text(
         order = 6,
-        groupName = "Source",
         optional = true,
         regexes = {"^[0-9A-Za-z._-]{0,100}$"},
         description = "Namespace",

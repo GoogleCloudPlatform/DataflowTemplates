@@ -62,7 +62,6 @@ public interface KafkaToGCSOptions
 
   @TemplateParameter.Enum(
       order = 3,
-      groupName = "Target",
       enumOptions = {
         @TemplateEnumOption("TEXT"),
         @TemplateEnumOption("AVRO"),
@@ -79,7 +78,6 @@ public interface KafkaToGCSOptions
 
   @TemplateParameter.Duration(
       order = 4,
-      groupName = "Target",
       optional = true,
       description = "Window duration",
       helpText =

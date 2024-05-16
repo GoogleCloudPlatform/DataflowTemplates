@@ -109,7 +109,6 @@ public class DataStreamToSQL {
 
     @TemplateParameter.PubsubSubscription(
         order = 2,
-        groupName = "Source",
         optional = true,
         description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
         helpText =
@@ -121,7 +120,6 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Enum(
         order = 3,
-        groupName = "Source",
         enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("json")},
         optional = true,
         description = "Datastream output file format (avro/json).",
@@ -145,7 +143,6 @@ public class DataStreamToSQL {
 
     @TemplateParameter.DateTime(
         order = 5,
-        groupName = "Source",
         optional = true,
         description =
             "The starting DateTime used to fetch from Cloud Storage "
@@ -161,7 +158,6 @@ public class DataStreamToSQL {
     // DataStream API Root Url (only used for testing)
     @TemplateParameter.Text(
         order = 6,
-        groupName = "Source",
         optional = true,
         description = "Datastream API Root URL (only required for testing)",
         helpText = "Datastream API Root URL")
@@ -173,7 +169,6 @@ public class DataStreamToSQL {
     // SQL Connection Parameters
     @TemplateParameter.Enum(
         order = 7,
-        groupName = "Target",
         optional = true,
         enumOptions = {@TemplateEnumOption("postgres"), @TemplateEnumOption("mysql")},
         description = "SQL Database Type (postgres or mysql).",
@@ -205,7 +200,6 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 10,
-        groupName = "Target",
         description = "Database User to connect with.",
         helpText =
             "The SQL user with all required permissions to write to all tables in replication.")
@@ -215,7 +209,6 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Password(
         order = 11,
-        groupName = "Target",
         description = "Database Password for given user.",
         helpText = "The password for the SQL user.")
     String getDatabasePassword();
@@ -235,7 +228,6 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 13,
-        groupName = "Target",
         optional = true,
         description = "A map of key/values used to dictate schema name changes",
         helpText =

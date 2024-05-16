@@ -168,7 +168,6 @@ public class BigQueryToParquet {
     @TemplateParameter.Integer(
         order = 3,
         optional = true,
-        groupName = "Target",
         description = "Maximum output shards",
         helpText = "The number of output file shards. The default value is 1.")
     @Default.Integer(0)

@@ -141,7 +141,6 @@ public class DataplexFileFormatConversion {
     @TemplateParameter.Enum(
         order = 2,
         enumOptions = {@TemplateEnumOption("AVRO"), @TemplateEnumOption("PARQUET")},
-        groupName = "Target",
         description = "Output file format in Cloud Storage.",
         helpText = "Output file format in Cloud Storage. Format: PARQUET or AVRO.")
     @Required
@@ -158,7 +157,6 @@ public class DataplexFileFormatConversion {
           @TemplateEnumOption("BZIP2")
         },
         optional = true,
-        groupName = "Target",
         description = "Output file compression in Cloud Storage.",
         helpText =
             "Output file compression. Format: UNCOMPRESSED, SNAPPY, GZIP, or BZIP2. BZIP2 not"
@@ -193,7 +191,6 @@ public class DataplexFileFormatConversion {
           @TemplateEnumOption("SKIP")
         },
         optional = true,
-        groupName = "Target",
         description = "Action that occurs if a destination file already exists.",
         helpText =
             "Specifies the action that occurs if a destination file already exists. Format:"

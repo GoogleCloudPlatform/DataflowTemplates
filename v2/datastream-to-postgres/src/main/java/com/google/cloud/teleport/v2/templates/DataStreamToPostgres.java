@@ -112,7 +112,6 @@ public class DataStreamToPostgres {
 
     @TemplateParameter.DateTime(
         order = 2,
-        groupName = "Source",
         optional = true,
         description =
             "The starting DateTime used to fetch from Cloud Storage "
@@ -127,7 +126,6 @@ public class DataStreamToPostgres {
 
     @TemplateParameter.Text(
         order = 3,
-        groupName = "Source",
         optional = true,
         description = "Datastream API Root URL (only required for testing)",
         helpText = "Datastream API Root URL")
@@ -159,7 +157,6 @@ public class DataStreamToPostgres {
 
     @TemplateParameter.Text(
         order = 6,
-        groupName = "Target",
         description = "Database User to connect with.",
         helpText = "Database User to connect with.")
     @Default.String("postgres")
@@ -169,7 +166,6 @@ public class DataStreamToPostgres {
 
     @TemplateParameter.Password(
         order = 11,
-        groupName = "Target",
         description = "Database Password for given user.",
         helpText = "Database Password for given user.")
     @Default.String("postgres")

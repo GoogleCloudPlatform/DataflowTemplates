@@ -46,7 +46,6 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 1,
         description = "Astra token",
-        groupName = "Source",
         helpText = "The token value or secret resource ID.",
         example = "AstraCS:abcdefghij")
     @Validation.Required

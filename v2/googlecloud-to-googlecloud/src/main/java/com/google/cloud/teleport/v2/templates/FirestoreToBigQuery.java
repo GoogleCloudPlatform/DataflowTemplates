@@ -106,7 +106,6 @@ public class FirestoreToBigQuery {
 
     @TemplateParameter.GcsWriteFolder(
         order = 2,
-        groupName = "Target",
         description = "Temporary directory for BigQuery loading process",
         helpText = "Temporary directory for BigQuery loading process",
         example = "gs://your-bucket/your-files/temp_dir")
@@ -117,7 +116,6 @@ public class FirestoreToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 3,
-        groupName = "Target",
         optional = true,
         description = "Cloud Storage path to BigQuery JSON schema",
         helpText =

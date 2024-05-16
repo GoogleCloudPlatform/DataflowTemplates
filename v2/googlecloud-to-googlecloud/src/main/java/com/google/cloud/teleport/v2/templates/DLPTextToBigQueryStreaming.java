@@ -302,7 +302,6 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Text(
         order = 2,
-        groupName = "Source",
         regexes = {
           "^projects\\/[^\\n"
               + "\\r"
@@ -325,7 +324,6 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Text(
         order = 3,
-        groupName = "Source",
         optional = true,
         regexes = {
           "^projects\\/[^\\n"
@@ -346,7 +344,6 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Integer(
         order = 4,
-        groupName = "Source",
         optional = true,
         description = "Batch size",
         helpText =
