@@ -86,7 +86,7 @@ public class BigtableToJson {
         order = 2,
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
-        helpText = "The ID of the Bigtable instance that contains the table")
+        helpText = "The ID of the Bigtable instance that contains the table.")
     ValueProvider<String> getBigtableInstanceId();
 
     @SuppressWarnings("unused")
