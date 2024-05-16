@@ -17,40 +17,31 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatArtifacts;
-import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
-import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.beam.it.gcp.storage.conditions.GCSArtifactsCheck;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -64,7 +55,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerChangeStreamsToShardedFileSink.class)
 @RunWith(JUnit4.class)
-public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
+public class SpannerChangeStreamToGcsSimpleIT extends SpannerChangeStreamToGcsITBase {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamToGcsSimpleIT.class);
   private static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
@@ -84,7 +75,7 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
    * <p>1. Creates a Spanner database with a given table 2. Creates a shard file with the connection
    * details 3. The session file for the same is taken from the resources and uploaded to GCS 4.
    * Places the session file and shard file in GCS 5. Creates the change stream in Spanner database
-   * 6. Creates the metadata database 8. Launches the job to read from Spanner and write to GCS
+   * 6. Creates the metadata database 7. Launches the job to read from Spanner and write to GCS
    *
    * @throws IOException
    */
@@ -94,12 +85,24 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
     synchronized (SpannerChangeStreamToGcsSimpleIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        createGcsResourceManager();
-        createSpannerDatabase();
+        gcsResourceManager = createGcsResourceManager(getClass().getSimpleName());
+        spannerResourceManager = createSpannerResourceManager();
+        spannerMetadataResourceManager = createSpannerMetadataResourceManager();
+        prepareLaunchParameters(
+            gcsResourceManager,
+            spannerResourceManager,
+            spannerMetadataResourceManager,
+            spannerDdl,
+            sessionFileResourceName);
         createAndUploadShardConfigToGcs();
-        uploadSessionFileToGcs();
-        createSpannerMetadataDatabase();
-        launchReaderDataflowJob();
+        jobInfo =
+            launchReaderDataflowJob(
+                gcsResourceManager,
+                spannerResourceManager,
+                spannerMetadataResourceManager,
+                getClass().getSimpleName(),
+                null,
+                null);
       }
     }
   }
@@ -141,30 +144,6 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
     assertFileContentsInGCS();
   }
 
-  private void createGcsResourceManager() {
-    gcsResourceManager =
-        GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-            .build(); // DB name is appended with prefix to avoid clashes
-  }
-
-  private void createSpannerDatabase() throws IOException {
-    spannerResourceManager =
-        SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build(); // DB name is appended with prefix to avoid clashes
-    String ddl =
-        String.join(
-            " ", Resources.readLines(Resources.getResource(spannerDdl), StandardCharsets.UTF_8));
-    ddl = ddl.trim();
-    String[] ddls = ddl.split(";");
-    for (String d : ddls) {
-      if (!d.isBlank()) {
-        spannerResourceManager.executeDdlStatement(d);
-      }
-    }
-    spannerDatabaseName = spannerResourceManager.getDatabaseId();
-  }
-
   private void createAndUploadShardConfigToGcs() throws IOException {
     List<String> shardNames = new ArrayList<>();
     shardNames.add("testShardA");
@@ -181,7 +160,6 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
       shard.setPassword("dummy");
       shard.setPort("3306");
       JsonObject jsObj = (JsonObject) new Gson().toJsonTree(shard).getAsJsonObject();
-      jsObj.remove("secretManagerUri"); // remove field secretManagerUri
       ja.add(jsObj);
     }
 
@@ -189,51 +167,6 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
     LOG.info("Shard file contents: {}", shardFileContents);
     // -DartifactBucket has the bucket name
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
-  }
-
-  private void uploadSessionFileToGcs() throws IOException {
-    gcsResourceManager.uploadArtifact(
-        "input/session.json", Resources.getResource(sessionFileResourceName).getPath());
-  }
-
-  private void createSpannerMetadataDatabase() throws IOException {
-    spannerMetadataResourceManager =
-        SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build(); // DB name is appended with prefix to avoid clashes
-    String dummy = "create table t1(id INT64 ) primary key(id)";
-    spannerMetadataResourceManager.executeDdlStatement(dummy);
-    // needed to create separate metadata database
-    spannerMetadataDatabaseName = spannerMetadataResourceManager.getDatabaseId();
-  }
-
-  private void launchReaderDataflowJob() throws IOException {
-    // default parameters
-    Map<String, String> params =
-        new HashMap<>() {
-          {
-            put("sessionFilePath", getGcsFullPath("input/session.json"));
-            put("instanceId", spannerResourceManager.getInstanceId());
-            put("databaseId", spannerResourceManager.getDatabaseId());
-            put("spannerProjectId", PROJECT);
-            put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
-            put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put("sourceShardsFilePath", getGcsFullPath("input/shard.json"));
-            put("changeStreamName", "allstream");
-            put("runIdentifier", "run1");
-            put("gcsOutputDirectory", getGcsFullPath("output"));
-          }
-        };
-
-    // Construct template
-    String jobName = PipelineUtils.createJobName("rr-it");
-    // /-DunifiedWorker=true when using runner v2
-    LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
-    options.setParameters(params);
-    options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
-    // Run
-    jobInfo = launchTemplate(options, false);
-    assertThatPipeline(jobInfo).isRunning();
   }
 
   private void writeSpannerDataForSingers(int singerId, String firstName, String shardId) {
@@ -251,18 +184,25 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
   }
 
   private void assertFileContentsInGCS() throws IOException, java.lang.InterruptedException {
-    List<Artifact> artifacts = null;
-    Thread.sleep(
-        180000); // wait sufficiently for the file to be generated. It takes about 3 minutes
-    // at-least. If not present wait additional 3 minutes before failing
-    for (int i = 0; i < 10; i++) {
-      Thread.sleep(18000); // wait for total 3 minutes over an interval of 18 seconds
-      artifacts =
-          gcsResourceManager.listArtifacts("output/testShardA/", Pattern.compile(".*\\.txt$"));
-      if (artifacts.size() == 1) {
-        break;
-      }
-    }
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    GCSArtifactsCheck.builder(
+                            gcsResourceManager, "output/testShardA/", Pattern.compile(".*\\.txt$"))
+                        .setMinSize(1)
+                        .setMaxSize(1)
+                        .build()))
+            .build();
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(6)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    List<Artifact> artifacts =
+        gcsResourceManager.listArtifacts("output/testShardA/", Pattern.compile(".*\\.txt$"));
     assertThat(artifacts).hasSize(1);
     assertThatArtifacts(artifacts).hasContent("SingerId\\\":\\\"1");
   }
@@ -272,7 +212,7 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
       throws IOException, java.lang.InterruptedException {
     // Construct a ChainedConditionCheck with below stages.
     // 1. Wait for the metadata table to have the start time of reader job
-    // 2. Write a 2 records per shard to Spanner
+    // 2. Write 2 records per shard to Spanner
     // 3. Wait on GCS to have the files
     // 4. Match the PK in GCS with the PK written to Spanner
     ChainedConditionCheck conditionCheck =
@@ -300,27 +240,33 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
     assertFileContentsInGCSForMultipleShards();
   }
 
-  private void assertFileContentsInGCSForMultipleShards()
-      throws IOException, java.lang.InterruptedException {
-    List<Artifact> artifactsShardB = null;
-    List<Artifact> artifactsShardC = null;
-    Thread.sleep(
-        180000); // wait sufficiently for the file to be generated. It takes about 3 minutes
-    // at-least. If not present wait additional 3 minutes before failing
-    for (int i = 0; i < 10; i++) {
-      Thread.sleep(18000); // wait for total 3 minutes over an interval of 18 seconds
-      artifactsShardB =
-          gcsResourceManager.listArtifacts("output/testShardB/", Pattern.compile(".*\\.txt$"));
-      artifactsShardC =
-          gcsResourceManager.listArtifacts("output/testShardC/", Pattern.compile(".*\\.txt$"));
+  private void assertFileContentsInGCSForMultipleShards() {
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    GCSArtifactsCheck.builder(
+                            gcsResourceManager, "output/testShardB/", Pattern.compile(".*\\.txt$"))
+                        .setMinSize(1)
+                        .setMaxSize(2)
+                        .build(),
+                    GCSArtifactsCheck.builder(
+                            gcsResourceManager, "output/testShardC/", Pattern.compile(".*\\.txt$"))
+                        .setMinSize(1)
+                        .setMaxSize(2)
+                        .build()))
+            .build();
 
-      // Ideally both the mutations written to spanner per shard will commit within 10 seconds.
-      // But that does not guarantee that they will be in the same file, since they can commit
-      // within 1 second interval boundary
-      if (artifactsShardB.size() >= 1 && artifactsShardC.size() >= 1) {
-        break;
-      }
-    }
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(6)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    List<Artifact> artifactsShardB =
+        gcsResourceManager.listArtifacts("output/testShardB/", Pattern.compile(".*\\.txt$"));
+    List<Artifact> artifactsShardC =
+        gcsResourceManager.listArtifacts("output/testShardC/", Pattern.compile(".*\\.txt$"));
     assertThatArtifacts(artifactsShardB).hasFiles();
     assertThatArtifacts(artifactsShardC).hasFiles();
     // checks that any of the artifact has the given content
@@ -398,20 +344,27 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
     spannerResourceManager.write(m);
   }
 
-  private void assertFileContentsInGCSForAllDatatypes()
-      throws IOException, java.lang.InterruptedException {
-    List<Artifact> artifacts = null;
-    Thread.sleep(
-        180000); // wait sufficiently for the file to be generated. It takes about 3 minutes
-    // at-least. If not present wait additional 3 minutes before failing
-    for (int i = 0; i < 10; i++) {
-      Thread.sleep(18000); // wait for total 3 minutes over an interval of 18 seconds
-      artifacts =
-          gcsResourceManager.listArtifacts("output/testShardD/", Pattern.compile(".*\\.txt$"));
-      if (artifacts.size() == 1) {
-        break;
-      }
-    }
+  private void assertFileContentsInGCSForAllDatatypes() {
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    GCSArtifactsCheck.builder(
+                            gcsResourceManager, "output/testShardD/", Pattern.compile(".*\\.txt$"))
+                        .setMinSize(1)
+                        .setMaxSize(1)
+                        .build()))
+            .build();
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(6)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    List<Artifact> artifacts =
+        gcsResourceManager.listArtifacts("output/testShardD/", Pattern.compile(".*\\.txt$"));
+
     assertThat(artifacts).hasSize(1);
     assertThatArtifacts(artifacts).hasContent("id\\\":\\\"1");
     assertThatArtifacts(artifacts).hasContent("year_column\\\":\\\"2023");
@@ -444,10 +397,5 @@ public class SpannerChangeStreamToGcsSimpleIT extends TemplateTestBase {
     assertThatArtifacts(artifacts).hasContent("update_ts\\\":null");
     assertThatArtifacts(artifacts).hasContent("varbinary_column\\\":null");
     assertThatArtifacts(artifacts).hasContent("varchar_column\\\":\\\"abc");
-  }
-
-  private String getGcsFullPath(String artifactId) {
-    return ArtifactUtils.getFullGcsPath(
-        artifactBucketName, getClass().getSimpleName(), gcsResourceManager.runId(), artifactId);
   }
 }
