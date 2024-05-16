@@ -144,7 +144,7 @@ public class SpannerConverters {
             "The timestamp that corresponds to the version of the Spanner database that you want to read from."
                 + " The timestamp must be specified as per RFC 3339 (https://tools.ietf.org/html/rfc3339) UTC \"Zulu\" format."
                 + " The timestamp must be in the past and"
-                + " Maximum timestamp staleness (https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness) applies.",
+                + " maximum timestamp staleness (https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness) applies.",
         example = "1990-12-31T23:59:60Z")
     @Default.String(value = "")
     ValueProvider<String> getSpannerSnapshotTime();
