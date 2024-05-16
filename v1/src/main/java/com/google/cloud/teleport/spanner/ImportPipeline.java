@@ -173,10 +173,9 @@ public class ImportPipeline {
 
     void setWaitUntilFinish(boolean value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Integer(
         order = 10,
         optional = true,
-        regexes = {"[0-9]+"},
         description = "DDL Creation timeout in minutes",
         helpText =
             "The timeout in minutes for DDL statements performed by the template. The default value is 30 minutes.")

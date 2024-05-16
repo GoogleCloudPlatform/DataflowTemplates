@@ -97,7 +97,7 @@ public class DataStreamToSQL {
    * <p>Inherits standard configuration options.
    */
   public interface Options extends PipelineOptions, StreamingOptions {
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 1,
         description = "File location for Datastream file input in Cloud Storage.",
         helpText =

@@ -95,9 +95,8 @@ public class StreamingDataGenerator {
    * the executor at the command-line.
    */
   public interface StreamingDataGeneratorOptions extends PipelineOptions {
-    @TemplateParameter.Text(
+    @TemplateParameter.Long(
         order = 1,
-        regexes = {"^[1-9][0-9]*$"},
         description = "Required output rate",
         helpText = "Indicates rate of messages per second to be published to Pub/Sub")
     @Required
@@ -361,12 +360,11 @@ public class StreamingDataGenerator {
 
     void setStatement(String statement);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.ProjectId(
         order = 22,
         optional = true,
         parentName = "sinkType",
         parentTriggerValues = {"SPANNER"},
-        regexes = {"^.+$"},
         description = "GCP Project Id of where the Spanner table lives.",
         helpText = "GCP Project Id of where the Spanner table lives.")
     String getProjectId();
@@ -409,12 +407,11 @@ public class StreamingDataGenerator {
 
     void setSpannerTableName(String spannerTableName);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Long(
         order = 26,
         optional = true,
         parentName = "sinkType",
         parentTriggerValues = {"SPANNER"},
-        regexes = {"^[1-9][0-9]*$"},
         description = "Max mutatated cells per batch.",
         helpText =
             "Specifies the cell mutation limit (maximum number of mutated cells per batch). Default value is 5000")
@@ -422,12 +419,11 @@ public class StreamingDataGenerator {
 
     void setMaxNumMutations(Long value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Long(
         order = 27,
         optional = true,
         parentName = "sinkType",
         parentTriggerValues = {"SPANNER"},
-        regexes = {"^[1-9][0-9]*$"},
         description = "Max rows per batch.",
         helpText =
             "Specifies the row mutation limit (maximum number of mutated rows per batch). Default value is 1000")
@@ -435,12 +431,11 @@ public class StreamingDataGenerator {
 
     void setMaxNumRows(Long value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Long(
         order = 28,
         optional = true,
         parentName = "sinkType",
         parentTriggerValues = {"SPANNER"},
-        regexes = {"^[1-9][0-9]*$"},
         description = "Max batch size in bytes.",
         helpText =
             "Specifies the batch size limit (max number of bytes mutated per batch). Default value is 1MB")
@@ -448,12 +443,11 @@ public class StreamingDataGenerator {
 
     void setBatchSizeBytes(Long value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Long(
         order = 29,
         optional = true,
         parentName = "sinkType",
         parentTriggerValues = {"SPANNER"},
-        regexes = {"^[1-9][0-9]*$"},
         description = "Commit deadline in seconds for write requests.",
         helpText = "Specifies the deadline in seconds for the Commit API call.")
     Long getCommitDeadlineSeconds();

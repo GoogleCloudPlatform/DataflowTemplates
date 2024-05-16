@@ -187,7 +187,7 @@ public final class PubsubProtoToBigQuery {
 
     void setFullMessageName(String value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Boolean(
         order = 3,
         optional = true,
         description = "Preserve Proto Field Names",

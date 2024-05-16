@@ -40,7 +40,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
 
   void setOutputShardTemplate(String value);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Integer(
       order = 2,
       optional = true,
       description = "Number of shards",

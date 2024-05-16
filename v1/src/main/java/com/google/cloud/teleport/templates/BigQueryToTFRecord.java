@@ -350,10 +350,9 @@ public class BigQueryToTFRecord {
 
     void setOutputSuffix(ValueProvider<String> outputSuffix);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Float(
         order = 3,
         optional = true,
-        regexes = {"(^\\.[1-9]*$)|(^[01]*)"},
         description = "Percentage of data to be in the training set ",
         helpText =
             "The percentage of query data allocated to training TFRecord files. The default value is 1, or 100%.")
@@ -362,10 +361,9 @@ public class BigQueryToTFRecord {
 
     void setTrainingPercentage(ValueProvider<Float> trainingPercentage);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Float(
         order = 4,
         optional = true,
-        regexes = {"(^\\.[1-9]*$)|(^[01]*)"},
         description = "Percentage of data to be in the testing set ",
         helpText =
             "The percentage of query data allocated to testing TFRecord files. The default value is 0, or 0%.")
@@ -374,10 +372,9 @@ public class BigQueryToTFRecord {
 
     void setTestingPercentage(ValueProvider<Float> testingPercentage);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Float(
         order = 5,
         optional = true,
-        regexes = {"(^\\.[1-9]*$)|(^[01]*)"},
         description = "Percentage of data to be in the validation set ",
         helpText =
             "The percentage of query data allocated to validation TFRecord files. The default value is 0, or 0%.")
