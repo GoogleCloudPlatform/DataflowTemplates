@@ -20,6 +20,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.dlq.KafkaDeadLetterQueue;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
 import com.google.cloud.teleport.v2.options.KafkaToBigQueryFlexOptions;
 import com.google.cloud.teleport.v2.transforms.AvroDynamicTransform;
@@ -58,6 +59,8 @@ import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
@@ -121,6 +124,12 @@ public class KafkaToBigQueryFlex {
   /** The tag for the dead-letter output of the json to table row transform. */
   public static final TupleTag<FailsafeElement<KV<String, String>, String>>
       TRANSFORM_DEADLETTER_OUT = new TupleTag<FailsafeElement<KV<String, String>, String>>() {};
+
+  /** The default suffix for error tables if dead letter table is not specified. */
+  private static final String DEFAULT_DEADLETTER_TABLE_SUFFIX = "_error_records";
+
+  /** The Bad record handler for failed records * */
+  private static List<ErrorHandler<BadRecord, ?>> badRecordErrorHandlers = new ArrayList<>();
 
   /** String/String Coder for FailsafeElement. */
   private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
@@ -233,6 +242,16 @@ public class KafkaToBigQueryFlex {
           "Schema Registry Connection URL OR Avro schema is needed in order to read confluent wire format messages.");
     }
 
+    if (options.getEnableKafkaDlq()) {
+      ErrorHandler<BadRecord, ?> kafkaErrorHandler =
+          pipeline.registerBadRecordErrorHandler(
+              KafkaDeadLetterQueue.newBuilder()
+                  .setTopic(options.getDeadLetterQueueKafkaTopic())
+                  .setBootStrapServers(options.getReadBootstrapServers())
+                  .setConfig(kafkaConfig)
+                  .build());
+      badRecordErrorHandlers.add(kafkaErrorHandler);
+    }
     PCollection<KafkaRecord<byte[], byte[]>> kafkaRecords;
 
     kafkaRecords =
@@ -268,7 +287,9 @@ public class KafkaToBigQueryFlex {
       }
 
       if (options.getSchemaRegistryConnectionUrl() != null && options.getOutputDataset() != null) {
-        writeResult = kafkaRecords.apply(AvroDynamicTransform.of(options));
+        writeResult =
+            kafkaRecords.apply(
+                AvroDynamicTransform.of(options).withBadRecordErrorHanlder(badRecordErrorHandlers));
       }
     }
 
@@ -284,6 +305,7 @@ public class KafkaToBigQueryFlex {
                     .via(KafkaToBigQueryFlex::wrapBigQueryInsertError))
             .setCoder(FAILSAFE_ELEMENT_CODER);
 
+    // TODO: Add errorHandler to BQ or route the failedInserts to BQ router.
     if (options.getOutputDeadletterTable() != null) {
       /*
        * Step #3: Insert records that failed BigQuery inserts into a deadletter table.
@@ -296,6 +318,13 @@ public class KafkaToBigQueryFlex {
               .build());
     } else {
       failedInserts.apply("PrintInsertionFailedRecords", ParDo.of(new ThrowErrorFn()));
+    }
+    try {
+      for (ErrorHandler<BadRecord, ?> errorHandler : badRecordErrorHandlers) {
+        errorHandler.close();
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
 
     return pipeline.run();

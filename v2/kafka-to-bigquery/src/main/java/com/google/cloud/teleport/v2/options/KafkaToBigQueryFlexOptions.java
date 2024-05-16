@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.dlq.DeadLetterQueueOptions;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import org.apache.beam.sdk.options.Default;
 
@@ -24,7 +25,7 @@ import org.apache.beam.sdk.options.Default;
  * executor at the command-line.
  */
 public interface KafkaToBigQueryFlexOptions
-    extends KafkaReadOptions, BigQueryStorageApiStreamingOptions {
+    extends KafkaReadOptions, BigQueryStorageApiStreamingOptions, DeadLetterQueueOptions {
 
   @TemplateParameter.BigQueryTable(
       order = 1,

@@ -19,10 +19,9 @@ import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.cloud.teleport.v2.transforms.WriteToGCSAvro;
-import com.google.cloud.teleport.v2.transforms.WriteToGCSParquet;
-import com.google.cloud.teleport.v2.transforms.WriteToGCSText;
-import com.google.cloud.teleport.v2.transforms.WriteTransform;
+import com.google.cloud.teleport.v2.dlq.DeadLetterQueueOptions;
+import com.google.cloud.teleport.v2.dlq.KafkaDeadLetterQueue;
+import com.google.cloud.teleport.v2.transforms.*;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
@@ -41,6 +40,8 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -68,8 +69,8 @@ public class KafkaToGcs2 {
       extends PipelineOptions,
           DataflowPipelineOptions,
           WriteToGCSText.WriteToGCSTextOptions,
-          WriteToGCSParquet.WriteToGCSParquetOptions,
-          WriteToGCSAvro.WriteToGCSAvroOptions {
+          WriteToGCSAvro.WriteToGCSAvroOptions,
+          DeadLetterQueueOptions {
 
     @TemplateParameter.Text(
         order = 1,
@@ -209,9 +210,10 @@ public class KafkaToGcs2 {
     void setOffset(String offset);
   }
 
-  /* Logger for class */
   private static final String topicsSplitDelimiter = ",";
   private static boolean useKafkaAuth = true;
+  // TODO: Add a DefaultErrorSink when no DLQ is specified.
+  private static List<ErrorHandler<BadRecord, ?>> badRecordErrorHandlers = new ArrayList<>();
 
   public static class ClientAuthConfig {
     public static ImmutableMap<String, Object> getSaslPlainConfig(
@@ -232,7 +234,7 @@ public class KafkaToGcs2 {
     }
   }
 
-  public static PipelineResult run(KafkaToGcsOptions options) throws UnsupportedOperationException {
+  public static PipelineResult run(KafkaToGcsOptions options) {
 
     // Create the Pipeline
     Pipeline pipeline = Pipeline.create(options);
@@ -255,7 +257,18 @@ public class KafkaToGcs2 {
           ClientAuthConfig.getSaslPlainConfig(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
     }
 
-    // Step 1: Read from Kafka as bytes.
+    if (options.getEnableKafkaDlq()) {
+      ErrorHandler<BadRecord, ?> kafkaErrorHandler =
+          pipeline.registerBadRecordErrorHandler(
+              KafkaDeadLetterQueue.newBuilder()
+                  .setTopic(options.getDeadLetterQueueKafkaTopic())
+                  .setBootStrapServers(options.getBootstrapServers())
+                  .setConfig(kafkaConfig)
+                  .build());
+      badRecordErrorHandlers.add(kafkaErrorHandler);
+    }
+
+    // Read from Kafka as bytes.
     kafkaRecord =
         pipeline.apply(
             KafkaIO.<byte[], byte[]>read()
@@ -267,7 +280,21 @@ public class KafkaToGcs2 {
                     ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
                 .withConsumerConfigUpdates(kafkaConfig));
 
-    kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
+    // Write to Avro, Json or Parquet using WriteTransform.
+    kafkaRecord.apply(
+        WriteTransform.newBuilder()
+            .setOptions(options)
+            .setErrorHandlers(badRecordErrorHandlers)
+            .build());
+
+    // Close all the error handlers at the end of the pipeline.
+    try {
+      for (ErrorHandler<BadRecord, ?> errorHandler : badRecordErrorHandlers) {
+        errorHandler.close();
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
     return pipeline.run();
   }
 

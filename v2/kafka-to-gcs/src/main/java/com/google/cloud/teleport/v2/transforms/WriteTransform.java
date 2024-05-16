@@ -18,8 +18,11 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.templates.KafkaToGcs2;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
+import java.util.List;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.POutput;
 
@@ -33,6 +36,8 @@ public abstract class WriteTransform
 
   public abstract KafkaToGcs2.KafkaToGcsOptions options();
 
+  public abstract List<ErrorHandler<BadRecord, ?>> errorHandlers();
+
   @Override
   public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord) {
     POutput pOutput = null;
@@ -42,6 +47,7 @@ public abstract class WriteTransform
     switch (outputFileFormat) {
       case TEXT:
         pOutput =
+            // TODO: Add ErrorHandler.
             kafkaRecord.apply(
                 JsonWriteTransform.newBuilder()
                     .setOutputFilenamePrefix(options().getOutputFilenamePrefix())
@@ -62,7 +68,8 @@ public abstract class WriteTransform
                     .setSchemaRegistryURL(options().getSchemaRegistryURL())
                     .setSchemaPath(options().getSchemaPath())
                     .setWindowDuration(options().getWindowDuration())
-                    .build());
+                    .build()
+                    .withBadRecordErrorHandlers(errorHandlers()));
         break;
       case PARQUET:
         throw new UnsupportedOperationException(
@@ -74,6 +81,9 @@ public abstract class WriteTransform
   @AutoValue.Builder
   public abstract static class WriteTransformBuilder {
     public abstract WriteTransformBuilder setOptions(KafkaToGcs2.KafkaToGcsOptions options);
+
+    public abstract WriteTransformBuilder setErrorHandlers(
+        List<ErrorHandler<BadRecord, ?>> errorHandlers);
 
     abstract KafkaToGcs2.KafkaToGcsOptions options();
 
