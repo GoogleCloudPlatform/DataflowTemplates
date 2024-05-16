@@ -181,17 +181,13 @@ public abstract class AvroWriteTransform
                     .withOutputTags(
                         SUCESS_GENERIC_RECORDS, TupleTagList.of(BadRecordRouter.BAD_RECORD_TAG)));
 
-        // Send the failed elements to the bad record error handler.
-        // How does it define the bad record?
         PCollection<BadRecord> failed = genericRecords.get(BadRecordRouter.BAD_RECORD_TAG);
         for (ErrorHandler<BadRecord, ?> errorHandler_ : errorHandlers) {
           errorHandler_.addErrorCollection(
               failed.setCoder(BadRecord.getCoder(records.getPipeline())));
         }
-
         PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> success =
             genericRecords.get(SUCESS_GENERIC_RECORDS).setCoder(failsafeElementCoder);
-
         return writeToGCS(success);
       default:
         throw new UnsupportedOperationException(
@@ -306,10 +302,6 @@ public abstract class AvroWriteTransform
       try {
         if (!useMock) {
           genericRecord = deserializeBytes(kafkaRecordValueInBytes, kafkaRecord.getTopic());
-          // TODO: Remove the if condition
-          if ("SimpleMessage".equals(genericRecord.getSchema().getName())) {
-            throw new RuntimeException("Received Simple message. Sending to DLQ.");
-          }
         } else {
           genericRecord = deserializeBytes(kafkaRecordValueInBytes, subject);
         }

@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
@@ -38,6 +39,7 @@ import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
 import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.PCollection;
@@ -47,7 +49,7 @@ import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 
 @Template(
-    name = "Kafka_to_GCS_2_with_DLQ",
+    name = "Kafka_to_GCS_2",
     category = TemplateCategory.STREAMING,
     displayName = "Kafka to Cloud Storage",
     description =
@@ -65,7 +67,7 @@ public class KafkaToGcs2 {
    */
   public interface KafkaToGcsOptions
       extends PipelineOptions,
-          //          DataflowPipelineOptions,
+          DataflowPipelineOptions,
           WriteToGCSText.WriteToGCSTextOptions,
           WriteToGCSAvro.WriteToGCSAvroOptions,
           DeadLetterQueueOptions {
@@ -76,7 +78,7 @@ public class KafkaToGcs2 {
         description = "Kafka Bootstrap Server list",
         helpText = "Kafka Bootstrap Server list, separated by commas.",
         example = "localhost:9092,127.0.0.1:9093")
-    //    @Validation.Required
+    @Validation.Required
     String getBootstrapServers();
 
     void setBootstrapServers(String bootstrapServers);
@@ -87,7 +89,7 @@ public class KafkaToGcs2 {
         description = "Kafka topic(s) to read the input from",
         helpText = "Kafka topic(s) to read the input from.",
         example = "topic1,topic2")
-    //    @Validation.Required
+    @Validation.Required
     String getInputTopics();
 
     void setInputTopics(String inputTopics);
@@ -208,7 +210,6 @@ public class KafkaToGcs2 {
     void setOffset(String offset);
   }
 
-  /* Logger for class */
   private static final String topicsSplitDelimiter = ",";
   private static boolean useKafkaAuth = true;
   // TODO: Add a DefaultErrorSink when no DLQ is specified.
@@ -243,7 +244,7 @@ public class KafkaToGcs2 {
     List<String> topics =
         new ArrayList<>(Arrays.asList(options.getInputTopics().split(topicsSplitDelimiter)));
 
-    //    options.setStreaming(true);
+    options.setStreaming(true);
 
     Map<String, Object> kafkaConfig = new HashMap<>();
     // Set offset to either earliest or latest.

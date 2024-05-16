@@ -305,6 +305,7 @@ public class KafkaToBigQueryFlex {
                     .via(KafkaToBigQueryFlex::wrapBigQueryInsertError))
             .setCoder(FAILSAFE_ELEMENT_CODER);
 
+    // TODO: Add errorHandler to BQ or route the failedInserts to BQ router.
     if (options.getOutputDeadletterTable() != null) {
       /*
        * Step #3: Insert records that failed BigQuery inserts into a deadletter table.

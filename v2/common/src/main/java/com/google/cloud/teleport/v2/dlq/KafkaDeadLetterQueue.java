@@ -24,7 +24,6 @@ import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollection.IsBounded;
 import org.apache.beam.sdk.values.POutput;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.joda.time.Duration;
@@ -73,19 +72,5 @@ public abstract class KafkaDeadLetterQueue extends PTransform<PCollection<BadRec
                 .withProducerConfigUpdates(config())
                 .withKeySerializer(ByteArraySerializer.class)
                 .withValueSerializer(ByteArraySerializer.class));
-  }
-
-  public static class ErrorSinkTransform
-      extends PTransform<PCollection<BadRecord>, PCollection<Long>> {
-    @Override
-    public PCollection<Long> expand(PCollection<BadRecord> input) {
-      if (input.isBounded() == IsBounded.BOUNDED) {
-        return input.apply("Combine", Combine.globally(Count.<BadRecord>combineFn()));
-      } else {
-        return input
-            .apply("Window", Window.into(FixedWindows.of(Duration.standardDays(1))))
-            .apply("Combine", Combine.globally(Count.<BadRecord>combineFn()).withoutDefaults());
-      }
-    }
   }
 }

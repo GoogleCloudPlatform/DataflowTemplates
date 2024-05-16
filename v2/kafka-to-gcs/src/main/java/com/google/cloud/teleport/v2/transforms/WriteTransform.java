@@ -36,7 +36,6 @@ public abstract class WriteTransform
 
   public abstract KafkaToGcs2.KafkaToGcsOptions options();
 
-  //  public abstract ErrorHandler<BadRecord, ?> errorHandler();
   public abstract List<ErrorHandler<BadRecord, ?>> errorHandlers();
 
   @Override
@@ -82,9 +81,6 @@ public abstract class WriteTransform
   @AutoValue.Builder
   public abstract static class WriteTransformBuilder {
     public abstract WriteTransformBuilder setOptions(KafkaToGcs2.KafkaToGcsOptions options);
-
-    //    public abstract WriteTransformBuilder setErrorHandler(ErrorHandler<BadRecord, ?>
-    // errorHandler);
 
     public abstract WriteTransformBuilder setErrorHandlers(
         List<ErrorHandler<BadRecord, ?>> errorHandlers);

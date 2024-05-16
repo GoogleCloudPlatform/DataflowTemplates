@@ -42,9 +42,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.io.kafka.KafkaRecordCoder;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
-import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
-import org.apache.beam.sdk.transforms.DoFn.Setup;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
@@ -75,7 +72,7 @@ public class AvroDynamicTransform
       SUCESS_GENERIC_RECORDS = new TupleTag<>();
   private static final TupleTag<
           FailsafeElement<KafkaRecord<byte[], byte[]>, KV<GenericRecord, TableRow>>>
-      SUCCESS_GENERIC_RECORDS_1 = new TupleTag<>();
+      SUCCESS_KV = new TupleTag<>();
   private List<ErrorHandler<BadRecord, ?>> errorHandlers;
   private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
 
@@ -131,9 +128,7 @@ public class AvroDynamicTransform
             .apply(
                 "ConvertGenericRecordToTableRow",
                 ParDo.of(new GenericRecordToTableRowFn(badRecordRouter))
-                    .withOutputTags(
-                        SUCCESS_GENERIC_RECORDS_1,
-                        TupleTagList.of(BadRecordRouter.BAD_RECORD_TAG)));
+                    .withOutputTags(SUCCESS_KV, TupleTagList.of(BadRecordRouter.BAD_RECORD_TAG)));
 
     for (ErrorHandler<BadRecord, ?> errorHandler : errorHandlers) {
       errorHandler.addErrorCollection(
@@ -144,7 +139,7 @@ public class AvroDynamicTransform
 
     writeResult =
         genericRecords1
-            .get(SUCCESS_GENERIC_RECORDS_1)
+            .get(SUCCESS_KV)
             .setCoder(
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
@@ -183,10 +178,6 @@ public class AvroDynamicTransform
       }
     }
 
-    /*
-     * This method excludes the key of the KafkaRecord and uses the value of the KafkaRecord
-     * to get the GenericRecord from bytes.
-     */
     @ProcessElement
     public void processElement(
         @Element KafkaRecord<byte[], byte[]> kafkaRecord, MultiOutputReceiver receiver)
@@ -228,9 +219,8 @@ public class AvroDynamicTransform
                 element.getPayload(),
                 BigQueryUtils.toTableSchema(
                     AvroUtils.toBeamSchema(element.getPayload().getSchema())));
-        // TODO: Refactor name
         receiver
-            .get(SUCCESS_GENERIC_RECORDS_1)
+            .get(SUCCESS_KV)
             .output(
                 FailsafeElement.of(element.getOriginalPayload(), KV.of(element.getPayload(), row)));
       } catch (Exception e) {
