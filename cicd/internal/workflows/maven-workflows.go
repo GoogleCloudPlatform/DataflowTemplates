@@ -33,12 +33,6 @@ const (
 	spotlessCheckCmd   = "spotless:check"
 	checkstyleCheckCmd = "checkstyle:check"
 
-	// regexes
-	javaFileRegex     = "\\.java$"
-	xmlFileRegex      = "\\.xml$"
-	markdownFileRegex = "\\.md$"
-	pomFileRegex      = "pom\\.xml$"
-
 	// notable files
 	unifiedPom = "pom.xml"
 )
@@ -198,7 +192,7 @@ func (*mvnVerifyWorkflow) Run(args ...string) error {
 }
 
 func RunForChangedModules(cmd string, args ...string) error {
-	modules := flags.ModulesToBuild(javaFileRegex, xmlFileRegex)
+	modules := flags.ModulesToBuild()
 
 	parsedArgs := []string{}
 	for _, arg := range args {

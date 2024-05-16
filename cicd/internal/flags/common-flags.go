@@ -22,13 +22,14 @@ import (
 )
 
 const (
-	ALL     = ""
-	SPANNER = "v2/datastream-to-spanner,v2/sourcedb-to-spanner,v2/spanner-change-streams-to-sharded-file-sink"
+	ALL     = "ALL"
+	SPANNER = "SPANNER"
 )
 
 // Avoid making these vars public.
 var (
 	modulesToBuild string
+	moduleMap      = map[string]string{ALL: "", SPANNER: "v2/datastream-to-spanner,v2/sourcedb-to-spanner,v2/spanner-change-streams-to-sharded-file-sink"}
 )
 
 // Registers all common flags. Must be called before flag.Parse().
@@ -37,6 +38,13 @@ func RegisterCommonFlags() {
 }
 
 // Returns all modules to build.
-func ModulesToBuild(regexes ...string) []string {
-	return strings.Split(modulesToBuild, ",")
+func ModulesToBuild() []string {
+	m := modulesToBuild
+	if val, ok := moduleMap[modulesToBuild]; ok {
+		m = val
+	}
+	if len(m) == 0 {
+		return make([]string, 0)
+	}
+	return strings.Split(m, ",")
 }
