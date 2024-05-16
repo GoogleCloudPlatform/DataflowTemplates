@@ -141,7 +141,7 @@ public class SpannerConverters {
         },
         description = "Snapshot time",
         helpText =
-            "The timestamp that corresponds to the version of the Spanner database that you want to read."
+            "The timestamp that corresponds to the version of the Spanner database that you want to read from."
                 + " The timestamp must be specified as per RFC 3339 (https://tools.ietf.org/html/rfc3339) UTC \"Zulu\" format."
                 + " The timestamp must be in the past and"
                 + " Maximum timestamp staleness (https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness) applies.",
