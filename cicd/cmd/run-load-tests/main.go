@@ -41,7 +41,8 @@ func main() {
 		mvnFlags.SkipTests(),
 		mvnFlags.SkipJacoco(),
 		mvnFlags.SkipShade(),
-		mvnFlags.ThreadCount(4))
+		mvnFlags.ThreadCount(4),
+		flags.ChangedModules())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
@@ -64,7 +65,8 @@ func main() {
 		flags.PrivateConnectivity(),
 		flags.ExportProject(),
 		flags.ExportDataset(),
-		flags.ExportTable())
+		flags.ExportTable(),
+		flags.ChangedModules())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}

@@ -27,6 +27,14 @@ on:
       # This will make it easier to verify action changes don't break anything.
       - '.github/actions/setup-env/*'
       - '.github/workflows/java-pr.yml'
+      # Exclude spanner paths from global run
+      - '!v2/datastream-to-spanner/**'
+      - '!v2/spanner-common/**'
+      - '!v2/spanner-change-streams-to-sharded-file-sink/**'
+      - '!v2/gcs-to-sourcedb/**'
+      - '!v2/spanner-migrations-sdk/**'
+      - '!v2/spanner-custom-shard/**'
+      - '!v2/sourcedb-to-spanner/**'
   schedule:
     - cron: "0 */12 * * *"
   workflow_dispatch:

@@ -97,3 +97,19 @@ func TestChangedFilesRegexesNoMatch(t *testing.T) {
 		t.Errorf("Expected empty slice but got %v", actual)
 	}
 }
+
+func TestChangedModulesEmpty(t *testing.T) {
+	changedModules = ""
+	actual := ChangedModules()
+	if actual != "" {
+		t.Errorf("Expected empty string but got %s", actual)
+	}
+}
+
+func TestChangedModulesNotEmpty(t *testing.T) {
+	changedModules = "v2/datastream-to-spanner"
+	actual := ChangedModules()
+	if actual != "-pl=v2/datastream-to-spanner" {
+		t.Errorf("Expected v2/datastream-to-spanner but got %s", actual)
+	}
+}

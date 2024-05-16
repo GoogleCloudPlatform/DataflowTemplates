@@ -41,7 +41,8 @@ func main() {
 		mvnFlags.SkipTests(),
 		mvnFlags.SkipJacoco(),
 		mvnFlags.SkipShade(),
-		mvnFlags.ThreadCount(8))
+		mvnFlags.ThreadCount(8),
+		flags.ChangedModules())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
@@ -65,7 +66,8 @@ func main() {
 		flags.StageBucket(),
 		flags.PrivateConnectivity(),
 		flags.FailureMode(),
-		flags.RetryFailures())
+		flags.RetryFailures(),
+		flags.ChangedModules())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}

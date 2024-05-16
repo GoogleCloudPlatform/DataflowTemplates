@@ -17,6 +17,7 @@
 package op
 
 import (
+	"slices"
 	"strings"
 )
 
@@ -28,8 +29,14 @@ func RunMavenOnPom(pom string, cmd string, args ...string) error {
 	fullArgs = append(fullArgs, strings.Split(cmd, " ")...)
 	fullArgs = append(fullArgs, "-f", pom)
 	fullArgs = append(fullArgs, "-e")
+	//filter out modules parameter if it is not specified. This has to be filtered out this
+	//way because we use variable length args, and returning "" for changed modules also means
+	//an empty value in the args. This empty value ends up creating an extra blank space
+	//in the final maven command constructed in RunCmdAndStreamOutput.
+	//Instead of trimming spaces, deleting the empty arg so that it is not considered in mvn command generation
+	//is less error prone.
+	args = slices.DeleteFunc(args, func(s string) bool { return s == "ALL"})
 	fullArgs = append(fullArgs, args...)
-
 	return RunCmdAndStreamOutput("mvn", fullArgs)
 }
 
@@ -39,5 +46,6 @@ func RunMavenOnPom(pom string, cmd string, args ...string) error {
 func RunMavenOnModule(pom string, cmd string, module string, args ...string) error {
 	// fullArgs := []string{"-pl", module}
 	// fullArgs = append(fullArgs, args...)
+	args = slices.DeleteFunc(args, func(s string) bool { return s == "ALL"})
 	return RunMavenOnPom(pom, cmd, args...)
 }

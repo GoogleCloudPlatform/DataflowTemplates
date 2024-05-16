@@ -28,7 +28,10 @@ func main() {
 	flags.RegisterCommonFlags()
 	flag.Parse()
 
-	if err := workflows.CheckstyleCheck().Run(); err != nil {
+	err := workflows.CheckstyleCheck().Run(
+		flags.ChangedModules())
+
+	if err != nil {
 		log.Fatalf("Error running checkstyle check: %v", err)
 	}
 	log.Println("Checkstyle check completed successfully!")

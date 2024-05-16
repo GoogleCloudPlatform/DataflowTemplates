@@ -28,7 +28,10 @@ func main() {
 	flags.RegisterCommonFlags()
 	flag.Parse()
 
-	if err := workflows.SpotlessCheck().Run(); err != nil {
+	err := workflows.SpotlessCheck().Run(
+		flags.ChangedModules())
+
+	if err != nil {
 		log.Fatalf("Error running spotless check: %v", err)
 	}
 	log.Println("Spotless check completed successfully!")

@@ -27,11 +27,13 @@ import (
 // Avoid making these vars public.
 var (
 	changedFiles string
+	changedModules string
 )
 
 // Registers all common flags. Must be called before flag.Parse().
 func RegisterCommonFlags() {
 	flag.StringVar(&changedFiles, "changed-files", "", "List of changed files as a comma-separated string")
+	flag.StringVar(&changedModules, "changed-modules", "", "List of changed modules as a comma-separated string")
 }
 
 // Returns all changed files with regexes. If no regexes are passed, all files are returned. If even one
@@ -67,4 +69,11 @@ func ChangedFiles(regexes ...string) []string {
 		log.Println("INFO: All changed files got filtered out.")
 	}
 	return results
+}
+
+func ChangedModules() string {
+	if changedModules == "" {
+		return "ALL"
+	}
+	return "-pl=" + changedModules
 }
