@@ -183,7 +183,7 @@ public class BigQueryConverters {
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
             "The BigQuery table for messages that failed to reach the output"
-                + " table, in the format <PROJECT_ID>:<DATASET_NAME>.<DEADLETTER_TABLE>.`"
+                + " table, in the format <PROJECT_ID>:<DATASET_NAME>.<DEADLETTER_TABLE>."
                 + " If a table doesn't exist, is is created during pipeline execution. If"
                 + " not specified, `<outputTableSpec>_error_records` is used.",
         example = "your-project-id:your-dataset.your-table-name")
