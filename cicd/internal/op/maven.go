@@ -36,8 +36,11 @@ func RunMavenOnPom(pom string, cmd string, args ...string) error {
 // Runs the given Maven command on a specified module. Considering the input, this is equivalent to:
 //
 //	mvn -B {cmd} -f {pom} -pl {module} {args...}
-func RunMavenOnModule(pom string, cmd string, module string, args ...string) error {
-	// fullArgs := []string{"-pl", module}
-	// fullArgs = append(fullArgs, args...)
-	return RunMavenOnPom(pom, cmd, args...)
+func RunMavenOnModule(pom string, cmd string, modules string, args ...string) error {
+	if len(modules) == 0 {
+		return RunMavenOnPom(pom, cmd, args...)
+	}
+	fullArgs := []string{"-pl", modules}
+	fullArgs = append(fullArgs, args...)
+	return RunMavenOnPom(pom, cmd, fullArgs...)
 }

@@ -48,13 +48,11 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-        with:
-          fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Spotless
-        run: ./cicd/run-spotless --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+        run: ./cicd/run-spotless
   checkstyle_check:
     name: Checkstyle
     timeout-minutes: 10
@@ -62,13 +60,11 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-        with:
-          fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Checkstyle
-        run: ./cicd/run-checkstyle --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+        run: ./cicd/run-checkstyle
   java_build:
     name: Build
     timeout-minutes: 60
@@ -76,13 +72,11 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-        with:
-          fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Build
-        run: ./cicd/run-build --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+        run: ./cicd/run-build
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
   java_unit_tests:
@@ -93,13 +87,11 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-        with:
-          fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Unit Tests
-        run: ./cicd/run-unit-tests --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+        run: ./cicd/run-unit-tests
       - name: Upload Unit Tests Report
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails
@@ -124,15 +116,12 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-        with:
-          fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Smoke Tests
         run: | 
           ./cicd/run-it-smoke-tests \
-          --changed-files="${{ steps.setup-env.outputs.changed-files }}" \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
@@ -155,15 +144,12 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-        with:
-          fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Tests
         run: | 
           ./cicd/run-it-tests \
-          --changed-files="${{ steps.setup-env.outputs.changed-files }}" \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
@@ -187,15 +173,12 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-      with:
-        fetch-depth: 2  # setup-env action assumes fetch depth of at least 2 for https://github.com/tj-actions/changed-files?tab=readme-ov-file#on-push-%EF%B8%8F
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
     - name: Run Load Tests
       run: |
         ./cicd/run-load-tests \
-        --changed-files="${{ steps.setup-env.outputs.changed-files }}" \
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \

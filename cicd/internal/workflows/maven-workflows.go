@@ -17,15 +17,11 @@
 package workflows
 
 import (
-	"fmt"
-	"log"
-	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/repo"
 )
 
 const (
@@ -202,10 +198,7 @@ func (*mvnVerifyWorkflow) Run(args ...string) error {
 }
 
 func RunForChangedModules(cmd string, args ...string) error {
-	changed := flags.ChangedFiles(javaFileRegex, xmlFileRegex)
-	if len(changed) == 0 {
-		return nil
-	}
+	modules := flags.ModulesToBuild(javaFileRegex, xmlFileRegex)
 
 	parsedArgs := []string{}
 	for _, arg := range args {
@@ -213,67 +206,6 @@ func RunForChangedModules(cmd string, args ...string) error {
 			parsedArgs = append(parsedArgs, arg)
 		}
 	}
-
-	// Collect the modules together for a single call. Maven can work out the install order.
-	modules := make([]string, 0)
-
-	// We need to append the base dependency modules, because they are needed to build all
-	// other modules.
-	for root, children := range repo.GetModulesForPaths(changed) {
-		if len(children) == 0 {
-			modules = append(modules, root)
-			continue
-		}
-
-		// A change to the root POM could impact all children, so build them all.
-		buildAll := false
-		for _, c := range changed {
-			if c == filepath.Join(root, "pom.xml") {
-				buildAll = true
-				break
-			}
-		}
-		if buildAll {
-			modules = append(modules, root)
-			continue
-		}
-
-		withoutRoot := removeRoot(children)
-		if len(withoutRoot) == 0 {
-			log.Printf("All files under %s were irrelevant root-level files", root)
-		}
-		for _, m := range withoutRoot {
-			modules = append(modules, fmt.Sprintf("%s/%s", root, m))
-		}
-	}
-
-	if len(modules) == 0 {
-		log.Println("All modules were filtered out.")
-		return nil
-	}
-
-	has_it := false
-	has_common := false
-	has_v2 := false
-	for _, module := range modules {
-		if len(module) > 1 && module[:2] == "it" {
-			has_it = true
-		}
-		if module == "v2/common" {
-			has_common = true
-		}
-		if module == "v2" {
-			has_v2 = true
-		}
-	}
-	if has_it && !has_common {
-		modules = append(modules, "v2/common")
-	}
-	if (has_v2 || has_common) && !has_it {
-		modules = append(modules, "it")
-	}
-
-	modules = append(modules, "plugins/templates-maven-plugin")
 
 	return op.RunMavenOnModule(unifiedPom, cmd, strings.Join(modules, ","), parsedArgs...)
 }
