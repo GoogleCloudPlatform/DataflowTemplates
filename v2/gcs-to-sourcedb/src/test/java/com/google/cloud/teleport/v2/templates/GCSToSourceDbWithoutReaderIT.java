@@ -109,11 +109,11 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
 
   @Test
   public void testGCSToSource() throws IOException, InterruptedException {
-    assertThatPipeline(jobInfo).isRunning();
     // Write events to GCS
     gcsClient.uploadArtifact(
         "output/Shard1/2024-05-13T08:43:10.000Z-2024-05-13T08:43:20.000Z-pane-0-last-0-of-1.txt",
         Resources.getResource("GCSToSourceDbWithoutReaderIT/events.txt").getPath());
+    assertThatPipeline(jobInfo).isRunning();
 
     // Assert events on Mysql
     assertRowInMySQL();
