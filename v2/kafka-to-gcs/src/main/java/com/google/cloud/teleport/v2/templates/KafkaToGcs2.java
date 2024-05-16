@@ -258,12 +258,12 @@ public class KafkaToGcs2 {
 
     if (options.getEnableKafkaDlq()) {
       ErrorHandler<BadRecord, ?> kafkaErrorHandler =
-              pipeline.registerBadRecordErrorHandler(
-                      KafkaDeadLetterQueue.newBuilder()
-                              .setTopic(options.getDeadLetterQueueKafkaTopic())
-                              .setBootStrapServers(options.getBootstrapServers())
-                              .setConfig(kafkaConfig)
-                              .build());
+          pipeline.registerBadRecordErrorHandler(
+              KafkaDeadLetterQueue.newBuilder()
+                  .setTopic(options.getDeadLetterQueueKafkaTopic())
+                  .setBootStrapServers(options.getBootstrapServers())
+                  .setConfig(kafkaConfig)
+                  .build());
       badRecordErrorHandlers.add(kafkaErrorHandler);
     }
 

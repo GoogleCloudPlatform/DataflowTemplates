@@ -244,12 +244,12 @@ public class KafkaToBigQueryFlex {
 
     if (options.getEnableKafkaDlq()) {
       ErrorHandler<BadRecord, ?> kafkaErrorHandler =
-              pipeline.registerBadRecordErrorHandler(
-                      KafkaDeadLetterQueue.newBuilder()
-                              .setTopic(options.getDeadLetterQueueKafkaTopic())
-                              .setBootStrapServers(options.getReadBootstrapServers())
-                              .setConfig(kafkaConfig)
-                              .build());
+          pipeline.registerBadRecordErrorHandler(
+              KafkaDeadLetterQueue.newBuilder()
+                  .setTopic(options.getDeadLetterQueueKafkaTopic())
+                  .setBootStrapServers(options.getReadBootstrapServers())
+                  .setConfig(kafkaConfig)
+                  .build());
       badRecordErrorHandlers.add(kafkaErrorHandler);
     }
     PCollection<KafkaRecord<byte[], byte[]>> kafkaRecords;

@@ -23,9 +23,7 @@ import com.google.cloud.teleport.v2.utils.BigQueryAvroUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
 import org.apache.avro.generic.GenericRecord;
@@ -70,9 +68,9 @@ public class AvroDynamicTransform
 
   private KafkaToBigQueryFlexOptions options;
 
-  private static final KafkaRecordCoder<byte[], byte[]> kafkaRecordCoder = KafkaRecordCoder.of(
-          NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of())
-  );
+  private static final KafkaRecordCoder<byte[], byte[]> kafkaRecordCoder =
+      KafkaRecordCoder.of(
+          NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of()));
   private static final TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
       SUCESS_GENERIC_RECORDS = new TupleTag<>();
   private static final TupleTag<
@@ -203,9 +201,7 @@ public class AvroDynamicTransform
                     kafkaRecord.getKV().getValue());
         receiver.get(SUCESS_GENERIC_RECORDS).output(FailsafeElement.of(kafkaRecord, result));
       } catch (Exception e) {
-        LOG.error(String.format("Exception raised: %s", e.toString()));
-        badRecordRouter.route(
-            receiver, kafkaRecord, kafkaRecordCoder, e, e.toString());
+        badRecordRouter.route(receiver, kafkaRecord, kafkaRecordCoder, e, e.toString());
       }
     }
   }
@@ -221,9 +217,6 @@ public class AvroDynamicTransform
       this.badRecordRouter = badRecordRouter;
     }
 
-    /*
-     * This method ignores the key of the failed KafkaRecord while sending it to the DLQ.
-     */
     @ProcessElement
     public void processElement(
         @Element FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord> element,

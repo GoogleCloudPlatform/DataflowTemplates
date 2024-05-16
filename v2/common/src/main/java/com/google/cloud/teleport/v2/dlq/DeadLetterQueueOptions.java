@@ -24,25 +24,27 @@ import org.apache.beam.sdk.options.PipelineOptions;
  */
 public interface DeadLetterQueueOptions extends PipelineOptions {
   String KAFKA_DLQ_GROUP_NAME = "Kafka Dead Letter Queue";
+
   @TemplateParameter.Boolean(
       description = "Enable Kafka Dead Letter Queue.",
       groupName = KAFKA_DLQ_GROUP_NAME,
-      helpText =
-          "Enable Kafka Dead Letter Queue. The pipeline must have Kafka as Source or Sink.")
+      helpText = "Enable Kafka Dead Letter Queue. The pipeline must have Kafka as Source or Sink.")
   @Default.Boolean(false)
   Boolean getEnableKafkaDlq();
 
   void setEnableKafkaDlq(Boolean value);
+
   @TemplateParameter.Text(
-          groupName = KAFKA_DLQ_GROUP_NAME,
-          description = "Kafka dead letter queue topic",
-          parentName = "enableKafkaDlq",
-          parentTriggerValues = {"true"},
-          helpText = "Kafka topic for Dataflow to write dead letter queue "
-                  + "output. Requires Kafka as source or sink. Uses the same "
-                  + "bootstrap servers and authentication as Kafka Source/Sink."
-  )
+      groupName = KAFKA_DLQ_GROUP_NAME,
+      description = "Kafka dead letter queue topic",
+      parentName = "enableKafkaDlq",
+      parentTriggerValues = {"true"},
+      helpText =
+          "Kafka topic for Dataflow to write dead letter queue "
+              + "output. Requires Kafka as source or sink. Uses the same "
+              + "bootstrap servers and authentication as Kafka Source/Sink.")
   @Default.String("")
   String getDeadLetterQueueKafkaTopic();
+
   void setDeadLetterQueueKafkaTopic(String value);
 }
