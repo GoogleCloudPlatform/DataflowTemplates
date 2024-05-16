@@ -161,7 +161,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Cloud Storage path to JavaScript UDF source for _id metadata",
       helpText =
-          "The Cloud Storage path to the JavaScript UDF source for the function that specifies `_id` metadata be include with the document in bulk requests. Defaults to: none.")
+          "The Cloud Storage path to the JavaScript UDF source for the function that specifies `_id` metadata to include with the document in bulk requests. Defaults to: none.")
   String getJavaScriptIdFnGcsPath();
 
   void setJavaScriptIdFnGcsPath(String javaScriptTextTransformGcsPath);
