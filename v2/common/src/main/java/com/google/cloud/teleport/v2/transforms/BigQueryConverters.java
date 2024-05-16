@@ -170,7 +170,7 @@ public class BigQueryConverters {
             "The BigQuery table to read from. Format: `projectId:datasetId.tablename`. If you specify `inputTableSpec`, the template reads the data directly from BigQuery storage by using the"
                 + " BigQuery Storage Read API (https://cloud.google.com/bigquery/docs/reference/storage)."
                 + " For information about limitations in the Storage Read API, see"
-                + " Limitations.(https://cloud.google.com/bigquery/docs/reference/storage#limitations)"
+                + " https://cloud.google.com/bigquery/docs/reference/storage#limitations."
                 + " You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter.",
         example = "bigquery-project:dataset.input_table")
     String getInputTableSpec();
