@@ -29,7 +29,7 @@ const (
 // Avoid making these vars public.
 var (
 	modulesToBuild string
-	moduleMap      = map[string]string{ALL: "", SPANNER: "v2/datastream-to-spanner,v2/sourcedb-to-spanner,v2/spanner-change-streams-to-sharded-file-sink"}
+	moduleMap      = map[string]string{ALL: "", SPANNER: "v2/datastream-to-spanner/,v2/spanner-common/,v2/spanner-change-streams-to-sharded-file-sink/,v2/gcs-to-sourcedb/,v2/spanner-migrations-sdk/,v2/spanner-custom-shard/,v2/sourcedb-to-spanner/,v2/common/,metadata"}
 )
 
 // Registers all common flags. Must be called before flag.Parse().
