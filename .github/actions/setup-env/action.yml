@@ -46,10 +46,6 @@ inputs:
     description: 'The version of Python to install'
     required: false
     default: '3.11'
-outputs:
-  changed-files:
-    description: 'Comma-separated list of files that were changed'
-    value: ${{ steps.changed-files.outputs.all_changed_and_modified_files }}
 
 runs:
   using: 'composite'
@@ -59,11 +55,6 @@ runs:
       with:
         go-version: ${{ inputs.go-version }}
         cache: false
-    - name: Get Changed Files
-      id: changed-files
-      uses: tj-actions/changed-files@4c5f5d698fbf2d763d5f13815ac7c2ccbef1ff7f # v44.2.0
-      with:
-        separator: ','
     # It shouldn't take too long to build all of this, and it will at least
     # make running the target program easier
     - name: Build CI/CD
