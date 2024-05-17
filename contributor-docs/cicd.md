@@ -18,10 +18,10 @@ To split a set of templates into their own CI workflow, follow these steps:
 1) Add an alias to the templates you would like to build/test together in https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/cicd/internal/flags/common-flags.go#L32
 2) Add a new workflow to the `.github/` folder for your tests. This can be a copy of the main [java-pr workflow](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/java-pr.yml) with a few changes:
 
-- Update the [pull_request trigger paths](https://github.com/manitgupta/DataflowTemplates/blob/3f8efd4f424df5a6b1e3647aa3717eb04348beaf/.github/workflows/java-pr.yml#L23) to point to the templates you want to run your tests against.
+- Update the [pull_request trigger paths](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/java-pr.yml#L23) to point to the templates you want to run your tests against.
 - Update all `./cicd/<script>` calls with a pointer to the alias you defined in (1). For example `./cicd/run-build --modules-to-build="<alias>"`
 
-3) Exclude the paths you added in (2) from the main [java-pr pull_request trigger paths](https://github.com/manitgupta/DataflowTemplates/blob/3f8efd4f424df5a6b1e3647aa3717eb04348beaf/.github/workflows/java-pr.yml#L23)
+3) Exclude the paths you added in (2) from the main [java-pr pull_request trigger paths](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/java-pr.yml#L23)
 
 See https://github.com/GoogleCloudPlatform/DataflowTemplates/pull/1573 for an example of splitting out the Spanner tests.
 
@@ -31,7 +31,7 @@ There are 2 types of runners that CI/CD runs are performed on: GitHub hosted and
 
 For more information on GitHub hosted runners, see https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
 
-Google self-hosted runners are provisioned using the scripts defined in `https://github.com/manitgupta/DataflowTemplates/tree/main/.github/scripts`.
+Google self-hosted runners are provisioned using the scripts defined in `https://github.com/GoogleCloudPlatform/DataflowTemplates/tree/main/.github/scripts`.
 
 ### Provision new runners
 
