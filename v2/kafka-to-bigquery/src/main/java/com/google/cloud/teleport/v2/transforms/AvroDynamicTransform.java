@@ -116,9 +116,8 @@ public class AvroDynamicTransform
       errorHandler.addErrorCollection(
           failedGenericRecords.setCoder(BadRecord.getCoder(kafkaRecords.getPipeline())));
     }
-    // TODO: Change the name.
-    PCollectionTuple genericRecords1;
-    genericRecords1 =
+    PCollectionTuple kvTableRowGenericRecord;
+    kvTableRowGenericRecord =
         genericRecords
             .get(SUCESS_GENERIC_RECORDS)
             .setCoder(
@@ -132,13 +131,13 @@ public class AvroDynamicTransform
 
     for (ErrorHandler<BadRecord, ?> errorHandler : errorHandlers) {
       errorHandler.addErrorCollection(
-          genericRecords1
+          kvTableRowGenericRecord
               .get(BadRecordRouter.BAD_RECORD_TAG)
               .setCoder(BadRecord.getCoder(genericRecords.getPipeline())));
     }
 
     writeResult =
-        genericRecords1
+        kvTableRowGenericRecord
             .get(SUCCESS_KV)
             .setCoder(
                 FailsafeElementCoder.of(
