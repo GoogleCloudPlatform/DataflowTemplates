@@ -122,7 +122,9 @@ public class SpannerChangeStreamToGcsITBase extends TemplateTestBase {
       String sessionFileResourceName)
       throws IOException {
     createSpannerDatabase(spannerResourceManager, spannerDdl);
-    uploadSessionFileToGcs(gcsResourceManager, sessionFileResourceName);
+    if (sessionFileResourceName != null) {
+      uploadSessionFileToGcs(gcsResourceManager, sessionFileResourceName);
+    }
     createSpannerMetadataDatabase(spannerMetadataResourceManager);
   }
 
@@ -132,15 +134,13 @@ public class SpannerChangeStreamToGcsITBase extends TemplateTestBase {
       SpannerResourceManager spannerMetadataResourceManager,
       String identifierSuffix,
       String shardingCustomJarPath,
-      String shardingCustomClassName)
+      String shardingCustomClassName,
+      boolean isMultiShard)
       throws IOException {
     // default parameters
     Map<String, String> params =
         new HashMap<>() {
           {
-            put(
-                "sessionFilePath",
-                getGcsFullPath(gcsResourceManager, "input/session.json", identifierSuffix));
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
             put("spannerProjectId", PROJECT);
@@ -164,6 +164,11 @@ public class SpannerChangeStreamToGcsITBase extends TemplateTestBase {
     }
     if (shardingCustomClassName != null) {
       params.put("shardingCustomClassName", shardingCustomClassName);
+    }
+    if (isMultiShard) {
+      params.put(
+          "sessionFilePath",
+          getGcsFullPath(gcsResourceManager, "input/session.json", identifierSuffix));
     }
 
     // Construct template
