@@ -30,9 +30,6 @@ public class MySQLDao extends BaseDao {
 
   static final String MYSQL_JDBC_DRIVER = "com.mysql.jdbc.Driver";
 
-  private PoolingDriver driver;
-  private final String poolName;
-
   public MySQLDao(
       String sqlUrl, String sqlUser, String sqlPasswd, String shardId, String fullPoolName) {
     super(sqlUrl, sqlUser, sqlPasswd, shardId, fullPoolName);
@@ -53,10 +50,5 @@ public class MySQLDao extends BaseDao {
     }
     ObjectPool connectionPool = getObjectPool(sqlUrl, sqlUser, sqlPasswd);
     this.driver.registerPool(this.poolName, connectionPool);
-  }
-
-  // frees up the pooling resources
-  public void cleanup() throws Exception {
-    driver.closePool(this.poolName);
   }
 }

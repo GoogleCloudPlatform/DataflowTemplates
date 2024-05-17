@@ -30,9 +30,6 @@ public class PostgreSQLDao extends BaseDao {
 
   private static final String JDBC_DRIVER = "org.postgresql.Driver";
 
-  private PoolingDriver driver;
-  private final String poolName;
-
   public PostgreSQLDao(
       String sqlUrl, String sqlUser, String sqlPasswd, String shardId, String fullPoolName) {
     super(sqlUrl, sqlUser, sqlPasswd, shardId, fullPoolName);
@@ -52,10 +49,5 @@ public class PostgreSQLDao extends BaseDao {
     }
     ObjectPool connectionPool = getObjectPool(sqlUrl, sqlUser, sqlPasswd);
     this.driver.registerPool(this.poolName, connectionPool);
-  }
-
-  // frees up the pooling resources
-  public void cleanup() throws Exception {
-    driver.closePool(this.poolName);
   }
 }
