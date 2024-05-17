@@ -17,11 +17,8 @@
 package workflows
 
 import (
-	"strconv"
-	"strings"
-
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
+	"strconv"
 )
 
 const (
@@ -192,16 +189,13 @@ func (*mvnVerifyWorkflow) Run(args ...string) error {
 }
 
 func RunForChangedModules(cmd string, args ...string) error {
-	modules := flags.ModulesToBuild()
-
 	parsedArgs := []string{}
 	for _, arg := range args {
 		if arg != "" {
 			parsedArgs = append(parsedArgs, arg)
 		}
 	}
-
-	return op.RunMavenOnModule(unifiedPom, cmd, strings.Join(modules, ","), parsedArgs...)
+	return op.RunMavenOnModule(unifiedPom, cmd, parsedArgs...)
 }
 
 type spotlessCheckWorkflow struct{}
