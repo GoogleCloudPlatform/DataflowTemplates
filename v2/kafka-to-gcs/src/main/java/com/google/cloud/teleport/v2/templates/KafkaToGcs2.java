@@ -19,8 +19,8 @@ import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.cloud.teleport.v2.dlq.DeadLetterQueueOptions;
-import com.google.cloud.teleport.v2.dlq.KafkaDeadLetterQueue;
+import com.google.cloud.teleport.v2.kafka.dlq.KafkaDeadLetterQueueOptions;
+import com.google.cloud.teleport.v2.kafka.dlq.KafkaDeadLetterQueue;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSAvro;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSText;
 import com.google.cloud.teleport.v2.transforms.WriteTransform;
@@ -72,7 +72,7 @@ public class KafkaToGcs2 {
           DataflowPipelineOptions,
           WriteToGCSText.WriteToGCSTextOptions,
           WriteToGCSAvro.WriteToGCSAvroOptions,
-          DeadLetterQueueOptions {
+          KafkaDeadLetterQueueOptions {
 
     @TemplateParameter.Text(
         order = 1,

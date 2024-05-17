@@ -13,10 +13,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.dlq;
+package com.google.cloud.teleport.v2.kafka.dlq;
 
 import com.google.auto.value.AutoValue;
-import java.util.Map;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
@@ -31,6 +30,8 @@ import org.apache.beam.sdk.values.POutput;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.joda.time.Duration;
 
+import java.util.Map;
+
 // TODO: add a method that accepts a coder for the input element. Right now, it is hardcoded
 // to Kafka record.
 @AutoValue
@@ -41,17 +42,17 @@ public abstract class KafkaDeadLetterQueue extends PTransform<PCollection<BadRec
 
   public abstract Map<String, Object> config();
 
-  public static KafkaDLQBuilder newBuilder() {
+  public static Builder newBuilder() {
     return new AutoValue_KafkaDeadLetterQueue.Builder();
   }
 
   @AutoValue.Builder
-  public abstract static class KafkaDLQBuilder {
-    public abstract KafkaDLQBuilder setBootStrapServers(String value);
+  public abstract static class Builder {
+    public abstract Builder setBootStrapServers(String value);
 
-    public abstract KafkaDLQBuilder setTopic(String value);
+    public abstract Builder setTopic(String value);
 
-    public abstract KafkaDLQBuilder setConfig(Map<String, Object> value);
+    public abstract Builder setConfig(Map<String, Object> value);
 
     abstract KafkaDeadLetterQueue autoBuild();
 
@@ -64,7 +65,7 @@ public abstract class KafkaDeadLetterQueue extends PTransform<PCollection<BadRec
   public POutput expand(PCollection<BadRecord> input) {
     return input
         .apply(Window.into(FixedWindows.of(Duration.standardSeconds(5))))
-        .apply(ParDo.of(new DlqUtils.GetPayLoadFromBadRecord()))
+        .apply(ParDo.of(new KafkaDeadLetterQueueUtils.GetPayLoadFromBadRecord()))
         .setCoder(
             KvCoder.of(
                 NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of())))

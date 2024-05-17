@@ -66,8 +66,6 @@ import org.apache.beam.sdk.values.TupleTagList;
  */
 public class AvroTransform
     extends PTransform<PCollection<KafkaRecord<byte[], byte[]>>, WriteResult> {
-  private BadRecordRouter badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
-  private List<ErrorHandler<BadRecord, ?>> errorHandlers;
   private static final TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
       SUCCESS_GENERIC_RECORDS = new TupleTag<>();
   private static final TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, TableRow>>
@@ -76,12 +74,14 @@ public class AvroTransform
       KafkaRecordCoder.of(
           NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of()));
   private KafkaToBigQueryFlexOptions options;
+  private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
+  private List<ErrorHandler<BadRecord, ?>> errorHandlers;
 
   private AvroTransform(KafkaToBigQueryFlexOptions options) {
     this.options = options;
   }
 
-  public AvroTransform withBadRecordErrorHandler(List<ErrorHandler<BadRecord, ?>> errorHandlers) {
+  public AvroTransform withBadRecordErrorHandler(final List<ErrorHandler<BadRecord, ?>> errorHandlers) {
     this.errorHandlers = errorHandlers;
     this.badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
     return this;

@@ -13,9 +13,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.dlq;
+package com.google.cloud.teleport.v2.kafka.dlq;
 
-import java.io.IOException;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
@@ -24,6 +23,8 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
 import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.KV;
+
+import java.io.IOException;
 
 /**
  * Utility methods for working with dead letter queues and {@link BadRecord} objects. These methods
@@ -34,7 +35,7 @@ import org.apache.beam.sdk.values.KV;
  * designed to operate on {@link BadRecord} objects and expects the encoded object is a {@link
  * KafkaRecord}.
  */
-public class DlqUtils {
+public class KafkaDeadLetterQueueUtils {
   /* KafkaRecord coder to decode the bytes from the BadRecord */
   private static final KafkaRecordCoder<byte[], byte[]> kafkaRecordCoder =
       KafkaRecordCoder.of(

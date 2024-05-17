@@ -69,7 +69,7 @@ public abstract class AvroWriteTransform
     extends PTransform<
         PCollection<KafkaRecord<byte[], byte[]>>, WriteFilesResult<AvroDestination>> {
   private static final String subject = "UNUSED";
-  static final int DEFAULT_CACHE_CAPACITY = 1000;
+  private static final int DEFAULT_CACHE_CAPACITY = 1000;
   private List<ErrorHandler<BadRecord, ?>> errorHandlers;
   private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
 
@@ -255,11 +255,14 @@ public abstract class AvroWriteTransform
     private transient SchemaRegistryClient schemaRegistryClient;
     private String schemaRegistryURL = null;
     private String schemaPath = null;
+    // TODO: Remove useMock param and refactor code.
+    // https://github.com/GoogleCloudPlatform/DataflowTemplates/pull/1570/files#r1605216600
     private boolean useMock;
 
     private final BadRecordRouter badRecordRouter;
 
-    public ConvertBytesToGenericRecord(String schemaRegistryURL, BadRecordRouter badRecordRouter) {
+    public ConvertBytesToGenericRecord(String schemaRegistryURL,
+                                       BadRecordRouter badRecordRouter) {
       this.schemaRegistryURL = schemaRegistryURL;
       this.badRecordRouter = badRecordRouter;
     }
@@ -275,6 +278,8 @@ public abstract class AvroWriteTransform
     public void setup() {
       if (useMock) {
         schemaRegistryClient = new MockSchemaRegistryClient();
+        // TODO: Instead of passing Schema Path, load the schema once and pass it to
+        // the DoFn.
         registerSchema(schemaRegistryClient, schemaPath);
       } else {
         schemaRegistryClient =
@@ -317,6 +322,7 @@ public abstract class AvroWriteTransform
   static void registerSchema(SchemaRegistryClient mockSchemaRegistryClient, String schemaFilePath) {
     try {
       // Register schemas under the fake subject name.
+
       mockSchemaRegistryClient.register(subject, SchemaUtils.getAvroSchema(schemaFilePath), 1, 1);
     } catch (IOException | RestClientException e) {
       throw new RuntimeException(e);

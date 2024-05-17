@@ -20,7 +20,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.dlq.KafkaDeadLetterQueue;
+import com.google.cloud.teleport.v2.kafka.dlq.KafkaDeadLetterQueue;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
 import com.google.cloud.teleport.v2.options.KafkaToBigQueryFlexOptions;
 import com.google.cloud.teleport.v2.transforms.AvroDynamicTransform;
@@ -139,7 +139,7 @@ public class KafkaToBigQueryFlex {
   /**
    * The main entry-point for pipeline execution. This method will start the pipeline but will not
    * wait for it's execution to finish. If blocking execution is required, use the {@link
-   * KafkaToBigQueryFlex#run(KafkaToBQFlexOptions)} method to start the pipeline and invoke {@code
+   * KafkaToBigQueryFlex#run(KafkaToBigQueryFlexOptions)} method to start the pipeline and invoke {@code
    * result.waitUntilFinish()} on the {@link PipelineResult}.
    *
    * @param args The command-line args passed by the executor.

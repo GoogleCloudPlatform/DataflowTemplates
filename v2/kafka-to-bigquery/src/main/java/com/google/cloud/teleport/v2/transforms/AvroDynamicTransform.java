@@ -67,6 +67,8 @@ public class AvroDynamicTransform
 
   private static final Logger LOG = LoggerFactory.getLogger(AvroDynamicTransform.class);
 
+  // TODO: Remove options and add setters/getters for the variables that are getting
+  // fetched from options.
   private KafkaToBigQueryFlexOptions options;
 
   private static final KafkaRecordCoder<byte[], byte[]> kafkaRecordCoder =
@@ -91,7 +93,7 @@ public class AvroDynamicTransform
   public WriteResult expand(PCollection<KafkaRecord<byte[], byte[]>> kafkaRecords) {
     WriteResult writeResult;
 
-    Write<KV<GenericRecord, TableRow>> writeToBQ =
+    Write<KV<GenericRecord, TableRow>> writeToBigQuery =
         BigQueryIO.<KV<GenericRecord, TableRow>>write()
             .to(
                 BigQueryDynamicDestination.of(
@@ -148,7 +150,7 @@ public class AvroDynamicTransform
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
                     KvCoder.of(GenericRecordCoder.of(), TableRowJsonCoder.of())))
             .apply(ParDo.of(new FailsafeElementGetPayloadFn()))
-            .apply(writeToBQ);
+            .apply(writeToBigQuery);
 
     return writeResult;
   }
@@ -177,7 +179,8 @@ public class AvroDynamicTransform
         this.deserializer = new KafkaAvroDeserializer(this.schemaRegistryClient);
       } else {
         throw new IllegalArgumentException(
-            "Either an Avro schema or Schema Registry URL is needed.");
+            "Schema Registry URL is not specified. Please specify Schema Registry URL when the messages are" +
+                    "in Confluent Wire Format");
       }
     }
 
