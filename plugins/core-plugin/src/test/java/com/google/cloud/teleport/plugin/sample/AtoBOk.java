@@ -99,12 +99,20 @@ public class AtoBOk {
     Boolean getParamWithGroupName();
 
     @TemplateParameter.Text(
-        order = 8,
+        order = 9,
         parentName = "paramWithGroupName",
         parentTriggerValues = {"true"},
         description = "N/A",
         helpText = "Text that has parent name and parent trigger value")
     @Default.Boolean(false)
     Boolean getParamWithParentName();
+
+    @TemplateParameter.KafkaTopic(
+        order = 10,
+        description = "Kafka input topic",
+        helpText = "Kafka topic to read from",
+        example =
+            "projects/project-foo/locations/us-central1/clusters/cluster-bar/topics/topic-baz")
+    String getInputKafkaTopic();
   }
 }
