@@ -27,7 +27,7 @@ on:
       # This will make it easier to verify action changes don't break anything.
       - '.github/actions/setup-env/*'
       - '.github/workflows/java-pr.yml'
-      # Exclude spanner paths from global run
+      # Exclude spanner paths from global run (covered in https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/spanner-pr.yml)
       - '!v2/datastream-to-spanner/**'
       - '!v2/spanner-common/**'
       - '!v2/spanner-change-streams-to-sharded-file-sink/**'
