@@ -95,10 +95,10 @@ public class GenericRecordTypeConvertor {
         throw e;
       } catch (Exception e) {
         LOG.error(
-            String.format("Unable to convert spanner value for spanner col: {}", spannerColName),
+            String.format("Unable to convert spanner value for spanner col: %s", spannerColName),
             e);
         throw new RuntimeException(
-            String.format("Unable to convert spanner value for spanner col: {}", spannerColName),
+            String.format("Unable to convert spanner value for spanner col: %s", spannerColName),
             e);
       }
     }
@@ -125,10 +125,8 @@ public class GenericRecordTypeConvertor {
       } else {
         throw new IllegalArgumentException(
             String.format(
-                "Unknown schema field type {} for field {} with value {}.",
-                fieldSchema,
-                recordColName,
-                recordValue));
+                "Unknown schema field type %s for field %s with value %s.",
+                fieldSchema, recordColName, recordValue));
       }
     }
     if (fieldSchema.getLogicalType() != null) {
