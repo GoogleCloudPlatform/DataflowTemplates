@@ -269,7 +269,9 @@ public class KafkaToBigQueryFlex {
 
     if (options.getAvroFormat().equals("NON_WIRE_FORMAT") && options.getAvroSchemaPath() != null) {
 
-      writeResult = kafkaRecords.apply(AvroTransform.of(options));
+      writeResult =
+          kafkaRecords.apply(
+              AvroTransform.of(options).withBadRecordErrorHandler(badRecordErrorHandlers));
 
     } else {
 
@@ -278,7 +280,9 @@ public class KafkaToBigQueryFlex {
       }
 
       if (options.getAvroSchemaPath() != null && options.getOutputTableSpec() != null) {
-        writeResult = kafkaRecords.apply(AvroTransform.of(options));
+        writeResult =
+            kafkaRecords.apply(
+                AvroTransform.of(options).withBadRecordErrorHandler(badRecordErrorHandlers));
       }
 
       if (options.getSchemaRegistryConnectionUrl() != null && options.getOutputDataset() == null) {
