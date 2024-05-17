@@ -68,8 +68,8 @@ public abstract class WriteTransform
                     .setSchemaRegistryURL(options().getSchemaRegistryURL())
                     .setSchemaPath(options().getSchemaPath())
                     .setWindowDuration(options().getWindowDuration())
-                    .build()
-                    .withBadRecordErrorHandlers(errorHandlers()));
+                    .setErrorHandlers(errorHandlers())
+                    .build());
         break;
       case PARQUET:
         throw new UnsupportedOperationException(

@@ -139,8 +139,8 @@ public class KafkaToBigQueryFlex {
   /**
    * The main entry-point for pipeline execution. This method will start the pipeline but will not
    * wait for it's execution to finish. If blocking execution is required, use the {@link
-   * KafkaToBigQueryFlex#run(KafkaToBigQueryFlexOptions)} method to start the pipeline and invoke {@code
-   * result.waitUntilFinish()} on the {@link PipelineResult}.
+   * KafkaToBigQueryFlex#run(KafkaToBigQueryFlexOptions)} method to start the pipeline and invoke
+   * {@code result.waitUntilFinish()} on the {@link PipelineResult}.
    *
    * @param args The command-line args passed by the executor.
    */
@@ -271,6 +271,7 @@ public class KafkaToBigQueryFlex {
 
       writeResult =
           kafkaRecords.apply(
+              // TODO: use builder pattern.
               AvroTransform.of(options).withBadRecordErrorHandler(badRecordErrorHandlers));
 
     } else {
@@ -282,6 +283,7 @@ public class KafkaToBigQueryFlex {
       if (options.getAvroSchemaPath() != null && options.getOutputTableSpec() != null) {
         writeResult =
             kafkaRecords.apply(
+                // TODO: Use Builder Pattern
                 AvroTransform.of(options).withBadRecordErrorHandler(badRecordErrorHandlers));
       }
 
@@ -293,6 +295,7 @@ public class KafkaToBigQueryFlex {
       if (options.getSchemaRegistryConnectionUrl() != null && options.getOutputDataset() != null) {
         writeResult =
             kafkaRecords.apply(
+                // TODO: Use Builder pattern.
                 AvroDynamicTransform.of(options).withBadRecordErrorHanlder(badRecordErrorHandlers));
       }
     }

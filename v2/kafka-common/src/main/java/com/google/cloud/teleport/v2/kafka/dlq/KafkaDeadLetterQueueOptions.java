@@ -20,7 +20,8 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
- * {@link KafkaDeadLetterQueueOptions} is used for any Dead letter queue sinks for the failed records.
+ * {@link KafkaDeadLetterQueueOptions} is used for any Dead letter queue sinks for the failed
+ * records.
  */
 public interface KafkaDeadLetterQueueOptions extends PipelineOptions {
   String KAFKA_DLQ_GROUP_NAME = "Kafka Dead Letter Queue";

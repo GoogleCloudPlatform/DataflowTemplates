@@ -70,7 +70,6 @@ public abstract class AvroWriteTransform
         PCollection<KafkaRecord<byte[], byte[]>>, WriteFilesResult<AvroDestination>> {
   private static final String subject = "UNUSED";
   private static final int DEFAULT_CACHE_CAPACITY = 1000;
-  private List<ErrorHandler<BadRecord, ?>> errorHandlers;
   private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
 
   public abstract String outputDirectory();
@@ -86,6 +85,8 @@ public abstract class AvroWriteTransform
   public abstract @Nullable String schemaPath();
 
   public abstract String outputFilenamePrefix();
+
+  public abstract List<ErrorHandler<BadRecord, ?>> errorHandlers();
 
   private static final TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
       SUCESS_GENERIC_RECORDS = new TupleTag<>();
@@ -142,13 +143,6 @@ public abstract class AvroWriteTransform
     return new AutoValue_AvroWriteTransform.Builder();
   }
 
-  public AvroWriteTransform withBadRecordErrorHandlers(
-      List<ErrorHandler<BadRecord, ?>> errorHandlers) {
-    this.errorHandlers = errorHandlers;
-    this.badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
-    return this;
-  }
-
   public WriteFilesResult<AvroDestination> expand(
       PCollection<KafkaRecord<byte[], byte[]>> records) {
     MessageFormat inputWireFormat = MessageFormat.valueOf(messageFormat());
@@ -181,7 +175,7 @@ public abstract class AvroWriteTransform
                         SUCESS_GENERIC_RECORDS, TupleTagList.of(BadRecordRouter.BAD_RECORD_TAG)));
 
         PCollection<BadRecord> failed = genericRecords.get(BadRecordRouter.BAD_RECORD_TAG);
-        for (ErrorHandler<BadRecord, ?> errorHandler : errorHandlers) {
+        for (ErrorHandler<BadRecord, ?> errorHandler : errorHandlers()) {
           errorHandler.addErrorCollection(
               failed.setCoder(BadRecord.getCoder(records.getPipeline())));
         }
@@ -210,6 +204,9 @@ public abstract class AvroWriteTransform
     public abstract AvroWriteTransformBuilder setSchemaPath(@Nullable String schemaInfo);
 
     public abstract AvroWriteTransformBuilder setOutputFilenamePrefix(String value);
+
+    public abstract AvroWriteTransformBuilder setErrorHandlers(
+        List<ErrorHandler<BadRecord, ?>> value);
 
     public abstract AvroWriteTransformBuilder setWindowDuration(String windowDuration);
 
@@ -261,8 +258,7 @@ public abstract class AvroWriteTransform
 
     private final BadRecordRouter badRecordRouter;
 
-    public ConvertBytesToGenericRecord(String schemaRegistryURL,
-                                       BadRecordRouter badRecordRouter) {
+    public ConvertBytesToGenericRecord(String schemaRegistryURL, BadRecordRouter badRecordRouter) {
       this.schemaRegistryURL = schemaRegistryURL;
       this.badRecordRouter = badRecordRouter;
     }

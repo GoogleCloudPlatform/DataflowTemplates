@@ -81,7 +81,8 @@ public class AvroTransform
     this.options = options;
   }
 
-  public AvroTransform withBadRecordErrorHandler(final List<ErrorHandler<BadRecord, ?>> errorHandlers) {
+  public AvroTransform withBadRecordErrorHandler(
+      final List<ErrorHandler<BadRecord, ?>> errorHandlers) {
     this.errorHandlers = errorHandlers;
     this.badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
     return this;

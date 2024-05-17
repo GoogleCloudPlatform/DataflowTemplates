@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.kafka.dlq;
 
 import com.google.auto.value.AutoValue;
+import java.util.Map;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
@@ -29,8 +30,6 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.POutput;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.joda.time.Duration;
-
-import java.util.Map;
 
 // TODO: add a method that accepts a coder for the input element. Right now, it is hardcoded
 // to Kafka record.

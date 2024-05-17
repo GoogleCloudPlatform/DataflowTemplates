@@ -179,8 +179,8 @@ public class AvroDynamicTransform
         this.deserializer = new KafkaAvroDeserializer(this.schemaRegistryClient);
       } else {
         throw new IllegalArgumentException(
-            "Schema Registry URL is not specified. Please specify Schema Registry URL when the messages are" +
-                    "in Confluent Wire Format");
+            "Schema Registry URL is not specified. Please specify Schema Registry URL when the messages are"
+                + "in Confluent Wire Format");
       }
     }
 
