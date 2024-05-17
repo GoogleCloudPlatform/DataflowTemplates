@@ -17,9 +17,12 @@ package com.google.cloud.teleport.v2.dlq;
 
 import com.google.auto.value.AutoValue;
 import java.util.Map;
-import org.apache.beam.sdk.coders.*;
+import org.apache.beam.sdk.coders.ByteArrayCoder;
+import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
-import org.apache.beam.sdk.transforms.*;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
@@ -61,7 +64,7 @@ public abstract class KafkaDeadLetterQueue extends PTransform<PCollection<BadRec
   public POutput expand(PCollection<BadRecord> input) {
     return input
         .apply(Window.into(FixedWindows.of(Duration.standardSeconds(5))))
-        .apply(ParDo.of(new DlqUtils.getPayLoadFromBadRecord()))
+        .apply(ParDo.of(new DlqUtils.GetPayLoadFromBadRecord()))
         .setCoder(
             KvCoder.of(
                 NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of())))

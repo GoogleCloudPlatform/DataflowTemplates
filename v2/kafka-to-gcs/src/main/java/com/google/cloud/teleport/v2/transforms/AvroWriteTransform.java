@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
-import com.google.cloud.teleport.v2.dlq.KafkaDeadLetterQueue;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -53,10 +52,11 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.transforms.windowing.Window;
-import org.apache.beam.sdk.values.*;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * {@link PTransform} for converting the {@link KafkaRecord} into {@link GenericRecord} using Schema
@@ -72,7 +72,6 @@ public abstract class AvroWriteTransform
   static final int DEFAULT_CACHE_CAPACITY = 1000;
   private List<ErrorHandler<BadRecord, ?>> errorHandlers;
   private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
-  private static Logger LOG = LoggerFactory.getLogger(KafkaDeadLetterQueue.class);
 
   public abstract String outputDirectory();
 
@@ -182,8 +181,8 @@ public abstract class AvroWriteTransform
                         SUCESS_GENERIC_RECORDS, TupleTagList.of(BadRecordRouter.BAD_RECORD_TAG)));
 
         PCollection<BadRecord> failed = genericRecords.get(BadRecordRouter.BAD_RECORD_TAG);
-        for (ErrorHandler<BadRecord, ?> errorHandler_ : errorHandlers) {
-          errorHandler_.addErrorCollection(
+        for (ErrorHandler<BadRecord, ?> errorHandler : errorHandlers) {
+          errorHandler.addErrorCollection(
               failed.setCoder(BadRecord.getCoder(records.getPipeline())));
         }
         PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> success =

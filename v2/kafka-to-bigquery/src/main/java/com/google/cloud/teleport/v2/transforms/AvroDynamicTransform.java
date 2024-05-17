@@ -47,7 +47,11 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
 import org.apache.beam.sdk.transforms.errorhandling.BadRecordRouter;
 import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
-import org.apache.beam.sdk.values.*;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -181,7 +185,7 @@ public class AvroDynamicTransform
     public void processElement(
         @Element KafkaRecord<byte[], byte[]> kafkaRecord, MultiOutputReceiver receiver)
         throws Exception {
-      GenericRecord result = null;
+      GenericRecord result;
       try {
         result =
             (GenericRecord)

@@ -40,7 +40,7 @@ public class DlqUtils {
       KafkaRecordCoder.of(
           NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of()));
 
-  public static class getPayLoadStringFromBadRecord extends DoFn<BadRecord, KV<String, String>> {
+  public static class GetPayLoadStringFromBadRecord extends DoFn<BadRecord, KV<String, String>> {
     @ProcessElement
     public void processElement(
         @Element BadRecord badRecord, OutputReceiver<KV<String, String>> receiver) {
@@ -49,7 +49,7 @@ public class DlqUtils {
     }
   }
 
-  public static class getPayLoadFromBadRecord extends DoFn<BadRecord, KV<byte[], byte[]>> {
+  public static class GetPayLoadFromBadRecord extends DoFn<BadRecord, KV<byte[], byte[]>> {
     @ProcessElement
     public void processElement(
         @Element BadRecord badRecord, OutputReceiver<KV<byte[], byte[]>> receiver)

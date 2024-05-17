@@ -128,7 +128,7 @@ public class KafkaToBigQueryFlex {
   /** The default suffix for error tables if dead letter table is not specified. */
   private static final String DEFAULT_DEADLETTER_TABLE_SUFFIX = "_error_records";
 
-  /** The Bad record handler for failed records * */
+  /** The Bad record handler for failed records. */
   private static List<ErrorHandler<BadRecord, ?>> badRecordErrorHandlers = new ArrayList<>();
 
   /** String/String Coder for FailsafeElement. */
