@@ -262,4 +262,15 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String getSessionFilePath();
 
   void setSessionFilePath(String value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 22,
+      optional = true,
+      description = "Dead letter queue directory",
+      helpText =
+          "This directory is used to dump the failed records in a migration. If no path is provided,"
+              + " these messages are logged to the console. ")
+  String getDLQDirectory();
+
+  void setDLQDirectory(String value);
 }

@@ -19,11 +19,11 @@ import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.BatchReadOnlyTransaction;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.Dialect;
-import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
 import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
@@ -39,21 +39,26 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.transformer.SourceRowToMutationDoFn;
+import com.google.cloud.teleport.v2.writer.DeadLetterQueue;
+import com.google.cloud.teleport.v2.writer.SpannerWriter;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO.Write;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.SdkHarnessOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTagList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -92,6 +97,8 @@ import org.apache.beam.sdk.values.PCollectionTuple;
       "The relational database must be accessible from the subnet where Dataflow runs."
     })
 public class SourceDbToSpanner {
+
+  private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpanner.class);
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
    * blocking execution is required, use the {@link SourceDbToSpanner#run} method to start the
@@ -117,9 +124,11 @@ public class SourceDbToSpanner {
    */
   @VisibleForTesting
   static PipelineResult run(SourceDbToSpannerOptions options) {
+    // TODO - Validate if options are as expected
     Pipeline pipeline = Pipeline.create(options);
     options.as(SdkHarnessOptions.class).setDefaultSdkHarnessLogLevel(options.getDefaultLogLevel());
 
+    // Read data from source
     ReaderImpl reader =
         ReaderImpl.of(
             JdbcIoWrapper.of(
@@ -127,24 +136,50 @@ public class SourceDbToSpanner {
     SourceSchema srcSchema = reader.getSourceSchema();
     ReaderTransform readerTransform = reader.getReaderTransform();
 
+    SpannerConfig spannerConfig = createSpannerConfig(options);
     PCollectionTuple rowsAndTables = pipeline.apply("Read rows", readerTransform.readTransform());
     PCollection<SourceRow> sourceRows = rowsAndTables.get(readerTransform.sourceRowTag());
 
+    // Transform source data to Spanner Compatible Data
     SourceRowToMutationDoFn transformDoFn =
-        SourceRowToMutationDoFn.create(getSchemaMapper(options), getTableIDToRefMap(srcSchema));
-    PCollection<Mutation> mutations = sourceRows.apply("Transform", ParDo.of(transformDoFn));
-    mutations.apply("Write", getSpannerWrite(options));
+        SourceRowToMutationDoFn.create(
+            getSchemaMapper(options, spannerConfig), getTableIDToRefMap(srcSchema));
+    PCollectionTuple transformationResult =
+        sourceRows.apply(
+            "Transform",
+            ParDo.of(transformDoFn)
+                .withOutputTags(
+                    SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS,
+                    TupleTagList.of(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)));
 
+    // Write to Spanner
+    SpannerWriter writer = new SpannerWriter(spannerConfig);
+    PCollection<MutationGroup> failedMutations =
+        writer.writeToSpanner(
+            transformationResult
+                .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS)
+                .setCoder(SerializableCoder.of(RowContext.class)));
+
+    // Dump Failed rows to DLQ
+    DeadLetterQueue dlq = DeadLetterQueue.create(options.getDLQDirectory());
+    dlq.failedMutationsToDLQ(failedMutations);
+    dlq.failedTransformsToDLQ(
+        transformationResult
+            .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)
+            .setCoder(SerializableCoder.of(RowContext.class)));
     return pipeline.run();
   }
 
-  private static ISchemaMapper getSchemaMapper(SourceDbToSpannerOptions options) {
-    SpannerConfig spannerConfig =
-        SpannerConfig.create()
-            .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
-            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
-            .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+  private static SpannerConfig createSpannerConfig(SourceDbToSpannerOptions options) {
+    return SpannerConfig.create()
+        .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
+        .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+        .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
+        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+  }
+
+  private static ISchemaMapper getSchemaMapper(
+      SourceDbToSpannerOptions options, SpannerConfig spannerConfig) {
     Ddl ddl = getInformationSchemaAsDdl(spannerConfig);
     ISchemaMapper schemaMapper = new IdentityMapper(ddl);
     if (options.getSessionFilePath() != null && !options.getSessionFilePath().equals("")) {
@@ -183,12 +218,5 @@ public class SourceDbToSpanner {
               .build());
     }
     return tableIdMapper;
-  }
-
-  private static Write getSpannerWrite(SourceDbToSpannerOptions options) {
-    return SpannerIO.write()
-        .withProjectId(options.getProjectId())
-        .withInstanceId(options.getInstanceId())
-        .withDatabaseId(options.getDatabaseId());
   }
 }
