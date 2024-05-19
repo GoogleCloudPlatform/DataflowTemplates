@@ -115,9 +115,9 @@ public final class GoogleAdsToBigQuery {
                 + "Divide the desired per pipeline QPS by the maximum number of workers. "
                 + "Avoid exceeding per-account or developer token limits. "
                 + "See Rate Limits (https://developers.google.com/google-ads/api/docs/best-practices/rate-limits).")
-    double getQpsPerWorker();
+    Double getQpsPerWorker();
 
-    void setQpsPerWorker(double qpsPerWorker);
+    void setQpsPerWorker(Double qpsPerWorker);
 
     @TemplateParameter.GcsReadFile(
         order = 5,

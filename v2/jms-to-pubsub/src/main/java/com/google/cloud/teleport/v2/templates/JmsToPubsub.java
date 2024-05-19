@@ -172,7 +172,7 @@ public class JmsToPubsub {
 
     void setInputType(String inputType);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.PubsubTopic(
         order = 4,
         description = "Output Pub/Sub topic",
         helpText =
@@ -192,7 +192,7 @@ public class JmsToPubsub {
 
     void setUsername(String username);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Password(
         order = 6,
         description = "JMS Password",
         helpText = "The password associated with the provided username.",

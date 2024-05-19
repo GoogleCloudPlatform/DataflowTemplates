@@ -216,10 +216,9 @@ public class DatastoreConverters {
     /**
      * @deprecated Please use getFirestoreHintNumWorkers() instead.
      */
-    @TemplateParameter.Text(
+    @TemplateParameter.Integer(
         order = 4,
         optional = true,
-        regexes = {"^[1-9]+[0-9]*$"},
         description = "Expected number of workers",
         helpText =
             "Hint for the expected number of workers in the Datastore ramp-up throttling step. Default is `500`.")
@@ -300,10 +299,9 @@ public class DatastoreConverters {
     /**
      * @deprecated Please use getFirestoreHintNumWorkers() instead.
      */
-    @TemplateParameter.Text(
+    @TemplateParameter.Integer(
         order = 2,
         optional = true,
-        regexes = {"^[1-9][0-9]*$"},
         description = "Expected number of workers",
         helpText =
             "Hint for the expected number of workers in the Datastore ramp-up throttling step.")

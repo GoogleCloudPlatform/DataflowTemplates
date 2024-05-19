@@ -46,8 +46,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.io.kafka.KafkaRecordCoder;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
-import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
@@ -73,6 +71,9 @@ public class AvroTransform
   private static final KafkaRecordCoder kafkaRecordCoder =
       KafkaRecordCoder.of(
           NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of()));
+
+  private static final String kafkaKeyField = "_key";
+
   private KafkaToBigQueryFlexOptions options;
   private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
   private List<ErrorHandler<BadRecord, ?>> errorHandlers;
@@ -100,7 +101,9 @@ public class AvroTransform
     // TODO: Add support for error handler during BQ writes.
     Write<TableRow> writeToBQ =
         BigQueryIO.<TableRow>write()
-            .withSchema(BigQueryUtils.toTableSchema(AvroUtils.toBeamSchema(schema)))
+            .withSchema(
+                BigQueryAvroUtils.convertAvroSchemaToTableSchema(
+                    schema, options.getPersistKafkaKey()))
             .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
             .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
             .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
@@ -138,7 +141,9 @@ public class AvroTransform
                     GenericRecordCoder.of()))
             .apply(
                 "ConvertGenericRecordToTableRow",
-                ParDo.of(new GenericRecordToTableRowFn(badRecordRouter))
+                ParDo.of(
+                        new GenericRecordToTableRowFn(
+                            options.getPersistKafkaKey(), badRecordRouter))
                     .withOutputTags(
                         SUCCESS_TABLE_ROW, TupleTagList.of(BadRecordRouter.BAD_RECORD_TAG)));
 
@@ -232,9 +237,11 @@ public class AvroTransform
           FailsafeElement<KafkaRecord<byte[], byte[]>, TableRow>>
       implements Serializable {
     private BadRecordRouter badRecordRouter;
+    private boolean persistKafkaKey;
 
-    public GenericRecordToTableRowFn(BadRecordRouter badRecordRouter) {
+    public GenericRecordToTableRowFn(boolean persistKafkaKey, BadRecordRouter badRecordRouter) {
       this.badRecordRouter = badRecordRouter;
+      this.persistKafkaKey = persistKafkaKey;
     }
 
     @ProcessElement
@@ -248,6 +255,9 @@ public class AvroTransform
                 element.getPayload(),
                 BigQueryUtils.toTableSchema(
                     AvroUtils.toBeamSchema(element.getPayload().getSchema())));
+        if (this.persistKafkaKey) {
+          row.set(kafkaKeyField, element.getOriginalPayload().getKV().getKey());
+        }
         o.get(SUCCESS_TABLE_ROW).output(FailsafeElement.of(element.getOriginalPayload(), row));
       } catch (Exception e) {
         badRecordRouter.route(

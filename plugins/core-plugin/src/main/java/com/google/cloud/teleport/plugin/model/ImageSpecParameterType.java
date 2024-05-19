@@ -49,5 +49,8 @@ public enum ImageSpecParameterType {
   ENUM,
 
   /** Number parameter. */
-  NUMBER;
+  NUMBER,
+
+  /** Kafka Topic parameter. */
+  KAFKA_TOPIC;
 }

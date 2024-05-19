@@ -52,8 +52,6 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The {@link AvroDynamicTransform} class is a {@link PTransform} which transforms incoming Kafka
@@ -64,12 +62,10 @@ import org.slf4j.LoggerFactory;
  */
 public class AvroDynamicTransform
     extends PTransform<PCollection<KafkaRecord<byte[], byte[]>>, WriteResult> {
-
-  private static final Logger LOG = LoggerFactory.getLogger(AvroDynamicTransform.class);
-
+  private static final String kafkaKeyField = "_key";
   // TODO: Remove options and add setters/getters for the variables that are getting
   // fetched from options.
-  private KafkaToBigQueryFlexOptions options;
+  private final KafkaToBigQueryFlexOptions options;
 
   private static final KafkaRecordCoder<byte[], byte[]> kafkaRecordCoder =
       KafkaRecordCoder.of(
@@ -99,7 +95,8 @@ public class AvroDynamicTransform
                 BigQueryDynamicDestination.of(
                     options.getProject(),
                     options.getOutputDataset(),
-                    options.getBqTableNamePrefix()))
+                    options.getBqTableNamePrefix(),
+                    options.getPersistKafkaKey()))
             .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
             .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
             .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
@@ -132,7 +129,9 @@ public class AvroDynamicTransform
                     GenericRecordCoder.of()))
             .apply(
                 "ConvertGenericRecordToTableRow",
-                ParDo.of(new GenericRecordToTableRowFn(badRecordRouter))
+                ParDo.of(
+                        new GenericRecordToTableRowFn(
+                            options.getPersistKafkaKey(), badRecordRouter))
                     .withOutputTags(SUCCESS_KV, TupleTagList.of(BadRecordRouter.BAD_RECORD_TAG)));
 
     for (ErrorHandler<BadRecord, ?> errorHandler : errorHandlers) {
@@ -141,7 +140,6 @@ public class AvroDynamicTransform
               .get(BadRecordRouter.BAD_RECORD_TAG)
               .setCoder(BadRecord.getCoder(genericRecords.getPipeline())));
     }
-
     writeResult =
         kvTableRowGenericRecord
             .get(SUCCESS_KV)
@@ -209,9 +207,11 @@ public class AvroDynamicTransform
           FailsafeElement<KafkaRecord<byte[], byte[]>, KV<GenericRecord, TableRow>>>
       implements Serializable {
     private final BadRecordRouter badRecordRouter;
+    private final boolean persistKafkaKey;
 
-    public GenericRecordToTableRowFn(BadRecordRouter badRecordRouter) {
+    public GenericRecordToTableRowFn(boolean persistKafkaKey, BadRecordRouter badRecordRouter) {
       this.badRecordRouter = badRecordRouter;
+      this.persistKafkaKey = persistKafkaKey;
     }
 
     @ProcessElement
@@ -225,6 +225,9 @@ public class AvroDynamicTransform
                 element.getPayload(),
                 BigQueryUtils.toTableSchema(
                     AvroUtils.toBeamSchema(element.getPayload().getSchema())));
+        if (this.persistKafkaKey) {
+          row.set(kafkaKeyField, element.getOriginalPayload().getKV().getKey());
+        }
         receiver
             .get(SUCCESS_KV)
             .output(
@@ -245,12 +248,5 @@ public class AvroDynamicTransform
     public void processElement(ProcessContext context) {
       context.output(context.element().getPayload());
     }
-  }
-
-  public AvroDynamicTransform withBadRecordErrorHanlder(
-      List<ErrorHandler<BadRecord, ?>> errorHandlers) {
-    this.errorHandlers = errorHandlers;
-    this.badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
-    return this;
   }
 }

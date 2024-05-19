@@ -165,7 +165,7 @@ public class GCSToSourceDb {
 
     void setWindowDuration(String windowDuration);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFolder(
         order = 8,
         optional = false,
         description = "GCS input directory path",

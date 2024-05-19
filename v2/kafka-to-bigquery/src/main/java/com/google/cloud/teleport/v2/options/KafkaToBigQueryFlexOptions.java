@@ -107,7 +107,7 @@ public interface KafkaToBigQueryFlexOptions
         @TemplateParameter.TemplateEnumOption("NON_WIRE_FORMAT")
       },
       optional = true,
-      description = "The format to use for avro messages.",
+      description = "The format to use for avro messages",
       helpText =
           "This parameter is used to indicate what format to use for the avro messages. Default is CONFLUENT_WIRE_FORMAT.")
   @Default.String("CONFLUENT_WIRE_FORMAT")
@@ -131,12 +131,23 @@ public interface KafkaToBigQueryFlexOptions
       parentName = "avroFormat",
       parentTriggerValues = {"CONFLUENT_WIRE_FORMAT"},
       optional = true,
-      description = "Schema Registry Connection URL.",
+      description = "Schema Registry Connection URL",
       helpText =
           "Schema Registry Connection URL for a registry which supports Confluent wire format.")
   String getSchemaRegistryConnectionUrl();
 
   void setSchemaRegistryConnectionUrl(String schemaRegistryConnectionUrl);
+
+  @TemplateParameter.Boolean(
+      order = 11,
+      optional = true,
+      description = "Persist the Kafka Message Key to the BigQuery table",
+      helpText =
+          "If true, the pipeline will persist the Kafka message key in the BigQuery table, in a `_key` field of type `BYTES`. Default is false (Key is ignored).")
+  @Default.Boolean(false)
+  Boolean getPersistKafkaKey();
+
+  void setPersistKafkaKey(Boolean value);
 
   @TemplateParameter.Text(
       order = 11,
@@ -158,7 +169,7 @@ public interface KafkaToBigQueryFlexOptions
       parentName = "avroFormat",
       parentTriggerValues = {"CONFLUENT_WIRE_FORMAT"},
       optional = true,
-      description = "Naming prefix to be used while creating BigQuery output tables.",
+      description = "BigQuery Table naming prefix",
       helpText =
           "Naming prefix to be used while creating BigQuery output tables. Only applicable when using schema registry.")
   @Default.String("")
