@@ -78,12 +78,15 @@ public class AvroDynamicTransform
   private List<ErrorHandler<BadRecord, ?>> errorHandlers;
   private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
 
-  private AvroDynamicTransform(KafkaToBigQueryFlexOptions options) {
+  private AvroDynamicTransform(
+      KafkaToBigQueryFlexOptions options, List<ErrorHandler<BadRecord, ?>> errorHandlers) {
     this.options = options;
+    this.errorHandlers = errorHandlers;
   }
 
-  public static AvroDynamicTransform of(KafkaToBigQueryFlexOptions options) {
-    return new AvroDynamicTransform(options);
+  public static AvroDynamicTransform of(
+      KafkaToBigQueryFlexOptions options, List<ErrorHandler<BadRecord, ?>> errorHandlers) {
+    return new AvroDynamicTransform(options, errorHandlers);
   }
 
   public WriteResult expand(PCollection<KafkaRecord<byte[], byte[]>> kafkaRecords) {

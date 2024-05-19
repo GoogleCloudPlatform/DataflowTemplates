@@ -272,7 +272,7 @@ public class KafkaToBigQueryFlex {
       writeResult =
           kafkaRecords.apply(
               // TODO: use builder pattern.
-              AvroTransform.of(options).withBadRecordErrorHandler(badRecordErrorHandlers));
+              AvroTransform.of(options, badRecordErrorHandlers));
 
     } else {
 
@@ -284,7 +284,7 @@ public class KafkaToBigQueryFlex {
         writeResult =
             kafkaRecords.apply(
                 // TODO: Use Builder Pattern
-                AvroTransform.of(options).withBadRecordErrorHandler(badRecordErrorHandlers));
+                AvroTransform.of(options, badRecordErrorHandlers));
       }
 
       if (options.getSchemaRegistryConnectionUrl() != null && options.getOutputDataset() == null) {
@@ -296,7 +296,7 @@ public class KafkaToBigQueryFlex {
         writeResult =
             kafkaRecords.apply(
                 // TODO: Use Builder pattern.
-                AvroDynamicTransform.of(options).withBadRecordErrorHanlder(badRecordErrorHandlers));
+                AvroDynamicTransform.of(options, badRecordErrorHandlers));
       }
     }
 
