@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
 import com.google.cloud.teleport.v2.options.KafkaToBigQueryFlexOptions;
 import com.google.cloud.teleport.v2.transforms.AvroDynamicTransform;
 import com.google.cloud.teleport.v2.transforms.AvroTransform;
@@ -35,8 +36,6 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
@@ -72,11 +71,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The {@link KafkaToBigQueryFlex} pipeline is a streaming pipeline which ingests text data from
- * Kafka, executes a UDF, and outputs the resulting records to BigQuery. Any errors which occur in
- * the transformation of the data, execution of the UDF, or inserting into the output table will be
- * inserted into a separate errors table in BigQuery. The errors table will be created if it does
- * not exist prior to execution. Both output and error tables are specified by the user as
- * parameters.
+ * Kafka, and outputs the resulting records to BigQuery. Any errors which occur in the
+ * transformation of the data, or inserting into the output table will be inserted into a separate
+ * errors table in BigQuery. Both output and error tables are specified by the user as parameters.
  *
  * <p><b>Pipeline Requirements</b>
  *
@@ -95,9 +92,10 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Kafka to BigQuery",
     description =
-        "The Apache Kafka to BigQuery template is a streaming pipeline which ingests text data from Apache Kafka, executes a user-defined function (UDF), and outputs the resulting records to BigQuery. "
-            + "Any errors which occur in the transformation of the data, execution of the UDF, or inserting into the output table are inserted into a separate errors table in BigQuery. "
-            + "If the errors table does not exist prior to execution, then it is created.",
+        "The Apache Kafka to BigQuery template is a streaming pipeline which ingests text data from Apache Kafka, and outputs the resulting records to BigQuery. "
+            + "Any errors which occur in the transformation of the data, or inserting into the output table are inserted into a separate errors table in BigQuery. "
+            + "For any errors which occur in the transformation of the data, the original records can be inserted into a seperate Kafka topic. The template supports "
+            + "reading a Kafka topic which contains single/multiple schema(s). It can write to a single or multiple BigQuery tables, depending on the schema of records. ",
     optionsClass = KafkaToBigQueryFlexOptions.class,
     flexContainerName = "kafka-to-bigquery-flex",
     documentation =
@@ -108,7 +106,7 @@ import org.slf4j.LoggerFactory;
       "The Apache Kafka broker server must be running and be reachable from the Dataflow worker machines.",
       "The Apache Kafka topics must exist and the messages must be encoded in a valid JSON format."
     },
-    streaming = true,
+    skipOptions = {"readBootstrapServers", "kafkaReadTopics", "useStorageWriteApi"},
     hidden = true)
 public class KafkaToBigQueryFlex {
 
@@ -156,7 +154,19 @@ public class KafkaToBigQueryFlex {
   public static PipelineResult run(KafkaToBigQueryFlexOptions options)
       throws IOException, RestClientException {
 
+    // Enable Streaming Engine
+    options.setEnableStreamingEngine(true);
+
+    // Enable Resource based billing
+    List<String> dataflowServiceOptions = options.getDataflowServiceOptions();
+    dataflowServiceOptions.add("enable_streaming_engine_resource_based_billing");
+    options.setDataflowServiceOptions(dataflowServiceOptions);
+
     // Validate BQ STORAGE_WRITE_API options
+    options.setUseStorageWriteApi(true);
+    if (options.getStorageWriteApiTriggeringFrequencySec() == null) {
+      options.setStorageWriteApiTriggeringFrequencySec(5);
+    }
     BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
     MetadataValidator.validate(options);
 
@@ -164,16 +174,15 @@ public class KafkaToBigQueryFlex {
     Pipeline pipeline = Pipeline.create(options);
 
     List<String> topicsList;
-    if (options.getKafkaReadTopics() != null) {
-      topicsList = new ArrayList<>(Arrays.asList(options.getKafkaReadTopics().split(",")));
-    } else {
-      throw new IllegalArgumentException("Please Provide --kafkaReadTopic");
-    }
     String bootstrapServers;
-    if (options.getReadBootstrapServers() != null) {
-      bootstrapServers = options.getReadBootstrapServers();
+    if (options.getReadBootstrapServerAndTopic() != null) {
+      List<String> bootstrapServerAndTopicList =
+          KafkaTopicUtils.getBootstrapServerAndTopic(options.getReadBootstrapServerAndTopic());
+      topicsList = List.of(bootstrapServerAndTopicList.get(1));
+      bootstrapServers = bootstrapServerAndTopicList.get(0);
     } else {
-      throw new IllegalArgumentException("Please Provide --bootstrapServers");
+      throw new IllegalArgumentException(
+          "Please provide a valid bootstrap server which matches `[,:a-zA-Z0-9._-]+` and a topic which matches `[,a-zA-Z0-9._-]+`");
     }
     /*
      * Steps:
@@ -188,8 +197,7 @@ public class KafkaToBigQueryFlex {
     ImmutableMap<String, Object> kafkaConfig =
         ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
 
-    if (options.getKafkaReadUsernameSecretId() != null
-        && options.getKafkaReadPasswordSecretId() != null) {
+    if (options.getKafkaReadAuthenticationMode().equals("SASL_PLAIN")) {
 
       String username = SecretManagerUtils.getSecret(options.getKafkaReadUsernameSecretId());
       String password = SecretManagerUtils.getSecret(options.getKafkaReadPasswordSecretId());
@@ -205,7 +213,8 @@ public class KafkaToBigQueryFlex {
 
       return runJsonPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
 
-    } else if (options.getMessageFormat() == null || options.getMessageFormat().equals("AVRO")) {
+    } else if (options.getMessageFormat().equals("AVRO_CONFLUENT_WIRE_FORMAT")
+        || options.getMessageFormat().equals("AVRO_BINARY_ENCODING")) {
 
       return runAvroPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
 
@@ -222,15 +231,16 @@ public class KafkaToBigQueryFlex {
       Map<String, Object> kafkaConfig)
       throws IOException, RestClientException {
 
-    if (options.getAvroFormat().equals("NON_WIRE_FORMAT") && options.getAvroSchemaPath() == null) {
+    if (options.getMessageFormat().equals("AVRO_BINARY_ENCODING")
+        && options.getBinaryAvroSchemaPath() == null) {
       throw new IllegalArgumentException(
           "Avro schema is needed in order to read non confluent wire format messages.");
     }
-    if (options.getAvroFormat().equals("CONFLUENT_WIRE_FORMAT")
+    if (options.getMessageFormat().equals("AVRO_CONFLUENT_WIRE_FORMAT")
         && options.getSchemaRegistryConnectionUrl() == null
-        && options.getAvroSchemaPath() == null) {
+        && options.getConfluentAvroSchemaPath() == null) {
       throw new IllegalArgumentException(
-          "Schema Registry Connection URL OR Avro schema is needed in order to read confluent wire format messages.");
+          "Schema Registry Connection URL or Avro schema is needed in order to read confluent wire format messages.");
     }
 
     PCollection<KafkaRecord<byte[], byte[]>> kafkaRecords;
@@ -248,28 +258,81 @@ public class KafkaToBigQueryFlex {
 
     WriteResult writeResult = null;
 
-    if (options.getAvroFormat().equals("NON_WIRE_FORMAT") && options.getAvroSchemaPath() != null) {
+    if (options.getMessageFormat().equals("AVRO_BINARY_ENCODING")
+        && options.getBinaryAvroSchemaPath() != null) {
+      writeResult =
+          kafkaRecords.apply(
+              AvroTransform.of(
+                  topicsList.get(0),
+                  options.getMessageFormat(),
+                  options.getBinaryAvroSchemaPath(),
+                  options.getConfluentAvroSchemaPath(),
+                  options.getOutputTableSpec(),
+                  options.getWriteDisposition(),
+                  options.getCreateDisposition(),
+                  options.getNumStorageWriteApiStreams(),
+                  options.getStorageWriteApiTriggeringFrequencySec(),
+                  options.getPersistKafkaKey(),
+                  options.getUseAutoSharding()));
 
-      writeResult = kafkaRecords.apply(AvroTransform.of(options));
+    } else if (options.getMessageFormat().equals("AVRO_CONFLUENT_WIRE_FORMAT")
+        && (options.getSchemaRegistryConnectionUrl() != null
+            || options.getConfluentAvroSchemaPath() != null)) {
 
-    } else {
+      if (options.getSchemaFormat().equals("SINGLE_SCHEMA_FILE")) {
 
-      if (options.getAvroSchemaPath() != null && options.getOutputTableSpec() == null) {
-        throw new IllegalArgumentException("An output BigQuery table is required.");
-      }
+        if (options.getConfluentAvroSchemaPath() != null && options.getOutputTableSpec() == null) {
+          throw new IllegalArgumentException(
+              "The outputTableSpec parameter is required when using the SINGLE_SCHEMA_FILE schema format.");
+        }
 
-      if (options.getAvroSchemaPath() != null && options.getOutputTableSpec() != null) {
-        writeResult = kafkaRecords.apply(AvroTransform.of(options));
-      }
+        if (options.getConfluentAvroSchemaPath() != null && options.getOutputTableSpec() != null) {
+          writeResult =
+              kafkaRecords.apply(
+                  AvroTransform.of(
+                      options.getReadBootstrapServerAndTopic().split(":")[2],
+                      options.getMessageFormat(),
+                      options.getBinaryAvroSchemaPath(),
+                      options.getConfluentAvroSchemaPath(),
+                      options.getOutputTableSpec(),
+                      options.getWriteDisposition(),
+                      options.getCreateDisposition(),
+                      options.getNumStorageWriteApiStreams(),
+                      options.getStorageWriteApiTriggeringFrequencySec(),
+                      options.getPersistKafkaKey(),
+                      options.getUseAutoSharding()));
+        }
+      } else if (options.getSchemaFormat().equals("SCHEMA_REGISTRY")) {
 
-      if (options.getSchemaRegistryConnectionUrl() != null && options.getOutputDataset() == null) {
+        if (options.getSchemaRegistryConnectionUrl() != null
+            && options.getOutputDataset() == null) {
+          throw new IllegalArgumentException(
+              "An output BigQuery dataset is required. It will be used to create tables per schema.");
+        }
+
+        if (options.getSchemaRegistryConnectionUrl() != null
+            && options.getOutputDataset() != null) {
+          writeResult =
+              kafkaRecords.apply(
+                  AvroDynamicTransform.of(
+                      options.getSchemaRegistryConnectionUrl(),
+                      options.getOutputProject(),
+                      options.getOutputDataset(),
+                      options.getBqTableNamePrefix(),
+                      options.getWriteDisposition(),
+                      options.getCreateDisposition(),
+                      options.getNumStorageWriteApiStreams(),
+                      options.getStorageWriteApiTriggeringFrequencySec(),
+                      options.getPersistKafkaKey(),
+                      options.getUseAutoSharding()));
+        }
+      } else {
         throw new IllegalArgumentException(
-            "An output BigQuery dataset is required. It will be used to create tables per schema.");
+            "Unsupported schemaFormat parameter value: " + options.getSchemaFormat());
       }
-
-      if (options.getSchemaRegistryConnectionUrl() != null && options.getOutputDataset() != null) {
-        writeResult = kafkaRecords.apply(AvroDynamicTransform.of(options));
-      }
+    } else {
+      throw new IllegalArgumentException(
+          "Message format " + options.getMessageFormat() + " is unsupported.");
     }
 
     /*

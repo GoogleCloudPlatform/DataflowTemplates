@@ -27,6 +27,7 @@ public interface KafkaReadOptions extends PipelineOptions {
 
   @TemplateParameter.Text(
       order = 1,
+      groupName = "Source",
       optional = true,
       regexes = {"[,:a-zA-Z0-9._-]+"},
       description = "Kafka Bootstrap Server list",
@@ -38,9 +39,10 @@ public interface KafkaReadOptions extends PipelineOptions {
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       optional = true,
       regexes = {"[,a-zA-Z0-9._-]+"},
-      description = "Kafka topic(s) to read input from.",
+      description = "Kafka Topic(s) to read input from",
       helpText = "Kafka topic(s) to read input from.",
       example = "topic1,topic2")
   String getKafkaReadTopics();
@@ -49,38 +51,61 @@ public interface KafkaReadOptions extends PipelineOptions {
 
   @TemplateParameter.Enum(
       order = 3,
-      description = "The Kafka offset to read from.",
+      groupName = "Source",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption("latest"),
         @TemplateParameter.TemplateEnumOption("earliest"),
+        @TemplateParameter.TemplateEnumOption("latest"),
       },
-      helpText = "Set the Kafka offset to earliest or latest(default)",
-      optional = true)
+      optional = true,
+      description = "Start Offset",
+      helpText = "The Kafka Offset to read from.")
   @Default.String("latest")
   String getKafkaReadOffset();
 
   void setKafkaReadOffset(String value);
 
+  @TemplateParameter.Enum(
+      order = 4,
+      name = "kafkaReadAuthenticationMode",
+      groupName = "Source",
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption("NONE"),
+        @TemplateParameter.TemplateEnumOption("SASL_PLAIN"),
+      },
+      optional = false,
+      description = "Authentication Mode",
+      helpText = "Kafka read authentication mode. Can be NONE or SASL_PLAIN")
+  @Default.String("NONE")
+  String getKafkaReadAuthenticationMode();
+
+  void setKafkaReadAuthenticationMode(String value);
+
   @TemplateParameter.Text(
       order = 4,
-      optional = true,
-      description =
-          "Username to be used with SASL_PLAIN mechanism for reading from Kafka, stored in Google Cloud Secret Manager.",
+      groupName = "Source",
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {"SASL_PLAIN"},
+      optional = false,
+      description = "Username",
       helpText =
           "Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}.",
       example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
+  @Default.String("")
   String getKafkaReadUsernameSecretId();
 
   void setKafkaReadUsernameSecretId(String value);
 
   @TemplateParameter.Text(
       order = 5,
-      optional = true,
-      description =
-          "Password to be used with SASL_PLAIN mechanism for reading from Kafka, stored in Google Cloud Secret Manager.",
+      groupName = "Source",
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {"SASL_PLAIN"},
+      optional = false,
+      description = "Password",
       helpText =
           "Secret Manager secret ID for the SASL_PLAIN password. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
       example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
+  @Default.String("")
   String getKafkaReadPasswordSecretId();
 
   void setKafkaReadPasswordSecretId(String value);

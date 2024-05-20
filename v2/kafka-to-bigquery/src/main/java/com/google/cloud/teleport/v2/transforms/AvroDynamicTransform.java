@@ -18,8 +18,8 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
-import com.google.cloud.teleport.v2.options.KafkaToBigQueryFlexOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryAvroUtils;
+import com.google.cloud.teleport.v2.utils.BigQueryConstants;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
@@ -50,6 +50,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,16 +66,71 @@ public class AvroDynamicTransform
 
   private static final Logger LOG = LoggerFactory.getLogger(AvroDynamicTransform.class);
 
-  private static final String kafkaKeyField = "_key";
+  private String schemaRegistryConnectionUrl;
 
-  private KafkaToBigQueryFlexOptions options;
+  private String outputProject;
 
-  private AvroDynamicTransform(KafkaToBigQueryFlexOptions options) {
-    this.options = options;
+  private String outputDataset;
+
+  private String outputTableNamePrefix;
+
+  private Boolean persistKafkaKey;
+
+  private String writeDisposition;
+
+  private String createDisposition;
+
+  private Integer numStorageWriteApiStreams;
+
+  private Integer storageWriteApiTriggeringFrequencySec;
+
+  private Boolean useAutoSharding;
+
+  private AvroDynamicTransform(
+      String schemaRegistryConnectionUrl,
+      String outputProject,
+      String outputDataset,
+      String outputTableNamePrefix,
+      String writeDisposition,
+      String createDisposition,
+      Integer numStorageWriteApiStreams,
+      Integer storageWriteApiTriggeringFrequencySec,
+      Boolean persistKafkaKey,
+      Boolean useAutoSharding) {
+    this.schemaRegistryConnectionUrl = schemaRegistryConnectionUrl;
+    this.outputProject = outputProject;
+    this.outputDataset = outputDataset;
+    this.outputTableNamePrefix = outputTableNamePrefix;
+    this.writeDisposition = writeDisposition;
+    this.createDisposition = createDisposition;
+    this.numStorageWriteApiStreams = numStorageWriteApiStreams;
+    this.storageWriteApiTriggeringFrequencySec = storageWriteApiTriggeringFrequencySec;
+    this.persistKafkaKey = persistKafkaKey;
+    this.useAutoSharding = useAutoSharding;
   }
 
-  public static AvroDynamicTransform of(KafkaToBigQueryFlexOptions options) {
-    return new AvroDynamicTransform(options);
+  public static AvroDynamicTransform of(
+      String schemaRegistryConnectionUrl,
+      String outputProject,
+      String outputDataset,
+      String outputTableNamePrefix,
+      String writeDisposition,
+      String createDisposition,
+      Integer numStorageWriteApiStreams,
+      Integer storageWriteApiTriggeringFrequencySec,
+      Boolean persistKafkaKey,
+      Boolean useAutoSharding) {
+    return new AvroDynamicTransform(
+        schemaRegistryConnectionUrl,
+        outputProject,
+        outputDataset,
+        outputTableNamePrefix,
+        writeDisposition,
+        createDisposition,
+        numStorageWriteApiStreams,
+        storageWriteApiTriggeringFrequencySec,
+        persistKafkaKey,
+        useAutoSharding);
   }
 
   public WriteResult expand(PCollection<KafkaRecord<byte[], byte[]>> kafkaRecords) {
@@ -84,15 +140,23 @@ public class AvroDynamicTransform
         BigQueryIO.<KV<GenericRecord, TableRow>>write()
             .to(
                 BigQueryDynamicDestination.of(
-                    options.getProject(),
-                    options.getOutputDataset(),
-                    options.getBqTableNamePrefix(),
-                    options.getPersistKafkaKey()))
-            .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
-            .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
+                    this.outputProject,
+                    this.outputDataset,
+                    this.outputTableNamePrefix,
+                    this.persistKafkaKey))
+            .withWriteDisposition(WriteDisposition.valueOf(this.writeDisposition))
+            .withCreateDisposition(CreateDisposition.valueOf(this.createDisposition))
             .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
             .withFormatFunction(kv -> kv.getValue())
-            .withExtendedErrorInfo();
+            .withExtendedErrorInfo()
+            .withMethod(Write.Method.STORAGE_WRITE_API)
+            .withNumStorageWriteApiStreams(this.numStorageWriteApiStreams)
+            .withTriggeringFrequency(
+                Duration.standardSeconds(this.storageWriteApiTriggeringFrequencySec.longValue()));
+
+    if (this.useAutoSharding) {
+      writeToBQ = writeToBQ.withAutoSharding();
+    }
 
     writeResult =
         kafkaRecords
@@ -100,14 +164,14 @@ public class AvroDynamicTransform
                 "ConvertKafkaRecordsToGenericRecordsWrappedinFailsafeElement",
                 ParDo.of(
                     new KafkaRecordToGenericRecordFailsafeElementFn(
-                        options.getSchemaRegistryConnectionUrl())))
+                        this.schemaRegistryConnectionUrl)))
             .setCoder(
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
                     GenericRecordCoder.of()))
             .apply(
                 "ConvertGenericRecordToTableRow",
-                ParDo.of(new GenericRecordToTableRowFn(options.getPersistKafkaKey())))
+                ParDo.of(new GenericRecordToTableRowFn(this.persistKafkaKey)))
             .setCoder(
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
@@ -181,7 +245,7 @@ public class AvroDynamicTransform
               BigQueryUtils.toTableSchema(
                   AvroUtils.toBeamSchema(element.getPayload().getSchema())));
       if (this.persistKafkaKey) {
-        row.set(kafkaKeyField, element.getOriginalPayload().getKV().getKey());
+        row.set(BigQueryConstants.KAFKA_KEY_FIELD, element.getOriginalPayload().getKV().getKey());
       }
       context.output(
           FailsafeElement.of(element.getOriginalPayload(), KV.of(element.getPayload(), row)));

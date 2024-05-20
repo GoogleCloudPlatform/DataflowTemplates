@@ -19,8 +19,8 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
 import com.google.cloud.teleport.v2.kafka.transforms.BinaryAvroDeserializer;
-import com.google.cloud.teleport.v2.options.KafkaToBigQueryFlexOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryAvroUtils;
+import com.google.cloud.teleport.v2.utils.BigQueryConstants;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
@@ -50,6 +50,7 @@ import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,36 +65,109 @@ public class AvroTransform
 
   private static final Logger LOG = LoggerFactory.getLogger(AvroTransform.class);
 
-  private static final String kafkaKeyField = "_key";
+  private String topicName;
 
-  private KafkaToBigQueryFlexOptions options;
+  private String messageFormat;
 
-  private AvroTransform(KafkaToBigQueryFlexOptions options) {
-    this.options = options;
+  private String binaryAvroSchemaPath;
+
+  private String confluentAvroSchemaPath;
+
+  private String outputTableSpec;
+
+  private Boolean persistKafkaKey;
+
+  private String writeDisposition;
+
+  private String createDisposition;
+
+  private Integer numStorageWriteApiStreams;
+
+  private Integer storageWriteApiTriggeringFrequencySec;
+
+  private Boolean useAutoSharding;
+
+  private AvroTransform(
+      String topicName,
+      String messageFormat,
+      String binaryAvroSchemaPath,
+      String confluentAvroSchemaPath,
+      String outputTableSpec,
+      String writeDisposition,
+      String createDisposition,
+      Integer numStorageWriteApiStreams,
+      Integer storageWriteApiTriggeringFrequencySec,
+      Boolean persistKafkaKey,
+      Boolean useAutoSharding) {
+    this.topicName = topicName;
+    this.messageFormat = messageFormat;
+    this.binaryAvroSchemaPath = binaryAvroSchemaPath;
+    this.confluentAvroSchemaPath = confluentAvroSchemaPath;
+    this.outputTableSpec = outputTableSpec;
+    this.writeDisposition = writeDisposition;
+    this.createDisposition = createDisposition;
+    this.numStorageWriteApiStreams = numStorageWriteApiStreams;
+    this.storageWriteApiTriggeringFrequencySec = storageWriteApiTriggeringFrequencySec;
+    this.persistKafkaKey = persistKafkaKey;
+    this.useAutoSharding = useAutoSharding;
   }
 
-  public static AvroTransform of(KafkaToBigQueryFlexOptions options) {
-    return new AvroTransform(options);
+  public static AvroTransform of(
+      String topicName,
+      String messageFormat,
+      String binaryAvroSchemaPath,
+      String confluentAvroSchemaPath,
+      String outputTableSpec,
+      String writeDisposition,
+      String createDisposition,
+      Integer numStorageWriteApiStreams,
+      Integer storageWriteApiTriggeringFrequencySec,
+      Boolean persistKafkaKey,
+      Boolean useAutoSharding) {
+    return new AvroTransform(
+        topicName,
+        messageFormat,
+        binaryAvroSchemaPath,
+        confluentAvroSchemaPath,
+        outputTableSpec,
+        writeDisposition,
+        createDisposition,
+        numStorageWriteApiStreams,
+        storageWriteApiTriggeringFrequencySec,
+        persistKafkaKey,
+        useAutoSharding);
   }
 
   public WriteResult expand(PCollection<KafkaRecord<byte[], byte[]>> kafkaRecords) {
-    String avroSchema = options.getAvroSchemaPath();
+    String avroSchema;
+    if (this.messageFormat.equals("AVRO_BINARY_ENCODING")) {
+      avroSchema = this.binaryAvroSchemaPath;
+    } else {
+      avroSchema = this.confluentAvroSchemaPath;
+    }
     Schema schema = SchemaUtils.getAvroSchema(avroSchema);
     WriteResult writeResult;
 
     Write<TableRow> writeToBQ =
         BigQueryIO.<TableRow>write()
             .withSchema(
-                BigQueryAvroUtils.convertAvroSchemaToTableSchema(
-                    schema, options.getPersistKafkaKey()))
-            .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
-            .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
+                BigQueryAvroUtils.convertAvroSchemaToTableSchema(schema, this.persistKafkaKey))
+            .withWriteDisposition(WriteDisposition.valueOf(this.writeDisposition))
+            .withCreateDisposition(CreateDisposition.valueOf(this.createDisposition))
             .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
             .withFormatFunction(row -> row)
-            .withExtendedErrorInfo();
+            .withExtendedErrorInfo()
+            .withMethod(Write.Method.STORAGE_WRITE_API)
+            .withNumStorageWriteApiStreams(this.numStorageWriteApiStreams)
+            .withTriggeringFrequency(
+                Duration.standardSeconds(this.storageWriteApiTriggeringFrequencySec.longValue()));
 
-    if (options.getOutputTableSpec() != null) {
-      writeToBQ = writeToBQ.to(options.getOutputTableSpec());
+    if (this.useAutoSharding) {
+      writeToBQ = writeToBQ.withAutoSharding();
+    }
+
+    if (this.outputTableSpec != null) {
+      writeToBQ = writeToBQ.to(this.outputTableSpec);
     }
 
     writeResult =
@@ -102,14 +176,14 @@ public class AvroTransform
                 "ConvertKafkaRecordsToGenericRecordsWrappedinFailsafeElement",
                 ParDo.of(
                     new KafkaRecordToGenericRecordFailsafeElementFn(
-                        schema, options.getKafkaReadTopics(), options.getAvroFormat())))
+                        schema, this.topicName, this.messageFormat)))
             .setCoder(
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
                     GenericRecordCoder.of()))
             .apply(
                 "ConvertGenericRecordToTableRow",
-                ParDo.of(new GenericRecordToTableRowFn(options.getPersistKafkaKey())))
+                ParDo.of(new GenericRecordToTableRowFn(this.persistKafkaKey)))
             .setCoder(
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
@@ -141,10 +215,10 @@ public class AvroTransform
 
     @Setup
     public void setup() throws IOException, RestClientException {
-      if (this.schema != null && this.useConfluentWireFormat.equals("NON_WIRE_FORMAT")) {
+      if (this.schema != null && this.useConfluentWireFormat.equals("AVRO_BINARY_ENCODING")) {
         this.binaryDeserializer = new BinaryAvroDeserializer(this.schema);
       } else if (this.schema != null
-          && this.useConfluentWireFormat.equals("CONFLUENT_WIRE_FORMAT")) {
+          && this.useConfluentWireFormat.equals("AVRO_CONFLUENT_WIRE_FORMAT")) {
         this.schemaRegistryClient = new MockSchemaRegistryClient();
         this.schemaRegistryClient.register(this.topicName, this.schema, 1, 1);
         this.kafkaDeserializer = new KafkaAvroDeserializer(schemaRegistryClient);
@@ -160,7 +234,7 @@ public class AvroTransform
       GenericRecord result = null;
       try {
         // Serialize to Generic Record
-        if (this.useConfluentWireFormat.equals("NON_WIRE_FORMAT")) {
+        if (this.useConfluentWireFormat.equals("AVRO_BINARY_ENCODING")) {
           result =
               this.binaryDeserializer.deserialize(
                   element.getTopic(), element.getHeaders(), element.getKV().getValue());
@@ -198,7 +272,7 @@ public class AvroTransform
               BigQueryUtils.toTableSchema(
                   AvroUtils.toBeamSchema(element.getPayload().getSchema())));
       if (this.persistKafkaKey) {
-        row.set(kafkaKeyField, element.getOriginalPayload().getKV().getKey());
+        row.set(BigQueryConstants.KAFKA_KEY_FIELD, element.getOriginalPayload().getKV().getKey());
       }
       context.output(FailsafeElement.of(element.getOriginalPayload(), row));
     }
