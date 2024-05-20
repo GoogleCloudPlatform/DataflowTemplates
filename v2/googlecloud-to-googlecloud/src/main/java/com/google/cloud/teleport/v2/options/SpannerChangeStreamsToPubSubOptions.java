@@ -147,8 +147,9 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   void setSpannerHost(String value);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Enum(
       order = 12,
+      enumOptions = {@TemplateEnumOption("JSON"), @TemplateEnumOption("AVRO")},
       optional = true,
       description = "Output data format",
       helpText =

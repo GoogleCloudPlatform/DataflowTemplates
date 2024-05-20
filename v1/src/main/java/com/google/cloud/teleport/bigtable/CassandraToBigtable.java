@@ -78,12 +78,9 @@ final class CassandraToBigtable {
     @SuppressWarnings("unused")
     void setCassandraHosts(ValueProvider<String> hosts);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Integer(
         order = 2,
         optional = true,
-        regexes = {
-          "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"
-        },
         description = "Cassandra Port",
         helpText =
             "The TCP port to use to reach Apache Cassandra on the nodes. The default value is 9042.")

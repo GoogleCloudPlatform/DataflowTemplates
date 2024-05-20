@@ -33,8 +33,9 @@ must be maintained across all Templates:
 
 ### Introducing New Templates
 
-If you are interested in introducing a new template, please send an email to the core Dataflow Templates
-team before doing so. Any new templates must be flex templates in the v2 directory
+If you are interested in introducing a new template, please file an issue using the [Google Issue Tracker](https://issuetracker.google.com/issues/new?component=187168&template=0) before doing so. Any new templates must be flex templates in the v2 directory.
+
+For documentation on adding new templates, see the [code contribution guide](./code-contributions.md).
 
 ### Forking Beam Code
 
@@ -57,3 +58,72 @@ This repo's code currently is mirrored in Google's internal source control syste
 
 We are actively working to deprecate this process and use GitHub as the only source of truth.
 If you encounter unresolvable issues with this flow, please reach out to the Dataflow team directly.
+
+## GitHub actions
+
+There are several workflows that leverage GitHub actions to keep the repo healthy. Of these workflows, there are 
+currently 2 that are run on self-hosted runners on GCP - [Java PR](../.github/workflows/java-pr.yml) which is used to 
+test PR's and [Release](../.github/workflows/release.yml) which is the workflow used for releasing new templates each 
+week.
+
+### Provision new runners
+
+There are instances where we may need to re-provision self-hosted runners, due to unexpected failures, updating 
+dependencies, increasing memory, etc. In these cases, there are helper scripts to aid in redeployment of the GitHub 
+actions runners.
+
+There are 3 scripts: [configure-runners.sh](../.github/scripts/configure-runners.sh), 
+[startup-script.sh](../.github/scripts/startup-script.sh) and 
+[shutdown-script.sh](../.github/scripts/shutdown-script.sh). The first is the main script used to provision the runners 
+themselves. The startup script is what will be invoked by the GCE VM as it is booted up for the first time and will 
+install all necessary packages needed by IT's, unit tests, Release, etc. as well as link the machine as a runner for the 
+repo. Likewise, the shutdown script is run when the VM is shutdown.
+
+To provision GitHub actions runners, there are a couple prerequisites
+- Must be a maintainer of the repo
+- Must have access to GCP project cloud-teleport-testing
+
+Things to remember:
+- Running the script will tear down existing runners and provision new ones. This will kill any actions currently
+running on any of the runners. Failure to spin up new runner correctly will block PR's and Releases, so use carefully.
+- After running the script, it is likely the old runners will still be listed under
+https://github.com/GoogleCloudPlatform/DataflowTemplates/settings/actions/runners. Simply force remove these to keep the
+repo clean
+- The commands below will demonstrate how to provision runners for use with our workflows as they exist today. If there
+arises a need to provision runners in a different manner, feel free to modify the scripts directly and open a PR with 
+the necessary changes.
+
+To run the configuration script:
+
+1. Set gcloud project to cloud-teleport-testing if not already set
+    ```
+    gcloud config set project cloud-teleport-testing
+    ```
+
+2. Export the GitHub actions token
+    ```
+    GITACTIONS_TOKEN=$(gcloud secrets versions access latest --secret=gitactions-runner-secret)
+    ```
+
+3. Run the script
+   
+   * For IT runners:
+   
+      ```
+      ./configure-runners.sh \
+        -p cloud-teleport-testing \
+        -a 269744978479-compute@developer.gserviceaccount.com \
+        -t $GITACTIONS_TOKEN
+      ```
+   
+   * For Performance Test Runner
+      ```
+      ./configure-runners.sh \
+        -p cloud-teleport-testing \
+        -a 269744978479-compute@developer.gserviceaccount.com \
+        -t $GITACTIONS_TOKEN \
+        -S perf \
+        -s 1
+      ```
+
+**Note**: To see optional configurable parameters, run `./configure-runners.sh -h`

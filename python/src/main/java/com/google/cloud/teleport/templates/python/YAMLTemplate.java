@@ -46,4 +46,13 @@ public interface YAMLTemplate {
       description = "Input YAML pipeline spec file in Cloud Storage.",
       helpText = "A file in Cloud Storage containing a yaml description of the pipeline to run.")
   String getYamlPipelineFile();
+
+  @TemplateParameter.Text(
+      order = 3,
+      name = "jinja_variables",
+      optional = true,
+      description = "Input jinja preprocessing variables.",
+      helpText =
+          "A json dict of variables used when invoking the jinja preprocessor on the provided yaml pipeline.")
+  String getJinjaVariables();
 }

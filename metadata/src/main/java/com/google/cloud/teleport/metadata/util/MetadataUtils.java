@@ -42,6 +42,7 @@ public final class MetadataUtils {
         TemplateParameter.GcsWriteFile.class,
         TemplateParameter.GcsWriteFolder.class,
         TemplateParameter.Integer.class,
+        TemplateParameter.KafkaTopic.class,
         TemplateParameter.KmsEncryptionKey.class,
         TemplateParameter.Long.class,
         TemplateParameter.Password.class,

@@ -164,7 +164,7 @@ public class PubSubToRedis {
 
     void setRedisPort(int redisPort);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Password(
         order = 4,
         description = "Redis DB Password",
         helpText = "The Redis database password. Defaults to empty.")
@@ -221,7 +221,8 @@ public class PubSubToRedis {
         optional = true,
         parentName = "redisSinkType",
         parentTriggerValues = {"HASH_SINK", "LOGGING_SINK"},
-        description = "Hash key expiration time in sec (ttl)",
+        description =
+            "Hash key expiration time in sec (ttl), supported only for HASH_SINK and LOGGING_SINK",
         helpText =
             "The key expiration time in seconds. The `ttl` default for `HASH_SINK` is -1, which means it never expires.")
     @Default.Long(-1L)

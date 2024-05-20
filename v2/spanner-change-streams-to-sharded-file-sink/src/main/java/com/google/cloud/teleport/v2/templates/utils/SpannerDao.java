@@ -219,7 +219,7 @@ public class SpannerDao {
                   + " run_id character varying NOT NULL,shard character"
                   + " varying NOT NULL,window_seen timestamp with time zone NOT NULL,update_ts"
                   + " timestamp with time zone DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id))"
-                  + " TTL INTERVAL '2 days' ON update_ts";
+                  + " TTL INTERVAL '30 days' ON update_ts";
 
         } else {
           createTable =
@@ -228,7 +228,7 @@ public class SpannerDao {
                   + " (id STRING(MAX) NOT NULL, run_id"
                   + " STRING(MAX) NOT NULL,shard STRING(MAX) NOT NULL, window_seen TIMESTAMP NOT"
                   + " NULL , update_ts TIMESTAMP DEFAULT (CURRENT_TIMESTAMP)) PRIMARY"
-                  + " KEY(id) , ROW DELETION POLICY (OLDER_THAN(update_ts, INTERVAL 2 DAY))";
+                  + " KEY(id) , ROW DELETION POLICY (OLDER_THAN(update_ts, INTERVAL 30 DAY))";
         }
         OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
             databaseAdminClient.updateDatabaseDdl(
