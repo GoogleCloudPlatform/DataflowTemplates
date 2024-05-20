@@ -374,4 +374,17 @@ public final class DataChangeRecordTypeConvertorTest {
         DataChangeRecordTypeConvertor.toDate(ce, "field1", /* requiredField= */ true),
         Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
   }
+
+  /*
+   * Tests null value for NumericBigDecimal
+   */
+  @Test
+  public void testNullNumericBigDecimal() throws Exception {
+    String jsonChangeEvent = "{ \"field1\" : null }";
+    JsonNode ce = getJsonNode(jsonChangeEvent);
+
+    assertNull(
+        DataChangeRecordTypeConvertor.toNumericBigDecimal(
+            ce, "field1", /* requiredField= */ false));
+  }
 }

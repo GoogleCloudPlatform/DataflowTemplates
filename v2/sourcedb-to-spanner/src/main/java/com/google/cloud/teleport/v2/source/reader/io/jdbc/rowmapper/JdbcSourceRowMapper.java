@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper;
 
+import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.source.reader.io.exception.ValueMappingException;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
@@ -24,6 +25,8 @@ import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import org.apache.avro.Schema;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -38,6 +41,9 @@ public final class JdbcSourceRowMapper implements JdbcIO.RowMapper<SourceRow> {
   private final SourceTableSchema sourceTableSchema;
 
   private static final Logger logger = LoggerFactory.getLogger(JdbcSourceRowMapper.class);
+
+  private final Counter mapperErrors =
+      Metrics.counter(JdbcSourceRowMapper.class, MetricCounters.READER_MAPPING_ERRORS);
 
   /**
    * Construct {@link JdbcSourceRowMapper}.
@@ -87,6 +93,7 @@ public final class JdbcSourceRowMapper implements JdbcIO.RowMapper<SourceRow> {
                         .getOrDefault(entry.getValue().getName(), JdbcValueMapper.UNSUPPORTED)
                         .mapValue(resultSet, entry.getKey(), schema));
               } catch (SQLException e) {
+                mapperErrors.inc();
                 logger.error(
                     "Exception while mapping jdbc ResultSet to avro. Check for potential schema changes. Exception: "
                         + e);

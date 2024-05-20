@@ -571,6 +571,11 @@ public abstract class TemplateTestBase {
         artifactBucketName, getClass().getSimpleName(), gcsClient.runId(), artifactId);
   }
 
+  protected String getGcsPath(String artifactId, GcsResourceManager gcsResourceManager) {
+    return ArtifactUtils.getFullGcsPath(
+        artifactBucketName, getClass().getSimpleName(), gcsResourceManager.runId(), artifactId);
+  }
+
   /** Create the default configuration {@link PipelineOperator.Config} for a specific job info. */
   protected PipelineOperator.Config createConfig(LaunchInfo info) {
     return createConfig(info, null);

@@ -85,7 +85,7 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
                 pubsubResourceManager,
                 new HashMap<>() {
                   {
-                    put("inputFileFormat", "json");
+                    put("inputFileFormat", "avro");
                   }
                 });
       }
@@ -116,8 +116,8 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE,
-                        "backfill.jsonl",
-                        "DataStreamToSpannerSessionIT/mysql-backfill-Category.jsonl"),
+                        "backfill_category.avro",
+                        "DataStreamToSpannerSessionIT/mysql-backfill-Category.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -140,8 +140,8 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE,
-                        "cdc1.jsonl",
-                        "DataStreamToSpannerSessionIT/mysql-cdc-Category.jsonl"),
+                        "cdc_category.avro",
+                        "DataStreamToSpannerSessionIT/mysql-cdc-Category.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE)
                         .setMinRows(3)
                         .setMaxRows(3)

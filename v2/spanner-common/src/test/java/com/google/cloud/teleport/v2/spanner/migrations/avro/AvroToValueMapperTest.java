@@ -159,6 +159,29 @@ public class AvroToValueMapperTest {
   }
 
   @Test
+  public void testAvroFieldToString_valid() {
+    String result = AvroToValueMapper.avroFieldToString("Hello");
+    assertEquals("Hello", result);
+
+    result = AvroToValueMapper.avroFieldToString("");
+    assertEquals("", result);
+
+    result = AvroToValueMapper.avroFieldToString(14);
+    assertEquals("14", result);
+
+    result = AvroToValueMapper.avroFieldToString(513148134L);
+    assertEquals("513148134", result);
+
+    result = AvroToValueMapper.avroFieldToString(325.532);
+    assertEquals("325.532", result);
+  }
+
+  @Test
+  public void testAvroFieldToString_NullInput() {
+    assertNull(AvroToValueMapper.avroFieldToString(null));
+  }
+
+  @Test
   public void testAvroFieldToNumericBigDecimal_StringInput() {
     Map<String, String> testCases = new HashMap<>();
     testCases.put("1.2334567890345654542E10", "12334567890.345654542");

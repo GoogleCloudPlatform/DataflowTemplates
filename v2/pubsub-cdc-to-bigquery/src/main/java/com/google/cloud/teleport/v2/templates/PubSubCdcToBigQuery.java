@@ -152,7 +152,7 @@ public class PubSubCdcToBigQuery {
 
     void setAutoMapTables(Boolean value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 3,
         optional = true,
         description = "Cloud Storage file with BigQuery schema fields to be used in DDL",
@@ -235,7 +235,7 @@ public class PubSubCdcToBigQuery {
     void setWindowDuration(String value);
 
     // Thread Count
-    @TemplateParameter.Text(
+    @TemplateParameter.Integer(
         order = 10,
         optional = true,
         description = "Thread Number",

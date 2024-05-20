@@ -23,7 +23,7 @@ permissions:
 jobs:
   release:
     name: Create Release
-    runs-on: [self-hosted, it]
+    runs-on: [self-hosted, release]
     steps:
     - name: Get releaser identity
       run: |
@@ -68,13 +68,12 @@ jobs:
       id: setup-env
       uses: ./.github/actions/setup-env
     - name: Run Build
-      run: ./cicd/run-build --changed-files="pom.xml"
+      run: ./cicd/run-build
     - name: Run Unit Tests
-      run: ./cicd/run-unit-tests --changed-files="pom.xml"
+      run: ./cicd/run-unit-tests
     - name: Run Integration Smoke Tests
       run: |
         ./cicd/run-it-smoke-tests \
-        --changed-files="pom.xml" \
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
@@ -84,7 +83,6 @@ jobs:
     - name: Run Integration Tests
       run: |
         ./cicd/run-it-tests \
-        --changed-files="pom.xml" \
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \

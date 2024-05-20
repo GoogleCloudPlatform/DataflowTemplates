@@ -20,9 +20,11 @@ WORKDIR $WORKDIR
 RUN if ! [ -f requirements.txt ] ; then echo "$BEAM_PACKAGE" > requirements.txt ; fi
 
 # Install dependencies to launch the pipeline and download to reduce startup time
+# Remove Jinja2 dependency once YAML templatization support is added to Beam
 RUN python -m venv /venv \
     && /venv/bin/pip install --no-cache-dir --upgrade pip setuptools \
     && /venv/bin/pip install --no-cache-dir -U -r $REQUIREMENTS_FILE \
+    && /venv/bin/pip install --no-cache-dir -U Jinja2 \
     && /venv/bin/pip download --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE \
     && rm -rf /usr/local/lib/python$PY_VERSION/site-packages  \
     && mv /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/

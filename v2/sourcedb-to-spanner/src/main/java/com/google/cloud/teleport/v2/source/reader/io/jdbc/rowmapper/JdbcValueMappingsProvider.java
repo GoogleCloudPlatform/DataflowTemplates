@@ -16,12 +16,13 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper;
 
 import com.google.common.collect.ImmutableMap;
+import java.io.Serializable;
 
 /**
  * An interface to be implemented for various jdbc source types to get the {@link JdbcValueMapper}
  * for various source types.
  */
-public interface JdbcValueMappingsProvider {
+public interface JdbcValueMappingsProvider extends Serializable {
 
   /**
    * Get Mapping of source types to {@link JdbcValueMapper}.

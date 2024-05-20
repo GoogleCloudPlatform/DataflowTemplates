@@ -36,9 +36,10 @@ public class GCSToSourceStreamingHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSToSourceStreamingHandler.class);
 
-  public static void process(ProcessingContext taskContext, SpannerDao spannerDao) {
+  public static String process(ProcessingContext taskContext, SpannerDao spannerDao) {
     String shardId = taskContext.getShard().getLogicalShardId();
     GCSReader inputFileReader = new GCSReader(taskContext, spannerDao);
+    String fileProcessedStartInterval = taskContext.getStartTimestamp();
 
     try {
       Instant readStartTime = Instant.now();
@@ -52,9 +53,11 @@ public class GCSToSourceStreamingHandler {
               + " records from the buffer in "
               + ChronoUnit.MILLIS.between(readStartTime, readEndTime)
               + " milliseconds");
+      // This may have changed in case the interval did not have data
+      fileProcessedStartInterval = inputFileReader.getCurrentIntervalStart();
       if (records.isEmpty()) {
-        markShardSuccess(taskContext, spannerDao);
-        return;
+        markShardSuccess(taskContext, spannerDao, fileProcessedStartInterval);
+        return fileProcessedStartInterval;
       }
 
       String connectString =
@@ -74,27 +77,36 @@ public class GCSToSourceStreamingHandler {
 
       InputRecordProcessor.processRecords(
           records, taskContext.getSchema(), dao, shardId, taskContext.getSourceDbTimezoneOffset());
-      markShardSuccess(taskContext, spannerDao);
+      markShardSuccess(taskContext, spannerDao, fileProcessedStartInterval);
       dao.cleanup();
       LOG.info(
           "Shard " + shardId + ": Successfully processed batch of " + records.size() + " records.");
     } catch (Exception e) {
       Metrics.counter(GCSToSourceStreamingHandler.class, "shard_failed_" + shardId).inc();
-      markShardFailure(taskContext, spannerDao);
+      markShardFailure(taskContext, spannerDao, fileProcessedStartInterval);
       throw new RuntimeException("Failure when processing records", e);
     }
+    return fileProcessedStartInterval;
   }
 
-  private static void markShardSuccess(ProcessingContext taskContext, SpannerDao spannerDao) {
-    markShardProgress(taskContext, Constants.SHARD_PROGRESS_STATUS_SUCCESS, spannerDao);
+  private static void markShardSuccess(
+      ProcessingContext taskContext, SpannerDao spannerDao, String fileProcessedStartInterval) {
+    markShardProgress(
+        taskContext,
+        Constants.SHARD_PROGRESS_STATUS_SUCCESS,
+        spannerDao,
+        fileProcessedStartInterval);
   }
 
   private static void markShardProgress(
-      ProcessingContext taskContext, String status, SpannerDao spannerDao) {
+      ProcessingContext taskContext,
+      String status,
+      SpannerDao spannerDao,
+      String fileProcessedStartInterval) {
     ShardProgressTracker shardProgressTracker =
         new ShardProgressTracker(spannerDao, taskContext.getRunId());
-    String fileStartTime = taskContext.getStartTimestamp();
-    com.google.cloud.Timestamp startTs = com.google.cloud.Timestamp.parseTimestamp(fileStartTime);
+    com.google.cloud.Timestamp startTs = null;
+    startTs = com.google.cloud.Timestamp.parseTimestamp(fileProcessedStartInterval);
 
     ShardProgress shardProgress =
         new ShardProgress(taskContext.getShard().getLogicalShardId(), startTs, status);
@@ -102,7 +114,9 @@ public class GCSToSourceStreamingHandler {
     shardProgressTracker.writeShardProgress(shardProgress);
   }
 
-  private static void markShardFailure(ProcessingContext taskContext, SpannerDao spannerDao) {
-    markShardProgress(taskContext, Constants.SHARD_PROGRESS_STATUS_ERROR, spannerDao);
+  private static void markShardFailure(
+      ProcessingContext taskContext, SpannerDao spannerDao, String fileProcessedStartInterval) {
+    markShardProgress(
+        taskContext, Constants.SHARD_PROGRESS_STATUS_ERROR, spannerDao, fileProcessedStartInterval);
   }
 }

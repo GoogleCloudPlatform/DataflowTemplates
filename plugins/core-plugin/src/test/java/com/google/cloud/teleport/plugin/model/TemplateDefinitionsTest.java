@@ -63,6 +63,9 @@ public class TemplateDefinitionsTest {
     ImageSpecParameter to = metadata.getParameter("to").get();
     assertEquals(ImageSpecParameterType.BIGQUERY_TABLE, to.getParamType());
 
+    ImageSpecParameter inputKafkaTopic = metadata.getParameter("inputKafkaTopic").get();
+    assertEquals(ImageSpecParameterType.KAFKA_TOPIC, inputKafkaTopic.getParamType());
+
     ImageSpecParameter logical = metadata.getParameter("logical").get();
     assertEquals(ImageSpecParameterType.BOOLEAN, logical.getParamType());
     assertEquals("^(true|false)$", logical.getRegexes().get(0));

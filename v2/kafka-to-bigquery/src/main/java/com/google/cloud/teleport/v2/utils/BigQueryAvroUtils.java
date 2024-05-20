@@ -46,6 +46,8 @@ import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.Schema.Type;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.sdk.extensions.avro.schemas.utils.AvroUtils;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableCollection;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableMultimap;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.BaseEncoding;
@@ -105,6 +107,8 @@ public class BigQueryAvroUtils {
    */
   private static final DateTimeFormatter DATE_AND_SECONDS_FORMATTER =
       DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss").withZoneUTC();
+
+  private static final String kafkaKeyField = "_key";
 
   static String formatTimestamp(Long timestampMicro) {
     // timestampMicro is in "microseconds since epoch" format,
@@ -525,5 +529,18 @@ public class BigQueryAvroUtils {
       default:
         return Schema.create(avroType);
     }
+  }
+
+  public static TableSchema convertAvroSchemaToTableSchema(Schema schema, Boolean persistKafkaKey) {
+    TableSchema tableSchema = BigQueryUtils.toTableSchema(AvroUtils.toBeamSchema(schema));
+    if (persistKafkaKey) {
+      List<TableFieldSchema> list = tableSchema.getFields();
+      TableFieldSchema field = new TableFieldSchema();
+      field.setName(kafkaKeyField);
+      field.setType("BYTES");
+      list.add(field);
+      tableSchema.setFields(list);
+    }
+    return tableSchema;
   }
 }

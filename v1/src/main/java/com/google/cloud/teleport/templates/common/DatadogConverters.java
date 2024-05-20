@@ -136,12 +136,9 @@ public class DatadogConverters {
 
     void setIncludePubsubMessage(ValueProvider<Boolean> includePubsubMessage);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.KmsEncryptionKey(
         order = 6,
         optional = true,
-        regexes = {
-          "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/keyRings\\/[^\\n\\r\\/]+\\/cryptoKeys\\/[^\\n\\r\\/]+$"
-        },
         description = "Google Cloud KMS encryption key for the API key",
         helpText =
             "The Cloud KMS key to use to decrypt the API Key. You must provide this parameter if the `apiKeySource` is set to `KMS`. If the Cloud KMS key is provided, you must pass in an encrypted API Key.",
