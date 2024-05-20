@@ -74,7 +74,6 @@ public class WriteToBigQuery implements TemplateTransform<SinkOptions> {
     @TemplateParameter.GcsReadFile(
         order = 2,
         optional = true,
-        groupName = "Target",
         description = "GCS Path to JSON file containing BigQuery table schema.",
         helpText = "sample text")
     String getBigQuerySchemaPath();

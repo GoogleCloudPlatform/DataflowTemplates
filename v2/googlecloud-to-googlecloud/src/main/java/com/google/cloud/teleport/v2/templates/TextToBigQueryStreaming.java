@@ -476,7 +476,6 @@ public class TextToBigQueryStreaming {
       extends TextIOToBigQuery.Options, BigQueryStorageApiStreamingOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
-        groupName = "Target",
         optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
@@ -491,7 +490,6 @@ public class TextToBigQueryStreaming {
     // on when pipeline is running on ALO mode and using the Storage Write API
     @TemplateParameter.Boolean(
         order = 2,
-        groupName = "Target",
         optional = true,
         parentName = "useStorageWriteApi",
         parentTriggerValues = {"true"},

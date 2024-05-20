@@ -158,7 +158,6 @@ public class MqttToPubsub {
 
     @TemplateParameter.Text(
         order = 4,
-        groupName = "Source",
         description = "MQTT Username",
         helpText = "The username to use for authentication on the MQTT server.",
         example = "sampleusername")
@@ -168,7 +167,6 @@ public class MqttToPubsub {
 
     @TemplateParameter.Password(
         order = 5,
-        groupName = "Source",
         description = "MQTT Password",
         helpText = "The password associated with the provided username.",
         example = "samplepassword")

@@ -68,7 +68,6 @@ public interface PubsubToKafkaOptions
 
   @TemplateParameter.PubsubTopic(
       order = 4,
-      groupName = "Source",
       description = "Output deadletter Pub/Sub topic",
       helpText =
           "The Pub/Sub topic to publish deadletter records to. The name should be in the "

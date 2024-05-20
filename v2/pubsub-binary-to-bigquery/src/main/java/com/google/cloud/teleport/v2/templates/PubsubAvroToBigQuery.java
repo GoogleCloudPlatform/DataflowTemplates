@@ -101,7 +101,6 @@ public final class PubsubAvroToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 1,
-        groupName = "Source",
         description = "Cloud Storage path to the Avro schema file",
         helpText =
             "The Cloud Storage location of the Avro schema file. For example, `gs://path/to/my/schema.avsc`.")
@@ -114,7 +113,6 @@ public final class PubsubAvroToBigQuery {
     // on when pipeline is running on ALO mode and using the Storage Write API
     @TemplateParameter.Boolean(
         order = 2,
-        groupName = "Target",
         optional = true,
         parentName = "useStorageWriteApi",
         parentTriggerValues = {"true"},

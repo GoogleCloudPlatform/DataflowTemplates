@@ -118,7 +118,6 @@ public class PubsubToText {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
-        groupName = "Target",
         optional = true,
         description = "User provided temp location",
         helpText =

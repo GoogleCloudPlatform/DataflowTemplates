@@ -167,7 +167,6 @@ public class PubsubToJms {
 
     @TemplateParameter.Text(
         order = 4,
-        groupName = "Target",
         optional = false,
         regexes = {"[a-zA-Z0-9._-]+"},
         description = "JMS Destination Type to Write the input to",
@@ -180,7 +179,6 @@ public class PubsubToJms {
 
     @TemplateParameter.Text(
         order = 5,
-        groupName = "Target",
         description = "JMS Username",
         helpText = "JMS username for authentication with JMS server",
         example = "sampleusername")
@@ -190,7 +188,6 @@ public class PubsubToJms {
 
     @TemplateParameter.Password(
         order = 6,
-        groupName = "Target",
         description = "JMS Password",
         helpText = "Password for username provided for authentication with JMS server",
         example = "samplepassword")

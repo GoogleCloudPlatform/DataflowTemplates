@@ -144,7 +144,6 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.Boolean(
         order = 2,
-        groupName = "Target",
         optional = true,
         description = "Auto Map Tables",
         helpText =
@@ -156,7 +155,6 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 3,
-        groupName = "Target",
         optional = true,
         description = "Cloud Storage file with BigQuery schema fields to be used in DDL",
         helpText =
@@ -203,7 +201,6 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 7,
-        groupName = "Target",
         optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
@@ -218,7 +215,6 @@ public class PubSubCdcToBigQuery {
     // Dead Letter Queue GCS Directory
     @TemplateParameter.GcsWriteFolder(
         order = 8,
-        groupName = "Target",
         optional = true,
         description = "Dead Letter Queue Directory",
         helpText =
@@ -230,7 +226,6 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.Duration(
         order = 9,
-        groupName = "Target",
         optional = true,
         description = "Window duration",
         helpText =
@@ -246,7 +241,6 @@ public class PubSubCdcToBigQuery {
     // Thread Count
     @TemplateParameter.Integer(
         order = 10,
-        groupName = "Source",
         optional = true,
         description = "Thread Number",
         helpText = "The number of parallel threads you want to split your data into")

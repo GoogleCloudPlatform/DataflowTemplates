@@ -223,7 +223,6 @@ public class TextIOToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 2,
-        groupName = "Target",
         optional = false,
         description = "JSON file with BigQuery Schema description",
         helpText =
@@ -247,7 +246,6 @@ public class TextIOToBigQuery {
 
     @TemplateParameter.JavascriptUdfFile(
         order = 4,
-        groupName = "Source",
         optional = false,
         description = "GCS path to javascript fn for transforming output",
         helpText =
@@ -259,7 +257,6 @@ public class TextIOToBigQuery {
 
     @TemplateParameter.Text(
         order = 5,
-        groupName = "Source",
         optional = false,
         regexes = {"[a-zA-Z0-9_]+"},
         description = "UDF Javascript Function Name",
@@ -273,7 +270,6 @@ public class TextIOToBigQuery {
     @Validation.Required
     @TemplateParameter.GcsWriteFolder(
         order = 6,
-        groupName = "Target",
         optional = false,
         description = "Temporary directory for BigQuery loading process",
         helpText = "Temporary directory for BigQuery loading process.",

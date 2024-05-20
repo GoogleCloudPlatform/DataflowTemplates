@@ -60,7 +60,6 @@ public class MongoDbToBigQueryOptions {
 
     @TemplateParameter.Enum(
         order = 4,
-        groupName = "Source",
         enumOptions = {@TemplateEnumOption("FLATTEN"), @TemplateEnumOption("NONE")},
         description = "User option",
         helpText =
@@ -72,7 +71,6 @@ public class MongoDbToBigQueryOptions {
 
     @TemplateParameter.KmsEncryptionKey(
         order = 5,
-        groupName = "Source",
         optional = true,
         description = "Google Cloud KMS key",
         helpText =
@@ -116,7 +114,6 @@ public class MongoDbToBigQueryOptions {
   public interface JavascriptDocumentTransformerOptions extends PipelineOptions {
     @TemplateParameter.JavascriptUdfFile(
         order = 1,
-        groupName = "Source",
         optional = true,
         description = "JavaScript UDF path in Cloud Storage.",
         helpText =
@@ -128,7 +125,6 @@ public class MongoDbToBigQueryOptions {
 
     @TemplateParameter.Text(
         order = 2,
-        groupName = "Source",
         optional = true,
         description = "The name of the JavaScript function to call as your UDF.",
         helpText =

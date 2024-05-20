@@ -36,6 +36,7 @@ public final class BigQueryCommonOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
         description = "BigQuery output table",
+        groupName = "Target",
         helpText =
             "The BigQuery output table location to write the output to. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`."
                 + "Depending on the `createDisposition` specified, the output table might be created automatically using the user provided Avro schema.")

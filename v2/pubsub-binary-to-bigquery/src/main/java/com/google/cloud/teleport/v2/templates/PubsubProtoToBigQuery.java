@@ -161,7 +161,6 @@ public final class PubsubProtoToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 1,
-        groupName = "Source",
         description = "Cloud Storage Path to the Proto Schema File",
         helpText =
             "The Cloud Storage location of the self-contained proto schema file. For example,"
@@ -175,7 +174,6 @@ public final class PubsubProtoToBigQuery {
 
     @TemplateParameter.Text(
         order = 2,
-        groupName = "Source",
         regexes = {"^.+([a-zA-Z][a-zA-Z0-9_]+\\.?)+[a-zA-Z0-9_]$"},
         description = "Full Proto Message Name",
         helpText =
@@ -189,7 +187,6 @@ public final class PubsubProtoToBigQuery {
 
     @TemplateParameter.Boolean(
         order = 3,
-        groupName = "Source",
         optional = true,
         description = "Preserve Proto Field Names",
         helpText =
@@ -203,7 +200,6 @@ public final class PubsubProtoToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 4,
-        groupName = "Target",
         optional = true,
         description = "BigQuery Table Schema Path",
         helpText =
@@ -216,7 +212,6 @@ public final class PubsubProtoToBigQuery {
 
     @TemplateParameter.PubsubTopic(
         order = 5,
-        groupName = "Target",
         optional = true,
         description = "Pub/Sub output topic for UDF failures",
         helpText =
@@ -231,7 +226,6 @@ public final class PubsubProtoToBigQuery {
     // on when pipeline is running on ALO mode and using the Storage Write API
     @TemplateParameter.Boolean(
         order = 6,
-        groupName = "Target",
         optional = true,
         parentName = "useStorageWriteApi",
         parentTriggerValues = {"true"},

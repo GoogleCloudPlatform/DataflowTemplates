@@ -153,7 +153,6 @@ public class PubsubToAvro {
 
     @TemplateParameter.GcsWriteFolder(
         order = 6,
-        groupName = "Target",
         optional = false,
         description = "Temporary Avro write directory",
         helpText = "Directory for temporary Avro files.")

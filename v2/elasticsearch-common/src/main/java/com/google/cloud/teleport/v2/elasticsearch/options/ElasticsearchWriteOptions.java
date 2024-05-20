@@ -27,6 +27,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   @TemplateParameter.Text(
       order = 1,
+      groupName = "Target",
       description = "Elasticsearch URL or CloudID if using Elastic Cloud",
       helpText =
           "The Elasticsearch URL in the format https://hostname:[port]. If using Elastic Cloud, specify the CloudID.",

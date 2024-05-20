@@ -180,7 +180,6 @@ public class PubSubToRedis {
 
     @TemplateParameter.Boolean(
         order = 5,
-        groupName = "Target",
         optional = true,
         description = "Redis ssl enabled",
         helpText = "The Redis database SSL parameter.")
@@ -194,7 +193,6 @@ public class PubSubToRedis {
 
     @TemplateParameter.Enum(
         order = 6,
-        groupName = "Target",
         optional = true,
         enumOptions = {
           @TemplateEnumOption("STRING_SINK"),
@@ -213,7 +211,6 @@ public class PubSubToRedis {
 
     @TemplateParameter.Integer(
         order = 7,
-        groupName = "Target",
         optional = true,
         description = "Redis connection timeout in milliseconds",
         helpText = "The Redis connection timeout in milliseconds. ",
@@ -225,7 +222,6 @@ public class PubSubToRedis {
 
     @TemplateParameter.Long(
         order = 8,
-        groupName = "Target",
         optional = true,
         parentName = "redisSinkType",
         parentTriggerValues = {"HASH_SINK", "LOGGING_SINK"},

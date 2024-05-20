@@ -214,7 +214,6 @@ public class PubSubToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 4,
-        groupName = "Target",
         optional = true,
         description =
             "Table for messages failed to reach the output table (i.e., Deadletter table)",
@@ -230,7 +229,6 @@ public class PubSubToBigQuery {
 
     @TemplateParameter.Boolean(
         order = 5,
-        groupName = "Target",
         optional = true,
         parentName = "useStorageWriteApi",
         parentTriggerValues = {"true"},

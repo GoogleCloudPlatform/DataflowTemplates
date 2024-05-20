@@ -64,7 +64,6 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 4,
-      groupName = "Source",
       optional = true,
       description = "Spanner database role",
       helpText =
@@ -78,7 +77,6 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 5,
-      groupName = "Source",
       description = "Spanner metadata instance ID",
       helpText = "The Spanner instance to use for the change streams connector metadata table.")
   @Validation.Required
@@ -88,7 +86,6 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 6,
-      groupName = "Source",
       description = "Spanner metadata database",
       helpText = "The Spanner database to use for the change streams connector metadata table.")
   @Validation.Required
@@ -98,7 +95,6 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 7,
-      groupName = "Source",
       optional = true,
       description = "Cloud Spanner metadata table name",
       helpText =
@@ -122,7 +118,6 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.Enum(
       order = 9,
-      groupName = "Source",
       enumOptions = {
         @TemplateEnumOption("LOW"),
         @TemplateEnumOption("MEDIUM"),
@@ -139,7 +134,6 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 10,
-      groupName = "Source",
       optional = true,
       description = "Cloud Spanner Endpoint to call",
       helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
@@ -150,7 +144,6 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.DateTime(
       order = 11,
-      groupName = "Source",
       optional = true,
       description = "The timestamp to read change streams from",
       helpText =
@@ -164,7 +157,6 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.DateTime(
       order = 12,
-      groupName = "Source",
       optional = true,
       description = "The timestamp to read change streams to",
       helpText =
@@ -210,7 +202,6 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.GcsWriteFolder(
       order = 16,
-      groupName = "Target",
       optional = true,
       description = "Dead letter queue directory",
       helpText =
@@ -223,7 +214,6 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.Integer(
       order = 17,
-      groupName = "Target",
       optional = true,
       description = "Dead letter queue retry minutes",
       helpText =
@@ -250,7 +240,6 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.Boolean(
       order = 19,
-      groupName = "Target",
       optional = true,
       description = "Whether or not to disable retries for the DLQ",
       helpText = "Whether or not to disable retries for the DLQ")
