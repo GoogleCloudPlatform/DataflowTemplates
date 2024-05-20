@@ -98,13 +98,19 @@ public class JdbcSourceRowMapperTest {
             .append(testCols.stream().map(col -> "?").collect(Collectors.joining(", ")))
             .append(" )")
             .toString();
+    long maxNonNullValues = testCols.get(0).values().size();
     try (var statement = conn.prepareStatement(insertQuery)) {
-      for (int valueIdx = 0; valueIdx < testCols.get(0).values().size(); valueIdx++) {
+      for (int valueIdx = 0; valueIdx < maxNonNullValues; valueIdx++) {
         for (int colIdx = 0; colIdx < testCols.size(); colIdx++) {
           statement.setObject(colIdx + 1, testCols.get(colIdx).values().get(valueIdx));
         }
         statement.executeUpdate();
       }
+      // Add a null value for each column.
+      for (int colIdx = 0; colIdx < testCols.size(); colIdx++) {
+        statement.setObject(colIdx + 1, null);
+      }
+      statement.executeUpdate();
       conn.commit();
     }
 
@@ -127,8 +133,12 @@ public class JdbcSourceRowMapperTest {
         valueIdx++;
         var sourceRow = mapper.mapRow(rs);
         for (int colIdx = 0; colIdx < testCols.size(); colIdx++) {
-          assertThat(sourceRow.getPayload().get(colIdx))
-              .isEqualTo(testCols.get(colIdx).expectedFields().get(valueIdx));
+          if (valueIdx < maxNonNullValues) {
+            assertThat(sourceRow.getPayload().get(colIdx))
+                .isEqualTo(testCols.get(colIdx).expectedFields().get(valueIdx));
+          } else {
+            assertThat(sourceRow.getPayload().get(colIdx)).isNull();
+          }
         }
       }
     } catch (Exception e) {
@@ -229,7 +239,8 @@ public class JdbcSourceRowMapperTest {
                     new SourceColumnType("BINARY", new Long[] {4L}, null))
                 .withValue(
                     new byte[] {0x65, 0x66},
-                    new char[] {'6', '5', '6', '6', /*space-padding*/ '2', '0', '2', '0'})
+                    new String(
+                        new char[] {'6', '5', '6', '6', /*space-padding*/ '2', '0', '2', '0'}))
                 .build())
         .add(
             Col.builder(
@@ -240,7 +251,7 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Col.builder("blob_col", "BLOB", new SourceColumnType("BLOB", new Long[] {10L}, null))
-                .withValue(new byte[] {0x65, 0x66}, new char[] {'6', '5', '6', '6'})
+                .withValue(new byte[] {0x65, 0x66}, "6566")
                 .build())
         .add(
             Col.builder("bool_col", "BOOLEAN", new SourceColumnType("BOOL", new Long[] {}, null))
@@ -309,7 +320,7 @@ public class JdbcSourceRowMapperTest {
                     "long_blob_col",
                     "BLOB",
                     new SourceColumnType("LONGBLOB", new Long[] {10L}, null))
-                .withValue(new byte[] {0x65, 0x66}, new char[] {'6', '5', '6', '6'})
+                .withValue(new byte[] {0x65, 0x66}, "6566")
                 .build())
         .add(
             Col.builder(
@@ -323,7 +334,7 @@ public class JdbcSourceRowMapperTest {
                     "medium_blob_col",
                     "BLOB",
                     new SourceColumnType("MEDIUMBLOB", new Long[] {10L}, null))
-                .withValue(new byte[] {0x65, 0x66}, new char[] {'6', '5', '6', '6'})
+                .withValue(new byte[] {0x65, 0x66}, "6566")
                 .build())
         .add(
             Col.builder(
@@ -373,7 +384,7 @@ public class JdbcSourceRowMapperTest {
         .add(
             Col.builder(
                     "tiny_blob_col", "BLOB", new SourceColumnType("TINYBLOB", new Long[] {}, null))
-                .withValue(new byte[] {0x65, 0x66}, new char[] {'6', '5', '6', '6'})
+                .withValue(new byte[] {0x65, 0x66}, "6566")
                 .build())
         .add(
             Col.builder(
@@ -394,7 +405,7 @@ public class JdbcSourceRowMapperTest {
                     "varbinary_col",
                     "VARCHAR(4) FOR BIT DATA /*Derby mapping for Binary*/",
                     new SourceColumnType("BINARY", new Long[] {4L}, null))
-                .withValue(new byte[] {0x65, 0x66}, new char[] {'6', '5', '6', '6'})
+                .withValue(new byte[] {0x65, 0x66}, "6566")
                 .build())
         .add(
             Col.builder(
