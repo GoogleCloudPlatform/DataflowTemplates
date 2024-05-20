@@ -95,7 +95,7 @@ public class AvroTransform
     WriteResult writeResult;
 
     // TODO: Add support for error handler during BQ writes.
-    Write<TableRow> writeToBQ =
+    Write<TableRow> writeToBigQuery =
         BigQueryIO.<TableRow>write()
             .withSchema(
                 BigQueryAvroUtils.convertAvroSchemaToTableSchema(
@@ -107,7 +107,7 @@ public class AvroTransform
             .withExtendedErrorInfo();
 
     if (options.getOutputTableSpec() != null) {
-      writeToBQ = writeToBQ.to(options.getOutputTableSpec());
+      writeToBigQuery = writeToBigQuery.to(options.getOutputTableSpec());
     }
 
     PCollectionTuple genericRecords =
@@ -157,7 +157,7 @@ public class AvroTransform
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
                     TableRowJsonCoder.of()))
             .apply(ParDo.of(new FailsafeElementGetPayloadFn()))
-            .apply(writeToBQ);
+            .apply(writeToBigQuery);
 
     return writeResult;
   }
