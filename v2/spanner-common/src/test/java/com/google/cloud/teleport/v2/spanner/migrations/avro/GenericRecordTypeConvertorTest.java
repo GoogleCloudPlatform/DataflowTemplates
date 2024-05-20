@@ -30,7 +30,6 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.type.Type;
-import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -227,77 +226,54 @@ public class GenericRecordTypeConvertorTest {
 
   @Test
   public void testHandleRecordFieldType() {
-
-    String unsupportedSchemaJson =
-        "{\n"
-            + "  \"type\": \"record\",\n"
-            + "  \"name\": \"unsupportedName\",\n"
-            + "  \"fields\": [\n"
-            + "    {\"name\": \"months\",\n"
-            + "     \"type\": \"int\"}\n"
-            + "  ]}";
-
-    String avroSchemaJson =
-        "{\n"
-            + "  \"type\" : \"record\",\n"
-            + "  \"name\" : \"cart\",\n"
-            + "  \"namespace\" : \"com.test.schema\",\n"
-            + "  \"fields\" : [\n"
-            + "    {\n"
-            + "      \"name\": \"timestamp_with_time_zone_column\",\n"
-            + "      \"type\": "
-            + AvroTestingHelper.TIMESTAMPTZ_SCHEMA_JSON
-            + "\n"
-            + "    },\n"
-            + "    {\n"
-            + "      \"name\": \"date_time_column\",\n"
-            + "      \"type\": "
-            + AvroTestingHelper.DATETIME_SCHEMA_JSON
-            + "\n"
-            + "    },\n"
-            + "    {\n"
-            + "      \"name\": \"unsupported_type_column\",\n"
-            + "      \"type\": "
-            + unsupportedSchemaJson
-            + "\n"
-            + "    }\n"
-            + "  ]\n"
-            + "}";
-
-    Schema avroSchema = SchemaUtils.parseAvroSchema(avroSchemaJson);
-    GenericRecord genericRecord = new GenericData.Record(avroSchema);
-    genericRecord.put(
-        "timestamp_with_time_zone_column",
-        AvroTestingHelper.createTimestampTzRecord(1602599400056483L, 3600000));
-    genericRecord.put(
-        "date_time_column", AvroTestingHelper.createDatetimeRecord(738991, 48035000000L));
-    genericRecord.put(
-        "unsupported_type_column",
-        new GenericData.Record(SchemaUtils.parseAvroSchema(unsupportedSchemaJson)));
-
-    String col = "timestamp_with_time_zone_column";
+    // Tests for timestampTz type.
     String result =
         GenericRecordTypeConvertor.handleRecordFieldType(
-            col,
-            (GenericRecord) genericRecord.get(col),
-            genericRecord.getSchema().getField(col).schema());
+            "timestamp_with_time_zone_column",
+            AvroTestingHelper.createTimestampTzRecord(1602599400056483L, 3600000),
+            AvroTestingHelper.TIMESTAMPTZ_SCHEMA);
     assertEquals("Test timestampTz conversion: ", "2020-10-13T14:30:00.056483Z", result);
 
-    col = "date_time_column";
+    // Tests for datetime type.
     result =
         GenericRecordTypeConvertor.handleRecordFieldType(
-            col,
-            (GenericRecord) genericRecord.get(col),
-            genericRecord.getSchema().getField(col).schema());
+            "date_time_column",
+            AvroTestingHelper.createDatetimeRecord(738991, 48035000000L),
+            AvroTestingHelper.DATETIME_SCHEMA);
     assertEquals("Test datetime conversion: ", "3993-04-16T13:20:35Z", result);
 
+    // Tests for interval type.
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_column",
+            AvroTestingHelper.createIntervalRecord(0, 12, 3590123456L),
+            AvroTestingHelper.INTERVAL_SCHEMA);
+    assertEquals("Test #1 interval conversion:", "12:59:50.123456", result);
+
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_column",
+            AvroTestingHelper.createIntervalRecord(0, -12, 3590000000L),
+            AvroTestingHelper.INTERVAL_SCHEMA);
+    assertEquals("Test #2 interval conversion:", "-12:59:50", result);
+    // Test for interval type with micros greater than permitted limit.
+    assertThrows(
+        "Test #3 interval conversion:",
+        IllegalArgumentException.class,
+        () ->
+            GenericRecordTypeConvertor.handleRecordFieldType(
+                "interval_column",
+                AvroTestingHelper.createIntervalRecord(0, 12, 3600000000L),
+                AvroTestingHelper.INTERVAL_SCHEMA));
+
+    // Test for unsupported type.
     assertThrows(
         UnsupportedOperationException.class,
         () ->
             GenericRecordTypeConvertor.handleRecordFieldType(
                 "unsupported_type_column",
-                (GenericRecord) genericRecord.get("unsupported_type_column"),
-                genericRecord.getSchema().getField("unsupported_type_column").schema()));
+                new GenericData.Record(AvroTestingHelper.UNSUPPORTED_SCHEMA),
+                AvroTestingHelper.UNSUPPORTED_SCHEMA));
   }
 
   @Test
