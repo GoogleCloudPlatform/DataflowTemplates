@@ -95,10 +95,10 @@ public class GenericRecordTypeConvertor {
         throw e;
       } catch (Exception e) {
         LOG.error(
-            String.format("Unable to convert spanner value for spanner col: {}", spannerColName),
+            String.format("Unable to convert spanner value for spanner col: %s", spannerColName),
             e);
         throw new RuntimeException(
-            String.format("Unable to convert spanner value for spanner col: {}", spannerColName),
+            String.format("Unable to convert spanner value for spanner col: %s", spannerColName),
             e);
       }
     }
@@ -125,10 +125,8 @@ public class GenericRecordTypeConvertor {
       } else {
         throw new IllegalArgumentException(
             String.format(
-                "Unknown schema field type {} for field {} with value {}.",
-                fieldSchema,
-                recordColName,
-                recordValue));
+                "Unknown schema field type %s for field %s with value %s.",
+                fieldSchema, recordColName, recordValue));
       }
     }
     if (fieldSchema.getLogicalType() != null) {
@@ -240,9 +238,24 @@ public class GenericRecordTypeConvertor {
       totalMicros += Long.valueOf(element.get("time").toString());
       Instant timestamp = Instant.ofEpochSecond(TimeUnit.MICROSECONDS.toSeconds(totalMicros));
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-    }
-    // TODO: Add support for INTERVAL type when format is finalised.
-    else {
+    } else if (fieldSchema.getName().equals("interval")) {
+      // TODO: For MySQL, we ignore the months field. This might require source-specific handling
+      // when PG is supported.
+      String hours = element.get("hours").toString();
+      Long totalMicros = Long.valueOf(element.get("micros").toString());
+      if (totalMicros >= TimeUnit.MINUTES.toMicros(60)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "found duration %s for interval type, micros field. This field should be strictly less than 60 minutes.",
+                totalMicros));
+      }
+      String localTime =
+          LocalTime.ofNanoOfDay(TimeUnit.MICROSECONDS.toNanos(totalMicros))
+              .format(DateTimeFormatter.ISO_LOCAL_TIME);
+      // Handle hours separately since that can also be negative. We convert micros to localTime
+      // format (HH:MM:SS), then strip of HH:, which will always be "00:".
+      return String.format("%s:%s", hours, localTime.substring(3));
+    } else {
       throw new UnsupportedOperationException(
           String.format(
               "Unknown field schema %s for 'Record' type in %s for field %s",
