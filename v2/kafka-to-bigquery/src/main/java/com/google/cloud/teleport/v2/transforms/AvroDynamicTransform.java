@@ -65,6 +65,8 @@ public class AvroDynamicTransform
 
   private static final Logger LOG = LoggerFactory.getLogger(AvroDynamicTransform.class);
 
+  private static final String kafkaKeyField = "_key";
+
   private KafkaToBigQueryFlexOptions options;
 
   private AvroDynamicTransform(KafkaToBigQueryFlexOptions options) {
@@ -84,7 +86,8 @@ public class AvroDynamicTransform
                 BigQueryDynamicDestination.of(
                     options.getProject(),
                     options.getOutputDataset(),
-                    options.getBQTableNamePrefix()))
+                    options.getBqTableNamePrefix(),
+                    options.getPersistKafkaKey()))
             .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
             .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
             .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
@@ -102,7 +105,9 @@ public class AvroDynamicTransform
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
                     GenericRecordCoder.of()))
-            .apply("ConvertGenericRecordToTableRow", ParDo.of(new GenericRecordToTableRowFn()))
+            .apply(
+                "ConvertGenericRecordToTableRow",
+                ParDo.of(new GenericRecordToTableRowFn(options.getPersistKafkaKey())))
             .setCoder(
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
@@ -161,6 +166,12 @@ public class AvroDynamicTransform
           FailsafeElement<KafkaRecord<byte[], byte[]>, KV<GenericRecord, TableRow>>>
       implements Serializable {
 
+    private boolean persistKafkaKey;
+
+    GenericRecordToTableRowFn(boolean persistKafkaKey) {
+      this.persistKafkaKey = persistKafkaKey;
+    }
+
     @ProcessElement
     public void processElement(ProcessContext context) {
       FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord> element = context.element();
@@ -169,6 +180,9 @@ public class AvroDynamicTransform
               element.getPayload(),
               BigQueryUtils.toTableSchema(
                   AvroUtils.toBeamSchema(element.getPayload().getSchema())));
+      if (this.persistKafkaKey) {
+        row.set(kafkaKeyField, element.getOriginalPayload().getKV().getKey());
+      }
       context.output(
           FailsafeElement.of(element.getOriginalPayload(), KV.of(element.getPayload(), row)));
     }

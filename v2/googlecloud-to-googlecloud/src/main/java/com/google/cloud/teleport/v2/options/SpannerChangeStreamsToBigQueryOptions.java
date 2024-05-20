@@ -237,7 +237,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
       description = "Whether or not to disable retries for the DLQ",
       helpText = "Whether or not to disable retries for the DLQ")
   @Default.Boolean(false)
-  boolean getDisableDlqRetries();
+  Boolean getDisableDlqRetries();
 
-  void setDisableDlqRetries(boolean value);
+  void setDisableDlqRetries(Boolean value);
 }

@@ -88,21 +88,18 @@ public class GenericRecordTypeConvertor {
                 spannerColumnType);
         result.put(spannerColName, value);
       } catch (NullPointerException e) {
-        LOG.info("Unable to transform change event: {}", e.getMessage());
+        LOG.error("Unable to transform change event", e);
         throw e;
       } catch (IllegalArgumentException e) {
-        LOG.info("Unable to transform change event: {}", e.getMessage());
+        LOG.error("Unable to transform change event", e);
         throw e;
       } catch (Exception e) {
-        LOG.info(
-            "Unable to convert spanner value for spanner col: {}. {}",
-            spannerColName,
-            e.getMessage());
+        LOG.error(
+            String.format("Unable to convert spanner value for spanner col: {}", spannerColName),
+            e);
         throw new RuntimeException(
-            String.format(
-                "Unable to convert spanner value for spanner col: {}. {}",
-                spannerColName,
-                e.getMessage()));
+            String.format("Unable to convert spanner value for spanner col: {}", spannerColName),
+            e);
       }
     }
     return result;
@@ -123,9 +120,6 @@ public class GenericRecordTypeConvertor {
       LOG.debug("found union type: {}", types);
       // Schema types can only union with Type NULL. Any other UNION is unsupported.
       if (types.size() == 2 && types.stream().anyMatch(s -> s.getType().equals(Schema.Type.NULL))) {
-        if (recordValue == null) {
-          return null;
-        }
         fieldSchema =
             types.stream().filter(s -> !s.getType().equals(Schema.Type.NULL)).findFirst().get();
       } else {

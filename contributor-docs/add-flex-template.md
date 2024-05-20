@@ -1,4 +1,4 @@
-# Flex Template Tutorial
+# Adding a Flex Template
 
 ## Overview
 

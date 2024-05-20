@@ -82,13 +82,14 @@ public interface KafkaToBigQueryFlexOptions
 
   @TemplateParameter.Enum(
       order = 6,
+      name = "messageFormat",
       enumOptions = {
         @TemplateParameter.TemplateEnumOption("AVRO"),
         @TemplateParameter.TemplateEnumOption("JSON")
       },
       optional = true,
-      description = "The message format",
-      helpText = "The message format. Can be AVRO or JSON.")
+      description = "The Kafka message format",
+      helpText = "The Kafka message format. Can be AVRO or JSON.")
   @Default.String("AVRO")
   String getMessageFormat();
 
@@ -97,14 +98,17 @@ public interface KafkaToBigQueryFlexOptions
   // TODO: Sync the enum options with all the Kafka Templates.
   @TemplateParameter.Enum(
       order = 7,
+      name = "avroFormat",
+      parentName = "messageFormat",
+      parentTriggerValues = {"AVRO"},
       enumOptions = {
         @TemplateParameter.TemplateEnumOption("CONFLUENT_WIRE_FORMAT"),
         @TemplateParameter.TemplateEnumOption("NON_WIRE_FORMAT")
       },
       optional = true,
-      description = "Use the confluent wire format for avro messages.",
+      description = "The format to use for avro messages",
       helpText =
-          "This parameter is used to indicate if the avro messages use confluent wire format. Default is true (Confluent Wire Format)")
+          "This parameter is used to indicate what format to use for the avro messages. Default is CONFLUENT_WIRE_FORMAT.")
   @Default.String("CONFLUENT_WIRE_FORMAT")
   String getAvroFormat();
 
@@ -112,6 +116,8 @@ public interface KafkaToBigQueryFlexOptions
 
   @TemplateParameter.GcsReadFile(
       order = 8,
+      parentName = "messageFormat",
+      parentTriggerValues = {"AVRO"},
       optional = true,
       description = "Cloud Storage path to the Avro schema file",
       helpText = "Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.")
@@ -121,35 +127,54 @@ public interface KafkaToBigQueryFlexOptions
 
   @TemplateParameter.Text(
       order = 9,
+      parentName = "avroFormat",
+      parentTriggerValues = {"CONFLUENT_WIRE_FORMAT"},
       optional = true,
-      description = "Schema Registry Connection URL.",
+      description = "Schema Registry Connection URL",
       helpText =
           "Schema Registry Connection URL for a registry which supports Confluent wire format.")
   String getSchemaRegistryConnectionUrl();
 
   void setSchemaRegistryConnectionUrl(String schemaRegistryConnectionUrl);
 
+  @TemplateParameter.Boolean(
+      order = 11,
+      optional = true,
+      description = "Persist the Kafka Message Key to the BigQuery table",
+      helpText =
+          "If true, the pipeline will persist the Kafka message key in the BigQuery table, in a `_key` field of type `BYTES`. Default is false (Key is ignored).")
+  @Default.Boolean(false)
+  Boolean getPersistKafkaKey();
+
+  void setPersistKafkaKey(Boolean value);
+
   @TemplateParameter.Text(
       order = 11,
+      parentName = "avroFormat",
+      parentTriggerValues = {"CONFLUENT_WIRE_FORMAT"},
       optional = true,
       description = "BigQuery output dataset",
       helpText =
-          "BigQuery output dataset to write the output to."
-              + "Tables will be created dynamically in the dataset.")
+          "BigQuery output dataset to write the output to. Tables will be created dynamically in the dataset."
+              + " If the tables are created beforehand, the table names should follow the specified naming convention."
+              + " The name should be `bqTableNamePrefix + Avro Schema FullName` {@link org.apache.avro.Schema.getFullName},"
+              + " each word will be seperated by a hyphen '-'.")
   String getOutputDataset();
 
   void setOutputDataset(String value);
 
   @TemplateParameter.Text(
       order = 12,
+      parentName = "avroFormat",
+      parentTriggerValues = {"CONFLUENT_WIRE_FORMAT"},
       optional = true,
-      description = "Name prefix to be used while creating BigQuery output tables.",
+      description = "BigQuery Table naming prefix",
       helpText =
-          "Name prefix to be used while creating BigQuery output tables. Only applicable when using schema registry.")
+          "Naming prefix to be used while creating BigQuery output tables. Only applicable when using schema registry.")
   @Default.String("")
-  String getBQTableNamePrefix();
+  String getBqTableNamePrefix();
 
-  void setBQTableNamePrefix(String value);
+  void setBqTableNamePrefix(String value);
 
   @TemplateParameter.Boolean(
       order = 13,

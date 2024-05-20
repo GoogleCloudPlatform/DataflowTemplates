@@ -176,8 +176,6 @@ public class ExportPipeline {
     @TemplateParameter.Text(
         order = 10,
         optional = true,
-        parentName = "shouldExportRelatedTables",
-        parentTriggerValues = {"true"},
         regexes = {"^[a-zA-Z0-9_]+(,[a-zA-Z0-9_]+)*$"},
         description = "Cloud Spanner table name(s).",
         helpText =
