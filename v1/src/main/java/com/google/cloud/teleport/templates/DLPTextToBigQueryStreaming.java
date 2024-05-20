@@ -302,7 +302,7 @@ public class DLPTextToBigQueryStreaming {
         },
         description = "Cloud DLP deidentify template name",
         helpText =
-            "The sensitive data protection de-identification template to use for API requests, specified with the pattern projects/<PROJECT_ID>/deidentifyTemplates/<TEMPLATE_ID>.",
+            "The Sensitive Data Protection de-identification template to use for API requests, specified with the pattern projects/<PROJECT_ID>/deidentifyTemplates/<TEMPLATE_ID>.",
         example =
             "projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id")
     @Required
@@ -318,7 +318,7 @@ public class DLPTextToBigQueryStreaming {
         },
         description = "Cloud DLP inspect template name",
         helpText =
-            "The sensitive data protection inspection template to use for API requests, specified"
+            "The Sensitive Data Protection inspection template to use for API requests, specified"
                 + " with the pattern projects/<PROJECT_ID>/identifyTemplates/<TEMPLATE_ID>.",
         example =
             "projects/your-project-id/locations/global/inspectTemplates/generated_template_id")
@@ -344,7 +344,7 @@ public class DLPTextToBigQueryStreaming {
         regexes = {"^[^.]*$"},
         description = "BigQuery Dataset",
         helpText =
-            "The BigQuery dataset to use when sending tokenized results. The dataset must exist prior to execustion.")
+            "The BigQuery dataset to use when sending tokenized results. The dataset must exist prior to execution.")
     ValueProvider<String> getDatasetName();
 
     void setDatasetName(ValueProvider<String> value);
@@ -354,7 +354,7 @@ public class DLPTextToBigQueryStreaming {
         description = "Cloud DLP project ID",
         helpText =
             "The ID for the Google Cloud project that owns the DLP API resource. This project"
-                + " can be the same project that owns the sensitive data protection templates, or it"
+                + " can be the same project that owns the Sensitive Data Protection templates, or it"
                 + " can be a separate project.")
     ValueProvider<String> getDlpProjectId();
 

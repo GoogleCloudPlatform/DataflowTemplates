@@ -80,7 +80,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 6,
       optional = true,
       description = "Batch Size",
-      helpText = "The batch size, in number of documents. Defaults to 1000.")
+      helpText = "The batch size, in number of documents. Defaults to: 1000.")
   @Default.Long(1000)
   Long getBatchSize();
 
@@ -90,7 +90,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 7,
       optional = true,
       description = "Batch Size in Bytes",
-      helpText = "The batch size, in number of bytes. Default to 5242880 (5mb).")
+      helpText = "The batch size, in number of bytes. Defaults to: 5242880 (5mb).")
   @Default.Long(5242880)
   Long getBatchSizeBytes();
 
@@ -161,7 +161,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Cloud Storage path to JavaScript UDF source for _id metadata",
       helpText =
-          "The Cloud Storage path to the JavaScript UDF source for the function that specifies `_id` metadata be include with the document in bulk requests. Defaults to: none.")
+          "The Cloud Storage path to the JavaScript UDF source for the function that specifies `_id` metadata to include with the document in bulk requests. Defaults to: none.")
   String getJavaScriptIdFnGcsPath();
 
   void setJavaScriptIdFnGcsPath(String javaScriptTextTransformGcsPath);
