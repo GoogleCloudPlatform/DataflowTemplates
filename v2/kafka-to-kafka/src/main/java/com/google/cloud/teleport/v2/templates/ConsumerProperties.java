@@ -37,9 +37,15 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import org.apache.kafka.clients.CommonClientConfigs;
+
 import org.apache.kafka.common.config.SaslConfigs;
 
 import org.apache.kafka.common.config.SslConfigs;
+
+import org.apache.kafka.common.config.SslConfigs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * The {@link ConsumerProperties} is a utility class for constructing properties for Kafka

@@ -21,9 +21,11 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
+
 public interface KafkaToKafkaOptions extends PipelineOptions {
 
   @TemplateParameter.KafkaTopic(
+
       order = 1,
       groupName = "Source",
       optional = false,
@@ -45,24 +47,16 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
+
       helpText = "Type of authentication mechanism to use with the source Kafka.")
   @Validation.Required
   @Default.String(KafkaAuthenticationMethod.NONE)
+
   String getSourceAuthenticationMethod();
 
   void setSourceAuthenticationMethod(String sourceAuthenticationMethod);
 
-  @TemplateParameter.Text(
-      order = 3,
-      optional = true,
-      parentName = "sourceAuthenticationMethod",
-      parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
-      description = "Secret Version ID for Username",
-      helpText =
-          "Secret Version ID from the Secret Manager to get Kafka "
-              + KafkaAuthenticationMethod.SASL_PLAIN
-              + " username for source Kafka.")
-  void setKafkaOffset(String kafkaOffset);
+
 
   @TemplateParameter.Text(
       groupName = "Source",
@@ -75,7 +69,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
           "Secret Version ID from the secret manager to get Kafka SASL_PLAIN username for source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
+
   String getSourceUsernameSecretId();
 
   void setSourceUsernameSecretId(String sourceUsernameSecretId);
@@ -93,7 +87,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
               + " password for the source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
+
   String getSourcePasswordSecretId();
 
   void setSourcePasswordSecretId(String sourcePasswordSecretId);
@@ -232,7 +226,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
               + " username for the destination Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
+
   String getDestinationUsernameSecretId();
 
   void setDestinationUsernameSecretId(String destinationUsernameSecretId);
@@ -250,7 +244,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       description = "Secret Version ID of for Kafka password",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
+
   String getDestinationPasswordSecretId();
 
   void setDestinationPasswordSecretId(String destinationPasswordSecretId);

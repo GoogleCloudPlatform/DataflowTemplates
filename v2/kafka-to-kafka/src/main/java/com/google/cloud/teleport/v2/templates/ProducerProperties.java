@@ -85,5 +85,6 @@ final class ProducerProperties {
       throw new UnsupportedOperationException("Authentication method not supported: " + authMethod);
     }
     return properties;
+
   }
 }
