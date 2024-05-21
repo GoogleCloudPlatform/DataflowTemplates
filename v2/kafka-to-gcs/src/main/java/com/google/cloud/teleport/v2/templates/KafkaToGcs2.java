@@ -19,6 +19,7 @@ import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSAvro;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSParquet;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSText;
@@ -67,31 +68,10 @@ public class KafkaToGcs2 {
   public interface KafkaToGcsOptions
       extends PipelineOptions,
           DataflowPipelineOptions,
+          KafkaReadOptions,
           WriteToGCSText.WriteToGCSTextOptions,
           WriteToGCSParquet.WriteToGCSParquetOptions,
           WriteToGCSAvro.WriteToGCSAvroOptions {
-
-    @TemplateParameter.Text(
-        order = 1,
-        regexes = {"[,:a-zA-Z0-9._-]+"},
-        description = "Kafka Bootstrap Server list",
-        helpText = "Kafka Bootstrap Server list, separated by commas.",
-        example = "localhost:9092,127.0.0.1:9093")
-    @Validation.Required
-    String getBootstrapServers();
-
-    void setBootstrapServers(String bootstrapServers);
-
-    @TemplateParameter.Text(
-        order = 2,
-        regexes = {"[,a-zA-Z0-9._-]+"},
-        description = "Kafka topic(s) to read the input from",
-        helpText = "Kafka topic(s) to read the input from.",
-        example = "topic1,topic2")
-    @Validation.Required
-    String getInputTopics();
-
-    void setInputTopics(String inputTopics);
 
     @TemplateParameter.Enum(
         order = 3,
@@ -192,21 +172,6 @@ public class KafkaToGcs2 {
     String getPasswordSecretID();
 
     void setPasswordSecretID(String passwordSecretID);
-
-    @TemplateParameter.Enum(
-        order = 10,
-        description = "Set Kafka offset",
-        enumOptions = {
-          @TemplateParameter.TemplateEnumOption("latest"),
-          @TemplateParameter.TemplateEnumOption("earliest"),
-          @TemplateParameter.TemplateEnumOption("none")
-        },
-        helpText = "Set the Kafka offset to earliest or latest(default)",
-        optional = true)
-    @Default.String("latest")
-    String getOffset();
-
-    void setOffset(String offset);
   }
 
   /* Logger for class */
@@ -240,7 +205,7 @@ public class KafkaToGcs2 {
     PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord;
 
     List<String> topics =
-        new ArrayList<>(Arrays.asList(options.getInputTopics().split(topicsSplitDelimiter)));
+        new ArrayList<>(Arrays.asList(options.getKafkaReadTopics().split(topicsSplitDelimiter)));
 
     options.setStreaming(true);
 
@@ -259,7 +224,7 @@ public class KafkaToGcs2 {
     kafkaRecord =
         pipeline.apply(
             KafkaIO.<byte[], byte[]>read()
-                .withBootstrapServers(options.getBootstrapServers())
+                .withBootstrapServers(options.getReadBootstrapServers())
                 .withTopics(topics)
                 .withKeyDeserializerAndCoder(
                     ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
