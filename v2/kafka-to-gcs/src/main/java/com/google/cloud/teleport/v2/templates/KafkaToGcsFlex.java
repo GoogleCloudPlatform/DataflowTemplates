@@ -48,18 +48,22 @@ import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 
 @Template(
-    name = "Kafka_to_GCS_2",
+    name = "Kafka_to_Gcs_Flex",
     category = TemplateCategory.STREAMING,
     displayName = "Kafka to Cloud Storage",
     description =
         "A streaming pipeline which ingests data from Kafka and writes to a pre-existing Cloud"
             + " Storage bucket with a variety of file types.",
-    optionsClass = KafkaToGcs2.KafkaToGcsOptions.class,
-    flexContainerName = "kafka-to-gcs-2",
+    optionsClass = KafkaToGcsFlex.KafkaToGcsOptions.class,
+    flexContainerName = "kafka-to-gcs-flex",
     contactInformation = "https://cloud.google.com/support",
     hidden = true,
-    streaming = true)
-public class KafkaToGcs2 {
+    streaming = true,
+    requirements = {
+                "The output Google Cloud Storage directory must exist."
+    }
+)
+public class KafkaToGcsFlex {
   /**
    * The {@link KafkaToGcsOptions} interface provides the custom execution options passed by the
    * executor at the command-line.
