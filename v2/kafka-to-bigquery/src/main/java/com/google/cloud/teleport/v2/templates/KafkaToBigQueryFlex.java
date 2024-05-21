@@ -186,7 +186,7 @@ public class KafkaToBigQueryFlex {
      */
 
     ImmutableMap<String, Object> kafkaConfig =
-        ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getOffset());
+        ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
 
     if (options.getKafkaReadUsernameSecretId() != null
         && options.getKafkaReadPasswordSecretId() != null) {

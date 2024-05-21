@@ -59,10 +59,7 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
     contactInformation = "https://cloud.google.com/support",
     hidden = true,
     streaming = true,
-    requirements = {
-                "The output Google Cloud Storage directory must exist."
-    }
-)
+    requirements = {"The output Google Cloud Storage directory must exist."})
 public class KafkaToGcsFlex {
   /**
    * The {@link KafkaToGcsOptions} interface provides the custom execution options passed by the
@@ -214,7 +211,7 @@ public class KafkaToGcsFlex {
 
     Map<String, Object> kafkaConfig = new HashMap<>();
     // Set offset to either earliest or latest.
-    kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getOffset());
+    kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
     // Authenticate to Kafka only when user provides authentication params.
     if (useKafkaAuth) {
       String kafkaSaslPlainUserName = SecretManagerUtils.getSecret(options.getUserNameSecretID());

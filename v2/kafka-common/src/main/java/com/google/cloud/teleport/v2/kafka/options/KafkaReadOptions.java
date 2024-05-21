@@ -57,7 +57,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       helpText = "Set the Kafka offset to earliest or latest(default)",
       optional = true)
   @Default.String("latest")
-  String getOffset();
+  String getKafkaReadOffset();
 
   void setKafkaReadOffset(String value);
 
