@@ -56,7 +56,7 @@ public class JdbcValueMapper<T extends Object> implements Serializable {
    */
   public Object mapValue(ResultSet rs, String fieldName, Schema fieldSchema) throws SQLException {
     var extractedValue = valueExtractor.extract(rs, fieldName);
-    if (extractedValue == null) {
+    if (extractedValue == null || rs.wasNull()) {
       return null;
     }
     return valueMapper.map(extractedValue, fieldSchema);

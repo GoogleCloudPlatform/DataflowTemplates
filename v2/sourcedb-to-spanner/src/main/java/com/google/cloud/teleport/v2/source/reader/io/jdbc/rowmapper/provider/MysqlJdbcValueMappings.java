@@ -67,11 +67,11 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
 
   /* Hex Encoded string for bytes type. */
   private static final ResultSetValueMapper<byte[]> bytesToHexString =
-      (value, schema) -> Hex.encodeHex(value);
+      (value, schema) -> new String(Hex.encodeHex(value));
 
   /* Hex Encoded string for blob types. */
   private static final ResultSetValueMapper<Blob> blobToHexString =
-      (value, schema) -> Hex.encodeHex(value.getBytes(1, (int) value.length()));
+      (value, schema) -> new String(Hex.encodeHex(value.getBytes(1, (int) value.length())));
 
   /* Extract UTC Values for date and time related types */
   private static final Calendar utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
@@ -189,7 +189,7 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
           .put("TINYTEXT", Pair.of(ResultSet::getString, valuePassThrough))
           .put("VARBINARY", Pair.of(ResultSet::getBytes, bytesToHexString))
           .put("VARCHAR", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("YEAR", Pair.of(ResultSet::getLong, valuePassThrough))
+          .put("YEAR", Pair.of(ResultSet::getInt, valuePassThrough))
           .build()
           .entrySet()
           .stream()
