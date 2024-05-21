@@ -29,7 +29,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import org.apache.kafka.clients.CommonClientConfigs;
+<<<<<<< HEAD
 import org.apache.kafka.common.config.SaslConfigs;
+=======
+>>>>>>> c742ab1ce (testssl)
 import org.apache.kafka.common.config.SslConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,15 +48,14 @@ import org.slf4j.LoggerFactory;
  * Kafka destination.
  */
 final class ProducerProperties {
+
   private static final Logger LOGG = LoggerFactory.getLogger(ProducerProperties.class);
 
   private static void downloadFileFromGCS(String gcsUri, String localPath) throws IOException {
-    Storage storage =
-        StorageOptions.newBuilder()
-            .setProjectId("dataflow-testing-311516")
-            .setCredentials(GoogleCredentials.getApplicationDefault())
-            .build()
-            .getService(); // getDefaultInstance().getService();
+    Storage storage = StorageOptions.newBuilder().setProjectId("dataflow-testing-311516")
+        .setCredentials(
+            GoogleCredentials.getApplicationDefault()).build()
+        .getService();//getDefaultInstance().getService();
     Blob blob = storage.get("testbucketktm", gcsUri);
     ReadChannel readChannel = blob.reader();
     FileOutputStream fileOutputStream;
@@ -64,45 +66,60 @@ final class ProducerProperties {
     if (f.exists()) {
       LOG.debug("key exists");
 
-    } else {
-      LOG.error("key does not exist");
+
+        } else {
+          LOG.error("key does not exist");
+
+        }
+        // try (InputStream input = Channels.newInputStream(blob.reader());
+        //     FileOutputStream output = new FileOutputStream(localPath)) {
+        //   byte[] buffer = new byte[2048];
+        //   int bytesRead;
+        //   while ((bytesRead = input.read(buffer)) != -1) {
+        //     output.write(buffer, 0, bytesRead);
+        //   }
+        // } catch (Exception e) {
+        //   throw new RuntimeException("Failed to download file from GCS", e);
+        // }
+      }
+
+    public static ImmutableMap<String, Object> get (KafkaToKafkaOptions options) throws IOException
+    {
+      ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
+      properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "10.128.15.204:9092");
+      if (options.getDestinationAuthenticationMethod().equals("SSL")) {
+        properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
+        properties.put(
+            SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getDestinationKeystoreLocation());
+        properties.put(
+            SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, options.getDestinationTruststoreLocation());
+        properties.put(
+            SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
+            SecretManagerUtils.getSecret(options.getDestinationTruststorePasswordSecretId()));
+        properties.put(
+            SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
+            SecretManagerUtils.getSecret(options.getDestinationKeystorePasswordSecretId()));
+        properties.put(
+            SslConfigs.SSL_KEY_PASSWORD_CONFIG,
+            SecretManagerUtils.getSecret(options.getDestinationKeyPasswordSecretId()));
+        properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
+      }
+      if (options.getDestinationAuthenticationMethod().equals("SASL_PLAIN")) {
+        properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
+        //         Note: in other languages, set sasl.username and sasl.password instead.
+        properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
+        properties.put(
+            SaslConfigs.SASL_JAAS_CONFIG,
+            "org.apache.kafka.common.security.plain.PlainLoginModule required"
+                + " username=\'"
+                + SecretManagerUtils.getSecret(options.getDestinationUsernameSecretId())
+                + "\'"
+                + " password=\'"
+                + SecretManagerUtils.getSecret(options.getDestinationPasswordSecretId())
+                + "\';");
+
+      }
+      return properties.buildOrThrow();
     }
   }
 
-  public static ImmutableMap<String, Object> get(KafkaToKafkaOptions options) throws IOException {
-    ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
-    properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "10.128.15.204:9092");
-    if (options.getDestinationAuthenticationMethod().equals("SSL")) {
-      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
-      properties.put(
-          SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getDestinationKeystoreLocation());
-      properties.put(
-          SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, options.getDestinationTruststoreLocation());
-      properties.put(
-          SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
-          SecretManagerUtils.getSecret(options.getDestinationTruststorePasswordSecretId()));
-      properties.put(
-          SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
-          SecretManagerUtils.getSecret(options.getDestinationKeystorePasswordSecretId()));
-      properties.put(
-          SslConfigs.SSL_KEY_PASSWORD_CONFIG,
-          SecretManagerUtils.getSecret(options.getDestinationKeyPasswordSecretId()));
-      properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
-    }
-    if (options.getDestinationAuthenticationMethod().equals("SASL_PLAIN")) {
-      properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
-      //         Note: in other languages, set sasl.username and sasl.password instead.
-      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
-      properties.put(
-          SaslConfigs.SASL_JAAS_CONFIG,
-          "org.apache.kafka.common.security.plain.PlainLoginModule required"
-              + " username=\'"
-              + SecretManagerUtils.getSecret(options.getDestinationUsernameSecretId())
-              + "\'"
-              + " password=\'"
-              + SecretManagerUtils.getSecret(options.getDestinationPasswordSecretId())
-              + "\';");
-    }
-    return properties.buildOrThrow();
-  }
-}

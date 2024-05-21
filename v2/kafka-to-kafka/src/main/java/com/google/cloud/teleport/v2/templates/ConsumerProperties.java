@@ -15,14 +15,29 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.teleport.v2.common.CommonTemplateJvmInitializer;
+
+import static org.apache.hadoop.hdfs.DFSInotifyEventInputStream.LOG;
+
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.ReadChannel;
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
+
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.collect.ImmutableMap;
+
 import java.io.IOException;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import org.apache.kafka.clients.CommonClientConfigs;
+
 import org.apache.kafka.common.config.SslConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,15 +55,10 @@ import org.slf4j.LoggerFactory;
 final class ConsumerProperties {
 
   private static final Logger LOGG = LoggerFactory.getLogger(ConsumerProperties.class);
+  private static void downloadFileFromGCS(String keystores, String localPath) throws IOException {
 
   public static ImmutableMap<String, Object> get(KafkaToKafkaOptions options) throws IOException {
     ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
-    String keystoresecretPath =
-        CommonTemplateJvmInitializer.saveSecretPayloadToFile(
-            "projects/812717702523/secrets/keystoressl/versions/1");
-    String truststoresecretPath =
-        CommonTemplateJvmInitializer.saveSecretPayloadToFile(
-            "projects/812717702523/secrets/truststore/versions/1");
     properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "10.128.15.204:9092");
     if (options.getSourceAuthenticationMethod().equals("SSL")) {
       properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");

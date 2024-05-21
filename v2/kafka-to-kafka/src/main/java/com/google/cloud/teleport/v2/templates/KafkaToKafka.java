@@ -24,13 +24,17 @@ import com.google.cloud.teleport.v2.kafka.utils.SslConsumerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.utils.SslProducerFactoryFn;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import java.io.IOException;
+
 import java.util.Objects;
+
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.slf4j.Logger;
@@ -149,4 +153,3 @@ public class KafkaToKafka {
     return pipeline.run();
   }
 }
-

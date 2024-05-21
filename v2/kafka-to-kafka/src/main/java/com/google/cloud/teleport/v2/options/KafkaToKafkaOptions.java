@@ -19,6 +19,7 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
+
 public interface KafkaToKafkaOptions extends PipelineOptions {
 
   @TemplateParameter.KafkaTopic(
@@ -79,7 +80,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
           "Secret version id from the secret manager to get Kafka SASL_PLAIN username for source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
+
   String getSourceUsernameSecretId();
 
   void setSourceUsernameSecretId(String sourceUsernameSecretId);
@@ -95,7 +96,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
           "Secret version id from the secret manager to get Kafka SASL_PLAIN password for the source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
+
   String getSourcePasswordSecretId();
 
   void setSourcePasswordSecretId(String sourcePasswordSecretId);
@@ -213,7 +214,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       helpText = "Secret version id of Kafka SASL_PLAIN username.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
+
   String getDestinationUsernameSecretId();
 
   void setDestinationUsernameSecretId(String destinationUsernameSecretId);
@@ -230,7 +231,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
           " Secret version id from the secret manager to get Kafka SASL_PLAIN password for the destination Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
+
   String getDestinationPasswordSecretId();
 
   void setDestinationPasswordSecretId(String destinationPasswordSecretId);
