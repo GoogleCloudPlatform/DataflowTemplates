@@ -18,10 +18,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **bigtableProjectId** : The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to.
-* **bigtableInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableTableId** : The ID of the Cloud Bigtable table to write.
-* **inputFilePattern** : The Cloud Storage location of the files you'd like to process. (Example: gs://your-bucket/your-files/*.avro).
+* **bigtableProjectId** : The ID of the Google Cloud project that contains the Bigtable instance that you want to write data to.
+* **bigtableInstanceId** : The ID of the Bigtable instance that contains the table.
+* **bigtableTableId** : The ID of the Bigtable table to import.
+* **inputFilePattern** : The Cloud Storage path pattern where data is located. (Example: gs://<BUCKET>/<FOLDER>/<PREFIX>*).
 
 ### Optional parameters
 
@@ -205,7 +205,7 @@ resource "google_dataflow_job" "gcs_avro_to_cloud_bigtable" {
     bigtableProjectId = "<bigtableProjectId>"
     bigtableInstanceId = "<bigtableInstanceId>"
     bigtableTableId = "<bigtableTableId>"
-    inputFilePattern = "gs://your-bucket/your-files/*.avro"
+    inputFilePattern = "gs://<BUCKET>/<FOLDER>/<PREFIX>*"
     # splitLargeRows = "<splitLargeRows>"
   }
 }

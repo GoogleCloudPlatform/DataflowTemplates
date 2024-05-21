@@ -20,18 +20,18 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **outputDirectory** : The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path).
+* **outputDirectory** : The path and filename prefix to write write output files to. This value must end in a slash. (Example: gs://your-bucket/your-path).
 
 ### Optional parameters
 
-* **inputTopic** : Pub/Sub topic to read the input from, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
-* **inputSubscription** : Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
+* **inputTopic** : The Pub/Sub topic to read the input from. The topic name should be in the format `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`. If this parameter is provided don't use `inputSubscription`. (Example: projects/your-project-id/topics/your-topic-name).
+* **inputSubscription** : The Pub/Sub subscription to read the input from. The subscription name uses the format `projects/<PROJECT_ID>/subscription/<SUBSCRIPTION_NAME>`. If this parameter is provided, don't use `inputTopic`. (Example: projects/your-project-id/subscriptions/your-subscription-name).
 * **userTempLocation** : The user provided directory to output temporary files to. Must end with a slash.
 * **outputFilenamePrefix** : The prefix to place on each windowed file. (Example: output-). Defaults to: output.
-* **outputFilenameSuffix** : The suffix to place on each windowed file. Typically a file extension such as .txt or .csv. (Example: .txt). Defaults to empty.
-* **outputShardTemplate** : Defines the unique/dynamic portion of each windowed file. Recommended: use the default (W-P-SS-of-NN). At runtime, 'W' is replaced with the window date range and 'P' is replaced with the pane info. Repeating sequences of the letters 'S' or 'N' are replaced with the shard number and number of shards respectively. The pipeline assumes a single file output and will produce the text of '00-of-01' by default.
+* **outputFilenameSuffix** : The suffix to place on each windowed file, typically a file extension such as `.txt` or `.csv`. (Example: .txt). Defaults to empty.
+* **outputShardTemplate** : The shard template defines the dynamic portion of each windowed file. By default, the pipeline uses a single shard for output to the file system within each window. This means that all data outputs into a single file per window. The `outputShardTemplate` defaults to `W-P-SS-of-NN` where `W` is the window date range, `P` is the pane info, `S` is the shard number, and `N` is the number of shards. In case of a single file, the `SS-of-NN` portion of the `outputShardTemplate` is `00-of-01`.
 * **numShards** : The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 0.
-* **windowDuration** : The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 5m.
+* **windowDuration** : The window duration is the interval in which data is written to the output directory. Configure the duration based on the pipeline's throughput. For example, a higher throughput might require smaller window sizes so that the data fits into memory. Defaults to 5m (5 minutes), with a minimum of 1s (1 second). Allowed formats are: [int]s (for seconds, example: 5s), [int]m (for minutes, example: 12m), [int]h (for hours, example: 2h). (Example: 5m).
 * **yearPattern** : Pattern for formatting the year. Must be one or more of 'y' or 'Y'. Case makes no difference in the year. The pattern can be optionally wrapped by characters that aren't either alphanumeric or the directory ('/') character. Defaults to 'YYYY'.
 * **monthPattern** : Pattern for formatting the month. Must be one or more of the 'M' character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory ('/') character. Defaults to 'MM'.
 * **dayPattern** : Pattern for formatting the day. Must be one or more of 'd' for day of month or 'D' for day of year. Case makes no difference in the year. The pattern can be optionally wrapped by characters that aren't either alphanumeric or the directory ('/') character. Defaults to 'dd'.

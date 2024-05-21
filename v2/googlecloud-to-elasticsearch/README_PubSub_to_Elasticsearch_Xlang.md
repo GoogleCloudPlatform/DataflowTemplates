@@ -1,23 +1,26 @@
 
-Cloud Storage to Elasticsearch template
+Pub/Sub to Elasticsearch With Python UDFs template
 ---
-The Cloud Storage to Elasticsearch template is a batch pipeline that reads data
-from CSV files stored in a Cloud Storage bucket and writes the data into
-Elasticsearch as JSON documents.
+The Pub/Sub to Elasticsearch template is a streaming pipeline that reads messages
+from a Pub/Sub subscription, executes a Python user-defined function (UDF), and
+writes them to Elasticsearch as documents. The Dataflow template uses
+Elasticsearch's <a
+href="https://www.elastic.co/guide/en/elasticsearch/reference/master/data-streams.html">data
+streams</a> feature to store time series data across multiple indices while
+giving you a single named resource for requests. Data streams are well-suited for
+logs, metrics, traces, and other continuously generated data stored in Pub/Sub.
 
-If the CSV files contain headers, set the <code>containsHeaders</code> template
-parameter to <code>true</code>.
-Otherwise, create a JSON schema file that describes the data. Specify the Cloud
-Storage URI of the schema file in the jsonSchemaPath template parameter. The
-following example shows a JSON schema:
-<code>[{"name":"id", "type":"text"}, {"name":"age", "type":"integer"}]</code>
-Alternatively, you can provide a Javascript user-defined function (UDF) that
-parses the CSV text and outputs Elasticsearch documents.
+The template creates a datastream named <code>logs-gcp.DATASET-NAMESPACE</code>,
+where:
+- <code>DATASET</code> is the value of the <code>dataset</code> template
+parameter, or <code>pubsub</code> if not specified.
+- <code>NAMESPACE</code> is the value of the <code>namespace</code> template
+parameter, or <code>default</code> if not specified.
 
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-elasticsearch)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_to_Elasticsearch).
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-elasticsearch)
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=PubSub_to_Elasticsearch_Xlang).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -27,22 +30,18 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **deadletterTable** : The BigQuery dead-letter table to send failed inserts to. (Example: your-project:your-dataset.your-table-name).
-* **inputFileSpec** : The Cloud Storage file pattern to search for CSV files. Example: gs://mybucket/test-*.csv.
+* **inputSubscription** : Pub/Sub subscription to consume the input from. Name should be in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
+* **errorOutputTopic** : Pub/Sub output topic for publishing failed records in the format of 'projects/your-project-id/topics/your-topic-name'.
 * **connectionUrl** : The Elasticsearch URL in the format https://hostname:[port]. If using Elastic Cloud, specify the CloudID. (Example: https://elasticsearch-host:9200).
 * **apiKey** : The Base64-encoded API key to use for authentication.
-* **index** : The Elasticsearch index that the requests are issued to, such as `my-index.` (Example: my-index).
 
 ### Optional parameters
 
-* **inputFormat** : Input file format. Default is: CSV.
-* **containsHeaders** : Input CSV files contain a header record (true/false). Only required if reading CSV files. Defaults to: false.
-* **delimiter** : The column delimiter of the input text files. Default: use delimiter provided in csvFormat (Example: ,).
-* **csvFormat** : CSV format specification to use for parsing records. Default is: Default. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html.
-* **jsonSchemaPath** : The path to the JSON schema. Defaults to: null. (Example: gs://path/to/schema).
-* **largeNumFiles** : Set to true if number of files is in the tens of thousands. Defaults to: false.
-* **csvFileEncoding** : The CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, and UTF-16. Defaults to: UTF-8.
-* **logDetailedCsvConversionErrors** : Set to true to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords). Default: false.
+* **dataset** : The type of logs sent using Pub/Sub, for which we have an out-of-the-box dashboard. Known log types values are audit, vpcflow and firewall. Default 'pubsub'.
+* **namespace** : An arbitrary grouping, such as an environment (dev, prod, or qa), a team, or a strategic business unit. Default: 'default'.
+* **elasticsearchTemplateVersion** : Dataflow Template Version Identifier, usually defined by Google Cloud. Defaults to: 1.0.0.
+* **pythonExternalTextTransformGcsPath** : The Cloud Storage path pattern for the Python code containing your user-defined functions. (Example: gs://your-bucket/your-function.py).
+* **pythonExternalTextTransformFunctionName** : The name of the function to call from your Python file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
 * **elasticsearchUsername** : The Elasticsearch username to authenticate with. If specified, the value of 'apiKey' is ignored.
 * **elasticsearchPassword** : The Elasticsearch password to authenticate with. If specified, the value of 'apiKey' is ignored.
 * **batchSize** : The batch size in number of documents. Defaults to: 1000.
@@ -66,19 +65,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **apiKeyKMSEncryptionKey** : The Cloud KMS key to decrypt the API key. This parameter must be provided if the apiKeySource is set to KMS. If this parameter is provided, apiKey string should be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. The Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).
 * **apiKeySecretId** : Secret Manager secret ID for the apiKey. This parameter should be provided if the apiKeySource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
 * **apiKeySource** : Source of the API key. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter must be provided if secret manager or KMS is used. If apiKeySource is set to KMS, apiKeyKMSEncryptionKey and encrypted apiKey must be provided. If apiKeySource is set to SECRET_MANAGER, apiKeySecretId must be provided. If apiKeySource is set to PLAINTEXT, apiKey must be provided. Defaults to: PLAINTEXT.
-* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js).
-* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
 
-
-## User-Defined functions (UDFs)
-
-The Cloud Storage to Elasticsearch Template supports User-Defined functions (UDFs).
-UDFs allow you to customize functionality by providing a JavaScript function
-without having to maintain or build the entire template code.
-
-Check [Create user-defined functions for Dataflow templates](https://cloud.google.com/dataflow/docs/guides/templates/create-template-udf)
-and [Using UDFs](https://github.com/GoogleCloudPlatform/DataflowTemplates#using-udfs)
-for more information about how to create and test those functions.
 
 
 ## Getting Started
@@ -94,7 +81,7 @@ for more information about how to create and test those functions.
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-elasticsearch/src/main/java/com/google/cloud/teleport/v2/elasticsearch/templates/GCSToElasticsearch.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-elasticsearch/src/main/java/com/google/cloud/teleport/v2/elasticsearch/templates/PubSubToElasticsearch.java)
 
 ### Templates Plugin
 
@@ -124,7 +111,7 @@ mvn clean package -PtemplatesStage  \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
--DtemplateName="GCS_to_Elasticsearch" \
+-DtemplateName="PubSub_to_Elasticsearch_Xlang" \
 -f v2/googlecloud-to-elasticsearch
 ```
 
@@ -133,7 +120,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/GCS_to_Elasticsearch
+Flex Template was staged! gs://<bucket-name>/templates/flex/PubSub_to_Elasticsearch_Xlang
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -153,24 +140,20 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/GCS_to_Elasticsearch"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_to_Elasticsearch_Xlang"
 
 ### Required
-export DEADLETTER_TABLE=<deadletterTable>
-export INPUT_FILE_SPEC=<inputFileSpec>
+export INPUT_SUBSCRIPTION=<inputSubscription>
+export ERROR_OUTPUT_TOPIC=<errorOutputTopic>
 export CONNECTION_URL=<connectionUrl>
 export API_KEY=<apiKey>
-export INDEX=<index>
 
 ### Optional
-export INPUT_FORMAT=csv
-export CONTAINS_HEADERS=false
-export DELIMITER=<delimiter>
-export CSV_FORMAT=Default
-export JSON_SCHEMA_PATH=<jsonSchemaPath>
-export LARGE_NUM_FILES=false
-export CSV_FILE_ENCODING=UTF-8
-export LOG_DETAILED_CSV_CONVERSION_ERRORS=false
+export DATASET=PUBSUB
+export NAMESPACE=default
+export ELASTICSEARCH_TEMPLATE_VERSION=1.0.0
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH=<pythonExternalTextTransformGcsPath>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME=<pythonExternalTextTransformFunctionName>
 export ELASTICSEARCH_USERNAME=<elasticsearchUsername>
 export ELASTICSEARCH_PASSWORD=<elasticsearchPassword>
 export BATCH_SIZE=1000
@@ -194,28 +177,22 @@ export DISABLE_CERTIFICATE_VALIDATION=false
 export API_KEY_KMSENCRYPTION_KEY=<apiKeyKMSEncryptionKey>
 export API_KEY_SECRET_ID=<apiKeySecretId>
 export API_KEY_SOURCE=PLAINTEXT
-export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
-export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 
-gcloud dataflow flex-template run "gcs-to-elasticsearch-job" \
+gcloud dataflow flex-template run "pubsub-to-elasticsearch-xlang-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "deadletterTable=$DEADLETTER_TABLE" \
-  --parameters "inputFormat=$INPUT_FORMAT" \
-  --parameters "inputFileSpec=$INPUT_FILE_SPEC" \
-  --parameters "containsHeaders=$CONTAINS_HEADERS" \
-  --parameters "delimiter=$DELIMITER" \
-  --parameters "csvFormat=$CSV_FORMAT" \
-  --parameters "jsonSchemaPath=$JSON_SCHEMA_PATH" \
-  --parameters "largeNumFiles=$LARGE_NUM_FILES" \
-  --parameters "csvFileEncoding=$CSV_FILE_ENCODING" \
-  --parameters "logDetailedCsvConversionErrors=$LOG_DETAILED_CSV_CONVERSION_ERRORS" \
+  --parameters "inputSubscription=$INPUT_SUBSCRIPTION" \
+  --parameters "dataset=$DATASET" \
+  --parameters "namespace=$NAMESPACE" \
+  --parameters "errorOutputTopic=$ERROR_OUTPUT_TOPIC" \
+  --parameters "elasticsearchTemplateVersion=$ELASTICSEARCH_TEMPLATE_VERSION" \
+  --parameters "pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH" \
+  --parameters "pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME" \
   --parameters "connectionUrl=$CONNECTION_URL" \
   --parameters "apiKey=$API_KEY" \
   --parameters "elasticsearchUsername=$ELASTICSEARCH_USERNAME" \
   --parameters "elasticsearchPassword=$ELASTICSEARCH_PASSWORD" \
-  --parameters "index=$INDEX" \
   --parameters "batchSize=$BATCH_SIZE" \
   --parameters "batchSizeBytes=$BATCH_SIZE_BYTES" \
   --parameters "maxRetryAttempts=$MAX_RETRY_ATTEMPTS" \
@@ -236,9 +213,7 @@ gcloud dataflow flex-template run "gcs-to-elasticsearch-job" \
   --parameters "disableCertificateValidation=$DISABLE_CERTIFICATE_VALIDATION" \
   --parameters "apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY" \
   --parameters "apiKeySecretId=$API_KEY_SECRET_ID" \
-  --parameters "apiKeySource=$API_KEY_SOURCE" \
-  --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
-  --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME"
+  --parameters "apiKeySource=$API_KEY_SOURCE"
 ```
 
 For more information about the command, please check:
@@ -257,21 +232,17 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export DEADLETTER_TABLE=<deadletterTable>
-export INPUT_FILE_SPEC=<inputFileSpec>
+export INPUT_SUBSCRIPTION=<inputSubscription>
+export ERROR_OUTPUT_TOPIC=<errorOutputTopic>
 export CONNECTION_URL=<connectionUrl>
 export API_KEY=<apiKey>
-export INDEX=<index>
 
 ### Optional
-export INPUT_FORMAT=csv
-export CONTAINS_HEADERS=false
-export DELIMITER=<delimiter>
-export CSV_FORMAT=Default
-export JSON_SCHEMA_PATH=<jsonSchemaPath>
-export LARGE_NUM_FILES=false
-export CSV_FILE_ENCODING=UTF-8
-export LOG_DETAILED_CSV_CONVERSION_ERRORS=false
+export DATASET=PUBSUB
+export NAMESPACE=default
+export ELASTICSEARCH_TEMPLATE_VERSION=1.0.0
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH=<pythonExternalTextTransformGcsPath>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME=<pythonExternalTextTransformFunctionName>
 export ELASTICSEARCH_USERNAME=<elasticsearchUsername>
 export ELASTICSEARCH_PASSWORD=<elasticsearchPassword>
 export BATCH_SIZE=1000
@@ -295,17 +266,15 @@ export DISABLE_CERTIFICATE_VALIDATION=false
 export API_KEY_KMSENCRYPTION_KEY=<apiKeyKMSEncryptionKey>
 export API_KEY_SECRET_ID=<apiKeySecretId>
 export API_KEY_SOURCE=PLAINTEXT
-export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
-export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="gcs-to-elasticsearch-job" \
--DtemplateName="GCS_to_Elasticsearch" \
--Dparameters="deadletterTable=$DEADLETTER_TABLE,inputFormat=$INPUT_FORMAT,inputFileSpec=$INPUT_FILE_SPEC,containsHeaders=$CONTAINS_HEADERS,delimiter=$DELIMITER,csvFormat=$CSV_FORMAT,jsonSchemaPath=$JSON_SCHEMA_PATH,largeNumFiles=$LARGE_NUM_FILES,csvFileEncoding=$CSV_FILE_ENCODING,logDetailedCsvConversionErrors=$LOG_DETAILED_CSV_CONVERSION_ERRORS,connectionUrl=$CONNECTION_URL,apiKey=$API_KEY,elasticsearchUsername=$ELASTICSEARCH_USERNAME,elasticsearchPassword=$ELASTICSEARCH_PASSWORD,index=$INDEX,batchSize=$BATCH_SIZE,batchSizeBytes=$BATCH_SIZE_BYTES,maxRetryAttempts=$MAX_RETRY_ATTEMPTS,maxRetryDuration=$MAX_RETRY_DURATION,propertyAsIndex=$PROPERTY_AS_INDEX,javaScriptIndexFnGcsPath=$JAVA_SCRIPT_INDEX_FN_GCS_PATH,javaScriptIndexFnName=$JAVA_SCRIPT_INDEX_FN_NAME,propertyAsId=$PROPERTY_AS_ID,javaScriptIdFnGcsPath=$JAVA_SCRIPT_ID_FN_GCS_PATH,javaScriptIdFnName=$JAVA_SCRIPT_ID_FN_NAME,javaScriptTypeFnGcsPath=$JAVA_SCRIPT_TYPE_FN_GCS_PATH,javaScriptTypeFnName=$JAVA_SCRIPT_TYPE_FN_NAME,javaScriptIsDeleteFnGcsPath=$JAVA_SCRIPT_IS_DELETE_FN_GCS_PATH,javaScriptIsDeleteFnName=$JAVA_SCRIPT_IS_DELETE_FN_NAME,usePartialUpdate=$USE_PARTIAL_UPDATE,bulkInsertMethod=$BULK_INSERT_METHOD,trustSelfSignedCerts=$TRUST_SELF_SIGNED_CERTS,disableCertificateValidation=$DISABLE_CERTIFICATE_VALIDATION,apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY,apiKeySecretId=$API_KEY_SECRET_ID,apiKeySource=$API_KEY_SOURCE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
+-DjobName="pubsub-to-elasticsearch-xlang-job" \
+-DtemplateName="PubSub_to_Elasticsearch_Xlang" \
+-Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,dataset=$DATASET,namespace=$NAMESPACE,errorOutputTopic=$ERROR_OUTPUT_TOPIC,elasticsearchTemplateVersion=$ELASTICSEARCH_TEMPLATE_VERSION,pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH,pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME,connectionUrl=$CONNECTION_URL,apiKey=$API_KEY,elasticsearchUsername=$ELASTICSEARCH_USERNAME,elasticsearchPassword=$ELASTICSEARCH_PASSWORD,batchSize=$BATCH_SIZE,batchSizeBytes=$BATCH_SIZE_BYTES,maxRetryAttempts=$MAX_RETRY_ATTEMPTS,maxRetryDuration=$MAX_RETRY_DURATION,propertyAsIndex=$PROPERTY_AS_INDEX,javaScriptIndexFnGcsPath=$JAVA_SCRIPT_INDEX_FN_GCS_PATH,javaScriptIndexFnName=$JAVA_SCRIPT_INDEX_FN_NAME,propertyAsId=$PROPERTY_AS_ID,javaScriptIdFnGcsPath=$JAVA_SCRIPT_ID_FN_GCS_PATH,javaScriptIdFnName=$JAVA_SCRIPT_ID_FN_NAME,javaScriptTypeFnGcsPath=$JAVA_SCRIPT_TYPE_FN_GCS_PATH,javaScriptTypeFnName=$JAVA_SCRIPT_TYPE_FN_NAME,javaScriptIsDeleteFnGcsPath=$JAVA_SCRIPT_IS_DELETE_FN_GCS_PATH,javaScriptIsDeleteFnName=$JAVA_SCRIPT_IS_DELETE_FN_NAME,usePartialUpdate=$USE_PARTIAL_UPDATE,bulkInsertMethod=$BULK_INSERT_METHOD,trustSelfSignedCerts=$TRUST_SELF_SIGNED_CERTS,disableCertificateValidation=$DISABLE_CERTIFICATE_VALIDATION,apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY,apiKeySecretId=$API_KEY_SECRET_ID,apiKeySource=$API_KEY_SOURCE" \
 -f v2/googlecloud-to-elasticsearch
 ```
 
@@ -323,7 +292,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd v2/googlecloud-to-elasticsearch/terraform/GCS_to_Elasticsearch
+cd v2/googlecloud-to-elasticsearch/terraform/PubSub_to_Elasticsearch_Xlang
 terraform init
 terraform apply
 ```
@@ -343,26 +312,22 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "gcs_to_elasticsearch" {
+resource "google_dataflow_flex_template_job" "pubsub_to_elasticsearch_xlang" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/GCS_to_Elasticsearch"
-  name              = "gcs-to-elasticsearch"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PubSub_to_Elasticsearch_Xlang"
+  name              = "pubsub-to-elasticsearch-xlang"
   region            = var.region
   parameters        = {
-    deadletterTable = "your-project:your-dataset.your-table-name"
-    inputFileSpec = "<inputFileSpec>"
+    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
+    errorOutputTopic = "<errorOutputTopic>"
     connectionUrl = "https://elasticsearch-host:9200"
     apiKey = "<apiKey>"
-    index = "my-index"
-    # inputFormat = "csv"
-    # containsHeaders = "false"
-    # delimiter = ","
-    # csvFormat = "Default"
-    # jsonSchemaPath = "gs://path/to/schema"
-    # largeNumFiles = "false"
-    # csvFileEncoding = "UTF-8"
-    # logDetailedCsvConversionErrors = "false"
+    # dataset = "PUBSUB"
+    # namespace = "default"
+    # elasticsearchTemplateVersion = "1.0.0"
+    # pythonExternalTextTransformGcsPath = "gs://your-bucket/your-function.py"
+    # pythonExternalTextTransformFunctionName = "'transform' or 'transform_udf1'"
     # elasticsearchUsername = "<elasticsearchUsername>"
     # elasticsearchPassword = "<elasticsearchPassword>"
     # batchSize = "1000"
@@ -386,8 +351,6 @@ resource "google_dataflow_flex_template_job" "gcs_to_elasticsearch" {
     # apiKeyKMSEncryptionKey = "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name"
     # apiKeySecretId = "projects/your-project-id/secrets/your-secret/versions/your-secret-version"
     # apiKeySource = "PLAINTEXT"
-    # javascriptTextTransformGcsPath = "gs://my-bucket/my-udfs/my_file.js"
-    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
   }
 }
 ```

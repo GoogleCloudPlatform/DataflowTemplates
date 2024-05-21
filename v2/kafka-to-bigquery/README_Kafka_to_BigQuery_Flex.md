@@ -11,7 +11,7 @@ prior to execution, then it is created.
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Kafka_to_BigQuery).
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Kafka_to_BigQuery_Flex).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -21,40 +21,30 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **outputTableSpec** : The BigQuery output table location to write the output to. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`.Depending on the `createDisposition` specified, the output table might be created automatically using the user provided Avro schema.
 
 ### Optional parameters
 
-* **bootstrapServers** : The host address of the running Apache Kafka broker servers in a comma-separated list. Each host address must be in the format `35.70.252.199:9092`. (Example: localhost:9092,127.0.0.1:9093).
-* **inputTopics** : The Apache Kafka input topics to read from in a comma-separated list.  (Example: topic1,topic2).
+* **outputTableSpec** : BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
+* **writeDisposition** : BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
+* **createDisposition** : BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED.
 * **outputDeadletterTable** : BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
-* **messageFormat** : The message format. Can be AVRO or JSON. Defaults to: JSON.
+* **messageFormat** : The Kafka message format. Can be AVRO or JSON. Defaults to: AVRO.
+* **avroFormat** : This parameter is used to indicate what format to use for the avro messages. Default is CONFLUENT_WIRE_FORMAT.
 * **avroSchemaPath** : Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.
+* **schemaRegistryConnectionUrl** : Schema Registry Connection URL for a registry which supports Confluent wire format.
+* **outputDataset** : BigQuery output dataset to write the output to. Tables will be created dynamically in the dataset. If the tables are created beforehand, the table names should follow the specified naming convention. The name should be `bqTableNamePrefix + Avro Schema FullName` {@link org.apache.avro.Schema.getFullName}, each word will be seperated by a hyphen '-'.
+* **persistKafkaKey** : If true, the pipeline will persist the Kafka message key in the BigQuery table, in a `_key` field of type `BYTES`. Default is false (Key is ignored).
+* **bqTableNamePrefix** : Naming prefix to be used while creating BigQuery output tables. Only applicable when using schema registry. Defaults to empty.
 * **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
 * **readBootstrapServers** : Kafka Bootstrap Server list, separated by commas. (Example: localhost:9092,127.0.0.1:9093).
 * **kafkaReadTopics** : Kafka topic(s) to read input from. (Example: topic1,topic2).
 * **kafkaReadOffset** : The Kafka Offset to read from. Defaults to: latest.
 * **kafkaReadUsernameSecretId** : Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
 * **kafkaReadPasswordSecretId** : Secret Manager secret ID for the SASL_PLAIN password. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version} (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
-* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js).
-* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
-* **javascriptTextTransformReloadIntervalMinutes** : Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is 0, UDF reloading is disabled. The default value is 0.
-* **writeDisposition** : The BigQuery WriteDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload) value. For example, `WRITE_APPEND`, `WRITE_EMPTY`, or `WRITE_TRUNCATE`. Defaults to `WRITE_APPEND`.
-* **createDisposition** : The BigQuery CreateDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload). For example, `CREATE_IF_NEEDED` and `CREATE_NEVER`. Defaults to `CREATE_IF_NEEDED`.
 * **useStorageWriteApi** : If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
 * **numStorageWriteApiStreams** : When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
 * **storageWriteApiTriggeringFrequencySec** : When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.
 
-
-## User-Defined functions (UDFs)
-
-The Kafka to BigQuery Template supports User-Defined functions (UDFs).
-UDFs allow you to customize functionality by providing a JavaScript function
-without having to maintain or build the entire template code.
-
-Check [Create user-defined functions for Dataflow templates](https://cloud.google.com/dataflow/docs/guides/templates/create-template-udf)
-and [Using UDFs](https://github.com/GoogleCloudPlatform/DataflowTemplates#using-udfs)
-for more information about how to create and test those functions.
 
 
 ## Getting Started
@@ -70,7 +60,7 @@ for more information about how to create and test those functions.
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/kafka-to-bigquery/src/main/java/com/google/cloud/teleport/v2/templates/KafkaToBigQuery.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/kafka-to-bigquery/src/main/java/com/google/cloud/teleport/v2/templates/KafkaToBigQueryFlex.java)
 
 ### Templates Plugin
 
@@ -100,7 +90,7 @@ mvn clean package -PtemplatesStage  \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
--DtemplateName="Kafka_to_BigQuery" \
+-DtemplateName="Kafka_to_BigQuery_Flex" \
 -f v2/kafka-to-bigquery
 ```
 
@@ -109,7 +99,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/Kafka_to_BigQuery
+Flex Template was staged! gs://<bucket-name>/templates/flex/Kafka_to_BigQuery_Flex
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -129,53 +119,53 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Kafka_to_BigQuery"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Kafka_to_BigQuery_Flex"
 
 ### Required
-export OUTPUT_TABLE_SPEC=<outputTableSpec>
 
 ### Optional
-export BOOTSTRAP_SERVERS=<bootstrapServers>
-export INPUT_TOPICS=<inputTopics>
+export OUTPUT_TABLE_SPEC=<outputTableSpec>
+export WRITE_DISPOSITION=WRITE_APPEND
+export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
-export MESSAGE_FORMAT=JSON
+export MESSAGE_FORMAT=AVRO
+export AVRO_FORMAT=CONFLUENT_WIRE_FORMAT
 export AVRO_SCHEMA_PATH=<avroSchemaPath>
+export SCHEMA_REGISTRY_CONNECTION_URL=<schemaRegistryConnectionUrl>
+export OUTPUT_DATASET=<outputDataset>
+export PERSIST_KAFKA_KEY=false
+export BQ_TABLE_NAME_PREFIX=""
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export READ_BOOTSTRAP_SERVERS=<readBootstrapServers>
 export KAFKA_READ_TOPICS=<kafkaReadTopics>
 export KAFKA_READ_OFFSET=latest
 export KAFKA_READ_USERNAME_SECRET_ID=<kafkaReadUsernameSecretId>
 export KAFKA_READ_PASSWORD_SECRET_ID=<kafkaReadPasswordSecretId>
-export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
-export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
-export WRITE_DISPOSITION=WRITE_APPEND
-export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export USE_STORAGE_WRITE_API=false
 export NUM_STORAGE_WRITE_API_STREAMS=0
 export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=<storageWriteApiTriggeringFrequencySec>
 
-gcloud dataflow flex-template run "kafka-to-bigquery-job" \
+gcloud dataflow flex-template run "kafka-to-bigquery-flex-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "bootstrapServers=$BOOTSTRAP_SERVERS" \
-  --parameters "inputTopics=$INPUT_TOPICS" \
+  --parameters "outputTableSpec=$OUTPUT_TABLE_SPEC" \
+  --parameters "writeDisposition=$WRITE_DISPOSITION" \
+  --parameters "createDisposition=$CREATE_DISPOSITION" \
   --parameters "outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
   --parameters "messageFormat=$MESSAGE_FORMAT" \
+  --parameters "avroFormat=$AVRO_FORMAT" \
   --parameters "avroSchemaPath=$AVRO_SCHEMA_PATH" \
+  --parameters "schemaRegistryConnectionUrl=$SCHEMA_REGISTRY_CONNECTION_URL" \
+  --parameters "outputDataset=$OUTPUT_DATASET" \
+  --parameters "persistKafkaKey=$PERSIST_KAFKA_KEY" \
+  --parameters "bqTableNamePrefix=$BQ_TABLE_NAME_PREFIX" \
   --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
   --parameters "readBootstrapServers=$READ_BOOTSTRAP_SERVERS" \
   --parameters "kafkaReadTopics=$KAFKA_READ_TOPICS" \
   --parameters "kafkaReadOffset=$KAFKA_READ_OFFSET" \
   --parameters "kafkaReadUsernameSecretId=$KAFKA_READ_USERNAME_SECRET_ID" \
   --parameters "kafkaReadPasswordSecretId=$KAFKA_READ_PASSWORD_SECRET_ID" \
-  --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
-  --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
-  --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
-  --parameters "outputTableSpec=$OUTPUT_TABLE_SPEC" \
-  --parameters "writeDisposition=$WRITE_DISPOSITION" \
-  --parameters "createDisposition=$CREATE_DISPOSITION" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
   --parameters "numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS" \
   --parameters "storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC"
@@ -197,25 +187,25 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export OUTPUT_TABLE_SPEC=<outputTableSpec>
 
 ### Optional
-export BOOTSTRAP_SERVERS=<bootstrapServers>
-export INPUT_TOPICS=<inputTopics>
+export OUTPUT_TABLE_SPEC=<outputTableSpec>
+export WRITE_DISPOSITION=WRITE_APPEND
+export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
-export MESSAGE_FORMAT=JSON
+export MESSAGE_FORMAT=AVRO
+export AVRO_FORMAT=CONFLUENT_WIRE_FORMAT
 export AVRO_SCHEMA_PATH=<avroSchemaPath>
+export SCHEMA_REGISTRY_CONNECTION_URL=<schemaRegistryConnectionUrl>
+export OUTPUT_DATASET=<outputDataset>
+export PERSIST_KAFKA_KEY=false
+export BQ_TABLE_NAME_PREFIX=""
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export READ_BOOTSTRAP_SERVERS=<readBootstrapServers>
 export KAFKA_READ_TOPICS=<kafkaReadTopics>
 export KAFKA_READ_OFFSET=latest
 export KAFKA_READ_USERNAME_SECRET_ID=<kafkaReadUsernameSecretId>
 export KAFKA_READ_PASSWORD_SECRET_ID=<kafkaReadPasswordSecretId>
-export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
-export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
-export WRITE_DISPOSITION=WRITE_APPEND
-export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export USE_STORAGE_WRITE_API=false
 export NUM_STORAGE_WRITE_API_STREAMS=0
 export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=<storageWriteApiTriggeringFrequencySec>
@@ -225,9 +215,9 @@ mvn clean package -PtemplatesRun \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="kafka-to-bigquery-job" \
--DtemplateName="Kafka_to_BigQuery" \
--Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,inputTopics=$INPUT_TOPICS,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,messageFormat=$MESSAGE_FORMAT,avroSchemaPath=$AVRO_SCHEMA_PATH,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,readBootstrapServers=$READ_BOOTSTRAP_SERVERS,kafkaReadTopics=$KAFKA_READ_TOPICS,kafkaReadOffset=$KAFKA_READ_OFFSET,kafkaReadUsernameSecretId=$KAFKA_READ_USERNAME_SECRET_ID,kafkaReadPasswordSecretId=$KAFKA_READ_PASSWORD_SECRET_ID,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,createDisposition=$CREATE_DISPOSITION,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
+-DjobName="kafka-to-bigquery-flex-job" \
+-DtemplateName="Kafka_to_BigQuery_Flex" \
+-Dparameters="outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,createDisposition=$CREATE_DISPOSITION,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,messageFormat=$MESSAGE_FORMAT,avroFormat=$AVRO_FORMAT,avroSchemaPath=$AVRO_SCHEMA_PATH,schemaRegistryConnectionUrl=$SCHEMA_REGISTRY_CONNECTION_URL,outputDataset=$OUTPUT_DATASET,persistKafkaKey=$PERSIST_KAFKA_KEY,bqTableNamePrefix=$BQ_TABLE_NAME_PREFIX,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,readBootstrapServers=$READ_BOOTSTRAP_SERVERS,kafkaReadTopics=$KAFKA_READ_TOPICS,kafkaReadOffset=$KAFKA_READ_OFFSET,kafkaReadUsernameSecretId=$KAFKA_READ_USERNAME_SECRET_ID,kafkaReadPasswordSecretId=$KAFKA_READ_PASSWORD_SECRET_ID,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
 -f v2/kafka-to-bigquery
 ```
 
@@ -245,7 +235,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd v2/kafka-to-bigquery/terraform/Kafka_to_BigQuery
+cd v2/kafka-to-bigquery/terraform/Kafka_to_BigQuery_Flex
 terraform init
 terraform apply
 ```
@@ -265,30 +255,30 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "kafka_to_bigquery" {
+resource "google_dataflow_flex_template_job" "kafka_to_bigquery_flex" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Kafka_to_BigQuery"
-  name              = "kafka-to-bigquery"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Kafka_to_BigQuery_Flex"
+  name              = "kafka-to-bigquery-flex"
   region            = var.region
   parameters        = {
-    outputTableSpec = "<outputTableSpec>"
-    # bootstrapServers = "localhost:9092,127.0.0.1:9093"
-    # inputTopics = "topic1,topic2"
+    # outputTableSpec = "<outputTableSpec>"
+    # writeDisposition = "WRITE_APPEND"
+    # createDisposition = "CREATE_IF_NEEDED"
     # outputDeadletterTable = "your-project-id:your-dataset.your-table-name"
-    # messageFormat = "JSON"
+    # messageFormat = "AVRO"
+    # avroFormat = "CONFLUENT_WIRE_FORMAT"
     # avroSchemaPath = "<avroSchemaPath>"
+    # schemaRegistryConnectionUrl = "<schemaRegistryConnectionUrl>"
+    # outputDataset = "<outputDataset>"
+    # persistKafkaKey = "false"
+    # bqTableNamePrefix = ""
     # useStorageWriteApiAtLeastOnce = "false"
     # readBootstrapServers = "localhost:9092,127.0.0.1:9093"
     # kafkaReadTopics = "topic1,topic2"
     # kafkaReadOffset = "latest"
     # kafkaReadUsernameSecretId = "projects/your-project-id/secrets/your-secret/versions/your-secret-version"
     # kafkaReadPasswordSecretId = "projects/your-project-id/secrets/your-secret/versions/your-secret-version"
-    # javascriptTextTransformGcsPath = "gs://my-bucket/my-udfs/my_file.js"
-    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
-    # javascriptTextTransformReloadIntervalMinutes = "0"
-    # writeDisposition = "WRITE_APPEND"
-    # createDisposition = "CREATE_IF_NEEDED"
     # useStorageWriteApi = "false"
     # numStorageWriteApiStreams = "0"
     # storageWriteApiTriggeringFrequencySec = "<storageWriteApiTriggeringFrequencySec>"

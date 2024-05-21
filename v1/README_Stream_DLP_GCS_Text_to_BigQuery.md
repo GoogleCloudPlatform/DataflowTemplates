@@ -34,15 +34,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputFilePattern** : The Cloud Storage location of the files you'd like to process. (Example: gs://your-bucket/your-files/*.csv).
-* **deidentifyTemplateName** : Cloud DLP template to deidentify contents. Must be created here: https://console.cloud.google.com/security/dlp/create/template. (Example: projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id).
-* **datasetName** : BigQuery Dataset to be used. Dataset must exist prior to execution. Ex. pii_dataset.
-* **dlpProjectId** : Cloud DLP project ID to be used for data masking/tokenization. Ex. your-dlp-project.
+* **inputFilePattern** : The CSV files to read input data records from. Wildcards are also accepted. (Example: gs://mybucket/my_csv_filename.csv or gs://mybucket/file-*.csv).
+* **deidentifyTemplateName** : The Sensitive Data Protection de-identification template to use for API requests, specified with the pattern projects/<PROJECT_ID>/deidentifyTemplates/<TEMPLATE_ID>. (Example: projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id).
+* **datasetName** : The BigQuery dataset to use when sending tokenized results. The dataset must exist prior to execution.
+* **dlpProjectId** : The ID for the Google Cloud project that owns the DLP API resource. This project can be the same project that owns the Sensitive Data Protection templates, or it can be a separate project.
 
 ### Optional parameters
 
-* **inspectTemplateName** : Cloud DLP template to inspect contents. (Example: projects/your-project-id/locations/global/inspectTemplates/generated_template_id).
-* **batchSize** : Batch size contents (number of rows) to optimize DLP API call. Total size of the rows must not exceed 512 KB and total cell count must not exceed 50,000. Default batch size is set to 100. Ex. 1000.
+* **inspectTemplateName** : The Sensitive Data Protection inspection template to use for API requests, specified with the pattern projects/<PROJECT_ID>/identifyTemplates/<TEMPLATE_ID>. (Example: projects/your-project-id/locations/global/inspectTemplates/generated_template_id).
+* **batchSize** : The chunking or batch size to use for sending data to inspect and detokenize. For a CSV file, the value of `batchSize` is the number of rows in a batch. Determine the batch size based on the size of the records and the sizing of the file. The DLP API has a payload size limit of 524 KB per API call.
 
 
 
@@ -222,7 +222,7 @@ resource "google_dataflow_job" "stream_dlp_gcs_text_to_bigquery" {
   region            = var.region
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
-    inputFilePattern = "gs://your-bucket/your-files/*.csv"
+    inputFilePattern = "gs://mybucket/my_csv_filename.csv or gs://mybucket/file-*.csv"
     deidentifyTemplateName = "projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id"
     datasetName = "<datasetName>"
     dlpProjectId = "<dlpProjectId>"

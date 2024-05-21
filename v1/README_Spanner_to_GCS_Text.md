@@ -18,19 +18,19 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **spannerTable** : Spanner Table to read from.
-* **spannerProjectId** : The Google Cloud Project Id of the Cloud Spanner database that you want to read data from.
-* **spannerInstanceId** : Instance of requested table.
-* **spannerDatabaseId** : Database of requested table.
-* **textWritePrefix** : The path and filename prefix for writing output files. (Example: gs://your-bucket/your-path).
+* **spannerTable** : The Spanner table to read the data from.
+* **spannerProjectId** : The ID of the Google Cloud project that contains the Spanner database to read data from.
+* **spannerInstanceId** : The instance ID of the requested table.
+* **spannerDatabaseId** : The database ID of the requested table.
+* **textWritePrefix** : The Cloud Storage path prefix that specifies where the data is written. (Example: gs://mybucket/somefolder/).
 
 ### Optional parameters
 
-* **csvTempDirectory** : The Cloud Storage path where the temporary CSV files can be stored. (Example: gs://your-bucket/your-path).
-* **spannerPriority** : The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].
+* **csvTempDirectory** : The Cloud Storage path where temporary CSV files are written. (Example: gs://your-bucket/your-path).
+* **spannerPriority** : The request priority (https://cloud.google.com/spanner/docs/reference/rest/v1/RequestOptions) for Spanner calls. Possible values are `HIGH`, `MEDIUM`, `LOW`. The default value is `MEDIUM`.
 * **spannerHost** : The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
-* **spannerSnapshotTime** : If set, specifies the time when the snapshot must be taken. String is in the RFC 3339 format in UTC time.  Timestamp must be in the past and Maximum timestamp staleness applies.https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness (Example: 1990-12-31T23:59:60Z). Defaults to empty.
-* **dataBoostEnabled** : Use Spanner on-demand compute so the export job will run on independent compute resources and have no impact to current Spanner workloads. This will incur additional charges in Spanner. Defaults to: false.
+* **spannerSnapshotTime** : The timestamp that corresponds to the version of the Spanner database that you want to read from. The timestamp must be specified in the RFC 3339 (https://tools.ietf.org/html/rfc3339) UTC "Zulu" format. The timestamp must be in the past and maximum timestamp staleness (https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness) applies. (Example: 1990-12-31T23:59:60Z). Defaults to empty.
+* **dataBoostEnabled** : Set to `true` to use the compute resources of Spanner Data Boost to run the job with near-zero impact on Spanner OLTP workflows. When true, requires the `spanner.databases.useDataBoost` Identity and Access Management (IAM) permission. For more information, see Data Boost overview (https://cloud.google.com/spanner/docs/databoost/databoost-overview). Defaults to: false.
 
 
 
@@ -226,7 +226,7 @@ resource "google_dataflow_job" "spanner_to_gcs_text" {
     spannerProjectId = "<spannerProjectId>"
     spannerInstanceId = "<spannerInstanceId>"
     spannerDatabaseId = "<spannerDatabaseId>"
-    textWritePrefix = "gs://your-bucket/your-path"
+    textWritePrefix = "gs://mybucket/somefolder/"
     # csvTempDirectory = "gs://your-bucket/your-path"
     # spannerPriority = "<spannerPriority>"
     # spannerHost = "https://batch-spanner.googleapis.com"
