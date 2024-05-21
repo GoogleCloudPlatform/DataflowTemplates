@@ -1,4 +1,4 @@
-# Load Test Tutorial
+# Adding an Integration or Load Test
 
 ## Overview
 
@@ -305,6 +305,8 @@ synthetic records/messages at a user specified QPS. These messages are generated
 based on a user specified schema. Please look at [this](https://github.com/GoogleCloudPlatform/DataflowTemplates/tree/main/v2/streaming-data-generator#creating-the-schema-file)
 guide to create a schema file.
 
+Data generators are typically used in load tests, not integration tests.
+
 Pre-existing schema templates can also be used instead of specifying a schema. 
 Supported schema templates are,
 
@@ -373,6 +375,32 @@ of messages. If messageLimit is not specified, the data generator generates
 messages at specified QPS till timeout.
 
 
+## Write an Integration test
+
+Integration tests will be written using JUnit. The structure of the load test will
+vary on whether the pipeline under test is a `Batch` or `Streaming` pipeline and
+the type of test.
+
+### Structure
+First extend the test class from the [TemplateTestBase](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/it/google-cloud-platform/src/main/java/org/apache/beam/it/gcp/TemplateTestBase.java)
+class. TemplateTestBase contains helper methods which abstract irrelevant 
+information and make it easier to write tests. It also defines some 
+clients and variables which are useful for writing tests.
+
+```java
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import org.apache.beam.it.gcp.TemplateTestBase;
+import org.junit.runners.JUnit4;
+@Category({TemplateIntegrationTest.class})
+@TemplateIntegrationTest(WordCount.class)
+@RunWith(JUnit4.class)
+public class WordCountIT extends TemplateTestBase {
+
+}
+```
+
+From there, you can add test cases as described below in [Test Cases](#test-cases).
+
 ## Write a Load test
 
 Load tests will be written using JUnit. The structure of the load test will
@@ -389,8 +417,13 @@ NOTE: Any class extending `LoadTestBase` will need to implement a `launcher`
 method which creates the appropriate PipelineLauncher to be used for the test.
 
 ```java
-import com.google.cloud.teleport.it.LoadTestBase;
-public class WordCountLoadTest extends LoadTestBase {
+import com.google.cloud.teleport.metadata.TemplateLoadTest;
+import com.google.cloud.teleport.it.TemplateLoadTestBase;
+import org.junit.runners.JUnit4;
+@Category(TemplateLoadTest.class)
+@TemplateLoadTest(WordCount.class)
+@RunWith(JUnit4.class)
+public class WordCountLoadTest extends TemplateLoadTestBase {
 
   PipelineLauncher launcher() {
     return new DefaultPipelineLauncher.builder().setCredentials(CREDENTIALS).build();
@@ -403,7 +436,13 @@ public class WordCountLoadTest extends LoadTestBase {
 NOTE: For Google-provided template load tests, `TemplateLoadTestBase` can be used, whereas for 
 Apache Beam I/O load tests `IOLoadTestBase` can be used.
 
-### Test cases
+From there, you can add test cases as described below in [Test Cases](#test-cases).
+
+## Test cases
+
+There are generally 2 classes of load and integration tests: backlog tests and steady state
+tests (streaming-only). These largely function in the same manner, with minor differences
+which are called out in the code below.
 
 #### Backlog Tests
 
@@ -423,6 +462,9 @@ public void testBacklog() {
   TableId table = bigQueryResourceManager.createTable(testName, SCHEMA);
   
   // Generate fake data to Pub/Sub topic
+  // In a normal integration test (small amount of data), you can use the resource manager
+  // directly. For example:
+  // pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
   DataGenerator dataGenerator =
        DataGenerator.builderWithSchemaTemplate(testName + "-data-generator", "GAME_EVENT")
            .setQPS("200000")
@@ -437,7 +479,9 @@ public void testBacklog() {
     .addParameter("inputSubscription", inputSubscription.toString())
     .addParameter("outputTableSpec", toTableSpec(project, table))
     .build();
-  // launch pipeline under test
+  // Launch pipeline under test. For load tests, use the pipelineLauncher
+  // For integration tests, you can use launchTemplate, for example:
+  // LaunchInfo info = launchTemplate(options)
   LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
   assertThatPipeline(info).isRunning();
 
@@ -469,6 +513,9 @@ public void testSteadyState1hr() {
   TableId table = bigQueryResourceManager.createTable(
         testName, SCHEMA, System.currentTimeMillis() + 7200000); // expire in 2 hrs
   // Generate fake data to Pub/Sub topic at 100,000 QPS
+  // In a normal integration test (small amount of data), you can use the resource manager
+  // directly. For example:
+  // pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
   DataGenerator dataGenerator = 
     DataGenerator.builderWithSchemaTemplate(testName + "-data-generator","GAME_EVENT")
       .setQPS("100000")
@@ -481,7 +528,9 @@ public void testSteadyState1hr() {
     .addParameter("inputSubscription", inputSubscription.toString())
     .addParameter("outputTableSpec", toTableSpec(project, table))
     .build();
-  // launch pipeline under test
+  // Launch pipeline under test. For load tests, use the pipelineLauncher
+  // For integration tests, you can use launchTemplate, for example:
+  // LaunchInfo info = launchTemplate(options)
   LaunchInfo info = pipelineLauncher.launch(project, region, options);
   assertThatPipeline(info).isRunning();
   
@@ -542,4 +591,15 @@ For manually running a load test execute the following commands on the CLI use t
    ```
 
    Additional parameters can be specified using  `-D<param-name>=<param-value>`
+
+To run an integration test, follow step 1 above, then run the specific test:
+
+```shell
+mvn clean verify \
+  -PtemplatesIntegrationTests \
+  -Dtest="<test-class>#<test-method>" -Dproject=$PROJECT \
+  -DartifactBucket=$ARTIFACT_BUCKET -DexportProject=$EXPORT_PROJECT \
+  -DexportDataset=$EXPORT_DATASET -DexportTable=$EXPORT_TABLE \
+  -DfailIfNoTests=false -DtrimStackTrace=false
+```
 

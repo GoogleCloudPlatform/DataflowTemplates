@@ -89,9 +89,9 @@ public class AvroToValueMapper {
         Type.float64(),
         (recordValue, fieldSchema) -> Value.float64(avroFieldToDouble(recordValue, fieldSchema)));
     gsqlFunctions.put(
-        Type.string(), (recordValue, fieldSchema) -> Value.string(recordValue.toString()));
+        Type.string(), (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue)));
     gsqlFunctions.put(
-        Type.json(), (recordValue, fieldSchema) -> Value.string(recordValue.toString()));
+        Type.json(), (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue)));
     gsqlFunctions.put(
         Type.numeric(),
         (recordValue, fieldSchema) ->
@@ -121,11 +121,12 @@ public class AvroToValueMapper {
         Type.pgFloat8(),
         (recordValue, fieldSchema) -> Value.float64(avroFieldToDouble(recordValue, fieldSchema)));
     pgFunctions.put(
-        Type.pgVarchar(), (recordValue, fieldSchema) -> Value.string(recordValue.toString()));
+        Type.pgVarchar(),
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue)));
     pgFunctions.put(
-        Type.pgText(), (recordValue, fieldSchema) -> Value.string(recordValue.toString()));
+        Type.pgText(), (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue)));
     pgFunctions.put(
-        Type.pgJsonb(), (recordValue, fieldSchema) -> Value.string(recordValue.toString()));
+        Type.pgJsonb(), (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue)));
     pgFunctions.put(
         Type.pgNumeric(),
         (recordValue, fieldSchema) ->
@@ -187,6 +188,13 @@ public class AvroToValueMapper {
               + ", Exception: "
               + e.getMessage());
     }
+  }
+
+  static String avroFieldToString(Object recordValue) {
+    if (recordValue == null) {
+      return null;
+    }
+    return recordValue.toString();
   }
 
   static BigDecimal avroFieldToNumericBigDecimal(Object recordValue, Schema fieldSchema) {

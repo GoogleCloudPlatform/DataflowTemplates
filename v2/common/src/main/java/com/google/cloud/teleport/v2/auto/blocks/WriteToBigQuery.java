@@ -70,7 +70,7 @@ public class WriteToBigQuery implements TemplateTransform<SinkOptions> {
 
     void setOutputTableSpec(String input);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 2,
         optional = true,
         description = "GCS Path to JSON file containing BigQuery table schema.",

@@ -56,7 +56,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setElasticsearchUsername(String elasticsearchUsername);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Password(
       order = 4,
       optional = true,
       description = "Password for Elasticsearch endpoint",
@@ -262,14 +262,11 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setDisableCertificateValidation(Boolean disableCertificateValidation);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.KmsEncryptionKey(
       order = 24,
       optional = true,
       parentName = "apiKeySource",
       parentTriggerValues = {"KMS"},
-      regexes = {
-        "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/keyRings\\/[^\\n\\r\\/]+\\/cryptoKeys\\/[^\\n\\r\\/]+$"
-      },
       description = "Google Cloud KMS encryption key for the API key",
       helpText =
           "The Cloud KMS key to decrypt the API key. This parameter must be "

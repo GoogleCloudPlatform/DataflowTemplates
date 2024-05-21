@@ -18,10 +18,9 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
+import com.google.cloud.teleport.v2.utils.BigQueryAvroUtils;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.extensions.avro.schemas.utils.AvroUtils;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
 import org.apache.beam.sdk.io.gcp.bigquery.DynamicDestinations;
 import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
 import org.apache.beam.sdk.values.KV;
@@ -36,16 +35,20 @@ public class BigQueryDynamicDestination
 
   private String tableNamePrefix;
 
+  private boolean persistKafkaKey;
+
   public static BigQueryDynamicDestination of(
-      String projectName, String datasetName, String tableNamePrefix) {
-    return new BigQueryDynamicDestination(projectName, datasetName, tableNamePrefix);
+      String projectName, String datasetName, String tableNamePrefix, boolean persistKafkaKey) {
+    return new BigQueryDynamicDestination(
+        projectName, datasetName, tableNamePrefix, persistKafkaKey);
   }
 
   private BigQueryDynamicDestination(
-      String projectName, String datasetName, String tableNamePrefix) {
+      String projectName, String datasetName, String tableNamePrefix, boolean persistKafkaKey) {
     this.projectName = projectName;
     this.datasetName = datasetName;
     this.tableNamePrefix = tableNamePrefix;
+    this.persistKafkaKey = persistKafkaKey;
   }
 
   @Override
@@ -65,8 +68,9 @@ public class BigQueryDynamicDestination
 
   @Override
   public TableSchema getSchema(GenericRecord element) {
-    // TODO: Test if sending null can work here, might be mroe efficient.
-    return BigQueryUtils.toTableSchema(AvroUtils.toBeamSchema(element.getSchema()));
+    // TODO: Test if sending null can work here, might be more efficient.
+    return BigQueryAvroUtils.convertAvroSchemaToTableSchema(
+        element.getSchema(), this.persistKafkaKey);
   }
 
   @Override

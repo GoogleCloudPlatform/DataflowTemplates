@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -23,9 +24,9 @@ import com.google.cloud.bigquery.Field.Mode;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.kafka.transforms.BinaryAvroSerializer;
-import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.io.Resources;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
@@ -33,7 +34,9 @@ import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import net.jcip.annotations.NotThreadSafe;
@@ -89,7 +92,6 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             Field.of("productId", StandardSQLTypeName.INT64),
             Field.newBuilder("productName", StandardSQLTypeName.STRING).setMaxLength(10L).build());
 
-    tableId = bigQueryClient.createTable(testName, bqSchema);
     kafkaResourceManager =
         KafkaResourceManager.builder(testName).setHost(TestProperties.hostIp()).build();
 
@@ -111,6 +113,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
 
   @Test
   public void testKafkaToBigQueryAvroInConfluentFormat() throws IOException, RestClientException {
+    tableId = bigQueryClient.createTable(testName, bqSchema);
     baseKafkaToBigQueryAvro(
         b ->
             b.addParameter("avroFormat", "CONFLUENT_WIRE_FORMAT")
@@ -119,20 +122,44 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
   }
 
   @Test
+  public void testKafkaToBigQueryAvroInConfluentFormatWithKey()
+      throws IOException, RestClientException {
+    List<Field> fields = new ArrayList<>(bqSchema.getFields());
+    fields.add(Field.of("_key", StandardSQLTypeName.BYTES));
+    bqSchema = Schema.of(fields);
+    tableId = bigQueryClient.createTable(testName + "WithKey", bqSchema);
+    baseKafkaToBigQueryAvro(
+        b ->
+            b.addParameter("avroFormat", "CONFLUENT_WIRE_FORMAT")
+                .addParameter("avroSchemaPath", getGcsPath("avro_schema.avsc"))
+                .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
+                .addParameter("persistKafkaKey", "true"));
+  }
+
+  @Test
   public void testKafkaToBigQueryAvroWithSchemaRegistry() throws IOException, RestClientException {
     baseKafkaToBigQueryAvro(
         b ->
             b.addParameter("avroFormat", "CONFLUENT_WIRE_FORMAT")
-                .addParameter(
-                    "schemaRegistryConnectionUrl",
-                    SecretManagerUtils.getSecret(
-                        "projects/269744978479/secrets/kafka-schema-registry-connection-url/versions/1"))
+                .addParameter("schemaRegistryConnectionUrl", "http://10.128.0.60:8081")
                 .addParameter("outputDataset", bqDatasetId));
+  }
+
+  @Test
+  public void testKafkaToBigQueryAvroWithSchemaRegistryWithKey()
+      throws IOException, RestClientException {
+    baseKafkaToBigQueryAvro(
+        b ->
+            b.addParameter("avroFormat", "CONFLUENT_WIRE_FORMAT")
+                .addParameter("schemaRegistryConnectionUrl", "http://10.128.0.60:8081")
+                .addParameter("outputDataset", bqDatasetId)
+                .addParameter("persistKafkaKey", "true"));
   }
 
   @Test
   public void testKafkaToBigQueryAvroInNonConfluentFormat()
       throws IOException, RestClientException {
+    tableId = bigQueryClient.createTable(testName, bqSchema);
     baseKafkaToBigQueryAvro(
         b ->
             b.addParameter("avroFormat", "NON_WIRE_FORMAT")
@@ -141,7 +168,23 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
   }
 
   @Test
+  public void testKafkaToBigQueryAvroInNonConfluentFormatWithKey()
+      throws IOException, RestClientException {
+    List<Field> fields = new ArrayList<>(bqSchema.getFields());
+    fields.add(Field.of("_key", StandardSQLTypeName.BYTES));
+    bqSchema = Schema.of(fields);
+    tableId = bigQueryClient.createTable(testName + "WithKey", bqSchema);
+    baseKafkaToBigQueryAvro(
+        b ->
+            b.addParameter("avroFormat", "NON_WIRE_FORMAT")
+                .addParameter("avroSchemaPath", getGcsPath("avro_schema.avsc"))
+                .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
+                .addParameter("persistKafkaKey", "true"));
+  }
+
+  @Test
   public void testKafkaToBigQueryAvroWithExistingDLQ() throws IOException, RestClientException {
+    tableId = bigQueryClient.createTable(testName, bqSchema);
     deadletterTableId = bigQueryClient.createTable(testName + "_dlq", getDeadletterSchema());
 
     baseKafkaToBigQueryAvro(
@@ -153,6 +196,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
 
   @Test
   public void testKafkaToBigQueryAvroWithStorageApi() throws IOException, RestClientException {
+    tableId = bigQueryClient.createTable(testName, bqSchema);
     baseKafkaToBigQueryAvro(
         b ->
             b.addParameter("useStorageWriteApi", "true")
@@ -165,6 +209,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
   @Test
   public void testKafkaToBigQueryAvroWithStorageApiExistingDLQ()
       throws IOException, RestClientException {
+    tableId = bigQueryClient.createTable(testName, bqSchema);
     deadletterTableId = bigQueryClient.createTable(testName + "_dlq", getDeadletterSchema());
 
     baseKafkaToBigQueryAvro(
@@ -236,13 +281,13 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
         && options.getParameter("schemaRegistryConnectionUrl") != null) {
 
       publishDoubleSchemaMessages(topicName);
-      TableId avroTable = TableId.of(bqDatasetId, avroSchema.getFullName().replace(".", "-"));
-      TableId otherAvroTable =
+      tableId = TableId.of(bqDatasetId, avroSchema.getFullName().replace(".", "-"));
+      TableId otherTableId =
           TableId.of(bqDatasetId, otherAvroSchema.getFullName().replace(".", "-"));
 
-      conditions.add(BigQueryRowsCheck.builder(bigQueryClient, avroTable).setMinRows(20).build());
+      conditions.add(BigQueryRowsCheck.builder(bigQueryClient, tableId).setMinRows(20).build());
       conditions.add(
-          BigQueryRowsCheck.builder(bigQueryClient, otherAvroTable).setMinRows(20).build());
+          BigQueryRowsCheck.builder(bigQueryClient, otherTableId).setMinRows(20).build());
 
     } else if (options.getParameter("avroFormat") != null
         && options.getParameter("avroFormat").equals("NON_WIRE_FORMAT")
@@ -269,6 +314,34 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
 
     // Assert
     assertThatResult(result).meetsConditions();
+
+    TableResult tableRows = bigQueryClient.readTable(tableId);
+    if (options.getParameter("persistKafkaKey") != null
+        && options.getParameter("persistKafkaKey").equals("true")) {
+      assertThatBigQueryRecords(tableRows)
+          .hasRecordsUnordered(
+              List.of(
+                  Map.of(
+                      "productId",
+                      11,
+                      "productName",
+                      "Dataflow",
+                      "_key",
+                      Base64.getEncoder().encodeToString("11".getBytes())),
+                  Map.of(
+                      "productId",
+                      12,
+                      "productName",
+                      "Pub/Sub",
+                      "_key",
+                      Base64.getEncoder().encodeToString("12".getBytes()))));
+    } else {
+      assertThatBigQueryRecords(tableRows)
+          .hasRecordsUnordered(
+              List.of(
+                  Map.of("productId", 11, "productName", "Dataflow"),
+                  Map.of("productId", 12, "productName", "Pub/Sub")));
+    }
   }
 
   private void publishSingleSchemaMessages(String topicName)
