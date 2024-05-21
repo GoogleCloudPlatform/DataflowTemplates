@@ -68,7 +68,16 @@ public class DeadLetterQueue implements Serializable {
 
   @VisibleForTesting
   private PTransform<PCollection<String>, PDone> createDLQTransform(String dlqDirectory) {
-    if (dlqDirectory != null) {
+    if (dlqDirectory == null) {
+      throw new RuntimeException("Unable to start pipeline as DLQ is not configured");
+    }
+    if (dlqDirectory == "LOG") {
+      LOG.warn("writing errors to log as no DLQ directory configured");
+      return new WriteToLog();
+    } else if (dlqDirectory == "IGNORE") {
+      LOG.warn("the pipeline will ignore all errors");
+      return null;
+    } else {
       String dlqUri = FileSystems.matchNewResource(dlqDirectory, true).toString();
       LOG.info("setting up dead letter queue directory: {}", dlqDirectory);
       return DLQWriteTransform.WriteDLQ.newBuilder()
@@ -76,9 +85,6 @@ public class DeadLetterQueue implements Serializable {
           .withTmpDirectory(dlqUri + "/tmp")
           .setIncludePaneInfo(true)
           .build();
-    } else {
-      LOG.warn("writing errors to log as no DLQ directory configured");
-      return new WriteToLog();
     }
   }
 

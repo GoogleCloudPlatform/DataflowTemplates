@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.writer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.spanner.Mutation;
@@ -45,16 +46,26 @@ public class DeadLetterQueueTest {
 
   @Test
   public void testCreateLogDlq() {
-    DeadLetterQueue dlq = DeadLetterQueue.create(null);
-    assertEquals(null, dlq.getDlqDirectory());
-
-    System.out.println(dlq.getDlqTransform().getClass());
+    DeadLetterQueue dlq = DeadLetterQueue.create("LOG");
+    assertEquals("LOG", dlq.getDlqDirectory());
     assertTrue(dlq.getDlqTransform() instanceof DeadLetterQueue.WriteToLog);
   }
 
   @Test
+  public void testCreateIgnoreDlq() {
+    DeadLetterQueue dlq = DeadLetterQueue.create("IGNORE");
+    assertEquals("IGNORE", dlq.getDlqDirectory());
+    assertNull(dlq.getDlqTransform());
+  }
+
+  @Test(expected = RuntimeException.class)
+  public void testNoDlqDirectory() {
+    DeadLetterQueue.create(null).getDlqDirectory();
+  }
+
+  @Test
   public void testFailedRowsToLog() {
-    DeadLetterQueue dlq = DeadLetterQueue.create(null);
+    DeadLetterQueue dlq = DeadLetterQueue.create("LOG");
     final String testTable = "srcTable";
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     RowContext r1 =
