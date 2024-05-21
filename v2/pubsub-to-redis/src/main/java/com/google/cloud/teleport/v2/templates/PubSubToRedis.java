@@ -135,8 +135,8 @@ public class PubSubToRedis {
         order = 1,
         description = "Pub/Sub input subscription",
         helpText =
-            "Pub/Sub subscription to read the input from, in the format of"
-                + " 'projects/your-project-id/subscriptions/your-subscription-name'",
+            "The Pub/Sub subscription to read the input from, in the format"
+                + " projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_ID>.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     String getInputSubscription();
 
@@ -145,7 +145,7 @@ public class PubSubToRedis {
     @TemplateParameter.Text(
         order = 2,
         description = "Redis DB Host",
-        helpText = "Redis database host.",
+        helpText = "The Redis database host.",
         example = "your.cloud.db.redislabs.com")
     @Default.String("127.0.0.1")
     @Validation.Required
@@ -156,7 +156,7 @@ public class PubSubToRedis {
     @TemplateParameter.Integer(
         order = 3,
         description = "Redis DB Port",
-        helpText = "Redis database port.",
+        helpText = "The Redis database port.",
         example = "12345")
     @Default.Integer(6379)
     @Validation.Required
@@ -167,7 +167,7 @@ public class PubSubToRedis {
     @TemplateParameter.Password(
         order = 4,
         description = "Redis DB Password",
-        helpText = "Redis database password.")
+        helpText = "The Redis database password. Defaults to empty.")
     @Default.String("")
     @Validation.Required
     String getRedisPassword();
@@ -178,7 +178,7 @@ public class PubSubToRedis {
         order = 5,
         optional = true,
         description = "Redis ssl enabled",
-        helpText = "Redis database ssl parameter.")
+        helpText = "The Redis database SSL parameter.")
     @Default.Boolean(false)
     @UnknownKeyFor
     @NonNull
@@ -198,7 +198,7 @@ public class PubSubToRedis {
         },
         description = "Redis sink to write",
         helpText =
-            "Supported Redis sinks are STRING_SINK, HASH_SINK, STREAMS_SINK and LOGGING_SINK",
+            "The Redis sink. Supported values are `STRING_SINK, HASH_SINK, STREAMS_SINK, and LOGGING_SINK`.",
         example = "STRING_SINK")
     @Default.Enum("STRING_SINK")
     RedisSinkType getRedisSinkType();
@@ -209,7 +209,7 @@ public class PubSubToRedis {
         order = 7,
         optional = true,
         description = "Redis connection timeout in milliseconds",
-        helpText = "Redis connection timeout in milliseconds.",
+        helpText = "The Redis connection timeout in milliseconds. ",
         example = "2000")
     @Default.Integer(2000)
     int getConnectionTimeout();
@@ -224,7 +224,7 @@ public class PubSubToRedis {
         description =
             "Hash key expiration time in sec (ttl), supported only for HASH_SINK and LOGGING_SINK",
         helpText =
-            "Key expiration time in sec (ttl, default for HASH_SINK is -1 i.e. no expiration)")
+            "The key expiration time in seconds. The `ttl` default for `HASH_SINK` is -1, which means it never expires.")
     @Default.Long(-1L)
     Long getTtl();
 
