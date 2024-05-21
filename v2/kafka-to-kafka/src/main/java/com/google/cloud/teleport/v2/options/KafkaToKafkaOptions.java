@@ -23,9 +23,11 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
+
 public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, KafkaWriteOptions {
 
   @TemplateParameter.KafkaTopic(
+
       order = 1,
       groupName = "Source",
       optional = false,
@@ -49,13 +51,12 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
+
       helpText = "Type of authentication mechanism to use with the source Kafka.")
   @Validation.Required
   @Default.String(KafkaAuthenticationMethod.NONE)
   String getSourceAuthenticationMethod();
-
   void setSourceAuthenticationMethod(String sourceAuthenticationMethod);
-
 
   @TemplateParameter.Text(
       groupName = "Source",
@@ -69,6 +70,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
           "Secret Version ID from the secret manager to get Kafka SASL_PLAIN username for source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+
   String getSourceUsernameSecretId();
 
   void setSourceUsernameSecretId(String sourceUsernameSecretId);
@@ -86,6 +88,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
           "Secret version id from the secret manager to get Kafka SASL_PLAIN password for the source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+
   String getSourcePasswordSecretId();
 
   void setSourcePasswordSecretId(String sourcePasswordSecretId);
@@ -99,6 +102,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       description = "Truststore File Location",
       helpText =
+
           "Location of the jks file in Cloud Storage with SSL certificate to verify identity.",
       example = "gs://your-bucket/truststore.jks")
   String getSourceTruststoreLocation();

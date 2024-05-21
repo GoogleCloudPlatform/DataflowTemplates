@@ -26,7 +26,9 @@ import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import java.io.IOException;
+
 import java.util.List;
+
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
@@ -59,6 +61,7 @@ public class KafkaToKafka {
   }
 
 
+
   public static PipelineResult run(KafkaToKafkaOptions options) throws IOException {
 
     if (options.getSourceAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
@@ -69,52 +72,51 @@ public class KafkaToKafka {
       checkArgument(
           options.getSourcePasswordSecretId().trim().length() > 0,
           "sourcePasswordSecretId required to access password for source kafka");
-    } else if  (options.getSourceAuthenticationMethod().equals(KafkaAuthenticationMethod.SSL)) {
-        checkArgument(
-            options.getSourceTruststoreLocation().trim().length() > 0,
-            "sourceTruststoreLocation for trust store certificate required for ssl authentication");
-        checkArgument(
-            options.getSourceTruststorePasswordSecretId().trim().length() > 0,
-            "sourceTruststorePassword for trust store password required for accessing truststore");
-        checkArgument(
-            options.getSourceKeystoreLocation().trim().length() > 0,
-            "sourceKeystoreLocation for key store location required for ssl authentication");
-        checkArgument(
-            options.getSourceKeystorePasswordSecretId().trim().length() > 0,
-            "sourceKeystorePassword for key store password required to access key store");
-        checkArgument(
-            options.getSourceKeyPasswordSecretId().trim().length() > 0,
-            "sourceKeyPasswordSecretId version for key password required for SSL authentication");
+    } else if (options.getSourceAuthenticationMethod().equals(KafkaAuthenticationMethod.SSL)) {
+      checkArgument(
+          options.getSourceTruststoreLocation().trim().length() > 0,
+          "sourceTruststoreLocation for trust store certificate required for ssl authentication");
+      checkArgument(
+          options.getSourceTruststorePasswordSecretId().trim().length() > 0,
+          "sourceTruststorePassword for trust store password required for accessing truststore");
+      checkArgument(
+          options.getSourceKeystoreLocation().trim().length() > 0,
+          "sourceKeystoreLocation for key store location required for ssl authentication");
+      checkArgument(
+          options.getSourceKeystorePasswordSecretId().trim().length() > 0,
+          "sourceKeystorePassword for key store password required to access key store");
+      checkArgument(
+          options.getSourceKeyPasswordSecretId().trim().length() > 0,
+          "sourceKeyPasswordSecretId version for key password required for SSL authentication");
     } else {
       throw new UnsupportedOperationException(
           "Authentication method not supported: " + options.getSourceAuthenticationMethod());
     }
-      if (options.getDestinationAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
-        checkArgument(options.getDestinationUsernameSecretId().trim().length() > 0,
-            "destinationUsernameSecretId required to access username for source Kafka");
-        checkArgument(options.getDestinationPasswordSecretId().trim().length() > 0,
-            "destinationPasswordSecretId required to access password for destination Kafka");
-      } else if (options.getDestinationAuthenticationMethod().equals(KafkaAuthenticationMethod.SSL)) {
-        checkArgument(
-            options.getDestinationTruststoreLocation().trim().length() > 0,
-            "destinationTruststoreLocation for trust store certificate required for ssl authentication");
-        checkArgument(
-            options.getDestinationTruststorePasswordSecretId().trim().length() > 0,
-            "destinationTruststorePasswordSecretId for trust store password required for accessing truststore");
-        checkArgument(
-            options.getDestinationKeystoreLocation().trim().length() > 0,
-            "destinationKeystoreLocation for key store location required for ssl authentication");
-        checkArgument(
-            options.getDestinationKeystorePasswordSecretId().trim().length() > 0,
-            "destinationKeystorePasswordSecretId for key store password required to access key store");
-        checkArgument(
-            options.getDestinationKeyPasswordSecretId().trim().length() > 0,
-            "destinationKeyPasswordSecretId for source key password secret id version required for SSL authentication");
+    if (options.getDestinationAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+      checkArgument(options.getDestinationUsernameSecretId().trim().length() > 0,
+          "destinationUsernameSecretId required to access username for source Kafka");
+      checkArgument(options.getDestinationPasswordSecretId().trim().length() > 0,
+          "destinationPasswordSecretId required to access password for destination Kafka");
+    } else if (options.getDestinationAuthenticationMethod().equals(KafkaAuthenticationMethod.SSL)) {
+      checkArgument(
+          options.getDestinationTruststoreLocation().trim().length() > 0,
+          "destinationTruststoreLocation for trust store certificate required for ssl authentication");
+      checkArgument(
+          options.getDestinationTruststorePasswordSecretId().trim().length() > 0,
+          "destinationTruststorePasswordSecretId for trust store password required for accessing truststore");
+      checkArgument(
+          options.getDestinationKeystoreLocation().trim().length() > 0,
+          "destinationKeystoreLocation for key store location required for ssl authentication");
+      checkArgument(
+          options.getDestinationKeystorePasswordSecretId().trim().length() > 0,
+          "destinationKeystorePasswordSecretId for key store password required to access key store");
+      checkArgument(
+          options.getDestinationKeyPasswordSecretId().trim().length() > 0,
+          "destinationKeyPasswordSecretId for source key password secret id version required for SSL authentication");
     } else {
-        throw new UnsupportedOperationException(
-            "Authentication method not supported: " + options.getDestinationAuthenticationMethod());
-      }
-
+      throw new UnsupportedOperationException(
+          "Authentication method not supported: " + options.getDestinationAuthenticationMethod());
+    }
 
     String sourceTopic;
     String sourceBootstrapServers;
@@ -156,4 +158,5 @@ public class KafkaToKafka {
     return pipeline.run();
   }
 }
+
 
