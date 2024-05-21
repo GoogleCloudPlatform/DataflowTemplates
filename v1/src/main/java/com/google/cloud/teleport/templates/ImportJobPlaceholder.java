@@ -83,13 +83,13 @@ public class ImportJobPlaceholder {
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Application profile ID",
         helpText =
-            "The ID of the Bigtable application profile to use for the import. If you don't specify an app profile, Bigtable uses the instance's default app profile (https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile).")
+            "The ID of the Bigtable application profile to use for the import. If you don't specify an application profile, Bigtable uses the instance's default application profile (https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile).")
     ValueProvider<String> getBigtableAppProfileId();
 
     @TemplateParameter.GcsReadFile(
         order = 5,
         description = "Source path pattern",
-        helpText = "The Cloud Storage path pattern where data is located.",
+        helpText = "The Cloud Storage path pattern to the location of the data.",
         example = "gs://your-bucket/your-path/prefix*")
     ValueProvider<String> getSourcePattern();
 
