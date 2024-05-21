@@ -42,6 +42,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       description = "JDBC driver class name",
       helpText = "The JDBC driver class name.",
       example = "com.mysql.jdbc.Driver")
+  @Default.String("com.mysql.jdbc.Driver")
   String getJdbcDriverClassName();
 
   void setJdbcDriverClassName(String driverClassName);
@@ -59,7 +60,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 4,
-      optional = false,
       regexes = {"(^[0-9]+$)"},
       groupName = "Source",
       description = "Port number of source database.",
@@ -71,6 +71,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   /* TODO: (support Sharding, PG namespaces) */
   @TemplateParameter.Text(
       order = 5,
+      regexes = {"(^[^\\/?%*:|\"<>.]{1,64}$)"},
       groupName = "Source",
       description = "source database name.",
       helpText = "Name of the Source Database. For example, `person9`.")
@@ -86,7 +87,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       description = "JDBC connection property string.",
       helpText =
           "Properties string to use for the JDBC connection. Format of the string must be"
-              + " [propertyName=property;]*.",
+              + " \"propertyName1=property1;propertyName2=property2...\".",
       example = "unicode=true;characterEncoding=UTF-8")
   @Default.String("")
   String getSourceConnectionProperties();
@@ -99,9 +100,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       regexes = {"^.+$"},
       groupName = "Source",
       description = "JDBC connection username.",
-      helpText =
-          "The username to be used for the JDBC connection. Can be passed in as a Base64-encoded"
-              + " string encrypted with a Cloud KMS key.")
+      helpText = "The username to be used for the JDBC connection.")
   @Default.String("")
   String getUsername();
 
@@ -112,9 +111,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       optional = true,
       groupName = "Source",
       description = "JDBC connection password.",
-      helpText =
-          "The password to be used for the JDBC connection. Can be passed in as a Base64-encoded"
-              + " string encrypted with a Cloud KMS key.")
+      helpText = "The password to be used for the JDBC connection.")
   @Default.String("")
   String getPassword();
 
@@ -126,6 +123,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       groupName = "Source Parameters",
       description = "Comma-separated names of the tables in the source database.",
       helpText = "Tables to read from using partitions.")
+  @Default.String("")
   String getTables();
 
   void setTables(String table);
@@ -167,6 +165,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 13,
+      regexes = {"^[a-z]([a-z0-9_-]{0,28})[a-z0-9]$"},
       description = "Cloud Spanner Database Id.",
       helpText = "The destination Cloud Spanner database.")
   String getDatabaseId();
@@ -192,19 +191,8 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   void setSpannerHost(String value);
 
-  @TemplateParameter.Text(
-      order = 16,
-      optional = true,
-      description = "Source database columns to ignore",
-      helpText =
-          "A comma separated list of (table:column1;column2) to exclude from writing to Spanner",
-      example = "table1:column1;column2,table2:column1")
-  String getIgnoreColumns();
-
-  void setIgnoreColumns(String value);
-
   @TemplateParameter.Integer(
-      order = 17,
+      order = 16,
       optional = true,
       description = "Maximum number of connections to Source database per worker",
       helpText =
@@ -216,7 +204,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setMaxConnections(Integer value);
 
   @TemplateParameter.Boolean(
-      order = 18,
+      order = 17,
       optional = true,
       description = "enable connection reconnects",
       helpText = "Enables the JDBC connection reconnects.",
@@ -227,7 +215,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setReconnectsEnabled(Boolean value);
 
   @TemplateParameter.Integer(
-      order = 19,
+      order = 18,
       optional = true,
       description = "Maximum number of connection reconnect attempts, if reconnects are enabled",
       helpText = "Configures the JDBC connection reconnect attempts.",
@@ -238,19 +226,20 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setReconnectAttempts(Integer value);
 
   @TemplateParameter.GcsReadFile(
-      order = 20,
+      order = 19,
       optional = true,
       description =
           "Session File Path in Cloud Storage, to provide mapping information in the form of a session file",
       helpText =
           "Session file path in Cloud Storage that contains mapping information from"
               + " Spanner Migration Tool")
+  @Default.String("")
   String getSessionFilePath();
 
   void setSessionFilePath(String value);
 
   @TemplateParameter.GcsReadFile(
-      order = 21,
+      order = 20,
       optional = false,
       description = "Dead letter queue directory",
       helpText = "This directory is used to dump the failed records in a migration.")
