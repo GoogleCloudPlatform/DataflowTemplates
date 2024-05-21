@@ -153,8 +153,8 @@ public final class KafkaToBigQueryAvroIT extends TemplateTestBase {
         b ->
             b.addParameter("javascriptTextTransformGcsPath", getGcsPath("input/" + udfFileName))
                 .addParameter("javascriptTextTransformFunctionName", "transform")
-                    .addParameter("deadLetterQueueKafkaTopic", "false")
-                    .addParameter("enableKafkaDlq", "false"),
+                .addParameter("deadLetterQueueKafkaTopic", "false")
+                .addParameter("enableKafkaDlq", "false"),
         tableResult ->
             assertThatBigQueryRecords(tableResult)
                 .hasRecordsUnordered(
