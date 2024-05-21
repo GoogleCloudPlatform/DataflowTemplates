@@ -322,6 +322,23 @@ public class ImageSpecParameter {
         this.setHiddenUi(projectIdParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
         break;
+      case "ServiceAccount":
+        TemplateParameter.ServiceAccount serviceAccountParam =
+            (TemplateParameter.ServiceAccount) parameterAnnotation;
+        if (!serviceAccountParam.name().isEmpty()) {
+          this.setName(serviceAccountParam.name());
+        }
+        processDescriptions(
+            serviceAccountParam.groupName(),
+            serviceAccountParam.description(),
+            serviceAccountParam.helpText(),
+            serviceAccountParam.example());
+        this.setParentName(serviceAccountParam.parentName());
+        this.setParentTriggerValues(serviceAccountParam.parentTriggerValues());
+        this.setOptional(serviceAccountParam.optional());
+        this.setHiddenUi(serviceAccountParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.SERVICE_ACCOUNT);
+        break;
       case "Boolean":
         TemplateParameter.Boolean booleanParam = (TemplateParameter.Boolean) parameterAnnotation;
         if (!booleanParam.name().isEmpty()) {

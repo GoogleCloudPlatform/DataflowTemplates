@@ -45,6 +45,9 @@ public enum ImageSpecParameterType {
   /** Pub/Sub Topic to read or write. */
   PUBSUB_TOPIC,
 
+  /** Service Account email. */
+  SERVICE_ACCOUNT,
+
   /** Boolean parameter. */
   BOOLEAN,
 
