@@ -158,7 +158,7 @@ public interface KafkaToBigQueryFlexOptions
           "BigQuery output dataset to write the output to. Tables will be created dynamically in the dataset."
               + " If the tables are created beforehand, the table names should follow the specified naming convention."
               + " The name should be `bqTableNamePrefix + Avro Schema FullName` {@link org.apache.avro.Schema.getFullName},"
-              + " each word will be seperated by a hyphen '-'.")
+              + " each word will be separated by a hyphen '-'.")
   String getOutputDataset();
 
   void setOutputDataset(String value);

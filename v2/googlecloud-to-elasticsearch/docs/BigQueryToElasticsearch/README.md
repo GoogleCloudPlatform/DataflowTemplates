@@ -157,7 +157,7 @@ echo '{
           {
               "name":"propertyAsIndex",
               "label":"Document property used to specify _index metadata with document in bulk request",
-              "helpText":"A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precendence over an index UDF)",
+              "helpText":"A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precedence over an index UDF)",
               "paramType":"TEXT",
               "isOptional":true
           },
@@ -178,7 +178,7 @@ echo '{
           {
               "name":"propertyAsId",
               "label":"Document property used to specify _id metadata with document in bulk request",
-              "helpText":"A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precendence over an index UDF)",
+              "helpText":"A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precedence over an index UDF)",
               "paramType":"TEXT",
               "isOptional":true
           },
@@ -273,10 +273,10 @@ The template has the following optional parameters:
 * batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
 * maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
 * maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
-* propertyAsIndex: A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precendence over an index UDF)
+* propertyAsIndex: A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precedence over an index UDF)
 * javaScriptIndexFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _index metadata to be included with document in bulk request
 * javaScriptIndexFnName: Function name for JavaScript UDF that will specify _index metadata to be included with document in bulk request
-* propertyAsId: A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precendence over an index UDF)
+* propertyAsId: A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precedence over an index UDF)
 * javaScriptIdFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _id metadata to be included with document in bulk request
 * javaScriptIdFnName: Function name for JavaScript UDF that will specify _id metadata to be included with document in bulk request
 * javaScriptTypeFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _type metadata to be included with document in bulk request
