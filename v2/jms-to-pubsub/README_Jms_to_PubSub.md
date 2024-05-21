@@ -17,15 +17,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputName** : JMS Queue/Topic Name to read the input from. (Example: queue).
-* **inputType** : JMS Destination Type to read the input from. (Example: queue).
-* **outputTopic** : The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
-* **username** : JMS username for authentication with JMS server (Example: sampleusername).
-* **password** : Password for username provided for authentication with JMS server (Example: samplepassword).
+* **inputName** : The name of the JMS topic or queue that data is read from. (Example: queue).
+* **inputType** : The JMS destination type to read data from. Can be a queue or a topic. (Example: queue).
+* **outputTopic** : The name of the Pub/Sub topic to publish data to, in the format `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`. (Example: projects/your-project-id/topics/your-topic-name).
+* **username** : The username to use for authentication on the JMS server. (Example: sampleusername).
+* **password** : The password associated with the provided username. (Example: samplepassword).
 
 ### Optional parameters
 
-* **jmsServer** : Server IP for JMS Host (Example: host:5672).
+* **jmsServer** : The JMS (ActiveMQ) Server IP. (Example: tcp://10.0.0.1:61616).
 
 
 
@@ -207,7 +207,7 @@ resource "google_dataflow_flex_template_job" "jms_to_pubsub" {
     outputTopic = "projects/your-project-id/topics/your-topic-name"
     username = "sampleusername"
     password = "samplepassword"
-    # jmsServer = "host:5672"
+    # jmsServer = "tcp://10.0.0.1:61616"
   }
 }
 ```

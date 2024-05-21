@@ -1,12 +1,12 @@
 
-Cloud Storage To Splunk template
+Cloud Storage To Splunk with Python UDFs template
 ---
 A pipeline that reads a set of Text (CSV) files in Cloud Storage and writes to
 Splunk's HTTP Event Collector (HEC).
 
 The template creates the Splunk payload as a JSON element using either CSV
-headers (default), JSON schema or JavaScript UDF. If a Javascript UDF and JSON
-schema are both inputted as parameters, only the Javascript UDF will be executed.
+headers (default), JSON schema or Python UDF. If a Python UDF and JSON schema are
+both inputted as parameters, only the Python UDF will be executed.
 
 
 
@@ -42,19 +42,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **rootCaCertificatePath** : The full URL to root CA certificate in Cloud Storage. The certificate provided in Cloud Storage must be DER-encoded and may be supplied in binary or printable (Base64) encoding. If the certificate is provided in Base64 encoding, it must be bounded at the beginning by -----BEGIN CERTIFICATE-----, and must be bounded at the end by -----END CERTIFICATE-----. If this parameter is provided, this private CA certificate file will be fetched and added to Dataflow worker's trust store in order to verify Splunk HEC endpoint's SSL certificate which is signed by that private CA. If this parameter is not provided, the default trust store is used. (Example: gs://mybucket/mycerts/privateCA.crt).
 * **enableBatchLogs** : Parameter which specifies if logs should be enabled for batches written to Splunk. Defaults to: true.
 * **enableGzipHttpCompression** : Parameter which specifies if HTTP requests sent to Splunk HEC should be GZIP encoded. Defaults to: true.
-* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js).
-* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **pythonExternalTextTransformGcsPath** : The Cloud Storage path pattern for the Python code containing your user-defined functions. (Example: gs://your-bucket/your-function.py).
+* **pythonExternalTextTransformFunctionName** : The name of the function to call from your Python file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
 
-
-## User-Defined functions (UDFs)
-
-The Cloud Storage To Splunk Template supports User-Defined functions (UDFs).
-UDFs allow you to customize functionality by providing a JavaScript function
-without having to maintain or build the entire template code.
-
-Check [Create user-defined functions for Dataflow templates](https://cloud.google.com/dataflow/docs/guides/templates/create-template-udf)
-and [Using UDFs](https://github.com/GoogleCloudPlatform/DataflowTemplates#using-udfs)
-for more information about how to create and test those functions.
 
 
 ## Getting Started
@@ -100,7 +90,7 @@ mvn clean package -PtemplatesStage  \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
--DtemplateName="GCS_To_Splunk" \
+-DtemplateName="GCS_To_Splunk_Xlang" \
 -f v2/googlecloud-to-splunk
 ```
 
@@ -109,7 +99,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/GCS_To_Splunk
+Flex Template was staged! gs://<bucket-name>/templates/flex/GCS_To_Splunk_Xlang
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -129,7 +119,7 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/GCS_To_Splunk"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/GCS_To_Splunk_Xlang"
 
 ### Required
 export INVALID_OUTPUT_PATH=<invalidOutputPath>
@@ -155,10 +145,10 @@ export TOKEN_SECRET_ID=<tokenSecretId>
 export ROOT_CA_CERTIFICATE_PATH=<rootCaCertificatePath>
 export ENABLE_BATCH_LOGS=true
 export ENABLE_GZIP_HTTP_COMPRESSION=true
-export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
-export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH=<pythonExternalTextTransformGcsPath>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME=<pythonExternalTextTransformFunctionName>
 
-gcloud dataflow flex-template run "gcs-to-splunk-job" \
+gcloud dataflow flex-template run "gcs-to-splunk-xlang-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
@@ -183,8 +173,8 @@ gcloud dataflow flex-template run "gcs-to-splunk-job" \
   --parameters "rootCaCertificatePath=$ROOT_CA_CERTIFICATE_PATH" \
   --parameters "enableBatchLogs=$ENABLE_BATCH_LOGS" \
   --parameters "enableGzipHttpCompression=$ENABLE_GZIP_HTTP_COMPRESSION" \
-  --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
-  --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME"
+  --parameters "pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH" \
+  --parameters "pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME"
 ```
 
 For more information about the command, please check:
@@ -226,17 +216,17 @@ export TOKEN_SECRET_ID=<tokenSecretId>
 export ROOT_CA_CERTIFICATE_PATH=<rootCaCertificatePath>
 export ENABLE_BATCH_LOGS=true
 export ENABLE_GZIP_HTTP_COMPRESSION=true
-export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
-export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH=<pythonExternalTextTransformGcsPath>
+export PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME=<pythonExternalTextTransformFunctionName>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="gcs-to-splunk-job" \
--DtemplateName="GCS_To_Splunk" \
--Dparameters="invalidOutputPath=$INVALID_OUTPUT_PATH,inputFileSpec=$INPUT_FILE_SPEC,containsHeaders=$CONTAINS_HEADERS,deadletterTable=$DEADLETTER_TABLE,delimiter=$DELIMITER,csvFormat=$CSV_FORMAT,jsonSchemaPath=$JSON_SCHEMA_PATH,largeNumFiles=$LARGE_NUM_FILES,csvFileEncoding=$CSV_FILE_ENCODING,logDetailedCsvConversionErrors=$LOG_DETAILED_CSV_CONVERSION_ERRORS,token=$TOKEN,url=$URL,batchCount=$BATCH_COUNT,disableCertificateValidation=$DISABLE_CERTIFICATE_VALIDATION,parallelism=$PARALLELISM,tokenSource=$TOKEN_SOURCE,tokenKMSEncryptionKey=$TOKEN_KMSENCRYPTION_KEY,tokenSecretId=$TOKEN_SECRET_ID,rootCaCertificatePath=$ROOT_CA_CERTIFICATE_PATH,enableBatchLogs=$ENABLE_BATCH_LOGS,enableGzipHttpCompression=$ENABLE_GZIP_HTTP_COMPRESSION,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
+-DjobName="gcs-to-splunk-xlang-job" \
+-DtemplateName="GCS_To_Splunk_Xlang" \
+-Dparameters="invalidOutputPath=$INVALID_OUTPUT_PATH,inputFileSpec=$INPUT_FILE_SPEC,containsHeaders=$CONTAINS_HEADERS,deadletterTable=$DEADLETTER_TABLE,delimiter=$DELIMITER,csvFormat=$CSV_FORMAT,jsonSchemaPath=$JSON_SCHEMA_PATH,largeNumFiles=$LARGE_NUM_FILES,csvFileEncoding=$CSV_FILE_ENCODING,logDetailedCsvConversionErrors=$LOG_DETAILED_CSV_CONVERSION_ERRORS,token=$TOKEN,url=$URL,batchCount=$BATCH_COUNT,disableCertificateValidation=$DISABLE_CERTIFICATE_VALIDATION,parallelism=$PARALLELISM,tokenSource=$TOKEN_SOURCE,tokenKMSEncryptionKey=$TOKEN_KMSENCRYPTION_KEY,tokenSecretId=$TOKEN_SECRET_ID,rootCaCertificatePath=$ROOT_CA_CERTIFICATE_PATH,enableBatchLogs=$ENABLE_BATCH_LOGS,enableGzipHttpCompression=$ENABLE_GZIP_HTTP_COMPRESSION,pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH,pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME" \
 -f v2/googlecloud-to-splunk
 ```
 
@@ -254,7 +244,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd v2/googlecloud-to-splunk/terraform/GCS_To_Splunk
+cd v2/googlecloud-to-splunk/terraform/GCS_To_Splunk_Xlang
 terraform init
 terraform apply
 ```
@@ -274,11 +264,11 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "gcs_to_splunk" {
+resource "google_dataflow_flex_template_job" "gcs_to_splunk_xlang" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/GCS_To_Splunk"
-  name              = "gcs-to-splunk"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/GCS_To_Splunk_Xlang"
+  name              = "gcs-to-splunk-xlang"
   region            = var.region
   parameters        = {
     invalidOutputPath = "gs://your-bucket/your-path"
@@ -302,8 +292,8 @@ resource "google_dataflow_flex_template_job" "gcs_to_splunk" {
     # rootCaCertificatePath = "gs://mybucket/mycerts/privateCA.crt"
     # enableBatchLogs = "true"
     # enableGzipHttpCompression = "true"
-    # javascriptTextTransformGcsPath = "gs://my-bucket/my-udfs/my_file.js"
-    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
+    # pythonExternalTextTransformGcsPath = "gs://your-bucket/your-function.py"
+    # pythonExternalTextTransformFunctionName = "'transform' or 'transform_udf1'"
   }
 }
 ```

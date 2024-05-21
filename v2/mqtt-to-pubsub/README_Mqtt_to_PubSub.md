@@ -19,14 +19,14 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputTopic** : MQTT topic(s) to read the input from. (Example: topic).
-* **outputTopic** : The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
-* **username** : MQTT username for authentication with MQTT server (Example: sampleusername).
-* **password** : Password for username provided for authentication with MQTT server (Example: samplepassword).
+* **inputTopic** : The name of the MQTT topic that data is read from. (Example: topic).
+* **outputTopic** : The name of the output Pub/Sub topic that data is written to. (Example: projects/your-project-id/topics/your-topic-name).
+* **username** : The username to use for authentication on the MQTT server. (Example: sampleusername).
+* **password** : The password associated with the provided username. (Example: samplepassword).
 
 ### Optional parameters
 
-* **brokerServer** : Server IP for MQTT broker (Example: tcp://host:1883).
+* **brokerServer** : The MQTT broker server IP or host. (Example: tcp://host:1883).
 
 
 

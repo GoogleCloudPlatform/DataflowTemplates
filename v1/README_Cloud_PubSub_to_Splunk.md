@@ -33,25 +33,25 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputSubscription** : Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **url** : Splunk Http Event Collector (HEC) url. This should be routable from the VPC in which the pipeline runs. (Example: https://splunk-hec-host:8088).
-* **outputDeadletterTopic** : The Pub/Sub topic to publish deadletter records to. The name should be in the format of `projects/your-project-id/topics/your-topic-name`.
+* **inputSubscription** : The Pub/Sub subscription to read the input from. (Example: projects/your-project-id/subscriptions/your-subscription-name).
+* **url** : The Splunk HEC URL. The URL must be routable from the VPC that the pipeline runs in. (Example: https://splunk-hec-host:8088).
+* **outputDeadletterTopic** : The Pub/Sub topic to forward undeliverable messages to. For example, projects/<PROJECT_ID>/topics/<TOPIC_NAME>.
 
 ### Optional parameters
 
-* **token** : Splunk Http Event Collector (HEC) authentication token. Must be provided if the tokenSource is set to PLAINTEXT or KMS.
-* **batchCount** : Batch size for sending multiple events to Splunk HEC. Defaults to 10.
-* **disableCertificateValidation** : Disable SSL certificate validation (true/false). Default false (validation enabled). If true, the certificates are not validated (all certificates are trusted) and  `rootCaCertificatePath` parameter is ignored.
-* **parallelism** : Maximum number of parallel requests. Default 1 (no parallelism).
-* **includePubsubMessage** : Include full Pub/Sub message in the payload (true/false). Defaults to false (only data element is included in the payload).
-* **tokenKMSEncryptionKey** : The Cloud KMS key to decrypt the HEC token string. This parameter must be provided if the tokenSource is set to KMS. If this parameter is provided, token string should be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. The Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).
-* **tokenSecretId** : Secret Manager secret ID for the token. This parameter should be provided if the tokenSource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
-* **tokenSource** : Source of the token. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter must be provided if secret manager is used. If tokenSource is set to KMS, tokenKMSEncryptionKey and encrypted token must be provided. If tokenSource is set to SECRET_MANAGER, tokenSecretId must be provided. If tokenSource is set to PLAINTEXT, token must be provided.
-* **rootCaCertificatePath** : The full URL to root CA certificate in Cloud Storage. The certificate provided in Cloud Storage must be DER-encoded and may be supplied in binary or printable (Base64) encoding. If the certificate is provided in Base64 encoding, it must be bounded at the beginning by -----BEGIN CERTIFICATE-----, and must be bounded at the end by -----END CERTIFICATE-----. If this parameter is provided, this private CA certificate file will be fetched and added to Dataflow worker's trust store in order to verify Splunk HEC endpoint's SSL certificate which is signed by that private CA. If this parameter is not provided, the default trust store is used. (Example: gs://mybucket/mycerts/privateCA.crt).
-* **enableBatchLogs** : Parameter which specifies if logs should be enabled for batches written to Splunk. Defaults to: true.
-* **enableGzipHttpCompression** : Parameter which specifies if HTTP requests sent to Splunk HEC should be GZIP encoded. Defaults to: true.
-* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
-* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
+* **token** : The Splunk HEC authentication token. Must be provided if the `tokenSource` parameter is set to `PLAINTEXT` or `KMS`.
+* **batchCount** : The batch size for sending multiple events to Splunk. Defaults to 1 (no batching).
+* **disableCertificateValidation** : Disable SSL certificate validation. Default false (validation enabled). If true, the certificates are not validated (all certificates are trusted) and `rootCaCertificatePath` parameter is ignored.
+* **parallelism** : The maximum number of parallel requests. Defaults to 1 (no parallelism).
+* **includePubsubMessage** : Include the full Pub/Sub message in the payload. Default false (only the data element is included in the payload).
+* **tokenKMSEncryptionKey** : The Cloud KMS key to use to decrypt the HEC token string. This parameter must be provided when tokenSource is set to KMS. If the Cloud KMS key is provided, the HEC token string `must` be passed in encrypted. (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).
+* **tokenSecretId** : The Secret Manager secret ID for the token. This parameter must provided when the tokenSource is set to SECRET_MANAGER. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
+* **tokenSource** : The source of the token. The following values are allowed: `PLAINTEXT`, `KMS`, and `SECRET_MANAGER`. You must provide this parameter when Secret Manager is used. If `tokenSource` is set to `KMS`, `tokenKMSEncryptionKey`, and encrypted, then `token` must be provided. If `tokenSource` is set to `SECRET_MANAGER`, then `tokenSecretId` must be provided. If `tokenSource` is set to `PLAINTEXT`, then `token` must be provided.
+* **rootCaCertificatePath** : The full URL to the root CA certificate in Cloud Storage. The certificate provided in Cloud Storage must be DER-encoded and can be supplied in binary or printable (Base64) encoding. If the certificate is provided in Base64 encoding, it must be bounded at the beginning by -----BEGIN CERTIFICATE-----, and must be bounded at the end by -----END CERTIFICATE-----. If this parameter is provided, this private CA certificate file is fetched and added to the Dataflow worker's trust store in order to verify the Splunk HEC endpoint's SSL certificate. If this parameter is not provided, the default trust store is used. (Example: gs://mybucket/mycerts/privateCA.crt).
+* **enableBatchLogs** : Specifies whether logs should be enabled for batches written to Splunk. Default: `true`.
+* **enableGzipHttpCompression** : Specifies whether HTTP requests sent to Splunk HEC should be compressed (gzip content encoded). Default: `true`.
+* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
 * **javascriptTextTransformReloadIntervalMinutes** : Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
 
 
@@ -290,7 +290,7 @@ resource "google_dataflow_job" "cloud_pubsub_to_splunk" {
     # enableBatchLogs = "true"
     # enableGzipHttpCompression = "true"
     # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
-    # javascriptTextTransformFunctionName = "transform_udf1"
+    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # javascriptTextTransformReloadIntervalMinutes = "0"
   }
 }

@@ -28,17 +28,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **astraToken** : Token value or secret resource ID (Example: AstraCS:abcdefghij).
-* **astraDatabaseId** : Database unique identifier (uuid) (Example: cf7af129-d33a-498f-ad06-d97a6ee6eb7).
-* **astraKeyspace** : Name of the Cassandra keyspace inside Astra database.
-* **astraTable** : Name of the table inside the Cassandra database (Example: my_table).
+* **astraToken** : The token value or secret resource ID. (Example: AstraCS:abcdefghij).
+* **astraDatabaseId** : The database unique identifier (UUID). (Example: cf7af129-d33a-498f-ad06-d97a6ee6eb7).
+* **astraKeyspace** : The name of the Cassandra keyspace inside of the Astra database.
+* **astraTable** : The name of the table inside of the Cassandra database. (Example: my_table).
 
 ### Optional parameters
 
-* **astraQuery** : Query to filter rows instead of reading the whole table.
+* **astraQuery** : The query to use to filter rows instead of reading the whole table.
 * **astraDatabaseRegion** : If not provided, a default is chosen, which is useful with multi-region databases.
-* **minTokenRangesCount** : The minimal number of splits to distribute the query.
-* **outputTableSpec** : The BigQuery table location to write the output to. The table should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match the input objects.
+* **minTokenRangesCount** : The minimal number of splits to use to distribute the query.
+* **outputTableSpec** : The BigQuery table location to write the output to. Use the format `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`. The table's schema must match the input objects.
 
 
 

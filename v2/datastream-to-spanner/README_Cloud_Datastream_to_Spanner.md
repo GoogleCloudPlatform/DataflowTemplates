@@ -42,23 +42,23 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputFilePattern** : This is the file location for Datastream file output in Cloud Storage. Normally, this will be gs://${BUCKET}/${ROOT_PATH}/.
-* **instanceId** : This is the name of the Cloud Spanner instance where the changes are replicated.
-* **databaseId** : This is the name of the Cloud Spanner database where the changes are replicated.
-* **streamName** : This is the Datastream stream name used to get information.
+* **inputFilePattern** : The Cloud Storage file location that contains the Datastream files to replicate. Typically, this is the root path for a stream.
+* **instanceId** : The Spanner instance where the changes are replicated.
+* **databaseId** : The Spanner database where the changes are replicated.
+* **streamName** : The name or template for the stream to poll for schema information and source type.
 
 ### Optional parameters
 
-* **inputFileFormat** : This is the format of the output file produced by Datastream. By default this will be avro.
+* **inputFileFormat** : The format of the output file produced by Datastream. For example `avro,json`. Default, `avro`.
 * **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from HarbourBridge.
-* **projectId** : This is the name of the Cloud Spanner project.
+* **projectId** : The Spanner project ID.
 * **spannerHost** : The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
 * **gcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>.
-* **shadowTablePrefix** : The prefix used for the shadow table. Defaults to: shadow_.
+* **shadowTablePrefix** : The prefix used to name shadow tables. Default: `shadow_`.
 * **shouldCreateShadowTables** : This flag indicates whether shadow tables must be created in Cloud Spanner database. Defaults to: true.
 * **rfcStartDateTime** : The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z.
 * **fileReadConcurrency** : The number of concurrent DataStream files to read. Defaults to: 30.
-* **deadLetterQueueDirectory** : This is the file path to store the deadletter queue output. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
+* **deadLetterQueueDirectory** : The file path used when storing the error queue output. The default file path is a directory under the Dataflow job's temp location.
 * **dlqRetryMinutes** : The number of minutes between dead letter queue retries. Defaults to 10.
 * **dlqMaxRetryCount** : The max number of times temporary errors can be retried through DLQ. Defaults to 500.
 * **dataStreamRootUrl** : Datastream API Root URL. Defaults to: https://datastream.googleapis.com/.

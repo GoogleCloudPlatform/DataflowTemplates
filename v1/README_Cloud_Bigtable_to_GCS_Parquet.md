@@ -18,15 +18,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **bigtableProjectId** : The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from.
+* **bigtableProjectId** : The ID of the Google Cloud project that contains the Cloud Bigtable instance that you want to read data from.
 * **bigtableInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
 * **bigtableTableId** : The ID of the Cloud Bigtable table to export.
-* **outputDirectory** : The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path).
+* **outputDirectory** : The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse the directory path for date and time formatters. For example: gs://your-bucket/your-path.
 * **filenamePrefix** : The prefix of the Parquet file name. For example, "table1-". Defaults to: part.
 
 ### Optional parameters
 
-* **numShards** : The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Default value is decided by Dataflow.
+* **numShards** : The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. The default value is decided by Dataflow.
 
 
 
@@ -209,7 +209,7 @@ resource "google_dataflow_job" "cloud_bigtable_to_gcs_parquet" {
     bigtableProjectId = "<bigtableProjectId>"
     bigtableInstanceId = "<bigtableInstanceId>"
     bigtableTableId = "<bigtableTableId>"
-    outputDirectory = "gs://your-bucket/your-path"
+    outputDirectory = "<outputDirectory>"
     filenamePrefix = "part"
     # numShards = "0"
   }

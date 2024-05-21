@@ -18,11 +18,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **bigtableProjectId** : The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from.
-* **bigtableInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableTableId** : The ID of the Cloud Bigtable table to read.
-* **outputDirectory** : The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path).
-* **filenamePrefix** : The prefix of the Avro file name. For example, "table1-". Defaults to: part.
+* **bigtableProjectId** : The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from.
+* **bigtableInstanceId** : The ID of the Bigtable instance that contains the table.
+* **bigtableTableId** : The ID of the Bigtable table to export.
+* **outputDirectory** : The Cloud Storage path where data is written. (Example: gs://mybucket/somefolder).
+* **filenamePrefix** : The prefix of the Avro filename. For example, `output-`. Defaults to: part.
 
 ### Optional parameters
 
@@ -205,7 +205,7 @@ resource "google_dataflow_job" "cloud_bigtable_to_gcs_avro" {
     bigtableProjectId = "<bigtableProjectId>"
     bigtableInstanceId = "<bigtableInstanceId>"
     bigtableTableId = "<bigtableTableId>"
-    outputDirectory = "gs://your-bucket/your-path"
+    outputDirectory = "gs://mybucket/somefolder"
     filenamePrefix = "part"
   }
 }
