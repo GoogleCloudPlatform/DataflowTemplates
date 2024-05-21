@@ -20,7 +20,7 @@ import com.google.cloud.teleport.v2.kafka.options.KafkaCommonOptions;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
-public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions {
+public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions, CommonTemplateOptions {
   @TemplateParameter.Text(
       order = 1,
       optional = false,
@@ -80,7 +80,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
       optional = true,
       description = "The type of kafka-to-kafka migration",
       helpText = "Migration type for the data movement from a source to a destination kafka.")
-  @Validation.Required
+
   String getMigrationType();
 
   void setMigrationType(String migrationType);
@@ -95,7 +95,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
       },
       helpText = "Type of authentication mechanism to authenticate to source Kafka."
   )
-  @Validation.Required
+
   String getSourceAuthenticationMethod();
 
   void setSourceAuthenticationMethod(String sourceAuthenticationMethod);
@@ -110,7 +110,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
       },
       helpText = "Type of authentication mechanism to authenticate to sink Kafka."
   )
-  @Validation.Required
+
   String getDestinationAuthenticationMethod();
 
   void setDestinationAuthenticationMethod(String destinationAuthenticationMethod);
@@ -123,7 +123,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
           "Secret version id from the secret manager to get Kafka SASL_PLAIN username for source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
+
   String getSourceUsernameSecretId();
 
   void setSourceUsernameSecretId(String sourceUsernameSecretId);
@@ -136,7 +136,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
           "Secret version id from the secret manager to get Kafka SASL_PLAIN password for the source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
+
   String getSourcePasswordSecretId();
 
   void setSourcePasswordSecretId(String sourcePasswordSecretId);
@@ -149,7 +149,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
           "Secret version id from the secret manager to get Kafka SASL_PLAIN username for the destination Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
+
   String getDestinationUsernameSecretId();
 
   void setDestinationUsernameSecretId(String destinationUsernameSecretId);
@@ -162,7 +162,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions
           " Secret version id from the secret manager to get Kafka SASL_PLAIN password for the destination Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
+
   String getDestinationPasswordSecretId();
 
   void setDestinationPasswordSecretId(String destinationPasswordSecretId);
