@@ -108,7 +108,10 @@ public class KafkaToGcsIT extends TemplateTestBase {
                 .addParameter("offset", "earliest")
                 .addParameter("outputDirectory", getGcsPath(testName))
                 .addParameter("outputFilenamePrefix", testName + "-")
-                .addParameter("numShards", "2"));
+                .addParameter("numShards", "2")
+                .addParameter("deadLetterQueueKafkaTopic", "false")
+                .addParameter("enableKafkaDlq", "false")
+        );
 
     // Act
     LaunchInfo info = launchTemplate(options);

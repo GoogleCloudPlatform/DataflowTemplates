@@ -115,7 +115,9 @@ public final class KafkaToBigQueryAvroIT extends TemplateTestBase {
         b ->
             b.addParameter("useStorageWriteApi", "true")
                 .addParameter("numStorageWriteApiStreams", "3")
-                .addParameter("storageWriteApiTriggeringFrequencySec", "3"),
+                .addParameter("storageWriteApiTriggeringFrequencySec", "3")
+                .addParameter("deadLetterQueueKafkaTopic", "false")
+                .addParameter("enableKafkaDlq", "false"),
         null);
   }
 
@@ -130,7 +132,9 @@ public final class KafkaToBigQueryAvroIT extends TemplateTestBase {
             b.addParameter("useStorageWriteApi", "true")
                 .addParameter("numStorageWriteApiStreams", "3")
                 .addParameter("storageWriteApiTriggeringFrequencySec", "3")
-                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId)),
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId))
+                .addParameter("deadLetterQueueKafkaTopic", "false")
+                .addParameter("enableKafkaDlq", "false"),
         null);
   }
 
@@ -148,7 +152,9 @@ public final class KafkaToBigQueryAvroIT extends TemplateTestBase {
     baseKafkaToBigQueryAvro(
         b ->
             b.addParameter("javascriptTextTransformGcsPath", getGcsPath("input/" + udfFileName))
-                .addParameter("javascriptTextTransformFunctionName", "transform"),
+                .addParameter("javascriptTextTransformFunctionName", "transform")
+                    .addParameter("deadLetterQueueKafkaTopic", "false")
+                    .addParameter("enableKafkaDlq", "false"),
         tableResult ->
             assertThatBigQueryRecords(tableResult)
                 .hasRecordsUnordered(
@@ -215,7 +221,9 @@ public final class KafkaToBigQueryAvroIT extends TemplateTestBase {
                 .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
                 .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId))
                 .addParameter("messageFormat", "AVRO")
-                .addParameter("avroSchemaPath", getGcsPath("schema.avsc")));
+                .addParameter("avroSchemaPath", getGcsPath("schema.avsc"))
+                .addParameter("deadLetterQueueKafkaTopic", "false")
+                .addParameter("enableKafkaDlq", "false"));
 
     // Act
     LaunchInfo info = launchTemplate(options);
