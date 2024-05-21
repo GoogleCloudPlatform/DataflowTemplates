@@ -172,9 +172,7 @@ public class PubSubToMongoDB {
     @TemplateParameter.PubsubSubscription(
         order = 1,
         description = "Pub/Sub input subscription",
-        helpText =
-            "Pub/Sub subscription to read the input from, in the format of"
-                + " 'projects/your-project-id/subscriptions/your-subscription-name'",
+        helpText = "Name of the Pub/Sub subscription.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     @Validation.Required
     String getInputSubscription();
@@ -204,7 +202,7 @@ public class PubSubToMongoDB {
     @TemplateParameter.Text(
         order = 4,
         description = "MongoDB collection",
-        helpText = "Name of the collection inside MongoDB database to insert the documents.",
+        helpText = "Name of the collection in the MongoDB database.",
         example = "my-collection")
     @Validation.Required
     String getCollection();
@@ -215,9 +213,7 @@ public class PubSubToMongoDB {
         order = 5,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
-                + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
-                + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
+            "The BigQuery table that stores messages caused by failures, such as mismatched schema, malformed JSON, and so on.",
         example = "your-project-id:your-dataset.your-table-name")
     @Validation.Required
     String getDeadletterTable();
@@ -228,7 +224,7 @@ public class PubSubToMongoDB {
         order = 6,
         optional = true,
         description = "Batch Size",
-        helpText = "Batch Size used for batch insertion of documents into MongoDB.")
+        helpText = "Batch size used for batch insertion of documents into MongoDB.")
     @Default.Long(1000)
     Long getBatchSize();
 
@@ -238,7 +234,7 @@ public class PubSubToMongoDB {
         order = 7,
         optional = true,
         description = "Batch Size in Bytes",
-        helpText = "Batch Size in bytes used for batch insertion of documents into MongoDB.")
+        helpText = "Batch size in bytes.")
     @Default.Long(5242880)
     Long getBatchSizeBytes();
 
@@ -258,7 +254,7 @@ public class PubSubToMongoDB {
         order = 9,
         optional = true,
         description = "SSL Enabled",
-        helpText = "Indicates whether connection to MongoDB is ssl enabled.")
+        helpText = "Boolean value indicating whether the connection to MongoDB is SSL enabled.")
     @Default.Boolean(true)
     Boolean getSslEnabled();
 
@@ -268,7 +264,7 @@ public class PubSubToMongoDB {
         order = 10,
         optional = true,
         description = "Ignore SSL Certificate",
-        helpText = "Indicates whether SSL certificate should be ignored.")
+        helpText = "Boolean value indicating whether to ignore the SSL certificate.")
     @Default.Boolean(true)
     Boolean getIgnoreSSLCertificate();
 
@@ -278,7 +274,7 @@ public class PubSubToMongoDB {
         order = 11,
         optional = true,
         description = "withOrdered",
-        helpText = "Enables ordered bulk insertions into MongoDB.")
+        helpText = "Boolean value enabling ordered bulk insertions into MongoDB.")
     @Default.Boolean(true)
     Boolean getWithOrdered();
 
@@ -288,7 +284,8 @@ public class PubSubToMongoDB {
         order = 12,
         optional = true,
         description = "withSSLInvalidHostNameAllowed",
-        helpText = "Indicates whether invalid host name is allowed for ssl connection.")
+        helpText =
+            "Boolean value indicating whether an invalid hostname is allowed for the SSL connection.")
     @Default.Boolean(true)
     Boolean getWithSSLInvalidHostNameAllowed();
 
