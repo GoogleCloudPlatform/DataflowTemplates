@@ -27,18 +27,19 @@ import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 
 
+
 import java.io.IOException;
 
 
 
 import java.util.Objects;
 
+
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.values.KV;
-import org.apache.beam.sdk.values.PCollection;
+
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.slf4j.Logger;
@@ -64,6 +65,7 @@ public class KafkaToKafka {
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToKafkaOptions.class);
     run(options);
   }
+
 
 
   public static PipelineResult run(KafkaToKafkaOptions options) throws IOException {
@@ -116,7 +118,6 @@ public class KafkaToKafka {
       throw new UnsupportedOperationException(
           "Authentication method not supported: " + options.getSourceAuthenticationMethod());
     }
-
 
     Pipeline pipeline = Pipeline.create(options);
     pipeline

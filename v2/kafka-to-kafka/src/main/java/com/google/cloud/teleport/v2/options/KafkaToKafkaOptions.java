@@ -23,6 +23,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
 
+
 public interface KafkaToKafkaOptions extends PipelineOptions {
 
   @TemplateParameter.KafkaTopic(
@@ -50,6 +51,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
+
 
       helpText = "Type of authentication mechanism to use with the source Kafka.")
   @Validation.Required
@@ -217,6 +219,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
+
       helpText = "Type of authentication mechanism to use with the destination Kafka.")
   @Validation.Required
   String getDestinationAuthenticationMethod();
@@ -239,6 +242,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
 
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+
   String getDestinationUsernameSecretId();
 
   void setDestinationUsernameSecretId(String destinationUsernameSecretId);
