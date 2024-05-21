@@ -24,8 +24,6 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO.FailureMode;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO.Write;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
-import org.apache.beam.sdk.metrics.Counter;
-import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptor;
@@ -36,9 +34,6 @@ import org.slf4j.LoggerFactory;
 public class SpannerWriter implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerWriter.class);
-
-  private final Counter processedMutationCounter =
-      Metrics.counter(SpannerWriter.class, "Processed mutations");
 
   private final SpannerConfig spannerConfig;
 
@@ -53,6 +48,7 @@ public class SpannerWriter implements Serializable {
   }
 
   public PCollection<MutationGroup> writeToSpanner(PCollection<RowContext> rows) {
+    LOG.info("initiating write to spanner");
     SpannerWriteResult writeResult =
         rows.apply(
                 "extractMutation",

@@ -203,10 +203,8 @@ public class AvroToValueMapper {
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
           "Unable to convert "
-              + fieldSchema.getType()
-              + " to string, with value: "
-              + recordValue
-              + ", Exception: "
+              + String.valueOf(fieldSchema.getType())
+              + " to string, Exception: "
               + e.getMessage());
     }
   }

@@ -171,7 +171,8 @@ public class SourceDbToSpanner {
     return pipeline.run();
   }
 
-  private static SpannerConfig createSpannerConfig(SourceDbToSpannerOptions options) {
+  @VisibleForTesting
+  static SpannerConfig createSpannerConfig(SourceDbToSpannerOptions options) {
     return SpannerConfig.create()
         .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
         .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
@@ -179,7 +180,8 @@ public class SourceDbToSpanner {
         .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
   }
 
-  private static ISchemaMapper getSchemaMapper(
+  @VisibleForTesting
+  static ISchemaMapper getSchemaMapper(
       SourceDbToSpannerOptions options, SpannerConfig spannerConfig) {
     Ddl ddl = getInformationSchemaAsDdl(spannerConfig);
     ISchemaMapper schemaMapper = new IdentityMapper(ddl);
@@ -189,9 +191,10 @@ public class SourceDbToSpanner {
     return schemaMapper;
   }
 
+  @VisibleForTesting
   // TODO: SpannerInfoschema scanner code is duplicated across live, bulk and reverse replication
   // templates. We should refactor everything to spanner-common.
-  private static Ddl getInformationSchemaAsDdl(SpannerConfig spannerConfig) {
+  static Ddl getInformationSchemaAsDdl(SpannerConfig spannerConfig) {
     SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
     DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
     Dialect dialect =
@@ -207,7 +210,8 @@ public class SourceDbToSpanner {
     return ddl;
   }
 
-  private static Map<String, SourceTableReference> getTableIDToRefMap(SourceSchema srcSchema) {
+  @VisibleForTesting
+  static Map<String, SourceTableReference> getTableIDToRefMap(SourceSchema srcSchema) {
     Map<String, SourceTableReference> tableIdMapper = new HashMap<>();
     for (SourceTableSchema srcTableSchema : srcSchema.tableSchemas()) {
       tableIdMapper.put(

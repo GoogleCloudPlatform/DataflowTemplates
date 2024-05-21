@@ -182,6 +182,16 @@ public class AvroToValueMapperTest {
     assertNull(AvroToValueMapper.avroFieldToString(null, SchemaBuilder.builder().nullType()));
   }
 
+  @Test(expected = AvroTypeConvertorException.class)
+  public void testAvroFieldToString_Exception() {
+    class ThrowObject {
+      public String toString() {
+        throw new RuntimeException("explicit exception");
+      }
+    }
+    AvroToValueMapper.avroFieldToString(new ThrowObject(), SchemaBuilder.builder().nullType());
+  }
+
   @Test
   public void testAvroFieldToNumericBigDecimal_StringInput() {
     Map<String, String> testCases = new HashMap<>();
