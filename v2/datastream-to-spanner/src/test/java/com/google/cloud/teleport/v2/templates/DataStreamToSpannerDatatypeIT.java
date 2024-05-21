@@ -259,7 +259,7 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
     row.put("bit_column", "102");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("varchar_column", "value2");
     row.put("tinyint_column", "5");
     row.put("date_column", "2024-02-09T00:00:00Z");
@@ -388,7 +388,7 @@ public class DataStreamToSpannerDatatypeIT extends DataStreamToSpannerITBase {
     row.put("bit_column", "AQI=");
     events.add(row);
 
-    row.clear();
+    row = new HashMap<>();
     row.put("varchar_column", "value2");
     row.put("tinyint_column", 5);
     row.put("text_column", "text2");
