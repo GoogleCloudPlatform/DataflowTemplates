@@ -46,15 +46,16 @@ public interface KafkaReadOptions extends PipelineOptions {
   String getKafkaReadTopics();
 
   void setKafkaReadTopics(String inputTopics);
+
   @TemplateParameter.Enum(
-          order = 3,
-          description = "The Kafka offset to read from.",
-          enumOptions = {
-                  @TemplateParameter.TemplateEnumOption("latest"),
-                  @TemplateParameter.TemplateEnumOption("earliest"),
-          },
-          helpText = "Set the Kafka offset to earliest or latest(default)",
-          optional = true)
+      order = 3,
+      description = "The Kafka offset to read from.",
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption("latest"),
+        @TemplateParameter.TemplateEnumOption("earliest"),
+      },
+      helpText = "Set the Kafka offset to earliest or latest(default)",
+      optional = true)
   @Default.String("latest")
   String getOffset();
 
