@@ -29,7 +29,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 1,
       description = "Elasticsearch URL or CloudID if using Elastic Cloud",
       helpText =
-          "The Elasticsearch URL, in the format https://hostname:[port]. If using Elastic Cloud, specify the CloudID instead.",
+          "The Elasticsearch URL in the format https://hostname:[port]. If using Elastic Cloud, specify the CloudID.",
       example = "https://elasticsearch-host:9200")
   @Validation.Required
   String getConnectionUrl();
@@ -70,7 +70,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = false,
       regexes = {"[a-zA-Z0-9._-]+"},
       description = "Elasticsearch index",
-      helpText = "The Elasticsearch index that the requests are issued to.",
+      helpText = "The Elasticsearch index that the requests are issued to, such as `my-index.`",
       example = "my-index")
   String getIndex();
 
@@ -80,7 +80,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 6,
       optional = true,
       description = "Batch Size",
-      helpText = "The batch size, in number of documents. Defaults to: 1000.")
+      helpText = "The batch size in number of documents. Defaults to: 1000.")
   @Default.Long(1000)
   Long getBatchSize();
 
@@ -90,7 +90,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 7,
       optional = true,
       description = "Batch Size in Bytes",
-      helpText = "The batch size, in number of bytes. Defaults to: 5242880 (5mb).")
+      helpText = "The batch size in number of bytes. Defaults to: 5242880 (5mb).")
   @Default.Long(5242880)
   Long getBatchSizeBytes();
 
@@ -181,7 +181,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Cloud Storage path to JavaScript UDF source for _type metadata",
       helpText =
-          "The Cloud Storage path to the JavaScript UDF source for the function that specifies `_type` metadata to include with the document in bulk requests. Defaults to: none.")
+          "The Cloud Storage path to the JavaScript UDF source for a function that specifies `_type` metadata to include with documents in bulk requests. Default: none.")
   String getJavaScriptTypeFnGcsPath();
 
   void setJavaScriptTypeFnGcsPath(String javaScriptTextTransformGcsPath);

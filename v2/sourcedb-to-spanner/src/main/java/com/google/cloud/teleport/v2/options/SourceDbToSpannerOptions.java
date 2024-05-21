@@ -71,7 +71,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   /* TODO: (support Sharding, PG namespaces) */
   @TemplateParameter.Text(
       order = 5,
-      regexes = {"(^[a-zA-Z0-9]+$)"},
       groupName = "Source",
       description = "source database name.",
       helpText = "Name of the Source Database. For example, `person9`.")

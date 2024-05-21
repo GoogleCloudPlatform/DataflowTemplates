@@ -49,6 +49,7 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO.Write;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.SdkHarnessOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
@@ -91,7 +92,6 @@ import org.apache.beam.sdk.values.PCollectionTuple;
       "The relational database must be accessible from the subnet where Dataflow runs."
     })
 public class SourceDbToSpanner {
-
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
    * blocking execution is required, use the {@link SourceDbToSpanner#run} method to start the
@@ -118,6 +118,7 @@ public class SourceDbToSpanner {
   @VisibleForTesting
   static PipelineResult run(SourceDbToSpannerOptions options) {
     Pipeline pipeline = Pipeline.create(options);
+    options.as(SdkHarnessOptions.class).setDefaultSdkHarnessLogLevel(options.getDefaultLogLevel());
 
     ReaderImpl reader =
         ReaderImpl.of(

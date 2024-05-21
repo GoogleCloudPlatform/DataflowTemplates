@@ -63,3 +63,41 @@ CREATE TABLE `AllDatatypeColumns2` (
  `bit_column` bit(7),                   -- To: bit_column BYTES(MAX)
  PRIMARY KEY (`varchar_column`)
 );
+
+CREATE TABLE `DatatypeColumnsWithSizes` (
+   `varchar_column` varchar(20) NOT NULL, -- To: varchar_column BYTES(20)
+   `float_column` float(10,2),            -- To: float_column FLOAT64
+   `decimal_column` decimal(10,2),        -- To: decimal_column NUMERIC
+   `char_column` char(10),                -- To: char_column STRING(10)
+   `bool_column` tinyint(1),              -- To: bool_column BOOL
+   `binary_column` binary(20),            -- To: binary_column BYTES(MAX)
+   `varbinary_column` varbinary(20),      -- To: varbinary_column BYTES(MAX)
+   `bit_column` bit(7),                   -- To: bit_column BYTES(MAX)
+   PRIMARY KEY (`varchar_column`)
+);
+
+CREATE TABLE `DatatypeColumnsReducedSizes` (
+    `varchar_column` varchar(20) NOT NULL, -- To: varchar_column BYTES(20)
+    `float_column` float(10,2),            -- To: float_column FLOAT64
+    `decimal_column` decimal(10,2),        -- To: decimal_column NUMERIC
+    `char_column` char(10),                -- To: char_column STRING(10)
+    `bool_column` tinyint(1),              -- To: bool_column BOOL
+    `binary_column` binary(20),            -- To: binary_column BYTES(MAX)
+    `varbinary_column` varbinary(20),      -- To: varbinary_column BYTES(MAX)
+    `bit_column` bit(7),                   -- To: bit_column BYTES(MAX)
+    PRIMARY KEY (`varchar_column`)
+);
+
+CREATE TABLE `Users` (
+    `user_id` int NOT NULL,
+    `first_name` varchar(50),
+    `last_name` varchar(50),
+    `age` int,
+    PRIMARY KEY (`user_id`)
+);
+
+CREATE TABLE `Authors` (
+    `id` int NOT NULL,
+    `name` varchar(200),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARSET=latin1;
