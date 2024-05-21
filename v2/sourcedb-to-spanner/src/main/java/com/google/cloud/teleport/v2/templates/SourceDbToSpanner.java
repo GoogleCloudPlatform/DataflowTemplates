@@ -99,6 +99,7 @@ import org.slf4j.LoggerFactory;
 public class SourceDbToSpanner {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpanner.class);
+
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
    * blocking execution is required, use the {@link SourceDbToSpanner#run} method to start the
