@@ -30,8 +30,8 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.datagenerator.DataGenerator;
-import org.apache.beam.it.jdbc.CustomMySQLResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.it.jdbc.conditions.JDBCRowsCheck;
 import org.junit.After;
 import org.junit.Before;
@@ -145,11 +145,10 @@ public class SpannerToMySql100TpsLT extends SpannerToJdbcLTBase {
   }
 
   private void createMySQLSchema(List<JDBCResourceManager> jdbcResourceManagers) {
-    if (!(jdbcResourceManagers.get(0) instanceof CustomMySQLResourceManager)) {
+    if (!(jdbcResourceManagers.get(0) instanceof MySQLResourceManager)) {
       throw new IllegalArgumentException(jdbcResourceManagers.get(0).getClass().getSimpleName());
     }
-    CustomMySQLResourceManager jdbcResourceManager =
-        (CustomMySQLResourceManager) jdbcResourceManagers.get(0);
+    MySQLResourceManager jdbcResourceManager = (MySQLResourceManager) jdbcResourceManagers.get(0);
     HashMap<String, String> columns = new HashMap<>();
     columns.put("first_name1", "varchar(500)");
     columns.put("last_name1", "varchar(500)");
