@@ -66,7 +66,9 @@ currently 2 that are run on self-hosted runners on GCP - [Java PR](../.github/wo
 test PR's and [Release](../.github/workflows/release.yml) which is the workflow used for releasing new templates each 
 week.
 
-### Provision new runners
+### Provision new resources
+
+#### GitHub actions runners
 
 There are instances where we may need to re-provision self-hosted runners, due to unexpected failures, updating 
 dependencies, increasing memory, etc. In these cases, there are helper scripts to aid in redeployment of the GitHub 
@@ -126,4 +128,45 @@ To run the configuration script:
         -s 1
       ```
 
-**Note**: To see optional configurable parameters, run `./configure-runners.sh -h`
+    **Note**: To see optional configurable parameters, run `./configure-runners.sh -h`
+
+#### CloudSQL proxy server VM
+
+Datastream integration tests (IT's) that connect to a CloudSQL database rely on the 
+[Cloud auth proxy](https://cloud.google.com/sql/docs/mysql/sql-proxy) to make a connection profile. Due to connection
+issues related to which port the proxy server is hosted on, there is a separate workflow for provisioning the
+dedicated proxy server VM.
+
+1. Run the helper script
+    ```
+    ./configure-proxy.sh \
+      -p cloud-teleport-testing \
+      -a 269744978479-compute@developer.gserviceaccount.com
+    ```
+    **Note**: To see optional configurable parameters, run `./configure-runners.sh -h`
+
+2. Navigate to Datastream and try to make connection profiles using the internal IP of the proxy VM as
+    the hostname, and the port which can be found for each SQL flavor in
+    [proxy-startup-script.sh](../.github/scripts/proxy-startup-script.sh).
+
+If there are issues connecting to the Proxy server from Datastream, follow the instructions below:
+1. SSH into the newly created VM
+    * This can be done using Cloud Console UI, or using gcloud CLI. The name of the machine will
+        be `nokill-gitactions-proxy-temp` appended with a random suffix, unless the base name was overridden 
+        when running th helper script.
+2. Try hosting the proxy server on a different port using the command
+    ```
+   cd /home/runner && ./cloud-sql-proxy --address 0.0.0.0 --port ${PORT} ${CLOUD_SQL_PREFIX}-postgres
+   ```
+   where `CLOUD_SQL_PREFIX` is  
+   `${PROJECT}:us-central1:nokill-gitactions-{mysql | postgres | oracle}`,  
+    For example, `cloud-teleport-testing:us-central1:nokill-gitactions-mysql`
+3. It will take some trial and error to find a port that works, but just keep trying to create Datastream connection
+    profiles until it connects. Once connected, run the working command in the background.  
+    With the working command still running, press `ctrl-Z` then run the following:
+    ```
+   disown -h %1
+   bg 1
+   ```
+4. Update the commands in [proxy-startup-script.sh](../.github/scripts/proxy-startup-script.sh) to use the updated 
+   ports.
