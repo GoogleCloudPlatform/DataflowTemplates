@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import org.apache.beam.sdk.options.Default;
@@ -43,19 +44,17 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       optional = false,
       description = "Source Authentication Mode",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
+          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
+          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
+          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
 
       helpText = "Type of authentication mechanism to use with the source Kafka.")
   @Validation.Required
   @Default.String(KafkaAuthenticationMethod.NONE)
-
   String getSourceAuthenticationMethod();
 
   void setSourceAuthenticationMethod(String sourceAuthenticationMethod);
-
 
 
   @TemplateParameter.Text(
@@ -69,7 +68,6 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
           "Secret Version ID from the secret manager to get Kafka SASL_PLAIN username for source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-
   String getSourceUsernameSecretId();
 
   void setSourceUsernameSecretId(String sourceUsernameSecretId);
@@ -87,7 +85,6 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
               + " password for the source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-
   String getSourcePasswordSecretId();
 
   void setSourcePasswordSecretId(String sourcePasswordSecretId);
@@ -177,8 +174,8 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       description = "Default Start Offset",
       helpText = "Default Start offset to read data.",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption("latest"),
-        @TemplateParameter.TemplateEnumOption("earliest")
+          @TemplateParameter.TemplateEnumOption("latest"),
+          @TemplateParameter.TemplateEnumOption("earliest")
       })
   @Validation.Required
   String getKafkaOffset();
@@ -202,9 +199,9 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       optional = false,
       description = "Destination Authentication Method",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
+          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
+          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
+          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
       helpText = "Type of authentication mechanism to use with the destination Kafka.")
   @Validation.Required
@@ -226,7 +223,6 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
               + " username for the destination Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-
   String getDestinationUsernameSecretId();
 
   void setDestinationUsernameSecretId(String destinationUsernameSecretId);
@@ -244,7 +240,6 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       description = "Secret Version ID of for Kafka password",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-
   String getDestinationPasswordSecretId();
 
   void setDestinationPasswordSecretId(String destinationPasswordSecretId);

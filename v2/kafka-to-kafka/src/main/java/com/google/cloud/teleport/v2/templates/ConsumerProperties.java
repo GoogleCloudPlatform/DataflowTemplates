@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 
 
+
 import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 
@@ -33,18 +34,11 @@ import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import org.apache.kafka.clients.CommonClientConfigs;
 
-import org.apache.kafka.common.config.SaslConfigs;
 
 import org.apache.kafka.common.config.SslConfigs;
 
-import org.apache.kafka.common.config.SslConfigs;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 
 
 /**
@@ -58,6 +52,7 @@ import org.slf4j.LoggerFactory;
  * source Kafka.
  */
 final class ConsumerProperties {
+
 
   public static Map<String, Object> from(KafkaToKafkaOptions options) throws IOException {
     Map<String, Object> properties = new HashMap<>();

@@ -20,6 +20,7 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+
 import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.utils.FileAwareProducerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
@@ -34,6 +35,10 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.slf4j.Logger;
@@ -60,25 +65,6 @@ public class KafkaToKafka {
     run(options);
   }
   public static PipelineResult run(KafkaToKafkaOptions options) throws IOException {
-
-    if (!Objects.equals(options.getSourceAuthenticationMethod(), KafkaAuthenticationMethod.NONE)) {
-
-      checkArgument(
-          options.getSourceUsernameSecretId().trim().length() > 0,
-          "sourceUsernameSecretId required to access username to GMK");
-      checkArgument(
-          options.getSourcePasswordSecretId().trim().length() > 0,
-          "version id required to access password to authenticate to GMK");
-    }
-
-    checkArgument(
-        options.getDestinationUsernameSecretId().trim().length() > 0,
-        "version id required to access username to GMK");
-
-    checkArgument(
-
-        options.getDestinationPasswordSecretId().trim().length() > 0,
-        "version id required to access password to authenticate to GMK");
     if (options.getSourceAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
       checkArgument(
           options.getSourceUsernameSecretId().trim().length() > 0,
@@ -151,7 +137,6 @@ public class KafkaToKafka {
                 .withValueSerializer(ByteArraySerializer.class)
                 .withProducerConfigUpdates(ProducerProperties.from(options))
                 .withProducerFactoryFn(new FileAwareProducerFactoryFn()));
-
     return pipeline.run();
   }
 }
