@@ -121,5 +121,13 @@ public class AtoBOk {
         helpText = "Cloud Storage Bucket to read from")
     @Default.String("")
     String getGcsReadBucket();
+
+    @TemplateParameter.ServiceAccount(
+        order = 12,
+        description = "Google Cloud service account email",
+        helpText = "Google Cloud service account email",
+        example = "some@name.iam.gserviceaccount.com")
+    @Default.String("")
+    String getServiceAccount();
   }
 }
