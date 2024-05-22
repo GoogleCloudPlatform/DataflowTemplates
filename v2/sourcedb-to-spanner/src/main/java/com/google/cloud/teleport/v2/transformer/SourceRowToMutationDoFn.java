@@ -19,10 +19,12 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.constants.MetricCounters;
+import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.templates.RowContext;
 import java.io.Serializable;
 import java.util.Map;
 import org.apache.avro.generic.GenericRecord;
@@ -37,7 +39,7 @@ import org.slf4j.LoggerFactory;
  * com.google.cloud.spanner.Mutation}.
  */
 @AutoValue
-public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, Mutation>
+public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext>
     implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceRowToMutationDoFn.class);
@@ -55,12 +57,13 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, Mutation>
   }
 
   @ProcessElement
-  public void processElement(ProcessContext c) {
+  public void processElement(ProcessContext c, MultiOutputReceiver output) {
     SourceRow sourceRow = c.element();
     LOG.debug("Starting transformation for Source Row {}", sourceRow);
 
     if (!tableIdMapper().containsKey(sourceRow.tableSchemaUUID())) {
       // TODO: Remove LOG statements from processElement once counters and DLQ is supported.
+      // TODO: Add metric for ignored rows
       LOG.error(
           "cannot find valid sourceTable for tableId: {} in tableIdMapper",
           sourceRow.tableSchemaUUID());
@@ -76,19 +79,27 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, Mutation>
       Map<String, Value> values =
           genericRecordTypeConvertor.transformChangeEvent(record, srcTableName);
       String spannerTableName = iSchemaMapper().getSpannerTableName("", srcTableName);
+      // TODO: Move the mutation generation to writer. Create generic record here instead
       Mutation mutation = mutationFromMap(spannerTableName, values);
-      c.output(mutation);
+      output
+          .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS)
+          .output(RowContext.builder().setRow(sourceRow).setMutation(mutation).build());
     } catch (Exception e) {
-      // TODO: Add DLQ integration once supported.
-      LOG.error("Unable to transform source row to spanner mutation", e);
+      LOG.error("unable to transform source row to spanner mutation: {}", e.getMessage());
       transformerErrors.inc();
+      output
+          .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)
+          .output(RowContext.builder().setRow(sourceRow).setErr(e).build());
     }
   }
 
-  private static Mutation mutationFromMap(String spannerTableName, Map<String, Value> values) {
+  private Mutation mutationFromMap(String spannerTableName, Map<String, Value> values) {
     Mutation.WriteBuilder builder = Mutation.newInsertOrUpdateBuilder(spannerTableName);
     for (String spannerColName : values.keySet()) {
-      builder.set(spannerColName).to(values.get(spannerColName));
+      Value value = values.get(spannerColName);
+      if (value != null) {
+        builder.set(spannerColName).to(value);
+      }
     }
     return builder.build();
   }

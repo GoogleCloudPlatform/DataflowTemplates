@@ -77,7 +77,7 @@ public abstract class SourceTableSchema implements Serializable {
 
   @AutoValue.Builder
   public abstract static class Builder {
-    protected abstract Builder setTableSchemaUUID(String value);
+    public abstract Builder setTableSchemaUUID(String value);
 
     public abstract Builder setTableName(String value);
 

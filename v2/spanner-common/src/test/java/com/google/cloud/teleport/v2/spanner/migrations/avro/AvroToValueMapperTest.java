@@ -160,25 +160,36 @@ public class AvroToValueMapperTest {
 
   @Test
   public void testAvroFieldToString_valid() {
-    String result = AvroToValueMapper.avroFieldToString("Hello");
+    String result =
+        AvroToValueMapper.avroFieldToString("Hello", SchemaBuilder.builder().stringType());
     assertEquals("Hello", result);
 
-    result = AvroToValueMapper.avroFieldToString("");
+    result = AvroToValueMapper.avroFieldToString("", SchemaBuilder.builder().stringType());
     assertEquals("", result);
 
-    result = AvroToValueMapper.avroFieldToString(14);
+    result = AvroToValueMapper.avroFieldToString(14, SchemaBuilder.builder().intType());
     assertEquals("14", result);
 
-    result = AvroToValueMapper.avroFieldToString(513148134L);
+    result = AvroToValueMapper.avroFieldToString(513148134L, SchemaBuilder.builder().longType());
     assertEquals("513148134", result);
 
-    result = AvroToValueMapper.avroFieldToString(325.532);
+    result = AvroToValueMapper.avroFieldToString(325.532, SchemaBuilder.builder().doubleType());
     assertEquals("325.532", result);
   }
 
   @Test
   public void testAvroFieldToString_NullInput() {
-    assertNull(AvroToValueMapper.avroFieldToString(null));
+    assertNull(AvroToValueMapper.avroFieldToString(null, SchemaBuilder.builder().nullType()));
+  }
+
+  @Test(expected = AvroTypeConvertorException.class)
+  public void testAvroFieldToString_Exception() {
+    class ThrowObject {
+      public String toString() {
+        throw new RuntimeException("explicit exception");
+      }
+    }
+    AvroToValueMapper.avroFieldToString(new ThrowObject(), SchemaBuilder.builder().nullType());
   }
 
   @Test
