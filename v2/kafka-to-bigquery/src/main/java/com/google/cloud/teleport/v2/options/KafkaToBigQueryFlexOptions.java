@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.Default;
 
 /**
@@ -24,121 +25,126 @@ import org.apache.beam.sdk.options.Default;
  * executor at the command-line.
  */
 public interface KafkaToBigQueryFlexOptions
-    extends KafkaReadOptions, BigQueryStorageApiStreamingOptions {
+    extends DataflowPipelineOptions, KafkaReadOptions, BigQueryStorageApiStreamingOptions {
 
-  @TemplateParameter.BigQueryTable(
+  @TemplateParameter.Text(
       order = 1,
+      groupName = "Source",
       optional = true,
-      description = "BigQuery output table",
-      helpText =
-          "BigQuery table location to write the output to. The name should be in the format "
-              + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
-  String getOutputTableSpec();
+      regexes = {"[,:a-zA-Z0-9._-]+"},
+      description = "Kafka Bootstrap Server",
+      helpText = "Kafka Bootstrap Server list, separated by commas.",
+      example = "localhost:9092,127.0.0.1:9093",
+      hiddenUi = true)
+  @Override
+  String getReadBootstrapServers();
 
-  void setOutputTableSpec(String value);
+  void setReadBootstrapServers(String bootstrapServers);
+
+  @TemplateParameter.Text(
+      order = 2,
+      groupName = "Source",
+      optional = true,
+      regexes = {"[,a-zA-Z0-9._-]+"},
+      description = "Kafka Topic(s)",
+      helpText = "Kafka topic(s) to read input from.",
+      example = "topic1,topic2",
+      hiddenUi = true)
+  @Override
+  String getKafkaReadTopics();
+
+  void setKafkaReadTopics(String inputTopics);
+
+  @TemplateParameter.KafkaTopic(
+      order = 1,
+      name = "readBootstrapServerAndTopic",
+      groupName = "Source",
+      optional = false,
+      description = "Source Kafka Topic",
+      helpText = "Kafka Topic to read the input from.")
+  String getReadBootstrapServerAndTopic();
+
+  void setReadBootstrapServerAndTopic(String value);
 
   @TemplateParameter.Enum(
       order = 2,
-      enumOptions = {
-        @TemplateParameter.TemplateEnumOption("WRITE_APPEND"),
-        @TemplateParameter.TemplateEnumOption("WRITE_EMPTY"),
-        @TemplateParameter.TemplateEnumOption("WRITE_TRUNCATE")
-      },
-      optional = true,
-      description = "Write Disposition to use for BigQuery",
-      helpText =
-          "BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE.")
-  @Default.String("WRITE_APPEND")
-  String getWriteDisposition();
-
-  void setWriteDisposition(String writeDisposition);
-
-  @TemplateParameter.Enum(
-      order = 3,
-      enumOptions = {
-        @TemplateParameter.TemplateEnumOption("CREATE_IF_NEEDED"),
-        @TemplateParameter.TemplateEnumOption("CREATE_NEVER")
-      },
-      optional = true,
-      description = "Create Disposition to use for BigQuery",
-      helpText = "BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER.")
-  @Default.String("CREATE_IF_NEEDED")
-  String getCreateDisposition();
-
-  void setCreateDisposition(String createDisposition);
-
-  @TemplateParameter.BigQueryTable(
-      order = 4,
-      optional = true,
-      description = "The dead-letter table name to output failed messages to BigQuery",
-      helpText =
-          "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
-              + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
-              + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
-      example = "your-project-id:your-dataset.your-table-name")
-  String getOutputDeadletterTable();
-
-  void setOutputDeadletterTable(String outputDeadletterTable);
-
-  @TemplateParameter.Enum(
-      order = 6,
       name = "messageFormat",
+      groupName = "Source",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption("AVRO"),
+        @TemplateParameter.TemplateEnumOption("AVRO_CONFLUENT_WIRE_FORMAT"),
+        @TemplateParameter.TemplateEnumOption("AVRO_BINARY_ENCODING"),
         @TemplateParameter.TemplateEnumOption("JSON")
       },
-      optional = true,
-      description = "The Kafka message format",
-      helpText = "The Kafka message format. Can be AVRO or JSON.")
-  @Default.String("AVRO")
+      optional = false,
+      description = "Message Format",
+      helpText =
+          "The Kafka message format. Can be AVRO_CONFLUENT_WIRE_FORMAT, AVRO_BINARY_ENCODING or JSON.")
   String getMessageFormat();
 
   void setMessageFormat(String value);
 
-  // TODO: Sync the enum options with all the Kafka Templates.
   @TemplateParameter.Enum(
-      order = 7,
-      name = "avroFormat",
+      order = 3,
+      name = "schemaFormat",
+      groupName = "Source",
       parentName = "messageFormat",
-      parentTriggerValues = {"AVRO"},
+      parentTriggerValues = {"AVRO_CONFLUENT_WIRE_FORMAT"},
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption("CONFLUENT_WIRE_FORMAT"),
-        @TemplateParameter.TemplateEnumOption("NON_WIRE_FORMAT")
+        @TemplateParameter.TemplateEnumOption("SINGLE_SCHEMA_FILE"),
+        @TemplateParameter.TemplateEnumOption("SCHEMA_REGISTRY"),
       },
-      optional = true,
-      description = "The format to use for avro messages",
+      optional = false,
+      description = "Schema Source",
       helpText =
-          "This parameter is used to indicate what format to use for the avro messages. Default is CONFLUENT_WIRE_FORMAT.")
-  @Default.String("CONFLUENT_WIRE_FORMAT")
-  String getAvroFormat();
+          "The Kafka schema format. Can be provided as SINGLE_SCHEMA_FILE or SCHEMA_REGISTRY. "
+              + "If SINGLE_SCHEMA_FILE is specified, all messages should have the schema mentioned in the avro schema file. "
+              + "If SCHEMA_REGISTRY is specified, the messages can have either a single schema or multiple schemas.")
+  String getSchemaFormat();
 
-  void setAvroFormat(String value);
+  void setSchemaFormat(String value);
 
   @TemplateParameter.GcsReadFile(
-      order = 8,
-      parentName = "messageFormat",
-      parentTriggerValues = {"AVRO"},
+      order = 4,
+      groupName = "Source",
+      parentName = "schemaFormat",
+      parentTriggerValues = {"SINGLE_SCHEMA_FILE"},
       optional = true,
       description = "Cloud Storage path to the Avro schema file",
       helpText = "Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.")
-  String getAvroSchemaPath();
+  @Default.String("")
+  String getConfluentAvroSchemaPath();
 
-  void setAvroSchemaPath(String schemaPath);
+  void setConfluentAvroSchemaPath(String schemaPath);
 
   @TemplateParameter.Text(
-      order = 9,
-      parentName = "avroFormat",
-      parentTriggerValues = {"CONFLUENT_WIRE_FORMAT"},
-      optional = true,
+      order = 5,
+      groupName = "Source",
+      parentName = "schemaFormat",
+      parentTriggerValues = {"SCHEMA_REGISTRY"},
+      optional = false,
       description = "Schema Registry Connection URL",
-      helpText =
-          "Schema Registry Connection URL for a registry which supports Confluent wire format.")
+      helpText = "Schema Registry Connection URL for a registry.")
+  @Default.String("")
   String getSchemaRegistryConnectionUrl();
 
   void setSchemaRegistryConnectionUrl(String schemaRegistryConnectionUrl);
 
+  @TemplateParameter.GcsReadFile(
+      order = 12,
+      groupName = "Source",
+      parentName = "messageFormat",
+      parentTriggerValues = {"AVRO_BINARY_ENCODING"},
+      optional = true,
+      description = "Cloud Storage path to the Avro schema file",
+      helpText = "Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.")
+  @Default.String("")
+  String getBinaryAvroSchemaPath();
+
+  void setBinaryAvroSchemaPath(String schemaPath);
+
   @TemplateParameter.Boolean(
-      order = 11,
+      order = 13,
+      groupName = "Source",
       optional = true,
       description = "Persist the Kafka Message Key to the BigQuery table",
       helpText =
@@ -148,26 +154,78 @@ public interface KafkaToBigQueryFlexOptions
 
   void setPersistKafkaKey(Boolean value);
 
-  @TemplateParameter.Text(
-      order = 11,
-      parentName = "avroFormat",
-      parentTriggerValues = {"CONFLUENT_WIRE_FORMAT"},
+  @TemplateParameter.Enum(
+      order = 14,
+      name = "writeMode",
+      groupName = "Destination",
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption("SINGLE_TABLE_NAME"),
+        @TemplateParameter.TemplateEnumOption("DYNAMIC_TABLE_NAMES"),
+      },
+      optional = false,
+      description = "Table Name Strategy",
+      helpText =
+          "Write Mode: write records to one table or multiple tables (based on schema)."
+              + " The DYNAMIC_TABLE_NAMES mode is supported only for AVRO_CONFLUENT_WIRE_FORMAT Source Message Format"
+              + " and SCHEMA_REGISTRY Schema Source. The target table name will be auto-generated based on the Avro"
+              + " schema name of each message, it could either be a single schema (creating a single table) or"
+              + " multiple schemas (creating multiple tables). The SINGLE_TABLE_NAME mode writes to a single"
+              + " table (single schema) specified by the user. Defaults to SINGLE_TABLE_NAME.")
+  @Default.String("SINGLE_TABLE_NAME")
+  String getWriteMode();
+
+  void setWriteMode(String value);
+
+  @TemplateParameter.BigQueryTable(
+      order = 15,
+      parentName = "writeMode",
+      parentTriggerValues = {"SINGLE_TABLE_NAME"},
+      groupName = "Destination",
       optional = true,
+      description = "BigQuery output table",
+      helpText =
+          "BigQuery table location to write the output to. The name should be in the format "
+              + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
+  String getOutputTableSpec();
+
+  void setOutputTableSpec(String value);
+
+  @TemplateParameter.Text(
+      order = 16,
+      groupName = "Destination",
+      parentName = "writeMode",
+      parentTriggerValues = {"DYNAMIC_TABLE_NAMES"},
+      optional = false,
+      description = "BigQuery output project",
+      helpText =
+          "BigQuery output project in wehich the dataset resides. Tables will be created dynamically in the dataset.")
+  @Default.String("")
+  String getOutputProject();
+
+  void setOutputProject(String value);
+
+  @TemplateParameter.Text(
+      order = 17,
+      groupName = "Destination",
+      parentName = "writeMode",
+      parentTriggerValues = {"DYNAMIC_TABLE_NAMES"},
+      optional = false,
       description = "BigQuery output dataset",
       helpText =
           "BigQuery output dataset to write the output to. Tables will be created dynamically in the dataset."
               + " If the tables are created beforehand, the table names should follow the specified naming convention."
-              + " The name should be `bqTableNamePrefix + Avro Schema FullName` {@link org.apache.avro.Schema.getFullName},"
-              + " each word will be seperated by a hyphen '-'.")
+              + " The name should be `bqTableNamePrefix + Avro Schema FullName` ,"
+              + " each word will be separated by a hyphen '-'.")
+  @Default.String("")
   String getOutputDataset();
 
   void setOutputDataset(String value);
 
   @TemplateParameter.Text(
-      order = 12,
-      parentName = "avroFormat",
-      parentTriggerValues = {"CONFLUENT_WIRE_FORMAT"},
-      optional = true,
+      order = 18,
+      parentName = "writeMode",
+      parentTriggerValues = {"DYNAMIC_TABLE_NAMES"},
+      optional = false,
       description = "BigQuery Table naming prefix",
       helpText =
           "Naming prefix to be used while creating BigQuery output tables. Only applicable when using schema registry.")
@@ -176,8 +234,91 @@ public interface KafkaToBigQueryFlexOptions
 
   void setBqTableNamePrefix(String value);
 
+  @TemplateParameter.Enum(
+      order = 19,
+      groupName = "Destination",
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption("WRITE_APPEND"),
+        @TemplateParameter.TemplateEnumOption("WRITE_EMPTY"),
+        @TemplateParameter.TemplateEnumOption("WRITE_TRUNCATE")
+      },
+      optional = true,
+      description = "Write Disposition to use for BigQuery",
+      helpText =
+          "BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE.",
+      hiddenUi = true)
+  @Default.String("WRITE_APPEND")
+  String getWriteDisposition();
+
+  void setWriteDisposition(String writeDisposition);
+
+  @TemplateParameter.Enum(
+      order = 20,
+      groupName = "Destination",
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption("CREATE_IF_NEEDED"),
+        @TemplateParameter.TemplateEnumOption("CREATE_NEVER")
+      },
+      optional = true,
+      description = "Create Disposition to use for BigQuery",
+      helpText = "BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER.",
+      hiddenUi = true)
+  @Default.String("CREATE_IF_NEEDED")
+  String getCreateDisposition();
+
+  void setCreateDisposition(String createDisposition);
+
   @TemplateParameter.Boolean(
-      order = 13,
+      order = 21,
+      groupName = "Destination",
+      optional = true,
+      description = "Use BigQuery Storage Write API",
+      helpText =
+          "Do not use this parameter, Storage Write API is the only available method to write to BigQuery. "
+              + "Setting this to `false` will have no effect. ",
+      hiddenUi = true)
+  @Default.Boolean(false)
+  @Override
+  Boolean getUseStorageWriteApi();
+
+  @TemplateParameter.Boolean(
+      order = 22,
+      groupName = "Destination",
+      optional = true,
+      description = "Use auto-sharding when writing to BigQuery",
+      helpText =
+          "If true, the pipeline uses auto-sharding when writng to BigQuery"
+              + "The default value is `true`.",
+      hiddenUi = true)
+  @Default.Boolean(true)
+  Boolean getUseAutoSharding();
+
+  void setUseAutoSharding(Boolean value);
+
+  @TemplateParameter.Integer(
+      order = 23,
+      groupName = "Destination",
+      optional = true,
+      description = "Number of streams for BigQuery Storage Write API",
+      helpText = "Specifies the number of write streams, this parameter must be set. Default is 0.")
+  @Override
+  @Default.Integer(0)
+  Integer getNumStorageWriteApiStreams();
+
+  @TemplateParameter.Integer(
+      order = 24,
+      groupName = "Destination",
+      optional = true,
+      description = "Triggering frequency in seconds for BigQuery Storage Write API",
+      helpText =
+          "Specifies the triggering frequency in seconds, this parameter must be set. "
+              + "Default is 5 seconds.")
+  @Override
+  Integer getStorageWriteApiTriggeringFrequencySec();
+
+  @TemplateParameter.Boolean(
+      order = 25,
+      groupName = "Destination",
       optional = true,
       description = "Use at at-least-once semantics in BigQuery Storage Write API",
       helpText =
@@ -190,4 +331,34 @@ public interface KafkaToBigQueryFlexOptions
   Boolean getUseStorageWriteApiAtLeastOnce();
 
   void setUseStorageWriteApiAtLeastOnce(Boolean value);
+
+  @TemplateParameter.Boolean(
+      order = 26,
+      name = "useBigQueryDLQ",
+      groupName = "Dead Letter Queue",
+      optional = false,
+      description = "Write errors to BigQuery",
+      helpText =
+          "If true, failed messages will be written to BigQuery with extra error information. "
+              + "If the deadletter table exists beforehand, it should be created with no schema.")
+  @Default.Boolean(false)
+  Boolean getUseBigQueryDLQ();
+
+  void setUseBigQueryDLQ(Boolean value);
+
+  @TemplateParameter.BigQueryTable(
+      order = 27,
+      groupName = "Dead Letter Queue",
+      parentName = "useBigQueryDLQ",
+      parentTriggerValues = {"true"},
+      optional = true,
+      description = "Dead-letter Table",
+      helpText =
+          "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
+              + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
+              + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
+      example = "your-project-id:your-dataset.your-table-name")
+  String getOutputDeadletterTable();
+
+  void setOutputDeadletterTable(String outputDeadletterTable);
 }

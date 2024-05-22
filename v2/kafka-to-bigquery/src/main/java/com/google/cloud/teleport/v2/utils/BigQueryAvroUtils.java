@@ -37,6 +37,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.avro.Conversions;
@@ -108,7 +109,8 @@ public class BigQueryAvroUtils {
   private static final DateTimeFormatter DATE_AND_SECONDS_FORMATTER =
       DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss").withZoneUTC();
 
-  private static final String kafkaKeyField = "_key";
+  private static final Pattern SANITIZE_PATTERN =
+      Pattern.compile("[^\\w- ]+", Pattern.UNICODE_CHARACTER_CLASS);
 
   static String formatTimestamp(Long timestampMicro) {
     // timestampMicro is in "microseconds since epoch" format,
@@ -536,11 +538,15 @@ public class BigQueryAvroUtils {
     if (persistKafkaKey) {
       List<TableFieldSchema> list = tableSchema.getFields();
       TableFieldSchema field = new TableFieldSchema();
-      field.setName(kafkaKeyField);
+      field.setName(BigQueryConstants.KAFKA_KEY_FIELD);
       field.setType("BYTES");
       list.add(field);
       tableSchema.setFields(list);
     }
     return tableSchema;
+  }
+
+  public static String sanitizeString(String value) {
+    return SANITIZE_PATTERN.matcher(value).replaceAll("-");
   }
 }
