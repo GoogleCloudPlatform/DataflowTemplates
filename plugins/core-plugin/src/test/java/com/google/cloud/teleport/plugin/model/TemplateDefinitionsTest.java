@@ -70,6 +70,9 @@ public class TemplateDefinitionsTest {
     assertEquals(ImageSpecParameterType.BOOLEAN, logical.getParamType());
     assertEquals("^(true|false)$", logical.getRegexes().get(0));
 
+    ImageSpecParameter machineType = metadata.getParameter("machineType").get();
+    assertEquals(ImageSpecParameterType.MACHINE_TYPE, machineType.getParamType());
+
     ImageSpecParameter json = metadata.getParameter("JSON").get();
     assertEquals(ImageSpecParameterType.BOOLEAN, json.getParamType());
 
