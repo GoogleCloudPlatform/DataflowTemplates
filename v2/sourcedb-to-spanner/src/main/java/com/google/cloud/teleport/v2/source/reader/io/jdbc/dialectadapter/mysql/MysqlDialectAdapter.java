@@ -30,6 +30,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTransientConnectionException;
+import java.sql.Statement;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -47,6 +48,51 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   public MysqlDialectAdapter(MySqlVersion mySqlVersion) {
     this.mySqlVersion = mySqlVersion;
+  }
+
+  /**
+   * Discover Tables to migrate. This method could be used to auto infer tables to migrate if not
+   * passed via options.
+   *
+   * @param dataSource Provider for JDBC connection.
+   * @return The list of table names for the given database.
+   * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
+   * @throws RetriableSchemaDiscoveryException - Retriable exception during Schema Discovery.
+   *     <p><b>Note:</b>
+   *     <p>This Implementation logs every exception and generate metrics as appropriate.
+   */
+  @Override
+  public ImmutableList<String> discoverTables(DataSource dataSource)
+      throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
+    final String tableDiscoveryQuery = "SHOW TABLES";
+    ImmutableList.Builder<String> tablesBuilder = ImmutableList.builder();
+    try (Statement stmt = dataSource.getConnection().createStatement()) {
+      ResultSet rs = stmt.executeQuery(tableDiscoveryQuery);
+      while (rs.next()) {
+        tablesBuilder.add(rs.getString(1));
+      }
+      return tablesBuilder.build();
+    } catch (SQLTransientConnectionException e) {
+      logger.warn(
+          String.format(
+              "Transient connection error while discovering table list for datasource=%s",
+              dataSource, e));
+      schemaDiscoveryErrors.inc();
+      throw new RetriableSchemaDiscoveryException(e);
+    } catch (SQLNonTransientConnectionException e) {
+      logger.error(
+          String.format(
+              "Non Transient connection error while discovering table list for datasource=%s",
+              dataSource, e));
+      schemaDiscoveryErrors.inc();
+      throw new SchemaDiscoveryException(e);
+    } catch (SQLException e) {
+      logger.error(
+          String.format(
+              "Sql exception while discovering table list for datasource=%s", dataSource, e));
+      schemaDiscoveryErrors.inc();
+      throw new SchemaDiscoveryException(e);
+    }
   }
 
   /**

@@ -39,11 +39,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTransientConnectionException;
+import java.sql.Statement;
 import javax.sql.DataSource;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.stubbing.OngoingStubbing;
 
 /** Test class for {@link MysqlDialectAdapter}. */
 @RunWith(MockitoJUnitRunner.class)
@@ -52,6 +54,8 @@ public class MysqlDialectAdapterTest {
   @Mock Connection mockConnection;
 
   @Mock PreparedStatement mockPreparedStatement;
+
+  @Mock Statement mockStatement;
 
   @Test
   public void testDiscoverTableSchema() throws SQLException, RetriableSchemaDiscoveryException {
@@ -175,12 +179,69 @@ public class MysqlDialectAdapterTest {
   }
 
   @Test
-  public void getSchemaDiscoveryQuery() {
+  public void testGetSchemaDiscoveryQuery() {
     assertThat(
             MysqlDialectAdapter.getSchemaDiscoveryQuery(
                 SourceSchemaReference.builder().setDbName("testDB").build()))
         .isEqualTo(
             "SELECT COLUMN_NAME,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE FROM INFORMATION_SCHEMA.Columns WHERE TABLE_SCHEMA = 'testDB' AND TABLE_NAME = ?");
+  }
+
+  @Test
+  public void testDiscoverTablesBasic() throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableList<String> testTables =
+        ImmutableList.of("testTable1", "testTable2", "testTable3", "testTable4");
+
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.createStatement()).thenReturn(mockStatement);
+    when(mockStatement.executeQuery("SHOW TABLES")).thenReturn(mockResultSet);
+    OngoingStubbing stubGetString = when(mockResultSet.getString(1));
+    for (String tbl : testTables) {
+      stubGetString = stubGetString.thenReturn(tbl);
+    }
+    // Unfortunately Mocktio does not let us wire 2 stubs in parallel.
+    OngoingStubbing stubNext = when(mockResultSet.next());
+    for (String tbl : testTables) {
+      stubNext = stubNext.thenReturn(true);
+    }
+    stubNext.thenReturn(false);
+
+    ImmutableList<String> tables =
+        new MysqlDialectAdapter(MySqlVersion.DEFAULT).discoverTables(mockDataSource);
+
+    assertThat(tables).isEqualTo(testTables);
+  }
+
+  @Test
+  public void testDiscoverTablesGetConnectionException() throws SQLException {
+
+    when(mockDataSource.getConnection())
+        .thenThrow(new SQLTransientConnectionException("test"))
+        .thenThrow(new SQLNonTransientConnectionException("test"));
+
+    assertThrows(
+        RetriableSchemaDiscoveryException.class,
+        () -> new MysqlDialectAdapter(MySqlVersion.DEFAULT).discoverTables(mockDataSource));
+
+    assertThrows(
+        SchemaDiscoveryException.class,
+        () -> new MysqlDialectAdapter(MySqlVersion.DEFAULT).discoverTables(mockDataSource));
+  }
+
+  @Test
+  public void testDiscoverTablesRsException() throws SQLException {
+
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.createStatement()).thenReturn(mockStatement);
+    when(mockStatement.executeQuery("SHOW TABLES")).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getString(1)).thenThrow(new SQLException("test"));
+
+    assertThrows(
+        SchemaDiscoveryException.class,
+        () -> new MysqlDialectAdapter(MySqlVersion.DEFAULT).discoverTables(mockDataSource));
   }
 
   private static ResultSet getMockInfoSchemaRs() throws SQLException {

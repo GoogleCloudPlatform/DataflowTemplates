@@ -36,6 +36,20 @@ import javax.sql.DataSource;
 public interface RetriableSchemaDiscovery {
 
   /**
+   * Discover Tables to migrate. This method could be used to auto infer tables to migrate if not
+   * passed via options.
+   *
+   * @param dataSource Provider for JDBC connection.
+   * @return The list of table names for the given database.
+   * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
+   * @throws RetriableSchemaDiscoveryException - Retriable exception during Schema Discovery.
+   *     <p><b>Note:</b>
+   *     <p>The Implementations must log every exception and generate metrics as appropriate.
+   */
+  ImmutableList<String> discoverTables(DataSource dataSource)
+      throws SchemaDiscoveryException, RetriableSchemaDiscoveryException;
+
+  /**
    * Discover the schema of tables to migrate.
    *
    * @param dataSource Provider for JDBC connection.

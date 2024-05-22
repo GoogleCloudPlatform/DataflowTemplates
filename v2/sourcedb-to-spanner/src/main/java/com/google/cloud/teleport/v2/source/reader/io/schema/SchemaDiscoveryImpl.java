@@ -45,6 +45,23 @@ public final class SchemaDiscoveryImpl implements SchemaDiscovery {
   }
 
   /**
+   * Discover Tables to migrate. This method could be used to auto infer tables to migrate if not
+   * passed via options.
+   *
+   * @param dataSource Provider for JDBC connection.
+   * @return The list of table names for the given database.
+   * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
+   *     <p><b>Note:</b>
+   *     <p>The Implementations must log every exception and generate metrics as appropriate. Any
+   *     retriable error must be retried as needed.
+   */
+  @Override
+  public ImmutableList<String> discoverTables(DataSource dataSource)
+      throws SchemaDiscoveryException {
+    return doRetries(() -> retriableSchemaDiscovery.discoverTables(dataSource));
+  }
+
+  /**
    * Discover the schema of tables to migrate.
    *
    * @param dataSource - Provider for JDBC connection.
@@ -59,12 +76,18 @@ public final class SchemaDiscoveryImpl implements SchemaDiscovery {
       SourceSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException {
+    return doRetries(
+        () ->
+            retriableSchemaDiscovery.discoverTableSchema(
+                dataSource, sourceSchemaReference, tables));
+  }
+
+  private <T> T doRetries(SchemaDiscoveryOperation<T> operation) throws SchemaDiscoveryException {
 
     BackOff backoff = this.fluentBackoff.backoff();
     do {
       try {
-        return this.retriableSchemaDiscovery.discoverTableSchema(
-            dataSource, sourceSchemaReference, tables);
+        return operation.call();
       } catch (RetriableSchemaDiscoveryException e) {
         try {
           long nextBackOffMillis = backoff.nextBackOffMillis();
@@ -82,5 +105,10 @@ public final class SchemaDiscoveryImpl implements SchemaDiscovery {
         }
       }
     } while (true);
+  }
+
+  /** Similar to Callable but with narrowed set of exceptions. */
+  interface SchemaDiscoveryOperation<T> {
+    T call() throws RetriableSchemaDiscoveryException, SchemaDiscoveryException;
   }
 }
