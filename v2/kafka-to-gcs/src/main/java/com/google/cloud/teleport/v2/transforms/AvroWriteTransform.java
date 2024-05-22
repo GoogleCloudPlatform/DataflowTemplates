@@ -288,10 +288,6 @@ public abstract class AvroWriteTransform
       return (GenericRecord) deserializer.deserialize(topicName, bytes);
     }
 
-    /*
-     * This method drops the key of the KafkaRecord and deserializes the value of the KafkaRecord to
-     * GenericRecord.
-     */
     @ProcessElement
     // TODO: Add Dead letter queue when deserialization error happens.
     public void processElement(
