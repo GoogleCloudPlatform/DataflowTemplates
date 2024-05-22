@@ -19,6 +19,7 @@ import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSAvro;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSParquet;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSText;
@@ -40,7 +41,6 @@ import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -48,18 +48,19 @@ import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 
 @Template(
-    name = "Kafka_to_GCS_2",
+    name = "Kafka_to_Gcs_Flex",
     category = TemplateCategory.STREAMING,
     displayName = "Kafka to Cloud Storage",
     description =
         "A streaming pipeline which ingests data from Kafka and writes to a pre-existing Cloud"
             + " Storage bucket with a variety of file types.",
-    optionsClass = KafkaToGcs2.KafkaToGcsOptions.class,
-    flexContainerName = "kafka-to-gcs-2",
+    optionsClass = KafkaToGcsFlex.KafkaToGcsOptions.class,
+    flexContainerName = "kafka-to-gcs-flex",
     contactInformation = "https://cloud.google.com/support",
     hidden = true,
-    streaming = true)
-public class KafkaToGcs2 {
+    streaming = true,
+    requirements = {"The output Google Cloud Storage directory must exist."})
+public class KafkaToGcsFlex {
   /**
    * The {@link KafkaToGcsOptions} interface provides the custom execution options passed by the
    * executor at the command-line.
@@ -67,31 +68,10 @@ public class KafkaToGcs2 {
   public interface KafkaToGcsOptions
       extends PipelineOptions,
           DataflowPipelineOptions,
+          KafkaReadOptions,
           WriteToGCSText.WriteToGCSTextOptions,
           WriteToGCSParquet.WriteToGCSParquetOptions,
           WriteToGCSAvro.WriteToGCSAvroOptions {
-
-    @TemplateParameter.Text(
-        order = 1,
-        regexes = {"[,:a-zA-Z0-9._-]+"},
-        description = "Kafka Bootstrap Server list",
-        helpText = "Kafka Bootstrap Server list, separated by commas.",
-        example = "localhost:9092,127.0.0.1:9093")
-    @Validation.Required
-    String getBootstrapServers();
-
-    void setBootstrapServers(String bootstrapServers);
-
-    @TemplateParameter.Text(
-        order = 2,
-        regexes = {"[,a-zA-Z0-9._-]+"},
-        description = "Kafka topic(s) to read the input from",
-        helpText = "Kafka topic(s) to read the input from.",
-        example = "topic1,topic2")
-    @Validation.Required
-    String getInputTopics();
-
-    void setInputTopics(String inputTopics);
 
     @TemplateParameter.Enum(
         order = 3,
@@ -192,21 +172,6 @@ public class KafkaToGcs2 {
     String getPasswordSecretID();
 
     void setPasswordSecretID(String passwordSecretID);
-
-    @TemplateParameter.Enum(
-        order = 10,
-        description = "Set Kafka offset",
-        enumOptions = {
-          @TemplateParameter.TemplateEnumOption("latest"),
-          @TemplateParameter.TemplateEnumOption("earliest"),
-          @TemplateParameter.TemplateEnumOption("none")
-        },
-        helpText = "Set the Kafka offset to earliest or latest(default)",
-        optional = true)
-    @Default.String("latest")
-    String getOffset();
-
-    void setOffset(String offset);
   }
 
   /* Logger for class */
@@ -240,13 +205,13 @@ public class KafkaToGcs2 {
     PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord;
 
     List<String> topics =
-        new ArrayList<>(Arrays.asList(options.getInputTopics().split(topicsSplitDelimiter)));
+        new ArrayList<>(Arrays.asList(options.getKafkaReadTopics().split(topicsSplitDelimiter)));
 
     options.setStreaming(true);
 
     Map<String, Object> kafkaConfig = new HashMap<>();
     // Set offset to either earliest or latest.
-    kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getOffset());
+    kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
     // Authenticate to Kafka only when user provides authentication params.
     if (useKafkaAuth) {
       String kafkaSaslPlainUserName = SecretManagerUtils.getSecret(options.getUserNameSecretID());
@@ -259,7 +224,7 @@ public class KafkaToGcs2 {
     kafkaRecord =
         pipeline.apply(
             KafkaIO.<byte[], byte[]>read()
-                .withBootstrapServers(options.getBootstrapServers())
+                .withBootstrapServers(options.getReadBootstrapServers())
                 .withTopics(topics)
                 .withKeyDeserializerAndCoder(
                     ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
