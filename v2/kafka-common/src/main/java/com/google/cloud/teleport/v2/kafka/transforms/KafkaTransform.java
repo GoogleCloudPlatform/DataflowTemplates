@@ -55,7 +55,7 @@ public class KafkaTransform {
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
-      @Nullable Map<String, String> sslConfig) {
+      @Nullable Map<String, Object> sslConfig) {
     KafkaIO.Read<String, String> kafkaRecords =
         KafkaIO.<String, String>read()
             .withBootstrapServers(bootstrapServers)
@@ -84,7 +84,7 @@ public class KafkaTransform {
       List<String> topicsList,
       Map<String, Object> config,
       String avroSchema,
-      @Nullable Map<String, String> sslConfig) {
+      @Nullable Map<String, Object> sslConfig) {
     KafkaIO.Read<byte[], GenericRecord> kafkaRecords =
         KafkaIO.<byte[], GenericRecord>read()
             .withBootstrapServers(bootstrapServers)
@@ -111,6 +111,7 @@ public class KafkaTransform {
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
+
       @Nullable Map<String, String> sslConfig,
       Boolean enableCommitOffsets) {
     KafkaIO.Read<byte[], byte[]> kafkaRecords =

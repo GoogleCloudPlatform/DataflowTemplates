@@ -17,17 +17,20 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.hadoop.hdfs.DFSInotifyEventInputStream.LOG;
 
+
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ReadChannel;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.collect.ImmutableMap;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SslConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,67 +48,34 @@ import org.slf4j.LoggerFactory;
 final class ConsumerProperties {
 
   private static final Logger LOGG = LoggerFactory.getLogger(ConsumerProperties.class);
-  private static void downloadFileFromGCS(String keystores, String localPath) throws IOException {
-
-    Storage storage = StorageOptions.newBuilder().setProjectId("dataflow-testing-311516").setCredentials(
-        GoogleCredentials.getApplicationDefault()).build().getService();//getDefaultInstance().getService();
-    Blob blob = storage.get("testbucketktm", keystores);
-    ReadChannel readChannel = blob.reader();
-    FileOutputStream fileOutputStream;
-    fileOutputStream = new FileOutputStream(localPath);
-    fileOutputStream.getChannel().transferFrom(readChannel, 0, Long.MAX_VALUE);
-    fileOutputStream.close();
-    File f = new File(localPath);
-    if (f.exists())
-    {
-
-      LOG.debug("SSL trust store location set to: " + localPath);
-      LOG.debug("key exists");
-
-    }
-    else
-    {
-      LOG.error("key does not exist");
-
-    }
-    // try (InputStream input = Channels.newInputStream(blob.reader());
-    //     FileOutputStream output = new FileOutputStream(localPath)) {
-    //   byte[] buffer = new byte[2048];
-    //   int bytesRead;
-    //   while ((bytesRead = input.read(buffer)) != -1) {
-    //     output.write(buffer, 0, bytesRead);
-    //   }
-    // } catch (Exception e) {
-    //   throw new RuntimeException("Failed to download file from GCS", e);
-    // }
-  }
 
   public static ImmutableMap<String, Object> get(KafkaToKafkaOptions options) throws IOException {
-    downloadFileFromGCS("keystore.jks", "/tmp/keystore.jks");
-    downloadFileFromGCS("truststore.jks", "/tmp/truststore.jks");
     ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
-    properties.put(
-        CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, options.getSourceBootstrapServers());
-
-
-    //         Note: in other languages, set sasl.username and sasl.password instead.
-    properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
-    properties.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, "/tmp/keystore.jks");
-    properties.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, "/tmp/truststore.jks");
-    properties.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, "123456");
-    properties.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, "123456");
-    properties.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, "123456");
-    properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG,"");
-    // properties.put(
-    //     SaslConfigs.SASL_JAAS_CONFIG,
-    //     "org.apache.kafka.common.security.plain.PlainLoginModule required"
-    //         + " username=\'"
-    //         + SecretManagerUtils.getSecret(options.getSourceUsernameSecretId())
-    //         + "\'"
-    //         + " password=\'"
-    //         + SecretManagerUtils.getSecret(options.getSourcePasswordSecretId())
-    //         + "\';");
-
+    properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, options.getSourceBootstrapServers());
+    if (options.getSourceAuthenticationMethod().equals("SSL")) {
+      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
+      properties.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getSourceKeystoreLocation());
+      properties.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG,
+          options.getSourceTruststoreLocation());
+      properties.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getSourceTruststorePasswordSecretId()));
+      properties.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getSourceKeystorePasswordSecretId()));
+      properties.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getSourceKeyPasswordSecretId()));
+      properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
+    }
+    if (options.getSourceAuthenticationMethod().equals("SASL_PLAIN")) {
+      properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
+      //         Note: in other languages, set sasl.username and sasl.password instead.
+      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
+      properties.put(
+          SaslConfigs.SASL_JAAS_CONFIG,
+          "org.apache.kafka.common.security.plain.PlainLoginModule required"
+              + " username=\'"
+              + SecretManagerUtils.getSecret(options.getSourceUsernameSecretId())
+              + "\'"
+              + " password=\'"
+              + SecretManagerUtils.getSecret(options.getSourcePasswordSecretId())
+              + "\';");
+    }
     return properties.buildOrThrow();
   }
 }
