@@ -112,6 +112,7 @@ public class KafkaTransform {
       List<String> topicsList,
       Map<String, Object> config,
 
+
       @Nullable Map<String, String> sslConfig,
       Boolean enableCommitOffsets) {
 
