@@ -93,14 +93,14 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     }
     Map<String, String> params = new HashMap<>();
     try {
-      URI uri = new URI(jdbcResourceManager.getUri());
+      URI uri = new URI(jdbcResourceManager.getUri().substring(5));
       // default parameters
       params =
           new HashMap<>() {
             {
-              // TODO: add JDBC connection props once options are modified to take URI.
-              put("jdbcDriverClassName", MYSQL_DRIVER);
               put("jdbcDriverJars", mySqlDriverGCSPath());
+              put("jdbcDriverClassName", MYSQL_DRIVER);
+              put("projectId", PROJECT);
               put("instanceId", spannerResourceManager.getInstanceId());
               put("databaseId", spannerResourceManager.getDatabaseId());
               put("sourceHost", "jdbc:mysql://" + uri.getHost());
@@ -108,6 +108,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
               put("username", jdbcResourceManager.getUsername());
               put("password", jdbcResourceManager.getPassword());
               put("sourceDB", jdbcResourceManager.getDatabaseName());
+              put("DLQDirectory", "gs://" + artifactBucketName + "/dlq");
             }
           };
     } catch (Exception ex) {
