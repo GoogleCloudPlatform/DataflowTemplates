@@ -66,6 +66,9 @@ public class TemplateDefinitionsTest {
     ImageSpecParameter inputKafkaTopic = metadata.getParameter("inputKafkaTopic").get();
     assertEquals(ImageSpecParameterType.KAFKA_TOPIC, inputKafkaTopic.getParamType());
 
+    ImageSpecParameter javascriptUdfFile = metadata.getParameter("javascriptUdfFile").get();
+    assertEquals(ImageSpecParameterType.JAVASCRIPT_UDF_FILE, javascriptUdfFile.getParamType());
+
     ImageSpecParameter logical = metadata.getParameter("logical").get();
     assertEquals(ImageSpecParameterType.BOOLEAN, logical.getParamType());
     assertEquals("^(true|false)$", logical.getRegexes().get(0));

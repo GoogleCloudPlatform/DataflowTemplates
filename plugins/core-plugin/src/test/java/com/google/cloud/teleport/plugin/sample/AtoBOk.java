@@ -98,6 +98,13 @@ public class AtoBOk {
     @Default.Boolean(false)
     Boolean getParamWithGroupName();
 
+    @TemplateParameter.JavascriptUdfFile(
+        order = 16,
+        description = "JavaScript UDF in Cloud Storage",
+        helpText = "JavaScript UDF in Cloud Storage")
+    @Default.String("")
+    String javascriptUdfFile();
+
     @TemplateParameter.Text(
         order = 9,
         parentName = "paramWithGroupName",
