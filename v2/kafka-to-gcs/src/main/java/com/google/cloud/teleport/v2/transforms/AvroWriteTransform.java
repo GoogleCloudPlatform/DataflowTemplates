@@ -146,6 +146,7 @@ public abstract class AvroWriteTransform
   public WriteFilesResult<AvroDestination> expand(
       PCollection<KafkaRecord<byte[], byte[]>> records) {
     MessageFormat inputWireFormat = MessageFormat.valueOf(messageFormat());
+    badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
     switch (inputWireFormat) {
       case CONFLUENT_WIRE_FORMAT:
         String schemaRegistryURL = schemaRegistryURL();

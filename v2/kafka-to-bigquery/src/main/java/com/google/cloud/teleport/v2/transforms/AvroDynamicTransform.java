@@ -76,7 +76,7 @@ public class AvroDynamicTransform
           FailsafeElement<KafkaRecord<byte[], byte[]>, KV<GenericRecord, TableRow>>>
       SUCCESS_KV = new TupleTag<>();
   private List<ErrorHandler<BadRecord, ?>> errorHandlers;
-  private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
+  private BadRecordRouter badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
 
   private AvroDynamicTransform(
       KafkaToBigQueryFlexOptions options, List<ErrorHandler<BadRecord, ?>> errorHandlers) {

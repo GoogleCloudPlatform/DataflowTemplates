@@ -75,7 +75,7 @@ public class AvroTransform
   private static final String kafkaKeyField = "_key";
 
   private KafkaToBigQueryFlexOptions options;
-  private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
+  private BadRecordRouter badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
   private List<ErrorHandler<BadRecord, ?>> errorHandlers;
 
   private AvroTransform(
