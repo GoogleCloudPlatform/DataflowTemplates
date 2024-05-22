@@ -70,7 +70,7 @@ public abstract class AvroWriteTransform
         PCollection<KafkaRecord<byte[], byte[]>>, WriteFilesResult<AvroDestination>> {
   private static final String subject = "UNUSED";
   private static final int DEFAULT_CACHE_CAPACITY = 1000;
-  private BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
+  private BadRecordRouter badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
 
   public abstract String outputDirectory();
 
@@ -289,7 +289,6 @@ public abstract class AvroWriteTransform
     }
 
     @ProcessElement
-    // TODO: Add Dead letter queue when deserialization error happens.
     public void processElement(
         @Element KafkaRecord<byte[], byte[]> kafkaRecord, MultiOutputReceiver receiver)
         throws Exception {
@@ -314,7 +313,6 @@ public abstract class AvroWriteTransform
   static void registerSchema(SchemaRegistryClient mockSchemaRegistryClient, String schemaFilePath) {
     try {
       // Register schemas under the fake subject name.
-
       mockSchemaRegistryClient.register(subject, SchemaUtils.getAvroSchema(schemaFilePath), 1, 1);
     } catch (IOException | RestClientException e) {
       throw new RuntimeException(e);
