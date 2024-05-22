@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+
 import com.google.cloud.teleport.metadata.TemplateParameter;
 
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
@@ -37,7 +38,6 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
   String getSourceTopic();
 
   void setSourceTopic(String sourceTopic);
-
 
 
   @TemplateParameter.Enum(
@@ -353,4 +353,5 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
   String getDestinationKeyPasswordSecretId();
 
   void setDestinationKeyPasswordSecretId(String destinationKeyPasswordSecretId);
+
 }

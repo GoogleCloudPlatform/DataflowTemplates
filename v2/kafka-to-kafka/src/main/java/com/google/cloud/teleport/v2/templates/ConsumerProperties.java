@@ -20,10 +20,20 @@ package com.google.cloud.teleport.v2.templates;
 
 
 
+
 import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 
 
+import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
+
+
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.ReadChannel;
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 
@@ -34,9 +44,9 @@ import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
+
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
-
 
 
 import org.apache.kafka.common.config.SslConfigs;
@@ -53,7 +63,6 @@ import org.apache.kafka.common.config.SslConfigs;
  * source Kafka.
  */
 final class ConsumerProperties {
-
 
 
   public static Map<String, Object> from(KafkaToKafkaOptions options) throws IOException {

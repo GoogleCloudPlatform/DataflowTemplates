@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.kafka.utils.FileAwareProducerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
+
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -30,15 +31,12 @@ import org.apache.kafka.common.config.SaslConfigs;
 
 
 
+
 import com.google.common.collect.ImmutableMap;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import org.apache.kafka.clients.CommonClientConfigs;
-
-import org.apache.kafka.common.config.SaslConfigs;
-
-import org.apache.kafka.common.config.SslConfigs;
 
 import org.apache.kafka.common.config.SslConfigs;
 import org.slf4j.Logger;
@@ -103,7 +101,5 @@ final class ProducerProperties {
       throw new UnsupportedOperationException("Authentication method not supported: " + authMethod);
     }
     return properties;
-
-
   }
 }
