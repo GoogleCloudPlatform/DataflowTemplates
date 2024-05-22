@@ -467,7 +467,7 @@ public class ImageSpecParameter {
         this.setParentTriggerValues(kmsEncryptionKeyParam.parentTriggerValues());
         this.setOptional(kmsEncryptionKeyParam.optional());
         this.setHiddenUi(kmsEncryptionKeyParam.hiddenUi());
-        this.setParamType(ImageSpecParameterType.TEXT);
+        this.setParamType(ImageSpecParameterType.KMS_KEY_NAME);
         break;
       case "Duration":
         TemplateParameter.Duration durationParam = (TemplateParameter.Duration) parameterAnnotation;
