@@ -21,6 +21,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.NamedSchema;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
@@ -476,13 +477,15 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             LOG.debug(informationSchemaDdl.prettyPrint());
                           }
                           Schema.Parser parser = new Schema.Parser();
+                          List<KV<String, Schema>> missingNamedSchemas = new ArrayList<>();
                           List<KV<String, Schema>> missingTables = new ArrayList<>();
                           List<KV<String, Schema>> missingModels = new ArrayList<>();
                           List<KV<String, Schema>> missingViews = new ArrayList<>();
                           List<KV<String, Schema>> missingChangeStreams = new ArrayList<>();
                           List<KV<String, Schema>> missingSequences = new ArrayList<>();
                           for (KV<String, String> kv : avroSchemas) {
-                            if (informationSchemaDdl.table(kv.getKey()) == null
+                            if (informationSchemaDdl.schema(kv.getKey()) == null
+                                && informationSchemaDdl.table(kv.getKey()) == null
                                 && informationSchemaDdl.model(kv.getKey()) == null
                                 && informationSchemaDdl.view(kv.getKey()) == null
                                 && informationSchemaDdl.changeStream(kv.getKey()) == null
@@ -498,6 +501,9 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                               } else if (schema.getProp("sequenceOption_0") != null
                                   || schema.getProp(AvroUtil.SPANNER_SEQUENCE_KIND) != null) {
                                 missingSequences.add(KV.of(kv.getKey(), schema));
+                              } else if ("spannerNamedSchema"
+                                  .equals(schema.getProp("spannerEntity"))) {
+                                missingNamedSchemas.add(KV.of(kv.getKey(), schema));
                               } else {
                                 missingTables.add(KV.of(kv.getKey(), schema));
                               }
@@ -520,6 +526,17 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             Ddl newDdl = builder.build();
                             ddlStatements.addAll(
                                 newDdl.setOptionsStatements(spannerConfig.getDatabaseId().get()));
+                          }
+
+                          if (!missingNamedSchemas.isEmpty()) {
+                            for (KV<String, Schema> kv : missingNamedSchemas) {
+                              Ddl.Builder builder = Ddl.builder(dialect);
+                              NamedSchema schema = converter.toSchema(kv.getKey(), kv.getValue());
+                              builder.addSchema(schema);
+                              mergedDdl.addSchema(schema);
+                              Ddl newDdl = builder.build();
+                              ddlStatements.addAll(newDdl.createNamedSchemaStatements());
+                            }
                           }
 
                           // CREATE SEQUENCE statements have to be placed before
@@ -575,9 +592,15 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                 && ((createForeignKeyStatements.size()
                                         + createIndexStatements.size())
                                     >= EARLY_INDEX_CREATE_THRESHOLD)) {
+                              LOG.info(
+                                  "Create index early: {}",
+                                  String.join(";", createIndexStatements));
                               ddlStatements.addAll(createIndexStatements);
                               c.output(pendingIndexesTag, new ArrayList<String>());
                             } else {
+                              LOG.info(
+                                  "Pending index creation: {}",
+                                  String.join(";", createIndexStatements));
                               c.output(pendingIndexesTag, createIndexStatements);
                             }
                             c.output(pendingForeignKeysTag, createForeignKeyStatements);
@@ -597,7 +620,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           c.output(pendingChangeStreamsTag, createChangeStreamStatements);
 
                           LOG.info(
-                              "Applying DDL statements for tables, models and views: {}",
+                              "Applying DDL statements for schemas, tables, models and views: {}",
                               ddlStatements);
                           if (!ddlStatements.isEmpty()) {
                             DatabaseAdminClient databaseAdminClient =
