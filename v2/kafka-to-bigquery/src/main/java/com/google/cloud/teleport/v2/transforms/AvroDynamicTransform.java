@@ -62,7 +62,7 @@ import org.apache.beam.sdk.values.TupleTagList;
  */
 public class AvroDynamicTransform
     extends PTransform<PCollection<KafkaRecord<byte[], byte[]>>, WriteResult> {
-  private static final String KAFKA_KEY_FIELD = "_key";
+  private static final String kafkaKeyField = "_key";
   // TODO: Remove options and add setters/getters for the variables that are getting
   // fetched from options.
   private final KafkaToBigQueryFlexOptions options;
@@ -229,7 +229,7 @@ public class AvroDynamicTransform
                 BigQueryUtils.toTableSchema(
                     AvroUtils.toBeamSchema(element.getPayload().getSchema())));
         if (this.persistKafkaKey) {
-          row.set(KAFKA_KEY_FIELD, element.getOriginalPayload().getKV().getKey());
+          row.set(kafkaKeyField, element.getOriginalPayload().getKV().getKey());
         }
         receiver
             .get(SUCCESS_KV)

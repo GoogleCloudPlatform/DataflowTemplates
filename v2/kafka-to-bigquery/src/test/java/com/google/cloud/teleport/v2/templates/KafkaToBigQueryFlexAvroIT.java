@@ -118,7 +118,9 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
         b ->
             b.addParameter("avroFormat", "CONFLUENT_WIRE_FORMAT")
                 .addParameter("avroSchemaPath", getGcsPath("avro_schema.avsc"))
-                .addParameter("outputTableSpec", toTableSpecLegacy(tableId)));
+                .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
+                .addParameter("enableKafkaDlq", "false")
+                .addParameter("deadLetterQueueKafkaTopic", "false"));
   }
 
   @Test
@@ -133,7 +135,9 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             b.addParameter("avroFormat", "CONFLUENT_WIRE_FORMAT")
                 .addParameter("avroSchemaPath", getGcsPath("avro_schema.avsc"))
                 .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
-                .addParameter("persistKafkaKey", "true"));
+                .addParameter("persistKafkaKey", "true")
+                .addParameter("enableKafkaDlq", "false")
+                .addParameter("deadLetterQueueKafkaTopic", "false"));
   }
 
   @Test
@@ -142,7 +146,9 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
         b ->
             b.addParameter("avroFormat", "CONFLUENT_WIRE_FORMAT")
                 .addParameter("schemaRegistryConnectionUrl", "http://10.128.0.60:8081")
-                .addParameter("outputDataset", bqDatasetId));
+                .addParameter("outputDataset", bqDatasetId)
+                .addParameter("enableKafkaDlq", "false")
+                .addParameter("deadLetterQueueKafkaTopic", "false"));
   }
 
   @Test
@@ -153,7 +159,9 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             b.addParameter("avroFormat", "CONFLUENT_WIRE_FORMAT")
                 .addParameter("schemaRegistryConnectionUrl", "http://10.128.0.60:8081")
                 .addParameter("outputDataset", bqDatasetId)
-                .addParameter("persistKafkaKey", "true"));
+                .addParameter("persistKafkaKey", "true")
+                .addParameter("enableKafkaDlq", "false")
+                .addParameter("deadLetterQueueKafkaTopic", "false"));
   }
 
   @Test
@@ -164,7 +172,9 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
         b ->
             b.addParameter("avroFormat", "NON_WIRE_FORMAT")
                 .addParameter("avroSchemaPath", getGcsPath("avro_schema.avsc"))
-                .addParameter("outputTableSpec", toTableSpecLegacy(tableId)));
+                .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
+                .addParameter("enableKafkaDlq", "false")
+                .addParameter("deadLetterQueueKafkaTopic", "false"));
   }
 
   @Test
@@ -179,7 +189,9 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             b.addParameter("avroFormat", "NON_WIRE_FORMAT")
                 .addParameter("avroSchemaPath", getGcsPath("avro_schema.avsc"))
                 .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
-                .addParameter("persistKafkaKey", "true"));
+                .addParameter("persistKafkaKey", "true")
+                .addParameter("enableKafkaDlq", "false")
+                .addParameter("deadLetterQueueKafkaTopic", "false"));
   }
 
   @Test
@@ -191,7 +203,9 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
         b ->
             b.addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId))
                 .addParameter("avroSchemaPath", getGcsPath("avro_schema.avsc"))
-                .addParameter("outputTableSpec", toTableSpecLegacy(tableId)));
+                .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
+                .addParameter("enableKafkaDlq", "false")
+                .addParameter("deadLetterQueueKafkaTopic", "false"));
   }
 
   @Test
@@ -203,7 +217,9 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
                 .addParameter("numStorageWriteApiStreams", "3")
                 .addParameter("storageWriteApiTriggeringFrequencySec", "3")
                 .addParameter("avroSchemaPath", getGcsPath("avro_schema.avsc"))
-                .addParameter("outputTableSpec", toTableSpecLegacy(tableId)));
+                .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
+                .addParameter("enableKafkaDlq", "false")
+                .addParameter("deadLetterQueueKafkaTopic", "false"));
   }
 
   @Test
@@ -219,7 +235,9 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
                 .addParameter("storageWriteApiTriggeringFrequencySec", "3")
                 .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId))
                 .addParameter("avroSchemaPath", getGcsPath("avro_schema.avsc"))
-                .addParameter("outputTableSpec", toTableSpecLegacy(tableId)));
+                .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
+                .addParameter("enableKafkaDlq", "false")
+                .addParameter("deadLetterQueueKafkaTopic", "false"));
   }
 
   private Schema getDeadletterSchema() {
