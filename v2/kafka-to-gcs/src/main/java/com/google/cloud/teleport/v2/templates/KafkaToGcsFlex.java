@@ -230,7 +230,7 @@ public class KafkaToGcsFlex {
           pipeline.registerBadRecordErrorHandler(
               KafkaDeadLetterQueue.newBuilder()
                   .setTopic(options.getDeadLetterQueueKafkaTopic())
-                  .setBootStrapServers(options.getBootstrapServers())
+                  .setBootStrapServers(options.getReadBootstrapServers())
                   .setConfig(kafkaConfig)
                   .build());
       badRecordErrorHandlers.add(kafkaErrorHandler);

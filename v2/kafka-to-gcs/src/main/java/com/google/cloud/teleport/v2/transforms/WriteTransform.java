@@ -85,7 +85,7 @@ public abstract class WriteTransform
     public abstract WriteTransformBuilder setErrorHandlers(
         List<ErrorHandler<BadRecord, ?>> errorHandlers);
 
-    abstract KafkaToGcs2.KafkaToGcsOptions options();
+    abstract KafkaToGcsFlex.KafkaToGcsOptions options();
 
     abstract WriteTransform autoBuild();
 
