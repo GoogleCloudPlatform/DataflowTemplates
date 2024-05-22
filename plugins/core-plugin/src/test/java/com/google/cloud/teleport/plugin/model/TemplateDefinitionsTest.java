@@ -73,6 +73,11 @@ public class TemplateDefinitionsTest {
     ImageSpecParameter json = metadata.getParameter("JSON").get();
     assertEquals(ImageSpecParameterType.BOOLEAN, json.getParamType());
 
+    ImageSpecParameter workerRegion = metadata.getParameter("workerRegion").get();
+    assertEquals(ImageSpecParameterType.WORKER_REGION, workerRegion.getParamType());
+    ImageSpecParameter workerZone = metadata.getParameter("workerZone").get();
+    assertEquals(ImageSpecParameterType.WORKER_ZONE, workerZone.getParamType());
+
     ImageSpecParameter gcsReadBucket = metadata.getParameter("gcsReadBucket").get();
     assertEquals(ImageSpecParameterType.GCS_READ_BUCKET, gcsReadBucket.getParamType());
   }

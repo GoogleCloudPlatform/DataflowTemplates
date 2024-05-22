@@ -115,6 +115,22 @@ public class AtoBOk {
             "projects/project-foo/locations/us-central1/clusters/cluster-bar/topics/topic-baz")
     String getInputKafkaTopic();
 
+    @TemplateParameter.WorkerRegion(
+        order = 13,
+        description = "Worker region",
+        helpText = "Worker region",
+        example = "us-west1")
+    @Default.String("")
+    String getWorkerRegion();
+
+    @TemplateParameter.WorkerZone(
+        order = 14,
+        description = "Worker zone",
+        helpText = "Worker zone",
+        example = "us-west1-a")
+    @Default.String("")
+    String getWorkerZone();
+    
     @TemplateParameter.GcsReadBucket(
         order = 11,
         description = "Cloud Storage Bucket to read from",
