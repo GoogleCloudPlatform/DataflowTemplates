@@ -24,7 +24,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
  * records.
  */
 public interface KafkaDeadLetterQueueOptions extends PipelineOptions {
-  String KAFKA_DLQ_GROUP_NAME = "Kafka Dead Letter Queue";
+  String KAFKA_DLQ_GROUP_NAME = "Dead Letter Queue";
 
   @TemplateParameter.Boolean(
       description = "Enable Kafka Dead Letter Queue.",
