@@ -30,6 +30,9 @@ public enum ImageSpecParameterType {
   /** Cloud Storage folder to read. */
   GCS_READ_FOLDER,
 
+  /** Cloud Storage bucket to read. */
+  GCS_READ_BUCKET,
+
   /** Cloud Storage file to write. */
   GCS_WRITE_FILE,
 

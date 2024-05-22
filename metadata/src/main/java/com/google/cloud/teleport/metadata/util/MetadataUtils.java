@@ -38,6 +38,7 @@ public final class MetadataUtils {
         TemplateParameter.Enum.class,
         TemplateParameter.Float.class,
         TemplateParameter.GcsReadFile.class,
+        TemplateParameter.GcsReadBucket.class,
         TemplateParameter.GcsReadFolder.class,
         TemplateParameter.GcsWriteFile.class,
         TemplateParameter.GcsWriteFolder.class,
@@ -131,6 +132,10 @@ public final class MetadataUtils {
       case "GcsReadFile":
         TemplateParameter.GcsReadFile gcsReadFileParam =
             (TemplateParameter.GcsReadFile) parameterAnnotation;
+        return List.of("^gs:\\/\\/[^\\n\\r]+$");
+      case "GcsReadBucket":
+        TemplateParameter.GcsReadBucket gcsReadBucketParam =
+            (TemplateParameter.GcsReadBucket) parameterAnnotation;
         return List.of("^gs:\\/\\/[^\\n\\r]+$");
       case "GcsReadFolder":
         TemplateParameter.GcsReadFolder gcsReadFolderParam =

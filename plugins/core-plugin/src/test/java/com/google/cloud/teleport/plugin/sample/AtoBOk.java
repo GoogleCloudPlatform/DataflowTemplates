@@ -114,5 +114,12 @@ public class AtoBOk {
         example =
             "projects/project-foo/locations/us-central1/clusters/cluster-bar/topics/topic-baz")
     String getInputKafkaTopic();
+
+    @TemplateParameter.GcsReadBucket(
+        order = 11,
+        description = "Cloud Storage Bucket to read from",
+        helpText = "Cloud Storage Bucket to read from")
+    @Default.String("")
+    String getGcsReadBucket();
   }
 }

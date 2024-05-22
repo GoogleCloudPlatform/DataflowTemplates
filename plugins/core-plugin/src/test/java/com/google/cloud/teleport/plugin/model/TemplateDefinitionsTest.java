@@ -72,6 +72,9 @@ public class TemplateDefinitionsTest {
 
     ImageSpecParameter json = metadata.getParameter("JSON").get();
     assertEquals(ImageSpecParameterType.BOOLEAN, json.getParamType());
+
+    ImageSpecParameter gcsReadBucket = metadata.getParameter("gcsReadBucket").get();
+    assertEquals(ImageSpecParameterType.GCS_READ_BUCKET, gcsReadBucket.getParamType());
   }
 
   @Test
