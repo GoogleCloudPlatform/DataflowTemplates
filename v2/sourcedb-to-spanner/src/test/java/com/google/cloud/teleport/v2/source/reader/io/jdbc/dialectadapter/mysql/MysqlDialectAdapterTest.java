@@ -27,8 +27,11 @@ import static org.mockito.Mockito.when;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.InformationSchamaStatsCols;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.InformationSchemaCols;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
@@ -242,6 +245,154 @@ public class MysqlDialectAdapterTest {
     assertThrows(
         SchemaDiscoveryException.class,
         () -> new MysqlDialectAdapter(MySqlVersion.DEFAULT).discoverTables(mockDataSource));
+  }
+
+  @Test
+  public void testDiscoverIndexesBasic() throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableList<String> testTables = ImmutableList.of("testTable1");
+    ImmutableList<String> colTypes = ImmutableList.of("varchar", "integer");
+    ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
+        ImmutableList.of(
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testCol1")
+                .setIndexName("testIndex1")
+                .setIsUnique(false)
+                .setIsPrimary(false)
+                .setCardinality(42L)
+                .setOrdinalPosition(1)
+                .setIndexType(IndexType.OTHER)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testCol1")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(42L)
+                .setIndexType(IndexType.NUMERIC)
+                .setOrdinalPosition(1)
+                .build());
+
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    doNothing().when(mockPreparedStatement).setString(1, testTables.get(0));
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+
+    OngoingStubbing stubGetColName =
+        when(mockResultSet.getString(InformationSchamaStatsCols.COL_NAME_COL));
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      stubGetColName = stubGetColName.thenReturn(info.columnName());
+    }
+    // Unfortunately Mocktio does not let us wire 2 stubs in parallel.
+    OngoingStubbing stubGetIndexName =
+        when(mockResultSet.getString(InformationSchamaStatsCols.INDEX_NAME_COL));
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      stubGetIndexName = stubGetIndexName.thenReturn(info.indexName());
+    }
+    OngoingStubbing stubGetNonUnique =
+        when(mockResultSet.getBoolean(InformationSchamaStatsCols.NON_UNIQ_COL));
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      stubGetNonUnique = stubGetNonUnique.thenReturn(!info.isUnique());
+    }
+    OngoingStubbing stubGetCardinality =
+        when(mockResultSet.getLong(InformationSchamaStatsCols.CARDINALITY_COL));
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      stubGetCardinality = stubGetCardinality.thenReturn(info.cardinality());
+    }
+    OngoingStubbing stubGetOrdinalPos =
+        when(mockResultSet.getLong(InformationSchamaStatsCols.ORDINAL_POS_COL));
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      stubGetOrdinalPos = stubGetOrdinalPos.thenReturn(info.ordinalPosition());
+    }
+    OngoingStubbing stubGetColType =
+        when(mockResultSet.getString(InformationSchamaStatsCols.TYPE_COL));
+    for (String colType : colTypes) {
+      stubGetColType = stubGetColType.thenReturn(colType);
+    }
+    OngoingStubbing stubNext = when(mockResultSet.next());
+    for (long i = 0; i < expectedSourceColumnIndexInfos.size(); i++) {
+      stubNext = stubNext.thenReturn(true);
+    }
+    stubNext = stubNext.thenReturn(false);
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoveredIndexes =
+        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+            .discoverTableIndexes(mockDataSource, sourceSchemaReference, testTables);
+
+    assertThat(discoveredIndexes)
+        .isEqualTo(ImmutableMap.of(testTables.get(0), expectedSourceColumnIndexInfos));
+  }
+
+  @Test
+  public void testGetIndexDiscoveryQuery() {
+    assertThat(
+            MysqlDialectAdapter.getIndexDiscoveryQuery(
+                SourceSchemaReference.builder().setDbName("testDB").build()))
+        .isEqualTo(
+            "SELECT stats.COLUMN_NAME,stats.INDEX_NAME,stats.SEQ_IN_INDEX,stats.NON_UNIQUE,stats.CARDINALITY,cols.DATA_TYPE FROM INFORMATION_SCHEMA.STATISTICS stats JOIN INFORMATION_SCHEMA.COLUMNS cols ON stats.table_schema = cols.table_schema AND stats.table_name = cols.table_name AND stats.column_name = cols.column_name WHERE stats.TABLE_SCHEMA = 'testDB' AND stats.TABLE_NAME = ?");
+  }
+
+  @Test
+  public void testDiscoverTableIndexesGetConnectionException() throws SQLException {
+    final String testTable = "testTable";
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
+
+    when(mockDataSource.getConnection())
+        .thenThrow(new SQLTransientConnectionException("test"))
+        .thenThrow(new SQLNonTransientConnectionException("test"));
+
+    assertThrows(
+        RetriableSchemaDiscoveryException.class,
+        () ->
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+                .discoverTableIndexes(
+                    mockDataSource, sourceSchemaReference, ImmutableList.of(testTable)));
+
+    assertThrows(
+        SchemaDiscoveryException.class,
+        () ->
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+                .discoverTableIndexes(
+                    mockDataSource, sourceSchemaReference, ImmutableList.of(testTable)));
+  }
+
+  @Test
+  public void testDiscoverIndexesSqlExceptions()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableList<String> testTables = ImmutableList.of("testTable1");
+    long exceptionCount = 0;
+
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString()))
+        .thenThrow(new SQLException("test"))
+        .thenReturn(mockPreparedStatement);
+    exceptionCount++;
+    doThrow(new SQLException("test"))
+        .doNothing()
+        .when(mockPreparedStatement)
+        .setString(1, testTables.get(0));
+    exceptionCount++;
+    when(mockPreparedStatement.executeQuery())
+        .thenThrow(new SQLException("test"))
+        .thenReturn(mockResultSet);
+    exceptionCount++;
+    when(mockResultSet.next()).thenThrow(new SQLException("test")).thenReturn(true);
+    exceptionCount++;
+    when(mockResultSet.getString(anyString())).thenThrow(new SQLException("test"));
+    exceptionCount++;
+    for (long i = 0; i < exceptionCount; i++) {
+      assertThrows(
+          SchemaDiscoveryException.class,
+          () ->
+              new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+                  .discoverTableIndexes(mockDataSource, sourceSchemaReference, testTables));
+    }
   }
 
   private static ResultSet getMockInfoSchemaRs() throws SQLException {

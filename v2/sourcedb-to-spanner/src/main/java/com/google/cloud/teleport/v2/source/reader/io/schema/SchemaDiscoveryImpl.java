@@ -82,6 +82,27 @@ public final class SchemaDiscoveryImpl implements SchemaDiscovery {
                 dataSource, sourceSchemaReference, tables));
   }
 
+  /**
+   * Discover the indexes of tables to migrate.
+   *
+   * @param dataSource Provider for JDBC connection.
+   * @param sourceSchemaReference Source database name and (optionally namespace)
+   * @param tables Tables to migrate.
+   * @return The discovered indexes.
+   * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
+   */
+  @Override
+  public ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoverTableIndexes(
+      DataSource dataSource,
+      SourceSchemaReference sourceSchemaReference,
+      ImmutableList<String> tables)
+      throws SchemaDiscoveryException {
+    return doRetries(
+        () ->
+            retriableSchemaDiscovery.discoverTableIndexes(
+                dataSource, sourceSchemaReference, tables));
+  }
+
   private <T> T doRetries(SchemaDiscoveryOperation<T> operation) throws SchemaDiscoveryException {
 
     BackOff backoff = this.fluentBackoff.backoff();

@@ -20,6 +20,8 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDi
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
@@ -156,6 +158,58 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return tablesBuilder.build();
   }
 
+  /**
+   * Discover the indexes of tables to migrate.
+   *
+   * @param dataSource Provider for JDBC connection.
+   * @param sourceSchemaReference Source database name and (optionally namespace)
+   * @param tables Tables to migrate.
+   * @return The discovered indexes.
+   * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
+   * @throws RetriableSchemaDiscoveryException - Retriable exception during Schema Discovery.
+   */
+  @Override
+  public ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoverTableIndexes(
+      DataSource dataSource,
+      SourceSchemaReference sourceSchemaReference,
+      ImmutableList<String> tables)
+      throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
+    String discoveryQuery = getIndexDiscoveryQuery(sourceSchemaReference);
+    ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> tablesBuilder =
+        ImmutableMap.<String, ImmutableList<SourceColumnIndexInfo>>builder();
+
+    try (PreparedStatement statement =
+        dataSource.getConnection().prepareStatement(discoveryQuery)) {
+      tables.forEach(table -> tablesBuilder.put(table, getTableIndexes(table, statement)));
+    } catch (SQLTransientConnectionException e) {
+      logger.warn(
+          String.format(
+              "Transient connection error while discovering table indexes for datasource=%s db=%s tables=%s, cause=%s",
+              dataSource, sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw new RetriableSchemaDiscoveryException(e);
+    } catch (SQLNonTransientConnectionException e) {
+      logger.error(
+          String.format(
+              "Non Transient connection error while discovering table indexes for datasource=%s, db=%s tables=%s, cause=%s",
+              dataSource, sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw new SchemaDiscoveryException(e);
+    } catch (SQLException e) {
+      logger.error(
+          String.format(
+              "Sql exception while discovering table schema for datasource=%s db=%s tables=%s, cause=%s",
+              dataSource, sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw new SchemaDiscoveryException(e);
+    } catch (SchemaDiscoveryException e) {
+      // Already logged.
+      schemaDiscoveryErrors.inc();
+      throw e;
+    }
+    return tablesBuilder.build();
+  }
+
   protected static String getSchemaDiscoveryQuery(SourceSchemaReference sourceSchemaReference) {
     return new StringBuffer()
         .append("SELECT ")
@@ -165,6 +219,24 @@ public final class MysqlDialectAdapter implements DialectAdapter {
                 " FROM INFORMATION_SCHEMA.Columns WHERE TABLE_SCHEMA = '%s' AND",
                 sourceSchemaReference.dbName()))
         .append(" TABLE_NAME = ?")
+        .toString();
+  }
+
+  protected static String getIndexDiscoveryQuery(SourceSchemaReference sourceSchemaReference) {
+    return new StringBuffer()
+        .append("SELECT ")
+        .append(String.join(",", InformationSchamaStatsCols.colList()))
+        .append(" FROM INFORMATION_SCHEMA.STATISTICS stats")
+        .append(" JOIN ")
+        .append("INFORMATION_SCHEMA.COLUMNS cols")
+        .append(" ON ")
+        .append(
+            "stats.table_schema = cols.table_schema"
+                + " AND stats.table_name = cols.table_name"
+                + " AND stats.column_name = cols.column_name")
+        .append(
+            String.format(" WHERE stats.TABLE_SCHEMA = '%s' AND", sourceSchemaReference.dbName()))
+        .append(" stats.TABLE_NAME = ?")
         .toString();
   }
 
@@ -187,6 +259,55 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       throw new SchemaDiscoveryException(e);
     }
     return colsBuilder.build();
+  }
+
+  private static final ImmutableMap<String, SourceColumnIndexInfo.IndexType> INDEX_TYPE_MAPPING =
+      ImmutableMap.<String, SourceColumnIndexInfo.IndexType>builder()
+          .put("BIGINT", IndexType.NUMERIC)
+          .put("DATETIME", IndexType.DATE_TIME)
+          .put("INTEGER", IndexType.NUMERIC)
+          .put("MEDIUMINT", IndexType.NUMERIC)
+          .put("SMALLINT", IndexType.NUMERIC)
+          .put("TINYINT", IndexType.NUMERIC)
+          .build();
+
+  private ImmutableList<SourceColumnIndexInfo> getTableIndexes(
+      String table, PreparedStatement statement) throws SchemaDiscoveryException {
+
+    ImmutableList.Builder<SourceColumnIndexInfo> indexesBuilder =
+        ImmutableList.<SourceColumnIndexInfo>builder();
+    try {
+      statement.setString(1, table);
+      ResultSet rs = statement.executeQuery();
+      while (rs.next()) {
+        String colName = rs.getString(InformationSchamaStatsCols.COL_NAME_COL);
+        String indexName = rs.getString(InformationSchamaStatsCols.INDEX_NAME_COL);
+        boolean isUnique = !rs.getBoolean(InformationSchamaStatsCols.NON_UNIQ_COL);
+        boolean isPrimary = indexName.trim().toUpperCase().equals("PRIMARY");
+        long cardinality = rs.getLong(InformationSchamaStatsCols.CARDINALITY_COL);
+        long ordinalPosition = rs.getLong(InformationSchamaStatsCols.ORDINAL_POS_COL);
+        String columType = normalizeColumnType(rs.getString(InformationSchamaStatsCols.TYPE_COL));
+        IndexType indexType = INDEX_TYPE_MAPPING.getOrDefault(columType, IndexType.OTHER);
+
+        indexesBuilder.add(
+            SourceColumnIndexInfo.builder()
+                .setColumnName(colName)
+                .setIndexName(indexName)
+                .setIsUnique(isUnique)
+                .setIsPrimary(isPrimary)
+                .setCardinality(cardinality)
+                .setOrdinalPosition(ordinalPosition)
+                .setIndexType(indexType)
+                .build());
+      }
+    } catch (java.sql.SQLException e) {
+      logger.error(
+          String.format(
+              "Sql error while discovering table schema with statement=%s table=%s, cause=%s",
+              statement, table, e));
+      throw new SchemaDiscoveryException(e);
+    }
+    return indexesBuilder.build();
   }
 
   private SourceColumnType resultSetToSourceColumnType(ResultSet rs) throws SQLException {
@@ -264,5 +385,22 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
 
     private InformationSchemaCols() {}
+  }
+
+  protected static final class InformationSchamaStatsCols {
+    public static final String COL_NAME_COL = "stats.COLUMN_NAME";
+    public static final String INDEX_NAME_COL = "stats.INDEX_NAME";
+    public static final String ORDINAL_POS_COL = "stats.SEQ_IN_INDEX";
+    public static final String NON_UNIQ_COL = "stats.NON_UNIQUE";
+    public static final String CARDINALITY_COL = "stats.CARDINALITY";
+
+    public static final String TYPE_COL = "cols.DATA_TYPE";
+
+    public static ImmutableList<String> colList() {
+      return ImmutableList.of(
+          COL_NAME_COL, INDEX_NAME_COL, ORDINAL_POS_COL, NON_UNIQ_COL, CARDINALITY_COL, TYPE_COL);
+    }
+
+    private InformationSchamaStatsCols() {}
   }
 }

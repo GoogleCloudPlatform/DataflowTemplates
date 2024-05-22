@@ -64,4 +64,22 @@ public interface RetriableSchemaDiscovery {
   ImmutableMap<String, ImmutableMap<String, SourceColumnType>> discoverTableSchema(
       DataSource dataSource, SourceSchemaReference schemaReference, ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException;
+
+  /**
+   * Discover the indexes of tables to migrate.
+   *
+   * @param dataSource Provider for JDBC connection.
+   * @param sourceSchemaReference Source database name and (optionally namespace)
+   * @param tables Tables to migrate.
+   * @return The discovered indexes.
+   * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
+   * @throws RetriableSchemaDiscoveryException - Retriable exception during Schema Discovery.
+   *     <p><b>Note:</b>
+   *     <p>The Implementations must log every exception and generate metrics as appropriate.
+   */
+  ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoverTableIndexes(
+      DataSource dataSource,
+      SourceSchemaReference sourceSchemaReference,
+      ImmutableList<String> tables)
+      throws SchemaDiscoveryException, RetriableSchemaDiscoveryException;
 }
