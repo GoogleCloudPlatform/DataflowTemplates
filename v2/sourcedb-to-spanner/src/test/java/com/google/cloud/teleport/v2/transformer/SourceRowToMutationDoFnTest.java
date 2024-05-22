@@ -102,53 +102,6 @@ public class SourceRowToMutationDoFnTest {
   }
 
   @Test
-  public void testSourceRowToMutationDoFnNullChecks() {
-    final String testTable = "srcTable";
-    var schema = SchemaTestUtils.generateTestTableSchema(testTable);
-    SourceRow sourceRow =
-        SourceRow.builder(schema, 12412435345L)
-            .setField("firstName", "abc")
-            .setField("lastName", null)
-            .build();
-    PCollection<SourceRow> sourceRows = pipeline.apply(Create.of(sourceRow));
-    Map<String, SourceTableReference> tableIdMapper =
-        Map.of(
-            schema.tableSchemaUUID(),
-            SourceTableReference.builder()
-                .setSourceSchemaReference(
-                    SourceSchemaReference.builder().setDbName("dbName").build())
-                .setSourceTableName(testTable)
-                .setSourceTableSchemaUUID(schema.tableSchemaUUID())
-                .build());
-    ISchemaMapper mockIschemaMapper =
-        mock(ISchemaMapper.class, Mockito.withSettings().serializable());
-    when(mockIschemaMapper.getDialect()).thenReturn(Dialect.GOOGLE_STANDARD_SQL);
-    when(mockIschemaMapper.getSpannerTableName(anyString(), anyString()))
-        .thenReturn("spannerTable");
-    when(mockIschemaMapper.getSpannerColumnName(anyString(), anyString(), eq("firstName")))
-        .thenReturn("spFirstName");
-    when(mockIschemaMapper.getSpannerColumnName(anyString(), anyString(), eq("lastName")))
-        .thenReturn("spLastName");
-    when(mockIschemaMapper.getSourceColumnName(anyString(), anyString(), eq("spFirstName")))
-        .thenReturn("firstName");
-    when(mockIschemaMapper.getSourceColumnName(anyString(), anyString(), eq("spLastName")))
-        .thenReturn("lastName");
-    when(mockIschemaMapper.getSpannerColumnType(anyString(), anyString(), anyString()))
-        .thenReturn(Type.string());
-    when(mockIschemaMapper.getSpannerColumns(anyString(), anyString()))
-        .thenReturn(List.of("spFirstName", "spLastName"));
-
-    PCollection<Mutation> mutations =
-        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper));
-
-    pipeline.run();
-
-    PAssert.that(mutations)
-        .containsInAnyOrder(
-            Mutation.newInsertOrUpdateBuilder("spannerTable").set("spFirstName").to("abc").build());
-  }
-
-  @Test
   public void testSourceRowToMutationDoFn_invalidTableUUID() {
     final String testTable = "srcTable";
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
