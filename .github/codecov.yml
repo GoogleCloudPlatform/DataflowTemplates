@@ -56,4 +56,4 @@ component_management:
     - "v2/sourcedb-to-spanner/**"
     - "v2/spanner-common/**"
     ignore:
-    - "v2/src/main/java/com/google/cloud/teleport/v2/constants/**"
+    - "v2/sourcedb-to-spanner/src/main/java/com/google/cloud/teleport/v2/constants/**"
