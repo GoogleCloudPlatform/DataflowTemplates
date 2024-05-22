@@ -54,6 +54,9 @@ public class TemplateDefinitionsTest {
         metadata.getDescription());
     assertEquals("com.google.cloud.teleport.plugin.sample.AtoBOk", metadata.getMainClass());
 
+    ImageSpecParameter kmsKey = metadata.getParameter("kmsEncryptionKey").get();
+    assertEquals(ImageSpecParameterType.KMS_KEY_NAME, kmsKey.getParamType());
+
     // Make sure metadata follows stable order
     assertEquals("from", metadata.getParameters().get(0).getName());
 

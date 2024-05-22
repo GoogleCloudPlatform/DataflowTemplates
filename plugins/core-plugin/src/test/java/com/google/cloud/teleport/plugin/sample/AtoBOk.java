@@ -82,6 +82,13 @@ public class AtoBOk {
     @Default.String("")
     String getEmpty();
 
+    @TemplateParameter.KmsEncryptionKey(
+        order = 18,
+        description = "Google Cloud KMS encryption key",
+        helpText = "Google Cloud KMS encryption key")
+    @Default.String("")
+    String getKmsEncryptionKey();
+
     @TemplateParameter.Text(
         order = 7,
         hiddenUi = true,
