@@ -90,6 +90,13 @@ public class AtoBOk {
     @Default.String("")
     String getHiddenParam();
 
+    @TemplateParameter.GcsWriteBucket(
+        order = 17,
+        description = "Cloud Storage Bucket to write",
+        helpText = "Cloud Storage Bucket to write")
+    @Default.String("")
+    String getGcsWriteBucket();
+
     @TemplateParameter.Boolean(
         order = 8,
         groupName = "Source",

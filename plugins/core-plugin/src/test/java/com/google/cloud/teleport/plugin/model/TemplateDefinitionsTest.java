@@ -63,6 +63,9 @@ public class TemplateDefinitionsTest {
     ImageSpecParameter to = metadata.getParameter("to").get();
     assertEquals(ImageSpecParameterType.BIGQUERY_TABLE, to.getParamType());
 
+    ImageSpecParameter gcsWriteBucket = metadata.getParameter("gcsWriteBucket").get();
+    assertEquals(ImageSpecParameterType.GCS_WRITE_BUCKET, gcsWriteBucket.getParamType());
+
     ImageSpecParameter inputKafkaTopic = metadata.getParameter("inputKafkaTopic").get();
     assertEquals(ImageSpecParameterType.KAFKA_TOPIC, inputKafkaTopic.getParamType());
 
