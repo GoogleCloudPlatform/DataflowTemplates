@@ -31,7 +31,7 @@ import com.google.cloud.teleport.v2.neo4j.utils.SerializableSupplier;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Map;
 import java.util.Set;
-import org.apache.beam.sdk.transforms.GroupByKey;
+import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -104,8 +104,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
 
     return input
         .apply("Create KV pairs", CreateKvTransform.of(parallelism))
-        .apply("Group by keys", GroupByKey.create())
-        .apply("Split into batches", ParDo.of(SplitIntoBatches.of(batchSize)))
+        .apply("Group into batches", GroupIntoBatches.ofSize(batchSize))
         .apply(target.getSequence() + ": Neo4j write " + target.getName(), ParDo.of(neo4jUnwindFn))
         .setRowSchema(input.getSchema());
   }
