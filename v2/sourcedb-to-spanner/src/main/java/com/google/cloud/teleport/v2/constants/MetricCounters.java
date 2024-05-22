@@ -28,4 +28,7 @@ public class MetricCounters {
   // errors including SQLTransientConnectionException, SQLNonTransientConnectionException,
   // SQLExceptions etc.
   public static final String READER_SCHEMA_DISCOVERY_ERRORS = "reader_schema_discovery_errors";
+
+  // Counter for number of mutations that failed writing to Spanner
+  public static final String FAILED_MUTATION_ERRORS = "failed_mutation_errors";
 }

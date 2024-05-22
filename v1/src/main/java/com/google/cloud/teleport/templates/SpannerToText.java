@@ -88,7 +88,7 @@ public class SpannerToText {
         order = 1,
         optional = true,
         description = "Cloud Storage temp directory for storing CSV files",
-        helpText = "The Cloud Storage path where the temporary CSV files can be stored.",
+        helpText = "The Cloud Storage path where temporary CSV files are written.",
         example = "gs://your-bucket/your-path")
     ValueProvider<String> getCsvTempDirectory();
 
@@ -105,8 +105,8 @@ public class SpannerToText {
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
-            "The request priority for Cloud Spanner calls. The value must be one of:"
-                + " [HIGH,MEDIUM,LOW].")
+            "The request priority (https://cloud.google.com/spanner/docs/reference/rest/v1/RequestOptions)"
+                + " for Spanner calls. Possible values are `HIGH`, `MEDIUM`, `LOW`. The default value is `MEDIUM`.")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);

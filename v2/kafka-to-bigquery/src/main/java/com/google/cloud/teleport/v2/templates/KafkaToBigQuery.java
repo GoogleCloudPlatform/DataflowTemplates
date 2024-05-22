@@ -174,7 +174,8 @@ public class KafkaToBigQuery {
         optional = true,
         regexes = {"[,:a-zA-Z0-9._-]+"},
         description = "Kafka Bootstrap Server list",
-        helpText = "Kafka Bootstrap Server list, separated by commas.",
+        helpText =
+            "The host address of the running Apache Kafka broker servers in a comma-separated list. Each host address must be in the format `35.70.252.199:9092`.",
         example = "localhost:9092,127.0.0.1:9093")
     @Deprecated
     String getBootstrapServers();
@@ -200,7 +201,7 @@ public class KafkaToBigQuery {
         optional = true,
         regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Kafka topic(s) to read the input from",
-        helpText = "Kafka topic(s) to read the input from.",
+        helpText = "The Apache Kafka input topics to read from in a comma-separated list. ",
         example = "topic1,topic2")
     String getInputTopics();
 

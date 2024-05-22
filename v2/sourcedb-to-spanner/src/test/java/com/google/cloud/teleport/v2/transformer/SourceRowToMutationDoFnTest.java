@@ -22,20 +22,27 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.templates.RowContext;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTagList;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -79,10 +86,9 @@ public class SourceRowToMutationDoFnTest {
         .thenReturn(Type.string());
     when(mockIschemaMapper.getSpannerColumns(anyString(), anyString()))
         .thenReturn(List.of("spFirstName", "spLastName"));
+
     PCollection<Mutation> mutations =
-        sourceRows.apply(
-            "Transform",
-            ParDo.of(SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper)));
+        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper));
 
     PAssert.that(mutations)
         .containsInAnyOrder(
@@ -117,9 +123,7 @@ public class SourceRowToMutationDoFnTest {
     ISchemaMapper mockIschemaMapper =
         mock(ISchemaMapper.class, Mockito.withSettings().serializable());
     PCollection<Mutation> mutations =
-        sourceRows.apply(
-            "Transform",
-            ParDo.of(SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper)));
+        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper));
 
     PAssert.that(mutations).empty();
     pipeline.run();
@@ -150,11 +154,34 @@ public class SourceRowToMutationDoFnTest {
         .thenThrow(NoSuchElementException.class);
 
     PCollection<Mutation> mutations =
-        sourceRows.apply(
-            "Transform",
-            ParDo.of(SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper)));
+        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper));
 
     PAssert.that(mutations).empty();
     pipeline.run();
+  }
+
+  /** Helper Method to extract mutations from transformation output. */
+  private PCollection<Mutation> transform(
+      PCollection<SourceRow> sourceRows, SourceRowToMutationDoFn transformDoFn) {
+    PCollectionTuple transform =
+        sourceRows.apply(
+            "Transform",
+            ParDo.of(transformDoFn)
+                .withOutputTags(
+                    SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS,
+                    TupleTagList.of(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)));
+    transform
+        .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)
+        .setCoder(SerializableCoder.of(RowContext.class)); // Need to set to run the pipeline
+    PCollection<RowContext> successTransformation =
+        transform
+            .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS)
+            .setCoder(SerializableCoder.of(RowContext.class));
+
+    PCollection<Mutation> mutations =
+        successTransformation.apply(
+            MapElements.into(TypeDescriptor.of(Mutation.class))
+                .via((RowContext r) -> r.mutation()));
+    return mutations;
   }
 }

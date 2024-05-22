@@ -81,7 +81,7 @@ public class BigQueryToBigtable {
         order = 1,
         regexes = {"[A-Za-z_][A-Za-z_0-9]*"},
         description = "Unique identifier column",
-        helpText = "Name of the BigQuery column storing the unique identifier of the row")
+        helpText = "The name of the BigQuery column storing the unique identifier of the row.")
     @Required
     String getReadIdColumn();
 

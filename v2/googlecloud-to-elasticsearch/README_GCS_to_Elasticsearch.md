@@ -11,8 +11,8 @@ Otherwise, create a JSON schema file that describes the data. Specify the Cloud
 Storage URI of the schema file in the jsonSchemaPath template parameter. The
 following example shows a JSON schema:
 <code>[{"name":"id", "type":"text"}, {"name":"age", "type":"integer"}]</code>
-Alternatively, you can provide a user-defined function (UDF) that parses the CSV
-text and outputs Elasticsearch documents.
+Alternatively, you can provide a Javascript user-defined function (UDF) that
+parses the CSV text and outputs Elasticsearch documents.
 
 
 :memo: This is a Google-provided template! Please
@@ -27,11 +27,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **deadletterTable** : Messages failed to reach the target for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. (Example: your-project:your-dataset.your-table-name).
-* **inputFileSpec** : Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv.
-* **connectionUrl** : Elasticsearch URL in the format 'https://hostname:[port]' or specify CloudID if using Elastic Cloud (Example: https://elasticsearch-host:9200).
-* **apiKey** : Base64 Encoded API key used for authentication. Refer to: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
-* **index** : The index toward which the requests will be issued (Example: my-index).
+* **deadletterTable** : The BigQuery dead-letter table to send failed inserts to. (Example: your-project:your-dataset.your-table-name).
+* **inputFileSpec** : The Cloud Storage file pattern to search for CSV files. Example: gs://mybucket/test-*.csv.
+* **connectionUrl** : The Elasticsearch URL in the format https://hostname:[port]. If using Elastic Cloud, specify the CloudID. (Example: https://elasticsearch-host:9200).
+* **apiKey** : The Base64-encoded API key to use for authentication.
+* **index** : The Elasticsearch index that the requests are issued to, such as `my-index.` (Example: my-index).
 
 ### Optional parameters
 
@@ -39,35 +39,35 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **containsHeaders** : Input CSV files contain a header record (true/false). Only required if reading CSV files. Defaults to: false.
 * **delimiter** : The column delimiter of the input text files. Default: use delimiter provided in csvFormat (Example: ,).
 * **csvFormat** : CSV format specification to use for parsing records. Default is: Default. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html.
-* **jsonSchemaPath** : Path to JSON schema. Default: null. (Example: gs://path/to/schema).
+* **jsonSchemaPath** : The path to the JSON schema. Defaults to: null. (Example: gs://path/to/schema).
 * **largeNumFiles** : Set to true if number of files is in the tens of thousands. Defaults to: false.
-* **csvFileEncoding** : CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, UTF-16. Defaults to: UTF-8.
+* **csvFileEncoding** : The CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, and UTF-16. Defaults to: UTF-8.
 * **logDetailedCsvConversionErrors** : Set to true to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords). Default: false.
 * **elasticsearchUsername** : The Elasticsearch username to authenticate with. If specified, the value of 'apiKey' is ignored.
 * **elasticsearchPassword** : The Elasticsearch password to authenticate with. If specified, the value of 'apiKey' is ignored.
-* **batchSize** : Batch size in number of documents. Default: '1000'.
-* **batchSizeBytes** : Batch Size in bytes used for batch insertion of messages into elasticsearch. Default: '5242880 (5mb)'.
-* **maxRetryAttempts** : Max retry attempts, must be > 0. Default: 'no retries'.
-* **maxRetryDuration** : Max retry duration in milliseconds, must be > 0. Default: 'no retries'.
-* **propertyAsIndex** : A property in the document being indexed whose value will specify '_index' metadata to be included with document in bulk request (takes precedence over an '_index' UDF). Default: none.
-* **javaScriptIndexFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for a function that will specify '_index' metadata to be included with document in bulk request. Default: none.
-* **javaScriptIndexFnName** : UDF JavaScript function Name for function that will specify _index metadata to be included with document in bulk request. Default: none.
-* **propertyAsId** : A property in the document being indexed whose value will specify '_id' metadata to be included with document in bulk request (takes precedence over an '_id' UDF). Default: none.
-* **javaScriptIdFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for a function that will specify '_id' metadata to be included with document in bulk request.Default: none.
-* **javaScriptIdFnName** : UDF JavaScript Function Name for function that will specify _id metadata to be included with document in bulk request. Default: none.
-* **javaScriptTypeFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for function that will specify '_type' metadata to be included with document in bulk request. Default: none.
-* **javaScriptTypeFnName** : UDF JavaScript function Name for function that will specify '_type' metadata to be included with document in bulk request. Default: none.
-* **javaScriptIsDeleteFnGcsPath** : The Cloud Storage path to JavaScript UDF source for function that will determine if document should be deleted rather than inserted or updated. The function should return string value "true" or "false". Default: none.
-* **javaScriptIsDeleteFnName** : UDF JavaScript function Name for function that will determine if document should be deleted rather than inserted or updated. The function should return string value "true" or "false". Default: none.
-* **usePartialUpdate** : Whether to use partial updates (update rather than create or index, allowing partial docs) with Elasticsearch requests. Default: 'false'.
-* **bulkInsertMethod** : Whether to use 'INDEX' (index, allows upsert) or 'CREATE' (create, errors on duplicate _id) with Elasticsearch bulk requests. Default: 'CREATE'.
+* **batchSize** : The batch size in number of documents. Defaults to: 1000.
+* **batchSizeBytes** : The batch size in number of bytes. Defaults to: 5242880 (5mb).
+* **maxRetryAttempts** : The maximum number of retry attempts. Must be greater than zero. Defaults to: no retries.
+* **maxRetryDuration** : The maximum retry duration in milliseconds. Must be greater than zero. Defaults to: no retries.
+* **propertyAsIndex** : The property in the document being indexed whose value specifies `_index` metadata to include with the document in bulk requests. Takes precedence over an `_index` UDF. Defaults to: none.
+* **javaScriptIndexFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for a function that specifies `_index` metadata to include with the document in bulk requests. Defaults to: none.
+* **javaScriptIndexFnName** : The name of the UDF JavaScript function that specifies `_index` metadata to include with the document in bulk requests. Defaults to: none.
+* **propertyAsId** : A property in the document being indexed whose value specifies `_id` metadata to include with the document in bulk requests. Takes precedence over an `_id` UDF. Defaults to: none.
+* **javaScriptIdFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for the function that specifies `_id` metadata to include with the document in bulk requests. Defaults to: none.
+* **javaScriptIdFnName** : The name of the UDF JavaScript function that specifies the `_id` metadata to include with the document in bulk requests. Defaults to: none.
+* **javaScriptTypeFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for a function that specifies `_type` metadata to include with documents in bulk requests. Default: none.
+* **javaScriptTypeFnName** : The name of the UDF JavaScript function that specifies the `_type` metadata to include with the document in bulk requests. Defaults to: none.
+* **javaScriptIsDeleteFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for the function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to: none.
+* **javaScriptIsDeleteFnName** : The name of the UDF JavaScript function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to: none.
+* **usePartialUpdate** : Whether to use partial updates (update rather than create or index, allowing partial documents) with Elasticsearch requests. Defaults to: false.
+* **bulkInsertMethod** : Whether to use `INDEX` (index, allows upserts) or `CREATE` (create, errors on duplicate _id) with Elasticsearch bulk requests. Defaults to: CREATE.
 * **trustSelfSignedCerts** : Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate, Enable this to True to by-pass the validation on SSL certificate. (default is False).
 * **disableCertificateValidation** : If 'true', trust the self-signed SSL certificate. An Elasticsearch instance might have a self-signed certificate. To bypass validation for the certificate, set this parameter to 'true'. Default: false.
 * **apiKeyKMSEncryptionKey** : The Cloud KMS key to decrypt the API key. This parameter must be provided if the apiKeySource is set to KMS. If this parameter is provided, apiKey string should be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. The Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).
 * **apiKeySecretId** : Secret Manager secret ID for the apiKey. This parameter should be provided if the apiKeySource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
 * **apiKeySource** : Source of the API key. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter must be provided if secret manager or KMS is used. If apiKeySource is set to KMS, apiKeyKMSEncryptionKey and encrypted apiKey must be provided. If apiKeySource is set to SECRET_MANAGER, apiKeySecretId must be provided. If apiKeySource is set to PLAINTEXT, apiKey must be provided. Defaults to: PLAINTEXT.
-* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
-* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
+* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js).
+* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
 
 
 ## User-Defined functions (UDFs)
@@ -386,8 +386,8 @@ resource "google_dataflow_flex_template_job" "gcs_to_elasticsearch" {
     # apiKeyKMSEncryptionKey = "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name"
     # apiKeySecretId = "projects/your-project-id/secrets/your-secret/versions/your-secret-version"
     # apiKeySource = "PLAINTEXT"
-    # javascriptTextTransformGcsPath = "gs://your-bucket/your-function.js"
-    # javascriptTextTransformFunctionName = "'transform' or 'transform_udf1'"
+    # javascriptTextTransformGcsPath = "gs://my-bucket/my-udfs/my_file.js"
+    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
   }
 }
 ```

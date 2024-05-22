@@ -17,8 +17,9 @@
 package workflows
 
 import (
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
 	"strconv"
+
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
 )
 
 const (

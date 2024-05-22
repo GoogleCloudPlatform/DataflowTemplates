@@ -71,7 +71,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   /* TODO: (support Sharding, PG namespaces) */
   @TemplateParameter.Text(
       order = 5,
-      regexes = {"(^[a-zA-Z0-9]+$)"},
       groupName = "Source",
       description = "source database name.",
       helpText = "Name of the Source Database. For example, `person9`.")
@@ -263,4 +262,13 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String getSessionFilePath();
 
   void setSessionFilePath(String value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 22,
+      optional = false,
+      description = "Dead letter queue directory",
+      helpText = "This directory is used to dump the failed records in a migration.")
+  String getDLQDirectory();
+
+  void setDLQDirectory(String value);
 }

@@ -17,24 +17,24 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **instanceId** : The instance ID of the Cloud Spanner database that you want to import to.
-* **databaseId** : The database ID of the Cloud Spanner database that you want to import into (must already exist, and with the destination tables created).
-* **importManifest** : The Cloud Storage path and filename of the text import manifest file. Text Import Manifest file, storing a json-encoded importManifest object. (Example: gs://your-bucket/your-folder/your-manifest.json).
+* **instanceId** : The instance ID of the Spanner database.
+* **databaseId** : The database ID of the Spanner database.
+* **importManifest** : The path in Cloud Storage to use when importing manifest files. (Example: gs://your-bucket/your-folder/your-manifest.json).
 
 ### Optional parameters
 
 * **spannerHost** : The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
-* **columnDelimiter** : The column delimiter of the input text files. Defaults to ',' (Example: ,).
-* **fieldQualifier** : The field qualifier used by the source file. This is the character to wrap together text that should be kept as one value. The default value is double quotes.
-* **trailingDelimiter** : The flag indicating whether or not the input lines have trailing delimiters. The default value is true. If the text file contains trailing delimiter, then set trailingDelimiter parameter to true during pipeline execution to import a Cloud Spanner database from a set of text files, otherwise set it to false.
-* **escape** : The escape character. The default value is null i.e. no custom escape character. Note: CSV rows are always default quoted with '"'. This escape character is an additional escape character.
-* **nullString** : The string that represents the NULL value. The default value is an empty string.
-* **dateFormat** : The format used to parse date columns. By default, the pipeline tries to parse the date columns as "yyyy-MM-dd[' 00:00:00']" (e.g., 2019-01-31, or 2019-01-31 00:00:00). If your data format is different, please specify the format using the java.time.format.DateTimeFormatter patterns. For more details, please refer to https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html.
-* **timestampFormat** : The format used to parse timestamp columns. If the timestamp is a long integer, then it is treated as Unix epoch (the microsecond since 1970-01-01T00:00:00.000Z. Otherwise, it is parsed as a string using the java.time.format.DateTimeFormatter.ISO_INSTANT format. For other cases, please specify you own pattern string, e.g., "MMM dd yyyy HH:mm:ss.SSSVV" for timestamp in the form of "Jan 21 1998 01:02:03.456+08:00". For more details, please refer to https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html.
-* **spannerProjectId** : The project ID of the Cloud Spanner instance.
-* **spannerPriority** : The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].
-* **handleNewLine** : If true, run the template in handleNewLine mode, which is slower but handles newline characters inside data. Defaults to: false.
-* **invalidOutputPath** : Cloud Storage path where to write rows that cannot be imported. (Example: gs://your-bucket/your-path). Defaults to empty.
+* **columnDelimiter** : The column delimiter that the source file uses. The default value is ','. (Example: ,).
+* **fieldQualifier** : The character that must surround any value in the source file that contains the columnDelimiter. The default value is ".
+* **trailingDelimiter** : Specifies whether the lines in the source files have trailing delimiters, that is, whether the `columnDelimiter` character appears at the end of each line, after the last column value). The default value is `true`.
+* **escape** : The escape character the source file uses. By default, this parameter is not set and the template does not use the escape character.
+* **nullString** : The string that represents a `NULL` value. By default, this parameter is not set and the template does not use the null string.
+* **dateFormat** : The format used to parse date columns. By default, the pipeline tries to parse the date columns as `yyyy-M-d[' 00:00:00']`, for example, as 2019-01-31 or 2019-1-1 00:00:00. If your date format is different, specify the format using the java.time.format.DateTimeFormatter (https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html) patterns.
+* **timestampFormat** : The format used to parse timestamp columns. If the timestamp is a long integer, then it is parsed as Unix epoch time. Otherwise, it is parsed as a string using the java.time.format.DateTimeFormatter.ISO_INSTANT (https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html#ISO_INSTANT) format. For other cases, specify your own pattern string, for example, using `MMM dd yyyy HH:mm:ss.SSSVV` for timestamps in the form of `"Jan 21 1998 01:02:03.456+08:00"`.
+* **spannerProjectId** : The ID of the Google Cloud project that contains the Spanner database. If not set, the project ID of the default Google Cloud project is used.
+* **spannerPriority** : The request priority for Spanner calls. Possible values are HIGH, MEDIUM, and LOW. The default value is MEDIUM.
+* **handleNewLine** : If `true`, the input data can contain newline characters. Otherwise, newline characters cause an error. The default value is `false`. Enabling newline handling can reduce performance.
+* **invalidOutputPath** : The Cloud Storage path to use when writing rows that cannot be imported. (Example: gs://your-bucket/your-path). Defaults to empty.
 
 
 

@@ -89,9 +89,11 @@ public class AvroToValueMapper {
         Type.float64(),
         (recordValue, fieldSchema) -> Value.float64(avroFieldToDouble(recordValue, fieldSchema)));
     gsqlFunctions.put(
-        Type.string(), (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue)));
+        Type.string(),
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     gsqlFunctions.put(
-        Type.json(), (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue)));
+        Type.json(),
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     gsqlFunctions.put(
         Type.numeric(),
         (recordValue, fieldSchema) ->
@@ -122,11 +124,13 @@ public class AvroToValueMapper {
         (recordValue, fieldSchema) -> Value.float64(avroFieldToDouble(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgVarchar(),
-        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue)));
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
-        Type.pgText(), (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue)));
+        Type.pgText(),
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
-        Type.pgJsonb(), (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue)));
+        Type.pgJsonb(),
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgNumeric(),
         (recordValue, fieldSchema) ->
@@ -190,11 +194,19 @@ public class AvroToValueMapper {
     }
   }
 
-  static String avroFieldToString(Object recordValue) {
-    if (recordValue == null) {
-      return null;
+  static String avroFieldToString(Object recordValue, Schema fieldSchema) {
+    try {
+      if (recordValue == null) {
+        return null;
+      }
+      return recordValue.toString();
+    } catch (Exception e) {
+      throw new AvroTypeConvertorException(
+          "Unable to convert "
+              + String.valueOf(fieldSchema.getType())
+              + " to string, Exception: "
+              + e.getMessage());
     }
-    return recordValue.toString();
   }
 
   static BigDecimal avroFieldToNumericBigDecimal(Object recordValue, Schema fieldSchema) {

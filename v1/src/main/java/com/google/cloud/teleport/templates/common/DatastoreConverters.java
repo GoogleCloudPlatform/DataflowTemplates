@@ -237,7 +237,7 @@ public class DatastoreConverters {
     @TemplateParameter.ProjectId(
         order = 5,
         description = "Project ID",
-        helpText = "The Google Cloud project ID of where to write Firestore entities")
+        helpText = "The ID of the Google Cloud project to write the Firestore entities to.")
     ValueProvider<String> getFirestoreWriteProjectId();
 
     void setFirestoreWriteProjectId(ValueProvider<String> firestoreWriteProjectId);
@@ -268,7 +268,7 @@ public class DatastoreConverters {
         description = "Expected number of workers",
         helpText =
             "Hint for the expected number of workers in the Firestore ramp-up throttling step."
-                + " Defaults to 500 if not specified.")
+                + " Default is 500.")
     // @Default can not be used here as it will make it use Firestore on a Datastore template.
     ValueProvider<Integer> getFirestoreHintNumWorkers();
 

@@ -54,9 +54,9 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link KafkaToGcs2} (Kafka_to_GCS_2). */
+/** Integration test for {@link KafkaToGcsFlex} (Kafka_to_GCS_2). */
 @Category(TemplateIntegrationTest.class)
-@TemplateIntegrationTest(KafkaToGcs2.class)
+@TemplateIntegrationTest(KafkaToGcsFlex.class)
 @RunWith(JUnit4.class)
 public class KafkaToGcsIT extends TemplateTestBase {
 

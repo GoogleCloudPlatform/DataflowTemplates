@@ -109,7 +109,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
                 pubsubResourceManager,
                 new HashMap<>() {
                   {
-                    put("inputFileFormat", "json");
+                    put("inputFileFormat", "avro");
                   }
                 });
       }
@@ -124,7 +124,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
                 pubsubResourceManager,
                 new HashMap<>() {
                   {
-                    put("inputFileFormat", "json");
+                    put("inputFileFormat", "avro");
                   }
                 });
       }
@@ -156,18 +156,23 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
                     uploadDataStreamFile(
                         jobInfo1,
                         TABLE,
-                        "Users-backfill-logical-shard1.jsonl",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard1.jsonl"),
+                        "Users-backfill-logical-shard1.avro",
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard1.avro"),
                     uploadDataStreamFile(
                         jobInfo1,
                         TABLE,
-                        "Users-backfill-logical-shard2.jsonl",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard2.jsonl"),
+                        "Users-backfill-logical-shard2.avro",
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard2.avro"),
                     uploadDataStreamFile(
                         jobInfo1,
                         TABLE,
-                        "Users-cdc-shard1.jsonl",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-shard1.jsonl")))
+                        "Users-cdc-logical-shard1.avro",
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard1.avro"),
+                    uploadDataStreamFile(
+                        jobInfo1,
+                        TABLE,
+                        "Users-cdc-logical-shard2.avro",
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard2.avro")))
             .build();
 
     // Wait for conditions
@@ -184,18 +189,23 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
                     uploadDataStreamFile(
                         jobInfo2,
                         TABLE,
-                        "Users-backfill-logical-shard3.jsonl",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard3.jsonl"),
+                        "Users-backfill-logical-shard3.avro",
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard3.avro"),
                     uploadDataStreamFile(
                         jobInfo2,
                         TABLE,
-                        "Users-backfill-logical-shard4.jsonl",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard4.jsonl"),
+                        "Users-backfill-logical-shard4.avro",
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard4.avro"),
                     uploadDataStreamFile(
                         jobInfo2,
                         TABLE,
-                        "Users-cdc-shard2.jsonl",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-shard2.jsonl")))
+                        "Users-cdc-logical-shard3.avro",
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard3.avro"),
+                    uploadDataStreamFile(
+                        jobInfo2,
+                        TABLE,
+                        "Users-cdc-logical-shard4.avro",
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard4.avro")))
             .build();
 
     result =
@@ -221,21 +231,23 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
   public void pkReorderedMultiShardMigration() {
     // Migrates Movie table from 4 logical shards. Asserts data from all the shards are going to
     // Spanner. This test case changes the Primary key order from default to (id,
-    // migration_shard_id). Checks whether migration shard id column is populated properly based on
-    // the transformation context when PK is reordered.
+    // migration_shard_id). It also changes the PK order in MySQL (id1, id2) to (id2, id1) in
+    // Spanner.
+    // It verifies that the migration respects both the changed PK order and the addition of
+    // migration_shard_id to the PK.
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
                     uploadDataStreamFile(
                         jobInfo1,
                         MOVIE_TABLE,
-                        "Movie-shard1.jsonl",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Movie-shard1.jsonl"),
+                        "Movie-shard1.avro",
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Movie-shard1.avro"),
                     uploadDataStreamFile(
                         jobInfo1,
                         MOVIE_TABLE,
-                        "Movie-shard2.jsonl",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Movie-shard2.jsonl")))
+                        "Movie-shard2.avro",
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Movie-shard2.avro")))
             .build();
 
     // Wait for conditions
@@ -271,79 +283,79 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 2);
-    row.put("name", "Tester2");
-    row.put("age_spanner", 33);
+    row.put("id", 3);
+    row.put("name", "Tester3");
+    row.put("age_spanner", 103);
     row.put("migration_shard_id", "L1");
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 10);
-    row.put("name", "Tester10");
-    row.put("age_spanner", 40);
+    row.put("id", 13);
+    row.put("name", "Tester13");
+    row.put("age_spanner", 113);
     row.put("migration_shard_id", "L1");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 1);
-    row.put("name", "Tester1");
-    row.put("age_spanner", 21);
-    row.put("migration_shard_id", "L2");
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 4);
     row.put("name", "Tester4");
-    row.put("age_spanner", 33);
-    row.put("migration_shard_id", "L2");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 20);
-    row.put("name", "Tester20");
-    row.put("age_spanner", 50);
+    row.put("age_spanner", 21);
     row.put("migration_shard_id", "L2");
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 6);
     row.put("name", "Tester6");
-    row.put("age_spanner", 22);
-    row.put("migration_shard_id", "L3");
+    row.put("age_spanner", 106);
+    row.put("migration_shard_id", "L2");
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 3);
-    row.put("name", "Tester3");
-    row.put("age_spanner", 36);
-    row.put("migration_shard_id", "L3");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 30);
-    row.put("name", "Tester30");
-    row.put("age_spanner", 60);
-    row.put("migration_shard_id", "L3");
+    row.put("id", 14);
+    row.put("name", "Tester14");
+    row.put("age_spanner", 114);
+    row.put("migration_shard_id", "L2");
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 7);
     row.put("name", "Tester7");
-    row.put("age_spanner", 23);
-    row.put("migration_shard_id", "L4");
+    row.put("age_spanner", 22);
+    row.put("migration_shard_id", "L3");
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 9);
     row.put("name", "Tester9");
-    row.put("age_spanner", 36);
+    row.put("age_spanner", 109);
+    row.put("migration_shard_id", "L3");
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 15);
+    row.put("name", "Tester15");
+    row.put("age_spanner", 115);
+    row.put("migration_shard_id", "L3");
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 10);
+    row.put("name", "Tester10");
+    row.put("age_spanner", 23);
     row.put("migration_shard_id", "L4");
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 40);
-    row.put("name", "Tester40");
-    row.put("age_spanner", 70);
+    row.put("id", 12);
+    row.put("name", "Tester12");
+    row.put("age_spanner", 112);
+    row.put("migration_shard_id", "L4");
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 16);
+    row.put("name", "Tester16");
+    row.put("age_spanner", 116);
     row.put("migration_shard_id", "L4");
     events.add(row);
 

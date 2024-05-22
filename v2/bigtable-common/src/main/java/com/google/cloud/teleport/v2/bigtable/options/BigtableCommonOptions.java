@@ -31,7 +31,7 @@ public interface BigtableCommonOptions extends GcpOptions {
       order = 1,
       optional = true,
       description = "The timeout for an RPC attempt in milliseconds",
-      helpText = "This sets the timeout for an RPC attempt in milliseconds")
+      helpText = "The timeout for each Bigtable RPC attempt in milliseconds.")
   Integer getBigtableRpcAttemptTimeoutMs();
 
   void setBigtableRpcAttemptTimeoutMs(Integer value);
@@ -40,7 +40,7 @@ public interface BigtableCommonOptions extends GcpOptions {
       order = 2,
       optional = true,
       description = "The total timeout for an RPC operation in milliseconds",
-      helpText = "This sets the total timeout for an RPC operation in milliseconds")
+      helpText = "The total timeout for a Bigtable RPC operation in milliseconds.")
   Integer getBigtableRpcTimeoutMs();
 
   void setBigtableRpcTimeoutMs(Integer value);
@@ -49,7 +49,7 @@ public interface BigtableCommonOptions extends GcpOptions {
       order = 3,
       optional = true,
       description = "The additional retry codes",
-      helpText = "This sets the additional retry codes, separated by ','",
+      helpText = "The additional retry codes.",
       example = "RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED")
   String getBigtableAdditionalRetryCodes();
 
@@ -62,7 +62,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 1,
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Bigtable Instance ID",
-        helpText = "The ID of the Cloud Bigtable instance that contains the table")
+        helpText = "The ID of the Bigtable instance that contains the table.")
     @Validation.Required
     String getBigtableWriteInstanceId();
 
@@ -72,7 +72,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 2,
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Bigtable Table ID",
-        helpText = "The ID of the Cloud Bigtable table to write")
+        helpText = "The ID of the Bigtable table to write to.")
     @Validation.Required
     String getBigtableWriteTableId();
 
@@ -82,7 +82,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 3,
         regexes = {"[-_.a-zA-Z0-9]+"},
         description = "The Bigtable Column Family",
-        helpText = "This specifies the column family to write data into")
+        helpText = "The name of the column family of the Bigtable table to write data into.")
     @Validation.Required
     String getBigtableWriteColumnFamily();
 
@@ -94,8 +94,10 @@ public interface BigtableCommonOptions extends GcpOptions {
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Bigtable App Profile",
         helpText =
-            "Bigtable App Profile to use for the export. The default for this parameter "
-                + "is the Bigtable instance's default app profile")
+            "The ID of the Bigtable application profile to use for the export. If you"
+                + " do not specify an app profile, Bigtable uses the"
+                + " default app profile (https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile)"
+                + " of the instance.")
     @Default.String("default")
     String getBigtableWriteAppProfile();
 
@@ -106,7 +108,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         optional = true,
         description = "Bigtable Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want "
+            "The ID of the Google Cloud project that contains the Bigtable instance"
                 + "to write data to.")
     String getBigtableWriteProjectId();
 
@@ -116,7 +118,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 6,
         optional = true,
         description = "Bigtable's latency target in milliseconds for latency-based throttling",
-        helpText = "This enables latency-based throttling and specifies the target latency")
+        helpText = "The latency target of Bigtable in milliseconds for latency-based throttling.")
     Integer getBigtableBulkWriteLatencyTargetMs();
 
     void setBigtableBulkWriteLatencyTargetMs(Integer value);
@@ -125,7 +127,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 7,
         optional = true,
         description = "The max number of row keys in a Bigtable batch write operation",
-        helpText = "This sets the max number of row keys in a Bigtable batch write operation")
+        helpText = "The maximum number of row keys in a Bigtable batch write operation.")
     Integer getBigtableBulkWriteMaxRowKeyCount();
 
     void setBigtableBulkWriteMaxRowKeyCount(Integer value);
@@ -134,7 +136,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 8,
         optional = true,
         description = "The max amount of bytes in a Bigtable batch write operation",
-        helpText = "This sets the max amount of bytes in a Bigtable batch write operation")
+        helpText = "The maximum bytes to include per Bigtable batch write operation.")
     Integer getBigtableBulkWriteMaxRequestSizeBytes();
 
     void setBigtableBulkWriteMaxRequestSizeBytes(Integer value);
