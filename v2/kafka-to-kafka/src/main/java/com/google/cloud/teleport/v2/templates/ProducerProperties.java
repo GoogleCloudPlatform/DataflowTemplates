@@ -29,10 +29,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import org.apache.kafka.clients.CommonClientConfigs;
-<<<<<<< HEAD
+
 import org.apache.kafka.common.config.SaslConfigs;
-=======
->>>>>>> c742ab1ce (testssl)
+
+import org.apache.kafka.common.config.SaslConfigs;
+
 import org.apache.kafka.common.config.SslConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -122,4 +123,3 @@ final class ProducerProperties {
       return properties.buildOrThrow();
     }
   }
-

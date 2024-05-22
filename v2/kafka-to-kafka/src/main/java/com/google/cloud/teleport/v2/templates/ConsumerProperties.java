@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.hadoop.hdfs.DFSInotifyEventInputStream.LOG;
 
+
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ReadChannel;
 import com.google.cloud.storage.Blob;
@@ -37,6 +38,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.common.config.SaslConfigs;
 
 import org.apache.kafka.common.config.SslConfigs;
 import org.slf4j.Logger;
@@ -55,22 +57,20 @@ import org.slf4j.LoggerFactory;
 final class ConsumerProperties {
 
   private static final Logger LOGG = LoggerFactory.getLogger(ConsumerProperties.class);
-  private static void downloadFileFromGCS(String keystores, String localPath) throws IOException {
+
 
   public static ImmutableMap<String, Object> get(KafkaToKafkaOptions options) throws IOException {
     ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
     properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "10.128.15.204:9092");
     if (options.getSourceAuthenticationMethod().equals("SSL")) {
       properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
-      properties.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, keystoresecretPath);
-      properties.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, truststoresecretPath);
-      properties.put(
-          SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, SecretManagerUtils.getSecret("123456"));
-      properties.put(
-          SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, SecretManagerUtils.getSecret("123456"));
-      properties.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, SecretManagerUtils.getSecret("123456"));
+      properties.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getSourceKeystoreLocation());
+      properties.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG,
+          options.getSourceTruststoreLocation());
+      properties.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getSourceTruststorePasswordSecretId()));
+      properties.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getSourceKeystorePasswordSecretId()));
+      properties.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getSourceKeyPasswordSecretId()));
       properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
-      properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaOffset());
     }
     if (options.getSourceAuthenticationMethod().equals("SASL_PLAIN")) {
       properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
@@ -85,8 +85,9 @@ final class ConsumerProperties {
               + " password=\'"
               + SecretManagerUtils.getSecret(options.getSourcePasswordSecretId())
               + "\';");
-      properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaOffset());
     }
+
+
     return properties.buildOrThrow();
   }
 }

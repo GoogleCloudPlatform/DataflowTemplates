@@ -23,7 +23,9 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.kafka.utils.SslConsumerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.utils.SslProducerFactoryFn;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
+import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
+
 
 import java.util.Objects;
 
@@ -32,8 +34,15 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
+
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+
+
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.common.config.SslConfigs;
 
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
@@ -60,7 +69,6 @@ public class KafkaToKafka {
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToKafkaOptions.class);
     run(options);
   }
-
   public static PipelineResult run(KafkaToKafkaOptions options) throws IOException {
 
     if (!Objects.equals(options.getSourceAuthenticationMethod(), "No_Authentication")) {
@@ -78,6 +86,7 @@ public class KafkaToKafka {
         "version id required to access username to GMK");
 
     checkArgument(
+
         options.getDestinationPasswordSecretId().trim().length() > 0,
         "version id required to access password to authenticate to GMK");
     if (options.getSourceAuthenticationMethod().equals("SASL_PLAIN")) {
@@ -125,14 +134,14 @@ public class KafkaToKafka {
           options.getDestinationKeyPasswordSecretId().trim().length() > 0,
           "source key password secret id version required for SSL authentication");
     }
-    String outputTopic;
-
+    LOG.info("configmap");
     Pipeline pipeline = Pipeline.create(options);
     PCollection<KV<byte[], byte[]>> records;
     records =
         pipeline.apply(
             "Read from Kafka",
             KafkaIO.<byte[], byte[]>read()
+
                 .withBootstrapServers("10.128.15.204:9092")
                 .withTopic("test")
                 .withKeyDeserializer(ByteArrayDeserializer.class)
