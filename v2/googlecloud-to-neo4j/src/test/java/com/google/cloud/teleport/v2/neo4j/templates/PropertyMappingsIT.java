@@ -115,6 +115,85 @@ public class PropertyMappingsIT extends TemplateTestBase {
     assertBooleansArePersisted(info);
   }
 
+  @Test
+  public void importsNodesWithLabelNamedSameAsSourceField() throws IOException {
+
+    TableId table =
+        bigQueryClient.createTable(
+            testName,
+            Schema.of(
+                Field.newBuilder("Station", StandardSQLTypeName.STRING).build(),
+                Field.newBuilder("Zone", StandardSQLTypeName.INT64).build(),
+                Field.newBuilder("Latitude", StandardSQLTypeName.FLOAT64).build(),
+                Field.newBuilder("Longitude", StandardSQLTypeName.FLOAT64).build()));
+    bigQueryClient.write(
+        testName,
+        List.of(
+            RowToInsert.of(
+                Map.of(
+                    "Station",
+                    "station-1",
+                    "Zone",
+                    1,
+                    "Latitude",
+                    51.51434226,
+                    "Longitude",
+                    -0.075626912)),
+            RowToInsert.of(
+                Map.of(
+                    "Station",
+                    "station-2",
+                    "Zone",
+                    1,
+                    "Latitude",
+                    51.51434226,
+                    "Longitude",
+                    -0.075626912)),
+            RowToInsert.of(
+                Map.of(
+                    "Station",
+                    "station-3",
+                    "Zone",
+                    1,
+                    "Latitude",
+                    51.51434226,
+                    "Longitude",
+                    -0.075626912)),
+            RowToInsert.of(
+                Map.of(
+                    "Station",
+                    "station-4",
+                    "Zone",
+                    2,
+                    "Latitude",
+                    51.51434226,
+                    "Longitude",
+                    -0.075626912))));
+    gcsClient.createArtifact(
+        "spec.json", contentOf("/testing-specs/property-mappings/mapping-clash-bq-spec.json"));
+    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient));
+
+    LaunchInfo info =
+        launchTemplate(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("jobSpecUri", getGcsPath("spec.json"))
+                .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"))
+                .addParameter(
+                    "optionsJson",
+                    String.format("{\"bqtable\": \"%s\"}", toTableSpecStandard(table))));
+
+    assertThatPipeline(info).isRunning();
+    assertThatResult(
+            pipelineOperator()
+                .waitForConditionAndCancel(
+                    createConfig(info),
+                    Neo4jQueryCheck.builder(neo4jClient)
+                        .setQuery("MATCH (n:Station) RETURN count(n) AS count")
+                        .setExpectedResult(List.of(Map.of("count", 4L)))
+                        .build()))
+        .meetsConditions();
+  }
+
   private void assertBooleansArePersisted(LaunchInfo info) throws IOException {
     assertThatResult(
             pipelineOperator()
