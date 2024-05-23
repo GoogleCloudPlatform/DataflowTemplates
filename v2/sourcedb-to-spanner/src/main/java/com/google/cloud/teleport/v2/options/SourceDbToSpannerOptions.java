@@ -121,20 +121,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setPassword(String password);
 
   @TemplateParameter.Text(
-      order = 9,
-      optional = true,
-      groupName = "Source Parameters",
-      description = "The name of a column of numeric type that will be used for partitioning.",
-      helpText =
-          "If this parameter is provided (along with `table`), JdbcIO reads the table in parallel"
-              + " by executing multiple instances of the query on the same table (subquery) using"
-              + " ranges. Currently, only Long partition columns are supported."
-              + " The partition columns are expected to be the same in number as the tables")
-  String getPartitionColumns();
-
-  void setPartitionColumns(String partitionColumns);
-
-  @TemplateParameter.Text(
       order = 10,
       optional = true,
       groupName = "Source Parameters",

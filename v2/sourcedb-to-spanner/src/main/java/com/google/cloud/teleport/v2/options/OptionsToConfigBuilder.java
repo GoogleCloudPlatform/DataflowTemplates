@@ -19,10 +19,10 @@ import static com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.confi
 
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
+import java.util.Arrays;
+import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 
 public final class OptionsToConfigBuilder {
 
@@ -57,41 +57,16 @@ public final class OptionsToConfigBuilder {
           builder.setReconnectAttempts((long) options.getReconnectAttempts());
         }
       }
-      ImmutableMap<String, String> tablesWithPartitionColumns =
-          getTablesWithPartitionColumn(options);
-      ImmutableList<TableConfig> tableConfigs =
-          tablesWithPartitionColumns.entrySet().stream()
-              .map(
-                  entry -> {
-                    TableConfig.Builder configBuilder =
-                        TableConfig.builder(entry.getKey()).withPartitionColum(entry.getValue());
-                    if (options.getNumPartitions() != 0) {
-                      configBuilder = configBuilder.setMaxPartitions(options.getNumPartitions());
-                    }
-                    if (options.getFetchSize() != 0) {
-                      configBuilder = configBuilder.setMaxFetchSize(options.getFetchSize());
-                    }
-                    return configBuilder.build();
-                  })
-              .collect(ImmutableList.toImmutableList());
-      builder = builder.setTableConfigs(tableConfigs);
+      builder.setMaxPartitions(options.getNumPartitions());
+      builder.setMaxFetchSize(options.getFetchSize());
+      ImmutableList<String> tables =
+          StringUtils.isNotBlank(options.getTables())
+              ? Arrays.stream(options.getTables().split(","))
+                  .collect(ImmutableList.toImmutableList())
+              : ImmutableList.of();
+      builder = builder.setTables(tables);
       return builder.build();
     }
-  }
-
-  private static ImmutableMap<String, String> getTablesWithPartitionColumn(
-      SourceDbToSpannerOptions options) {
-    String[] tables = options.getTables().split(",");
-    String[] partitionColumns = options.getPartitionColumns().split(",");
-    if (tables.length != partitionColumns.length) {
-      throw new RuntimeException(
-          "invalid configuration. Partition column count does not match " + "tables count.");
-    }
-    ImmutableMap.Builder<String, String> tableWithPartitionColumnBuilder = ImmutableMap.builder();
-    for (int i = 0; i < tables.length; i++) {
-      tableWithPartitionColumnBuilder.put(tables[i], partitionColumns[i]);
-    }
-    return tableWithPartitionColumnBuilder.build();
   }
 
   private OptionsToConfigBuilder() {}

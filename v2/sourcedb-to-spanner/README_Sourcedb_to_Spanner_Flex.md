@@ -41,7 +41,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **sourceConnectionProperties** : Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8). Defaults to empty.
 * **username** : The username to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key. Defaults to empty.
 * **password** : The password to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key. Defaults to empty.
-* **partitionColumns** : If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported. The partition columns are expected to be the same in number as the tables.
 * **tables** : Tables to read from using partitions.
 * **numPartitions** : The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1. Defaults to: 0.
 * **fetchSize** : The fetch size of a single table read. Defaults to: 0.
@@ -145,7 +144,6 @@ export JDBC_DRIVER_CLASS_NAME=<jdbcDriverClassName>
 export SOURCE_CONNECTION_PROPERTIES=""
 export USERNAME=""
 export PASSWORD=""
-export PARTITION_COLUMNS=<partitionColumns>
 export TABLES=<tables>
 export NUM_PARTITIONS=0
 export FETCH_SIZE=0
@@ -171,7 +169,6 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "sourceConnectionProperties=$SOURCE_CONNECTION_PROPERTIES" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
-  --parameters "partitionColumns=$PARTITION_COLUMNS" \
   --parameters "tables=$TABLES" \
   --parameters "numPartitions=$NUM_PARTITIONS" \
   --parameters "fetchSize=$FETCH_SIZE" \
@@ -218,7 +215,6 @@ export JDBC_DRIVER_CLASS_NAME=<jdbcDriverClassName>
 export SOURCE_CONNECTION_PROPERTIES=""
 export USERNAME=""
 export PASSWORD=""
-export PARTITION_COLUMNS=<partitionColumns>
 export TABLES=<tables>
 export NUM_PARTITIONS=0
 export FETCH_SIZE=0
@@ -239,7 +235,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceHost=$SOURCE_HOST,sourcePort=$SOURCE_PORT,sourceDB=$SOURCE_DB,sourceConnectionProperties=$SOURCE_CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,partitionColumns=$PARTITION_COLUMNS,tables=$TABLES,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,ignoreColumns=$IGNORE_COLUMNS,maxConnections=$MAX_CONNECTIONS,reconnectsEnabled=$RECONNECTS_ENABLED,reconnectAttempts=$RECONNECT_ATTEMPTS,sessionFilePath=$SESSION_FILE_PATH,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,defaultLogLevel=$DEFAULT_LOG_LEVEL" \
+-Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceHost=$SOURCE_HOST,sourcePort=$SOURCE_PORT,sourceDB=$SOURCE_DB,sourceConnectionProperties=$SOURCE_CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,ignoreColumns=$IGNORE_COLUMNS,maxConnections=$MAX_CONNECTIONS,reconnectsEnabled=$RECONNECTS_ENABLED,reconnectAttempts=$RECONNECT_ATTEMPTS,sessionFilePath=$SESSION_FILE_PATH,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,defaultLogLevel=$DEFAULT_LOG_LEVEL" \
 -f v2/sourcedb-to-spanner
 ```
 
@@ -295,7 +291,6 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     # sourceConnectionProperties = "unicode=true;characterEncoding=UTF-8"
     # username = ""
     # password = ""
-    # partitionColumns = "<partitionColumns>"
     # tables = "<tables>"
     # numPartitions = "0"
     # fetchSize = "0"

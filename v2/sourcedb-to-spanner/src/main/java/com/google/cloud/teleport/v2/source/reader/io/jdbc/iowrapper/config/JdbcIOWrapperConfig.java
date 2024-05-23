@@ -23,6 +23,8 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMap
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.util.FluentBackoff;
 
 /**
@@ -41,8 +43,11 @@ public abstract class JdbcIOWrapperConfig {
   /** {@link SourceSchemaReference}. */
   public abstract SourceSchemaReference sourceSchemaReference();
 
-  /** Table Configurations. */
-  public abstract ImmutableList<TableConfig> tableConfigs();
+  /** List of Tables to migrate. Auto-inferred if emtpy. */
+  public abstract ImmutableList<String> tables();
+
+  /** Configured Partition Column. If unspecified for a table, it's auto-inferred. */
+  public abstract ImmutableMap<String, ImmutableList<String>> partitionColumns();
 
   /** Shard ID. */
   public abstract String shardID();
@@ -97,6 +102,21 @@ public abstract class JdbcIOWrapperConfig {
   /** BackOff Strategy for Schema Discovery retries. Defaults to {@link FluentBackoff#DEFAULT}. */
   public abstract FluentBackoff schemaDiscoveryBackOff();
 
+  /**
+   * Max number of read partitions. If not-null uses the user supplied maxPartitions, instead of
+   * auto-inference. defaults to null.
+   */
+  @Nullable
+  public abstract Integer maxPartitions();
+
+  /**
+   * Configures the size of data read in db, per db read call. Defaults to beam's DEFAULT_FETCH_SIZE
+   * of 50_000. For manually fine-tuning this, take into account the read ahead buffer pool settings
+   * (innodb_read_ahead_threshold) and the worker memory.
+   */
+  @Nullable
+  public abstract Integer maxFetchSize();
+
   public static Builder builderWithMySqlDefaults() {
     return new AutoValue_JdbcIOWrapperConfig.Builder()
         .setSchemaMapperType(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_MAPPER_TYPE)
@@ -106,7 +126,11 @@ public abstract class JdbcIOWrapperConfig {
         .setReconnectAttempts(MySqlConfigDefaults.DEFAULT_MYSQL_RECONNECT_ATTEMPTS)
         .setConnectionProperties(MySqlConfigDefaults.DEFAULT_MYSQL_CONNECTION_PROPERTIES)
         .setMaxConnections(MySqlConfigDefaults.DEFAULT_MYSQL_MAX_CONNECTIONS)
-        .setSchemaDiscoveryBackOff(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_DISCOVERY_BACKOFF);
+        .setSchemaDiscoveryBackOff(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_DISCOVERY_BACKOFF)
+        .setTables(ImmutableList.of())
+        .setPartitionColumns(ImmutableMap.of())
+        .setMaxPartitions(null)
+        .setMaxFetchSize(null);
   }
 
   @AutoValue.Builder
@@ -118,7 +142,9 @@ public abstract class JdbcIOWrapperConfig {
 
     public abstract Builder setSourceSchemaReference(SourceSchemaReference value);
 
-    public abstract Builder setTableConfigs(ImmutableList<TableConfig> value);
+    public abstract Builder setTables(ImmutableList<String> value);
+
+    public abstract Builder setPartitionColumns(ImmutableMap<String, ImmutableList<String>> value);
 
     public abstract Builder setShardID(String value);
 
@@ -141,6 +167,10 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setAutoReconnect(Boolean value);
 
     public abstract Builder setSchemaDiscoveryBackOff(FluentBackoff value);
+
+    public abstract Builder setMaxPartitions(Integer value);
+
+    public abstract Builder setMaxFetchSize(Integer value);
 
     public abstract Builder setMaxConnections(Long value);
 
