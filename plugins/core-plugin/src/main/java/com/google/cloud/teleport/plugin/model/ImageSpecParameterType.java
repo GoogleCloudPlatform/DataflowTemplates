@@ -24,6 +24,9 @@ public enum ImageSpecParameterType {
   /** BigQuery table reference. */
   BIGQUERY_TABLE,
 
+  /** JavaScript UDF in Cloud Storage. */
+  JAVASCRIPT_UDF_FILE,
+
   /** Cloud Storage glob to read file(s). */
   GCS_READ_FILE,
 

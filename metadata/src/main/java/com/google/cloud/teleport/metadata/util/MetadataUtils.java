@@ -44,6 +44,7 @@ public final class MetadataUtils {
         TemplateParameter.GcsWriteFolder.class,
         TemplateParameter.GcsWriteBucket.class,
         TemplateParameter.Integer.class,
+        TemplateParameter.JavascriptUdfFile.class,
         TemplateParameter.KafkaTopic.class,
         TemplateParameter.KmsEncryptionKey.class,
         TemplateParameter.Long.class,
@@ -130,6 +131,10 @@ public final class MetadataUtils {
           return Arrays.asList(simpleTextParam.regexes());
         }
         return null;
+      case "JavascriptUdfFile":
+        TemplateParameter.JavascriptUdfFile javascriptUdfFileParam =
+            (TemplateParameter.JavascriptUdfFile) parameterAnnotation;
+        return List.of("^gs:\\/\\/[^\\n\\r]+$");
       case "GcsReadFile":
         TemplateParameter.GcsReadFile gcsReadFileParam =
             (TemplateParameter.GcsReadFile) parameterAnnotation;

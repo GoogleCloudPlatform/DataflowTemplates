@@ -73,7 +73,7 @@ public abstract class JavascriptTextTransformer {
   /** Necessary CLI options for running UDF function. */
   public interface JavascriptTextTransformerOptions extends PipelineOptions {
     // "Required" annotation is added as a workaround for BEAM-7983.
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.JavascriptUdfFile(
         order = 10,
         optional = true,
         description = "JavaScript UDF path in Cloud Storage",

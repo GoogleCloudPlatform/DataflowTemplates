@@ -168,7 +168,23 @@ public class ImageSpecParameter {
         this.setOptional(simpleTextParam.optional());
         this.setHiddenUi(simpleTextParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
-
+        break;
+      case "JavascriptUdfFile":
+        TemplateParameter.JavascriptUdfFile javascriptUdfFileParam =
+            (TemplateParameter.JavascriptUdfFile) parameterAnnotation;
+        if (!javascriptUdfFileParam.name().isEmpty()) {
+          this.setName(javascriptUdfFileParam.name());
+        }
+        processDescriptions(
+            javascriptUdfFileParam.groupName(),
+            javascriptUdfFileParam.description(),
+            javascriptUdfFileParam.helpText(),
+            javascriptUdfFileParam.example());
+        this.setParentName(javascriptUdfFileParam.parentName());
+        this.setParentTriggerValues(javascriptUdfFileParam.parentTriggerValues());
+        this.setOptional(javascriptUdfFileParam.optional());
+        this.setHiddenUi(javascriptUdfFileParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.JAVASCRIPT_UDF_FILE);
         break;
       case "GcsReadFile":
         TemplateParameter.GcsReadFile gcsReadFileParam =

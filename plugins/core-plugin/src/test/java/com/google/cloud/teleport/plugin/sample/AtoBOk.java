@@ -128,5 +128,12 @@ public class AtoBOk {
         helpText = "Cloud Storage Bucket to write")
     @Default.String("")
     String getGcsWriteBucket();
+
+    @TemplateParameter.JavascriptUdfFile(
+        order = 13,
+        description = "JavaScript UDF in Cloud Storage",
+        helpText = "JavaScript UDF in Cloud Storage")
+    @Default.String("")
+    String javascriptUdfFile();
   }
 }

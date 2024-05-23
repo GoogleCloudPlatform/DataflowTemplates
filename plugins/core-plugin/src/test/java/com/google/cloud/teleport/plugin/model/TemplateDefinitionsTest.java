@@ -78,6 +78,9 @@ public class TemplateDefinitionsTest {
 
     ImageSpecParameter gcsWriteBucket = metadata.getParameter("gcsWriteBucket").get();
     assertEquals(ImageSpecParameterType.GCS_WRITE_BUCKET, gcsWriteBucket.getParamType());
+
+    ImageSpecParameter javascriptUdfFile = metadata.getParameter("javascriptUdfFile").get();
+    assertEquals(ImageSpecParameterType.JAVASCRIPT_UDF_FILE, javascriptUdfFile.getParamType());
   }
 
   @Test
