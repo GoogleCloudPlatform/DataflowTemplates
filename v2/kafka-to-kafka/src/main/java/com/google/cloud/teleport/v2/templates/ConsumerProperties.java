@@ -30,6 +30,7 @@ import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 
 
+
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ReadChannel;
 import com.google.cloud.storage.Blob;
@@ -120,8 +121,6 @@ final class ConsumerProperties {
 
 
     }
-
-
     return properties;
   }
 }

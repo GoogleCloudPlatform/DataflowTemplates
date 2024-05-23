@@ -20,8 +20,6 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-
-
 import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.utils.FileAwareProducerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
@@ -135,6 +133,7 @@ public class KafkaToKafka {
                 .withTopic("quickstart-events")
                 .withKeyDeserializer(ByteArrayDeserializer.class)
                 .withValueDeserializer(ByteArrayDeserializer.class)
+
                 .withConsumerConfigUpdates(ConsumerProperties.from(options))
                 .withConsumerFactoryFn(new FileAwareConsumerFactoryFn())
                 .withoutMetadata())
@@ -147,6 +146,7 @@ public class KafkaToKafka {
                 .withValueSerializer(ByteArraySerializer.class)
                 .withProducerConfigUpdates(ProducerProperties.from(options))
                 .withProducerFactoryFn(new FileAwareProducerFactoryFn()));
+
     return pipeline.run();
   }
 }

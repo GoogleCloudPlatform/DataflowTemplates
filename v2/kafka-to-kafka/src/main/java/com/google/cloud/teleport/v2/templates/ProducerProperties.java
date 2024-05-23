@@ -35,7 +35,12 @@ import org.apache.kafka.common.config.SaslConfigs;
 import com.google.common.collect.ImmutableMap;
 import java.io.File;
 import java.io.FileOutputStream;
+
+import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
+
 import java.io.IOException;
+import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
 
 import org.apache.kafka.common.config.SslConfigs;
@@ -54,6 +59,7 @@ import org.slf4j.LoggerFactory;
  * Kafka destination.
  */
 final class ProducerProperties {
+
 
 
   public static Map<String, Object> from(KafkaToKafkaOptions options) {
