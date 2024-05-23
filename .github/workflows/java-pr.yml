@@ -40,7 +40,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: java-pr-${{ github.event.issue.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
