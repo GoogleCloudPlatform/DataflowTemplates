@@ -141,4 +141,4 @@ To learn more about this process, or how you can stage your own changes, see [Re
   - [Tour of Beam](https://tour.beam.apache.org/) - an interactive tour with learning topics covering core Beam concepts from simple ones to more advanced ones.
   - [Beam Playground](https://beam.apache.org/get-started/try-beam-playground/) -  an interactive environment to try out Beam transforms and examples without having to install Apache Beam.
   - [Beam College](https://beamcollege.dev/) - hands-on training and practical tips, including video recordings of Apache Beam and Dataflow Templates lessons.
-  - [Getting Started with Apache Beam - Quest](https://www.cloudskillsboost.google/quests/310) - A 5 lab series that provides a Google Cloud certified badge upon completion.
+  - [Getting Started with Apache Beam - Quest](https://www.cloudskillsboost.google/course_templates/724) - A 5 lab series that provides a Google Cloud certified badge upon completion.
