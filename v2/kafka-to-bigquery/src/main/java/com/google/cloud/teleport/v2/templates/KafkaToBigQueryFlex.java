@@ -36,6 +36,7 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
@@ -157,8 +158,10 @@ public class KafkaToBigQueryFlex {
     // Enable Streaming Engine
     options.setEnableStreamingEngine(true);
 
-    // Enable Resource based billing
     List<String> dataflowServiceOptions = options.getDataflowServiceOptions();
+    if (dataflowServiceOptions == null) {
+      dataflowServiceOptions = new ArrayList<>();
+    }
     dataflowServiceOptions.add("enable_streaming_engine_resource_based_billing");
     options.setDataflowServiceOptions(dataflowServiceOptions);
 
@@ -290,7 +293,7 @@ public class KafkaToBigQueryFlex {
           writeResult =
               kafkaRecords.apply(
                   AvroTransform.of(
-                      options.getReadBootstrapServerAndTopic().split(":")[2],
+                      topicsList.get(0),
                       options.getMessageFormat(),
                       options.getBinaryAvroSchemaPath(),
                       options.getConfluentAvroSchemaPath(),

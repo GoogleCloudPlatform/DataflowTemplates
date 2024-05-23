@@ -100,15 +100,19 @@ public class KafkaToGcsIT extends TemplateTestBase {
         paramsAdder.apply(
             LaunchConfig.builder(testName, specPath)
                 .addParameter(
-                    "bootstrapServers",
+                    "readBootstrapServers",
                     kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", ""))
-                .addParameter("inputTopics", topicName)
+                .addParameter("kafkaReadTopics", topicName)
                 .addParameter("windowDuration", "10s")
                 .addParameter("schemaPath", getGcsPath("avro_schema.avsc"))
-                .addParameter("offset", "earliest")
+                .addParameter("kafkaReadOffset", "earliest")
                 .addParameter("outputDirectory", getGcsPath(testName))
                 .addParameter("outputFilenamePrefix", testName + "-")
-                .addParameter("numShards", "2"));
+                .addParameter("numShards", "2")
+                // TODO: Move these to separate tests once they are added
+                .addParameter("kafkaReadAuthenticationMode", "NONE")
+                .addParameter("kafkaReadUsernameSecretId", "")
+                .addParameter("kafkaReadPasswordSecretId", ""));
 
     // Act
     LaunchInfo info = launchTemplate(options);

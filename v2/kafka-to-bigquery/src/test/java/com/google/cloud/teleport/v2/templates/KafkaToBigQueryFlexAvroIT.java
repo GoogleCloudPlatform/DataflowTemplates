@@ -230,7 +230,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
     baseKafkaToBigQueryAvro(
         b ->
             b.addParameter("messageFormat", "AVRO_BINARY_ENCODING")
-                .addParameter("schemaFormat", "Schema File - Single Schema")
+                .addParameter("schemaFormat", "SINGLE_SCHEMA_FILE")
                 .addParameter("confluentAvroSchemaPath", "gs://FAKE")
                 .addParameter("schemaRegistryConnectionUrl", "")
                 .addParameter("binaryAvroSchemaPath", getGcsPath("avro_schema.avsc"))
@@ -254,7 +254,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
     baseKafkaToBigQueryAvro(
         b ->
             b.addParameter("messageFormat", "AVRO_CONFLUENT_WIRE_FORMAT")
-                .addParameter("schemaFormat", "Schema File - Single Schema")
+                .addParameter("schemaFormat", "SINGLE_SCHEMA_FILE")
                 .addParameter("confluentAvroSchemaPath", getGcsPath("avro_schema.avsc"))
                 .addParameter("schemaRegistryConnectionUrl", "")
                 .addParameter("binaryAvroSchemaPath", "gs://FAKE")
@@ -314,7 +314,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
                 .addParameter(
                     "readBootstrapServerAndTopic",
                     kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "")
-                        + ":"
+                        + ";"
                         + topicName)
                 .addParameter("kafkaReadOffset", "earliest"));
 
