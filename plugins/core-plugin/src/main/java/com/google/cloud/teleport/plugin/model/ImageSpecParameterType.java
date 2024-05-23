@@ -57,6 +57,12 @@ public enum ImageSpecParameterType {
   /** Service Account email. */
   SERVICE_ACCOUNT,
 
+  /** Worker Region parameter. */
+  WORKER_REGION,
+
+  /** Worker Zone parameter. */
+  WORKER_ZONE,
+
   /** Boolean parameter. */
   BOOLEAN,
 

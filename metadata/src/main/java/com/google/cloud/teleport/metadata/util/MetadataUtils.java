@@ -54,7 +54,9 @@ public final class MetadataUtils {
         TemplateParameter.PubsubSubscription.class,
         TemplateParameter.PubsubTopic.class,
         TemplateParameter.ServiceAccount.class,
-        TemplateParameter.Text.class
+        TemplateParameter.Text.class,
+        TemplateParameter.WorkerRegion.class,
+        TemplateParameter.WorkerZone.class
       };
   public static final String BIGQUERY_TABLE_PATTERN = ".+[\\.:].+\\..+";
 
@@ -232,6 +234,14 @@ public final class MetadataUtils {
         TemplateParameter.ServiceAccount serviceAccountParam =
             (TemplateParameter.ServiceAccount) parameterAnnotation;
         return List.of("^[-a-z0-9]{6,30}@[-a-z0-9]{6,30}.iam.gserviceaccount.com$");
+      case "WorkerRegion":
+        TemplateParameter.WorkerRegion workerRegionParam =
+            (TemplateParameter.WorkerRegion) parameterAnnotation;
+        return List.of("[a-z]+-[a-z]+[0-9]+");
+      case "WorkerZone":
+        TemplateParameter.WorkerZone workerZoneParam =
+            (TemplateParameter.WorkerZone) parameterAnnotation;
+        return List.of("[a-z]+-[a-z]+[0-9]+-[a-z]");
       default:
         return null;
     }

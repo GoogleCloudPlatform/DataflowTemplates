@@ -150,5 +150,21 @@ public class AtoBOk {
         example = "some@name.iam.gserviceaccount.com")
     @Default.String("")
     String getServiceAccount();
+
+    @TemplateParameter.WorkerRegion(
+        order = 16,
+        description = "Worker region",
+        helpText = "Worker region",
+        example = "us-west1")
+    @Default.String("")
+    String getWorkerRegion();
+
+    @TemplateParameter.WorkerZone(
+        order = 17,
+        description = "Worker zone",
+        helpText = "Worker zone",
+        example = "us-west1-a")
+    @Default.String("")
+    String getWorkerZone();
   }
 }

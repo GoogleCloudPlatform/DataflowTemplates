@@ -87,6 +87,12 @@ public class TemplateDefinitionsTest {
 
     ImageSpecParameter serviceAccount = metadata.getParameter("serviceAccount").get();
     assertEquals(ImageSpecParameterType.SERVICE_ACCOUNT, serviceAccount.getParamType());
+
+    ImageSpecParameter workerRegion = metadata.getParameter("workerRegion").get();
+    assertEquals(ImageSpecParameterType.WORKER_REGION, workerRegion.getParamType());
+
+    ImageSpecParameter workerZone = metadata.getParameter("workerZone").get();
+    assertEquals(ImageSpecParameterType.WORKER_ZONE, workerZone.getParamType());
   }
 
   @Test
