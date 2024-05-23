@@ -64,6 +64,7 @@ final class ConsumerProperties {
     properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "10.128.15.204:9092");
     if (options.getSourceAuthenticationMethod().equals("SSL")) {
       properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
+
       properties.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getSourceKeystoreLocation());
       properties.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG,
           options.getSourceTruststoreLocation());
