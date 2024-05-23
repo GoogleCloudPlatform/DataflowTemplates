@@ -84,6 +84,9 @@ public class TemplateDefinitionsTest {
 
     ImageSpecParameter machineType = metadata.getParameter("machineType").get();
     assertEquals(ImageSpecParameterType.MACHINE_TYPE, machineType.getParamType());
+
+    ImageSpecParameter serviceAccount = metadata.getParameter("serviceAccount").get();
+    assertEquals(ImageSpecParameterType.SERVICE_ACCOUNT, serviceAccount.getParamType());
   }
 
   @Test

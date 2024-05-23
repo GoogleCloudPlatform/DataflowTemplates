@@ -142,5 +142,13 @@ public class AtoBOk {
         helpText = "String that is machine type")
     @Default.String("")
     String getMachineType();
+
+    @TemplateParameter.ServiceAccount(
+        order = 15,
+        description = "Google Cloud service account email",
+        helpText = "Google Cloud service account email",
+        example = "some@name.iam.gserviceaccount.com")
+    @Default.String("")
+    String getServiceAccount();
   }
 }

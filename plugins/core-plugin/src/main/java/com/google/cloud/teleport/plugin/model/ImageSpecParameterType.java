@@ -54,6 +54,9 @@ public enum ImageSpecParameterType {
   /** Machine Type parameter. */
   MACHINE_TYPE,
 
+  /** Service Account email. */
+  SERVICE_ACCOUNT,
+
   /** Boolean parameter. */
   BOOLEAN,
 
