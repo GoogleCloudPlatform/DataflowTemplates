@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
+import com.google.cloud.teleport.v2.kafka.utils.ClientAuthConfigUtils;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
 import com.google.cloud.teleport.v2.options.KafkaToBigQueryFlexOptions;
@@ -32,7 +33,6 @@ import com.google.cloud.teleport.v2.transforms.StringMessageToTableRow;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.MetadataValidator;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
-import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
@@ -65,8 +65,6 @@ import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.lang3.ObjectUtils;
-import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.common.config.SaslConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -202,26 +200,43 @@ public class KafkaToBigQueryFlex {
             .putAll(KafkaCommonUtils.configureKafkaOffsetCommit(options))
             .build();
 
+    ImmutableMap<String, String> sslConfig = null;
+
     if (options.getKafkaReadAuthenticationMode().equals("SASL_PLAIN")) {
-
-      String username = SecretManagerUtils.getSecret(options.getKafkaReadUsernameSecretId());
-      String password = SecretManagerUtils.getSecret(options.getKafkaReadPasswordSecretId());
-
       kafkaConfig =
           ImmutableMap.<String, Object>builder()
               .putAll(kafkaConfig)
-              .putAll(setClientAuthConfig(username, password))
+              .putAll(
+                  ClientAuthConfigUtils.setSaslPlainConfig(
+                      options.getKafkaReadUsernameSecretId(),
+                      options.getKafkaReadPasswordSecretId()))
               .build();
+    } else if (options.getKafkaReadAuthenticationMode().equals("SSL")) {
+      ImmutableMap<String, Object> intermediateConfig =
+          ClientAuthConfigUtils.setSslConfig(
+              options.getKafkaReadTruststoreLocation(),
+              options.getKafkaReadTruststorePasswordSecretId(),
+              options.getKafkaReadKeystoreLocation(),
+              options.getKafkaReadKeystorePasswordSecretId(),
+              options.getKafkaReadKeyPasswordSecretId(),
+              false);
+      ImmutableMap.Builder<String, String> builder = ImmutableMap.<String, String>builder();
+      for (Map.Entry<String, Object> element : intermediateConfig.entrySet()) {
+        builder.put(element.getKey(), (String) element.getValue());
+      }
+      sslConfig = builder.build();
     }
 
     if (options.getMessageFormat() == null || options.getMessageFormat().equals("JSON")) {
 
-      return runJsonPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
+      return runJsonPipeline(
+          pipeline, options, topicsList, bootstrapServers, kafkaConfig, sslConfig);
 
     } else if (options.getMessageFormat().equals("AVRO_CONFLUENT_WIRE_FORMAT")
         || options.getMessageFormat().equals("AVRO_BINARY_ENCODING")) {
 
-      return runAvroPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
+      return runAvroPipeline(
+          pipeline, options, topicsList, bootstrapServers, kafkaConfig, sslConfig);
 
     } else {
       throw new IllegalArgumentException("Invalid format specified: " + options.getMessageFormat());
@@ -233,7 +248,8 @@ public class KafkaToBigQueryFlex {
       KafkaToBigQueryFlexOptions options,
       List<String> topicsList,
       String bootstrapServers,
-      Map<String, Object> kafkaConfig)
+      Map<String, Object> kafkaConfig,
+      Map<String, String> sslConfig)
       throws IOException, RestClientException {
 
     if (options.getMessageFormat().equals("AVRO_BINARY_ENCODING")
@@ -261,7 +277,7 @@ public class KafkaToBigQueryFlex {
                     bootstrapServers,
                     topicsList,
                     kafkaConfig,
-                    null,
+                    sslConfig,
                     options.getEnableCommitOffsets()))
             .setCoder(
                 KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()));
@@ -326,6 +342,12 @@ public class KafkaToBigQueryFlex {
               kafkaRecords.apply(
                   AvroDynamicTransform.of(
                       options.getSchemaRegistryConnectionUrl(),
+                      options.getSchemaRegistryAuthenticationMode(),
+                      options.getSchemaRegistryTruststoreLocation(),
+                      options.getSchemaRegistryTruststorePasswordSecretId(),
+                      options.getSchemaRegistryKeystoreLocation(),
+                      options.getSchemaRegistryKeystorePasswordSecretId(),
+                      options.getSchemaRegistryKeyPasswordSecretId(),
                       options.getOutputProject(),
                       options.getOutputDataset(),
                       options.getBqTableNamePrefix(),
@@ -379,7 +401,8 @@ public class KafkaToBigQueryFlex {
       KafkaToBigQueryFlexOptions options,
       List<String> topicsList,
       String bootstrapServers,
-      Map<String, Object> kafkaConfig) {
+      Map<String, Object> kafkaConfig,
+      Map<String, String> sslConfig) {
 
     PCollectionTuple convertedTableRows;
     convertedTableRows =
@@ -389,7 +412,12 @@ public class KafkaToBigQueryFlex {
              */
             .apply(
                 "ReadFromKafka",
-                KafkaTransform.readStringFromKafka(bootstrapServers, topicsList, kafkaConfig, null))
+                KafkaTransform.readStringFromKafka(
+                    bootstrapServers,
+                    topicsList,
+                    kafkaConfig,
+                    sslConfig,
+                    options.getEnableCommitOffsets()))
 
             /*
              * Step #2: Transform the Kafka Messages into TableRows
@@ -484,29 +512,6 @@ public class KafkaToBigQueryFlex {
       throw new RuntimeException(e);
     }
     return failsafeElement;
-  }
-
-  /**
-   * Method to create Kafka Client Authentication Config with the given username and password.
-   *
-   * @param username Kafka username.
-   * @param password Kafka password.
-   * @return ImmutableMap object.
-   */
-  static ImmutableMap<String, Object> setClientAuthConfig(String username, String password) {
-    ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
-    properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
-    properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
-    properties.put(
-        SaslConfigs.SASL_JAAS_CONFIG,
-        "org.apache.kafka.common.security.plain.PlainLoginModule required"
-            + " username=\'"
-            + username
-            + "\'"
-            + " password=\'"
-            + password
-            + "\';");
-    return properties.buildOrThrow();
   }
 
   static class ThrowErrorFn<T, W> extends DoFn<FailsafeElement<T, W>, FailsafeElement<T, W>> {

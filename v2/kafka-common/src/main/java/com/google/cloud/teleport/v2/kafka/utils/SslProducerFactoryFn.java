@@ -37,8 +37,8 @@ import org.slf4j.LoggerFactory;
 public class SslProducerFactoryFn
     implements SerializableFunction<Map<String, Object>, Producer<Void, String>> {
   private final Map<String, String> sslConfig;
-  private static final String TRUSTSTORE_LOCAL_PATH = "/tmp/kafka.truststore.jks";
-  private static final String KEYSTORE_LOCAL_PATH = "/tmp/kafka.keystore.jks";
+  private static final String TRUSTSTORE_LOCAL_PATH = "/tmp/kafka.producer.truststore.jks";
+  private static final String KEYSTORE_LOCAL_PATH = "/tmp/kafka.producer.keystore.jks";
 
   /* Logger for class.*/
   private static final Logger LOG = LoggerFactory.getLogger(SslProducerFactoryFn.class);
@@ -49,7 +49,6 @@ public class SslProducerFactoryFn
 
   @Override
   public Producer<Void, String> apply(Map<String, Object> config) {
-    String bucket = sslConfig.get("bucket");
     String trustStorePath = sslConfig.get(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG);
     String keyStorePath = sslConfig.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
     String trustStorePassword = sslConfig.get(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG);
@@ -60,8 +59,16 @@ public class SslProducerFactoryFn
     try {
       outputTrustStoreFilePath = TRUSTSTORE_LOCAL_PATH;
       outputKeyStoreFilePath = KEYSTORE_LOCAL_PATH;
-      getGcsFileAsLocal(bucket, trustStorePath, outputTrustStoreFilePath);
-      getGcsFileAsLocal(bucket, keyStorePath, outputKeyStoreFilePath);
+      if (trustStorePath.startsWith("gs://")) {
+        getGcsFileAsLocal(trustStorePath, outputTrustStoreFilePath);
+      } else {
+        outputTrustStoreFilePath = trustStorePath;
+      }
+      if (keyStorePath.startsWith("gs://")) {
+        getGcsFileAsLocal(keyStorePath, outputKeyStoreFilePath);
+      } else {
+        outputKeyStoreFilePath = keyStorePath;
+      }
     } catch (IOException e) {
       LOG.error("Failed to retrieve data for SSL", e);
       return new KafkaProducer<>(config);
@@ -80,14 +87,12 @@ public class SslProducerFactoryFn
   /**
    * Reads a file from GCS and writes it locally.
    *
-   * @param bucket GCS bucket name
-   * @param filePath path to file in GCS
+   * @param gcsFilePath path to file in GCS
    * @param outputFilePath path where to save file locally
    * @throws IOException thrown if not able to read or write file
    */
-  public static void getGcsFileAsLocal(String bucket, String filePath, String outputFilePath)
+  public static void getGcsFileAsLocal(String gcsFilePath, String outputFilePath)
       throws IOException {
-    String gcsFilePath = String.format("gs://%s/%s", bucket, filePath);
     LOG.info("Reading contents from GCS file: {}", gcsFilePath);
     Set<StandardOpenOption> options = new HashSet<>(2);
     options.add(StandardOpenOption.CREATE);

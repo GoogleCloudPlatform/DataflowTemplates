@@ -18,9 +18,11 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
+import com.google.cloud.teleport.v2.kafka.utils.ClientAuthConfigUtils;
 import com.google.cloud.teleport.v2.utils.BigQueryAvroUtils;
 import com.google.cloud.teleport.v2.utils.BigQueryConstants;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.collect.ImmutableMap;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
@@ -68,6 +70,18 @@ public class AvroDynamicTransform
 
   private String schemaRegistryConnectionUrl;
 
+  private String schemaRegistryAuthenticationMode;
+
+  private String schemaRegistryTruststoreLocation;
+
+  private String schemaRegistryTruststorePasswordSecretId;
+
+  private String schemaRegistryKeystoreLocation;
+
+  private String schemaRegistryKeystorePasswordSecretId;
+
+  private String schemaRegistryKeyPasswordSecretId;
+
   private String outputProject;
 
   private String outputDataset;
@@ -88,6 +102,12 @@ public class AvroDynamicTransform
 
   private AvroDynamicTransform(
       String schemaRegistryConnectionUrl,
+      String schemaRegistryAuthenticationMode,
+      String schemaRegistryTruststoreLocation,
+      String schemaRegistryTruststorePasswordSecretId,
+      String schemaRegistryKeystoreLocation,
+      String schemaRegistryKeystorePasswordSecretId,
+      String schemaRegistryKeyPasswordSecretId,
       String outputProject,
       String outputDataset,
       String outputTableNamePrefix,
@@ -98,6 +118,12 @@ public class AvroDynamicTransform
       Boolean persistKafkaKey,
       Boolean useAutoSharding) {
     this.schemaRegistryConnectionUrl = schemaRegistryConnectionUrl;
+    this.schemaRegistryAuthenticationMode = schemaRegistryAuthenticationMode;
+    this.schemaRegistryTruststoreLocation = schemaRegistryTruststoreLocation;
+    this.schemaRegistryTruststorePasswordSecretId = schemaRegistryTruststorePasswordSecretId;
+    this.schemaRegistryKeystoreLocation = schemaRegistryKeystoreLocation;
+    this.schemaRegistryKeystorePasswordSecretId = schemaRegistryKeystorePasswordSecretId;
+    this.schemaRegistryKeyPasswordSecretId = schemaRegistryKeyPasswordSecretId;
     this.outputProject = outputProject;
     this.outputDataset = outputDataset;
     this.outputTableNamePrefix = outputTableNamePrefix;
@@ -111,6 +137,12 @@ public class AvroDynamicTransform
 
   public static AvroDynamicTransform of(
       String schemaRegistryConnectionUrl,
+      String schemaRegistryAuthenticationMode,
+      String schemaRegistryTruststoreLocation,
+      String schemaRegistryTruststorePasswordSecretId,
+      String schemaRegistryKeystoreLocation,
+      String schemaRegistryKeystorePasswordSecretId,
+      String schemaRegistryKeyPasswordSecretId,
       String outputProject,
       String outputDataset,
       String outputTableNamePrefix,
@@ -122,6 +154,12 @@ public class AvroDynamicTransform
       Boolean useAutoSharding) {
     return new AvroDynamicTransform(
         schemaRegistryConnectionUrl,
+        schemaRegistryAuthenticationMode,
+        schemaRegistryTruststoreLocation,
+        schemaRegistryTruststorePasswordSecretId,
+        schemaRegistryKeystoreLocation,
+        schemaRegistryKeystorePasswordSecretId,
+        schemaRegistryKeyPasswordSecretId,
         outputProject,
         outputDataset,
         outputTableNamePrefix,
@@ -164,7 +202,13 @@ public class AvroDynamicTransform
                 "ConvertKafkaRecordsToGenericRecordsWrappedinFailsafeElement",
                 ParDo.of(
                     new KafkaRecordToGenericRecordFailsafeElementFn(
-                        this.schemaRegistryConnectionUrl)))
+                        this.schemaRegistryConnectionUrl,
+                        this.schemaRegistryAuthenticationMode,
+                        this.schemaRegistryTruststoreLocation,
+                        this.schemaRegistryTruststorePasswordSecretId,
+                        this.schemaRegistryKeystoreLocation,
+                        this.schemaRegistryKeystorePasswordSecretId,
+                        this.schemaRegistryKeyPasswordSecretId)))
             .setCoder(
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
@@ -190,16 +234,49 @@ public class AvroDynamicTransform
     private transient KafkaAvroDeserializer deserializer;
     private transient SchemaRegistryClient schemaRegistryClient;
     private String schemaRegistryConnectionUrl = null;
+    private String schemaRegistryAuthenticationMode;
+    private String schemaRegistryTruststoreLocation;
+    private String schemaRegistryTruststorePasswordSecretId;
+    private String schemaRegistryKeystoreLocation;
+    private String schemaRegistryKeystorePasswordSecretId;
+    private String schemaRegistryKeyPasswordSecretId;
 
-    KafkaRecordToGenericRecordFailsafeElementFn(String schemaRegistryConnectionUrl) {
+    KafkaRecordToGenericRecordFailsafeElementFn(
+        String schemaRegistryConnectionUrl,
+        String schemaRegistryAuthenticationMode,
+        String schemaRegistryTruststoreLocation,
+        String schemaRegistryTruststorePasswordSecretId,
+        String schemaRegistryKeystoreLocation,
+        String schemaRegistryKeystorePasswordSecretId,
+        String schemaRegistryKeyPasswordSecretId) {
       this.schemaRegistryConnectionUrl = schemaRegistryConnectionUrl;
+      this.schemaRegistryAuthenticationMode = schemaRegistryAuthenticationMode;
+      this.schemaRegistryTruststoreLocation = schemaRegistryTruststoreLocation;
+      this.schemaRegistryTruststorePasswordSecretId = schemaRegistryTruststorePasswordSecretId;
+      this.schemaRegistryKeystoreLocation = schemaRegistryKeystoreLocation;
+      this.schemaRegistryKeystorePasswordSecretId = schemaRegistryKeystorePasswordSecretId;
+      this.schemaRegistryKeyPasswordSecretId = schemaRegistryKeyPasswordSecretId;
     }
 
     @Setup
     public void setup() throws IOException, RestClientException {
-      if (this.schemaRegistryConnectionUrl != null) {
+      if (this.schemaRegistryConnectionUrl != null
+          && this.schemaRegistryAuthenticationMode.equals("NONE")) {
         this.schemaRegistryClient =
-            new CachedSchemaRegistryClient(this.schemaRegistryConnectionUrl, 1000);
+            new CachedSchemaRegistryClient(this.schemaRegistryConnectionUrl, 10000);
+        this.deserializer = new KafkaAvroDeserializer(this.schemaRegistryClient);
+      } else if (this.schemaRegistryConnectionUrl != null
+          && this.schemaRegistryAuthenticationMode.equals("SSL")) {
+        ImmutableMap<String, Object> config =
+            ClientAuthConfigUtils.setSslConfig(
+                this.schemaRegistryTruststoreLocation,
+                this.schemaRegistryTruststorePasswordSecretId,
+                this.schemaRegistryKeystoreLocation,
+                this.schemaRegistryKeystorePasswordSecretId,
+                this.schemaRegistryKeyPasswordSecretId,
+                true);
+        this.schemaRegistryClient =
+            new CachedSchemaRegistryClient(this.schemaRegistryConnectionUrl, 10000, config);
         this.deserializer = new KafkaAvroDeserializer(this.schemaRegistryClient);
       } else {
         throw new IllegalArgumentException(

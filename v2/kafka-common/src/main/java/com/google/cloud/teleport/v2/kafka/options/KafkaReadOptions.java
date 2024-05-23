@@ -98,6 +98,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       enumOptions = {
         @TemplateParameter.TemplateEnumOption("NONE"),
         @TemplateParameter.TemplateEnumOption("SASL_PLAIN"),
+        @TemplateParameter.TemplateEnumOption("SSL"),
       },
       optional = false,
       description = "Authentication Mode",
@@ -112,7 +113,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {"SASL_PLAIN"},
-      optional = false,
+      optional = true,
       description = "Username",
       helpText =
           "Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}.",
@@ -127,7 +128,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {"SASL_PLAIN"},
-      optional = false,
+      optional = true,
       description = "Password",
       helpText =
           "Secret Manager secret ID for the SASL_PLAIN password. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
@@ -136,4 +137,70 @@ public interface KafkaReadOptions extends PipelineOptions {
   String getKafkaReadPasswordSecretId();
 
   void setKafkaReadPasswordSecretId(String value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 7,
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {"SSL"},
+      optional = true,
+      description = "Truststore File Location",
+      helpText =
+          "Location of the SSL certificate where the trust store for authentication to Schema Registry are stored.",
+      example = "/your-bucket/truststore.jks")
+  String getKafkaReadTruststoreLocation();
+
+  void setKafkaReadTruststoreLocation(String truststoreLocation);
+
+  @TemplateParameter.Text(
+      order = 8,
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {"SSL"},
+      optional = true,
+      description = "Truststore Password",
+      helpText =
+          "SecretId in secret manager where the password to access secret in truststore is stored.",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+  String getKafkaReadTruststorePasswordSecretId();
+
+  void setKafkaReadTruststorePasswordSecretId(String truststorePasswordSecretId);
+
+  @TemplateParameter.GcsReadFile(
+      order = 9,
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {"SSL"},
+      optional = true,
+      description = "Keystore File Location",
+      helpText = "Keystore location that contains the SSL certificate and private key.",
+      example = "/your-bucket/keystore.jks")
+  String getKafkaReadKeystoreLocation();
+
+  void setKafkaReadKeystoreLocation(String keystoreLocation);
+
+  @TemplateParameter.Text(
+      order = 10,
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {"SSL"},
+      optional = true,
+      description = "Keystore Password",
+      helpText = "SecretId in secret manager where the password to access the keystore file",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+  String getKafkaReadKeystorePasswordSecretId();
+
+  void setKafkaReadKeystorePasswordSecretId(String keystorePasswordSecretId);
+
+  @TemplateParameter.Text(
+      order = 11,
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {"SSL"},
+      optional = true,
+      description = "Private Key Password",
+      helpText =
+          "SecretId of password required to access the client's private key stored within the keystore",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+  String getKafkaReadKeyPasswordSecretId();
+
+  void setKafkaReadKeyPasswordSecretId(String keyPasswordSecretId);
 }
