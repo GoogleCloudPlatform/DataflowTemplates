@@ -21,6 +21,7 @@ package com.google.cloud.teleport.v2.templates;
 
 
 
+
 import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 
@@ -63,6 +64,7 @@ import org.apache.kafka.common.config.SslConfigs;
  * source Kafka.
  */
 final class ConsumerProperties {
+
 
 
   public static Map<String, Object> from(KafkaToKafkaOptions options) throws IOException {
