@@ -49,23 +49,50 @@ public interface KafkaReadOptions extends PipelineOptions {
 
   void setKafkaReadTopics(String inputTopics);
 
-  @TemplateParameter.Enum(
+  @TemplateParameter.Boolean(
       order = 3,
+      groupName = "Source",
+      name = "enableCommitOffsets",
+      optional = true,
+      description = "Commit Offsets to Kafka",
+      helpText =
+          "Commit offsets of processed messages to Kafka. "
+              + "If enabled, this will minimize the gaps or duplicate processing"
+              + " of messages when restarting the pipeline. Requires specifying the Consumer Group ID.")
+  @Default.Boolean(false)
+  Boolean getEnableCommitOffsets();
+
+  void setEnableCommitOffsets(Boolean value);
+
+  @TemplateParameter.Text(
+      order = 4,
+      groupName = "Source",
+      optional = true,
+      description = "Consumer Group ID",
+      helpText = "Consumer group ID to commit offsets to Kafka.")
+  @Default.String("")
+  String getConsumerGroupId();
+
+  void setConsumerGroupId(String value);
+
+  @TemplateParameter.Enum(
+      order = 5,
       groupName = "Source",
       enumOptions = {
         @TemplateParameter.TemplateEnumOption("earliest"),
         @TemplateParameter.TemplateEnumOption("latest"),
       },
       optional = true,
-      description = "Start Offset",
-      helpText = "The Kafka Offset to read from.")
+      description = "Default Kafka Start Offset",
+      helpText =
+          "The Kafka offset to read from. If there are no committed offsets on Kafka, default offset will be used.")
   @Default.String("latest")
   String getKafkaReadOffset();
 
   void setKafkaReadOffset(String value);
 
   @TemplateParameter.Enum(
-      order = 4,
+      order = 6,
       name = "kafkaReadAuthenticationMode",
       groupName = "Source",
       enumOptions = {
@@ -81,7 +108,7 @@ public interface KafkaReadOptions extends PipelineOptions {
   void setKafkaReadAuthenticationMode(String value);
 
   @TemplateParameter.Text(
-      order = 4,
+      order = 7,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {"SASL_PLAIN"},
@@ -96,7 +123,7 @@ public interface KafkaReadOptions extends PipelineOptions {
   void setKafkaReadUsernameSecretId(String value);
 
   @TemplateParameter.Text(
-      order = 5,
+      order = 8,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {"SASL_PLAIN"},

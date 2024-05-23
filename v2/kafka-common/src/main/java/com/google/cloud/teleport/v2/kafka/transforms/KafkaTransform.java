@@ -31,7 +31,6 @@ import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.kafka.DeserializerProvider;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
-import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.KV;
@@ -108,11 +107,12 @@ public class KafkaTransform {
    * @param config configuration for the Kafka consumer
    * @return PCollection of Kafka Key & Value Pair deserialized in string format
    */
-  public static PTransform<PBegin, PCollection<KafkaRecord<byte[], byte[]>>> readBytesFromKafka(
+  public static KafkaIO.Read<byte[], byte[]> readBytesFromKafka(
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
-      @Nullable Map<String, String> sslConfig) {
+      @Nullable Map<String, String> sslConfig,
+      Boolean enableCommitOffsets) {
     KafkaIO.Read<byte[], byte[]> kafkaRecords =
         KafkaIO.<byte[], byte[]>read()
             .withBootstrapServers(bootstrapServers)
@@ -123,6 +123,9 @@ public class KafkaTransform {
             .withConsumerConfigUpdates(config);
     if (sslConfig != null) {
       kafkaRecords = kafkaRecords.withConsumerFactoryFn(new SslConsumerFactoryFn(sslConfig));
+    }
+    if (enableCommitOffsets) {
+      kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
     }
     return kafkaRecords;
   }
