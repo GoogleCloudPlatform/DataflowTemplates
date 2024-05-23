@@ -98,12 +98,12 @@ public class AtoBOk {
     @Default.Boolean(false)
     Boolean getParamWithGroupName();
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Boolean(
         order = 9,
         parentName = "paramWithGroupName",
         parentTriggerValues = {"true"},
         description = "N/A",
-        helpText = "Text that has parent name and parent trigger value")
+        helpText = "Boolean that has parent name and parent trigger value")
     @Default.Boolean(false)
     Boolean getParamWithParentName();
 
@@ -135,5 +135,12 @@ public class AtoBOk {
         helpText = "JavaScript UDF in Cloud Storage")
     @Default.String("")
     String javascriptUdfFile();
+
+    @TemplateParameter.MachineType(
+        order = 14,
+        description = "N/A",
+        helpText = "String that is machine type")
+    @Default.String("")
+    String getMachineType();
   }
 }

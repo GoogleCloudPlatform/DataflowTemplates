@@ -81,6 +81,9 @@ public class TemplateDefinitionsTest {
 
     ImageSpecParameter javascriptUdfFile = metadata.getParameter("javascriptUdfFile").get();
     assertEquals(ImageSpecParameterType.JAVASCRIPT_UDF_FILE, javascriptUdfFile.getParamType());
+
+    ImageSpecParameter machineType = metadata.getParameter("machineType").get();
+    assertEquals(ImageSpecParameterType.MACHINE_TYPE, machineType.getParamType());
   }
 
   @Test

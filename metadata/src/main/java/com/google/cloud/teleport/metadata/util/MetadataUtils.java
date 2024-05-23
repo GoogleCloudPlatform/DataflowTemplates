@@ -48,6 +48,7 @@ public final class MetadataUtils {
         TemplateParameter.KafkaTopic.class,
         TemplateParameter.KmsEncryptionKey.class,
         TemplateParameter.Long.class,
+        TemplateParameter.MachineType.class,
         TemplateParameter.Password.class,
         TemplateParameter.ProjectId.class,
         TemplateParameter.PubsubSubscription.class,
@@ -222,6 +223,10 @@ public final class MetadataUtils {
       case "Duration":
         TemplateParameter.Duration durationParam = (TemplateParameter.Duration) parameterAnnotation;
         return List.of("^[1-9][0-9]*[s|m|h]$");
+      case "MachineType":
+        TemplateParameter.MachineType machineTypeParam =
+            (TemplateParameter.MachineType) parameterAnnotation;
+        return List.of("^[a-z0-9]+(-[a-z0-9]+)+$");
       default:
         return null;
     }

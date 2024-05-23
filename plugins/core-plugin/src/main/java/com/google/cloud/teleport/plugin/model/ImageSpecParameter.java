@@ -355,6 +355,23 @@ public class ImageSpecParameter {
         this.setHiddenUi(projectIdParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
         break;
+      case "MachineType":
+        TemplateParameter.MachineType machineTypeParam =
+            (TemplateParameter.MachineType) parameterAnnotation;
+        if (!machineTypeParam.name().isEmpty()) {
+          this.setName(machineTypeParam.name());
+        }
+        processDescriptions(
+            machineTypeParam.groupName(),
+            machineTypeParam.description(),
+            machineTypeParam.helpText(),
+            machineTypeParam.example());
+        this.setParentName(machineTypeParam.parentName());
+        this.setParentTriggerValues(machineTypeParam.parentTriggerValues());
+        this.setOptional(machineTypeParam.optional());
+        this.setHiddenUi(machineTypeParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.MACHINE_TYPE);
+        break;
       case "Boolean":
         TemplateParameter.Boolean booleanParam = (TemplateParameter.Boolean) parameterAnnotation;
         if (!booleanParam.name().isEmpty()) {

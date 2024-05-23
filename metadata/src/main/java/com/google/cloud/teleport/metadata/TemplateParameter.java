@@ -846,4 +846,42 @@ public final class TemplateParameter {
     /** Parameter visibility in the UI. */
     boolean hiddenUi() default false;
   }
+
+  /**
+   * Template Parameter containing machine type. See
+   * https://cloud.google.com/compute/docs/machine-types for a list of valid options.
+   */
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target({ElementType.FIELD, ElementType.METHOD})
+  public @interface MachineType {
+    /** Order of appearance. */
+    int order() default 999;
+
+    /** Name of the parameter. */
+    String name() default "";
+
+    /** Group Name of the parameter. */
+    String groupName() default "";
+
+    /** Parent Name of the parameter. */
+    String parentName() default "";
+
+    /** List of parent trigger values. */
+    String[] parentTriggerValues() default "";
+
+    /** If parameter is optional. */
+    boolean optional() default false;
+
+    /** Description of the parameter. */
+    String description();
+
+    /** Help text of the parameter. */
+    String helpText();
+
+    /** Example of the parameter. */
+    String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
+  }
 }
