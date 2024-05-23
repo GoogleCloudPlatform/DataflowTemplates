@@ -46,49 +46,47 @@ import org.slf4j.LoggerFactory;
  */
 final class ProducerProperties {
   private static final Logger LOGG = LoggerFactory.getLogger(ProducerProperties.class);
+
   private static void downloadFileFromGCS(String gcsUri, String localPath) throws IOException {
-    Storage storage = StorageOptions.newBuilder().setProjectId("dataflow-testing-311516").setCredentials(
-        GoogleCredentials.getApplicationDefault()).build().getService();//getDefaultInstance().getService();
-    Blob blob = storage.get("testbucketktm",gcsUri);
+    Storage storage =
+        StorageOptions.newBuilder()
+            .setProjectId("dataflow-testing-311516")
+            .setCredentials(GoogleCredentials.getApplicationDefault())
+            .build()
+            .getService(); // getDefaultInstance().getService();
+    Blob blob = storage.get("testbucketktm", gcsUri);
     ReadChannel readChannel = blob.reader();
     FileOutputStream fileOutputStream;
     fileOutputStream = new FileOutputStream(localPath);
     fileOutputStream.getChannel().transferFrom(readChannel, 0, Long.MAX_VALUE);
     fileOutputStream.close();
     File f = new File(localPath);
-    if (f.exists())
-    {
+    if (f.exists()) {
       LOG.debug("key exists");
 
-    }
-    else
-    {
+    } else {
       LOG.error("key does not exist");
-
     }
-    // try (InputStream input = Channels.newInputStream(blob.reader());
-    //     FileOutputStream output = new FileOutputStream(localPath)) {
-    //   byte[] buffer = new byte[2048];
-    //   int bytesRead;
-    //   while ((bytesRead = input.read(buffer)) != -1) {
-    //     output.write(buffer, 0, bytesRead);
-    //   }
-    // } catch (Exception e) {
-    //   throw new RuntimeException("Failed to download file from GCS", e);
-    // }
   }
 
   public static ImmutableMap<String, Object> get(KafkaToKafkaOptions options) throws IOException {
     ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
-    properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, options.getDestinationBootstrapServer());
+    properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "10.128.15.204:9092");
     if (options.getDestinationAuthenticationMethod().equals("SSL")) {
       properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
-      properties.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getDestinationKeystoreLocation());
-      properties.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG,
-          options.getDestinationTruststoreLocation());
-      properties.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getDestinationTruststorePasswordSecretId()));
-      properties.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getDestinationKeystorePasswordSecretId()));
-      properties.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getDestinationKeyPasswordSecretId()));
+      properties.put(
+          SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getDestinationKeystoreLocation());
+      properties.put(
+          SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, options.getDestinationTruststoreLocation());
+      properties.put(
+          SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
+          SecretManagerUtils.getSecret(options.getDestinationTruststorePasswordSecretId()));
+      properties.put(
+          SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
+          SecretManagerUtils.getSecret(options.getDestinationKeystorePasswordSecretId()));
+      properties.put(
+          SslConfigs.SSL_KEY_PASSWORD_CONFIG,
+          SecretManagerUtils.getSecret(options.getDestinationKeyPasswordSecretId()));
       properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
     }
     if (options.getDestinationAuthenticationMethod().equals("SASL_PLAIN")) {
