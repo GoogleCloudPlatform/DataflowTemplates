@@ -16,33 +16,37 @@
 package com.google.cloud.teleport.v2.templates;
 
 
-import static org.apache.hadoop.hdfs.DFSInotifyEventInputStream.LOG;
+import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils;
+import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
+import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.config.SaslConfigs;
+import org.apache.kafka.common.config.SslConfigs;
 
+import static org.apache.hadoop.hdfs.DFSInotifyEventInputStream.LOG;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ReadChannel;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
-
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
-import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.collect.ImmutableMap;
-
-import java.io.IOException;
-import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.common.config.SaslConfigs;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.common.config.SaslConfigs;
-
 import org.apache.kafka.common.config.SslConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 /**
  * The {@link ConsumerProperties} is a utility class for constructing properties for Kafka
@@ -56,39 +60,57 @@ import org.slf4j.LoggerFactory;
  */
 final class ConsumerProperties {
 
-  private static final Logger LOGG = LoggerFactory.getLogger(ConsumerProperties.class);
 
-
-  public static ImmutableMap<String, Object> get(KafkaToKafkaOptions options) throws IOException {
-    ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
-    properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "10.128.15.204:9092");
-    if (options.getSourceAuthenticationMethod().equals("SSL")) {
-      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
-
-      properties.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getSourceKeystoreLocation());
-      properties.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG,
-          options.getSourceTruststoreLocation());
-      properties.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getSourceTruststorePasswordSecretId()));
-      properties.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getSourceKeystorePasswordSecretId()));
-      properties.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getSourceKeyPasswordSecretId()));
-      properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
+  public static Map<String, Object> from(KafkaToKafkaOptions options) throws IOException {
+    Map<String, Object> properties = new HashMap<>();
+    properties.putAll(KafkaCommonUtils.configureKafkaOffsetCommit(options));
+    String authMethod = options.getSourceAuthenticationMethod();
+    if (authMethod == null) {
+      return properties;
     }
-    if (options.getSourceAuthenticationMethod().equals("SASL_PLAIN")) {
-      properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
+
+    if (authMethod.equals(KafkaAuthenticationMethod.SSL)) {
+
+      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, KafkaAuthenticationMethod.SSL);
+      properties.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getSourceKeystoreLocation());
+      properties.put(
+          SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, options.getSourceTruststoreLocation());
+      properties.put(
+          SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
+          FileAwareConsumerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getSourceTruststorePasswordSecretId());
+      properties.put(
+          SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
+          FileAwareConsumerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getSourceKeystorePasswordSecretId());
+      properties.put(
+          SslConfigs.SSL_KEY_PASSWORD_CONFIG,
+          FileAwareConsumerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getSourceKeyPasswordSecretId());
+      properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
+
+      properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
+
+    } else if (authMethod.equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+      properties.put(SaslConfigs.SASL_MECHANISM, KafkaAuthenticationMethod.SASL_MECHANISM);
+
       //         Note: in other languages, set sasl.username and sasl.password instead.
-      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
+      properties.put(
+          CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, KafkaAuthenticationMethod.SASL_PLAIN);
       properties.put(
           SaslConfigs.SASL_JAAS_CONFIG,
           "org.apache.kafka.common.security.plain.PlainLoginModule required"
               + " username=\'"
-              + SecretManagerUtils.getSecret(options.getSourceUsernameSecretId())
+              + FileAwareConsumerFactoryFn.SECRET_MANAGER_FILE_PREFIX + options.getSourceUsernameSecretId()
               + "\'"
               + " password=\'"
-              + SecretManagerUtils.getSecret(options.getSourcePasswordSecretId())
+              + FileAwareConsumerFactoryFn.SECRET_MANAGER_FILE_PREFIX + options.getSourcePasswordSecretId()
               + "\';");
+
+      properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
+    } else {
+      throw new UnsupportedEncodingException("Authentication method not supported: " + authMethod);
     }
-
-
-    return properties.buildOrThrow();
+    return properties;
   }
 }

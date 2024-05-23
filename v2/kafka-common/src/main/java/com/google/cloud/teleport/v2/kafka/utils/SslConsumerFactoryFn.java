@@ -30,7 +30,6 @@ import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.config.SslConfigs;
-import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,14 +44,16 @@ public class SslConsumerFactoryFn
   private static final Logger LOG = LoggerFactory.getLogger(SslConsumerFactoryFn.class);
 
   public SslConsumerFactoryFn(Map<String, Object> sslConfig) {
-    LOG.info("HEREEEEEEEEE");
     this.sslConfig = sslConfig;
   }
 
   @Override
   public Consumer<byte[], byte[]> apply(Map<String, Object> config) {
-    Object trustStorePath = getBucketAndPath(String.valueOf(sslConfig.get(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG)))[1];
-    Object keyStorePath = getBucketAndPath(String.valueOf(sslConfig.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG)))[1];
+    Object trustStorePath =
+        getBucketAndPath(String.valueOf(sslConfig.get(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG)))[
+            1];
+    Object keyStorePath =
+        getBucketAndPath(String.valueOf(sslConfig.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG)))[1];
     Object trustStorePassword = sslConfig.get(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG);
     Object keyStorePassword = sslConfig.get(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
     Object keyPassword = sslConfig.get(SslConfigs.SSL_KEY_PASSWORD_CONFIG);
@@ -61,8 +62,16 @@ public class SslConsumerFactoryFn
     try {
       outputTrustStoreFilePath = TRUSTSTORE_LOCAL_PATH;
       outputKeyStoreFilePath = KEYSTORE_LOCAL_PATH;
-      getGcsFileAsLocal(getBucketAndPath(String.valueOf(sslConfig.get(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG)))[0], String.valueOf(trustStorePath), outputTrustStoreFilePath);
-      getGcsFileAsLocal(getBucketAndPath(String.valueOf(sslConfig.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG)))[0], String.valueOf(keyStorePath), outputKeyStoreFilePath);
+      getGcsFileAsLocal(
+          getBucketAndPath(
+              String.valueOf(sslConfig.get(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG)))[0],
+          String.valueOf(trustStorePath),
+          outputTrustStoreFilePath);
+      getGcsFileAsLocal(
+          getBucketAndPath(String.valueOf(sslConfig.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG)))[
+              0],
+          String.valueOf(keyStorePath),
+          outputKeyStoreFilePath);
     } catch (IOException e) {
       LOG.error("Failed to retrieve data for SSL", e);
       return new KafkaConsumer<>(config);
@@ -74,26 +83,21 @@ public class SslConsumerFactoryFn
     config.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, trustStorePassword);
     config.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, keyStorePassword);
     config.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, keyPassword);
-    config.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG,"");
+    config.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
 
     return new KafkaConsumer<>(config);
   }
-
 
   public static String[] getBucketAndPath(String gcsPath) {
 
     String remainingUri = gcsPath.substring(5);
 
-
     int slashIndex = remainingUri.indexOf('/');
-
 
     String bucket = remainingUri.substring(0, slashIndex);
     String path = remainingUri.substring(slashIndex + 1);
-    return new String[]{bucket,path};
+    return new String[] {bucket, path};
   }
-
-
 
   public static synchronized void getGcsFileAsLocal(
       String bucket, String filePath, String outputFilePath) throws IOException {

@@ -20,30 +20,19 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.kafka.utils.SslConsumerFactoryFn;
-import com.google.cloud.teleport.v2.kafka.utils.SslProducerFactoryFn;
+import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
+import com.google.cloud.teleport.v2.kafka.utils.FileAwareProducerFactoryFn;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
+import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
-import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 
-
-import java.util.Objects;
+import java.util.List;
 
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-
-
-import org.apache.beam.sdk.values.KV;
-import org.apache.beam.sdk.values.PCollection;
-
-
-import org.apache.beam.sdk.values.KV;
-import org.apache.beam.sdk.values.PCollection;
-import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.common.config.SslConfigs;
-
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.slf4j.Logger;
@@ -57,6 +46,7 @@ import org.slf4j.LoggerFactory;
     optionsClass = KafkaToKafkaOptions.class,
     flexContainerName = "kafka-to-kafka",
     contactInformation = "https://cloud.google.com/support",
+    skipOptions = {"readBootstrapServers", "kafkaReadTopics", "kafkaReadAuthenticationMode","writeBootstrapServers","kafkaWriteTopics"},
     hidden = true,
     streaming = false)
 public class KafkaToKafka {
@@ -69,96 +59,104 @@ public class KafkaToKafka {
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToKafkaOptions.class);
     run(options);
   }
+
+
+
   public static PipelineResult run(KafkaToKafkaOptions options) throws IOException {
 
-    if (!Objects.equals(options.getSourceAuthenticationMethod(), "No_Authentication")) {
+    if (options.getSourceAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
 
       checkArgument(
           options.getSourceUsernameSecretId().trim().length() > 0,
-          "version id required to access username to GMK");
+          "sourceUsernameSecretId required to access username for source Kafka");
       checkArgument(
           options.getSourcePasswordSecretId().trim().length() > 0,
-          "version id required to access password to authenticate to GMK");
-    }
-
-    checkArgument(
-        options.getDestinationUsernameSecretId().trim().length() > 0,
-        "version id required to access username to GMK");
-
-    checkArgument(
-
-        options.getDestinationPasswordSecretId().trim().length() > 0,
-        "version id required to access password to authenticate to GMK");
-    if (options.getSourceAuthenticationMethod().equals("SASL_PLAIN")) {
-      checkArgument(
-          options.getSourceUsernameSecretId().trim().length() > 0,
-          "version id required to access username for source Kafka");
-      checkArgument(
-          options.getSourcePasswordSecretId().trim().length() > 0,
-          "version id required to access password for source kafka");
-      checkArgument(
-          options.getDestinationUsernameSecretId().trim().length() > 0,
-          "version id required to access username for destination Kafka");
-      checkArgument(
-          options.getDestinationPasswordSecretId().trim().length() > 0,
-          "version id required to access password for destination kafka");
-    } else {
+          "sourcePasswordSecretId required to access password for source kafka");
+    } else if (options.getSourceAuthenticationMethod().equals(KafkaAuthenticationMethod.SSL)) {
       checkArgument(
           options.getSourceTruststoreLocation().trim().length() > 0,
-          "trust store certificate required for ssl authentication");
+          "sourceTruststoreLocation for trust store certificate required for ssl authentication");
       checkArgument(
           options.getSourceTruststorePasswordSecretId().trim().length() > 0,
-          "trust store password required for accessing truststore");
+          "sourceTruststorePassword for trust store password required for accessing truststore");
       checkArgument(
           options.getSourceKeystoreLocation().trim().length() > 0,
-          "key store location required for ssl authentication");
+          "sourceKeystoreLocation for key store location required for ssl authentication");
       checkArgument(
           options.getSourceKeystorePasswordSecretId().trim().length() > 0,
-          "key store password required to access key store");
+          "sourceKeystorePassword for key store password required to access key store");
       checkArgument(
           options.getSourceKeyPasswordSecretId().trim().length() > 0,
-          "source key password secret id version required for SSL authentication");
+          "sourceKeyPasswordSecretId version for key password required for SSL authentication");
+    } else {
+      throw new UnsupportedOperationException(
+          "Authentication method not supported: " + options.getSourceAuthenticationMethod());
+    }
+    if (options.getDestinationAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+      checkArgument(options.getDestinationUsernameSecretId().trim().length() > 0,
+          "destinationUsernameSecretId required to access username for source Kafka");
+      checkArgument(options.getDestinationPasswordSecretId().trim().length() > 0,
+          "destinationPasswordSecretId required to access password for destination Kafka");
+    } else if (options.getDestinationAuthenticationMethod().equals(KafkaAuthenticationMethod.SSL)) {
       checkArgument(
           options.getDestinationTruststoreLocation().trim().length() > 0,
-          "trust store certificate required for ssl authentication");
+          "destinationTruststoreLocation for trust store certificate required for ssl authentication");
       checkArgument(
           options.getDestinationTruststorePasswordSecretId().trim().length() > 0,
-          "trust store password required for accessing truststore");
+          "destinationTruststorePasswordSecretId for trust store password required for accessing truststore");
       checkArgument(
           options.getDestinationKeystoreLocation().trim().length() > 0,
-          "key store location required for ssl authentication");
+          "destinationKeystoreLocation for key store location required for ssl authentication");
       checkArgument(
           options.getDestinationKeystorePasswordSecretId().trim().length() > 0,
-          "key store password required to access key store");
+          "destinationKeystorePasswordSecretId for key store password required to access key store");
       checkArgument(
           options.getDestinationKeyPasswordSecretId().trim().length() > 0,
-          "source key password secret id version required for SSL authentication");
+          "destinationKeyPasswordSecretId for source key password secret id version required for SSL authentication");
+    } else {
+      throw new UnsupportedOperationException(
+          "Authentication method not supported: " + options.getDestinationAuthenticationMethod());
     }
-    LOG.info("configmap");
+
+    String sourceTopic;
+    String sourceBootstrapServers;
+    List<String> sourceBootstrapServerAndTopicList =
+        KafkaTopicUtils.getBootstrapServerAndTopic(options.getSourceTopic());
+    sourceTopic = sourceBootstrapServerAndTopicList.get(1);
+    sourceBootstrapServers = sourceBootstrapServerAndTopicList.get(0);
+    String destinationTopic;
+    String destinationBootstrapServers;
+    List<String> destinationBootstrapServerAndTopicList =
+        KafkaTopicUtils.getBootstrapServerAndTopic(options.getDestinationTopic());
+    destinationBootstrapServers = destinationBootstrapServerAndTopicList.get(0);
+    destinationTopic = destinationBootstrapServerAndTopicList.get(1);
     Pipeline pipeline = Pipeline.create(options);
-    PCollection<KV<byte[], byte[]>> records;
-    records =
-        pipeline.apply(
+    if (options.getEnableCommitOffsets()) {
+
+    }
+    pipeline
+        .apply(
             "Read from Kafka",
             KafkaIO.<byte[], byte[]>read()
-
-                .withBootstrapServers("10.128.15.204:9092")
-                .withTopic("test")
+                .withBootstrapServers(sourceBootstrapServers)
+                .withTopic(sourceTopic)
                 .withKeyDeserializer(ByteArrayDeserializer.class)
                 .withValueDeserializer(ByteArrayDeserializer.class)
-                .withConsumerFactoryFn(new SslConsumerFactoryFn(ConsumerProperties.get(options)))
-                .withoutMetadata());
-    KafkaIO.Write<byte[], byte[]> kafkaWrite =
-        KafkaIO.<byte[], byte[]>write()
-            .withBootstrapServers("10.128.15.204:9092")
-            .withTopic("outputTopic")
-            .withKeySerializer(ByteArraySerializer.class)
-            .withValueSerializer(ByteArraySerializer.class);
+                .withConsumerConfigUpdates(ConsumerProperties.from(options))
+                .withConsumerFactoryFn(new FileAwareConsumerFactoryFn())
+                .withoutMetadata())
+        .apply(
+            "Write to Kafka",
+            KafkaIO.<byte[], byte[]>write()
+                .withBootstrapServers(destinationBootstrapServers)
+                .withTopic(destinationTopic)
+                .withKeySerializer(ByteArraySerializer.class)
+                .withValueSerializer(ByteArraySerializer.class)
+                .withProducerConfigUpdates(ProducerProperties.from(options))
+                .withProducerFactoryFn(new FileAwareProducerFactoryFn()));
 
-    records.apply(
-        "write messages to kafka",
-        kafkaWrite.withProducerFactoryFn(
-            new SslProducerFactoryFn(ProducerProperties.get(options))));
     return pipeline.run();
   }
 }
+
+
