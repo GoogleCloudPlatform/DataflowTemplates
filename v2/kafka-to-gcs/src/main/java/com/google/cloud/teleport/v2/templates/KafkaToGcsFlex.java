@@ -22,14 +22,13 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSAvro;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSParquet;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSText;
 import com.google.cloud.teleport.v2.transforms.WriteTransform;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.collect.ImmutableMap;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +56,8 @@ import org.apache.kafka.common.config.SaslConfigs;
     contactInformation = "https://cloud.google.com/support",
     hidden = true,
     streaming = true,
-    requirements = {"The output Google Cloud Storage directory must exist."})
+    requirements = {"The output Google Cloud Storage directory must exist."},
+    skipOptions = {"readBootstrapServers", "kafkaReadTopics"})
 public class KafkaToGcsFlex {
   /**
    * The {@link KafkaToGcsOptions} interface provides the custom execution options passed by the
@@ -70,6 +70,17 @@ public class KafkaToGcsFlex {
           WriteToGCSText.WriteToGCSTextOptions,
           WriteToGCSParquet.WriteToGCSParquetOptions,
           WriteToGCSAvro.WriteToGCSAvroOptions {
+
+    @TemplateParameter.KafkaTopic(
+        order = 1,
+        name = "readBootstrapServerAndTopic",
+        groupName = "Source",
+        optional = false,
+        description = "Source Kafka Topic",
+        helpText = "Kafka Topic to read the input from.")
+    String getReadBootstrapServerAndTopic();
+
+    void setReadBootstrapServerAndTopic(String value);
 
     @TemplateParameter.Enum(
         order = 3,
@@ -200,10 +211,17 @@ public class KafkaToGcsFlex {
     // Create the Pipeline
     Pipeline pipeline = Pipeline.create(options);
 
-    PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord;
-
-    List<String> topics =
-        new ArrayList<>(Arrays.asList(options.getKafkaReadTopics().split(topicsSplitDelimiter)));
+    List<String> topicsList;
+    String bootstrapServers;
+    if (options.getReadBootstrapServerAndTopic() != null) {
+      List<String> bootstrapServerAndTopicList =
+          KafkaTopicUtils.getBootstrapServerAndTopic(options.getReadBootstrapServerAndTopic());
+      topicsList = List.of(bootstrapServerAndTopicList.get(1));
+      bootstrapServers = bootstrapServerAndTopicList.get(0);
+    } else {
+      throw new IllegalArgumentException(
+          "Please provide a valid bootstrap server which matches `[,:a-zA-Z0-9._-]+` and a topic which matches `[,a-zA-Z0-9._-]+`");
+    }
 
     options.setStreaming(true);
 
@@ -219,11 +237,12 @@ public class KafkaToGcsFlex {
     // Configure offset value, group id and finalizing offset to consumer group.
     kafkaConfig.putAll(KafkaCommonUtils.configureKafkaOffsetCommit(options));
 
+    PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord;
     // Step 1: Read from Kafka as bytes.
     KafkaIO.Read<byte[], byte[]> kafkaTransform =
         KafkaTransform.readBytesFromKafka(
             options.getReadBootstrapServers(),
-            topics,
+            topicsList,
             kafkaConfig,
             null,
             options.getEnableCommitOffsets());
