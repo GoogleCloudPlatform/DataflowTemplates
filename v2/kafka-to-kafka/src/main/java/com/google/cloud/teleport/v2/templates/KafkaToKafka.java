@@ -142,6 +142,7 @@ public class KafkaToKafka {
                 .withTopic(sourceTopic)
                 .withKeyDeserializer(ByteArrayDeserializer.class)
                 .withValueDeserializer(ByteArrayDeserializer.class)
+
                 .withConsumerConfigUpdates(ConsumerProperties.from(options))
                 .withConsumerFactoryFn(new FileAwareConsumerFactoryFn())
                 .withoutMetadata())
