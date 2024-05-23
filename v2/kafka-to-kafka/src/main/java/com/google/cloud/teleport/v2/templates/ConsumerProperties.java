@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 
+
 import static org.apache.hadoop.hdfs.DFSInotifyEventInputStream.LOG;
 
 
@@ -24,6 +25,7 @@ import com.google.cloud.ReadChannel;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+
 
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
@@ -61,16 +63,22 @@ final class ConsumerProperties {
 
   public static ImmutableMap<String, Object> get(KafkaToKafkaOptions options) throws IOException {
     ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
+
     properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "10.128.15.204:9092");
     if (options.getSourceAuthenticationMethod().equals("SSL")) {
       properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
-
       properties.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getSourceKeystoreLocation());
-      properties.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG,
-          options.getSourceTruststoreLocation());
-      properties.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getSourceTruststorePasswordSecretId()));
-      properties.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getSourceKeystorePasswordSecretId()));
-      properties.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, SecretManagerUtils.getSecret(options.getSourceKeyPasswordSecretId()));
+      properties.put(
+          SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, options.getSourceTruststoreLocation());
+      properties.put(
+          SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
+          SecretManagerUtils.getSecret(options.getSourceTruststorePasswordSecretId()));
+      properties.put(
+          SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
+          SecretManagerUtils.getSecret(options.getSourceKeystorePasswordSecretId()));
+      properties.put(
+          SslConfigs.SSL_KEY_PASSWORD_CONFIG,
+          SecretManagerUtils.getSecret(options.getSourceKeyPasswordSecretId()));
       properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
     }
     if (options.getSourceAuthenticationMethod().equals("SASL_PLAIN")) {
