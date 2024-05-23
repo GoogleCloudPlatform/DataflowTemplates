@@ -107,7 +107,7 @@ public class MongoDbToBigQueryOptions {
 
   /** UDF options. */
   public interface JavascriptDocumentTransformerOptions extends PipelineOptions {
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.JavascriptUdfFile(
         order = 1,
         optional = true,
         description = "JavaScript UDF path in Cloud Storage.",
