@@ -49,53 +49,18 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 3,
-      regexes = {"(^jdbc:[a-zA-Z0-9/:@.]+$)"},
+      regexes = {"(^jdbc:mysql://[a-zA-Z0-9/:@.]+$)"},
       groupName = "Source",
       description =
-          "Connection URL to connect to the source database host. Port number and connection properties must be supplied separately.",
-      helpText = "The JDBC connection URL string. For example, `jdbc:mysql://some-host`.")
-  String getSourceHost();
+          "Connection URL to connect to the source database host. Must contain the host, port and source db name. Can optionally contain connection properties Format: `jdbc:mysql://{host}:{port}/{dbName}?{parameters}`",
+      helpText =
+          "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?unicode=true&characterEncoding=UTF-8`.")
+  String getSourceDbURL();
 
-  void setSourceHost(String host);
+  void setSourceDbURL(String url);
 
   @TemplateParameter.Text(
       order = 4,
-      regexes = {"(^[0-9]+$)"},
-      groupName = "Source",
-      description = "Port number of source database.",
-      helpText = "Port Number of Source Database. For example, `3306`.")
-  String getSourcePort();
-
-  void setSourcePort(String port);
-
-  /* TODO: (support Sharding, PG namespaces) */
-  @TemplateParameter.Text(
-      order = 5,
-      regexes = {"(^[^\\/?%*:|\"<>.]{1,64}$)"},
-      groupName = "Source",
-      description = "source database name.",
-      helpText = "Name of the Source Database. For example, `person9`.")
-  String getSourceDB();
-
-  void setSourceDB(String db);
-
-  @TemplateParameter.Text(
-      order = 6,
-      optional = true,
-      regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
-      groupName = "Source",
-      description = "JDBC connection property string.",
-      helpText =
-          "Properties string to use for the JDBC connection. Format of the string must be"
-              + " \"propertyName1=property1;propertyName2=property2...\".",
-      example = "unicode=true;characterEncoding=UTF-8")
-  @Default.String("")
-  String getSourceConnectionProperties();
-
-  void setSourceConnectionProperties(String connectionProperties);
-
-  @TemplateParameter.Text(
-      order = 7,
       optional = true,
       regexes = {"^.+$"},
       groupName = "Source",
@@ -107,7 +72,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setUsername(String username);
 
   @TemplateParameter.Password(
-      order = 8,
+      order = 5,
       optional = true,
       groupName = "Source",
       description = "JDBC connection password.",
@@ -118,7 +83,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setPassword(String password);
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 6,
       optional = true,
       groupName = "Source Parameters",
       description = "Comma-separated names of the tables in the source database.",
@@ -130,7 +95,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   /* TODO(pipelineController) allow per table NumPartitions. */
   @TemplateParameter.Integer(
-      order = 10,
+      order = 7,
       optional = true,
       groupName = "Source",
       description = "The number of partitions.",
@@ -143,20 +108,8 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   void setNumPartitions(Integer value);
 
-  /* TODO(pipelineController) allow per table FetchSize. */
-  @TemplateParameter.Integer(
-      order = 11,
-      optional = true,
-      groupName = "Source",
-      description = "Table Read Fetch Size.",
-      helpText = "The fetch size of a single table read.")
-  @Default.Integer(0) /* Use Beam Default */
-  Integer getFetchSize();
-
-  void setFetchSize(Integer numPartitions);
-
   @TemplateParameter.Text(
-      order = 12,
+      order = 8,
       description = "Cloud Spanner Instance Id.",
       helpText = "The destination Cloud Spanner instance.")
   String getInstanceId();
@@ -164,7 +117,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setInstanceId(String value);
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 9,
       regexes = {"^[a-z]([a-z0-9_-]{0,28})[a-z0-9]$"},
       description = "Cloud Spanner Database Id.",
       helpText = "The destination Cloud Spanner database.")
@@ -173,7 +126,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setDatabaseId(String value);
 
   @TemplateParameter.ProjectId(
-      order = 14,
+      order = 10,
       description = "Cloud Spanner Project Id.",
       helpText = "This is the name of the Cloud Spanner project.")
   String getProjectId();
@@ -181,7 +134,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setProjectId(String projectId);
 
   @TemplateParameter.Text(
-      order = 15,
+      order = 11,
       optional = true,
       description = "Cloud Spanner Endpoint to call",
       helpText = "The Cloud Spanner endpoint to call in the template.",
@@ -192,7 +145,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setSpannerHost(String value);
 
   @TemplateParameter.Integer(
-      order = 16,
+      order = 12,
       optional = true,
       description = "Maximum number of connections to Source database per worker",
       helpText =
@@ -203,30 +156,8 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   void setMaxConnections(Integer value);
 
-  @TemplateParameter.Boolean(
-      order = 17,
-      optional = true,
-      description = "enable connection reconnects",
-      helpText = "Enables the JDBC connection reconnects.",
-      example = "10")
-  @Default.Boolean(true) // Take Dialect Specific default in the wrapper.
-  Boolean getReconnectsEnabled();
-
-  void setReconnectsEnabled(Boolean value);
-
-  @TemplateParameter.Integer(
-      order = 18,
-      optional = true,
-      description = "Maximum number of connection reconnect attempts, if reconnects are enabled",
-      helpText = "Configures the JDBC connection reconnect attempts.",
-      example = "10")
-  @Default.Integer(0) // Take Dialect Specific default in the wrapper.
-  Integer getReconnectAttempts();
-
-  void setReconnectAttempts(Integer value);
-
   @TemplateParameter.GcsReadFile(
-      order = 19,
+      order = 13,
       optional = true,
       description =
           "Session File Path in Cloud Storage, to provide mapping information in the form of a session file",
@@ -239,7 +170,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setSessionFilePath(String value);
 
   @TemplateParameter.GcsReadFile(
-      order = 20,
+      order = 14,
       optional = false,
       description = "Dead letter queue directory",
       helpText = "This directory is used to dump the failed records in a migration.")

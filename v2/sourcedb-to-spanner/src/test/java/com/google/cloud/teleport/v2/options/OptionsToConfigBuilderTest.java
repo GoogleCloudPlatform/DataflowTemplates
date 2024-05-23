@@ -30,32 +30,22 @@ public class OptionsToConfigBuilderTest {
   @Test
   public void testConfigWithMySqlDefaultsFromOptions() {
     final String testdriverClassName = "org.apache.derby.jdbc.EmbeddedDriver";
-    final String testHost = "localHost";
-    final String testPort = "3306";
+    final String testUrl = "jdbc:mysql://localhost:3306/testDB";
     final String testuser = "user";
     final String testpassword = "password";
     SourceDbToSpannerOptions sourceDbToSpannerOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
-    sourceDbToSpannerOptions.setSourceHost(testHost);
-    sourceDbToSpannerOptions.setSourcePort(testPort);
+    sourceDbToSpannerOptions.setSourceDbURL(testUrl);
     sourceDbToSpannerOptions.setJdbcDriverClassName(testdriverClassName);
-    sourceDbToSpannerOptions.setSourceConnectionProperties(
-        "maxTotal=160;maxpoolsize=160;maxIdle=160;minIdle=160" + ";wait_timeout=57600");
-    sourceDbToSpannerOptions.setFetchSize(50000);
     sourceDbToSpannerOptions.setMaxConnections(150);
     sourceDbToSpannerOptions.setNumPartitions(4000);
     sourceDbToSpannerOptions.setUsername(testuser);
     sourceDbToSpannerOptions.setPassword(testpassword);
-    sourceDbToSpannerOptions.setReconnectsEnabled(true);
-    sourceDbToSpannerOptions.setReconnectAttempts(10);
-    sourceDbToSpannerOptions.setSourceDB("testDB");
     sourceDbToSpannerOptions.setTables("table1,table2");
     JdbcIOWrapperConfig config =
         OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(sourceDbToSpannerOptions);
-    assertThat(config.autoReconnect()).isTrue();
     assertThat(config.jdbcDriverClassName()).isEqualTo(testdriverClassName);
-    assertThat(config.sourceHost()).isEqualTo(testHost);
-    assertThat(config.sourcePort()).isEqualTo(testPort);
+    assertThat(config.sourceDbURL()).isEqualTo(testUrl);
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testuser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testpassword);

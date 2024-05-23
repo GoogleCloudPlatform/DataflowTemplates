@@ -262,10 +262,12 @@ public final class JdbcIoWrapper implements IoWrapper {
     DataSourceConfiguration dataSourceConfig =
         JdbcIO.DataSourceConfiguration.create(
                 StaticValueProvider.of(config.jdbcDriverClassName()),
-                StaticValueProvider.of(getUrl(config)))
-            .withDriverJars(config.jdbcDriverJars())
+                StaticValueProvider.of(config.sourceDbURL()))
             .withMaxConnections(Math.toIntExact(config.maxConnections()));
 
+    if (config.jdbcDriverJars() != null && !config.jdbcDriverJars().isEmpty()) {
+      dataSourceConfig = dataSourceConfig.withDriverJars(config.jdbcDriverJars());
+    }
     if (!config.dbAuth().getUserName().get().isBlank()) {
       dataSourceConfig = dataSourceConfig.withUsername(config.dbAuth().getUserName().get());
     }
@@ -273,29 +275,6 @@ public final class JdbcIoWrapper implements IoWrapper {
       dataSourceConfig = dataSourceConfig.withPassword(config.dbAuth().getPassword().get());
     }
     return dataSourceConfig;
-  }
-
-  private static String getUrl(JdbcIOWrapperConfig config) {
-    StringBuffer urlBuilder =
-        new StringBuffer()
-            .append(config.sourceHost())
-            .append(":")
-            .append(config.sourcePort())
-            .append("/")
-            .append(config.sourceSchemaReference().dbName());
-    /* TODO: Handle PG Namespace */
-    ImmutableList.Builder<String> attributesBuilder = new ImmutableList.Builder<>();
-    if (config.autoReconnect()) {
-      attributesBuilder
-          .add("autoReconnect=true")
-          .add("maxReconnects=" + config.reconnectAttempts());
-    }
-    String attributes = String.join("&", attributesBuilder.build());
-    if (!attributes.isBlank()) {
-      urlBuilder.append("?").append(attributes);
-    }
-    logger.debug("connection url is" + urlBuilder.toString());
-    return urlBuilder.toString();
   }
 
   /**
@@ -307,7 +286,7 @@ public final class JdbcIoWrapper implements IoWrapper {
    *     <p>The external code should use the {@link JdbcIoWrapper#of} static method to construct the
    *     {@link JdbcIoWrapper} from the configuration. A private constructor and a public `of`
    *     method allows us to keep minimal logic in the constructor. This pattern is also followed by
-   *     Beam claases like {@link JdbcIO}
+   *     Beam classes like {@link JdbcIO}
    */
   private JdbcIoWrapper(
       ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> tableReaders,
