@@ -49,7 +49,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 3,
-      regexes = {"(^jdbc:mysql://[a-zA-Z0-9/:@.]+$)"},
+      regexes = {"(^jdbc:mysql://[^\\n\\r]+$)"},
       groupName = "Source",
       description =
           "Connection URL to connect to the source database host. Must contain the host, port and source db name. Can optionally contain connection properties Format: `jdbc:mysql://{host}:{port}/{dbName}?{parameters}`",

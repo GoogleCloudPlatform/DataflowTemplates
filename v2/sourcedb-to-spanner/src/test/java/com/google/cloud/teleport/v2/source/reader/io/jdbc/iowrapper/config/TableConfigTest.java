@@ -34,7 +34,6 @@ public class TableConfigTest {
     TableConfig tableConfig =
         TableConfig.builder(testTable).withPartitionColum(partitionColumn).build();
     assertThat(tableConfig.tableName()).isEqualTo(testTable);
-    assertThat(tableConfig.maxFetchSize()).isNull();
     assertThat(tableConfig.maxPartitions()).isNull();
     assertThat(tableConfig.partitionColumns()).isEqualTo(ImmutableList.of(partitionColumn));
   }
@@ -43,17 +42,14 @@ public class TableConfigTest {
   public void testTableConfigBuilds() {
     final String testTable = "testTable";
     final String partitionColumn = "col_1";
-    final int maxFetchSize = 100;
     final int maxPartitions = 100;
 
     TableConfig tableConfig =
         TableConfig.builder(testTable)
             .withPartitionColum(partitionColumn)
-            .setMaxFetchSize(maxFetchSize)
             .setMaxPartitions(maxPartitions)
             .build();
     assertThat(tableConfig.tableName()).isEqualTo(testTable);
-    assertThat(tableConfig.maxFetchSize()).isEqualTo(maxFetchSize);
     assertThat(tableConfig.maxPartitions()).isEqualTo(maxPartitions);
     assertThat(tableConfig.partitionColumns()).isEqualTo(ImmutableList.of(partitionColumn));
   }
