@@ -47,6 +47,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       optional = false,
       description = "Source Authentication Mode",
       enumOptions = {
+
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
@@ -215,9 +216,11 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       optional = false,
       description = "Destination Authentication Method",
       enumOptions = {
+
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
+
       },
 
       helpText = "Type of authentication mechanism to use with the destination Kafka.")
