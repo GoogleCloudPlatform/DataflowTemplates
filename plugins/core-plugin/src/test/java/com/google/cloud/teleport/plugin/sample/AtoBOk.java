@@ -121,5 +121,12 @@ public class AtoBOk {
         helpText = "Cloud Storage Bucket to read from")
     @Default.String("")
     String getGcsReadBucket();
+
+    @TemplateParameter.GcsWriteBucket(
+        order = 12,
+        description = "Cloud Storage Bucket to write",
+        helpText = "Cloud Storage Bucket to write")
+    @Default.String("")
+    String getGcsWriteBucket();
   }
 }

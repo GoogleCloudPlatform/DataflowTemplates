@@ -255,6 +255,23 @@ public class ImageSpecParameter {
         this.setHiddenUi(gcsWriteFolderParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.GCS_WRITE_FOLDER);
         break;
+      case "GcsWriteBucket":
+        TemplateParameter.GcsWriteBucket gcsWriteBucketParam =
+            (TemplateParameter.GcsWriteBucket) parameterAnnotation;
+        if (!gcsWriteBucketParam.name().isEmpty()) {
+          this.setName(gcsWriteBucketParam.name());
+        }
+        processDescriptions(
+            gcsWriteBucketParam.groupName(),
+            gcsWriteBucketParam.description(),
+            gcsWriteBucketParam.helpText(),
+            gcsWriteBucketParam.example());
+        this.setParentName(gcsWriteBucketParam.parentName());
+        this.setParentTriggerValues(gcsWriteBucketParam.parentTriggerValues());
+        this.setOptional(gcsWriteBucketParam.optional());
+        this.setHiddenUi(gcsWriteBucketParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.GCS_WRITE_BUCKET);
+        break;
       case "PubsubSubscription":
         TemplateParameter.PubsubSubscription pubsubSubscriptionParam =
             (TemplateParameter.PubsubSubscription) parameterAnnotation;

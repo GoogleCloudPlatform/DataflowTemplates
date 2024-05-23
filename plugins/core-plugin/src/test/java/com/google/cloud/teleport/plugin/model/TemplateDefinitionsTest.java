@@ -75,6 +75,9 @@ public class TemplateDefinitionsTest {
 
     ImageSpecParameter gcsReadBucket = metadata.getParameter("gcsReadBucket").get();
     assertEquals(ImageSpecParameterType.GCS_READ_BUCKET, gcsReadBucket.getParamType());
+
+    ImageSpecParameter gcsWriteBucket = metadata.getParameter("gcsWriteBucket").get();
+    assertEquals(ImageSpecParameterType.GCS_WRITE_BUCKET, gcsWriteBucket.getParamType());
   }
 
   @Test

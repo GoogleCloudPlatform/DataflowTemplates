@@ -42,6 +42,7 @@ public final class MetadataUtils {
         TemplateParameter.GcsReadFolder.class,
         TemplateParameter.GcsWriteFile.class,
         TemplateParameter.GcsWriteFolder.class,
+        TemplateParameter.GcsWriteBucket.class,
         TemplateParameter.Integer.class,
         TemplateParameter.KafkaTopic.class,
         TemplateParameter.KmsEncryptionKey.class,
@@ -148,6 +149,10 @@ public final class MetadataUtils {
       case "GcsWriteFolder":
         TemplateParameter.GcsWriteFolder gcsWriteFolderParam =
             (TemplateParameter.GcsWriteFolder) parameterAnnotation;
+        return List.of("^gs:\\/\\/[^\\n\\r]+$");
+      case "GcsWriteBucket":
+        TemplateParameter.GcsWriteBucket gcsWriteBucketParam =
+            (TemplateParameter.GcsWriteBucket) parameterAnnotation;
         return List.of("^gs:\\/\\/[^\\n\\r]+$");
       case "PubsubSubscription":
         TemplateParameter.PubsubSubscription pubsubSubscriptionParam =
