@@ -40,13 +40,30 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
   @TemplateParameter.Enum(
       groupName = "Source authentication",
       order = 2,
+name = "startOffset",
+      optional = false,
+      helpText = "Kafka offset",
+      description = "Kafka offset to read data",
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption("latest"),
+        @TemplateParameter.TemplateEnumOption("earliest")
+      })
+  @Validation.Required
+  String getKafkaOffset();
+
+  void setKafkaOffset(String kafkaOffset);
+
+  @TemplateParameter.Enum(
+      groupName = "Source",
+      order = 3,
+
       name = "sourceAuthenticationMethod",
       optional = false,
       description = "Method for source Kafka authentication",
       enumOptions = {
-          @TemplateParameter.TemplateEnumOption("SASL_PLAIN"),
-          @TemplateParameter.TemplateEnumOption("SSL"),
-          @TemplateParameter.TemplateEnumOption("No_Authentication")
+        @TemplateParameter.TemplateEnumOption("SASL_PLAIN"),
+        @TemplateParameter.TemplateEnumOption("SSL"),
+        @TemplateParameter.TemplateEnumOption("No_Authentication")
       },
       helpText = "Type of authentication mechanism to authenticate to source Kafka."
   )
@@ -196,9 +213,9 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       optional = false,
       description = "Method for source Kafka authentication",
       enumOptions = {
-          @TemplateParameter.TemplateEnumOption("SASL_PLAIN"),
-          @TemplateParameter.TemplateEnumOption("SSL"),
-          @TemplateParameter.TemplateEnumOption("No Authentication")
+        @TemplateParameter.TemplateEnumOption("SASL_PLAIN"),
+        @TemplateParameter.TemplateEnumOption("SSL"),
+        @TemplateParameter.TemplateEnumOption("No Authentication")
       },
       helpText = "Type of authentication mechanism to authenticate to source Kafka."
   )
