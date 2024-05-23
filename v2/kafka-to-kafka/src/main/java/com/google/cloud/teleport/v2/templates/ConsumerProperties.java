@@ -29,9 +29,11 @@ import com.google.cloud.storage.StorageOptions;
 
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
+
 import com.google.common.collect.ImmutableMap;
 
 import java.io.IOException;
+import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
@@ -59,7 +61,6 @@ import org.slf4j.LoggerFactory;
 final class ConsumerProperties {
 
   private static final Logger LOGG = LoggerFactory.getLogger(ConsumerProperties.class);
-
 
   public static ImmutableMap<String, Object> get(KafkaToKafkaOptions options) throws IOException {
     ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();

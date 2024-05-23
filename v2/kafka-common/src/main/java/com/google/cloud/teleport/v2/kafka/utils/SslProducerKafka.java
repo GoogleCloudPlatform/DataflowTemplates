@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.kafka.utils;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
@@ -34,34 +35,42 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Class to create Kafka Producer with configured SSL. */
-public class SslProducerFactoryFn
-    implements SerializableFunction<Map<String, Object>, Producer<Void, String>> {
-  private final Map<String, String> sslConfig;
+public class SslProducerKafka
+    implements SerializableFunction<Map<String, Object>, Producer<byte[], byte[]>> {
+
+  private final Map<String, String> sslKafkaConfig;
   private static final String TRUSTSTORE_LOCAL_PATH = "/tmp/kafka.truststore.jks";
   private static final String KEYSTORE_LOCAL_PATH = "/tmp/kafka.keystore.jks";
 
   /* Logger for class.*/
   private static final Logger LOG = LoggerFactory.getLogger(SslProducerFactoryFn.class);
 
-  public SslProducerFactoryFn(Map<String, String> sslConfig) {
-    this.sslConfig = sslConfig;
+  public SslProducerKafka(Map<String, String> sslConfig) {
+    this.sslKafkaConfig = sslConfig;
   }
 
   @Override
-  public Producer<Void, String> apply(Map<String, Object> config) {
-    String bucket = sslConfig.get("bucket");
-    String trustStorePath = sslConfig.get(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG);
-    String keyStorePath = sslConfig.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
-    String trustStorePassword = sslConfig.get(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG);
-    String keyStorePassword = sslConfig.get(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
-    String keyPassword = sslConfig.get(SslConfigs.SSL_KEY_PASSWORD_CONFIG);
+  public Producer<byte[], byte[]> apply(Map<String, Object> config) {
+    String trustStorePath = sslKafkaConfig.get(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG);
+    String keyStorePath = sslKafkaConfig.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
+    String trustStorePassword = sslKafkaConfig.get(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG);
+    String keyStorePassword = sslKafkaConfig.get(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
+    String keyPassword = sslKafkaConfig.get(SslConfigs.SSL_KEY_PASSWORD_CONFIG);
     String outputTrustStoreFilePath;
     String outputKeyStoreFilePath;
     try {
       outputTrustStoreFilePath = TRUSTSTORE_LOCAL_PATH;
       outputKeyStoreFilePath = KEYSTORE_LOCAL_PATH;
-      getGcsFileAsLocal(bucket, trustStorePath, outputTrustStoreFilePath);
-      getGcsFileAsLocal(bucket, keyStorePath, outputKeyStoreFilePath);
+      SslProducerFactoryFn.getGcsFileAsLocal(
+          getBucketAndPath(
+              String.valueOf(sslKafkaConfig.get(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG)))[0],
+          String.valueOf(trustStorePath),
+          outputTrustStoreFilePath);
+      SslProducerFactoryFn.getGcsFileAsLocal(
+          getBucketAndPath(
+              String.valueOf(sslKafkaConfig.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG)))[0],
+          String.valueOf(keyStorePath),
+          outputKeyStoreFilePath);
     } catch (IOException e) {
       LOG.error("Failed to retrieve data for SSL", e);
       return new KafkaProducer<>(config);
@@ -77,27 +86,33 @@ public class SslProducerFactoryFn
     return new KafkaProducer<>(config);
   }
 
-  /**
-   * Reads a file from GCS and writes it locally.
-   *
-   * @param bucket GCS bucket name
-   * @param filePath path to file in GCS
-   * @param outputFilePath path where to save file locally
-   * @throws IOException thrown if not able to read or write file
-   */
+  public static String[] getBucketAndPath(String gcsPath) {
+
+    String remainingUri = gcsPath.substring(5);
+
+    int slashIndex = remainingUri.indexOf('/');
+
+    String bucket = remainingUri.substring(0, slashIndex);
+    String path = remainingUri.substring(slashIndex + 1);
+    return new String[] {bucket, path};
+  }
+
   public static void getGcsFileAsLocal(String bucket, String filePath, String outputFilePath)
       throws IOException {
     String gcsFilePath = String.format("gs://%s/%s", bucket, filePath);
-    LOG.info("Reading contents from GCS file: {}", gcsFilePath);
-    Set<StandardOpenOption> options = new HashSet<>(2);
-    options.add(StandardOpenOption.CREATE);
-    options.add(StandardOpenOption.APPEND);
-    // Copy the GCS file into a local file and will throw
-    // an I/O exception in case file not found.
-    try (ReadableByteChannel readerChannel =
-        FileSystems.open(FileSystems.matchSingleFileSpec(gcsFilePath).resourceId())) {
-      try (FileChannel writeChannel = FileChannel.open(Paths.get(outputFilePath), options)) {
-        writeChannel.transferFrom(readerChannel, 0, Long.MAX_VALUE);
+    if (!new File(outputFilePath).exists()) {
+
+      LOG.info("Reading contents from GCS file: {}", gcsFilePath);
+      Set<StandardOpenOption> options = new HashSet<>(2);
+      options.add(StandardOpenOption.CREATE);
+      options.add(StandardOpenOption.APPEND);
+      // Copy the GCS file into a local file and will throw
+      // an I/O exception in case file not found.
+      try (ReadableByteChannel readerChannel =
+          FileSystems.open(FileSystems.matchSingleFileSpec(gcsFilePath).resourceId())) {
+        try (FileChannel writeChannel = FileChannel.open(Paths.get(outputFilePath), options)) {
+          writeChannel.transferFrom(readerChannel, 0, Long.MAX_VALUE);
+        }
       }
     }
   }

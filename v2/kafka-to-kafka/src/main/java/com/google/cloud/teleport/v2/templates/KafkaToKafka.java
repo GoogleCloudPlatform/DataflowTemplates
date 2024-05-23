@@ -21,7 +21,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.kafka.utils.SslConsumerFactoryFn;
-import com.google.cloud.teleport.v2.kafka.utils.SslProducerFactoryFn;
+import com.google.cloud.teleport.v2.kafka.utils.SslProducerKafka;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
@@ -143,7 +143,7 @@ public class KafkaToKafka {
             KafkaIO.<byte[], byte[]>read()
 
                 .withBootstrapServers("10.128.15.204:9092")
-                .withTopic("test")
+                .withTopic("quickstart-events")
                 .withKeyDeserializer(ByteArrayDeserializer.class)
                 .withValueDeserializer(ByteArrayDeserializer.class)
                 .withConsumerFactoryFn(new SslConsumerFactoryFn(ConsumerProperties.get(options)))
@@ -151,14 +151,15 @@ public class KafkaToKafka {
     KafkaIO.Write<byte[], byte[]> kafkaWrite =
         KafkaIO.<byte[], byte[]>write()
             .withBootstrapServers("10.128.15.204:9092")
-            .withTopic("outputTopic")
+            .withTopic("quickstart-events")
             .withKeySerializer(ByteArraySerializer.class)
-            .withValueSerializer(ByteArraySerializer.class);
+            .withValueSerializer(ByteArraySerializer.class)
+            .withProducerFactoryFn(new SslProducerKafka(ProducerProperties.get(options)));
 
-    records.apply(
-        "write messages to kafka",
-        kafkaWrite.withProducerFactoryFn(
-            new SslProducerFactoryFn(ProducerProperties.get(options))));
+    // records.apply(
+    //     "write messages to kafka",
+    //     kafkaWrite.withProducerFactoryFn(
+    //         new SslProducerFactoryFn(ProducerProperties.get(options))));
     return pipeline.run();
   }
 }
