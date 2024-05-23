@@ -49,6 +49,7 @@ import org.apache.kafka.common.config.SslConfigs;
  */
 final class ProducerProperties {
 
+
   public static Map<String, Object> from(KafkaToKafkaOptions options) {
     Map<String, Object> properties = new HashMap<>();
     String authMethod = options.getDestinationAuthenticationMethod();
@@ -64,6 +65,7 @@ final class ProducerProperties {
           SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, options.getDestinationTruststoreLocation());
       properties.put(
           SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
+
           FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
               + options.getDestinationTruststorePasswordSecretId());
       properties.put(

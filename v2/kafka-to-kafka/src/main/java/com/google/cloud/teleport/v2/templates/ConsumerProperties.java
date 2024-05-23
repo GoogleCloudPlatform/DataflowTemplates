@@ -18,8 +18,10 @@ package com.google.cloud.teleport.v2.templates;
 
 
 
+
 import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
+
 
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
@@ -54,11 +56,13 @@ import org.apache.kafka.common.config.SslConfigs;
 final class ConsumerProperties {
 
 
+
   public static Map<String, Object> from(KafkaToKafkaOptions options) throws IOException {
     Map<String, Object> properties = new HashMap<>();
     String authMethod = options.getSourceAuthenticationMethod();
     if (authMethod == null) {
       return properties;
+
     }
 
 
@@ -99,9 +103,11 @@ final class ConsumerProperties {
               + SecretManagerUtils.getSecret(options.getSourcePasswordSecretId())
               + "\';");
 
+
       properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaOffset());
     } else {
       throw new UnsupportedEncodingException("Authentication method not supported: " + authMethod);
+
 
     }
 
