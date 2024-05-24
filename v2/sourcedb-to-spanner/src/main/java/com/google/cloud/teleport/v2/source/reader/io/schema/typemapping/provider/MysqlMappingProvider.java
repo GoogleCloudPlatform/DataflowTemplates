@@ -46,6 +46,7 @@ public final class MysqlMappingProvider {
           .put("ENUM", UnifiedMappingProvider.Type.STRING)
           .put("FLOAT", UnifiedMappingProvider.Type.FLOAT)
           .put("INTEGER", UnifiedMappingProvider.Type.INTEGER)
+          .put("INTEGER UNSIGNED", UnifiedMappingProvider.Type.LONG)
           .put("JSON", UnifiedMappingProvider.Type.JSON)
           .put("LONGBLOB", UnifiedMappingProvider.Type.STRING)
           .put("LONGTEXT", UnifiedMappingProvider.Type.STRING)

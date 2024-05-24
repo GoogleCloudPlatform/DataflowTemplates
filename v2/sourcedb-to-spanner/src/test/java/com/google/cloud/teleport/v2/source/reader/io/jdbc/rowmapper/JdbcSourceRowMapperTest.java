@@ -309,6 +309,13 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Col.builder(
+                    "unsigned_integer_col",
+                    "INTEGER" /* Derby does not support unsigned */,
+                    new SourceColumnType("INTEGER UNSIGNED", new Long[] {}, null))
+                .withValue(2_147_483_647, 2_147_483_647L)
+                .build())
+        .add(
+            Col.builder(
                     "json_col",
                     "VARCHAR(100)" /*derby does not support json*/,
                     new SourceColumnType("JSON", new Long[] {}, null))

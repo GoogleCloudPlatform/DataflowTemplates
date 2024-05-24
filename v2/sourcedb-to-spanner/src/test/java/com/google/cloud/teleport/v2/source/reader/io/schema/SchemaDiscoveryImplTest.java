@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryRetriesExhaustedException;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
@@ -116,5 +117,62 @@ public class SchemaDiscoveryImplTest {
                     mockDataSource, mockSourceSchemaReference, ImmutableList.of()));
     verify(mockRetriableSchemaDiscovery, times(expectedCallsCount))
         .discoverTableSchema(any(), any(), any());
+  }
+
+  @Test
+  public void testTableDiscoveryImpl() throws RetriableSchemaDiscoveryException {
+    final int testRetryCount = 2;
+    final int expectedCallsCount = testRetryCount + 1;
+    final ImmutableList<String> testTables = ImmutableList.of("testTable1", "testTable2");
+    when(mockRetriableSchemaDiscovery.discoverTables(mockDataSource, mockSourceSchemaReference))
+        .thenThrow(new RetriableSchemaDiscoveryException(new SQLTransientConnectionException()))
+        .thenThrow(new RetriableSchemaDiscoveryException(new SQLTransientConnectionException()))
+        .thenReturn(testTables);
+    assertThat(
+            new SchemaDiscoveryImpl(
+                    mockRetriableSchemaDiscovery,
+                    FluentBackoff.DEFAULT
+                        .withInitialBackoff(Duration.millis(10L))
+                        .withExponent(1)
+                        .withMaxRetries(testRetryCount))
+                .discoverTables(mockDataSource, mockSourceSchemaReference))
+        .isEqualTo(testTables);
+    verify(mockRetriableSchemaDiscovery, times(expectedCallsCount)).discoverTables(any(), any());
+  }
+
+  @Test
+  public void testIndexDiscoveryImpl() throws RetriableSchemaDiscoveryException {
+    final int testRetryCount = 2;
+    final int expectedCallsCount = testRetryCount + 1;
+    final ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoveredIndexes =
+        ImmutableMap.of(
+            "testTable1",
+            ImmutableList.of(
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("testCol")
+                    .setIndexName("PRIMARY")
+                    .setIsPrimary(true)
+                    .setIsUnique(true)
+                    .setCardinality(42L)
+                    .setOrdinalPosition(1)
+                    .setIndexType(IndexType.NUMERIC)
+                    .build()));
+    when(mockRetriableSchemaDiscovery.discoverTableIndexes(
+            mockDataSource, mockSourceSchemaReference, ImmutableList.of("testTable1")))
+        .thenThrow(new RetriableSchemaDiscoveryException(new SQLTransientConnectionException()))
+        .thenThrow(new RetriableSchemaDiscoveryException(new SQLTransientConnectionException()))
+        .thenReturn(discoveredIndexes);
+    assertThat(
+            new SchemaDiscoveryImpl(
+                    mockRetriableSchemaDiscovery,
+                    FluentBackoff.DEFAULT
+                        .withInitialBackoff(Duration.millis(10L))
+                        .withExponent(1)
+                        .withMaxRetries(testRetryCount))
+                .discoverTableIndexes(
+                    mockDataSource, mockSourceSchemaReference, ImmutableList.of("testTable1")))
+        .isEqualTo(discoveredIndexes);
+    verify(mockRetriableSchemaDiscovery, times(expectedCallsCount))
+        .discoverTableIndexes(any(), any(), any());
   }
 }

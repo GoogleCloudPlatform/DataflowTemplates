@@ -173,6 +173,7 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
           .put("ENUM", Pair.of(ResultSet::getString, valuePassThrough))
           .put("FLOAT", Pair.of(ResultSet::getFloat, valuePassThrough))
           .put("INTEGER", Pair.of(ResultSet::getInt, valuePassThrough))
+          .put("INTEGER UNSIGNED", Pair.of(ResultSet::getLong, valuePassThrough))
           .put("JSON", Pair.of(ResultSet::getString, valuePassThrough))
           .put("LONGBLOB", Pair.of(ResultSet::getBlob, blobToHexString))
           .put("LONGTEXT", Pair.of(ResultSet::getString, valuePassThrough))

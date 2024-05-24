@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.options;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
-import com.google.common.collect.ImmutableList;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -51,17 +50,13 @@ public class OptionsToConfigBuilderTest {
     sourceDbToSpannerOptions.setReconnectAttempts(10);
     sourceDbToSpannerOptions.setSourceDB("testDB");
     sourceDbToSpannerOptions.setTables("table1,table2");
-    sourceDbToSpannerOptions.setPartitionColumns("col1,col2");
     JdbcIOWrapperConfig config =
         OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(sourceDbToSpannerOptions);
     assertThat(config.autoReconnect()).isTrue();
     assertThat(config.jdbcDriverClassName()).isEqualTo(testdriverClassName);
     assertThat(config.sourceHost()).isEqualTo(testHost);
     assertThat(config.sourcePort()).isEqualTo(testPort);
-    assertThat(
-            ImmutableList.of(
-                config.tableConfigs().get(0).tableName(), config.tableConfigs().get(1).tableName()))
-        .containsExactlyElementsIn(ImmutableList.of("table1", "table2"));
+    assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testuser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testpassword);
   }
