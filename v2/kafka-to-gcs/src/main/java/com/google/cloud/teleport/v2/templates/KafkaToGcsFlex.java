@@ -20,6 +20,8 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
+import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSAvro;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSParquet;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSText;
@@ -34,8 +36,6 @@ import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.ByteArrayCoder;
-import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.options.Default;
@@ -43,9 +43,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
-import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 
 @Template(
     name = "Kafka_to_Gcs_Flex",
@@ -210,8 +208,7 @@ public class KafkaToGcsFlex {
     options.setStreaming(true);
 
     Map<String, Object> kafkaConfig = new HashMap<>();
-    // Set offset to either earliest or latest.
-    kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
+
     // Authenticate to Kafka only when user provides authentication params.
     if (useKafkaAuth) {
       String kafkaSaslPlainUserName = SecretManagerUtils.getSecret(options.getUserNameSecretID());
@@ -219,19 +216,18 @@ public class KafkaToGcsFlex {
       kafkaConfig.putAll(
           ClientAuthConfig.getSaslPlainConfig(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
     }
+    // Configure offset value, group id and finalizing offset to consumer group.
+    kafkaConfig.putAll(KafkaCommonUtils.configureKafkaOffsetCommit(options));
 
     // Step 1: Read from Kafka as bytes.
-    kafkaRecord =
-        pipeline.apply(
-            KafkaIO.<byte[], byte[]>read()
-                .withBootstrapServers(options.getReadBootstrapServers())
-                .withTopics(topics)
-                .withKeyDeserializerAndCoder(
-                    ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
-                .withValueDeserializerAndCoder(
-                    ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
-                .withConsumerConfigUpdates(kafkaConfig));
-
+    KafkaIO.Read<byte[], byte[]> kafkaTransform =
+        KafkaTransform.readBytesFromKafka(
+            options.getReadBootstrapServers(),
+            topics,
+            kafkaConfig,
+            null,
+            options.getEnableCommitOffsets());
+    kafkaRecord = pipeline.apply(kafkaTransform);
     kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
     return pipeline.run();
   }

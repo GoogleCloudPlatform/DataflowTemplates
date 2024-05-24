@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
 import com.google.cloud.teleport.v2.options.KafkaToBigQueryFlexOptions;
 import com.google.cloud.teleport.v2.transforms.AvroDynamicTransform;
@@ -64,7 +65,6 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -195,7 +195,9 @@ public class KafkaToBigQueryFlex {
      */
 
     ImmutableMap<String, Object> kafkaConfig =
-        ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
+        ImmutableMap.<String, Object>builder()
+            .putAll(KafkaCommonUtils.configureKafkaOffsetCommit(options))
+            .build();
 
     if (options.getKafkaReadAuthenticationMode().equals("SASL_PLAIN")) {
 
@@ -252,7 +254,12 @@ public class KafkaToBigQueryFlex {
              */
             .apply(
                 "ReadBytesFromKafka",
-                KafkaTransform.readBytesFromKafka(bootstrapServers, topicsList, kafkaConfig, null))
+                KafkaTransform.readBytesFromKafka(
+                    bootstrapServers,
+                    topicsList,
+                    kafkaConfig,
+                    null,
+                    options.getEnableCommitOffsets()))
             .setCoder(
                 KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()));
 
