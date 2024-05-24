@@ -34,12 +34,15 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.beam.sdk.io.gcp.bigquery.DynamicDestinations;
 import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.ValueInSingleWindow;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link BigQueryDynamicDestinations} loads into BigQuery tables in a dynamic fashion. The
@@ -47,6 +50,8 @@ import org.apache.beam.sdk.values.ValueInSingleWindow;
  */
 public final class BigQueryDynamicDestinations
     extends DynamicDestinations<TableRow, KV<TableId, TableRow>> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(BigQueryDynamicDestinations.class);
 
   private final Map<String, TrackedSpannerTable> spannerTableByName;
   private final String bigQueryProject, bigQueryDataset, bigQueryTableTemplate;
@@ -66,6 +71,14 @@ public final class BigQueryDynamicDestinations
               .getSpannerTableByName();
       return new BigQueryDynamicDestinations(
           bigQueryDynamicDestinationsOptions, spannerTableByName);
+    } catch (RuntimeException e) {
+      String errorMessage =
+          String.format(
+              "Caught exception when getting BigQueryDynamicDestinations, message: %s,"
+                  + " cause: %s",
+              Optional.ofNullable(e.getMessage()), e.getCause());
+      LOG.error(errorMessage);
+      throw new RuntimeException(errorMessage, e);
     }
   }
 
