@@ -450,6 +450,11 @@ public class MysqlDialectAdapterTest {
                 .withCharMaxLength(null)
                 .withNumericPrecision(null)
                 .withNumericScale(null)
+                .withColName("tiny_int_unsigned_col")
+                .withDataType("tinyint(20) UNSIGNED")
+                .withCharMaxLength(null)
+                .withNumericPrecision(null)
+                .withNumericScale(null)
                 .build())
         .createMock();
   }
@@ -471,7 +476,8 @@ public class MysqlDialectAdapterTest {
             .put(
                 "bigint_unsigned_col",
                 new SourceColumnType("BIGINT UNSIGNED", new Long[] {10L}, null))
-            .put("int_unsigned_col", new SourceColumnType("INTEGER", new Long[] {}, null))
+            .put("int_unsigned_col", new SourceColumnType("INTEGER UNSIGNED", new Long[] {}, null))
+            .put("tiny_int_unsigned_col", new SourceColumnType("TINYINT", new Long[] {}, null))
             .build());
   }
 }

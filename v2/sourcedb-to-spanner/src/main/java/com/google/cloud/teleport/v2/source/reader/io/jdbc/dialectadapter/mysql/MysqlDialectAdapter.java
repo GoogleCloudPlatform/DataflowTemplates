@@ -266,6 +266,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("BIGINT", IndexType.NUMERIC)
           .put("DATETIME", IndexType.DATE_TIME)
           .put("INTEGER", IndexType.NUMERIC)
+          .put("INTEGER UNSIGNED", IndexType.NUMERIC)
           .put("MEDIUMINT", IndexType.NUMERIC)
           .put("SMALLINT", IndexType.NUMERIC)
           .put("TINYINT", IndexType.NUMERIC)
@@ -334,7 +335,16 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   private static final Pattern normalizedColumnTypeMultiSpaces = Pattern.compile("( )+");
   private static final ImmutableMap<String, String> mySQlTypeAliases =
       ImmutableMap.of(
-          "DOUBLE PRECISION", "DOUBLE", "DEC", "DECIMAL", "INT", "INTEGER", "BOOLEAN", "BOOL");
+          "DOUBLE PRECISION",
+          "DOUBLE",
+          "DEC",
+          "DECIMAL",
+          "INT",
+          "INTEGER",
+          "INT UNSIGNED",
+          "INTEGER UNSIGNED",
+          "BOOLEAN",
+          "BOOL");
 
   private String normalizeColumnType(String columnType) {
 
@@ -353,7 +363,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     //  if it does not, we might need to deviate a bit from the unified mapping.
     //  Mapping signed/unsigned small and medium integers to integer will always work.
     String normalizedType = columnTypeWithoutDisplayWidth;
-    if (!columnTypeWithoutDisplayWidth.contains("BIGINT")) {
+    if (!columnTypeWithoutDisplayWidth.contains("BIGINT")
+        && !columnTypeWithoutDisplayWidth.startsWith("INT")) {
       normalizedType = normalizedType.replaceAll("UNSIGNED", "");
     }
     // Removing Display widths or `Unsigned` can potentially leave with either multiple spaces or
