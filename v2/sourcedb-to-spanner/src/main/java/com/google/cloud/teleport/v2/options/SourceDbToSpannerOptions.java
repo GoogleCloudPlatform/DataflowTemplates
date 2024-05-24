@@ -52,9 +52,9 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       regexes = {"(^jdbc:mysql://[^\\n\\r]+$)"},
       groupName = "Source",
       description =
-          "Connection URL to connect to the source database host. Must contain the host, port and source db name. Can optionally contain connection properties Format: `jdbc:mysql://{host}:{port}/{dbName}?{parameters}`",
+          "Connection URL to connect to the source database host. Must contain the host, port and source db name. Can optionally contain properties like autoReconnect, maxReconnects etc. Format: `jdbc:mysql://{host}:{port}/{dbName}?{parameters}`",
       helpText =
-          "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?unicode=true&characterEncoding=UTF-8`.")
+          "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`.")
   String getSourceDbURL();
 
   void setSourceDbURL(String url);
@@ -171,7 +171,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.GcsReadFile(
       order = 14,
-      optional = false,
       description = "Dead letter queue directory",
       helpText = "This directory is used to dump the failed records in a migration.")
   String getDLQDirectory();

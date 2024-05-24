@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.options;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -49,5 +50,18 @@ public class OptionsToConfigBuilderTest {
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testuser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testpassword);
+  }
+
+  @Test
+  public void testURIParsingException() {
+    final String testUrl = "jd#bc://localhost";
+    SourceDbToSpannerOptions sourceDbToSpannerOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    sourceDbToSpannerOptions.setSourceDbURL(testUrl);
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
+                sourceDbToSpannerOptions));
   }
 }

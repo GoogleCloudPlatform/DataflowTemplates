@@ -47,6 +47,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class JdbcIoWrapper implements IoWrapper {
+  private static final Logger LOG = LoggerFactory.getLogger(JdbcIoWrapper.class);
+
   private final ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
       tableReaders;
   private final SourceSchema sourceSchema;
@@ -140,6 +142,7 @@ public final class JdbcIoWrapper implements IoWrapper {
         tableConfigs.stream().map(TableConfig::tableName).collect(ImmutableList.toImmutableList());
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> tableSchemas =
         schemaDiscovery.discoverTableSchema(dataSource, config.sourceSchemaReference(), tables);
+    LOG.info("Found table schemas: {}", tableSchemas);
     tableSchemas.entrySet().stream()
         .map(
             tableEntry -> {
@@ -211,9 +214,6 @@ public final class JdbcIoWrapper implements IoWrapper {
       }
       if (config.maxPartitions() != null && config.maxPartitions() != 0) {
         configBuilder.setMaxPartitions(config.maxPartitions());
-      }
-      if (config.maxFetchSize() != null && config.maxFetchSize() != 0) {
-        configBuilder.setMaxFetchSize(config.maxFetchSize());
       }
       tableConfigsBuilder.add(configBuilder.build());
     }
