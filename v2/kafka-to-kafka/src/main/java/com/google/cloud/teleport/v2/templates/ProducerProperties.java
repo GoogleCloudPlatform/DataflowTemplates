@@ -15,9 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.teleport.v2.kafka.utils.FileAwareProducerFactoryFn;
+import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
-import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
 
@@ -26,8 +28,6 @@ import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
 
 import org.apache.kafka.common.config.SslConfigs;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The {@link ProducerProperties} is a utility class for constructing properties for Kafka
@@ -41,33 +41,37 @@ import org.slf4j.LoggerFactory;
  */
 final class ProducerProperties {
 
-  private static final Logger LOGG = LoggerFactory.getLogger(ProducerProperties.class);
+  public static Map<String, Object> from(KafkaToKafkaOptions options) {
+    Map<String, Object> properties = new HashMap<>();
+    String authMethod = options.getDestinationAuthenticationMethod();
+    if (authMethod == null) {
+      return properties;
+    }
+    if (authMethod.equals(KafkaAuthenticationMethod.SSL)) {
+      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, KafkaAuthenticationMethod.SSL);
 
-
-  public static Map<String, String> get(KafkaToKafkaOptions options) throws IOException {
-    Map<String, String> properties = null;
-    properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "10.128.15.204:9092");
-    if (options.getDestinationAuthenticationMethod().equals("SSL")) {
-      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
       properties.put(
           SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getDestinationKeystoreLocation());
       properties.put(
           SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, options.getDestinationTruststoreLocation());
       properties.put(
           SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
-          SecretManagerUtils.getSecret(options.getDestinationTruststorePasswordSecretId()));
+          FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationTruststorePasswordSecretId());
       properties.put(
           SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
-          SecretManagerUtils.getSecret(options.getDestinationKeystorePasswordSecretId()));
+          FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationKeystorePasswordSecretId());
       properties.put(
           SslConfigs.SSL_KEY_PASSWORD_CONFIG,
-          SecretManagerUtils.getSecret(options.getDestinationKeyPasswordSecretId()));
+          FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationKeyPasswordSecretId());
       properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
-    }
-    if (options.getDestinationAuthenticationMethod().equals("SASL_PLAIN")) {
-      properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
+    } else if (authMethod.equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+      properties.put(SaslConfigs.SASL_MECHANISM, KafkaAuthenticationMethod.SASL_MECHANISM);
       //         Note: in other languages, set sasl.username and sasl.password instead.
-      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
+      properties.put(
+          CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, KafkaAuthenticationMethod.SASL_PLAIN);
       properties.put(
           SaslConfigs.SASL_JAAS_CONFIG,
           "org.apache.kafka.common.security.plain.PlainLoginModule required"
@@ -77,6 +81,8 @@ final class ProducerProperties {
               + " password=\'"
               + SecretManagerUtils.getSecret(options.getDestinationPasswordSecretId())
               + "\';");
+    } else {
+      throw new UnsupportedOperationException("Authentication method not supported: " + authMethod);
     }
     return properties;
   }
