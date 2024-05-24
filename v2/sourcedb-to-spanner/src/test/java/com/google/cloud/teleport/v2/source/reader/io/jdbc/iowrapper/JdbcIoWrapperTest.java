@@ -22,7 +22,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
-import com.google.cloud.teleport.v2.source.reader.io.exception.SutiableIndexNotFoundException;
+import com.google.cloud.teleport.v2.source.reader.io.exception.SuitableIndexNotFoundException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
@@ -71,7 +71,7 @@ public class JdbcIoWrapperTest {
         SourceSchemaReference.builder().setDbName("testDB").build();
     String testCol = "ID";
     SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
-    when(mockDialectAdapter.discoverTables(any())).thenReturn(ImmutableList.of("testTable"));
+    when(mockDialectAdapter.discoverTables(any(), any())).thenReturn(ImmutableList.of("testTable"));
     when(mockDialectAdapter.discoverTableIndexes(any(), any(), any()))
         .thenReturn(
             ImmutableMap.of(
@@ -122,7 +122,7 @@ public class JdbcIoWrapperTest {
         SourceSchemaReference.builder().setDbName("testDB").build();
     String testCol = "ID";
     SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
-    when(mockDialectAdapter.discoverTables(any())).thenReturn(ImmutableList.of("testTable"));
+    when(mockDialectAdapter.discoverTables(any(), any())).thenReturn(ImmutableList.of("testTable"));
     when(mockDialectAdapter.discoverTableIndexes(any(), any(), any()))
         .thenReturn(
             ImmutableMap.of(
@@ -146,7 +146,7 @@ public class JdbcIoWrapperTest {
                 .setSourcePort("")
                 .setSourceSchemaReference(testSourceSchemaReference)
                 .setShardID("test")
-                .setPartitionColumns(ImmutableMap.of("testTable", ImmutableList.of("ID")))
+                .setTableVsPartitionColumns(ImmutableMap.of("testTable", ImmutableList.of("ID")))
                 .setMaxPartitions(42)
                 .setMaxFetchSize(42)
                 .setDbAuth(
@@ -176,7 +176,7 @@ public class JdbcIoWrapperTest {
         SourceSchemaReference.builder().setDbName("testDB").build();
     String testCol = "ID";
     SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
-    when(mockDialectAdapter.discoverTables(any())).thenReturn(ImmutableList.of("testTable"));
+    when(mockDialectAdapter.discoverTables(any(), any())).thenReturn(ImmutableList.of("testTable"));
     when(mockDialectAdapter.discoverTableIndexes(any(), any(), any()))
         .thenReturn(ImmutableMap.of(/* No Index on testTable */ ))
         .thenReturn(
@@ -196,7 +196,7 @@ public class JdbcIoWrapperTest {
 
     /* No Index on table */
     assertThrows(
-        SutiableIndexNotFoundException.class,
+        SuitableIndexNotFoundException.class,
         () ->
             JdbcIoWrapper.of(
                 JdbcIOWrapperConfig.builderWithMySqlDefaults()
@@ -215,7 +215,7 @@ public class JdbcIoWrapperTest {
                     .build()));
     /* No Numeric Index on table */
     assertThrows(
-        SutiableIndexNotFoundException.class,
+        SuitableIndexNotFoundException.class,
         () ->
             JdbcIoWrapper.of(
                 JdbcIOWrapperConfig.builderWithMySqlDefaults()

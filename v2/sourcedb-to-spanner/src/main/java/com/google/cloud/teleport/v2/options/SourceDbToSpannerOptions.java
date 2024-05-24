@@ -121,7 +121,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setPassword(String password);
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 9,
       optional = true,
       groupName = "Source Parameters",
       description = "Comma-separated names of the tables in the source database.",
@@ -132,7 +132,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   /* TODO(pipelineController) allow per table NumPartitions. */
   @TemplateParameter.Integer(
-      order = 11,
+      order = 10,
       optional = true,
       groupName = "Source",
       description = "The number of partitions.",
@@ -147,7 +147,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   /* TODO(pipelineController) allow per table FetchSize. */
   @TemplateParameter.Integer(
-      order = 12,
+      order = 11,
       optional = true,
       groupName = "Source",
       description = "Table Read Fetch Size.",
@@ -158,7 +158,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setFetchSize(Integer numPartitions);
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 12,
       description = "Cloud Spanner Instance Id.",
       helpText = "The destination Cloud Spanner instance.")
   String getInstanceId();
@@ -166,7 +166,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setInstanceId(String value);
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 13,
       description = "Cloud Spanner Database Id.",
       helpText = "The destination Cloud Spanner database.")
   String getDatabaseId();
@@ -174,7 +174,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setDatabaseId(String value);
 
   @TemplateParameter.ProjectId(
-      order = 15,
+      order = 14,
       description = "Cloud Spanner Project Id.",
       helpText = "This is the name of the Cloud Spanner project.")
   String getProjectId();
@@ -182,7 +182,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setProjectId(String projectId);
 
   @TemplateParameter.Text(
-      order = 16,
+      order = 15,
       optional = true,
       description = "Cloud Spanner Endpoint to call",
       helpText = "The Cloud Spanner endpoint to call in the template.",
@@ -193,7 +193,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setSpannerHost(String value);
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 16,
       optional = true,
       description = "Source database columns to ignore",
       helpText =
@@ -204,7 +204,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setIgnoreColumns(String value);
 
   @TemplateParameter.Integer(
-      order = 18,
+      order = 17,
       optional = true,
       description = "Maximum number of connections to Source database per worker",
       helpText =
@@ -216,7 +216,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setMaxConnections(Integer value);
 
   @TemplateParameter.Boolean(
-      order = 19,
+      order = 18,
       optional = true,
       description = "enable connection reconnects",
       helpText = "Enables the JDBC connection reconnects.",
@@ -227,7 +227,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setReconnectsEnabled(Boolean value);
 
   @TemplateParameter.Integer(
-      order = 20,
+      order = 19,
       optional = true,
       description = "Maximum number of connection reconnect attempts, if reconnects are enabled",
       helpText = "Configures the JDBC connection reconnect attempts.",
@@ -238,7 +238,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setReconnectAttempts(Integer value);
 
   @TemplateParameter.GcsReadFile(
-      order = 21,
+      order = 20,
       optional = true,
       description =
           "Session File Path in Cloud Storage, to provide mapping information in the form of a session file",
@@ -250,7 +250,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setSessionFilePath(String value);
 
   @TemplateParameter.GcsReadFile(
-      order = 22,
+      order = 21,
       optional = false,
       description = "Dead letter queue directory",
       helpText = "This directory is used to dump the failed records in a migration.")

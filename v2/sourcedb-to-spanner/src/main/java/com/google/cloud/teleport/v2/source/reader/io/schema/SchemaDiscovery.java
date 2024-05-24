@@ -32,13 +32,16 @@ public interface SchemaDiscovery {
    * passed via options.
    *
    * @param dataSource Provider for JDBC connection.
+   * @param sourceSchemaReference Source database name and (optionally namespace)
    * @return The list of table names for the given database.
    * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
    *     <p><b>Note:</b>
    *     <p>The Implementations must log every exception and generate metrics as appropriate. Any
    *     retriable error must be retried as needed.
    */
-  ImmutableList<String> discoverTables(DataSource dataSource) throws SchemaDiscoveryException;
+  ImmutableList<String> discoverTables(
+      DataSource dataSource, SourceSchemaReference sourceSchemaReference)
+      throws SchemaDiscoveryException;
 
   /**
    * Discover the schema of tables to migrate.

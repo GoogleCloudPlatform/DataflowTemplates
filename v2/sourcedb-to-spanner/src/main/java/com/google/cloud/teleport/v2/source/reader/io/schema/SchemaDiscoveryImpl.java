@@ -49,6 +49,7 @@ public final class SchemaDiscoveryImpl implements SchemaDiscovery {
    * passed via options.
    *
    * @param dataSource Provider for JDBC connection.
+   * @param sourceSchemaReference Source database name and (optionally namespace)
    * @return The list of table names for the given database.
    * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
    *     <p><b>Note:</b>
@@ -56,9 +57,11 @@ public final class SchemaDiscoveryImpl implements SchemaDiscovery {
    *     retriable error must be retried as needed.
    */
   @Override
-  public ImmutableList<String> discoverTables(DataSource dataSource)
+  public ImmutableList<String> discoverTables(
+      DataSource dataSource, SourceSchemaReference sourceSchemaReference)
       throws SchemaDiscoveryException {
-    return doRetries(() -> retriableSchemaDiscovery.discoverTables(dataSource));
+    return doRetries(
+        () -> retriableSchemaDiscovery.discoverTables(dataSource, sourceSchemaReference));
   }
 
   /**

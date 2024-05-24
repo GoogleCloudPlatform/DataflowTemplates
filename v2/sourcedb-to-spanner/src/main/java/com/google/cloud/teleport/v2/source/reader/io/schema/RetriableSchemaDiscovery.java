@@ -40,13 +40,15 @@ public interface RetriableSchemaDiscovery {
    * passed via options.
    *
    * @param dataSource Provider for JDBC connection.
+   * @param sourceSchemaReference Source database name and (optionally namespace)
    * @return The list of table names for the given database.
    * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
    * @throws RetriableSchemaDiscoveryException - Retriable exception during Schema Discovery.
    *     <p><b>Note:</b>
    *     <p>The Implementations must log every exception and generate metrics as appropriate.
    */
-  ImmutableList<String> discoverTables(DataSource dataSource)
+  ImmutableList<String> discoverTables(
+      DataSource dataSource, SourceSchemaReference sourceSchemaReference)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException;
 
   /**

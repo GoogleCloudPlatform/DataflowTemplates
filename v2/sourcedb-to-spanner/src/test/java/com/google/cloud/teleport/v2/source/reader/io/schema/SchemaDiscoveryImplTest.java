@@ -124,7 +124,7 @@ public class SchemaDiscoveryImplTest {
     final int testRetryCount = 2;
     final int expectedCallsCount = testRetryCount + 1;
     final ImmutableList<String> testTables = ImmutableList.of("testTable1", "testTable2");
-    when(mockRetriableSchemaDiscovery.discoverTables(mockDataSource))
+    when(mockRetriableSchemaDiscovery.discoverTables(mockDataSource, mockSourceSchemaReference))
         .thenThrow(new RetriableSchemaDiscoveryException(new SQLTransientConnectionException()))
         .thenThrow(new RetriableSchemaDiscoveryException(new SQLTransientConnectionException()))
         .thenReturn(testTables);
@@ -135,9 +135,9 @@ public class SchemaDiscoveryImplTest {
                         .withInitialBackoff(Duration.millis(10L))
                         .withExponent(1)
                         .withMaxRetries(testRetryCount))
-                .discoverTables(mockDataSource))
+                .discoverTables(mockDataSource, mockSourceSchemaReference))
         .isEqualTo(testTables);
-    verify(mockRetriableSchemaDiscovery, times(expectedCallsCount)).discoverTables(any());
+    verify(mockRetriableSchemaDiscovery, times(expectedCallsCount)).discoverTables(any(), any());
   }
 
   @Test

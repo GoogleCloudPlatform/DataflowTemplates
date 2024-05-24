@@ -27,8 +27,8 @@ import static org.mockito.Mockito.when;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.InformationSchamaStatsCols;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.InformationSchemaCols;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.InformationSchemaStatsCols;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
@@ -195,10 +195,12 @@ public class MysqlDialectAdapterTest {
     ImmutableList<String> testTables =
         ImmutableList.of("testTable1", "testTable2", "testTable3", "testTable4");
 
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.createStatement()).thenReturn(mockStatement);
-    when(mockStatement.executeQuery("SHOW TABLES")).thenReturn(mockResultSet);
+    when(mockStatement.executeQuery("SHOW TABLES in testDB")).thenReturn(mockResultSet);
     OngoingStubbing stubGetString = when(mockResultSet.getString(1));
     for (String tbl : testTables) {
       stubGetString = stubGetString.thenReturn(tbl);
@@ -211,7 +213,8 @@ public class MysqlDialectAdapterTest {
     stubNext.thenReturn(false);
 
     ImmutableList<String> tables =
-        new MysqlDialectAdapter(MySqlVersion.DEFAULT).discoverTables(mockDataSource);
+        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+            .discoverTables(mockDataSource, sourceSchemaReference);
 
     assertThat(tables).isEqualTo(testTables);
   }
@@ -219,32 +222,43 @@ public class MysqlDialectAdapterTest {
   @Test
   public void testDiscoverTablesGetConnectionException() throws SQLException {
 
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
+
     when(mockDataSource.getConnection())
         .thenThrow(new SQLTransientConnectionException("test"))
         .thenThrow(new SQLNonTransientConnectionException("test"));
 
     assertThrows(
         RetriableSchemaDiscoveryException.class,
-        () -> new MysqlDialectAdapter(MySqlVersion.DEFAULT).discoverTables(mockDataSource));
+        () ->
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+                .discoverTables(mockDataSource, sourceSchemaReference));
 
     assertThrows(
         SchemaDiscoveryException.class,
-        () -> new MysqlDialectAdapter(MySqlVersion.DEFAULT).discoverTables(mockDataSource));
+        () ->
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+                .discoverTables(mockDataSource, sourceSchemaReference));
   }
 
   @Test
   public void testDiscoverTablesRsException() throws SQLException {
 
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.createStatement()).thenReturn(mockStatement);
-    when(mockStatement.executeQuery("SHOW TABLES")).thenReturn(mockResultSet);
+    when(mockStatement.executeQuery("SHOW TABLES in testDB")).thenReturn(mockResultSet);
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getString(1)).thenThrow(new SQLException("test"));
 
     assertThrows(
         SchemaDiscoveryException.class,
-        () -> new MysqlDialectAdapter(MySqlVersion.DEFAULT).discoverTables(mockDataSource));
+        () ->
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+                .discoverTables(mockDataSource, sourceSchemaReference));
   }
 
   @Test
@@ -281,33 +295,33 @@ public class MysqlDialectAdapterTest {
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
 
     OngoingStubbing stubGetColName =
-        when(mockResultSet.getString(InformationSchamaStatsCols.COL_NAME_COL));
+        when(mockResultSet.getString(InformationSchemaStatsCols.COL_NAME_COL));
     for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
       stubGetColName = stubGetColName.thenReturn(info.columnName());
     }
     // Unfortunately Mocktio does not let us wire 2 stubs in parallel.
     OngoingStubbing stubGetIndexName =
-        when(mockResultSet.getString(InformationSchamaStatsCols.INDEX_NAME_COL));
+        when(mockResultSet.getString(InformationSchemaStatsCols.INDEX_NAME_COL));
     for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
       stubGetIndexName = stubGetIndexName.thenReturn(info.indexName());
     }
     OngoingStubbing stubGetNonUnique =
-        when(mockResultSet.getBoolean(InformationSchamaStatsCols.NON_UNIQ_COL));
+        when(mockResultSet.getBoolean(InformationSchemaStatsCols.NON_UNIQ_COL));
     for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
       stubGetNonUnique = stubGetNonUnique.thenReturn(!info.isUnique());
     }
     OngoingStubbing stubGetCardinality =
-        when(mockResultSet.getLong(InformationSchamaStatsCols.CARDINALITY_COL));
+        when(mockResultSet.getLong(InformationSchemaStatsCols.CARDINALITY_COL));
     for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
       stubGetCardinality = stubGetCardinality.thenReturn(info.cardinality());
     }
     OngoingStubbing stubGetOrdinalPos =
-        when(mockResultSet.getLong(InformationSchamaStatsCols.ORDINAL_POS_COL));
+        when(mockResultSet.getLong(InformationSchemaStatsCols.ORDINAL_POS_COL));
     for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
       stubGetOrdinalPos = stubGetOrdinalPos.thenReturn(info.ordinalPosition());
     }
     OngoingStubbing stubGetColType =
-        when(mockResultSet.getString(InformationSchamaStatsCols.TYPE_COL));
+        when(mockResultSet.getString(InformationSchemaStatsCols.TYPE_COL));
     for (String colType : colTypes) {
       stubGetColType = stubGetColType.thenReturn(colType);
     }

@@ -47,7 +47,7 @@ public abstract class JdbcIOWrapperConfig {
   public abstract ImmutableList<String> tables();
 
   /** Configured Partition Column. If unspecified for a table, it's auto-inferred. */
-  public abstract ImmutableMap<String, ImmutableList<String>> partitionColumns();
+  public abstract ImmutableMap<String, ImmutableList<String>> tableVsPartitionColumns();
 
   /** Shard ID. */
   public abstract String shardID();
@@ -128,7 +128,7 @@ public abstract class JdbcIOWrapperConfig {
         .setMaxConnections(MySqlConfigDefaults.DEFAULT_MYSQL_MAX_CONNECTIONS)
         .setSchemaDiscoveryBackOff(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_DISCOVERY_BACKOFF)
         .setTables(ImmutableList.of())
-        .setPartitionColumns(ImmutableMap.of())
+        .setTableVsPartitionColumns(ImmutableMap.of())
         .setMaxPartitions(null)
         .setMaxFetchSize(null);
   }
@@ -144,7 +144,8 @@ public abstract class JdbcIOWrapperConfig {
 
     public abstract Builder setTables(ImmutableList<String> value);
 
-    public abstract Builder setPartitionColumns(ImmutableMap<String, ImmutableList<String>> value);
+    public abstract Builder setTableVsPartitionColumns(
+        ImmutableMap<String, ImmutableList<String>> value);
 
     public abstract Builder setShardID(String value);
 
