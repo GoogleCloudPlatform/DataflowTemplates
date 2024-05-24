@@ -29,76 +29,62 @@ import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.config.SslConfigs;
+import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Class to create Kafka Producer with configured SSL. */
 public class SslProducerFactoryFn
-    implements SerializableFunction<Map<String, Object>, Producer<byte[], byte[]>> {
-  private final Map<String, Object> sslConfig;
+    implements SerializableFunction<Map<String, Object>, Producer<Void, String>> {
+  private final Map<String, String> sslConfig;
   private static final String TRUSTSTORE_LOCAL_PATH = "/tmp/kafka.truststore.jks";
   private static final String KEYSTORE_LOCAL_PATH = "/tmp/kafka.keystore.jks";
 
   /* Logger for class.*/
   private static final Logger LOG = LoggerFactory.getLogger(SslProducerFactoryFn.class);
 
-  public SslProducerFactoryFn(Map<String, Object> sslConfig) {
+  public SslProducerFactoryFn(Map<String, String> sslConfig) {
     this.sslConfig = sslConfig;
   }
 
   @Override
-  public Producer<byte[], byte[]> apply(Map<String, Object> config) {
-
-    Object trustStorePath =
-        getBucketAndPath(String.valueOf(sslConfig.get(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG)))[
-            1];
-    Object keyStorePath =
-        getBucketAndPath(String.valueOf(sslConfig.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG)))[1];
-    Object trustStorePassword = sslConfig.get(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG);
-    Object keyStorePassword = sslConfig.get(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
-    Object keyPassword = sslConfig.get(SslConfigs.SSL_KEY_PASSWORD_CONFIG);
+  public Producer<Void, String> apply(Map<String, Object> config) {
+    String bucket = sslConfig.get("bucket");
+    String trustStorePath = sslConfig.get(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG);
+    String keyStorePath = sslConfig.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
+    String trustStorePassword = sslConfig.get(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG);
+    String keyStorePassword = sslConfig.get(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
+    String keyPassword = sslConfig.get(SslConfigs.SSL_KEY_PASSWORD_CONFIG);
     String outputTrustStoreFilePath;
     String outputKeyStoreFilePath;
     try {
       outputTrustStoreFilePath = TRUSTSTORE_LOCAL_PATH;
       outputKeyStoreFilePath = KEYSTORE_LOCAL_PATH;
-      getGcsFileAsLocal(
-          getBucketAndPath(
-              String.valueOf(sslConfig.get(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG)))[0],
-          String.valueOf(trustStorePath),
-          outputTrustStoreFilePath);
-      getGcsFileAsLocal(
-          getBucketAndPath(String.valueOf(sslConfig.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG)))[
-              0],
-          String.valueOf(keyStorePath),
-          outputKeyStoreFilePath);
+      getGcsFileAsLocal(bucket, trustStorePath, outputTrustStoreFilePath);
+      getGcsFileAsLocal(bucket, keyStorePath, outputKeyStoreFilePath);
     } catch (IOException e) {
       LOG.error("Failed to retrieve data for SSL", e);
       return new KafkaProducer<>(config);
     }
 
-    config.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
+    config.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SecurityProtocol.SSL.name());
     config.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, outputTrustStoreFilePath);
     config.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, outputKeyStoreFilePath);
     config.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, trustStorePassword);
     config.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, keyStorePassword);
     config.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, keyPassword);
-    config.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
 
     return new KafkaProducer<>(config);
   }
 
-  public static String[] getBucketAndPath(String gcsPath) {
-
-    String remainingUri = gcsPath.substring(5);
-
-    int slashIndex = remainingUri.indexOf('/');
-
-    String bucket = remainingUri.substring(0, slashIndex);
-    String path = remainingUri.substring(slashIndex + 1);
-    return new String[] {bucket, path};
-  }
-
+  /**
+   * Reads a file from GCS and writes it locally.
+   *
+   * @param bucket GCS bucket name
+   * @param filePath path to file in GCS
+   * @param outputFilePath path where to save file locally
+   * @throws IOException thrown if not able to read or write file
+   */
   public static void getGcsFileAsLocal(String bucket, String filePath, String outputFilePath)
       throws IOException {
     String gcsFilePath = String.format("gs://%s/%s", bucket, filePath);
