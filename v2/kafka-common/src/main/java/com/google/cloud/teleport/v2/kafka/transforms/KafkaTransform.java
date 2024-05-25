@@ -111,9 +111,6 @@ public class KafkaTransform {
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
-
-
-
       @Nullable Map<String, String> sslConfig,
       Boolean enableCommitOffsets) {
 
