@@ -15,20 +15,16 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-
 import com.google.cloud.teleport.metadata.TemplateParameter;
-
+import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
-
-
-public interface KafkaToKafkaOptions extends PipelineOptions {
+public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions {
 
   @TemplateParameter.KafkaTopic(
-
       order = 1,
       groupName = "Source",
       optional = false,
@@ -39,7 +35,6 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
 
   void setSourceTopic(String sourceTopic);
 
-
   @TemplateParameter.Enum(
       groupName = "Source",
       order = 2,
@@ -47,13 +42,10 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       optional = false,
       description = "Source Authentication Mode",
       enumOptions = {
-
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
-
-
       helpText = "Type of authentication mechanism to use with the source Kafka.")
   @Validation.Required
   @Default.String(KafkaAuthenticationMethod.NONE)
@@ -61,20 +53,27 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
 
   void setSourceAuthenticationMethod(String sourceAuthenticationMethod);
 
+  @TemplateParameter.Text(
+      order = 3,
+      optional = true,
+      parentName = "sourceAuthenticationMethod",
+      parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
+      description = "Secret Version ID for Username",
+      helpText =
+          "Secret Version ID from the Secret Manager to get Kafka "
+              + KafkaAuthenticationMethod.SASL_PLAIN
+              + " username for source Kafka.")
+  void setKafkaOffset(String kafkaOffset);
 
   @TemplateParameter.Text(
       groupName = "Source",
       order = 3,
       optional = true,
-
       parentName = "sourceAuthenticationMethod",
-
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       description = "Secret Version ID for Username",
       helpText =
           "Secret Version ID from the secret manager to get Kafka SASL_PLAIN username for source Kafka.",
-
-
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
   String getSourceUsernameSecretId();
@@ -86,7 +85,6 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       groupName = "Source",
       parentName = "sourceAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
-
       optional = true,
       description = "Secret version id of password",
       helpText =
@@ -97,15 +95,12 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
 
   void setSourcePasswordSecretId(String sourcePasswordSecretId);
 
-
   @TemplateParameter.GcsReadFile(
       order = 5,
       optional = true,
       name = "sourceSSL",
       groupName = "Source",
       parentName = "sourceAuthenticationMethod",
-
-
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       description = "Truststore File Location",
       helpText =
@@ -121,7 +116,6 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       name = "sourceTruststorePassword",
       groupName = "Source",
       parentName = "sourceAuthenticationMethod",
-
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       helpText =
           "Secret Version ID to get password to access secret in truststore for source Kafka.",
@@ -132,17 +126,14 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
 
   void setSourceTruststorePasswordSecretId(String sourceTruststorePasswordSecretId);
 
-
-
   @TemplateParameter.GcsReadFile(
       order = 7,
       optional = true,
       helpText =
           "Cloud storage path for the Keystore location that contains the SSL certificate and private key.",
-      name= "keystoreLocation",
+      name = "keystoreLocation",
       groupName = "Source",
       parentName = "sourceAuthenticationMethod",
-
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       description = "Location of Keystore",
       example = "gs://your-bucket/keystore.jks")
@@ -151,14 +142,11 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
   void setSourceKeystoreLocation(String sourceKeystoreLocation);
 
   @TemplateParameter.Text(
-
       order = 8,
       optional = true,
       name = "sourceKeystorePassword",
       groupName = "Source",
       parentName = "sourceAuthenticationMethod",
-
-
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       helpText = "Secret Version ID to get password to access secret keystore, for source kafka.",
       description = "Secret Version ID of Keystore Password",
@@ -174,8 +162,6 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       name = "sourceKey",
       parentName = "sourceAuthenticationMethod",
       groupName = "Source",
-
-
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       helpText =
           "Secret Version ID of password to access private key inside the keystore, for source Kafka.",
@@ -213,21 +199,16 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
   void setDestinationTopic(String destinationTopic);
 
   @TemplateParameter.Enum(
-
       groupName = "destination Authentication",
       order = 12,
       name = "destinationAuthenticationMethod",
       optional = false,
       description = "Destination Authentication Method",
       enumOptions = {
-
-
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
-
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
-
       helpText = "Type of authentication mechanism to use with the destination Kafka.")
   @Validation.Required
   String getDestinationAuthenticationMethod();
@@ -240,28 +221,23 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       name = "destinationUsernameSecretId",
       groupName = "Destination",
       parentName = "destinationAuthenticationMethod",
-
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       description = "Secret Version ID for Kafka username",
       helpText =
           "Secret Version ID from the Secret Manager to get Kafka"
               + KafkaAuthenticationMethod.SASL_PLAIN
               + " username for the destination Kafka.",
-
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-
   String getDestinationUsernameSecretId();
 
   void setDestinationUsernameSecretId(String destinationUsernameSecretId);
 
   @TemplateParameter.Text(
-
       groupName = "destination Authentication",
       order = 14,
       name = "destinationPasswordSecretId",
       parentName = "destinationAuthenticationMethod",
-
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       helpText =
           "Secret Version ID from the Secret Manager to get Kafka "
@@ -274,58 +250,45 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
 
   void setDestinationPasswordSecretId(String destinationPasswordSecretId);
 
-
   @TemplateParameter.GcsReadFile(
       order = 15,
       optional = true,
       name = "truststoredestination",
       groupName = "Destination",
       parentName = "destinationAuthenticationMethod",
-
-
       description = "description Truststore File Location",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       helpText =
           "Location of the jks file in Cloud Storage with SSL certificate to verify identity.")
-
-
   String getDestinationTruststoreLocation();
 
   void setDestinationTruststoreLocation(String destinationTruststoreLocation);
 
   @TemplateParameter.Text(
-
       order = 16,
       optional = true,
       name = "destinationTruststorePassword",
       groupName = "Destination",
       parentName = "destinationAuthenticationMethod",
-
-
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       helpText =
           "Secret Version ID to get password to access secret in truststore, for destination kafka.",
       description = "Secret Version ID of Truststore password",
-
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
   String getDestinationTruststorePasswordSecretId();
 
   void setDestinationTruststorePasswordSecretId(String destinationTruststorePasswordSecretId);
 
-
   @TemplateParameter.GcsReadFile(
       order = 17,
       optional = true,
-
       helpText =
           "Cloud storage path for the Keystore location that contains the SSL certificate and private key.",
       name = "keystoreLocation",
       groupName = "Destination",
       parentName = "destinationAuthenticationMethod",
-
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
-
       description = "Location of Keystore",
       example = "gs://your-bucket/keystore.jks")
   String getDestinationKeystoreLocation();
@@ -338,8 +301,6 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
       name = "destinationKeystorePassword",
       groupName = "Destination",
       parentName = "destinationAuthenticationMethod",
-
-
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       helpText =
           "Secret Version ID to get password to access secret keystore, for destination kafka.",
@@ -353,21 +314,16 @@ public interface KafkaToKafkaOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 19,
       optional = true,
-
       name = "destinationKey",
       parentName = "destinationAuthenticationMethod",
       groupName = "Destination",
-
-
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       helpText =
           "Secret Version ID of password to access private key inside the keystore, for destination Kafka.",
       description = "Secret Version ID of key",
-
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
   String getDestinationKeyPasswordSecretId();
 
   void setDestinationKeyPasswordSecretId(String destinationKeyPasswordSecretId);
-
 }

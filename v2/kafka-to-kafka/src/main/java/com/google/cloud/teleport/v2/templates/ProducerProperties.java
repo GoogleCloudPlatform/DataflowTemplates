@@ -15,38 +15,15 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-
 import com.google.cloud.teleport.v2.kafka.utils.FileAwareProducerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
-
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
-
 import org.apache.kafka.common.config.SaslConfigs;
-
-import org.apache.kafka.common.config.SaslConfigs;
-
-
-
-
-import com.google.common.collect.ImmutableMap;
-import java.io.File;
-import java.io.FileOutputStream;
-
-import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
-import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
-
-import java.io.IOException;
-import java.util.Map;
-import org.apache.kafka.clients.CommonClientConfigs;
-
 import org.apache.kafka.common.config.SslConfigs;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 
 /**
  * The {@link ProducerProperties} is a utility class for constructing properties for Kafka
@@ -59,8 +36,6 @@ import org.slf4j.LoggerFactory;
  * Kafka destination.
  */
 final class ProducerProperties {
-
-
 
   public static Map<String, Object> from(KafkaToKafkaOptions options) {
     Map<String, Object> properties = new HashMap<>();
@@ -77,7 +52,6 @@ final class ProducerProperties {
           SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, options.getDestinationTruststoreLocation());
       properties.put(
           SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
-
           FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
               + options.getDestinationTruststorePasswordSecretId());
       properties.put(
