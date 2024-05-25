@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
@@ -42,6 +43,7 @@ final class ConsumerProperties {
 
   public static Map<String, Object> from(KafkaToKafkaOptions options) throws IOException {
     Map<String, Object> properties = new HashMap<>();
+    properties.putAll(KafkaCommonUtils.configureKafkaOffsetCommit(options));
     String authMethod = options.getSourceAuthenticationMethod();
     if (authMethod == null) {
       return properties;
@@ -67,7 +69,7 @@ final class ConsumerProperties {
               + options.getSourceKeyPasswordSecretId());
       properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
 
-      properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaOffset());
+      properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
 
     } else if (authMethod.equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
       properties.put(SaslConfigs.SASL_MECHANISM, KafkaAuthenticationMethod.SASL_MECHANISM);
@@ -79,13 +81,13 @@ final class ConsumerProperties {
           SaslConfigs.SASL_JAAS_CONFIG,
           "org.apache.kafka.common.security.plain.PlainLoginModule required"
               + " username=\'"
-              + SecretManagerUtils.getSecret(options.getSourceUsernameSecretId())
+              + FileAwareConsumerFactoryFn.SECRET_MANAGER_FILE_PREFIX + options.getSourceUsernameSecretId()
               + "\'"
               + " password=\'"
-              + SecretManagerUtils.getSecret(options.getSourcePasswordSecretId())
+              + FileAwareConsumerFactoryFn.SECRET_MANAGER_FILE_PREFIX + options.getSourcePasswordSecretId()
               + "\';");
 
-      properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaOffset());
+      properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
     } else {
       throw new UnsupportedEncodingException("Authentication method not supported: " + authMethod);
     }

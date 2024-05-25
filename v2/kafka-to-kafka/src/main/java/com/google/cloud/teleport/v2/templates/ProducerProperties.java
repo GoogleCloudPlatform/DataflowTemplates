@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.kafka.utils.FileAwareProducerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -37,7 +38,7 @@ import org.apache.kafka.common.config.SslConfigs;
  */
 final class ProducerProperties {
 
-  public static Map<String, Object> from(KafkaToKafkaOptions options) {
+  public static Map<String, Object> from(KafkaToKafkaOptions options) throws IOException {
     Map<String, Object> properties = new HashMap<>();
     String authMethod = options.getDestinationAuthenticationMethod();
     if (authMethod == null) {
@@ -72,10 +73,10 @@ final class ProducerProperties {
           SaslConfigs.SASL_JAAS_CONFIG,
           "org.apache.kafka.common.security.plain.PlainLoginModule required"
               + " username=\'"
-              + SecretManagerUtils.getSecret(options.getDestinationUsernameSecretId())
+              + FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX+options.getDestinationUsernameSecretId()
               + "\'"
               + " password=\'"
-              + SecretManagerUtils.getSecret(options.getDestinationPasswordSecretId())
+              + FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX+options.getDestinationPasswordSecretId()
               + "\';");
     } else {
       throw new UnsupportedOperationException("Authentication method not supported: " + authMethod);

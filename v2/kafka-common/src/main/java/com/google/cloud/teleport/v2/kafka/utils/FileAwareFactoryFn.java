@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.slf4j.Logger;
@@ -43,6 +44,7 @@ abstract class FileAwareFactoryFn<T> implements SerializableFunction<Map<String,
   public static final String GCS_PATH_PREFIX = "gs://";
   public static final String SECRET_MANAGER_VALUE_PREFIX = "secretValue:";
   public static final String SECRET_MANAGER_FILE_PREFIX = "secretFile:";
+  private static final Map<String, String> secretCache = new ConcurrentHashMap<>();
 
   private final String factoryType;
   private final String filePrefix;
@@ -76,8 +78,7 @@ abstract class FileAwareFactoryFn<T> implements SerializableFunction<Map<String,
           processedValue = getGcsFileAsLocal(value, generateLocalFileName(key));
         } else if (value.startsWith(SECRET_MANAGER_VALUE_PREFIX)) {
           String secretId = value.substring(SECRET_MANAGER_VALUE_PREFIX.length());
-          // TODO: Cache the result of Secret Manager API calls.
-          processedValue = SecretManagerUtils.getSecret(secretId);
+          processedValue = getSecretWithCache(secretId);
         } else if (value.startsWith(SECRET_MANAGER_FILE_PREFIX)) {
           throw new UnsupportedOperationException("Not yet implemented");
         }
@@ -100,7 +101,9 @@ abstract class FileAwareFactoryFn<T> implements SerializableFunction<Map<String,
         + "-"
         + key;
   }
-
+  private String getSecretWithCache(String secretId) {
+    return secretCache.computeIfAbsent(secretId, id -> SecretManagerUtils.getSecret(id));
+  }
   public static synchronized String getGcsFileAsLocal(String gcsFilePath, String outputFilePath)
       throws IOException {
     // create the file only if it doesn't exist

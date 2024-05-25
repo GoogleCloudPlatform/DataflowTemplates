@@ -44,7 +44,6 @@ public class SslConsumerFactoryFn
   private static final Logger LOG = LoggerFactory.getLogger(SslConsumerFactoryFn.class);
 
   public SslConsumerFactoryFn(Map<String, Object> sslConfig) {
-    LOG.info("HEREEEEEEEEE");
     this.sslConfig = sslConfig;
   }
 
