@@ -195,13 +195,24 @@ final class CassandraToBigtable {
     SerializableFunction<Session, Mapper> cassandraObjectMapperFactory =
         new CassandraRowMapperFactory(options.getCassandraTable(), options.getCassandraKeyspace());
 
+    // TODO: first try to test this. Why does the IT test not work?
+    // TODO: if read option contains "ReadWriteTime=True", then query for table column schema first
+    // CassandraIO.Read<Row> tableColumnSchema = CassandraIO.<Row>read()
+    //     .withHosts(hosts)
+    //     .withPort(options.getCassandraPort())
+    //     .withKeyspace(options.getCassandraKeyspace())
+    //     .withTable(options.getCassandraTable())
+    //     .withQuery("") // TODO: table schema query
+    //     .withCoder(SerializableCoder.of(Row.class));
+
+    // TODO: create a new query and pass it down to source
     CassandraIO.Read<Row> source =
         CassandraIO.<Row>read()
             .withHosts(hosts)
             .withPort(options.getCassandraPort())
             .withKeyspace(options.getCassandraKeyspace())
             .withTable(options.getCassandraTable())
-            .withMapperFactoryFn(cassandraObjectMapperFactory)
+            .withMapperFactoryFn(cassandraObjectMapperFactory)    // TODO: modify the mapper so tablename gets ingested
             .withEntity(Row.class)
             .withCoder(SerializableCoder.of(Row.class));
 
