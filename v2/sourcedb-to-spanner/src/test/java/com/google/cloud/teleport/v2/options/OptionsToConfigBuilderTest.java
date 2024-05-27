@@ -19,6 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import java.util.List;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -44,7 +45,9 @@ public class OptionsToConfigBuilderTest {
     sourceDbToSpannerOptions.setPassword(testpassword);
     sourceDbToSpannerOptions.setTables("table1,table2");
     JdbcIOWrapperConfig config =
-        OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(sourceDbToSpannerOptions);
+        OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
+            sourceDbToSpannerOptions, List.of("table1", "table2"));
+    assertThat(config.autoReconnect()).isTrue();
     assertThat(config.jdbcDriverClassName()).isEqualTo(testdriverClassName);
     assertThat(config.sourceDbURL()).isEqualTo(testUrl);
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});

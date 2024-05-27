@@ -26,6 +26,14 @@ public interface ISchemaMapper extends Serializable {
   Dialect getDialect();
 
   /**
+   * Return the source tables configured for migration.
+   *
+   * @param namespace is currently not operational.
+   * @return
+   */
+  List<String> getSourceTablesToMigrate(String namespace);
+
+  /**
    * Retrieves the corresponding Spanner table name given a source table name.
    *
    * @param namespace is currently not operational.

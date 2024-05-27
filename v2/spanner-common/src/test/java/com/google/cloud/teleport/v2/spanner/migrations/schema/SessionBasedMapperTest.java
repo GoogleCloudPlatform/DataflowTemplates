@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
@@ -314,5 +315,27 @@ public class SessionBasedMapperTest {
         SessionFileReader.read(
             Paths.get(Resources.getResource("session-file.json").getPath()).toString());
     SessionBasedMapper.validateSchemaAndDdl(schema, ddl);
+  }
+
+  @Test
+  public void testSourceTablesToMigrate() {
+    List<String> sourceTablesToMigrate = mapper.getSourceTablesToMigrate("");
+    assertTrue(sourceTablesToMigrate.contains("cart"));
+    assertTrue(sourceTablesToMigrate.contains("people"));
+    assertEquals(2, sourceTablesToMigrate.size());
+  }
+
+  @Test(expected = InputMismatchException.class)
+  public void testSourceTablesToMigrateEmpty() {
+    // Expected to fail as spanner tables mentioned in session file do not exist
+    SessionBasedMapper emptymapper =
+        new SessionBasedMapper(
+            Paths.get(Resources.getResource("session-file-empty.json").getPath()).toString(), ddl);
+    List<String> sourceTablesToMigrate = emptymapper.getSourceTablesToMigrate("");
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testSourceTablesToMigrateNamespace() {
+    mapper.getSourceTablesToMigrate("test");
   }
 }

@@ -27,6 +27,7 @@ import java.util.Arrays;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.List;
 
 public final class OptionsToConfigBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(OptionsToConfigBuilder.class);
@@ -45,7 +46,7 @@ public final class OptionsToConfigBuilder {
     }
 
     public static JdbcIOWrapperConfig configWithMySqlDefaultsFromOptions(
-        SourceDbToSpannerOptions options) {
+        SourceDbToSpannerOptions options, List<String> tables) {
       JdbcIOWrapperConfig.Builder builder = builderWithMySqlDefaults();
       builder =
           builder
@@ -68,12 +69,7 @@ public final class OptionsToConfigBuilder {
         builder.setMaxConnections((long) options.getMaxConnections());
       }
       builder.setMaxPartitions(options.getNumPartitions());
-      ImmutableList<String> tables =
-          StringUtils.isNotBlank(options.getTables())
-              ? Arrays.stream(options.getTables().split(","))
-                  .collect(ImmutableList.toImmutableList())
-              : ImmutableList.of();
-      builder = builder.setTables(tables);
+      builder = builder.setTables(ImmutableList.copyOf(tables));
       return builder.build();
     }
   }

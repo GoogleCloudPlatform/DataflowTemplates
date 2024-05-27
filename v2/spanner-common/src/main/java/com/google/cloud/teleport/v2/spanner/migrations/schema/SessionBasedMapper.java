@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
+import org.apache.curator.shaded.com.google.common.collect.ImmutableList;
+import org.apache.parquet.Strings;
 
 /**
  * This mapper uses an SMT session file to map table and column names. For fetching destination data
@@ -76,6 +78,14 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
   @Override
   public Dialect getDialect() {
     return ddl.dialect();
+  }
+
+  public List<String> getSourceTablesToMigrate(String namespace) {
+    if (!Strings.isNullOrEmpty(namespace)) {
+      throw new UnsupportedOperationException(
+          "can not resolve namespace and namespace support " + "is not added yet: " + namespace);
+    }
+    return ImmutableList.copyOf(schema.getToSpanner().keySet());
   }
 
   @Override
