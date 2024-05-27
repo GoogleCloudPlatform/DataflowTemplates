@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public class SpannerChangeStreamToGcsCustomShardIT extends SpannerChangeStreamToGcsITBase {
   private static final Logger LOG =
-      LoggerFactory.getLogger(SpannerChangeStreamToGcsMultiShardIT.class);
+      LoggerFactory.getLogger(SpannerChangeStreamToGcsCustomShardIT.class);
   private static HashSet<SpannerChangeStreamToGcsCustomShardIT> testInstances = new HashSet<>();
 
   private static GcsResourceManager gcsResourceManager;
@@ -82,7 +82,7 @@ public class SpannerChangeStreamToGcsCustomShardIT extends SpannerChangeStreamTo
   @Before
   public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
-    synchronized (SpannerChangeStreamToGcsMultiShardIT.class) {
+    synchronized (SpannerChangeStreamToGcsCustomShardIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         gcsResourceManager = createGcsResourceManager(getClass().getSimpleName());

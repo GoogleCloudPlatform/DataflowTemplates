@@ -41,7 +41,7 @@ public abstract class GCSArtifactsCheck extends ConditionCheck {
   abstract Integer maxSize();
 
   @Nullable
-  abstract String tableName();
+  abstract String artifactContentMatcher();
 
   @Override
   public String getDescription() {
@@ -73,21 +73,21 @@ public abstract class GCSArtifactsCheck extends ConditionCheck {
   @Override
   public CheckResult check() {
     List<Artifact> artifacts = gcsResourceManager().listArtifacts(prefix(), regex());
-    if (tableName() != null) {
-      int count = countContentOccurrences("\"tableName\":\"" + tableName(), artifacts);
+    if (artifactContentMatcher() != null) {
+      int count = countContentOccurrences(artifactContentMatcher(), artifacts);
       if (count < minSize()) {
         return new CheckResult(
             false,
             String.format(
-                "Expected %d artifacts with table name %s but has only %d",
-                minSize(), tableName(), count));
+                "Expected %d artifacts with content matcher %s but has only %d",
+                minSize(), artifactContentMatcher(), count));
       }
       if (maxSize() != null && count > maxSize()) {
         return new CheckResult(
             false,
             String.format(
-                "Expected up to %d artifacts with table name %s but found %d",
-                maxSize(), tableName(), count));
+                "Expected up to %d artifacts with content matcher %s but found %d",
+                maxSize(), artifactContentMatcher(), count));
       }
     } else {
       if (artifacts.size() < minSize()) {
@@ -137,7 +137,7 @@ public abstract class GCSArtifactsCheck extends ConditionCheck {
 
     public abstract GCSArtifactsCheck.Builder setMaxSize(Integer maxSize);
 
-    public abstract GCSArtifactsCheck.Builder setTableName(String tableName);
+    public abstract GCSArtifactsCheck.Builder setArtifactContentMatcher(String artifactContentMatcher);
 
     abstract GCSArtifactsCheck autoBuild();
 
