@@ -19,7 +19,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 
 import com.google.common.io.Resources;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -91,28 +90,18 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
           gcsPathPrefix + "/session.json",
           Resources.getResource(sessionFileResourceName).getPath());
     }
-    Map<String, String> params = new HashMap<>();
-    try {
-      URI uri = new URI(jdbcResourceManager.getUri().substring(5));
-      // default parameters
-      params =
-          new HashMap<>() {
-            {
-              put("jdbcDriverJars", mySqlDriverGCSPath());
-              put("jdbcDriverClassName", MYSQL_DRIVER);
-              put("projectId", PROJECT);
-              put("instanceId", spannerResourceManager.getInstanceId());
-              put("databaseId", spannerResourceManager.getDatabaseId());
-              put("sourceHost", "jdbc:mysql://" + uri.getHost());
-              put("sourcePort", String.valueOf(uri.getPort()));
-              put("username", jdbcResourceManager.getUsername());
-              put("password", jdbcResourceManager.getPassword());
-              put("sourceDB", jdbcResourceManager.getDatabaseName());
-              put("DLQDirectory", "gs://" + artifactBucketName + "/dlq");
-            }
-          };
-    } catch (Exception ex) {
-    }
+    Map<String, String> params =
+        new HashMap<>() {
+          {
+            put("projectId", PROJECT);
+            put("instanceId", spannerResourceManager.getInstanceId());
+            put("databaseId", spannerResourceManager.getDatabaseId());
+            put("sourceDbURL", jdbcResourceManager.getUri());
+            put("username", jdbcResourceManager.getUsername());
+            put("password", jdbcResourceManager.getPassword());
+            put("DLQDirectory", "gs://" + artifactBucketName + "/dlq");
+          }
+        };
     if (sessionFileResourceName != null) {
       params.put("sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json"));
     }

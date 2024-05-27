@@ -111,7 +111,7 @@ public class SourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
             null,
             mySQLResourceManager,
             spannerResourceManager,
-            Map.of("tables", TABLE, "partitionColumns", ID));
+            null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
     SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE, ID, NAME))

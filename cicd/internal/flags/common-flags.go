@@ -29,7 +29,7 @@ const (
 // Avoid making these vars public.
 var (
 	modulesToBuild string
-	moduleMap      = map[string]string{ALL: "", SPANNER: "v2/sourcedb-to-spanner/"}
+	moduleMap      = map[string]string{ALL: "", SPANNER: "v2/datastream-to-spanner/,v2/spanner-change-streams-to-sharded-file-sink/,v2/gcs-to-sourcedb/,v2/sourcedb-to-spanner/,plugins/templates-maven-plugin"}
 )
 
 // Registers all common flags. Must be called before flag.Parse().
