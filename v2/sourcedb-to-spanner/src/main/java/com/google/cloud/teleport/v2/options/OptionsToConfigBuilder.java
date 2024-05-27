@@ -23,8 +23,7 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReferenc
 import com.google.common.collect.ImmutableList;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
-import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +44,7 @@ public final class OptionsToConfigBuilder {
     }
 
     public static JdbcIOWrapperConfig configWithMySqlDefaultsFromOptions(
-        SourceDbToSpannerOptions options) {
+        SourceDbToSpannerOptions options, List<String> tables) {
       JdbcIOWrapperConfig.Builder builder = builderWithMySqlDefaults();
       builder =
           builder
@@ -68,12 +67,7 @@ public final class OptionsToConfigBuilder {
         builder.setMaxConnections((long) options.getMaxConnections());
       }
       builder.setMaxPartitions(options.getNumPartitions());
-      ImmutableList<String> tables =
-          StringUtils.isNotBlank(options.getTables())
-              ? Arrays.stream(options.getTables().split(","))
-                  .collect(ImmutableList.toImmutableList())
-              : ImmutableList.of();
-      builder = builder.setTables(tables);
+      builder = builder.setTables(ImmutableList.copyOf(tables));
       return builder.build();
     }
   }
