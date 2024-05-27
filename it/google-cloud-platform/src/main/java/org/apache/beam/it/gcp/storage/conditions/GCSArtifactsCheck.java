@@ -137,7 +137,8 @@ public abstract class GCSArtifactsCheck extends ConditionCheck {
 
     public abstract GCSArtifactsCheck.Builder setMaxSize(Integer maxSize);
 
-    public abstract GCSArtifactsCheck.Builder setArtifactContentMatcher(String artifactContentMatcher);
+    public abstract GCSArtifactsCheck.Builder setArtifactContentMatcher(
+        String artifactContentMatcher);
 
     abstract GCSArtifactsCheck autoBuild();
 

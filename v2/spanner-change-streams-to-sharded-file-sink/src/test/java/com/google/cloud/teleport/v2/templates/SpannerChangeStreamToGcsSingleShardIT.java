@@ -180,7 +180,7 @@ public class SpannerChangeStreamToGcsSingleShardIT extends SpannerChangeStreamTo
                             gcsResourceManager, "output/testShardA/", Pattern.compile(".*\\.txt$"))
                         .setMinSize(1)
                         .setMaxSize(1)
-                            .setArtifactContentMatcher("\"tableName\":\"Singers")
+                        .setArtifactContentMatcher("\"tableName\":\"Singers")
                         .build()))
             .build();
 

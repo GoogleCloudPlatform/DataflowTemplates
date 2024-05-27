@@ -26,7 +26,6 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.storage.Blob;
 import java.util.Arrays;
 import java.util.regex.Pattern;
-
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.artifacts.GcsArtifact;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
@@ -54,11 +53,11 @@ public class GCSArtifactsCheckTest {
             .build();
 
     gcsArtifactsCheckWithContentMatcher =
-            GCSArtifactsCheck.builder(gcsResourceManager, "test-folder", regex)
-                    .setMinSize(1)
-                    .setMaxSize(5)
-                    .setArtifactContentMatcher("\"tableName\":\"Singers")
-                    .build();
+        GCSArtifactsCheck.builder(gcsResourceManager, "test-folder", regex)
+            .setMinSize(1)
+            .setMaxSize(5)
+            .setArtifactContentMatcher("\"tableName\":\"Singers")
+            .build();
   }
 
   @Test
@@ -83,7 +82,7 @@ public class GCSArtifactsCheckTest {
     Blob blob = mock(Blob.class);
     Artifact artifact = new GcsArtifact(blob);
     when(gcsResourceManager.listArtifacts("test-folder", regex))
-            .thenReturn(Arrays.asList(artifact));
+        .thenReturn(Arrays.asList(artifact));
     String artifactContent = "\"tableName\":\"Singers\"";
     when(artifact.contents()).thenReturn(artifactContent.getBytes());
 
@@ -100,14 +99,16 @@ public class GCSArtifactsCheckTest {
     Blob blob = mock(Blob.class);
     Artifact artifact = new GcsArtifact(blob);
     when(gcsResourceManager.listArtifacts("test-folder", regex))
-            .thenReturn(Arrays.asList(artifact));
+        .thenReturn(Arrays.asList(artifact));
     String artifactContent = "\"tableName\":\"Albums\"";
     when(artifact.contents()).thenReturn(artifactContent.getBytes());
 
     GCSArtifactsCheck.CheckResult result = gcsArtifactsCheckWithContentMatcher.check();
 
     assertEquals(false, result.isSuccess());
-    assertEquals("Expected 1 artifacts with content matcher \"tableName\":\"Singers but has only 0", result.getMessage());
+    assertEquals(
+        "Expected 1 artifacts with content matcher \"tableName\":\"Singers but has only 0",
+        result.getMessage());
 
     verify(gcsResourceManager, times(1)).listArtifacts("test-folder", regex);
   }
