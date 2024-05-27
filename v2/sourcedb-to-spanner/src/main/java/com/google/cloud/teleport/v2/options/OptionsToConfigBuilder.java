@@ -23,11 +23,9 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReferenc
 import com.google.common.collect.ImmutableList;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
-import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.List;
 
 public final class OptionsToConfigBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(OptionsToConfigBuilder.class);
