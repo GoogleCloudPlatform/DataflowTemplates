@@ -91,8 +91,7 @@ public class JdbcIoWrapperTest {
     JdbcIoWrapper jdbcIoWrapper =
         JdbcIoWrapper.of(
             JdbcIOWrapperConfig.builderWithMySqlDefaults()
-                .setSourceHost("jdbc:derby:memory:TestingDB;create=true")
-                .setSourcePort("")
+                .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
                 .setSourceSchemaReference(testSourceSchemaReference)
                 .setShardID("test")
                 .setDbAuth(
@@ -142,13 +141,10 @@ public class JdbcIoWrapperTest {
     JdbcIoWrapper jdbcIoWrapper =
         JdbcIoWrapper.of(
             JdbcIOWrapperConfig.builderWithMySqlDefaults()
-                .setSourceHost("jdbc:derby:memory:TestingDB;create=true")
-                .setSourcePort("")
+                .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
                 .setSourceSchemaReference(testSourceSchemaReference)
                 .setShardID("test")
                 .setTableVsPartitionColumns(ImmutableMap.of("testTable", ImmutableList.of("ID")))
-                .setMaxPartitions(42)
-                .setMaxFetchSize(42)
                 .setDbAuth(
                     LocalCredentialsProvider.builder()
                         .setUserName("testUser")
@@ -200,8 +196,7 @@ public class JdbcIoWrapperTest {
         () ->
             JdbcIoWrapper.of(
                 JdbcIOWrapperConfig.builderWithMySqlDefaults()
-                    .setSourceHost("jdbc:derby:memory:TestingDB;create=true")
-                    .setSourcePort("")
+                    .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
                     .setSourceSchemaReference(testSourceSchemaReference)
                     .setShardID("test")
                     .setDbAuth(
@@ -219,8 +214,7 @@ public class JdbcIoWrapperTest {
         () ->
             JdbcIoWrapper.of(
                 JdbcIOWrapperConfig.builderWithMySqlDefaults()
-                    .setSourceHost("jdbc:derby:memory:TestingDB;create=true")
-                    .setSourcePort("")
+                    .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
                     .setSourceSchemaReference(testSourceSchemaReference)
                     .setShardID("test")
                     .setDbAuth(
