@@ -51,7 +51,7 @@ public class CommonTemplateJvmInitializer implements JvmInitializer {
           "^projects\\/[^\\n\\r\\/]+\\/secrets\\/[^\\n\\r\\/]+\\/versions\\/[^\\n\\r\\/]+$");
   private Pattern gcsPattern = DEFAULT_GCS_PATTERN;
   private Pattern secretManagerPattern = DEFAULT_SECRET_MANAGER_PATTERN;
-  private static String destinationDirectory = "/extra_files";
+  private String destinationDirectory = "/extra_files";
 
   @Override
   public void onStartup() {}
@@ -128,14 +128,13 @@ public class CommonTemplateJvmInitializer implements JvmInitializer {
     LOG.info("Localized {} to {}.", source, destFile.getAbsolutePath());
   }
 
-  public static String saveSecretPayloadToFile(String source) throws IOException {
+  private void saveSecretPayloadToFile(String source) throws IOException {
     SecretVersionName secretVersionName = parseSecretVersion(source);
     byte[] fileData = getSecretPayload(secretVersionName);
     // Filename will be the secret id
     File destFile = Paths.get(destinationDirectory, secretVersionName.getSecret()).toFile();
     copy(fileData, destFile);
     LOG.info("Localized {} to {}.", source, destFile.getAbsolutePath());
-    return destFile.getAbsolutePath();
   }
 
   /**
@@ -145,7 +144,7 @@ public class CommonTemplateJvmInitializer implements JvmInitializer {
    *     projects/{project}/secrets/{secret}/versions/{secret_version}
    * @return {@link SecretVersionName}
    */
-  private static SecretVersionName parseSecretVersion(String secret) {
+  private SecretVersionName parseSecretVersion(String secret) {
     if (SecretVersionName.isParsableFrom(secret)) {
       return SecretVersionName.parse(secret);
     } else {
@@ -156,14 +155,14 @@ public class CommonTemplateJvmInitializer implements JvmInitializer {
   }
 
   /** Extract secret payload from a secret manager secret. */
-  private static byte[] getSecretPayload(SecretVersionName secretVersionName) throws IOException {
+  private byte[] getSecretPayload(SecretVersionName secretVersionName) throws IOException {
     SecretManagerServiceClient client = SecretManagerServiceClient.create();
     AccessSecretVersionResponse response = client.accessSecretVersion(secretVersionName);
     return response.getPayload().getData().toByteArray();
   }
 
   /** Copies the byte array into the file. */
-  private static void copy(byte[] data, File destFile) throws IOException {
+  private void copy(byte[] data, File destFile) throws IOException {
     FileOutputStream outputStream = new FileOutputStream(destFile);
     outputStream.write(data);
     outputStream.close();

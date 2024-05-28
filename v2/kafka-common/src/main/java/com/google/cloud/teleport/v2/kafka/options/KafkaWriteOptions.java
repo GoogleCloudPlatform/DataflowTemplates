@@ -62,6 +62,18 @@ public interface KafkaWriteOptions extends PipelineOptions {
 
   void setDestinationTopic(String destinationTopic);
 
+  @TemplateParameter.Text(
+
+      groupName = "Destination",
+      order = 4,
+
+      description = "Project of Destination Kafka",
+      helpText = "Project where Destination Kafka resides.",
+      optional = false)
+  @Validation.Required
+  String getDestinationProject();
+
+  void setDestinationProject(String destinationProject);
   @TemplateParameter.Enum(
       groupName = "Destination",
       order = 4,

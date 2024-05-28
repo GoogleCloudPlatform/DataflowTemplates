@@ -38,10 +38,21 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
 
   void setSourceTopic(String sourceTopic);
 
+  @TemplateParameter.Text(
+
+      order = 2,
+      groupName = "Source",
+      optional = false,
+      description = "Project of Source Kafka",
+      helpText = "Project where source kafka resides.")
+  @Validation.Required
+  String getSourceProject();
+
+  void setSourceProject(String sourceProject);
 
   @TemplateParameter.Enum(
       groupName = "Source",
-      order = 2,
+      order = 3,
       name = "sourceAuthenticationMethod",
 
       optional = false,
@@ -60,7 +71,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
 
   @TemplateParameter.Text(
       groupName = "Source",
-      order = 3,
+      order = 4,
       optional = true,
 
       parentName="sourceAuthenticationMethod",
@@ -77,7 +88,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
 
   @TemplateParameter.Text(
 
-      order=4,
+      order=5,
       groupName = "Source",
       parentName = "sourceAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
@@ -94,7 +105,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
   void setSourcePasswordSecretId(String sourcePasswordSecretId);
 
   @TemplateParameter.GcsReadFile(
-      order = 5,
+      order = 6,
       optional = true,
       name = "sourceSSL",
       groupName = "Source",
@@ -110,7 +121,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
   void setSourceTruststoreLocation(String sourceTruststoreLocation);
 
   @TemplateParameter.Text(
-      order = 6,
+      order = 7,
       optional = true,
       name = "sourceTruststorePassword",
       groupName = "Source",
@@ -126,7 +137,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
   void setSourceTruststorePasswordSecretId(String sourceTruststorePasswordSecretId);
 
   @TemplateParameter.GcsReadFile(
-      order = 7,
+      order = 8,
       optional = true,
       name = "keystoreLocation",
       groupName = "Source",
@@ -141,7 +152,7 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
   void setSourceKeystoreLocation(String sourceKeystoreLocation);
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 9,
       optional = true,
       name = "sourceKeystorePassword",
       groupName = "Source",

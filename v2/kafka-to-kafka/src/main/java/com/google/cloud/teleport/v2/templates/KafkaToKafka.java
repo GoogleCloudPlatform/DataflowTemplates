@@ -120,20 +120,34 @@ public class KafkaToKafka {
 
     String sourceTopic;
     String sourceBootstrapServers;
-    List<String> sourceBootstrapServerAndTopicList =
-        KafkaTopicUtils.getBootstrapServerAndTopic(options.getSourceTopic());
-    sourceTopic = sourceBootstrapServerAndTopicList.get(1);
-    sourceBootstrapServers = sourceBootstrapServerAndTopicList.get(0);
+    if (options.getSourceTopic() != null) {
+      List<String> sourceBootstrapServerAndTopicList =
+          KafkaTopicUtils.getBootstrapServerAndTopic(options.getSourceTopic(),
+              options.getSourceProject());
+      sourceTopic = sourceBootstrapServerAndTopicList.get(1);
+      sourceBootstrapServers = sourceBootstrapServerAndTopicList.get(0);
+    } else {
+      throw new IllegalArgumentException(
+          "Please provide a valid bootstrap server which matches `[,:a-zA-Z0-9._-]+` and a topic which matches `[,a-zA-Z0-9._-]+`");
+    }
     String destinationTopic;
     String destinationBootstrapServers;
-    List<String> destinationBootstrapServerAndTopicList =
-        KafkaTopicUtils.getBootstrapServerAndTopic(options.getDestinationTopic());
-    destinationBootstrapServers = destinationBootstrapServerAndTopicList.get(0);
-    destinationTopic = destinationBootstrapServerAndTopicList.get(1);
-    Pipeline pipeline = Pipeline.create(options);
+    if (options.getDestinationTopic() != null) {
+      List<String> destinationBootstrapServerAndTopicList =
+          KafkaTopicUtils.getBootstrapServerAndTopic(options.getDestinationTopic(),
+              options.getDestinationProject());
+      destinationBootstrapServers = destinationBootstrapServerAndTopicList.get(0);
+      destinationTopic = destinationBootstrapServerAndTopicList.get(1);
+
+    } else {
+      throw new IllegalArgumentException(
+          "Please provide a valid bootstrap server which matches `[,:a-zA-Z0-9._-]+` and a topic which matches `[,a-zA-Z0-9._-]+`");
+
+    }
     if (options.getEnableCommitOffsets()) {
 
     }
+    Pipeline pipeline = Pipeline.create(options);
     pipeline
         .apply(
             "Read from Kafka",

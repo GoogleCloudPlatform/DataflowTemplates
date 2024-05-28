@@ -69,6 +69,7 @@ final class ConsumerProperties {
     if (authMethod == null) {
       return properties;
     }
+    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
 
     if (authMethod.equals(KafkaAuthenticationMethod.SSL)) {
 
@@ -90,7 +91,7 @@ final class ConsumerProperties {
               + options.getSourceKeyPasswordSecretId());
       properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
 
-      properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
+
 
     } else if (authMethod.equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
       properties.put(SaslConfigs.SASL_MECHANISM, KafkaAuthenticationMethod.SASL_MECHANISM);
@@ -102,13 +103,13 @@ final class ConsumerProperties {
           SaslConfigs.SASL_JAAS_CONFIG,
           "org.apache.kafka.common.security.plain.PlainLoginModule required"
               + " username=\'"
-              + FileAwareConsumerFactoryFn.SECRET_MANAGER_FILE_PREFIX + options.getSourceUsernameSecretId()
+              + SecretManagerUtils.getSecret(options.getSourceUsernameSecretId())
               + "\'"
               + " password=\'"
-              + FileAwareConsumerFactoryFn.SECRET_MANAGER_FILE_PREFIX + options.getSourcePasswordSecretId()
+              + SecretManagerUtils.getSecret(options.getDestinationUsernameSecretId())
               + "\';");
 
-      properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
+
     } else {
       throw new UnsupportedEncodingException("Authentication method not supported: " + authMethod);
     }
