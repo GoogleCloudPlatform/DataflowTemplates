@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatArtifacts;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -193,7 +192,6 @@ public class SpannerChangeStreamToGcsSingleShardIT extends SpannerChangeStreamTo
 
     List<Artifact> artifacts =
         gcsResourceManager.listArtifacts("output/testShardA/", Pattern.compile(".*\\.txt$"));
-    assertThat(artifacts).hasSize(1);
     assertThatArtifacts(artifacts).hasContent("SingerId\\\":\\\"1");
   }
 

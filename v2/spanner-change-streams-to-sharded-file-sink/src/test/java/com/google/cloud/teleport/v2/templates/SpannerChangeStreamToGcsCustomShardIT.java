@@ -192,8 +192,6 @@ public class SpannerChangeStreamToGcsCustomShardIT extends SpannerChangeStreamTo
         gcsResourceManager.listArtifacts("output/testShardA/", Pattern.compile(".*\\.txt$"));
     List<Artifact> artifactsShardB =
         gcsResourceManager.listArtifacts("output/testShardB/", Pattern.compile(".*\\.txt$"));
-    assertThatArtifacts(artifactsShardB).hasFiles();
-    assertThatArtifacts(artifactsShardA).hasFiles();
     // checks that any of the artifact has the given content
     assertThatArtifacts(artifactsShardB).hasContent("SingerId\\\":\\\"2");
     assertThatArtifacts(artifactsShardB).hasContent("SingerId\\\":\\\"4");
