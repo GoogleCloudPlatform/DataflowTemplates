@@ -130,7 +130,7 @@ public final class JdbcIoWrapper implements IoWrapper {
     return sourceSchema.tableSchemas().stream()
         .filter(schema -> schema.tableName().equals(tableConfig.tableName()))
         .findFirst()
-        .orElseGet(null);
+        .orElseThrow();
   }
 
   static SourceSchema getSourceSchema(
