@@ -15,13 +15,15 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.teleport.v2.kafka.utils.FileAwareProducerFactoryFn;
+import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
-import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
-import com.google.common.collect.ImmutableMap;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.kafka.common.config.SslConfigs;
 
 /**
  * The {@link ProducerProperties} is a utility class for constructing properties for Kafka
@@ -34,26 +36,52 @@ import org.slf4j.LoggerFactory;
  * Kafka destination.
  */
 final class ProducerProperties {
-  private static final Logger LOGG = LoggerFactory.getLogger(ProducerProperties.class);
 
-  public static ImmutableMap<String, Object> get(KafkaToKafkaOptions options) {
+  public static Map<String, Object> from(KafkaToKafkaOptions options) throws IOException {
+    Map<String, Object> properties = new HashMap<>();
+    String authMethod = options.getDestinationAuthenticationMethod();
+    if (authMethod == null) {
+      return properties;
+    }
+    if (authMethod.equals(KafkaAuthenticationMethod.SSL)) {
+      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, KafkaAuthenticationMethod.SSL);
 
-    ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
-    properties.put(
-        CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, options.getDestinationBootstrapServer());
-    properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
-    //         Note: in other languages, set sasl.username and sasl.password instead.
-    properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
-    properties.put(
-        SaslConfigs.SASL_JAAS_CONFIG,
-        "org.apache.kafka.common.security.plain.PlainLoginModule required"
-            + " username=\'"
-            + SecretManagerUtils.getSecret(options.getDestinationUsernameSecretId())
-            + "\'"
-            + " password=\'"
-            + SecretManagerUtils.getSecret(options.getDestinationPasswordSecretId())
-            + "\';");
-
-    return properties.buildOrThrow();
+      properties.put(
+          SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getDestinationKeystoreLocation());
+      properties.put(
+          SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, options.getDestinationTruststoreLocation());
+      properties.put(
+          SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
+          FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationTruststorePasswordSecretId());
+      properties.put(
+          SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
+          FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationKeystorePasswordSecretId());
+      properties.put(
+          SslConfigs.SSL_KEY_PASSWORD_CONFIG,
+          FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationKeyPasswordSecretId());
+      properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
+    } else if (authMethod.equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+      properties.put(SaslConfigs.SASL_MECHANISM, KafkaAuthenticationMethod.SASL_MECHANISM);
+      //         Note: in other languages, set sasl.username and sasl.password instead.
+      properties.put(
+          CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, KafkaAuthenticationMethod.SASL_PLAIN);
+      properties.put(
+          SaslConfigs.SASL_JAAS_CONFIG,
+          "org.apache.kafka.common.security.plain.PlainLoginModule required"
+              + " username=\'"
+              + FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationUsernameSecretId()
+              + "\'"
+              + " password=\'"
+              + FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationPasswordSecretId()
+              + "\';");
+    } else {
+      throw new UnsupportedOperationException("Authentication method not supported: " + authMethod);
+    }
+    return properties;
   }
 }

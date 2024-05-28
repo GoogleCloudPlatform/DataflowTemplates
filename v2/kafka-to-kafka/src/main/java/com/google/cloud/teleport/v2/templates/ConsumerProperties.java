@@ -15,13 +15,19 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils;
+import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
-import com.google.common.collect.ImmutableMap;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.kafka.common.config.SslConfigs;
 
 /**
  * The {@link ConsumerProperties} is a utility class for constructing properties for Kafka
@@ -35,26 +41,54 @@ import org.slf4j.LoggerFactory;
  */
 final class ConsumerProperties {
 
-  private static final Logger LOGG = LoggerFactory.getLogger(ConsumerProperties.class);
+  public static Map<String, Object> from(KafkaToKafkaOptions options) throws IOException {
+    Map<String, Object> properties = new HashMap<>();
+    properties.putAll(KafkaCommonUtils.configureKafkaOffsetCommit(options));
+    String authMethod = options.getSourceAuthenticationMethod();
+    if (authMethod == null) {
+      return properties;
+    }
+    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
 
-  public static ImmutableMap<String, Object> get(KafkaToKafkaOptions options) {
+    if (authMethod.equals(KafkaAuthenticationMethod.SSL)) {
 
-    ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
-    properties.put(
-        CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, options.getSourceBootstrapServers());
-    properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
-    //         Note: in other languages, set sasl.username and sasl.password instead.
-    properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
-    properties.put(
-        SaslConfigs.SASL_JAAS_CONFIG,
-        "org.apache.kafka.common.security.plain.PlainLoginModule required"
-            + " username=\'"
-            + SecretManagerUtils.getSecret(options.getSourceUsernameSecretId())
-            + "\'"
-            + " password=\'"
-            + SecretManagerUtils.getSecret(options.getSourcePasswordSecretId())
-            + "\';");
+      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, KafkaAuthenticationMethod.SSL);
+      properties.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getSourceKeystoreLocation());
+      properties.put(
+          SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, options.getSourceTruststoreLocation());
+      properties.put(
+          SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
+          FileAwareConsumerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getSourceTruststorePasswordSecretId());
+      properties.put(
+          SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
+          FileAwareConsumerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getSourceKeystorePasswordSecretId());
+      properties.put(
+          SslConfigs.SSL_KEY_PASSWORD_CONFIG,
+          FileAwareConsumerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getSourceKeyPasswordSecretId());
+      properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
 
-    return properties.buildOrThrow();
+    } else if (authMethod.equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+      properties.put(SaslConfigs.SASL_MECHANISM, KafkaAuthenticationMethod.SASL_MECHANISM);
+
+      //         Note: in other languages, set sasl.username and sasl.password instead.
+      properties.put(
+          CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, KafkaAuthenticationMethod.SASL_PLAIN);
+      properties.put(
+          SaslConfigs.SASL_JAAS_CONFIG,
+          "org.apache.kafka.common.security.plain.PlainLoginModule required"
+              + " username=\'"
+              + SecretManagerUtils.getSecret(options.getSourceUsernameSecretId())
+              + "\'"
+              + " password=\'"
+              + SecretManagerUtils.getSecret(options.getDestinationUsernameSecretId())
+              + "\';");
+
+    } else {
+      throw new UnsupportedEncodingException("Authentication method not supported: " + authMethod);
+    }
+    return properties;
   }
 }

@@ -20,15 +20,17 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
+import com.google.cloud.teleport.v2.kafka.utils.FileAwareProducerFactoryFn;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
+import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
-import com.google.common.collect.ImmutableMap;
+import java.io.IOException;
+import java.util.List;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.values.KV;
-import org.apache.beam.sdk.values.PCollection;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.slf4j.Logger;
@@ -42,110 +44,132 @@ import org.slf4j.LoggerFactory;
     optionsClass = KafkaToKafkaOptions.class,
     flexContainerName = "kafka-to-kafka",
     contactInformation = "https://cloud.google.com/support",
+    skipOptions = {
+      "readBootstrapServers",
+      "kafkaReadTopics",
+      "kafkaReadAuthenticationMode",
+      "writeBootstrapServers",
+      "kafkaWriteTopics"
+    },
     hidden = true,
-    streaming = true)
+    streaming = false)
 public class KafkaToKafka {
 
   private static final Logger LOG = LoggerFactory.getLogger(KafkaToKafka.class);
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws IOException {
     UncaughtExceptionLogger.register();
     KafkaToKafkaOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToKafkaOptions.class);
     run(options);
   }
 
-  public static PipelineResult run(KafkaToKafkaOptions options) {
+  public static PipelineResult run(KafkaToKafkaOptions options) throws IOException {
 
-    if (options.getMigrationType().equals("GMK-to-GMK")) {
-      checkArgument(
-          options.getAuthenticationMethod().equals("secret manager"),
-          "SASL_PLAIN authentication required for GMK");
+    if (options.getSourceAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+
       checkArgument(
           options.getSourceUsernameSecretId().trim().length() > 0,
-          "version id required to access username to GMK");
+          "sourceUsernameSecretId required to access username for source Kafka");
       checkArgument(
           options.getSourcePasswordSecretId().trim().length() > 0,
-          "version id required to access password to authenticate to GMK");
+          "sourcePasswordSecretId required to access password for source kafka");
+    } else if (options.getSourceAuthenticationMethod().equals(KafkaAuthenticationMethod.SSL)) {
+      checkArgument(
+          options.getSourceTruststoreLocation().trim().length() > 0,
+          "sourceTruststoreLocation for trust store certificate required for ssl authentication");
+      checkArgument(
+          options.getSourceTruststorePasswordSecretId().trim().length() > 0,
+          "sourceTruststorePassword for trust store password required for accessing truststore");
+      checkArgument(
+          options.getSourceKeystoreLocation().trim().length() > 0,
+          "sourceKeystoreLocation for key store location required for ssl authentication");
+      checkArgument(
+          options.getSourceKeystorePasswordSecretId().trim().length() > 0,
+          "sourceKeystorePassword for key store password required to access key store");
+      checkArgument(
+          options.getSourceKeyPasswordSecretId().trim().length() > 0,
+          "sourceKeyPasswordSecretId version for key password required for SSL authentication");
+    } else {
+      throw new UnsupportedOperationException(
+          "Authentication method not supported: " + options.getSourceAuthenticationMethod());
     }
-
-    if (options.getMigrationType().split("to-")[1].equals("GMK")) {
+    if (options.getDestinationAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
       checkArgument(
           options.getDestinationUsernameSecretId().trim().length() > 0,
-          "version id required to access username to GMK");
-
+          "destinationUsernameSecretId required to access username for source Kafka");
       checkArgument(
           options.getDestinationPasswordSecretId().trim().length() > 0,
-          "version id requited to access password to authenticate to GMK");
+          "destinationPasswordSecretId required to access password for destination Kafka");
+    } else if (options.getDestinationAuthenticationMethod().equals(KafkaAuthenticationMethod.SSL)) {
+      checkArgument(
+          options.getDestinationTruststoreLocation().trim().length() > 0,
+          "destinationTruststoreLocation for trust store certificate required for ssl authentication");
+      checkArgument(
+          options.getDestinationTruststorePasswordSecretId().trim().length() > 0,
+          "destinationTruststorePasswordSecretId for trust store password required for accessing truststore");
+      checkArgument(
+          options.getDestinationKeystoreLocation().trim().length() > 0,
+          "destinationKeystoreLocation for key store location required for ssl authentication");
+      checkArgument(
+          options.getDestinationKeystorePasswordSecretId().trim().length() > 0,
+          "destinationKeystorePasswordSecretId for key store password required to access key store");
+      checkArgument(
+          options.getDestinationKeyPasswordSecretId().trim().length() > 0,
+          "destinationKeyPasswordSecretId for source key password secret id version required for SSL authentication");
+    } else {
+      throw new UnsupportedOperationException(
+          "Authentication method not supported: " + options.getDestinationAuthenticationMethod());
     }
-    if (options.getMigrationType().equals("nonGMK-to-nonGMK")) {
-      if (options.getAuthenticationMethod().equals("secret manager")) {
-        checkArgument(
-            options.getSourceUsernameSecretId().trim().length() > 0,
-            "version id required to access username for source Kafka");
-        checkArgument(
-            options.getSourcePasswordSecretId().trim().length() > 0,
-            "version id required to access password for source kafka");
-        checkArgument(
-            options.getDestinationUsernameSecretId().trim().length() > 0,
-            "version id required to access username for destination Kafka");
-        checkArgument(
-            options.getDestinationPasswordSecretId().trim().length() > 0,
-            "version id required to access password for destination kafka");
-      }
+
+    String sourceTopic;
+    String sourceBootstrapServers;
+    if (options.getSourceTopic() != null) {
+      List<String> sourceBootstrapServerAndTopicList =
+          KafkaTopicUtils.getBootstrapServerAndTopic(
+              options.getSourceTopic(), options.getSourceProject());
+      sourceTopic = sourceBootstrapServerAndTopicList.get(1);
+      sourceBootstrapServers = sourceBootstrapServerAndTopicList.get(0);
+    } else {
+      throw new IllegalArgumentException(
+          "Please provide a valid bootstrap server which matches `[,:a-zA-Z0-9._-]+` and a topic which matches `[,a-zA-Z0-9._-]+`");
     }
-    String outputTopic;
-    String inputTopic = options.getInputTopic();
-
-    checkArgument(
-        inputTopic.trim().length() > 0, "Kafka input topic to read from cannot be empty.");
-
-    String sourceBootstrapServers = options.getSourceBootstrapServers();
-
-    checkArgument(
-        sourceBootstrapServers.trim().length() > 0, "source bootstrap servers cannot be empty");
-
-    if (options.getOutputTopic() != null) {
-      outputTopic = options.getOutputTopic();
+    String destinationTopic;
+    String destinationBootstrapServers;
+    if (options.getDestinationTopic() != null) {
+      List<String> destinationBootstrapServerAndTopicList =
+          KafkaTopicUtils.getBootstrapServerAndTopic(
+              options.getDestinationTopic(), options.getDestinationProject());
+      destinationBootstrapServers = destinationBootstrapServerAndTopicList.get(0);
+      destinationTopic = destinationBootstrapServerAndTopicList.get(1);
 
     } else {
-      outputTopic = inputTopic;
+      throw new IllegalArgumentException(
+          "Please provide a valid bootstrap server which matches `[,:a-zA-Z0-9._-]+` and a topic which matches `[,a-zA-Z0-9._-]+`");
     }
-
-    String destinationBootstrapServer = options.getDestinationBootstrapServer();
-
-    checkArgument(
-        destinationBootstrapServer.trim().length() > 0,
-        "destination bootstrap server cannot be empty");
+    if (options.getEnableCommitOffsets()) {}
 
     Pipeline pipeline = Pipeline.create(options);
-    PCollection<KV<byte[], byte[]>> records;
-    records =
-        pipeline.apply(
+    pipeline
+        .apply(
             "Read from Kafka",
             KafkaIO.<byte[], byte[]>read()
                 .withBootstrapServers(sourceBootstrapServers)
-                .withTopic(inputTopic)
+                .withTopic(sourceTopic)
                 .withKeyDeserializer(ByteArrayDeserializer.class)
                 .withValueDeserializer(ByteArrayDeserializer.class)
-                .withConsumerConfigUpdates(
-                    options.getAuthenticationMethod().equals("secret manager")
-                        ? ConsumerProperties.get(options)
-                        : ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"))
-                .withoutMetadata());
-
-    KafkaIO.Write<byte[], byte[]> kafkaWrite =
-        KafkaIO.<byte[], byte[]>write()
-            .withBootstrapServers(destinationBootstrapServer)
-            .withTopic(outputTopic)
-            .withKeySerializer(ByteArraySerializer.class)
-            .withValueSerializer(ByteArraySerializer.class);
-    records.apply(
-        "write messages to kafka",
-        kafkaWrite.withProducerConfigUpdates(
-            options.getAuthenticationMethod().equals("secret manager")
-                ? ProducerProperties.get(options)
-                : ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")));
+                .withConsumerConfigUpdates(ConsumerProperties.from(options))
+                .withConsumerFactoryFn(new FileAwareConsumerFactoryFn())
+                .withoutMetadata())
+        .apply(
+            "Write to Kafka",
+            KafkaIO.<byte[], byte[]>write()
+                .withBootstrapServers(destinationBootstrapServers)
+                .withTopic(destinationTopic)
+                .withKeySerializer(ByteArraySerializer.class)
+                .withValueSerializer(ByteArraySerializer.class)
+                .withProducerConfigUpdates(ProducerProperties.from(options))
+                .withProducerFactoryFn(new FileAwareProducerFactoryFn()));
 
     return pipeline.run();
   }

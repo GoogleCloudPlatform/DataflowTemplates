@@ -16,139 +16,159 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.cloud.teleport.v2.kafka.options.KafkaCommonOptions;
+import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
+import com.google.cloud.teleport.v2.kafka.options.KafkaWriteOptions;
+import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
-public interface KafkaToKafkaOptions extends PipelineOptions, KafkaCommonOptions {
-  @TemplateParameter.Text(
-      order = 1,
-      optional = false,
-      regexes = {"[,:a-zA-Z0-9._-]+"},
-      description = "Kafka Bootstrap Server List to read from",
-      helpText =
-          "Kafka Bootstrap Server List, separated by commas to read messages from the given input topic.",
-      example = "localhost:9092, 127.0.0.1:9093")
-  @Validation.Required
-  String getSourceBootstrapServers();
+public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, KafkaWriteOptions {
 
-  void setSourceBootstrapServers(String sourceBootstrapServers);
+  @TemplateParameter.KafkaTopic(
+      order = 1,
+      groupName = "Source",
+      optional = false,
+      description = "Source Kafka Topic",
+      helpText = "Kafka topic to read input from.")
+  @Validation.Required
+  String getSourceTopic();
+
+  void setSourceTopic(String sourceTopic);
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       optional = false,
-      regexes = {"[,a-zA-Z0-9._-]+"},
-      description = "Kafka topic(s) to read the input from",
-      helpText = "Kafka topic(s) to read the input from the given source bootstrap server.",
-      example = "topic1,topic2")
+      description = "Project of Source Kafka",
+      helpText = "Project where source kafka resides.")
   @Validation.Required
-  String getInputTopic();
+  String getSourceProject();
 
-  void setInputTopic(String inputTopic);
+  void setSourceProject(String sourceProject);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Enum(
+      groupName = "Source",
       order = 3,
+      name = "sourceAuthenticationMethod",
       optional = false,
-      regexes = {"[,:a-zA-Z0-9._-]+"},
-      description = "Output topics to write to",
-      helpText =
-          "Topics to write to in the destination Kafka for the data read from the source Kafka.",
-      example = "topic1,topic2")
+      description = "Source Authentication Mode",
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
+      },
+      helpText = "Type of authentication mechanism to use with the source Kafka.")
   @Validation.Required
-  String getOutputTopic();
+  @Default.String(KafkaAuthenticationMethod.NONE)
+  String getSourceAuthenticationMethod();
 
-  void setOutputTopic(String outputTopic);
+  void setSourceAuthenticationMethod(String sourceAuthenticationMethod);
 
   @TemplateParameter.Text(
+      groupName = "Source",
       order = 4,
-      optional = false,
-      regexes = {"[,:a-zA-Z0-9._-]+"},
-      description = "Destination kafka Bootstrap Server",
-      helpText = "Destination kafka Bootstrap Server to write data to.",
-      example = "localhost:9092")
-  @Validation.Required
-  String getDestinationBootstrapServer();
-
-  void setDestinationBootstrapServer(String destinationBootstrapServer);
-
-  @TemplateParameter.Enum(
-      order = 5,
-      enumOptions = {
-        @TemplateParameter.TemplateEnumOption("nonGMK-to-nonGMK"),
-        @TemplateParameter.TemplateEnumOption("GMK-to-GMK"),
-        @TemplateParameter.TemplateEnumOption("nonGMK-to-GMK")
-      },
       optional = true,
-      description = "The type of kafka-to-kafka migration",
-      helpText = "Migration type for the data movement from a source to a destination kafka.")
-  @Validation.Required
-  String getMigrationType();
-
-  void setMigrationType(String migrationType);
-
-  @TemplateParameter.Enum(
-      order = 6,
-      optional = true,
-      description = "Method for kafka authentication",
-      enumOptions = {
-        @TemplateParameter.TemplateEnumOption("secret manager"),
-        @TemplateParameter.TemplateEnumOption("no authentication (only for non-GMK)"),
-      },
-      helpText = "Type of authentication mechanism to authenticate to Kafka.")
-  @Validation.Required
-  String getAuthenticationMethod();
-
-  void setAuthenticationMethod(String authenticationMethod);
-
-  @TemplateParameter.Text(
-      order = 7,
-      optional = true,
-      description = "Secret version id of Kafka source username",
+      parentName = "sourceAuthenticationMethod",
+      parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
+      description = "Secret Version ID for Username",
       helpText =
-          "Secret version id from the secret manager to get Kafka SASL_PLAIN username for source Kafka.",
+          "Secret Version ID from the secret manager to get Kafka SASL_PLAIN username for source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
   String getSourceUsernameSecretId();
 
   void setSourceUsernameSecretId(String sourceUsernameSecretId);
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 5,
+      groupName = "Source",
+      parentName = "sourceAuthenticationMethod",
+      parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       optional = true,
-      description = "Secret version of Kafka source password",
+      description = "Secret version id of password",
       helpText =
           "Secret version id from the secret manager to get Kafka SASL_PLAIN password for the source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
   String getSourcePasswordSecretId();
 
   void setSourcePasswordSecretId(String sourcePasswordSecretId);
 
+  @TemplateParameter.GcsReadFile(
+      order = 6,
+      optional = true,
+      name = "sourceSSL",
+      groupName = "Source",
+      parentName = "sourceAuthenticationMethod",
+      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      description = "Truststore File Location",
+      helpText =
+          "Location of the jks file in Cloud Storage with SSL certificate to verify identity.",
+      example = "gs://your-bucket/truststore.jks")
+  String getSourceTruststoreLocation();
+
+  void setSourceTruststoreLocation(String sourceTruststoreLocation);
+
+  @TemplateParameter.Text(
+      order = 7,
+      optional = true,
+      name = "sourceTruststorePassword",
+      groupName = "Source",
+      parentName = "sourceAuthenticationMethod",
+      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      helpText =
+          "Secret Version ID to get password to access secret in truststore for source Kafka.",
+      description = "Secret Version ID for Truststore Password",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+  String getSourceTruststorePasswordSecretId();
+
+  void setSourceTruststorePasswordSecretId(String sourceTruststorePasswordSecretId);
+
+  @TemplateParameter.GcsReadFile(
+      order = 8,
+      optional = true,
+      name = "keystoreLocation",
+      groupName = "Source",
+      parentName = "sourceAuthenticationMethod",
+      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      helpText =
+          "Cloud storage path for the Keystore location that contains the SSL certificate and private key.",
+      description = "Location of Keystore",
+      example = "gs://your-bucket/keystore.jks")
+  String getSourceKeystoreLocation();
+
+  void setSourceKeystoreLocation(String sourceKeystoreLocation);
+
   @TemplateParameter.Text(
       order = 9,
       optional = true,
-      description = "Secret version id for destination Kafka username",
-      helpText =
-          "Secret version id from the secret manager to get Kafka SASL_PLAIN username for the destination Kafka.",
+      name = "sourceKeystorePassword",
+      groupName = "Source",
+      parentName = "sourceAuthenticationMethod",
+      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      helpText = "Secret Version ID to get password to access secret keystore, for source kafka.",
+      description = "Secret Version ID of Keystore Password",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
-  String getDestinationUsernameSecretId();
+  String getSourceKeystorePasswordSecretId();
 
-  void setDestinationUsernameSecretId(String destinationUsernameSecretId);
+  void setSourceKeystorePasswordSecretId(String sourceKeystorePasswordSecretId);
 
   @TemplateParameter.Text(
       order = 10,
       optional = true,
-      description = "Secret version Id for destination Kafka password",
+      name = "sourceKey",
+      parentName = "sourceAuthenticationMethod",
+      groupName = "Source",
+      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       helpText =
-          " Secret version id from the secret manager to get Kafka SASL_PLAIN password for the destination Kafka.",
+          "Secret Version ID of password to access private key inside the keystore, for source Kafka.",
+      description = "Secret Version ID of Private Key Password",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  @Validation.Required
-  String getDestinationPasswordSecretId();
+  String getSourceKeyPasswordSecretId();
 
-  void setDestinationPasswordSecretId(String destinationPasswordSecretId);
+  void setSourceKeyPasswordSecretId(String sourceKeyPasswordSecretId);
 }
