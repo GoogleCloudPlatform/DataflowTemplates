@@ -97,8 +97,7 @@ public class SplunkConverters {
         optional = true,
         description = "HEC Authentication token.",
         helpText =
-            "Splunk Http Event Collector (HEC) authentication token. Must be provided if the "
-                + "tokenSource is set to PLAINTEXT or KMS.")
+            "The Splunk HEC authentication token. Must be provided if the `tokenSource` parameter is set to `PLAINTEXT` or `KMS`.")
     ValueProvider<String> getToken();
 
     void setToken(ValueProvider<String> token);
@@ -107,7 +106,7 @@ public class SplunkConverters {
         order = 2,
         description = "Splunk HEC URL.",
         helpText =
-            "Splunk Http Event Collector (HEC) url. This should be routable from the VPC in which the pipeline runs.",
+            "The Splunk HEC URL. The URL must be routable from the VPC that the pipeline runs in.",
         example = "https://splunk-hec-host:8088")
     ValueProvider<String> getUrl();
 
@@ -117,7 +116,8 @@ public class SplunkConverters {
         order = 3,
         optional = true,
         description = "Batch size for sending multiple events to Splunk HEC.",
-        helpText = "Batch size for sending multiple events to Splunk HEC. Defaults to 10.")
+        helpText =
+            "The batch size for sending multiple events to Splunk. Defaults to 1 (no batching).")
     ValueProvider<Integer> getBatchCount();
 
     void setBatchCount(ValueProvider<Integer> batchCount);
@@ -127,9 +127,7 @@ public class SplunkConverters {
         optional = true,
         description = "Disable SSL certificate validation.",
         helpText =
-            "Disable SSL certificate validation (true/false). Default false (validation "
-                + "enabled). If true, the certificates are not validated (all certificates are "
-                + "trusted) and  `rootCaCertificatePath` parameter is ignored.")
+            "Disable SSL certificate validation. Default false (validation enabled). If true, the certificates are not validated (all certificates are trusted) and `rootCaCertificatePath` parameter is ignored.")
     ValueProvider<Boolean> getDisableCertificateValidation();
 
     void setDisableCertificateValidation(ValueProvider<Boolean> disableCertificateValidation);
@@ -138,7 +136,7 @@ public class SplunkConverters {
         order = 5,
         optional = true,
         description = "Maximum number of parallel requests.",
-        helpText = "Maximum number of parallel requests. Default 1 (no parallelism).")
+        helpText = "The maximum number of parallel requests. Defaults to 1 (no parallelism).")
     ValueProvider<Integer> getParallelism();
 
     void setParallelism(ValueProvider<Integer> parallelism);
@@ -148,26 +146,17 @@ public class SplunkConverters {
         optional = true,
         description = "Include full Pub/Sub message in the payload.",
         helpText =
-            "Include full Pub/Sub message in the payload (true/false). Defaults to false "
-                + "(only data element is included in the payload).")
+            "Include the full Pub/Sub message in the payload. Default false (only the data element is included in the payload).")
     ValueProvider<Boolean> getIncludePubsubMessage();
 
     void setIncludePubsubMessage(ValueProvider<Boolean> includePubsubMessage);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.KmsEncryptionKey(
         order = 7,
         optional = true,
-        regexes = {
-          "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/keyRings\\/[^\\n\\r\\/]+\\/cryptoKeys\\/[^\\n\\r\\/]+$"
-        },
         description = "Google Cloud KMS encryption key for the token",
         helpText =
-            "The Cloud KMS key to decrypt the HEC token string. This parameter must be "
-                + "provided if the tokenSource is set to KMS. If this parameter is provided, token "
-                + "string should be passed in encrypted. Encrypt parameters using the KMS API encrypt "
-                + "endpoint. The Key should be in the format "
-                + "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. "
-                + "See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt ",
+            "The Cloud KMS key to use to decrypt the HEC token string. This parameter must be provided when tokenSource is set to KMS. If the Cloud KMS key is provided, the HEC token string `must` be passed in encrypted.",
         example =
             "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name")
     ValueProvider<String> getTokenKMSEncryptionKey();
@@ -182,7 +171,7 @@ public class SplunkConverters {
         },
         description = "Google Cloud Secret Manager ID.",
         helpText =
-            "Secret Manager secret ID for the token. This parameter should be provided if the tokenSource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}.",
+            "The Secret Manager secret ID for the token. This parameter must provided when the tokenSource is set to SECRET_MANAGER.",
         example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
     ValueProvider<String> getTokenSecretId();
 
@@ -198,11 +187,7 @@ public class SplunkConverters {
         },
         description = "Source of the token passed. One of PLAINTEXT, KMS or SECRET_MANAGER.",
         helpText =
-            "Source of the token. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter "
-                + "must be provided if secret manager is used. If tokenSource is set to KMS, "
-                + "tokenKMSEncryptionKey and encrypted token must be provided. If tokenSource is set to "
-                + "SECRET_MANAGER, tokenSecretId must be provided. If tokenSource is set to PLAINTEXT, "
-                + "token must be provided.")
+            "The source of the token. The following values are allowed: `PLAINTEXT`, `KMS`, and `SECRET_MANAGER`. You must provide this parameter when Secret Manager is used. If `tokenSource` is set to `KMS`, `tokenKMSEncryptionKey`, and encrypted, then `token` must be provided. If `tokenSource` is set to `SECRET_MANAGER`, then `tokenSecretId` must be provided. If `tokenSource` is set to `PLAINTEXT`, then `token` must be provided.")
     ValueProvider<String> getTokenSource();
 
     void setTokenSource(ValueProvider<String> tokenSource);
@@ -212,15 +197,7 @@ public class SplunkConverters {
         optional = true,
         description = "Cloud Storage path to root CA certificate.",
         helpText =
-            "The full URL to root CA certificate in Cloud Storage. The certificate provided in "
-                + "Cloud Storage must be DER-encoded and may be supplied in binary or printable "
-                + "(Base64) encoding. If the certificate is provided in Base64 encoding, it must "
-                + "be bounded at the beginning by -----BEGIN CERTIFICATE-----, and must be bounded "
-                + "at the end by -----END CERTIFICATE-----. If this parameter is provided, this "
-                + "private CA certificate file will be fetched and added to Dataflow worker's trust "
-                + "store in order to verify Splunk HEC endpoint's SSL certificate which is signed "
-                + "by that private CA. If this parameter is not provided, the default trust store "
-                + "is used.",
+            "The full URL to the root CA certificate in Cloud Storage. The certificate provided in Cloud Storage must be DER-encoded and can be supplied in binary or printable (Base64) encoding. If the certificate is provided in Base64 encoding, it must be bounded at the beginning by -----BEGIN CERTIFICATE-----, and must be bounded at the end by -----END CERTIFICATE-----. If this parameter is provided, this private CA certificate file is fetched and added to the Dataflow worker's trust store in order to verify the Splunk HEC endpoint's SSL certificate. If this parameter is not provided, the default trust store is used.",
         example = "gs://mybucket/mycerts/privateCA.crt")
     ValueProvider<String> getRootCaCertificatePath();
 
@@ -231,19 +208,19 @@ public class SplunkConverters {
         optional = true,
         description = "Enable logs for batches written to Splunk.",
         helpText =
-            "Parameter which specifies if logs should be enabled for batches written to Splunk.")
+            "Specifies whether logs should be enabled for batches written to Splunk. Default: `true`.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getEnableBatchLogs();
 
     void setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Boolean(
         order = 12,
         optional = true,
         description =
             "Enable compression (gzip content encoding) in HTTP requests sent to Splunk HEC.",
         helpText =
-            "Parameter which specifies if HTTP requests sent to Splunk HEC should be GZIP encoded.")
+            "Specifies whether HTTP requests sent to Splunk HEC should be compressed (gzip content encoded). Default: `true`.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getEnableGzipHttpCompression();
 

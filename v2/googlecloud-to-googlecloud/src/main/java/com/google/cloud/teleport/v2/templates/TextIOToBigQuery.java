@@ -50,10 +50,10 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.util.StreamUtils;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.Row;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -150,7 +150,7 @@ import org.json.JSONObject;
       optionalOptions = {"javascriptTextTransformGcsPath", "javascriptTextTransformFunctionName"},
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-bigquery",
-      flexContainerName = "text-to-bigquery",
+      flexContainerName = "text-to-bigquery-xlang",
       contactInformation = "https://cloud.google.com/support",
       requirements = {
         "Create a JSON file that describes your {{bigquery_name_short}} schema.\n"
@@ -210,12 +210,11 @@ public class TextIOToBigQuery {
       extends DataflowPipelineOptions,
           PythonExternalTextTransformerOptions,
           BigQueryStorageApiBatchOptions {
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 1,
         optional = false,
-        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         description = "The GCS location of the text you'd like to process",
-        helpText = "The path to the Cloud Storage text to read.",
+        helpText = "The gs:// path to the text in Cloud Storage you'd like to process.",
         example = "gs://your-bucket/your-file.txt")
     String getInputFilePattern();
 
@@ -225,33 +224,30 @@ public class TextIOToBigQuery {
         order = 2,
         optional = false,
         description = "JSON file with BigQuery Schema description",
-        helpText = "The Cloud Storage path to the JSON file that defines your BigQuery schema.",
+        helpText =
+            "The gs:// path to the JSON file that defines your BigQuery schema, stored in Cloud Storage.",
         example = "gs://your-bucket/your-schema.json")
     String getJSONPath();
 
     void setJSONPath(String value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.BigQueryTable(
         order = 3,
         optional = false,
-        regexes = {".+:.+\\..+"},
         description = "Output table to write to",
         helpText =
-            "The location of the BigQuery table in which to store your processed data. If you reuse"
-                + " an existing table, it will be overwritten.",
-        example = "your-project:your-dataset.your-table")
+            "The location of the BigQuery table to use to store the processed data. If you reuse an existing table, it is overwritten.",
+        example = "<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>")
     String getOutputTable();
 
     void setOutputTable(String value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.JavascriptUdfFile(
         order = 4,
         optional = false,
-        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         description = "GCS path to javascript fn for transforming output",
         helpText =
-            "The Cloud Storage path pattern for the JavaScript code containing your user-defined"
-                + " functions.",
+            "The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) you want to use.",
         example = "gs://your-bucket/your-transforms/*.js")
     String getJavascriptTextTransformGcsPath();
 
@@ -263,8 +259,7 @@ public class TextIOToBigQuery {
         regexes = {"[a-zA-Z0-9_]+"},
         description = "UDF Javascript Function Name",
         helpText =
-            "The name of the function to call from your JavaScript file. Use only letters, digits,"
-                + " and underscores.",
+            "The name of the JavaScript user-defined function (UDF) that you want to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)",
         example = "transform_udf1")
     String getJavascriptTextTransformFunctionName();
 
@@ -275,7 +270,7 @@ public class TextIOToBigQuery {
         order = 6,
         optional = false,
         description = "Temporary directory for BigQuery loading process",
-        helpText = "Temporary directory for the BigQuery loading process.",
+        helpText = "Temporary directory for BigQuery loading process.",
         example = "gs://your-bucket/your-files/temp-dir")
     String getBigQueryLoadingTemporaryDirectory();
 
@@ -283,6 +278,7 @@ public class TextIOToBigQuery {
   }
 
   private static final String BIGQUERY_SCHEMA = "BigQuery Schema";
+
   private static final String NAME = "name";
   private static final String TYPE = "type";
   private static final String MODE = "mode";
@@ -334,29 +330,9 @@ public class TextIOToBigQuery {
                       .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
                       .setFunctionName(options.getPythonExternalTextTransformFunctionName())
                       .build())
-              .setRowSchema(
-                  PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA)
               .apply(
-                  MapElements.via(
-                      new SimpleFunction<Row, TableRow>() {
-                        @Override
-                        public TableRow apply(Row row) {
-                          String errorMessage = row.getValue("error_message");
-                          String stackTrace = row.getValue("stack_trace");
-                          if (!Strings.isNullOrEmpty(errorMessage)
-                              || !Strings.isNullOrEmpty(stackTrace)) {
-                            Object originalElement = row.getValue("original");
-                            throw new RuntimeException(
-                                String.format(
-                                    "Error applying UDF to the source record [%s], error message: [%s], stack trace: [%s]",
-                                    originalElement, errorMessage, stackTrace));
-                          }
-
-                          Row transformedRow = row.getValue("transformed");
-                          return BigQueryConverters.convertJsonToTableRow(
-                              transformedRow.getValue("message"));
-                        }
-                      }));
+                  "MapToTableRowElements",
+                  ParDo.of(new PythonExternalTextTransformer.RowToTableRowElementFn()));
     } else {
       udfOut =
           source

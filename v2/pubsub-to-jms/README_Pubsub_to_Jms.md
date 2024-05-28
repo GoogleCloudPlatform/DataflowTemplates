@@ -12,17 +12,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **inputSubscription** (Pub/Sub input subscription): Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **outputName** (JMS Queue/Topic Name to write the input to): JMS Queue/Topic Name to write the input to. (Example: queue).
-* **outputType** (JMS Destination Type to Write the input to): JMS Destination Type to Write the input to. (Example: queue).
-* **username** (JMS Username): JMS username for authentication with JMS server (Example: sampleusername).
-* **password** (JMS Password): Password for username provided for authentication with JMS server (Example: samplepassword).
+* **inputSubscription** : Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
+* **outputName** : JMS Queue/Topic Name to write the input to. (Example: queue).
+* **outputType** : JMS Destination Type to Write the input to. (Example: queue).
+* **username** : JMS username for authentication with JMS server (Example: sampleusername).
+* **password** : Password for username provided for authentication with JMS server (Example: samplepassword).
 
-### Optional Parameters
+### Optional parameters
 
-* **jmsServer** (JMS Host IP): Server IP for JMS Host (Example: host:5672).
+* **jmsServer** : Server IP for JMS Host (Example: host:5672).
 
 
 

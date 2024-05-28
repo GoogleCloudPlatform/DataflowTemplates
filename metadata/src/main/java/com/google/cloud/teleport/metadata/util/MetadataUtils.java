@@ -38,17 +38,25 @@ public final class MetadataUtils {
         TemplateParameter.Enum.class,
         TemplateParameter.Float.class,
         TemplateParameter.GcsReadFile.class,
+        TemplateParameter.GcsReadBucket.class,
         TemplateParameter.GcsReadFolder.class,
         TemplateParameter.GcsWriteFile.class,
         TemplateParameter.GcsWriteFolder.class,
+        TemplateParameter.GcsWriteBucket.class,
         TemplateParameter.Integer.class,
+        TemplateParameter.JavascriptUdfFile.class,
+        TemplateParameter.KafkaTopic.class,
         TemplateParameter.KmsEncryptionKey.class,
         TemplateParameter.Long.class,
+        TemplateParameter.MachineType.class,
         TemplateParameter.Password.class,
         TemplateParameter.ProjectId.class,
         TemplateParameter.PubsubSubscription.class,
         TemplateParameter.PubsubTopic.class,
-        TemplateParameter.Text.class
+        TemplateParameter.ServiceAccount.class,
+        TemplateParameter.Text.class,
+        TemplateParameter.WorkerRegion.class,
+        TemplateParameter.WorkerZone.class
       };
   public static final String BIGQUERY_TABLE_PATTERN = ".+[\\.:].+\\..+";
 
@@ -127,9 +135,17 @@ public final class MetadataUtils {
           return Arrays.asList(simpleTextParam.regexes());
         }
         return null;
+      case "JavascriptUdfFile":
+        TemplateParameter.JavascriptUdfFile javascriptUdfFileParam =
+            (TemplateParameter.JavascriptUdfFile) parameterAnnotation;
+        return List.of("^gs:\\/\\/[^\\n\\r]+$");
       case "GcsReadFile":
         TemplateParameter.GcsReadFile gcsReadFileParam =
             (TemplateParameter.GcsReadFile) parameterAnnotation;
+        return List.of("^gs:\\/\\/[^\\n\\r]+$");
+      case "GcsReadBucket":
+        TemplateParameter.GcsReadBucket gcsReadBucketParam =
+            (TemplateParameter.GcsReadBucket) parameterAnnotation;
         return List.of("^gs:\\/\\/[^\\n\\r]+$");
       case "GcsReadFolder":
         TemplateParameter.GcsReadFolder gcsReadFolderParam =
@@ -142,6 +158,10 @@ public final class MetadataUtils {
       case "GcsWriteFolder":
         TemplateParameter.GcsWriteFolder gcsWriteFolderParam =
             (TemplateParameter.GcsWriteFolder) parameterAnnotation;
+        return List.of("^gs:\\/\\/[^\\n\\r]+$");
+      case "GcsWriteBucket":
+        TemplateParameter.GcsWriteBucket gcsWriteBucketParam =
+            (TemplateParameter.GcsWriteBucket) parameterAnnotation;
         return List.of("^gs:\\/\\/[^\\n\\r]+$");
       case "PubsubSubscription":
         TemplateParameter.PubsubSubscription pubsubSubscriptionParam =
@@ -185,7 +205,7 @@ public final class MetadataUtils {
       case "DateTime":
         TemplateParameter.DateTime dateTimeParam = (TemplateParameter.DateTime) parameterAnnotation;
         return List.of(
-            "^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):(([0-9]{2})(\\\\.[0-9]+)?)Z$");
+            "^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):(([0-9]{2})(\\.[0-9]+)?)Z$");
       case "BigQueryTable":
         TemplateParameter.BigQueryTable bigQueryTableParam =
             (TemplateParameter.BigQueryTable) parameterAnnotation;
@@ -206,6 +226,22 @@ public final class MetadataUtils {
       case "Duration":
         TemplateParameter.Duration durationParam = (TemplateParameter.Duration) parameterAnnotation;
         return List.of("^[1-9][0-9]*[s|m|h]$");
+      case "MachineType":
+        TemplateParameter.MachineType machineTypeParam =
+            (TemplateParameter.MachineType) parameterAnnotation;
+        return List.of("^[a-z0-9]+(-[a-z0-9]+)+$");
+      case "ServiceAccount":
+        TemplateParameter.ServiceAccount serviceAccountParam =
+            (TemplateParameter.ServiceAccount) parameterAnnotation;
+        return List.of("^[-a-z0-9]{6,30}@[-a-z0-9]{6,30}.iam.gserviceaccount.com$");
+      case "WorkerRegion":
+        TemplateParameter.WorkerRegion workerRegionParam =
+            (TemplateParameter.WorkerRegion) parameterAnnotation;
+        return List.of("[a-z]+-[a-z]+[0-9]+");
+      case "WorkerZone":
+        TemplateParameter.WorkerZone workerZoneParam =
+            (TemplateParameter.WorkerZone) parameterAnnotation;
+        return List.of("[a-z]+-[a-z]+[0-9]+-[a-z]");
       default:
         return null;
     }

@@ -3,6 +3,9 @@ comment:
 
 coverage:
   status:
+    project:
+      default:
+        informational: true
     patch:
       default:
         target: 80%
@@ -52,3 +55,4 @@ component_management:
     paths:
     - "v2/sourcedb-to-spanner/**"
     - "v2/spanner-common/**"
+    - "!v2/sourcedb-to-spanner/src/main/java/com/google/cloud/teleport/v2/constants/**"

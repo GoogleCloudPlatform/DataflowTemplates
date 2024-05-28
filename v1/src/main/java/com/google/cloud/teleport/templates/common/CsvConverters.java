@@ -75,7 +75,7 @@ public class CsvConverters {
         order = 1,
         optional = true,
         description = "Whether input CSV files contain a header record.",
-        helpText = "Input CSV files contain a header record (true/false).")
+        helpText = "Whether headers are included in the CSV file. Defaults to: false.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getContainsHeaders();
 
@@ -84,8 +84,7 @@ public class CsvConverters {
     @TemplateParameter.Text(
         order = 2,
         description = "Column delimiter of the data files.",
-        helpText =
-            "The column delimiter of the input text files. Default: use delimiter provided in csvFormat",
+        helpText = "The column delimiter that the CSV file uses.",
         example = ",")
     ValueProvider<String> getDelimiter();
 
@@ -94,9 +93,7 @@ public class CsvConverters {
     @TemplateParameter.Text(
         order = 3,
         description = "CSV Format to use for parsing records.",
-        helpText =
-            "CSV format specification to use for parsing records. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: "
-                + "https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html")
+        helpText = "The CSV format according to Apache Commons CSV format. Defaults to: Default.")
     ValueProvider<String> getCsvFormat();
 
     void setCsvFormat(ValueProvider<String> csvFormat);
@@ -107,8 +104,7 @@ public class CsvConverters {
         regexes = {"^(US-ASCII|ISO-8859-1|UTF-8|UTF-16)$"},
         description = "CSV file encoding",
         helpText =
-            "CSV file character encoding format. Allowed Values are US-ASCII"
-                + ", ISO-8859-1, UTF-8, UTF-16")
+            "The CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, and UTF-16.")
     @Default.String("UTF-8")
     ValueProvider<String> getCsvFileEncoding();
 

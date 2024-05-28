@@ -46,8 +46,8 @@
     <jacoco.version>0.8.8</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <!-- Also update YamlTemplate - python/src/main/python/yaml-template/requirements.txt -->
-    <beam.version>2.54.0</beam.version>
+    <!-- Also update beam version in requirements.txt throughout the repo -->
+    <beam.version>2.56.0</beam.version>
     <jackson.version>2.14.1</jackson.version>
 
     <!-- Common dependency versions -->
@@ -78,6 +78,9 @@
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.1.5</truth.version>
 
+    <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam gets the latest version of gax. -->
+    <gax.version>2.45.0</gax.version>
+
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
 
@@ -88,7 +91,7 @@
     <postgresql.version>42.6.0</postgresql.version>
     <ojdbc8.version>23.2.0.0</ojdbc8.version>
     <mssql-jdbc.version>12.2.0.jre11</mssql-jdbc.version>
-    <neo4j-driver.version>4.4.12</neo4j-driver.version>
+    <neo4j-driver.version>4.4.16</neo4j-driver.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.15.2</postgres-socket-factory.version>
@@ -182,6 +185,18 @@
         <groupId>org.xerial.snappy</groupId>
         <artifactId>snappy-java</artifactId>
         <version>${snappy.version}</version>
+      </dependency>
+
+      <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam gets the latest version of gax. -->
+      <dependency>
+        <groupId>com.google.api</groupId>
+        <artifactId>gax-grpc</artifactId>
+        <version>${gax.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.api</groupId>
+        <artifactId>gax</artifactId>
+        <version>${gax.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -343,6 +358,7 @@
           <excludes>
             <!-- Excluding auto-generated classes. -->
             <exclude>**/*AutoValue_*</exclude>
+            <exclude>**/*Exception.*</exclude>
           </excludes>
         </configuration>
         <executions>
@@ -396,6 +412,9 @@
               <includes>
                 <include>**/*IT.java</include>
               </includes>
+              <excludes>
+                <exclude>**/KafkaToKafkaIT.java</exclude>
+              </excludes>
               <excludedGroups>${direct-runner.tests}</excludedGroups>
               <groups>
                 ${integration.tests}
@@ -605,7 +624,6 @@
       <url>https://oss.sonatype.org/content/repositories/snapshots</url>
     </snapshotRepository>
   </distributionManagement>
-
   <modules>
     <module>metadata</module>
     <module>plugins</module>

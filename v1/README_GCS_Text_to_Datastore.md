@@ -18,17 +18,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **textReadPattern** (Input file(s) in Cloud Storage): The input file pattern Dataflow reads from. Ex: gs://your-bucket/.../*.json.
-* **datastoreWriteProjectId** (Project ID): The Google Cloud project ID of where to write Datastore entities.
-* **errorWritePath** (Output failure file): The error log output folder to use for write failures that occur during processing. (Example: gs://your-bucket/errors/).
+* **textReadPattern** : A Cloud Storage path pattern that specifies the location of your text data files. For example, `gs://mybucket/somepath/*.json`.
+* **datastoreWriteProjectId** : The ID of the Google Cloud project to write the Datastore entities to.
+* **errorWritePath** : The error log output file to use for write failures that occur during processing. (Example: gs://your-bucket/errors/).
 
-### Optional Parameters
+### Optional parameters
 
-* **javascriptTextTransformGcsPath** (JavaScript UDF path in Cloud Storage): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
-* **javascriptTextTransformFunctionName** (JavaScript UDF name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **datastoreHintNumWorkers** (Expected number of workers): Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to: 500.
+* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **datastoreHintNumWorkers** : Hint for the expected number of workers in the Datastore ramp-up throttling step. Default is `500`.
 
 
 ## User-Defined functions (UDFs)
@@ -222,7 +222,7 @@ resource "google_dataflow_job" "gcs_text_to_datastore" {
     datastoreWriteProjectId = "<datastoreWriteProjectId>"
     errorWritePath = "gs://your-bucket/errors/"
     # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
-    # javascriptTextTransformFunctionName = "transform_udf1"
+    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # datastoreHintNumWorkers = "500"
   }
 }

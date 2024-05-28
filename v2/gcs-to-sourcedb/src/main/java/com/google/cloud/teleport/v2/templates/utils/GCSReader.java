@@ -33,6 +33,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,9 +45,9 @@ public class GCSReader {
   private ShardFileCreationTracker shardFileCreationTracker;
   private Instant currentIntervalEnd;
   private String shardId;
-  private boolean shouldRetryWhenFileNotFound;
-  private boolean shouldFailWhenFileNotFound;
-  private boolean queriedDataSeenTable;
+  private Duration windowDuration;
+  private String gcsPath;
+  private Instant currentIntervalStart;
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSReader.class);
 
@@ -54,14 +55,14 @@ public class GCSReader {
 
     String fileStartTime = taskContext.getStartTimestamp();
     com.google.cloud.Timestamp startTs = com.google.cloud.Timestamp.parseTimestamp(fileStartTime);
-    Instant startInst = new Instant(startTs.toSqlTimestamp());
-    currentIntervalEnd = startInst.plus(taskContext.getWindowDuration());
+    currentIntervalStart = new Instant(startTs.toSqlTimestamp());
+    currentIntervalEnd = currentIntervalStart.plus(taskContext.getWindowDuration());
     String gcsFileName =
         taskContext.getGCSPath()
             + "/"
             + taskContext.getShard().getLogicalShardId()
             + "/"
-            + startInst
+            + currentIntervalStart
             + "-"
             + currentIntervalEnd
             + "-pane-0-last-0-of-1.txt";
@@ -71,9 +72,8 @@ public class GCSReader {
         new ShardFileCreationTracker(
             spannerDao, taskContext.getShard().getLogicalShardId(), taskContext.getRunId());
     this.shardId = taskContext.getShard().getLogicalShardId();
-    shouldRetryWhenFileNotFound = true;
-    shouldFailWhenFileNotFound = false;
-    queriedDataSeenTable = false;
+    this.windowDuration = taskContext.getWindowDuration();
+    this.gcsPath = taskContext.getGCSPath();
   }
 
   public List<TrimmedShardedDataChangeRecord> getRecords() {
@@ -111,33 +111,8 @@ public class GCSReader {
     } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
       throw new RuntimeException("Failed in processing the record ", ex);
     } catch (IOException e) {
-
       LOG.warn("File not found : " + fileName);
-      if (shouldRetryWhenFileNotFound) {
-        if (!queriedDataSeenTable) {
-          return checkAndReturnIfFileExists();
-        } else {
-          /* We do not need to call checkAndReturnIfFileExists again as it was called already
-          as this will lead to stack overflow when the time taken to write file to GCS is large.
-          GCS writing can take arbitrarty time in unforeseen scenario like Dataflow worker restart.
-          So we just try to read the file in the same function call until found.*/
-          return waitTillFileCreatedAndReturn();
-        }
-      } else {
-        if (shouldFailWhenFileNotFound) {
-          Metrics.counter(GCSReader.class, "file_not_found_errors_" + shardId).inc();
-          throw new RuntimeException("File  " + fileName + " expected but not found  : " + e);
-        }
-        /* The logic for writing to skipped file table can generate load on the metadata database
-        when the first file from the reader template comes very late.
-        In this case, a lot of file intervals will be skipped since no file exists.
-        This causes DEADLINE_EXCEEDED and hence can negatively harm the progress of
-        both the pipelines as the metadata database is shared.
-        Hence the code to store the file intervals skipped is removed
-        and only warnings are logged. Since it was only for audit purpose anyway.*/
-        LOG.warn("File not found : " + fileName + " skipping the file");
-      }
-
+      return checkAndReturnIfFileExists();
     } catch (Exception e) {
       throw new RuntimeException("Failed in GcsReader ", e);
     }
@@ -154,15 +129,13 @@ public class GCSReader {
    * we check the shard_file_create_progress table until the created_upto value is greater than or
    * equal to the current window.
    *
-   * <p>If the created_upto is equal to current window - then it's indication that file for current
-   * window is written and should exist in GCS. So we lookup the file again and fail if the file is
-   * not found.
-   *
-   * <p>If the created_upto is greater than current window, we need to know if there was any data in
-   * Spanner for the window we are checking. For this we query the date_seen table. If data was seen
-   * for the current window, then file should exist in GCS and we lookup the file indefinitely until
-   * is it found. If, however, there was no data for the current window in data_seen, then it means
-   * file for the current interval is not there in GCS. We just simply skip the file.
+   * <p>If the created_upto is greater than or equal to thecurrent window, we need to know if there
+   * was any data in Spanner for the window we are checking. For this we query the date_seen table.
+   * If data was seen for the current window, then file should exist in GCS and we lookup the file
+   * indefinitely until is it found. If, however, there was no data for the current window in
+   * data_seen, then it means file for the current interval is not there in GCS. We then keep
+   * incrementally looking in data_seen for the next window unitl we find data and then return the
+   * file contents
    */
   private List<TrimmedShardedDataChangeRecord> checkAndReturnIfFileExists() {
     try {
@@ -198,17 +171,45 @@ public class GCSReader {
       // if the file is expected to be present - retry until found
       if (shardFileCreationTracker.doesDataExistForTimestamp(currentEndTimestamp)) {
         LOG.info("Data exists for shard {} and time end {} ", shardId, currentEndTimestamp);
-        shouldRetryWhenFileNotFound =
-            true; // can happen due to out of order writes or the write to GCS was very slow
-        shouldFailWhenFileNotFound = true;
-
       } else {
-        shouldRetryWhenFileNotFound = false;
-        shouldFailWhenFileNotFound = false;
-      }
-      queriedDataSeenTable = true;
-      return getRecords();
+        // Data does not exist for the current window. So we scan the data_seen table to see which
+        // is the next window for which data exists.
+        LOG.info("Data does not exist for shard {} and time end {} ", shardId, currentEndTimestamp);
+        Instant previousWindowEnd = currentIntervalEnd;
+        Instant nextWindowEnd = previousWindowEnd.plus(windowDuration);
+        Timestamp nextEndTimestamp = Timestamp.parseTimestamp(nextWindowEnd.toString());
 
+        // Note that since the firstPipelineProgress has a time, eventually we will find the
+        // data_seen entry
+        while (firstPipelineProgress.compareTo(nextEndTimestamp) >= 0) {
+          if (!shardFileCreationTracker.doesDataExistForTimestamp(nextEndTimestamp)) {
+            LOG.info(
+                "Data does not exist for shard {} and time end {} ", shardId, nextEndTimestamp);
+            previousWindowEnd = nextWindowEnd;
+            nextWindowEnd = previousWindowEnd.plus(windowDuration);
+            nextEndTimestamp = Timestamp.parseTimestamp(nextWindowEnd.toString());
+          } else {
+            // Now we have found the next interval which will have the file expected
+            // Construct the file name and return contents
+            LOG.info("Data exists for shard {} and time end {} ", shardId, nextEndTimestamp);
+            this.fileName =
+                this.gcsPath
+                    + "/"
+                    + this.shardId
+                    + "/"
+                    + previousWindowEnd
+                    + "-"
+                    + nextWindowEnd
+                    + "-pane-0-last-0-of-1.txt";
+            currentIntervalStart =
+                nextWindowEnd.minus(
+                    windowDuration); // for the caller to know the current interval start
+            break;
+          }
+        }
+      }
+      // File should exist now, so wait until found the file and return records
+      return waitTillFileCreatedAndReturn();
     } catch (Exception e) {
       throw new RuntimeException(
           " Cannot determine file creation progress for shard : " + shardId, e);
@@ -258,5 +259,9 @@ public class GCSReader {
       }
     }
     return changeStreamList;
+  }
+
+  public String getCurrentIntervalStart() {
+    return currentIntervalStart.toString();
   }
 }

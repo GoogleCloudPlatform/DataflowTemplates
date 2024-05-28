@@ -100,6 +100,37 @@ public class KafkaTransform {
   }
 
   /**
+   * Configures Kafka consumer that reads bytes.
+   *
+   * @param bootstrapServers Kafka servers to read from
+   * @param topicsList Kafka topics to read from
+   * @param config configuration for the Kafka consumer
+   * @return PCollection of Kafka Key & Value Pair deserialized in string format
+   */
+  public static KafkaIO.Read<byte[], byte[]> readBytesFromKafka(
+      String bootstrapServers,
+      List<String> topicsList,
+      Map<String, Object> config,
+      @Nullable Map<String, String> sslConfig,
+      Boolean enableCommitOffsets) {
+    KafkaIO.Read<byte[], byte[]> kafkaRecords =
+        KafkaIO.<byte[], byte[]>read()
+            .withBootstrapServers(bootstrapServers)
+            .withTopics(topicsList)
+            .withKeyDeserializerAndCoder(
+                ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
+            .withValueDeserializerAndCoder(ByteArrayDeserializer.class, ByteArrayCoder.of())
+            .withConsumerConfigUpdates(config);
+    if (sslConfig != null) {
+      kafkaRecords = kafkaRecords.withConsumerFactoryFn(new SslConsumerFactoryFn(sslConfig));
+    }
+    if (enableCommitOffsets) {
+      kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
+    }
+    return kafkaRecords;
+  }
+
+  /**
    * The {@link MessageToFailsafeElementFn} wraps an Kafka Message with the {@link FailsafeElement}
    * class so errors can be recovered from and the original message can be output to a error records
    * table.

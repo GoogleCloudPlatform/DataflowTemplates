@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
@@ -65,12 +67,7 @@ public abstract class Sequence implements Serializable {
     if (dialect() != Dialect.GOOGLE_STANDARD_SQL && dialect() != Dialect.POSTGRESQL) {
       throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
     }
-    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
-    appendable
-        .append("CREATE SEQUENCE ")
-        .append(identifierQuote)
-        .append(name())
-        .append(identifierQuote);
+    appendable.append("CREATE SEQUENCE ").append(quoteIdentifier(name(), dialect()));
 
     if (dialect() == Dialect.GOOGLE_STANDARD_SQL && (options() != null && !options().isEmpty())) {
       String optionsString = String.join(", ", options());

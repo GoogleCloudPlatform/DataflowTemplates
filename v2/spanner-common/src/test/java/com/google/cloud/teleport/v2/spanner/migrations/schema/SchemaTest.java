@@ -15,11 +15,16 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.fail;
 
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import org.junit.Test;
 
 public class SchemaTest {
@@ -57,6 +62,22 @@ public class SchemaTest {
     // Manually delete key to create invalid session file scenario.
     schema.getSpSchema().remove("t2");
     schema.verifyTableInSession("people");
+  }
+
+  @Test
+  public void getSpannerColumnNames() {
+    Schema schema = getSchemaObject();
+    schema.generateMappings();
+    List<String> actualColNames = schema.getSpannerColumnNames("new_cart");
+    List<String> expectedColNames = Arrays.asList("new_product_id", "new_quantity", "new_user_id");
+    assertThat(actualColNames, is(expectedColNames));
+  }
+
+  @Test(expected = NoSuchElementException.class)
+  public void getSpannerColumnNamesMissingTable() {
+    Schema schema = getSchemaObject();
+    schema.generateMappings();
+    schema.getSpannerColumnNames("WrongTableName");
   }
 
   private static Schema getSchemaObject() {

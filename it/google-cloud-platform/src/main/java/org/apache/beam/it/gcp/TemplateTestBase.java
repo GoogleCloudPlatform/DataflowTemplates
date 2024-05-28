@@ -393,7 +393,7 @@ public abstract class TemplateTestBase {
       "-pl",
       moduleBuild,
       "-am",
-      "-PtemplatesStage,pluginOutputDir,splunkDeps",
+      "-PtemplatesStage,pluginOutputDir,splunkDeps,missing-artifact-repos",
       "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(16),
       // Skip shading for now due to flakiness / slowness in the process.
       "-DskipShade=" + skipShade,
@@ -569,6 +569,11 @@ public abstract class TemplateTestBase {
   protected String getGcsPath(String artifactId) {
     return ArtifactUtils.getFullGcsPath(
         artifactBucketName, getClass().getSimpleName(), gcsClient.runId(), artifactId);
+  }
+
+  protected String getGcsPath(String artifactId, GcsResourceManager gcsResourceManager) {
+    return ArtifactUtils.getFullGcsPath(
+        artifactBucketName, getClass().getSimpleName(), gcsResourceManager.runId(), artifactId);
   }
 
   /** Create the default configuration {@link PipelineOperator.Config} for a specific job info. */

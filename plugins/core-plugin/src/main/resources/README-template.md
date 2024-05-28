@@ -19,14 +19,14 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-<#list spec.metadata.parameters as parameter><#if !parameter.optional!false>* **${parameter.name}** (${parameter.label}): ${parameter.helpText?ensure_ends_with(".")}
+<#list spec.metadata.parameters as parameter><#if !parameter.optional!false>* **${parameter.name}** : ${parameter.helpText?ensure_ends_with(".")}
 </#if></#list>
 
-### Optional Parameters
+### Optional parameters
 
-<#list spec.metadata.parameters as parameter><#if parameter.optional!false>* **${parameter.name}** (${parameter.label}): ${parameter.helpText?ensure_ends_with(".")}
+<#list spec.metadata.parameters as parameter><#if parameter.optional!false>* **${parameter.name}** : ${parameter.helpText?ensure_ends_with(".")}
 </#if></#list>
 
 
@@ -95,7 +95,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="${spec.metadata.internalName}" \
-<#if language == 'PYTHON'>
+<#if language == 'PYTHON' || language == 'YAML'>
 -f python
 <#elseif flex>
 -f v2/${spec.metadata.module!}
@@ -196,7 +196,7 @@ mvn clean package -PtemplatesRun \
 -DjobName="${spec.metadata.internalName?lower_case?replace("_", "-")}-job" \
 -DtemplateName="${spec.metadata.internalName}" \
 -Dparameters="<#list spec.metadata.parameters as parameter>${parameter.name}=$${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}<#sep>,</#sep></#list>" \
-<#if language == 'PYTHON'>
+<#if language == 'PYTHON' || language == 'YAML'>
 -f python
 <#elseif flex>
 -f v2/${spec.metadata.module!}

@@ -32,7 +32,8 @@ public class TextConverters {
         order = 1,
         regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         description = "Input file(s) in Cloud Storage",
-        helpText = "The input file pattern Dataflow reads from. Ex: gs://your-bucket/.../*.json")
+        helpText =
+            "A Cloud Storage path pattern that specifies the location of your text data files. For example, `gs://mybucket/somepath/*.json`.")
     ValueProvider<String> getTextReadPattern();
 
     void setTextReadPattern(ValueProvider<String> textReadPattern);
@@ -43,8 +44,8 @@ public class TextConverters {
     @TemplateParameter.GcsWriteFolder(
         order = 2,
         description = "Output file directory in Cloud Storage",
-        helpText = "The path and filename prefix for writing output files.",
-        example = "gs://your-bucket/your-path")
+        helpText = "The Cloud Storage path prefix that specifies where the data is written.",
+        example = "gs://mybucket/somefolder/")
     ValueProvider<String> getTextWritePrefix();
 
     void setTextWritePrefix(ValueProvider<String> textWritePrefix);

@@ -41,7 +41,7 @@ public class BigtableResourceManagerUtilsTest {
         generateDefaultClusters(TEST_ID, ZONE, NUM_NODES, STORAGE_TYPE);
     BigtableResourceManagerCluster thisCluster = cluster.iterator().next();
 
-    assertThat(thisCluster.clusterId()).matches(TEST_ID + "-\\d{8}-\\d{6}-\\d{6}");
+    assertThat(thisCluster.clusterId()).matches(TEST_ID + "-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}");
     assertThat(thisCluster.zone()).isEqualTo(ZONE);
     assertThat(thisCluster.numNodes()).isEqualTo(NUM_NODES);
     assertThat(thisCluster.storageType()).isEqualTo(STORAGE_TYPE);
@@ -58,7 +58,8 @@ public class BigtableResourceManagerUtilsTest {
   public void testGenerateDefaultClustersShouldShortenTestIdWhenTooLong() {
     Iterable<BigtableResourceManagerCluster> cluster =
         generateDefaultClusters("longer-id", ZONE, NUM_NODES, STORAGE_TYPE);
-    assertThat(cluster.iterator().next().clusterId()).matches("longer--\\d{8}-\\d{6}-\\d{6}");
+    assertThat(cluster.iterator().next().clusterId())
+        .matches("longer--\\d{8}-\\d{6}-[a-zA-Z0-9]{6}");
   }
 
   @Test

@@ -100,6 +100,8 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
 
   public abstract ElasticsearchWriteOptions options();
 
+  abstract String userAgent();
+
   /**
    * Types have been removed in ES 7.0. Default will be _doc. See
    * https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html"
@@ -115,7 +117,8 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
         ElasticsearchIO.ConnectionConfiguration.create(
             new String[] {connectionInformation.getElasticsearchURL().toString()},
             options().getIndex(),
-            DOCUMENT_TYPE);
+            DOCUMENT_TYPE,
+            userAgent());
 
     // If username and password are not blank, use them instead of ApiKey
     if (StringUtils.isNotBlank(options().getElasticsearchUsername())
@@ -241,6 +244,10 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
     public abstract Builder setOptions(ElasticsearchWriteOptions options);
 
     abstract ElasticsearchWriteOptions options();
+
+    public abstract Builder setUserAgent(String name);
+
+    abstract String userAgent();
 
     abstract WriteToElasticsearch autoBuild();
 

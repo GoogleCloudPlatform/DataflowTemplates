@@ -43,9 +43,9 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1SchemaPartitionField;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1SchemaSchemaField;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormat;
+import com.google.cloud.PageImpl;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.DatasetId;
-import com.google.cloud.bigquery.EmptyTableResult;
 import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.QueryJobConfiguration;
@@ -384,7 +384,12 @@ public class DataplexBigQueryToGcsTest {
   @Test
   @Category(NeedsRunner.class)
   public void testE2E_mainPathWithAllStepsEnabled() throws Exception {
-    when(bqMock.query(any())).thenReturn(new EmptyTableResult(null));
+    TableResult emptyTableResult =
+        TableResult.newBuilder()
+            .setTotalRows(0L)
+            .setPageNoSchema(new PageImpl<>(null, "", null))
+            .build();
+    when(bqMock.query(any())).thenReturn(emptyTableResult);
 
     insertTableData("unpartitioned_table", defaultRecords);
     insertPartitionData("partitioned_table", "p1", Arrays.copyOfRange(defaultRecords, 0, 2));

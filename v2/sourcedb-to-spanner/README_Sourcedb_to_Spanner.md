@@ -37,7 +37,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **sourceConnectionProperties** (Source connection property string.): Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8).
 * **username** (JDBC connection username.): The username to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key.
 * **password** (JDBC connection password.): The password to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key.
-* **partitionColumn** (The name of a column of numeric type that will be used for partitioning.): If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported.
 * **tables** (Comma-separated names of the tables in the source database.): Tables to read from using partitions.
 * **numPartitions** (The number of partitions.): The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1.
 * **spannerHost** (Cloud Spanner Endpoint to call): The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
@@ -139,7 +138,6 @@ export CONNECTION_URL=<connectionURL>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export USERNAME=<username>
 export PASSWORD=<password>
-export PARTITION_COLUMN=<partitionColumn>
 export TABLES=<tables>
 export NUM_PARTITIONS=<numPartitions>
 export SPANNER_HOST=https://batch-spanner.googleapis.com
@@ -157,7 +155,6 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "sourceConnectionProperties=$CONNECTION_PROPERTIES" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
-  --parameters "partitionColumn=$PARTITION_COLUMN" \
   --parameters "tables=$TABLES" \
   --parameters "numPartitions=$NUM_PARTITIONS" \
   --parameters "instanceId=$INSTANCE_ID" \
@@ -196,7 +193,6 @@ export CONNECTION_URL=<connectionURL>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export USERNAME=<username>
 export PASSWORD=<password>
-export PARTITION_COLUMN=<partitionColumn>
 export TABLES=<tables>
 export NUM_PARTITIONS=<numPartitions>
 export SPANNER_HOST=https://batch-spanner.googleapis.com
@@ -211,7 +207,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="jdbcDriverJars=$DRIVER_JARS,jdbcDriverClassName=$DRIVER_CLASS_NAME,sourceConnectionURL=$CONNECTION_URL,sourceConnectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,partitionColumn=$PARTITION_COLUMN,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,ignoreColumns=$IGNORE_COLUMNS,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-Dparameters="jdbcDriverJars=$DRIVER_JARS,jdbcDriverClassName=$DRIVER_CLASS_NAME,sourceConnectionURL=$CONNECTION_URL,sourceConnectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,ignoreColumns=$IGNORE_COLUMNS,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
 -pl v2/sourcedb-to-spanner \
 -am
 ```
@@ -251,7 +247,6 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     # connectionProperties = "unicode=true;characterEncoding=UTF-8"
     # username = "<username>"
     # password = "<password>"
-    # partitionColumn = "<partitionColumn>"
     # tables = "<tables>"
     # numPartitions = "<numPartitions>"
     # spannerHost = "https://batch-spanner.googleapis.com"

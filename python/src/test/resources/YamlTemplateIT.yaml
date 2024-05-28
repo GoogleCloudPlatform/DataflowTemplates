@@ -3,7 +3,7 @@ pipeline:
   transforms:
     - type: ReadFromCsv
       config:
-        path: "INPUT_PATH"
+        path: {{ INPUT_PATH_PARAM }}
     - type: MapToFields
       name: MapWithErrorHandling
       input: ReadFromCsv
@@ -46,9 +46,9 @@ pipeline:
       name: WriteGoodFiles
       input: Sum
       config:
-        path: "OUTPUT_PATH/good"
+        path: {{ OUTPUT_PATH_PARAM }}/good
     - type: WriteToJson
       name: WriteBadFiles
       input: TrimErrors
       config:
-        path: "OUTPUT_PATH/bad"
+        path: {{ OUTPUT_PATH_PARAM }}/bad

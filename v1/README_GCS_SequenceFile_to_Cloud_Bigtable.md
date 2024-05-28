@@ -16,17 +16,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **bigtableProject** (Project ID): The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to. Defaults to --project.
-* **bigtableInstanceId** (Instance ID): The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableTableId** (Table ID): The ID of the Cloud Bigtable table to import.
-* **sourcePattern** (Source path pattern): Cloud Storage path pattern where data is located. (Example: gs://your-bucket/your-path/prefix*).
+* **bigtableProject** : The ID of the Google Cloud project that contains the Bigtable instance that you want to write data to.
+* **bigtableInstanceId** : The ID of the Bigtable instance that contains the table.
+* **bigtableTableId** : The ID of the Bigtable table to import.
+* **sourcePattern** : The Cloud Storage path pattern to the location of the data. (Example: gs://your-bucket/your-path/prefix*).
 
-### Optional Parameters
+### Optional parameters
 
-* **bigtableAppProfileId** (Application profile ID): The ID of the Cloud Bigtable application profile to be used for the import.
-* **mutationThrottleLatencyMs** (Mutation Throttle Latency): Optional Set mutation latency throttling (enables the feature). Value in milliseconds. Defaults to: 0.
+* **bigtableAppProfileId** : The ID of the Bigtable application profile to use for the import. If you don't specify an application profile, Bigtable uses the instance's default application profile (https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile).
+* **mutationThrottleLatencyMs** : Optional Set mutation latency throttling (enables the feature). Value in milliseconds. Defaults to: 0.
 
 
 

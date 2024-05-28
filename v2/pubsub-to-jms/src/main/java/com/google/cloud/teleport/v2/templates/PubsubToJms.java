@@ -183,7 +183,7 @@ public class PubsubToJms {
 
     void setUsername(String username);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Password(
         order = 6,
         description = "JMS Password",
         helpText = "Password for username provided for authentication with JMS server",

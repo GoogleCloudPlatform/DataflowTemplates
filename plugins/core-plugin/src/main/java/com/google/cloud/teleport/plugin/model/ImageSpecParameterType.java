@@ -24,11 +24,17 @@ public enum ImageSpecParameterType {
   /** BigQuery table reference. */
   BIGQUERY_TABLE,
 
+  /** JavaScript UDF in Cloud Storage. */
+  JAVASCRIPT_UDF_FILE,
+
   /** Cloud Storage glob to read file(s). */
   GCS_READ_FILE,
 
   /** Cloud Storage folder to read. */
   GCS_READ_FOLDER,
+
+  /** Cloud Storage bucket to read. */
+  GCS_READ_BUCKET,
 
   /** Cloud Storage file to write. */
   GCS_WRITE_FILE,
@@ -36,11 +42,26 @@ public enum ImageSpecParameterType {
   /** Cloud Storage folder to write. */
   GCS_WRITE_FOLDER,
 
+  /** Cloud Storage bucket to write. */
+  GCS_WRITE_BUCKET,
+
   /** Pub/Sub Subscription to read. */
   PUBSUB_SUBSCRIPTION,
 
   /** Pub/Sub Topic to read or write. */
   PUBSUB_TOPIC,
+
+  /** Machine Type parameter. */
+  MACHINE_TYPE,
+
+  /** Service Account email. */
+  SERVICE_ACCOUNT,
+
+  /** Worker Region parameter. */
+  WORKER_REGION,
+
+  /** Worker Zone parameter. */
+  WORKER_ZONE,
 
   /** Boolean parameter. */
   BOOLEAN,
@@ -49,5 +70,8 @@ public enum ImageSpecParameterType {
   ENUM,
 
   /** Number parameter. */
-  NUMBER;
+  NUMBER,
+
+  /** Kafka Topic parameter. */
+  KAFKA_TOPIC;
 }

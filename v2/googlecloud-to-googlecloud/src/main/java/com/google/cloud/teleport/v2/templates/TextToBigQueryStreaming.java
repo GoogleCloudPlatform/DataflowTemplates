@@ -174,7 +174,7 @@ import org.slf4j.LoggerFactory;
         "javascriptTextTransformReloadIntervalMinutes"
       },
       optionsClass = TextToBigQueryStreamingOptions.class,
-      flexContainerName = "text-to-bigquery-streaming",
+      flexContainerName = "text-to-bigquery-streaming-xlang",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-bigquery-stream",
       contactInformation = "https://cloud.google.com/support",
@@ -351,8 +351,6 @@ public class TextToBigQueryStreaming {
                       .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
                       .setFunctionName(options.getPythonExternalTextTransformFunctionName())
                       .build())
-              .setRowSchema(
-                  PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.FAILSAFE_SCHEMA)
               .apply(
                   ParDo.of(new RowToStringFailsafeElementFn(UDF_OUT, UDF_DEADLETTER_OUT))
                       .withOutputTags(UDF_OUT, TupleTagList.of(UDF_DEADLETTER_OUT)));
@@ -481,10 +479,9 @@ public class TextToBigQueryStreaming {
         optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
-                + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
-                + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
-        example = "your-project-id:your-dataset.your-table-name")
+            "Table for messages that failed to reach the output table. If a table doesn't exist, it is created during "
+                + "pipeline execution. If not specified, `<outputTableSpec>_error_records` is used.",
+        example = "<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>")
     String getOutputDeadletterTable();
 
     void setOutputDeadletterTable(String value);
@@ -494,6 +491,8 @@ public class TextToBigQueryStreaming {
     @TemplateParameter.Boolean(
         order = 2,
         optional = true,
+        parentName = "useStorageWriteApi",
+        parentTriggerValues = {"true"},
         description = "Use at at-least-once semantics in BigQuery Storage Write API",
         helpText =
             "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"

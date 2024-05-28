@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.elasticsearch.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.PythonExternalTextTransformerOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
@@ -28,13 +28,12 @@ import org.apache.beam.sdk.options.Validation;
 public interface GCSToElasticsearchOptions
     extends CsvConverters.CsvPipelineOptions,
         ElasticsearchWriteOptions,
-        JavascriptTextTransformerOptions {
+        PythonExternalTextTransformerOptions {
 
   @TemplateParameter.BigQueryTable(
       order = 1,
       description = "BigQuery Deadletter table to send failed inserts.",
-      helpText =
-          "Messages failed to reach the target for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table.",
+      helpText = "The BigQuery dead-letter table to send failed inserts to.",
       example = "your-project:your-dataset.your-table-name")
   @Validation.Required
   String getDeadletterTable();

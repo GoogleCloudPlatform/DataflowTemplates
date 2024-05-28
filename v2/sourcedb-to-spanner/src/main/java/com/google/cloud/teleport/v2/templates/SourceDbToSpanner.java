@@ -15,27 +15,51 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
+import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.source.DataSourceProvider;
-import com.google.cloud.teleport.v2.spanner.ResultSetToMutation;
+import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper;
+import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
+import com.google.cloud.teleport.v2.transformer.SourceRowToMutationDoFn;
+import com.google.cloud.teleport.v2.writer.DeadLetterQueue;
+import com.google.cloud.teleport.v2.writer.SpannerWriter;
 import com.google.common.annotations.VisibleForTesting;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
+import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO.Write;
-import org.apache.beam.sdk.io.jdbc.JdbcIO;
+import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.SdkHarnessOptions;
+import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTagList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -75,6 +99,8 @@ import org.apache.beam.sdk.values.PCollection;
     })
 public class SourceDbToSpanner {
 
+  private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpanner.class);
+
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
    * blocking execution is required, use the {@link SourceDbToSpanner#run} method to start the
@@ -100,70 +126,134 @@ public class SourceDbToSpanner {
    */
   @VisibleForTesting
   static PipelineResult run(SourceDbToSpannerOptions options) {
+    // TODO - Validate if options are as expected
     Pipeline pipeline = Pipeline.create(options);
-    Map<String, Set<String>> columnsToIgnore = getColumnsToIgnore(options);
-    Map<String, String> tableVsPartitionMap = getTablesVsPartitionColumn(options);
-    for (String table : getTablesVsPartitionColumn(options).keySet()) {
-      PCollection<Mutation> rows =
-          pipeline.apply(
-              "ReadPartitions_" + table,
-              getJdbcReader(
-                  table, tableVsPartitionMap.get(table), columnsToIgnore.get(table), options));
-      rows.apply("Write_" + table, getSpannerWrite(options));
-    }
+    options.as(SdkHarnessOptions.class).setDefaultSdkHarnessLogLevel(options.getDefaultLogLevel());
+
+    SpannerConfig spannerConfig = createSpannerConfig(options);
+    Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
+    ISchemaMapper schemaMapper = getSchemaMapper(options, ddl);
+    List<String> tablesToMigrate = listTablesToMigrate(options, schemaMapper, ddl);
+
+    // Read data from source
+    ReaderImpl reader =
+        ReaderImpl.of(
+            JdbcIoWrapper.of(
+                OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
+                    options, tablesToMigrate)));
+    SourceSchema srcSchema = reader.getSourceSchema();
+    ReaderTransform readerTransform = reader.getReaderTransform();
+
+    PCollectionTuple rowsAndTables = pipeline.apply("Read rows", readerTransform.readTransform());
+    PCollection<SourceRow> sourceRows = rowsAndTables.get(readerTransform.sourceRowTag());
+
+    // Transform source data to Spanner Compatible Data
+    SourceRowToMutationDoFn transformDoFn =
+        SourceRowToMutationDoFn.create(schemaMapper, getTableIDToRefMap(srcSchema));
+    PCollectionTuple transformationResult =
+        sourceRows.apply(
+            "Transform",
+            ParDo.of(transformDoFn)
+                .withOutputTags(
+                    SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS,
+                    TupleTagList.of(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)));
+
+    // Write to Spanner
+    SpannerWriter writer = new SpannerWriter(spannerConfig);
+    PCollection<MutationGroup> failedMutations =
+        writer.writeToSpanner(
+            transformationResult
+                .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS)
+                .setCoder(SerializableCoder.of(RowContext.class)));
+
+    // Dump Failed rows to DLQ
+    DeadLetterQueue dlq = DeadLetterQueue.create(options.getDLQDirectory());
+    dlq.failedMutationsToDLQ(failedMutations);
+    dlq.failedTransformsToDLQ(
+        transformationResult
+            .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)
+            .setCoder(SerializableCoder.of(RowContext.class)));
     return pipeline.run();
   }
 
-  private static Map<String, String> getTablesVsPartitionColumn(SourceDbToSpannerOptions options) {
-    String[] tables = options.getTables().split(",");
-    String[] partitionColumns = options.getPartitionColumns().split(",");
-    if (tables.length != partitionColumns.length) {
-      throw new RuntimeException(
-          "invalid configuration. Partition column count does not match " + "tables count.");
-    }
-    Map<String, String> tableVsPartitionColumn = new HashMap();
-    for (int i = 0; i < tables.length; i++) {
-      tableVsPartitionColumn.put(tables[i], partitionColumns[i]);
-    }
-    return tableVsPartitionColumn;
+  @VisibleForTesting
+  static SpannerConfig createSpannerConfig(SourceDbToSpannerOptions options) {
+    return SpannerConfig.create()
+        .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
+        .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+        .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
+        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
   }
 
-  private static Map<String, Set<String>> getColumnsToIgnore(SourceDbToSpannerOptions options) {
-    String ignoreStr = options.getIgnoreColumns();
-    if (ignoreStr == null || ignoreStr.isEmpty()) {
-      return Collections.emptyMap();
+  @VisibleForTesting
+  static ISchemaMapper getSchemaMapper(SourceDbToSpannerOptions options, Ddl ddl) {
+    ISchemaMapper schemaMapper = new IdentityMapper(ddl);
+    if (options.getSessionFilePath() != null && !options.getSessionFilePath().equals("")) {
+      schemaMapper = new SessionBasedMapper(options.getSessionFilePath(), ddl);
     }
-    Map<String, Set<String>> ignore = new HashMap<>();
-    for (String tableColumns : ignoreStr.split(",")) {
-      int tableNameIndex = tableColumns.indexOf(':');
-      if (tableNameIndex == -1) {
-        continue;
+    return schemaMapper;
+  }
+
+  @VisibleForTesting
+  static Map<String, SourceTableReference> getTableIDToRefMap(SourceSchema srcSchema) {
+    Map<String, SourceTableReference> tableIdMapper = new HashMap<>();
+    for (SourceTableSchema srcTableSchema : srcSchema.tableSchemas()) {
+      tableIdMapper.put(
+          srcTableSchema.tableSchemaUUID(),
+          SourceTableReference.builder()
+              .setSourceSchemaReference(srcSchema.schemaReference())
+              .setSourceTableName(srcTableSchema.tableName())
+              .setSourceTableSchemaUUID(srcTableSchema.tableSchemaUUID())
+              .build());
+    }
+    return tableIdMapper;
+  }
+
+  /*
+   * Return the available tables to migrate based on the following.
+   * 1. Fetch tables from schema mapper. Override with tables from options if present
+   * 2. Mark for migration if tables have corresponding spanner tables.
+   * Err on the side of being lenient with configuration
+   */
+  static List<String> listTablesToMigrate(
+      SourceDbToSpannerOptions options, ISchemaMapper mapper, Ddl ddl) {
+    List<String> tablesFromOptions =
+        StringUtils.isNotBlank(options.getTables())
+            ? Arrays.stream(options.getTables().split(",")).collect(Collectors.toList())
+            : new ArrayList<String>();
+
+    List<String> sourceTablesConfigured = null;
+    if (tablesFromOptions.isEmpty()) {
+      sourceTablesConfigured = mapper.getSourceTablesToMigrate("");
+      LOG.info("using tables from mapper as no overrides provided: {}", sourceTablesConfigured);
+    } else {
+      LOG.info("table overrides configured: {}", tablesFromOptions);
+      sourceTablesConfigured = tablesFromOptions;
+    }
+
+    List<String> tablesToMigrate = new ArrayList<>();
+    for (String table : sourceTablesConfigured) {
+      String spannerTable = null;
+      try {
+        spannerTable = mapper.getSpannerTableName("", table);
+      } catch (NoSuchElementException e) {
+        LOG.info("could not fetch spanner table from mapper: {}", table);
       }
-      String table = tableColumns.substring(0, tableNameIndex);
-      String columnStr = tableColumns.substring(tableNameIndex + 1);
-      Set<String> columns = new HashSet<>(Arrays.asList(columnStr.split(";")));
-      ignore.put(table, columns);
+      if (spannerTable != null && ddl.table(spannerTable) != null) {
+        // If spanner table exists against source - mark for migration
+        tablesToMigrate.add(table);
+      } else {
+        LOG.warn(
+            "skipping source table as corresponding spanner table is not present: {} "
+                + "spannerTable: {}",
+            table,
+            spannerTable);
+      }
     }
-    return ignore;
-  }
-
-  private static JdbcIO.ReadWithPartitions<Mutation, Long> getJdbcReader(
-      String table,
-      String partitionColumn,
-      Set<String> columnsToIgnore,
-      SourceDbToSpannerOptions options) {
-    return JdbcIO.<Mutation>readWithPartitions()
-        .withDataSourceProviderFn(new DataSourceProvider(options))
-        .withTable(table)
-        .withPartitionColumn(partitionColumn)
-        .withRowMapper(ResultSetToMutation.create(table, columnsToIgnore))
-        .withNumPartitions(options.getNumPartitions());
-  }
-
-  private static Write getSpannerWrite(SourceDbToSpannerOptions options) {
-    return SpannerIO.write()
-        .withProjectId(options.getProjectId())
-        .withInstanceId(options.getInstanceId())
-        .withDatabaseId(options.getDatabaseId());
+    if (tablesToMigrate.isEmpty()) {
+      LOG.error("aborting migration as no tables found to migrate");
+      throw new InvalidOptionsException("no configured tables can be migrated");
+    }
+    return tablesToMigrate;
   }
 }

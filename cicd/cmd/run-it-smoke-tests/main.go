@@ -64,7 +64,8 @@ func main() {
 		flags.ArtifactBucket(),
 		flags.StageBucket(),
 		flags.PrivateConnectivity(),
-		flags.FailureMode())
+		flags.FailureMode(),
+		flags.RetryFailures())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
