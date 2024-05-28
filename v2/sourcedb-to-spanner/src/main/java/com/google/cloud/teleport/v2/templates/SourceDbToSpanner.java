@@ -15,11 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.spanner.BatchClient;
-import com.google.cloud.spanner.BatchReadOnlyTransaction;
-import com.google.cloud.spanner.DatabaseAdminClient;
-import com.google.cloud.spanner.Dialect;
-import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
@@ -34,21 +29,27 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.ddl.InformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.cloud.teleport.v2.transformer.SourceRowToMutationDoFn;
 import com.google.cloud.teleport.v2.writer.DeadLetterQueue;
 import com.google.cloud.teleport.v2.writer.SpannerWriter;
 import com.google.common.annotations.VisibleForTesting;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
+import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.SdkHarnessOptions;
@@ -129,22 +130,26 @@ public class SourceDbToSpanner {
     Pipeline pipeline = Pipeline.create(options);
     options.as(SdkHarnessOptions.class).setDefaultSdkHarnessLogLevel(options.getDefaultLogLevel());
 
+    SpannerConfig spannerConfig = createSpannerConfig(options);
+    Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
+    ISchemaMapper schemaMapper = getSchemaMapper(options, ddl);
+    List<String> tablesToMigrate = listTablesToMigrate(options, schemaMapper, ddl);
+
     // Read data from source
     ReaderImpl reader =
         ReaderImpl.of(
             JdbcIoWrapper.of(
-                OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(options)));
+                OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
+                    options, tablesToMigrate)));
     SourceSchema srcSchema = reader.getSourceSchema();
     ReaderTransform readerTransform = reader.getReaderTransform();
 
-    SpannerConfig spannerConfig = createSpannerConfig(options);
     PCollectionTuple rowsAndTables = pipeline.apply("Read rows", readerTransform.readTransform());
     PCollection<SourceRow> sourceRows = rowsAndTables.get(readerTransform.sourceRowTag());
 
     // Transform source data to Spanner Compatible Data
     SourceRowToMutationDoFn transformDoFn =
-        SourceRowToMutationDoFn.create(
-            getSchemaMapper(options, spannerConfig), getTableIDToRefMap(srcSchema));
+        SourceRowToMutationDoFn.create(schemaMapper, getTableIDToRefMap(srcSchema));
     PCollectionTuple transformationResult =
         sourceRows.apply(
             "Transform",
@@ -181,33 +186,12 @@ public class SourceDbToSpanner {
   }
 
   @VisibleForTesting
-  static ISchemaMapper getSchemaMapper(
-      SourceDbToSpannerOptions options, SpannerConfig spannerConfig) {
-    Ddl ddl = getInformationSchemaAsDdl(spannerConfig);
+  static ISchemaMapper getSchemaMapper(SourceDbToSpannerOptions options, Ddl ddl) {
     ISchemaMapper schemaMapper = new IdentityMapper(ddl);
     if (options.getSessionFilePath() != null && !options.getSessionFilePath().equals("")) {
       schemaMapper = new SessionBasedMapper(options.getSessionFilePath(), ddl);
     }
     return schemaMapper;
-  }
-
-  @VisibleForTesting
-  // TODO: SpannerInfoschema scanner code is duplicated across live, bulk and reverse replication
-  // templates. We should refactor everything to spanner-common.
-  static Ddl getInformationSchemaAsDdl(SpannerConfig spannerConfig) {
-    SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-    DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
-    Dialect dialect =
-        databaseAdminClient
-            .getDatabase(spannerConfig.getInstanceId().get(), spannerConfig.getDatabaseId().get())
-            .getDialect();
-    BatchClient batchClient = spannerAccessor.getBatchClient();
-    BatchReadOnlyTransaction context =
-        batchClient.batchReadOnlyTransaction(TimestampBound.strong());
-    InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
-    Ddl ddl = scanner.scan();
-    spannerAccessor.close();
-    return ddl;
   }
 
   @VisibleForTesting
@@ -223,5 +207,53 @@ public class SourceDbToSpanner {
               .build());
     }
     return tableIdMapper;
+  }
+
+  /*
+   * Return the available tables to migrate based on the following.
+   * 1. Fetch tables from schema mapper. Override with tables from options if present
+   * 2. Mark for migration if tables have corresponding spanner tables.
+   * Err on the side of being lenient with configuration
+   */
+  static List<String> listTablesToMigrate(
+      SourceDbToSpannerOptions options, ISchemaMapper mapper, Ddl ddl) {
+    List<String> tablesFromOptions =
+        StringUtils.isNotBlank(options.getTables())
+            ? Arrays.stream(options.getTables().split(",")).collect(Collectors.toList())
+            : new ArrayList<String>();
+
+    List<String> sourceTablesConfigured = null;
+    if (tablesFromOptions.isEmpty()) {
+      sourceTablesConfigured = mapper.getSourceTablesToMigrate("");
+      LOG.info("using tables from mapper as no overrides provided: {}", sourceTablesConfigured);
+    } else {
+      LOG.info("table overrides configured: {}", tablesFromOptions);
+      sourceTablesConfigured = tablesFromOptions;
+    }
+
+    List<String> tablesToMigrate = new ArrayList<>();
+    for (String table : sourceTablesConfigured) {
+      String spannerTable = null;
+      try {
+        spannerTable = mapper.getSpannerTableName("", table);
+      } catch (NoSuchElementException e) {
+        LOG.info("could not fetch spanner table from mapper: {}", table);
+      }
+      if (spannerTable != null && ddl.table(spannerTable) != null) {
+        // If spanner table exists against source - mark for migration
+        tablesToMigrate.add(table);
+      } else {
+        LOG.warn(
+            "skipping source table as corresponding spanner table is not present: {} "
+                + "spannerTable: {}",
+            table,
+            spannerTable);
+      }
+    }
+    if (tablesToMigrate.isEmpty()) {
+      LOG.error("aborting migration as no tables found to migrate");
+      throw new InvalidOptionsException("no configured tables can be migrated");
+    }
+    return tablesToMigrate;
   }
 }

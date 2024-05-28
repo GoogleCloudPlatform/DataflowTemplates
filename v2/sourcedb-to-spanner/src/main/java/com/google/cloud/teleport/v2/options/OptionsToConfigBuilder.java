@@ -21,22 +21,40 @@ import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsPr
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.common.collect.ImmutableList;
-import java.util.Arrays;
-import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class OptionsToConfigBuilder {
+  private static final Logger LOG = LoggerFactory.getLogger(OptionsToConfigBuilder.class);
 
   public static final class MySql {
 
+    private static String extractDbFromURL(String url) {
+      URI uri;
+      try {
+        uri = new URI(url);
+      } catch (URISyntaxException e) {
+        throw new RuntimeException(String.format("Unable to parse url: %s", url), e);
+      }
+      // Remove '/' before returning.
+      return uri.getPath().substring(1);
+    }
+
     public static JdbcIOWrapperConfig configWithMySqlDefaultsFromOptions(
-        SourceDbToSpannerOptions options) {
+        SourceDbToSpannerOptions options, List<String> tables) {
       JdbcIOWrapperConfig.Builder builder = builderWithMySqlDefaults();
       builder =
           builder
-              .setSourceHost(options.getSourceHost())
-              .setSourcePort(options.getSourcePort())
+              .setSourceDbURL(options.getSourceDbURL())
               .setSourceSchemaReference(
-                  SourceSchemaReference.builder().setDbName(options.getSourceDB()).build())
+                  SourceSchemaReference.builder()
+                      .setDbName(
+                          // Strip off the prefix 'jdbc:' which the library cannot handle.
+                          extractDbFromURL(options.getSourceDbURL().substring(5)))
+                      .build())
               .setDbAuth(
                   LocalCredentialsProvider.builder()
                       .setUserName(options.getUsername())
@@ -45,26 +63,11 @@ public final class OptionsToConfigBuilder {
               .setJdbcDriverClassName(options.getJdbcDriverClassName())
               .setJdbcDriverJars(options.getJdbcDriverJars())
               .setShardID("Unsupported"); /*TODO: Support Sharded Migration */
-      if (options.getSourceConnectionProperties() != "") {
-        builder = builder.setConnectionProperties(options.getSourceConnectionProperties());
-      }
       if (options.getMaxConnections() != 0) {
         builder.setMaxConnections((long) options.getMaxConnections());
       }
-      if (options.getReconnectsEnabled()) {
-        builder.setAutoReconnect(true);
-        if (options.getReconnectAttempts() != 0) {
-          builder.setReconnectAttempts((long) options.getReconnectAttempts());
-        }
-      }
       builder.setMaxPartitions(options.getNumPartitions());
-      builder.setMaxFetchSize(options.getFetchSize());
-      ImmutableList<String> tables =
-          StringUtils.isNotBlank(options.getTables())
-              ? Arrays.stream(options.getTables().split(","))
-                  .collect(ImmutableList.toImmutableList())
-              : ImmutableList.of();
-      builder = builder.setTables(tables);
+      builder = builder.setTables(ImmutableList.copyOf(tables));
       return builder.build();
     }
   }

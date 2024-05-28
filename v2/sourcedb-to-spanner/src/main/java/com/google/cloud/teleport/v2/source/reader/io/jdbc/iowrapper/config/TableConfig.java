@@ -34,22 +34,11 @@ public abstract class TableConfig {
   @Nullable
   public abstract Integer maxPartitions();
 
-  /**
-   * Configures the size of data read in db, per db read call. Defaults to beam's DEFAULT_FETCH_SIZE
-   * of 50_000. For manually fine-tuning this, take into account the read ahead buffer pool settings
-   * (innodb_read_ahead_threshold) and the worker memory.
-   */
-  @Nullable
-  public abstract Integer maxFetchSize();
-
   /** Partition Column. As of now only a single partition column is supported */
   public abstract ImmutableList<String> partitionColumns();
 
   public static Builder builder(String tableName) {
-    return new AutoValue_TableConfig.Builder()
-        .setTableName(tableName)
-        .setMaxPartitions(null)
-        .setMaxFetchSize(null);
+    return new AutoValue_TableConfig.Builder().setTableName(tableName).setMaxPartitions(null);
   }
 
   @AutoValue.Builder
@@ -58,8 +47,6 @@ public abstract class TableConfig {
     abstract Builder setTableName(String value);
 
     public abstract Builder setMaxPartitions(Integer value);
-
-    public abstract Builder setMaxFetchSize(Integer value);
 
     abstract ImmutableList.Builder<String> partitionColumnsBuilder();
 

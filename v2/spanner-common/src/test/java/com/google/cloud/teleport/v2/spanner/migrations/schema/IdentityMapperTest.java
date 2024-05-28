@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.type.Type;
@@ -156,5 +157,18 @@ public class IdentityMapperTest {
   public void testGetSpannerColumnsMissingTable() {
     String spannerTable = "wrongTableName";
     mapper.getSpannerColumns("", spannerTable);
+  }
+
+  @Test
+  public void testSourceTablesToMigrate() {
+    List<String> sourceTablesToMigrate = mapper.getSourceTablesToMigrate("");
+    assertTrue(sourceTablesToMigrate.contains("Users"));
+    assertTrue(sourceTablesToMigrate.contains("Account"));
+    assertEquals(2, sourceTablesToMigrate.size());
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testSourceTablesToMigrateNamespace() {
+    mapper.getSourceTablesToMigrate("test");
   }
 }
