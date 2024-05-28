@@ -215,7 +215,8 @@ public class KafkaToGcsFlex {
     String bootstrapServers;
     if (options.getReadBootstrapServerAndTopic() != null) {
       List<String> bootstrapServerAndTopicList =
-          KafkaTopicUtils.getBootstrapServerAndTopic(options.getReadBootstrapServerAndTopic());
+          KafkaTopicUtils.getBootstrapServerAndTopic(
+              options.getReadBootstrapServerAndTopic(), options.getProject());
       topicsList = List.of(bootstrapServerAndTopicList.get(1));
       bootstrapServers = bootstrapServerAndTopicList.get(0);
     } else {
@@ -241,11 +242,7 @@ public class KafkaToGcsFlex {
     // Step 1: Read from Kafka as bytes.
     KafkaIO.Read<byte[], byte[]> kafkaTransform =
         KafkaTransform.readBytesFromKafka(
-            options.getReadBootstrapServers(),
-            topicsList,
-            kafkaConfig,
-            null,
-            options.getEnableCommitOffsets());
+            bootstrapServers, topicsList, kafkaConfig, null, options.getEnableCommitOffsets());
     kafkaRecord = pipeline.apply(kafkaTransform);
     kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
     return pipeline.run();

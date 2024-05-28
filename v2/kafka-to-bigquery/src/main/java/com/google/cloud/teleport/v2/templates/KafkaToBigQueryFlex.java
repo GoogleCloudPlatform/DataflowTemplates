@@ -180,7 +180,8 @@ public class KafkaToBigQueryFlex {
     String bootstrapServers;
     if (options.getReadBootstrapServerAndTopic() != null) {
       List<String> bootstrapServerAndTopicList =
-          KafkaTopicUtils.getBootstrapServerAndTopic(options.getReadBootstrapServerAndTopic());
+          KafkaTopicUtils.getBootstrapServerAndTopic(
+              options.getReadBootstrapServerAndTopic(), options.getProject());
       topicsList = List.of(bootstrapServerAndTopicList.get(1));
       bootstrapServers = bootstrapServerAndTopicList.get(0);
     } else {
