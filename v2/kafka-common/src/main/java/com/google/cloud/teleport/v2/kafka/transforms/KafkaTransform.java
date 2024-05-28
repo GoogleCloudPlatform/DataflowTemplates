@@ -55,7 +55,8 @@ public class KafkaTransform {
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
-      @Nullable Map<String, String> sslConfig) {
+      @Nullable Map<String, String> sslConfig,
+      Boolean enableCommitOffsets) {
     KafkaIO.Read<String, String> kafkaRecords =
         KafkaIO.<String, String>read()
             .withBootstrapServers(bootstrapServers)
@@ -67,6 +68,9 @@ public class KafkaTransform {
             .withConsumerConfigUpdates(config);
     if (sslConfig != null) {
       kafkaRecords = kafkaRecords.withConsumerFactoryFn(new SslConsumerFactoryFn(sslConfig));
+    }
+    if (enableCommitOffsets) {
+      kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
     }
     return kafkaRecords.withoutMetadata();
   }

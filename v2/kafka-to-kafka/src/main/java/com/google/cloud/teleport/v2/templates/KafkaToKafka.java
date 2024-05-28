@@ -20,6 +20,7 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import com.google.common.collect.ImmutableMap;
 import org.apache.beam.sdk.Pipeline;
@@ -41,9 +42,7 @@ import org.slf4j.LoggerFactory;
     description = "A pipeline that writes data to a kafka destination from another kafka source",
     optionsClass = KafkaToKafkaOptions.class,
     flexContainerName = "kafka-to-kafka",
-    contactInformation = "https://cloud.google.com/support",
-    hidden = true,
-    streaming = true)
+    contactInformation = "https://cloud.google.com/support")
 public class KafkaToKafka {
 
   private static final Logger LOG = LoggerFactory.getLogger(KafkaToKafka.class);
@@ -56,6 +55,10 @@ public class KafkaToKafka {
   }
 
   public static PipelineResult run(KafkaToKafkaOptions options) {
+
+    // Enable Streaming Engine Resource Based Billing.
+    options =
+        (KafkaToKafkaOptions) KafkaCommonUtils.enableStreamingEngineResourceBasedBilling(options);
 
     if (options.getMigrationType().equals("GMK-to-GMK")) {
       checkArgument(

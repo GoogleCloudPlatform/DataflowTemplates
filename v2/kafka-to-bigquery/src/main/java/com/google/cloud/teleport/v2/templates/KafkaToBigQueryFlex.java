@@ -37,7 +37,6 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
@@ -107,8 +106,7 @@ import org.slf4j.LoggerFactory;
       "The Apache Kafka broker server must be running and be reachable from the Dataflow worker machines.",
       "The Apache Kafka topics must exist and the messages must be encoded in a valid JSON format."
     },
-    skipOptions = {"readBootstrapServers", "kafkaReadTopics", "useStorageWriteApi"},
-    hidden = true)
+    skipOptions = {"readBootstrapServers", "kafkaReadTopics", "useStorageWriteApi"})
 public class KafkaToBigQueryFlex {
 
   /* Logger for class. */
@@ -158,12 +156,10 @@ public class KafkaToBigQueryFlex {
     // Enable Streaming Engine
     options.setEnableStreamingEngine(true);
 
-    List<String> dataflowServiceOptions = options.getDataflowServiceOptions();
-    if (dataflowServiceOptions == null) {
-      dataflowServiceOptions = new ArrayList<>();
-    }
-    dataflowServiceOptions.add("enable_streaming_engine_resource_based_billing");
-    options.setDataflowServiceOptions(dataflowServiceOptions);
+    // Enable Streaming Engine Resource Based Billing.
+    options =
+        (KafkaToBigQueryFlexOptions)
+            KafkaCommonUtils.enableStreamingEngineResourceBasedBilling(options);
 
     // Validate BQ STORAGE_WRITE_API options
     options.setUseStorageWriteApi(true);
@@ -390,7 +386,12 @@ public class KafkaToBigQueryFlex {
              */
             .apply(
                 "ReadFromKafka",
-                KafkaTransform.readStringFromKafka(bootstrapServers, topicsList, kafkaConfig, null))
+                KafkaTransform.readStringFromKafka(
+                    bootstrapServers,
+                    topicsList,
+                    kafkaConfig,
+                    null,
+                    options.getEnableCommitOffsets()))
 
             /*
              * Step #2: Transform the Kafka Messages into TableRows

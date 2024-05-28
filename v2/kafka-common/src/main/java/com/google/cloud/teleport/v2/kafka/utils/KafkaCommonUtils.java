@@ -19,8 +19,12 @@ import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -181,5 +185,30 @@ public class KafkaCommonUtils {
       kafkaConfig.put(ConsumerConfig.GROUP_ID_CONFIG, options.getConsumerGroupId());
     }
     return kafkaConfig;
+  }
+
+  public static PipelineOptions enableStreamingEngineResourceBasedBilling(PipelineOptions options) {
+    // Ensure the provided options are of type DataflowPipelineOptions
+    if (!(options instanceof DataflowPipelineOptions)) {
+      throw new IllegalArgumentException(
+          "options should inherit DataflowPipelineOptions "
+              + "class to enable Streaming Engine Resource Based Billing");
+    }
+
+    DataflowPipelineOptions dataflowPipelineOptions = (DataflowPipelineOptions) options;
+    List<String> dataflowServiceOptions = dataflowPipelineOptions.getDataflowServiceOptions();
+
+    // Initialize dataflowServiceOptions if it's null
+    if (dataflowServiceOptions == null) {
+      dataflowServiceOptions = new ArrayList<>();
+    }
+
+    // Add the required service option
+    dataflowServiceOptions.add("enable_streaming_engine_resource_based_billing");
+
+    // Set the updated service options back to the DataflowPipelineOptions
+    dataflowPipelineOptions.setDataflowServiceOptions(dataflowServiceOptions);
+
+    return dataflowPipelineOptions;
   }
 }

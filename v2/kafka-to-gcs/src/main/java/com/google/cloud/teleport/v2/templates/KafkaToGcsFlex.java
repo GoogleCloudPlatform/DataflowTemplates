@@ -54,8 +54,6 @@ import org.apache.kafka.common.config.SaslConfigs;
     optionsClass = KafkaToGcsFlex.KafkaToGcsOptions.class,
     flexContainerName = "kafka-to-gcs-flex",
     contactInformation = "https://cloud.google.com/support",
-    hidden = true,
-    streaming = true,
     requirements = {"The output Google Cloud Storage directory must exist."},
     skipOptions = {"readBootstrapServers", "kafkaReadTopics"})
 public class KafkaToGcsFlex {
@@ -277,6 +275,9 @@ public class KafkaToGcsFlex {
   public static void main(String[] args) {
     KafkaToGcsOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToGcsOptions.class);
+    // Enable Streaming Engine Resource Based Billing.
+    options =
+        (KafkaToGcsOptions) KafkaCommonUtils.enableStreamingEngineResourceBasedBilling(options);
     validateAuthOptions(options);
     run(options);
   }
