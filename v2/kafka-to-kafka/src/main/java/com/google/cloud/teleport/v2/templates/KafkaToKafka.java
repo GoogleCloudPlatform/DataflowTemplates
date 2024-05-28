@@ -26,9 +26,7 @@ import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import java.io.IOException;
-
 import java.util.List;
-
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
@@ -46,7 +44,13 @@ import org.slf4j.LoggerFactory;
     optionsClass = KafkaToKafkaOptions.class,
     flexContainerName = "kafka-to-kafka",
     contactInformation = "https://cloud.google.com/support",
-    skipOptions = {"readBootstrapServers", "kafkaReadTopics", "kafkaReadAuthenticationMode","writeBootstrapServers","kafkaWriteTopics"},
+    skipOptions = {
+      "readBootstrapServers",
+      "kafkaReadTopics",
+      "kafkaReadAuthenticationMode",
+      "writeBootstrapServers",
+      "kafkaWriteTopics"
+    },
     hidden = true,
     streaming = false)
 public class KafkaToKafka {
@@ -59,8 +63,6 @@ public class KafkaToKafka {
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToKafkaOptions.class);
     run(options);
   }
-
-
 
   public static PipelineResult run(KafkaToKafkaOptions options) throws IOException {
 
@@ -93,9 +95,11 @@ public class KafkaToKafka {
           "Authentication method not supported: " + options.getSourceAuthenticationMethod());
     }
     if (options.getDestinationAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
-      checkArgument(options.getDestinationUsernameSecretId().trim().length() > 0,
+      checkArgument(
+          options.getDestinationUsernameSecretId().trim().length() > 0,
           "destinationUsernameSecretId required to access username for source Kafka");
-      checkArgument(options.getDestinationPasswordSecretId().trim().length() > 0,
+      checkArgument(
+          options.getDestinationPasswordSecretId().trim().length() > 0,
           "destinationPasswordSecretId required to access password for destination Kafka");
     } else if (options.getDestinationAuthenticationMethod().equals(KafkaAuthenticationMethod.SSL)) {
       checkArgument(
@@ -122,8 +126,8 @@ public class KafkaToKafka {
     String sourceBootstrapServers;
     if (options.getSourceTopic() != null) {
       List<String> sourceBootstrapServerAndTopicList =
-          KafkaTopicUtils.getBootstrapServerAndTopic(options.getSourceTopic(),
-              options.getSourceProject());
+          KafkaTopicUtils.getBootstrapServerAndTopic(
+              options.getSourceTopic(), options.getSourceProject());
       sourceTopic = sourceBootstrapServerAndTopicList.get(1);
       sourceBootstrapServers = sourceBootstrapServerAndTopicList.get(0);
     } else {
@@ -134,19 +138,17 @@ public class KafkaToKafka {
     String destinationBootstrapServers;
     if (options.getDestinationTopic() != null) {
       List<String> destinationBootstrapServerAndTopicList =
-          KafkaTopicUtils.getBootstrapServerAndTopic(options.getDestinationTopic(),
-              options.getDestinationProject());
+          KafkaTopicUtils.getBootstrapServerAndTopic(
+              options.getDestinationTopic(), options.getDestinationProject());
       destinationBootstrapServers = destinationBootstrapServerAndTopicList.get(0);
       destinationTopic = destinationBootstrapServerAndTopicList.get(1);
 
     } else {
       throw new IllegalArgumentException(
           "Please provide a valid bootstrap server which matches `[,:a-zA-Z0-9._-]+` and a topic which matches `[,a-zA-Z0-9._-]+`");
-
     }
-    if (options.getEnableCommitOffsets()) {
+    if (options.getEnableCommitOffsets()) {}
 
-    }
     Pipeline pipeline = Pipeline.create(options);
     pipeline
         .apply(
@@ -156,7 +158,6 @@ public class KafkaToKafka {
                 .withTopic(sourceTopic)
                 .withKeyDeserializer(ByteArrayDeserializer.class)
                 .withValueDeserializer(ByteArrayDeserializer.class)
-
                 .withConsumerConfigUpdates(ConsumerProperties.from(options))
                 .withConsumerFactoryFn(new FileAwareConsumerFactoryFn())
                 .withoutMetadata())
@@ -173,5 +174,3 @@ public class KafkaToKafka {
     return pipeline.run();
   }
 }
-
-

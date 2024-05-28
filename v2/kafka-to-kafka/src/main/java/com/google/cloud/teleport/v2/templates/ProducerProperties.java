@@ -15,35 +15,15 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-
 import com.google.cloud.teleport.v2.kafka.utils.FileAwareProducerFactoryFn;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
-import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SslConfigs;
-
-import static org.apache.hadoop.hdfs.DFSInotifyEventInputStream.LOG;
-
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.ReadChannel;
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
-import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
-import com.google.common.collect.ImmutableMap;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.common.config.SslConfigs;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 
 /**
  * The {@link ProducerProperties} is a utility class for constructing properties for Kafka
@@ -92,15 +72,16 @@ final class ProducerProperties {
           SaslConfigs.SASL_JAAS_CONFIG,
           "org.apache.kafka.common.security.plain.PlainLoginModule required"
               + " username=\'"
-              + FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX+options.getDestinationUsernameSecretId()
+              + FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationUsernameSecretId()
               + "\'"
               + " password=\'"
-              + FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX+options.getDestinationPasswordSecretId()
+              + FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationPasswordSecretId()
               + "\';");
     } else {
       throw new UnsupportedOperationException("Authentication method not supported: " + authMethod);
     }
     return properties;
-
   }
 }

@@ -23,11 +23,9 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
-
 public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, KafkaWriteOptions {
 
   @TemplateParameter.KafkaTopic(
-
       order = 1,
       groupName = "Source",
       optional = false,
@@ -39,7 +37,6 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
   void setSourceTopic(String sourceTopic);
 
   @TemplateParameter.Text(
-
       order = 2,
       groupName = "Source",
       optional = false,
@@ -54,52 +51,46 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
       groupName = "Source",
       order = 3,
       name = "sourceAuthenticationMethod",
-
       optional = false,
       description = "Source Authentication Mode",
       enumOptions = {
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
-
       helpText = "Type of authentication mechanism to use with the source Kafka.")
   @Validation.Required
   @Default.String(KafkaAuthenticationMethod.NONE)
   String getSourceAuthenticationMethod();
+
   void setSourceAuthenticationMethod(String sourceAuthenticationMethod);
 
   @TemplateParameter.Text(
       groupName = "Source",
       order = 4,
       optional = true,
-
-      parentName="sourceAuthenticationMethod",
+      parentName = "sourceAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       description = "Secret Version ID for Username",
       helpText =
           "Secret Version ID from the secret manager to get Kafka SASL_PLAIN username for source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-
   String getSourceUsernameSecretId();
 
   void setSourceUsernameSecretId(String sourceUsernameSecretId);
 
   @TemplateParameter.Text(
-
-      order=5,
+      order = 5,
       groupName = "Source",
       parentName = "sourceAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
-
-          optional=true,
+      optional = true,
       description = "Secret version id of password",
       helpText =
           "Secret version id from the secret manager to get Kafka SASL_PLAIN password for the source Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-
   String getSourcePasswordSecretId();
 
   void setSourcePasswordSecretId(String sourcePasswordSecretId);
@@ -113,7 +104,6 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       description = "Truststore File Location",
       helpText =
-
           "Location of the jks file in Cloud Storage with SSL certificate to verify identity.",
       example = "gs://your-bucket/truststore.jks")
   String getSourceTruststoreLocation();
@@ -181,5 +171,4 @@ public interface KafkaToKafkaOptions extends PipelineOptions, KafkaReadOptions, 
   String getSourceKeyPasswordSecretId();
 
   void setSourceKeyPasswordSecretId(String sourceKeyPasswordSecretId);
-
 }

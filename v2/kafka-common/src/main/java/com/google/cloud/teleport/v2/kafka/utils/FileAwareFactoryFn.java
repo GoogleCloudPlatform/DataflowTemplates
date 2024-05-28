@@ -101,9 +101,11 @@ abstract class FileAwareFactoryFn<T> implements SerializableFunction<Map<String,
         + "-"
         + key;
   }
+
   private String getSecretWithCache(String secretId) {
     return secretCache.computeIfAbsent(secretId, id -> SecretManagerUtils.getSecret(id));
   }
+
   public static synchronized String getGcsFileAsLocal(String gcsFilePath, String outputFilePath)
       throws IOException {
     // create the file only if it doesn't exist

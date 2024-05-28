@@ -50,7 +50,6 @@ public interface KafkaWriteOptions extends PipelineOptions {
   void setWriteTopics(String inputTopics);
 
   @TemplateParameter.KafkaTopic(
-
       groupName = "Destination",
       order = 3,
       name = "destinationTopic",
@@ -63,10 +62,8 @@ public interface KafkaWriteOptions extends PipelineOptions {
   void setDestinationTopic(String destinationTopic);
 
   @TemplateParameter.Text(
-
       groupName = "Destination",
       order = 4,
-
       description = "Project of Destination Kafka",
       helpText = "Project where Destination Kafka resides.",
       optional = false)
@@ -74,6 +71,7 @@ public interface KafkaWriteOptions extends PipelineOptions {
   String getDestinationProject();
 
   void setDestinationProject(String destinationProject);
+
   @TemplateParameter.Enum(
       groupName = "Destination",
       order = 4,
@@ -81,9 +79,9 @@ public interface KafkaWriteOptions extends PipelineOptions {
       optional = false,
       description = "Destination Authentication Method",
       enumOptions = {
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
       helpText = "Type of authentication mechanism to use with the destination Kafka.")
   @Validation.Required
@@ -168,7 +166,6 @@ public interface KafkaWriteOptions extends PipelineOptions {
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       description = "Location of Keystore",
       example = "gs://your-bucket/keystore.jks")
-
   String getDestinationKeystoreLocation();
 
   void setDestinationKeystoreLocation(String destinationKeystoreLocation);
