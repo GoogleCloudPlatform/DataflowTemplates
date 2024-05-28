@@ -132,7 +132,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 11,
-      groupName = "Target",
       optional = true,
       description = "Cloud Spanner Endpoint to call",
       helpText = "The Cloud Spanner endpoint to call in the template.",
@@ -144,7 +143,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Integer(
       order = 12,
-      groupName = "Source",
       optional = true,
       description = "Maximum number of connections to Source database per worker",
       helpText =
