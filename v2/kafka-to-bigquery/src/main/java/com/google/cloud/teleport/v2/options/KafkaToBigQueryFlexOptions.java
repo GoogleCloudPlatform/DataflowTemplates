@@ -79,6 +79,7 @@ public interface KafkaToBigQueryFlexOptions
       description = "Message Format",
       helpText =
           "The Kafka message format. Can be AVRO_CONFLUENT_WIRE_FORMAT, AVRO_BINARY_ENCODING or JSON.")
+  @Default.String("AVRO_CONFLUENT_WIRE_FORMAT")
   String getMessageFormat();
 
   void setMessageFormat(String value);
@@ -99,6 +100,7 @@ public interface KafkaToBigQueryFlexOptions
           "The Kafka schema format. Can be provided as SINGLE_SCHEMA_FILE or SCHEMA_REGISTRY. "
               + "If SINGLE_SCHEMA_FILE is specified, all messages should have the schema mentioned in the avro schema file. "
               + "If SCHEMA_REGISTRY is specified, the messages can have either a single schema or multiple schemas.")
+  @Default.String("SINGLE_SCHEMA_FILE")
   String getSchemaFormat();
 
   void setSchemaFormat(String value);
@@ -121,7 +123,7 @@ public interface KafkaToBigQueryFlexOptions
       groupName = "Source",
       parentName = "schemaFormat",
       parentTriggerValues = {"SCHEMA_REGISTRY"},
-      optional = false,
+      optional = true,
       description = "Schema Registry Connection URL",
       helpText = "Schema Registry Connection URL for a registry.")
   @Default.String("")
@@ -195,7 +197,7 @@ public interface KafkaToBigQueryFlexOptions
       groupName = "Destination",
       parentName = "writeMode",
       parentTriggerValues = {"DYNAMIC_TABLE_NAMES"},
-      optional = false,
+      optional = true,
       description = "BigQuery output project",
       helpText =
           "BigQuery output project in wehich the dataset resides. Tables will be created dynamically in the dataset.")
@@ -209,7 +211,7 @@ public interface KafkaToBigQueryFlexOptions
       groupName = "Destination",
       parentName = "writeMode",
       parentTriggerValues = {"DYNAMIC_TABLE_NAMES"},
-      optional = false,
+      optional = true,
       description = "BigQuery output dataset",
       helpText =
           "BigQuery output dataset to write the output to. Tables will be created dynamically in the dataset."
@@ -225,7 +227,7 @@ public interface KafkaToBigQueryFlexOptions
       order = 18,
       parentName = "writeMode",
       parentTriggerValues = {"DYNAMIC_TABLE_NAMES"},
-      optional = false,
+      optional = true,
       description = "BigQuery Table naming prefix",
       helpText =
           "Naming prefix to be used while creating BigQuery output tables. Only applicable when using schema registry.")

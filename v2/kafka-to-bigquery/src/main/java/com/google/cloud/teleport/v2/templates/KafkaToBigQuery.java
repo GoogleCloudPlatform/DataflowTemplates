@@ -393,7 +393,8 @@ public class KafkaToBigQuery {
              */
             .apply(
                 "ReadFromKafka",
-                KafkaTransform.readStringFromKafka(bootstrapServers, topicsList, kafkaConfig, null))
+                KafkaTransform.readStringFromKafka(
+                    bootstrapServers, topicsList, kafkaConfig, null, false))
 
             /*
              * Step #2: Transform the Kafka Messages into TableRows
