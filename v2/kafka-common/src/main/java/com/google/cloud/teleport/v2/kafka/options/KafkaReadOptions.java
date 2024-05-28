@@ -112,7 +112,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {"SASL_PLAIN"},
-      optional = false,
+      optional = true,
       description = "Username",
       helpText =
           "Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}.",
@@ -127,7 +127,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {"SASL_PLAIN"},
-      optional = false,
+      optional = true,
       description = "Password",
       helpText =
           "Secret Manager secret ID for the SASL_PLAIN password. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
