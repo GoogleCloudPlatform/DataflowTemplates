@@ -100,9 +100,10 @@ public class KafkaToGcsIT extends TemplateTestBase {
         paramsAdder.apply(
             LaunchConfig.builder(testName, specPath)
                 .addParameter(
-                    "readBootstrapServers",
-                    kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", ""))
-                .addParameter("kafkaReadTopics", topicName)
+                    "readBootstrapServerAndTopic",
+                    kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "")
+                        + ";"
+                        + topicName)
                 .addParameter("windowDuration", "10s")
                 .addParameter("schemaPath", getGcsPath("avro_schema.avsc"))
                 .addParameter("kafkaReadOffset", "earliest")
