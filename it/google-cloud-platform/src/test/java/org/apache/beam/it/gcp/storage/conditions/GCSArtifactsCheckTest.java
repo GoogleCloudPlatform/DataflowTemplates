@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.storage.Blob;
 import java.util.Arrays;
 import java.util.regex.Pattern;
+import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.artifacts.GcsArtifact;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.Before;
@@ -38,7 +39,7 @@ import org.junit.runners.JUnit4;
 public class GCSArtifactsCheckTest {
   private GcsResourceManager gcsResourceManager = mock(GcsResourceManager.class);
 
-  private GCSArtifactsCheck gcsArtifactsCheck;
+  private GCSArtifactsCheck gcsArtifactsCheck, gcsArtifactsCheckWithContentMatcher;
 
   Pattern regex = mock(Pattern.class);
 
@@ -48,12 +49,19 @@ public class GCSArtifactsCheckTest {
     gcsArtifactsCheck =
         GCSArtifactsCheck.builder(gcsResourceManager, "test-folder", regex)
             .setMinSize(1)
-            .setMaxSize(5) // You can set maxSize as needed for testing
+            .setMaxSize(5)
+            .build();
+
+    gcsArtifactsCheckWithContentMatcher =
+        GCSArtifactsCheck.builder(gcsResourceManager, "test-folder", regex)
+            .setMinSize(1)
+            .setMaxSize(5)
+            .setArtifactContentMatcher("\"tableName\":\"Singers")
             .build();
   }
 
   @Test
-  public void testCheck_Success() {
+  public void testCheckSuccess() {
     Blob blob = mock(Blob.class);
     when(gcsResourceManager.listArtifacts("test-folder", regex))
         .thenReturn(Arrays.asList(new GcsArtifact(blob)));
@@ -66,6 +74,42 @@ public class GCSArtifactsCheckTest {
     assertEquals("Expected between 1 and 5 artifacts and found 1", result.getMessage());
 
     // Verify that listArtifacts method was called with correct parameters
+    verify(gcsResourceManager, times(1)).listArtifacts("test-folder", regex);
+  }
+
+  @Test
+  public void testCheckSuccessWithContentMatcher() {
+    Blob blob = mock(Blob.class);
+    Artifact artifact = new GcsArtifact(blob);
+    when(gcsResourceManager.listArtifacts("test-folder", regex))
+        .thenReturn(Arrays.asList(artifact));
+    String artifactContent = "\"tableName\":\"Singers\"";
+    when(artifact.contents()).thenReturn(artifactContent.getBytes());
+
+    GCSArtifactsCheck.CheckResult result = gcsArtifactsCheckWithContentMatcher.check();
+
+    assertEquals(true, result.isSuccess());
+    assertEquals("Expected between 1 and 5 artifacts and found 1", result.getMessage());
+
+    verify(gcsResourceManager, times(1)).listArtifacts("test-folder", regex);
+  }
+
+  @Test
+  public void testCheckFailureWithContentMatcher() {
+    Blob blob = mock(Blob.class);
+    Artifact artifact = new GcsArtifact(blob);
+    when(gcsResourceManager.listArtifacts("test-folder", regex))
+        .thenReturn(Arrays.asList(artifact));
+    String artifactContent = "\"tableName\":\"Albums\"";
+    when(artifact.contents()).thenReturn(artifactContent.getBytes());
+
+    GCSArtifactsCheck.CheckResult result = gcsArtifactsCheckWithContentMatcher.check();
+
+    assertEquals(false, result.isSuccess());
+    assertEquals(
+        "Expected 1 artifacts with content matcher \"tableName\":\"Singers but has only 0",
+        result.getMessage());
+
     verify(gcsResourceManager, times(1)).listArtifacts("test-folder", regex);
   }
 
