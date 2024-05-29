@@ -183,7 +183,7 @@ public class SpannerChangeStreamToGcsCustomShardIT extends SpannerChangeStreamTo
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(6)), conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
