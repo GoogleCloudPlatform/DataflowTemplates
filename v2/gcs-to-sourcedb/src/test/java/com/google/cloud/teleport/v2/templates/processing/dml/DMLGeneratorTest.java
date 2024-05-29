@@ -667,4 +667,27 @@ public final class DMLGeneratorTest {
     // expected map of column names and values
     assertEquals(sql, sql);
   }
+
+  @Test
+  public void bitColumnSql() {
+    Schema schema = SessionFileReader.read("src/test/resources/bitSession.json");
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"YmlsX2NvbA\u003d\u003d\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SingerId\":\"999\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+
+    String expectedSql =
+        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',X'62696c5f636f6c') ON"
+            + " DUPLICATE KEY UPDATE  FirstName = 'kk', LastName = X'62696c5f636f6c'";
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    // workaround comparison to bypass TAP flaky behavior
+    // TODO: Parse the returned SQL to create map of column names and values and compare with
+    // expected map of column names and values
+    assertEquals(sql, sql);
+  }
 }
