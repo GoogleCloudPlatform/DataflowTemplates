@@ -60,6 +60,18 @@ public class KafkaToGcsFlex {
   public interface KafkaToGcsOptions
       extends PipelineOptions, DataflowPipelineOptions, KafkaReadOptions, SchemaRegistryOptions {
 
+    // This is a duplicate option that already exist in KafkaReadOptions but keeping it here
+    // so the KafkaTopic appears above the authentication enum on the Templates UI.
+    @TemplateParameter.KafkaTopic(
+        order = 1,
+        name = "readBootstrapServerAndTopic",
+        groupName = "Source",
+        description = "Source Kafka Topic",
+        helpText = "Kafka Topic to read the input from.")
+    String getReadBootstrapServerAndTopic();
+
+    void setReadBootstrapServerAndTopic(String value);
+
     @TemplateParameter.Enum(
         name = "kafkaReadAuthenticationMode",
         order = 19,
