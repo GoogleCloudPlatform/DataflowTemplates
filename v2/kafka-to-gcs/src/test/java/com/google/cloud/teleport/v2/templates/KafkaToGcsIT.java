@@ -83,12 +83,17 @@ public class KafkaToGcsIT extends TemplateTestBase {
 
   @Test
   public void testKafkaToGcsText() throws IOException, RestClientException {
-    baseKafkaToGcs(b -> b.addParameter("messageFormat", KafkaTemplateParamters.MessageFormatConstants.JSON));
+    baseKafkaToGcs(
+        b -> b.addParameter("messageFormat", KafkaTemplateParamters.MessageFormatConstants.JSON));
   }
 
   @Test
   public void testKafkaToGcsAvro() throws IOException, RestClientException {
-    baseKafkaToGcs(b -> b.addParameter("messageFormat", KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT));
+    baseKafkaToGcs(
+        b ->
+            b.addParameter(
+                "messageFormat",
+                KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT));
   }
 
   private void baseKafkaToGcs(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)

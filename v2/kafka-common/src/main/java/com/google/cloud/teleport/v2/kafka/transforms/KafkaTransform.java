@@ -125,7 +125,7 @@ public class KafkaTransform {
                 ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
             .withValueDeserializerAndCoder(ByteArrayDeserializer.class, ByteArrayCoder.of())
             .withConsumerConfigUpdates(config)
-                .withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
+            .withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
 
     if (enableCommitOffsets) {
       kafkaRecords = kafkaRecords.commitOffsetsInFinalize();

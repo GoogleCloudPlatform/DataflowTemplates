@@ -254,10 +254,7 @@ public class KafkaToBigQueryFlex {
             .apply(
                 "ReadBytesFromKafka",
                 KafkaTransform.readBytesFromKafka(
-                    bootstrapServers,
-                    topicsList,
-                    kafkaConfig,
-                        options.getEnableCommitOffsets()))
+                    bootstrapServers, topicsList, kafkaConfig, options.getEnableCommitOffsets()))
             .setCoder(
                 KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()));
 
