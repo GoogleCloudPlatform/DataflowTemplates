@@ -115,7 +115,6 @@ public class KafkaTransform {
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
-      @Nullable Map<String, Object> sslConfig,
       Boolean enableCommitOffsets) {
 
     KafkaIO.Read<byte[], byte[]> kafkaRecords =
@@ -125,10 +124,9 @@ public class KafkaTransform {
             .withKeyDeserializerAndCoder(
                 ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
             .withValueDeserializerAndCoder(ByteArrayDeserializer.class, ByteArrayCoder.of())
-            .withConsumerConfigUpdates(config);
-    if (sslConfig != null) {
-      kafkaRecords = kafkaRecords.withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
-    }
+            .withConsumerConfigUpdates(config)
+            .withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
+
     if (enableCommitOffsets) {
       kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
     }
