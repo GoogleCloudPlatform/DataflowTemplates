@@ -34,11 +34,11 @@ public class KafkaConfig {
     Map<String, Object> properties =
         from(
             options.getKafkaReadAuthenticationMode(),
-            options.getSourceKeystoreLocation(),
-            options.getSourceTruststoreLocation(),
-            options.getSourceTruststorePasswordSecretId(),
-            options.getSourceKeystorePasswordSecretId(),
-            options.getSourceKeyPasswordSecretId(),
+            options.getKafkaReadKeystoreLocation(),
+            options.getKafkaReadTruststoreLocation(),
+            options.getKafkaReadTruststorePasswordSecretId(),
+            options.getKafkaReadKeystorePasswordSecretId(),
+            options.getKafkaReadKeyPasswordSecretId(),
             options.getKafkaReadUsernameSecretId(),
             options.getKafkaReadPasswordSecretId());
 
@@ -52,7 +52,7 @@ public class KafkaConfig {
         options.getKafkaWriteAuthenticationMethod(),
         options.getKafkaWriteKeystoreLocation(),
         options.getKafkaWriteTruststoreLocation(),
-        options.getDestinationTruststorePasswordSecretId(),
+        options.getKafkaWriteTruststorePasswordSecretId(),
         options.getKafkaWriteKeystorePasswordSecretId(),
         options.getKafkaWriteKeyPasswordSecretId(),
         options.getKafkaWriteUsernameSecretId(),

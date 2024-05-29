@@ -68,19 +68,19 @@ public class KafkaToKafka {
           "sourcePasswordSecretId required to access password for source kafka");
     } else if (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.SSL)) {
       checkArgument(
-          options.getSourceTruststoreLocation().trim().length() > 0,
+          options.getKafkaReadTruststoreLocation().trim().length() > 0,
           "sourceTruststoreLocation for trust store certificate required for ssl authentication");
       checkArgument(
-          options.getSourceTruststorePasswordSecretId().trim().length() > 0,
+          options.getKafkaReadTruststorePasswordSecretId().trim().length() > 0,
           "sourceTruststorePassword for trust store password required for accessing truststore");
       checkArgument(
-          options.getSourceKeystoreLocation().trim().length() > 0,
+          options.getKafkaReadKeystoreLocation().trim().length() > 0,
           "sourceKeystoreLocation for key store location required for ssl authentication");
       checkArgument(
-          options.getSourceKeystorePasswordSecretId().trim().length() > 0,
+          options.getKafkaReadKeystorePasswordSecretId().trim().length() > 0,
           "sourceKeystorePassword for key store password required to access key store");
       checkArgument(
-          options.getSourceKeyPasswordSecretId().trim().length() > 0,
+          options.getKafkaReadKeyPasswordSecretId().trim().length() > 0,
           "sourceKeyPasswordSecretId version for key password required for SSL authentication");
     } else if (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.NONE)) {
     } else {
@@ -100,7 +100,7 @@ public class KafkaToKafka {
           options.getKafkaWriteTruststoreLocation().trim().length() > 0,
           "destinationTruststoreLocation for trust store certificate required for ssl authentication");
       checkArgument(
-          options.getDestinationTruststorePasswordSecretId().trim().length() > 0,
+          options.getKafkaWriteTruststorePasswordSecretId().trim().length() > 0,
           "destinationTruststorePasswordSecretId for trust store password required for accessing truststore");
       checkArgument(
           options.getKafkaWriteKeystoreLocation().trim().length() > 0,

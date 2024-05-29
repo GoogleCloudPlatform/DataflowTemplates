@@ -140,9 +140,9 @@ public interface KafkaReadOptions extends PipelineOptions {
           "Cloud storage path for the Keystore location that contains the SSL certificate and private key.",
       description = "Location of Keystore",
       example = "gs://your-bucket/keystore.jks")
-  String getSourceKeystoreLocation();
+  String getKafkaReadKeystoreLocation();
 
-  void setSourceKeystoreLocation(String sourceKeystoreLocation);
+  void setKafkaReadKeystoreLocation(String sourceKeystoreLocation);
 
   @TemplateParameter.GcsReadFile(
       order = 9,
@@ -155,9 +155,9 @@ public interface KafkaReadOptions extends PipelineOptions {
       helpText =
           "Location of the jks file in Cloud Storage with SSL certificate to verify identity.",
       example = "gs://your-bucket/truststore.jks")
-  String getSourceTruststoreLocation();
+  String getKafkaReadTruststoreLocation();
 
-  void setSourceTruststoreLocation(String sourceTruststoreLocation);
+  void setKafkaReadTruststoreLocation(String sourceTruststoreLocation);
 
   @TemplateParameter.Text(
       order = 10,
@@ -171,9 +171,9 @@ public interface KafkaReadOptions extends PipelineOptions {
       description = "Secret Version ID for Truststore Password",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  String getSourceTruststorePasswordSecretId();
+  String getKafkaReadTruststorePasswordSecretId();
 
-  void setSourceTruststorePasswordSecretId(String sourceTruststorePasswordSecretId);
+  void setKafkaReadTruststorePasswordSecretId(String sourceTruststorePasswordSecretId);
 
   @TemplateParameter.Text(
       order = 11,
@@ -186,9 +186,9 @@ public interface KafkaReadOptions extends PipelineOptions {
       description = "Secret Version ID of Keystore Password",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  String getSourceKeystorePasswordSecretId();
+  String getKafkaReadKeystorePasswordSecretId();
 
-  void setSourceKeystorePasswordSecretId(String sourceKeystorePasswordSecretId);
+  void setKafkaReadKeystorePasswordSecretId(String sourceKeystorePasswordSecretId);
 
   @TemplateParameter.Text(
       order = 12,
@@ -202,7 +202,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       description = "Secret Version ID of Private Key Password",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  String getSourceKeyPasswordSecretId();
+  String getKafkaReadKeyPasswordSecretId();
 
-  void setSourceKeyPasswordSecretId(String sourceKeyPasswordSecretId);
+  void setKafkaReadKeyPasswordSecretId(String sourceKeyPasswordSecretId);
 }

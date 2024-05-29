@@ -112,9 +112,9 @@ public interface KafkaWriteOptions extends PipelineOptions {
       description = "Secret Version ID of Truststore password",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  String getDestinationTruststorePasswordSecretId();
+  String getKafkaWriteTruststorePasswordSecretId();
 
-  void setDestinationTruststorePasswordSecretId(String destinationTruststorePasswordSecretId);
+  void setKafkaWriteTruststorePasswordSecretId(String destinationTruststorePasswordSecretId);
 
   @TemplateParameter.GcsReadFile(
       order = 10,
