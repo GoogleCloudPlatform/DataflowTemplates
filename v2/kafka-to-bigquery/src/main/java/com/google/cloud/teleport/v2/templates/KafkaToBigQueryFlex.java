@@ -34,7 +34,6 @@ import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.MetadataValidator;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import com.google.common.collect.ImmutableMap;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -190,6 +189,10 @@ public class KafkaToBigQueryFlex {
       throw new IllegalArgumentException(
           "Please provide a valid bootstrap server which matches `[,:a-zA-Z0-9._-]+` and a topic which matches `[,a-zA-Z0-9._-]+`");
     }
+
+    // Get the Kafka config
+    Map<String, Object> kafkaConfig = KafkaConfig.fromReadOptions(options);
+
     /*
      * Steps:
      *  1) Read messages in from Kafka
@@ -199,14 +202,6 @@ public class KafkaToBigQueryFlex {
      *  3) Write successful records out to BigQuery
      *  4) Write failed records out to BigQuery
      */
-
-    ImmutableMap<String, Object> kafkaConfig = ImmutableMap.<String, Object>builder().build();
-
-    kafkaConfig =
-        ImmutableMap.<String, Object>builder()
-            .putAll(kafkaConfig)
-            .putAll(KafkaConfig.fromReadOptions(options))
-            .build();
 
     if (options.getMessageFormat() == null
         || options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.JSON)) {
