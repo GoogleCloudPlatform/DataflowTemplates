@@ -41,7 +41,7 @@ public interface KafkaWriteOptions extends PipelineOptions {
       description = "Kafka Destination Authentication Method",
       enumOptions = {
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.TLS),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
       helpText = "Type of authentication mechanism to use with the destination Kafka.")
@@ -90,9 +90,9 @@ public interface KafkaWriteOptions extends PipelineOptions {
       groupName = "Destination",
       parentName = "kafkaWriteAuthenticationMethod",
       description = "Truststore File Location",
-      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
       helpText =
-          "Location of the jks file in Cloud Storage with SSL certificate to verify identity.")
+          "Location of the jks file in Cloud Storage with TLS certificate to verify identity.")
   String getKafkaWriteTruststoreLocation();
 
   void setKafkaWriteTruststoreLocation(String destinationTruststoreLocation);
@@ -102,7 +102,7 @@ public interface KafkaWriteOptions extends PipelineOptions {
       optional = true,
       groupName = "Destination",
       parentName = "kafkaWriteAuthenticationMethod",
-      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
       helpText =
           "Secret Version ID to get password to access secret in truststore, for destination kafka.",
       description = "Secret Version ID of Truststore password",
@@ -116,10 +116,10 @@ public interface KafkaWriteOptions extends PipelineOptions {
       order = 10,
       optional = true,
       helpText =
-          "Cloud storage path for the Keystore location that contains the SSL certificate and private key.",
+          "Cloud storage path for the Keystore location that contains the TLS certificate and private key.",
       groupName = "Destination",
       parentName = "kafkaWriteAuthenticationMethod",
-      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
       description = "Location of Keystore",
       example = "gs://your-bucket/keystore.jks")
   String getKafkaWriteKeystoreLocation();
@@ -131,7 +131,7 @@ public interface KafkaWriteOptions extends PipelineOptions {
       optional = true,
       groupName = "Destination",
       parentName = "kafkaWriteAuthenticationMethod",
-      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
       helpText =
           "Secret Version ID to get password to access secret keystore, for destination kafka.",
       description = "Secret Version Version ID of Keystore Password",
@@ -146,7 +146,7 @@ public interface KafkaWriteOptions extends PipelineOptions {
       optional = true,
       parentName = "kafkaWriteAuthenticationMethod",
       groupName = "Destination",
-      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
       helpText =
           "Secret Version ID of password to access private key inside the keystore, for destination Kafka.",
       description = "Secret Version ID of key",
