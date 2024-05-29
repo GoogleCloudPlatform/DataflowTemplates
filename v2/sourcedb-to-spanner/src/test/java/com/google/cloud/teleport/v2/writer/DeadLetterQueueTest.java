@@ -16,17 +16,26 @@
 package com.google.cloud.teleport.v2.writer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform.WriteDLQ;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.PCollection;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -34,9 +43,45 @@ public class DeadLetterQueueTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
+  private Ddl spannerDdl;
+
+  @Before
+  public void setup() {
+    spannerDdl =
+        Ddl.builder()
+            .createTable("new_cart")
+            .column("new_quantity")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("new_user_id")
+            .string()
+            .size(10)
+            .endColumn()
+            .primaryKey()
+            .asc("new_user_id")
+            .asc("new_quantity")
+            .end()
+            .endTable()
+            .createTable("new_people")
+            .column("synth_id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("new_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .primaryKey()
+            .asc("synth_id")
+            .end()
+            .endTable()
+            .build();
+  }
+
   @Test
   public void testCreateGCSDLQ() {
-    DeadLetterQueue dlq = DeadLetterQueue.create("testDir");
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", spannerDdl, new HashMap<>());
     assertEquals("testDir", dlq.getDlqDirectory());
 
     assertTrue(dlq.getDlqTransform() instanceof WriteDLQ);
@@ -46,28 +91,28 @@ public class DeadLetterQueueTest {
 
   @Test
   public void testCreateLogDlq() {
-    DeadLetterQueue dlq = DeadLetterQueue.create("LOG");
+    DeadLetterQueue dlq = DeadLetterQueue.create("LOG", spannerDdl, new HashMap<>());
     assertEquals("LOG", dlq.getDlqDirectory());
     assertTrue(dlq.getDlqTransform() instanceof DeadLetterQueue.WriteToLog);
   }
 
   @Test
   public void testCreateIgnoreDlq() {
-    DeadLetterQueue dlq = DeadLetterQueue.create("IGNORE");
+    DeadLetterQueue dlq = DeadLetterQueue.create("IGNORE", spannerDdl, new HashMap<>());
     assertEquals("IGNORE", dlq.getDlqDirectory());
     assertNull(dlq.getDlqTransform());
   }
 
   @Test(expected = RuntimeException.class)
   public void testNoDlqDirectory() {
-    DeadLetterQueue.create(null).getDlqDirectory();
+    DeadLetterQueue.create(null, spannerDdl, new HashMap<>()).getDlqDirectory();
   }
 
   @Test
   public void testFailedRowsToLog() {
-    DeadLetterQueue dlq = DeadLetterQueue.create("LOG");
+    DeadLetterQueue dlq = DeadLetterQueue.create("LOG", spannerDdl, new HashMap<>());
     final String testTable = "srcTable";
-    var schema = SchemaTestUtils.generateTestTableSchema(testTable);
+    SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
     RowContext r1 =
         RowContext.builder()
             .setRow(
@@ -87,5 +132,81 @@ public class DeadLetterQueueTest {
     PCollection<RowContext> failedRows = pipeline.apply(Create.of(r1));
     dlq.failedTransformsToDLQ(failedRows);
     pipeline.run();
+  }
+
+  @Test
+  public void testRowContextToDlqElement() {
+    final String testTable = "srcTable";
+    SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
+
+    SourceTableReference ref =
+        SourceTableReference.builder()
+            .setSourceTableName(schema.tableName())
+            .setSourceTableSchemaUUID(schema.tableSchemaUUID())
+            .setSourceSchemaReference(
+                SourceSchemaReference.builder().setNamespace("").setDbName("testDB").build())
+            .build();
+
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create("testDir", spannerDdl, Map.of(schema.tableSchemaUUID(), ref));
+
+    RowContext r1 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schema, 12412435345L)
+                    .setField("firstName", "abc")
+                    .setField("lastName", "def")
+                    .build())
+            .setErr(new Exception("test exception"))
+            .build();
+    FailsafeElement<String, String> dlqElement = dlq.rowContextToDlqElement(r1);
+    System.out.println(dlqElement);
+    assertNotNull(dlqElement);
+    assertTrue(dlqElement.getErrorMessage().contains("test exception"));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"_metadata_table\":\"srcTable\""));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"firstName\":\"abc\""));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"lastName\":\"def\""));
+  }
+
+  @Test
+  public void testRowContextToDlqElementUnkownTable() {
+    final String testTable = "srcTable";
+    SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
+
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", spannerDdl, new HashMap<>());
+
+    RowContext r1 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schema, 12412435345L)
+                    .setField("firstName", "abc")
+                    .setField("lastName", "def")
+                    .build())
+            .setErr(new Exception("test exception"))
+            .build();
+    FailsafeElement<String, String> dlqElement = dlq.rowContextToDlqElement(r1);
+    System.out.println(dlqElement);
+    assertNotNull(dlqElement);
+    assertTrue(dlqElement.getErrorMessage().contains("test exception"));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"_metadata_table\":\"UNKNOWN\""));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"firstName\":\"abc\""));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"lastName\":\"def\""));
+  }
+
+  @Test
+  public void testMutationToDlqElement() {
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", spannerDdl, new HashMap<>());
+    Mutation m =
+        Mutation.newInsertOrUpdateBuilder("srcTable")
+            .set("firstName")
+            .to("abc")
+            .set("lastName")
+            .to("def")
+            .build();
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(m);
+    assertNotNull(dlqElement);
+    assertTrue(dlqElement.getOriginalPayload().contains("\"_metadata_table\":\"srcTable\""));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"firstName\":\"abc\""));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"lastName\":\"def\""));
   }
 }
