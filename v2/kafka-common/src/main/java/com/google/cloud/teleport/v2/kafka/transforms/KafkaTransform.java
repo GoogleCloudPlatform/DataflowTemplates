@@ -115,7 +115,7 @@ public class KafkaTransform {
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
-     boolean sslConfig,
+      boolean sslConfig,
       Boolean enableCommitOffsets) {
 
     KafkaIO.Read<byte[], byte[]> kafkaRecords =
@@ -134,7 +134,6 @@ public class KafkaTransform {
     }
     return kafkaRecords;
   }
-
 
   /**
    * The {@link MessageToFailsafeElementFn} wraps an Kafka Message with the {@link FailsafeElement}

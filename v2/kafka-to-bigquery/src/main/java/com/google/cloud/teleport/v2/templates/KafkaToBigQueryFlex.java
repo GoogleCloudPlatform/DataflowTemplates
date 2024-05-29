@@ -65,8 +65,6 @@ import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.lang3.ObjectUtils;
-import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.common.config.SaslConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -108,12 +106,12 @@ import org.slf4j.LoggerFactory;
       "The Apache Kafka topics must exist and the messages must be encoded in a valid JSON format."
     },
     skipOptions = {
-            "useStorageWriteApi",
-            "keystoreLocation",
-            "sourceSSL",
-            "sourceTruststorePassword",
-            "sourceKeystorePassword",
-            "sourceKey"
+      "useStorageWriteApi",
+      "keystoreLocation",
+      "sourceSSL",
+      "sourceTruststorePassword",
+      "sourceKeystorePassword",
+      "sourceKey"
     },
     hidden = true)
 public class KafkaToBigQueryFlex {
@@ -204,9 +202,7 @@ public class KafkaToBigQueryFlex {
      *  4) Write failed records out to BigQuery
      */
 
-    ImmutableMap<String, Object> kafkaConfig =
-        ImmutableMap.<String, Object>builder()
-            .build();
+    ImmutableMap<String, Object> kafkaConfig = ImmutableMap.<String, Object>builder().build();
 
     kafkaConfig =
         ImmutableMap.<String, Object>builder()
@@ -214,12 +210,17 @@ public class KafkaToBigQueryFlex {
             .putAll(KafkaConfig.fromReadOptions(options))
             .build();
 
-    if (options.getMessageFormat() == null || options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.JSON)) {
+    if (options.getMessageFormat() == null
+        || options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.JSON)) {
 
       return runJsonPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
 
-    } else if (options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
-        || options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING)) {
+    } else if (options
+            .getMessageFormat()
+            .equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
+        || options
+            .getMessageFormat()
+            .equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING)) {
       return runAvroPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
 
     } else {
@@ -234,12 +235,16 @@ public class KafkaToBigQueryFlex {
       String bootstrapServers,
       Map<String, Object> kafkaConfig) {
 
-    if (options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING)
+    if (options
+            .getMessageFormat()
+            .equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING)
         && options.getBinaryAvroSchemaPath() == null) {
       throw new IllegalArgumentException(
           "Avro schema is needed in order to read non confluent wire format messages.");
     }
-    if (options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
+    if (options
+            .getMessageFormat()
+            .equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
         && options.getSchemaRegistryConnectionUrl() == null
         && options.getConfluentAvroSchemaPath() == null) {
       throw new IllegalArgumentException(
@@ -266,7 +271,9 @@ public class KafkaToBigQueryFlex {
 
     WriteResult writeResult = null;
 
-    if (options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING)
+    if (options
+            .getMessageFormat()
+            .equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING)
         && options.getBinaryAvroSchemaPath() != null) {
       writeResult =
           kafkaRecords.apply(
@@ -283,11 +290,15 @@ public class KafkaToBigQueryFlex {
                   options.getPersistKafkaKey(),
                   options.getUseAutoSharding()));
 
-    } else if (options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
+    } else if (options
+            .getMessageFormat()
+            .equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
         && (options.getSchemaRegistryConnectionUrl() != null
             || options.getConfluentAvroSchemaPath() != null)) {
 
-      if (options.getSchemaFormat().equals(KafkaTemplateParamters.SchemaFormat.SINGLE_SCHEMA_FILE)) {
+      if (options
+          .getSchemaFormat()
+          .equals(KafkaTemplateParamters.SchemaFormat.SINGLE_SCHEMA_FILE)) {
 
         if (options.getConfluentAvroSchemaPath() != null && options.getOutputTableSpec() == null) {
           throw new IllegalArgumentException(
@@ -310,7 +321,9 @@ public class KafkaToBigQueryFlex {
                       options.getPersistKafkaKey(),
                       options.getUseAutoSharding()));
         }
-      } else if (options.getSchemaFormat().equals(KafkaTemplateParamters.SchemaFormat.SCHEMA_REGISTRY)) {
+      } else if (options
+          .getSchemaFormat()
+          .equals(KafkaTemplateParamters.SchemaFormat.SCHEMA_REGISTRY)) {
 
         if (options.getSchemaRegistryConnectionUrl() != null
             && options.getOutputDataset() == null) {
@@ -488,6 +501,7 @@ public class KafkaToBigQueryFlex {
     }
     return failsafeElement;
   }
+
   static class ThrowErrorFn<T, W> extends DoFn<FailsafeElement<T, W>, FailsafeElement<T, W>> {
 
     @ProcessElement

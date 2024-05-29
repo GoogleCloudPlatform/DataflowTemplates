@@ -34,7 +34,7 @@ public class KafkaConfig {
     Map<String, Object> properties =
         from(
             options.getKafkaReadAuthenticationMode(),
-                options.getSourceKeystoreLocation(),
+            options.getSourceKeystoreLocation(),
             options.getSourceTruststoreLocation(),
             options.getSourceTruststorePasswordSecretId(),
             options.getSourceKeystorePasswordSecretId(),
@@ -67,8 +67,7 @@ public class KafkaConfig {
       String keystorePasswordSecretId,
       String keyPasswordSecretId,
       String usernameSecretId,
-      String passwordSecretId)
-  {
+      String passwordSecretId) {
     Map<String, Object> properties = new HashMap<>();
     if (authMode == null) {
       return properties;
@@ -88,8 +87,7 @@ public class KafkaConfig {
           SslConfigs.SSL_KEY_PASSWORD_CONFIG,
           FileAwareFactoryFn.SECRET_MANAGER_VALUE_PREFIX + keyPasswordSecretId);
       properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
-    }
-    else if (authMode.equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+    } else if (authMode.equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
       properties.put(SaslConfigs.SASL_MECHANISM, KafkaAuthenticationMethod.SASL_MECHANISM);
       //         Note: in other languages, set sasl.username and sasl.password instead.
       properties.put(

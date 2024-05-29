@@ -34,7 +34,6 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 
 @Template(
@@ -146,14 +145,13 @@ public class KafkaToKafka {
     pipeline
         .apply(
             "Read from Kafka",
-                KafkaTransform
-                        .readBytesFromKafka(
-                                sourceBootstrapServers,
-                                Collections.singletonList(sourceTopic),
-                                KafkaConfig.fromReadOptions(options),
-                        true,
-                                options.getEnableCommitOffsets())
-                        .withoutMetadata())
+            KafkaTransform.readBytesFromKafka(
+                    sourceBootstrapServers,
+                    Collections.singletonList(sourceTopic),
+                    KafkaConfig.fromReadOptions(options),
+                    true,
+                    options.getEnableCommitOffsets())
+                .withoutMetadata())
         .apply(
             "Write to Kafka",
             KafkaIO.<byte[], byte[]>write()

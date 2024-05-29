@@ -33,17 +33,18 @@ public interface KafkaToBigQueryFlexOptions
         SchemaRegistryOptions {
 
   @TemplateParameter.Enum(
-          name = "kafkaReadAuthenticationMode",
-          order = 2,
-          groupName = "Source",
-          enumOptions = {
-                  @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_MECHANISM),
-                  @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
-          },
-          description = "Authentication Mode",
-          helpText = "Kafka read authentication mode. Can be NONE or PLAIN")
+      name = "kafkaReadAuthenticationMode",
+      order = 2,
+      groupName = "Source",
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_MECHANISM),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
+      },
+      description = "Authentication Mode",
+      helpText = "Kafka read authentication mode. Can be NONE or PLAIN")
   @Default.String("NONE")
   String getKafkaReadAuthenticationMode();
+
   @TemplateParameter.Boolean(
       order = 3,
       groupName = "Source",
