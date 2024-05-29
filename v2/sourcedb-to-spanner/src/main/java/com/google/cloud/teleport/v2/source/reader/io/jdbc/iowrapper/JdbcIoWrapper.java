@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.List;
@@ -221,7 +222,8 @@ public final class JdbcIoWrapper implements IoWrapper {
     return tableConfigsBuilder.build();
   }
 
-  static ImmutableList<String> getTablesToMigrate(
+  @VisibleForTesting
+  protected static ImmutableList<String> getTablesToMigrate(
       ImmutableList<String> configTables, ImmutableList<String> discoveredTables) {
     List<String> tables = null;
     if (configTables.isEmpty()) {

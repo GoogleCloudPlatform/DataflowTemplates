@@ -168,7 +168,8 @@ public class SourceDbToSpanner {
                 .setCoder(SerializableCoder.of(RowContext.class)));
 
     // Dump Failed rows to DLQ
-    DeadLetterQueue dlq = DeadLetterQueue.create(options.getDLQDirectory());
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(options.getDLQDirectory(), ddl, getTableIDToRefMap(srcSchema));
     dlq.failedMutationsToDLQ(failedMutations);
     dlq.failedTransformsToDLQ(
         transformationResult
