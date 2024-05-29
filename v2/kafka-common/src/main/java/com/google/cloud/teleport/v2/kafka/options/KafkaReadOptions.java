@@ -88,7 +88,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       name = "kafkaReadAuthenticationMode",
       groupName = "Source",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_MECHANISM),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.PLAIN),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
       },
@@ -103,7 +103,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       order = 6,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
-      parentTriggerValues = {KafkaAuthenticationMethod.SASL_MECHANISM},
+      parentTriggerValues = {KafkaAuthenticationMethod.PLAIN},
       optional = true,
       description = "Username",
       helpText =
@@ -118,7 +118,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       order = 7,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
-      parentTriggerValues = KafkaAuthenticationMethod.SASL_MECHANISM,
+      parentTriggerValues = KafkaAuthenticationMethod.PLAIN,
       optional = true,
       description = "Password",
       helpText =

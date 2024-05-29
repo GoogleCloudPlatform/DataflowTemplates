@@ -87,10 +87,10 @@ public class KafkaConfig {
           SslConfigs.SSL_KEY_PASSWORD_CONFIG,
           FileAwareFactoryFn.SECRET_MANAGER_VALUE_PREFIX + keyPasswordSecretId);
       properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
-    } else if (authMode.equals(KafkaAuthenticationMethod.SASL_MECHANISM)) {
-      properties.put(SaslConfigs.SASL_MECHANISM, KafkaAuthenticationMethod.SASL_MECHANISM);
+    } else if (authMode.equals(KafkaAuthenticationMethod.PLAIN)) {
+      properties.put(SaslConfigs.SASL_MECHANISM, KafkaAuthenticationMethod.PLAIN);
       properties.put(
-          CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, KafkaAuthenticationMethod.SASL_PLAIN);
+          CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
       properties.put(
           SaslConfigs.SASL_JAAS_CONFIG,
           "org.apache.kafka.common.security.plain.PlainLoginModule required"
