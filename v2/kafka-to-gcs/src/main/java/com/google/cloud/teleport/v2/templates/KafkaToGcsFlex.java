@@ -82,10 +82,10 @@ public class KafkaToGcsFlex {
         },
         description = "Kafka Read Authentication Mode",
         helpText =
-            "Mode of authentication with the Kafka cluster. "
-                + "NONE for no authentication, "
+            "The mode of authentication to use with the Kafka cluster. "
+                + "Use `NONE` for no authentication, `SASL_PLAIN` for SASL/PLAIN username and password, and "
                 + "SASL_PLAIN for SASL/PLAIN username/password, "
-                + "Note: Apache Kafka for BigQuery supports only SASL_PLAIN authentication mode")
+                + " Apache Kafka for BigQuery only supports the SASL_PLAIN authentication mode.")
     @Default.String("NONE")
     String getKafkaReadAuthenticationMode();
 

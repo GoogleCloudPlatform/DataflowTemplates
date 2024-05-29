@@ -34,7 +34,7 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       },
       description = "Kafka Message Format",
       helpText =
-          "Format of the Kafka messages to be read. Options: AVRO_CONFLUENT_WIRE_FORMAT (Confluent Schema Registry encoded Avro), AVRO_BINARY_ENCODING (Plain binary Avro), or JSON.")
+          "The format of the Kafka messages to read. The supported values are `AVRO_CONFLUENT_WIRE_FORMAT` (Confluent Schema Registry encoded Avro), `AVRO_BINARY_ENCODING` (Plain binary Avro), and `JSON.`")
   @Default.String(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
   String getMessageFormat();
 
@@ -71,8 +71,8 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       description = "Cloud Storage path to the Avro schema file",
       optional = true,
       helpText =
-          "Google Cloud Storage path to the single Avro schema file used to "
-              + "decode all messages of a topic.")
+          "The Google Cloud Storage path to the single Avro schema file used to "
+              + "decode all of the messages in a topic.")
   @Default.String("")
   String getConfluentAvroSchemaPath();
 
@@ -86,7 +86,7 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       description = "Schema Registry Connection URL",
       optional = true,
       helpText =
-          "URL for the Confluent Schema Registry instance used to manage Avro schemas"
+          "The URL for the Confluent Schema Registry instance used to manage Avro schemas"
               + " for message decoding.")
   @Default.String("")
   String getSchemaRegistryConnectionUrl();
@@ -101,7 +101,7 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       description = "Cloud Storage path to the Avro schema file",
       optional = true,
       helpText =
-          "Google Cloud Storage path to the Avro schema file used to decode binary-encoded Avro messages.")
+          "The Google Cloud Storage path to the Avro schema file used to decode binary-encoded Avro messages.")
   @Default.String("")
   String getBinaryAvroSchemaPath();
 
