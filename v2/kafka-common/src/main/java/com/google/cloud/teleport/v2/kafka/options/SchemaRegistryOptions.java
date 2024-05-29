@@ -34,7 +34,7 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       },
       description = "Kafka Message Format",
       helpText =
-          "The format of the Kafka messages to read. The supported values are `AVRO_CONFLUENT_WIRE_FORMAT` (Confluent Schema Registry encoded Avro), `AVRO_BINARY_ENCODING` (Plain binary Avro), and `JSON.`")
+          "The format of the Kafka messages to read. The supported values are AVRO_CONFLUENT_WIRE_FORMAT (Confluent Schema Registry encoded Avro), AVRO_BINARY_ENCODING (Plain binary Avro), and JSON.")
   @Default.String(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
   String getMessageFormat();
 

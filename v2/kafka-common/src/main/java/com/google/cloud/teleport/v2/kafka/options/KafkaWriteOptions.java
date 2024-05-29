@@ -46,8 +46,8 @@ public interface KafkaWriteOptions extends PipelineOptions {
       },
       helpText =
           "The mode of authentication to use with the Kafka cluster. "
-              + "Use `NONE` for no authentication, `SASL_PLAIN` for SASL/PLAIN username and password, and"
-              + " `TLS` for certificate-based authentication.")
+              + "Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, and"
+              + " TLS for certificate-based authentication.")
   @Default.String(KafkaAuthenticationMethod.NONE)
   String getKafkaWriteAuthenticationMethod();
 
