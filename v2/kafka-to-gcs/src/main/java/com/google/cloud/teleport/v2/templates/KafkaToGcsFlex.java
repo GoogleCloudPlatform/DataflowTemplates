@@ -65,7 +65,7 @@ public class KafkaToGcsFlex {
         order = 19,
         groupName = "Source",
         enumOptions = {
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.PLAIN),
+          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
         },
         description = "Authentication Mode",

@@ -40,7 +40,7 @@ public interface KafkaWriteOptions extends PipelineOptions {
       name = "kafkaWriteAuthenticationMethod",
       description = "Kafka Destination Authentication Method",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.PLAIN),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
@@ -55,11 +55,11 @@ public interface KafkaWriteOptions extends PipelineOptions {
       order = 5,
       groupName = "Destination",
       parentName = "kafkaWriteAuthenticationMethod",
-      parentTriggerValues = {KafkaAuthenticationMethod.PLAIN},
+      parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       description = "Secret Version ID for Kafka username",
       helpText =
           "Secret Version ID from the Secret Manager to get Kafka"
-              + KafkaAuthenticationMethod.PLAIN
+              + KafkaAuthenticationMethod.SASL_PLAIN
               + " username for the destination Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
@@ -72,10 +72,10 @@ public interface KafkaWriteOptions extends PipelineOptions {
       order = 6,
       optional = true,
       parentName = "kafkaWriteAuthenticationMethod",
-      parentTriggerValues = {KafkaAuthenticationMethod.PLAIN},
+      parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       helpText =
           "Secret Version ID from the Secret Manager to get Kafka "
-              + KafkaAuthenticationMethod.PLAIN
+              + KafkaAuthenticationMethod.SASL_PLAIN
               + " password for the destination Kafka.",
       description = "Secret Version ID of for Kafka password",
       example =

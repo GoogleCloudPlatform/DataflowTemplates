@@ -37,7 +37,7 @@ public interface KafkaToBigQueryFlexOptions
       order = 2,
       groupName = "Source",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.PLAIN),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
       },
       description = "Authentication Mode",

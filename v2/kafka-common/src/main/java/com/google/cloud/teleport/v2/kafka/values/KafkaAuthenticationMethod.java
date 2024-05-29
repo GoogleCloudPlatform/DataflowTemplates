@@ -20,6 +20,6 @@ public class KafkaAuthenticationMethod {
   // in @Template.Parameter annotations, and annotations can only have constant attributes.
 
   public static final String NONE = "NONE";
-  public static final String SSL = "SSL";
-  public static final String PLAIN = "PLAIN";
+  public static final String TLS = "TLS";
+  public static final String SASL_PLAIN = "SASL_PLAIN";
 }

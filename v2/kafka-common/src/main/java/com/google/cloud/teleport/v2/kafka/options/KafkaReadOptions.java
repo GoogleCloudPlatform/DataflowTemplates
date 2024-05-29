@@ -88,12 +88,12 @@ public interface KafkaReadOptions extends PipelineOptions {
       name = "kafkaReadAuthenticationMode",
       groupName = "Source",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.PLAIN),
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.TLS),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
       },
       description = "Authentication Mode",
-      helpText = "Kafka read authentication mode. Can be NONE, PLAIN or SSL")
+      helpText = "Kafka read authentication mode. Can be NONE, SASL_PLAIN or TLS")
   @Default.String("NONE")
   String getKafkaReadAuthenticationMode();
 
@@ -103,7 +103,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       order = 6,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
-      parentTriggerValues = {KafkaAuthenticationMethod.PLAIN},
+      parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       optional = true,
       description = "Username",
       helpText =
@@ -118,7 +118,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       order = 7,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
-      parentTriggerValues = KafkaAuthenticationMethod.PLAIN,
+      parentTriggerValues = KafkaAuthenticationMethod.SASL_PLAIN,
       optional = true,
       description = "Password",
       helpText =
@@ -134,9 +134,9 @@ public interface KafkaReadOptions extends PipelineOptions {
       optional = true,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
-      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
       helpText =
-          "Cloud storage path for the Keystore location that contains the SSL certificate and private key.",
+          "Cloud storage path for the Keystore location that contains the TLS certificate and private key.",
       description = "Location of Keystore",
       example = "gs://your-bucket/keystore.jks")
   String getKafkaReadKeystoreLocation();
@@ -148,10 +148,10 @@ public interface KafkaReadOptions extends PipelineOptions {
       optional = true,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
-      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
       description = "Truststore File Location",
       helpText =
-          "Location of the jks file in Cloud Storage with SSL certificate to verify identity.",
+          "Location of the jks file in Cloud Storage with TLS certificate to verify identity.",
       example = "gs://your-bucket/truststore.jks")
   String getKafkaReadTruststoreLocation();
 
@@ -162,7 +162,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       optional = true,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
-      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
       helpText =
           "Secret Version ID to get password to access secret in truststore for source Kafka.",
       description = "Secret Version ID for Truststore Password",
@@ -177,7 +177,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       optional = true,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
-      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
       helpText = "Secret Version ID to get password to access secret keystore, for source kafka.",
       description = "Secret Version ID of Keystore Password",
       example =
@@ -191,7 +191,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       optional = true,
       parentName = "kafkaReadAuthenticationMode",
       groupName = "Source",
-      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
       helpText =
           "Secret Version ID of password to access private key inside the keystore, for source Kafka.",
       description = "Secret Version ID of Private Key Password",

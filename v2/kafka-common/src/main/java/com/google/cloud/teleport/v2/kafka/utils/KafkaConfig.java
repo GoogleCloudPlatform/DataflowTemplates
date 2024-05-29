@@ -73,8 +73,8 @@ public class KafkaConfig {
       return properties;
     }
 
-    if (authMode.equals(KafkaAuthenticationMethod.SSL)) {
-      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, KafkaAuthenticationMethod.SSL);
+    if (authMode.equals(KafkaAuthenticationMethod.TLS)) {
+      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
       properties.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, keystoreLocation);
       properties.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, truststoreLocation);
       properties.put(
@@ -87,8 +87,8 @@ public class KafkaConfig {
           SslConfigs.SSL_KEY_PASSWORD_CONFIG,
           FileAwareFactoryFn.SECRET_MANAGER_VALUE_PREFIX + keyPasswordSecretId);
       properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
-    } else if (authMode.equals(KafkaAuthenticationMethod.PLAIN)) {
-      properties.put(SaslConfigs.SASL_MECHANISM, KafkaAuthenticationMethod.PLAIN);
+    } else if (authMode.equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+      properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
       properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
       properties.put(
           SaslConfigs.SASL_JAAS_CONFIG,
