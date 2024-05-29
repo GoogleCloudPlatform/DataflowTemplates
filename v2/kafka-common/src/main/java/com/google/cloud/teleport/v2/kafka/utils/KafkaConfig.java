@@ -87,9 +87,8 @@ public class KafkaConfig {
           SslConfigs.SSL_KEY_PASSWORD_CONFIG,
           FileAwareFactoryFn.SECRET_MANAGER_VALUE_PREFIX + keyPasswordSecretId);
       properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
-    } else if (authMode.equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+    } else if (authMode.equals(KafkaAuthenticationMethod.SASL_MECHANISM)) {
       properties.put(SaslConfigs.SASL_MECHANISM, KafkaAuthenticationMethod.SASL_MECHANISM);
-      //         Note: in other languages, set sasl.username and sasl.password instead.
       properties.put(
           CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, KafkaAuthenticationMethod.SASL_PLAIN);
       properties.put(
