@@ -111,7 +111,7 @@ public class KafkaToKafka {
       checkArgument(
           options.getKafkaWriteKeyPasswordSecretId().trim().length() > 0,
           "destinationKeyPasswordSecretId for source key password secret id version required for SSL authentication");
-    } else if (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.NONE)) {
+    } else if (options.getKafkaWriteAuthenticationMethod().equals(KafkaAuthenticationMethod.NONE)) {
     } else {
       throw new UnsupportedOperationException(
           "Authentication method not supported: " + options.getKafkaWriteAuthenticationMethod());

@@ -132,7 +132,6 @@ public interface KafkaReadOptions extends PipelineOptions {
   @TemplateParameter.GcsReadFile(
       order = 8,
       optional = true,
-      name = "keystoreLocation",
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
@@ -147,7 +146,6 @@ public interface KafkaReadOptions extends PipelineOptions {
   @TemplateParameter.GcsReadFile(
       order = 9,
       optional = true,
-      name = "sourceSSL",
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
@@ -162,7 +160,6 @@ public interface KafkaReadOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 10,
       optional = true,
-      name = "sourceTruststorePassword",
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
@@ -178,7 +175,6 @@ public interface KafkaReadOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 11,
       optional = true,
-      name = "sourceKeystorePassword",
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
@@ -193,7 +189,6 @@ public interface KafkaReadOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 12,
       optional = true,
-      name = "sourceKey",
       parentName = "kafkaReadAuthenticationMode",
       groupName = "Source",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},

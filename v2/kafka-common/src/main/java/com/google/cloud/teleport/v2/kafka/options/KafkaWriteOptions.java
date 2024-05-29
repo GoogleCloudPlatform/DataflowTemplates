@@ -28,7 +28,6 @@ public interface KafkaWriteOptions extends PipelineOptions {
   @TemplateParameter.KafkaTopic(
       groupName = "Destination",
       order = 3,
-      name = "writeBootstrapServerAndTopic",
       description = "Destination Kafka Topic",
       helpText = "Kafka topic to write the output to.")
   String getWriteBootstrapServerAndTopic();
@@ -54,7 +53,6 @@ public interface KafkaWriteOptions extends PipelineOptions {
   @TemplateParameter.Text(
       optional = true,
       order = 5,
-      name = "kafkaWriteUsernameSecretId",
       groupName = "Destination",
       parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.PLAIN},
@@ -73,7 +71,6 @@ public interface KafkaWriteOptions extends PipelineOptions {
       groupName = "Destination",
       order = 6,
       optional = true,
-      name = "kafkaWritePasswordSecretId",
       parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.PLAIN},
       helpText =
@@ -90,7 +87,6 @@ public interface KafkaWriteOptions extends PipelineOptions {
   @TemplateParameter.GcsReadFile(
       order = 7,
       optional = true,
-      name = "truststoredestination",
       groupName = "Destination",
       parentName = "kafkaWriteAuthenticationMethod",
       description = "Truststore File Location",
@@ -104,7 +100,6 @@ public interface KafkaWriteOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 8,
       optional = true,
-      name = "destinationTruststorePassword",
       groupName = "Destination",
       parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
@@ -122,7 +117,6 @@ public interface KafkaWriteOptions extends PipelineOptions {
       optional = true,
       helpText =
           "Cloud storage path for the Keystore location that contains the SSL certificate and private key.",
-      name = "destinationKeystoreLocation",
       groupName = "Destination",
       parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
@@ -135,7 +129,6 @@ public interface KafkaWriteOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 11,
       optional = true,
-      name = "destinationKeystorePassword",
       groupName = "Destination",
       parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
@@ -151,7 +144,6 @@ public interface KafkaWriteOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 12,
       optional = true,
-      name = "destinationKey",
       parentName = "kafkaWriteAuthenticationMethod",
       groupName = "Destination",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
