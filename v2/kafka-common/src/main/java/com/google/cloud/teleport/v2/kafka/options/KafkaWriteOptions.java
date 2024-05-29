@@ -38,26 +38,25 @@ public interface KafkaWriteOptions extends PipelineOptions {
   @TemplateParameter.Enum(
       groupName = "Destination",
       order = 4,
-      name = "destinationAuthenticationMethod",
-      optional = false,
-      description = "Destination Authentication Method",
+      name = "kafkaWriteAuthenticationMethod",
+      description = "Kafka Destination Authentication Method",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_MECHANISM),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
       helpText = "Type of authentication mechanism to use with the destination Kafka.")
   @Default.String(KafkaAuthenticationMethod.NONE)
-  String getDestinationAuthenticationMethod();
+  String getKafkaWriteAuthenticationMethod();
 
-  void setDestinationAuthenticationMethod(String destinationAuthenticationMethod);
+  void setKafkaWriteAuthenticationMethod(String destinationAuthenticationMethod);
 
   @TemplateParameter.Text(
       optional = true,
       order = 5,
-      name = "destinationUsernameSecretId",
+      name = "kafkaWriteUsernameSecretId",
       groupName = "Destination",
-      parentName = "destinationAuthenticationMethod",
+      parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       description = "Secret Version ID for Kafka username",
       helpText =
@@ -66,15 +65,15 @@ public interface KafkaWriteOptions extends PipelineOptions {
               + " username for the destination Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  String getDestinationUsernameSecretId();
+  String getKafkaWriteUsernameSecretId();
 
-  void setDestinationUsernameSecretId(String destinationUsernameSecretId);
+  void setKafkaWriteUsernameSecretId(String destinationUsernameSecretId);
 
   @TemplateParameter.Text(
       groupName = "Destination",
       order = 6,
-      name = "destinationPasswordSecretId",
-      parentName = "destinationAuthenticationMethod",
+      name = "kafkaWritePasswordSecretId",
+      parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       helpText =
           "Secret Version ID from the Secret Manager to get Kafka "
@@ -83,30 +82,30 @@ public interface KafkaWriteOptions extends PipelineOptions {
       description = "Secret Version ID of for Kafka password",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  String getDestinationPasswordSecretId();
+  String getKafkaWritePasswordSecretId();
 
-  void setDestinationPasswordSecretId(String destinationPasswordSecretId);
+  void setKafkaWritePasswordSecretId(String destinationPasswordSecretId);
 
   @TemplateParameter.GcsReadFile(
       order = 7,
       optional = true,
       name = "truststoredestination",
       groupName = "Destination",
-      parentName = "destinationAuthenticationMethod",
+      parentName = "kafkaWriteAuthenticationMethod",
       description = "Truststore File Location",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       helpText =
           "Location of the jks file in Cloud Storage with SSL certificate to verify identity.")
-  String getDestinationTruststoreLocation();
+  String getKafkaWriteTruststoreLocation();
 
-  void setDestinationTruststoreLocation(String destinationTruststoreLocation);
+  void setKafkaWriteTruststoreLocation(String destinationTruststoreLocation);
 
   @TemplateParameter.Text(
       order = 8,
       optional = true,
       name = "destinationTruststorePassword",
       groupName = "Destination",
-      parentName = "destinationAuthenticationMethod",
+      parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       helpText =
           "Secret Version ID to get password to access secret in truststore, for destination kafka.",
@@ -124,35 +123,35 @@ public interface KafkaWriteOptions extends PipelineOptions {
           "Cloud storage path for the Keystore location that contains the SSL certificate and private key.",
       name = "destinationKeystoreLocation",
       groupName = "Destination",
-      parentName = "destinationAuthenticationMethod",
+      parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       description = "Location of Keystore",
       example = "gs://your-bucket/keystore.jks")
-  String getDestinationKeystoreLocation();
+  String getKafkaWriteKeystoreLocation();
 
-  void setDestinationKeystoreLocation(String destinationKeystoreLocation);
+  void setKafkaWriteKeystoreLocation(String destinationKeystoreLocation);
 
   @TemplateParameter.Text(
       order = 11,
       optional = true,
       name = "destinationKeystorePassword",
       groupName = "Destination",
-      parentName = "destinationAuthenticationMethod",
+      parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       helpText =
           "Secret Version ID to get password to access secret keystore, for destination kafka.",
       description = "Secret Version Version ID of Keystore Password",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  String getDestinationKeystorePasswordSecretId();
+  String getKafkaWriteKeystorePasswordSecretId();
 
-  void setDestinationKeystorePasswordSecretId(String destinationKeystorePasswordSecretId);
+  void setKafkaWriteKeystorePasswordSecretId(String destinationKeystorePasswordSecretId);
 
   @TemplateParameter.Text(
       order = 12,
       optional = true,
       name = "destinationKey",
-      parentName = "destinationAuthenticationMethod",
+      parentName = "kafkaWriteAuthenticationMethod",
       groupName = "Destination",
       parentTriggerValues = {KafkaAuthenticationMethod.SSL},
       helpText =
@@ -160,7 +159,7 @@ public interface KafkaWriteOptions extends PipelineOptions {
       description = "Secret Version ID of key",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
-  String getDestinationKeyPasswordSecretId();
+  String getKafkaWriteKeyPasswordSecretId();
 
-  void setDestinationKeyPasswordSecretId(String destinationKeyPasswordSecretId);
+  void setKafkaWriteKeyPasswordSecretId(String destinationKeyPasswordSecretId);
 }

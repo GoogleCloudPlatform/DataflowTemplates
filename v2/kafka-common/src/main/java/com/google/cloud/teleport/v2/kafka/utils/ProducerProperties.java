@@ -37,7 +37,7 @@ import org.apache.kafka.common.config.SslConfigs;
 public class ProducerProperties {
   public static Map<String, Object> from(KafkaWriteOptions options) throws IOException {
     Map<String, Object> properties = new HashMap<>();
-    String authMethod = options.getDestinationAuthenticationMethod();
+    String authMethod = options.getKafkaWriteAuthenticationMethod();
     if (authMethod == null) {
       return properties;
     }
@@ -45,9 +45,9 @@ public class ProducerProperties {
       properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, KafkaAuthenticationMethod.SSL);
 
       properties.put(
-          SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getDestinationKeystoreLocation());
+          SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getKafkaWriteKeystoreLocation());
       properties.put(
-          SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, options.getDestinationTruststoreLocation());
+          SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, options.getKafkaWriteTruststoreLocation());
       properties.put(
           SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
           FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
@@ -55,11 +55,11 @@ public class ProducerProperties {
       properties.put(
           SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
           FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
-              + options.getDestinationKeystorePasswordSecretId());
+              + options.getKafkaWriteKeystorePasswordSecretId());
       properties.put(
           SslConfigs.SSL_KEY_PASSWORD_CONFIG,
           FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
-              + options.getDestinationKeyPasswordSecretId());
+              + options.getKafkaWriteKeyPasswordSecretId());
       properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
     } else if (authMethod.equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
       properties.put(SaslConfigs.SASL_MECHANISM, KafkaAuthenticationMethod.SASL_MECHANISM);
@@ -71,11 +71,11 @@ public class ProducerProperties {
           "org.apache.kafka.common.security.plain.PlainLoginModule required"
               + " username=\'"
               + FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
-              + options.getDestinationUsernameSecretId()
+              + options.getKafkaWriteUsernameSecretId()
               + "\'"
               + " password=\'"
               + FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
-              + options.getDestinationPasswordSecretId()
+              + options.getKafkaWritePasswordSecretId()
               + "\';");
     } else {
       throw new UnsupportedOperationException("Authentication method not supported: " + authMethod);

@@ -88,32 +88,32 @@ public class KafkaToKafka {
       throw new UnsupportedOperationException(
           "Authentication method not supported: " + options.getKafkaReadAuthenticationMode());
     }
-    if (options.getDestinationAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+    if (options.getKafkaWriteAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
       checkArgument(
-          options.getDestinationUsernameSecretId().trim().length() > 0,
+          options.getKafkaWriteUsernameSecretId().trim().length() > 0,
           "destinationUsernameSecretId required to access username for source Kafka");
       checkArgument(
-          options.getDestinationPasswordSecretId().trim().length() > 0,
+          options.getKafkaWritePasswordSecretId().trim().length() > 0,
           "destinationPasswordSecretId required to access password for destination Kafka");
-    } else if (options.getDestinationAuthenticationMethod().equals(KafkaAuthenticationMethod.SSL)) {
+    } else if (options.getKafkaWriteAuthenticationMethod().equals(KafkaAuthenticationMethod.SSL)) {
       checkArgument(
-          options.getDestinationTruststoreLocation().trim().length() > 0,
+          options.getKafkaWriteTruststoreLocation().trim().length() > 0,
           "destinationTruststoreLocation for trust store certificate required for ssl authentication");
       checkArgument(
           options.getDestinationTruststorePasswordSecretId().trim().length() > 0,
           "destinationTruststorePasswordSecretId for trust store password required for accessing truststore");
       checkArgument(
-          options.getDestinationKeystoreLocation().trim().length() > 0,
+          options.getKafkaWriteKeystoreLocation().trim().length() > 0,
           "destinationKeystoreLocation for key store location required for ssl authentication");
       checkArgument(
-          options.getDestinationKeystorePasswordSecretId().trim().length() > 0,
+          options.getKafkaWriteKeystorePasswordSecretId().trim().length() > 0,
           "destinationKeystorePasswordSecretId for key store password required to access key store");
       checkArgument(
-          options.getDestinationKeyPasswordSecretId().trim().length() > 0,
+          options.getKafkaWriteKeyPasswordSecretId().trim().length() > 0,
           "destinationKeyPasswordSecretId for source key password secret id version required for SSL authentication");
     } else {
       throw new UnsupportedOperationException(
-          "Authentication method not supported: " + options.getDestinationAuthenticationMethod());
+          "Authentication method not supported: " + options.getKafkaWriteAuthenticationMethod());
     }
 
     String sourceTopic;
