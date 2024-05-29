@@ -112,7 +112,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       optional = true,
-      description = "Secret Version ID for Kafka SASL/PLAIN username",
+      description = "Secret Version ID For Kafka SASL/PLAIN Username",
       helpText =
           "The Google Cloud Secret Manager secret ID that contains the Kafka username "
               + "to use with SASL_PLAIN authentication.",
@@ -128,7 +128,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = KafkaAuthenticationMethod.SASL_PLAIN,
       optional = true,
-      description = "Secret Version ID for Kafka SASL/PLAIN password",
+      description = "Secret Version ID For Kafka SASL/PLAIN Password",
       helpText =
           "The Google Cloud Secret Manager secret ID that contains the Kafka password to use with SASL_PLAIN authentication.",
       example = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>")
