@@ -150,7 +150,7 @@ public class KafkaToGcsFlex {
     // Step 1: Read from Kafka as bytes.
     KafkaIO.Read<byte[], byte[]> kafkaTransform =
         KafkaTransform.readBytesFromKafka(
-            bootstrapServes, topicsList, kafkaConfig, false, options.getEnableCommitOffsets());
+            bootstrapServes, topicsList, kafkaConfig, options.getEnableCommitOffsets());
     kafkaRecord = pipeline.apply(kafkaTransform);
     kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
     return pipeline.run();

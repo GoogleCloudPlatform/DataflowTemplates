@@ -151,7 +151,6 @@ public class KafkaToKafka {
                     sourceBootstrapServers,
                     Collections.singletonList(sourceTopic),
                     KafkaConfig.fromReadOptions(options),
-                    true,
                     options.getEnableCommitOffsets())
                 .withoutMetadata())
         .apply(

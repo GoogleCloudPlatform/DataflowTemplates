@@ -257,8 +257,7 @@ public class KafkaToBigQueryFlex {
                     bootstrapServers,
                     topicsList,
                     kafkaConfig,
-                    false,
-                    options.getEnableCommitOffsets()))
+                        options.getEnableCommitOffsets()))
             .setCoder(
                 KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()));
 
