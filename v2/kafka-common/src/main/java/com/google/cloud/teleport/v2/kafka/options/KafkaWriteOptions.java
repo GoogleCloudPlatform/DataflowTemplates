@@ -44,7 +44,9 @@ public interface KafkaWriteOptions extends PipelineOptions {
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.TLS),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
-      helpText = "Type of authentication mechanism to use with the destination Kafka.")
+      helpText = "Mode of authentication with the Kafka cluster. " +
+              "NONE for no authentication, SASL_PLAIN for SASL/PLAIN username/password, " +
+              "TLS for certificate-based authentication.")
   @Default.String(KafkaAuthenticationMethod.NONE)
   String getKafkaWriteAuthenticationMethod();
 
@@ -56,13 +58,11 @@ public interface KafkaWriteOptions extends PipelineOptions {
       groupName = "Destination",
       parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
-      description = "Secret Version ID for Kafka username",
-      helpText =
-          "Secret Version ID from the Secret Manager to get Kafka"
-              + KafkaAuthenticationMethod.SASL_PLAIN
-              + " username for the destination Kafka.",
-      example =
-          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+      description = "Secret Version ID for Kafka SASL/PLAIN username",
+          helpText = "Google Cloud Secret Manager secret ID containing the Kafka username" +
+                  " for SASL_PLAIN authentication with the destination Kafka cluster.",
+          example = "projects/{project}/secrets/{secret}/versions/{secret_version}")
+  @Default.String("")
   String getKafkaWriteUsernameSecretId();
 
   void setKafkaWriteUsernameSecretId(String destinationUsernameSecretId);
@@ -73,58 +73,60 @@ public interface KafkaWriteOptions extends PipelineOptions {
       optional = true,
       parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
-      helpText =
-          "Secret Version ID from the Secret Manager to get Kafka "
-              + KafkaAuthenticationMethod.SASL_PLAIN
-              + " password for the destination Kafka.",
-      description = "Secret Version ID of for Kafka password",
+      description = "Secret Version ID for Kafka SASL/PLAIN password",
+      helpText = "Google Cloud Secret Manager secret ID containing the Kafka password for SASL/PLAIN authentication" +
+              " with the destination Kafka cluster.",
       example =
-          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+          "projects/{project}/secrets/{secret}/versions/{secret_version}")
+  @Default.String("")
   String getKafkaWritePasswordSecretId();
+
+  @TemplateParameter.GcsReadFile(
+          order = 7,
+          optional = true,
+          groupName = "Destination",
+          parentName = "kafkaWriteAuthenticationMethod",
+          parentTriggerValues = {KafkaAuthenticationMethod.TLS},
+          description = "Location of Keystore",
+          helpText = "Google Cloud Storage path to the Java KeyStore (JKS) file containing the TLS certificate " +
+                  "and private key for authenticating with the destination Kafka cluster.",
+          example = "gs://your-bucket/keystore.jks")
+  String getKafkaWriteKeystoreLocation();
+
+  void setKafkaWriteKeystoreLocation(String destinationKeystoreLocation);
 
   void setKafkaWritePasswordSecretId(String destinationPasswordSecretId);
 
   @TemplateParameter.GcsReadFile(
-      order = 7,
-      optional = true,
-      groupName = "Destination",
-      parentName = "kafkaWriteAuthenticationMethod",
-      description = "Truststore File Location",
-      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
-      helpText =
-          "Location of the jks file in Cloud Storage with TLS certificate to verify identity.")
+          order = 8,
+          optional = true,
+          groupName = "Destination",
+          parentName = "kafkaWriteAuthenticationMethod",
+          description = "Truststore File Location",
+          parentTriggerValues = {KafkaAuthenticationMethod.TLS},
+          helpText = "Google Cloud Storage path to the Java TrustStore (JKS) file containing trusted certificates" +
+                  " to verify the identity of the destination Kafka broker."
+  )
   String getKafkaWriteTruststoreLocation();
 
   void setKafkaWriteTruststoreLocation(String destinationTruststoreLocation);
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 9,
       optional = true,
       groupName = "Destination",
       parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.TLS},
-      helpText =
-          "Secret Version ID to get password to access secret in truststore, for destination kafka.",
       description = "Secret Version ID of Truststore password",
+      helpText = "Google Cloud Secret Manager secret ID containing the password to access the Java TrustStore (JKS) file " +
+              "for TLS authentication with the destination Kafka cluster.",
       example =
-          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+              "projects/{project}/secrets/{secret}/versions/{secret_version}")
   String getKafkaWriteTruststorePasswordSecretId();
 
   void setKafkaWriteTruststorePasswordSecretId(String destinationTruststorePasswordSecretId);
 
-  @TemplateParameter.GcsReadFile(
-      order = 10,
-      optional = true,
-      helpText =
-          "Cloud storage path for the Keystore location that contains the TLS certificate and private key.",
-      groupName = "Destination",
-      parentName = "kafkaWriteAuthenticationMethod",
-      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
-      description = "Location of Keystore",
-      example = "gs://your-bucket/keystore.jks")
-  String getKafkaWriteKeystoreLocation();
 
-  void setKafkaWriteKeystoreLocation(String destinationKeystoreLocation);
 
   @TemplateParameter.Text(
       order = 11,
@@ -132,11 +134,10 @@ public interface KafkaWriteOptions extends PipelineOptions {
       groupName = "Destination",
       parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.TLS},
-      helpText =
-          "Secret Version ID to get password to access secret keystore, for destination kafka.",
-      description = "Secret Version Version ID of Keystore Password",
-      example =
-          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+      description = "Secret Version ID of Keystore Password",
+      helpText = "Google Cloud Secret Manager secret ID containing the password to access the Java KeyStore (JKS) " +
+              "file for TLS authentication with the destination Kafka cluster.",
+      example = "projects/{project}/secrets/{secret}/versions/{secret_version}")
   String getKafkaWriteKeystorePasswordSecretId();
 
   void setKafkaWriteKeystorePasswordSecretId(String destinationKeystorePasswordSecretId);
@@ -147,11 +148,11 @@ public interface KafkaWriteOptions extends PipelineOptions {
       parentName = "kafkaWriteAuthenticationMethod",
       groupName = "Destination",
       parentTriggerValues = {KafkaAuthenticationMethod.TLS},
-      helpText =
-          "Secret Version ID of password to access private key inside the keystore, for destination Kafka.",
-      description = "Secret Version ID of key",
-      example =
-          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+      description = "Secret Version ID of Private Key Password",
+      helpText = "Google Cloud Secret Manager secret ID containing the password to access the private key within the " +
+              "Java KeyStore (JKS) file for TLS authentication with the destination Kafka cluster.",
+        example =
+                "projects/{project}/secrets/{secret}/versions/{secret_version}")
   String getKafkaWriteKeyPasswordSecretId();
 
   void setKafkaWriteKeyPasswordSecretId(String destinationKeyPasswordSecretId);

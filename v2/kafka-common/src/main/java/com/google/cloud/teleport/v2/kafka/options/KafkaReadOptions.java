@@ -61,7 +61,8 @@ public interface KafkaReadOptions extends PipelineOptions {
       groupName = "Source",
       optional = true,
       description = "Consumer Group ID",
-      helpText = "Consumer group ID to commit offsets to Kafka.")
+      helpText = "Unique identifier for the consumer group to which this pipeline belongs." +
+              " Required if 'Commit Offsets to Kafka' is enabled.")
   @Default.String("")
   String getConsumerGroupId();
 
@@ -76,8 +77,8 @@ public interface KafkaReadOptions extends PipelineOptions {
       },
       optional = true,
       description = "Default Kafka Start Offset",
-      helpText =
-          "The Kafka offset to read from. If there are no committed offsets on Kafka, default offset will be used.")
+      helpText = "Starting point for reading messages if no committed offsets exist." +
+              "earliest starts from the beginning, latest from the newest message.")
   @Default.String(Offset.LATEST)
   String getKafkaReadOffset();
 
@@ -92,8 +93,10 @@ public interface KafkaReadOptions extends PipelineOptions {
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.TLS),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
       },
-      description = "Authentication Mode",
-      helpText = "Kafka read authentication mode. Can be NONE, SASL_PLAIN or TLS")
+      description = "Kafka Source Authentication Mode",
+          helpText = "Mode of authentication with the Kafka cluster. " +
+                  "NONE for no authentication, SASL_PLAIN for SASL/PLAIN username/password, " +
+                  "TLS for certificate-based authentication.")
   @Default.String("NONE")
   String getKafkaReadAuthenticationMode();
 
@@ -105,10 +108,11 @@ public interface KafkaReadOptions extends PipelineOptions {
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       optional = true,
-      description = "Username",
-      helpText =
-          "Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}.",
-      example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
+      description = "Secret Version ID for Kafka SASL/PLAIN username",
+      helpText = "Google Cloud Secret Manager secret ID containing the Kafka username " +
+              "for SASL_PLAIN authentication.",
+      example = "projects/{project}/secrets/{secret}/versions/{secret_version}"
+  )
   @Default.String("")
   String getKafkaReadUsernameSecretId();
 
@@ -120,10 +124,10 @@ public interface KafkaReadOptions extends PipelineOptions {
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = KafkaAuthenticationMethod.SASL_PLAIN,
       optional = true,
-      description = "Password",
-      helpText =
-          "Secret Manager secret ID for the SASL_PLAIN password. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
-      example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
+      description = "Secret Version ID for Kafka SASL/PLAIN password",
+      helpText = "Google Cloud Secret Manager secret ID containing the Kafka password for SASL_PLAIN authentication.",
+      example = "projects/{project}/secrets/{secret}/versions/{secret_version}"
+  )
   @Default.String("")
   String getKafkaReadPasswordSecretId();
 
@@ -135,9 +139,9 @@ public interface KafkaReadOptions extends PipelineOptions {
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {KafkaAuthenticationMethod.TLS},
-      helpText =
-          "Cloud storage path for the Keystore location that contains the TLS certificate and private key.",
-      description = "Location of Keystore",
+        helpText = "Google Cloud Storage path to the Java KeyStore (JKS) file containing the " +
+                "TLS certificate and private key for authenticating with the Kafka cluster.",
+        description = "Location of Keystore",
       example = "gs://your-bucket/keystore.jks")
   String getKafkaReadKeystoreLocation();
 
@@ -150,9 +154,9 @@ public interface KafkaReadOptions extends PipelineOptions {
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {KafkaAuthenticationMethod.TLS},
       description = "Truststore File Location",
-      helpText =
-          "Location of the jks file in Cloud Storage with TLS certificate to verify identity.",
-      example = "gs://your-bucket/truststore.jks")
+      helpText = "Google Cloud Storage path to the Java TrustStore (JKS) file containing" +
+              " trusted certificates to verify the identity of the Kafka broker."
+  )
   String getKafkaReadTruststoreLocation();
 
   void setKafkaReadTruststoreLocation(String sourceTruststoreLocation);
@@ -163,11 +167,10 @@ public interface KafkaReadOptions extends PipelineOptions {
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {KafkaAuthenticationMethod.TLS},
-      helpText =
-          "Secret Version ID to get password to access secret in truststore for source Kafka.",
       description = "Secret Version ID for Truststore Password",
-      example =
-          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+      helpText = "Google Cloud Secret Manager secret ID containing the password to " +
+              "access the Java TrustStore (JKS) file for Kafka TLS authentication. Format: projects/{project}/secrets/{secret}/versions/{secret_version}",
+      example = "projects/{project}/secrets/{secret}/versions/{secret_version}")
   String getKafkaReadTruststorePasswordSecretId();
 
   void setKafkaReadTruststorePasswordSecretId(String sourceTruststorePasswordSecretId);
@@ -178,10 +181,10 @@ public interface KafkaReadOptions extends PipelineOptions {
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {KafkaAuthenticationMethod.TLS},
-      helpText = "Secret Version ID to get password to access secret keystore, for source kafka.",
       description = "Secret Version ID of Keystore Password",
-      example =
-          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+      helpText = "Google Cloud Secret Manager secret ID containing the password to" +
+              " access the Java KeyStore (JKS) file for Kafka TLS authentication. Format: projects/{project}/secrets/{secret}/versions/{secret_version}",
+      example = "projects/{project}/secrets/{secret}/versions/{secret_version}")
   String getKafkaReadKeystorePasswordSecretId();
 
   void setKafkaReadKeystorePasswordSecretId(String sourceKeystorePasswordSecretId);
@@ -192,11 +195,10 @@ public interface KafkaReadOptions extends PipelineOptions {
       parentName = "kafkaReadAuthenticationMode",
       groupName = "Source",
       parentTriggerValues = {KafkaAuthenticationMethod.TLS},
-      helpText =
-          "Secret Version ID of password to access private key inside the keystore, for source Kafka.",
+      helpText = "Google Cloud Secret Manager secret ID containing the password to access the private key within the Java KeyStore (JKS) file" +
+              " for Kafka TLS authentication. Format: projects/{project}/secrets/{secret}/versions/{secret_version}",
       description = "Secret Version ID of Private Key Password",
-      example =
-          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+      example = "projects/{project}/secrets/{secret}/versions/{secret_version}")
   String getKafkaReadKeyPasswordSecretId();
 
   void setKafkaReadKeyPasswordSecretId(String sourceKeyPasswordSecretId);
