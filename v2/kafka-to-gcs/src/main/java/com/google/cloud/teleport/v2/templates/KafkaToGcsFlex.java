@@ -69,7 +69,7 @@ public class KafkaToGcsFlex {
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
         },
         description = "Authentication Mode",
-        helpText = "Kafka read authentication mode. Can be NONE or PLAIN")
+        helpText = "Kafka read authentication mode. Can be NONE or SASL_PLAIN")
     @Default.String("NONE")
     String getKafkaReadAuthenticationMode();
 
