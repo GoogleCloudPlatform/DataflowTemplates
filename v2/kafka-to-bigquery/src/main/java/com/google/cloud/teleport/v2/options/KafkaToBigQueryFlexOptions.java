@@ -54,7 +54,7 @@ public interface KafkaToBigQueryFlexOptions
       description = "Kafka Read Authentication Mode",
       helpText =
           "The mode of authentication to use with the Kafka cluster. "
-              + "Use `NONE` for no authentication, `SASL_PLAIN` for SASL/PLAIN username and password, "
+              + "Use NONE for no authentication"
               + "SASL_PLAIN for SASL/PLAIN username/password, "
               + " Apache Kafka for BigQuery only supports the SASL_PLAIN authentication mode.")
   @Default.String("NONE")
