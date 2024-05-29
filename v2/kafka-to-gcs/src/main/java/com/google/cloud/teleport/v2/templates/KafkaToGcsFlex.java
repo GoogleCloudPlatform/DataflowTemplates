@@ -63,7 +63,7 @@ public class KafkaToGcsFlex {
 
     @TemplateParameter.Enum(
         name = "kafkaReadAuthenticationMode",
-        order = 999,
+        order = 19,
         groupName = "Source",
         enumOptions = {
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_MECHANISM),
@@ -75,7 +75,7 @@ public class KafkaToGcsFlex {
     String getKafkaReadAuthenticationMode();
 
     @TemplateParameter.Duration(
-        order = 11,
+        order = 20,
         optional = true,
         groupName = "Destination",
         description = "Window duration",
@@ -89,7 +89,7 @@ public class KafkaToGcsFlex {
     void setWindowDuration(String windowDuration);
 
     @TemplateParameter.GcsWriteFolder(
-        order = 12,
+        order = 21,
         groupName = "Destination",
         description = "Output file directory in Cloud Storage",
         helpText = "The path and filename prefix for writing output files. Must end with a slash.",
@@ -99,7 +99,7 @@ public class KafkaToGcsFlex {
     void setOutputDirectory(String outputDirectory);
 
     @TemplateParameter.Text(
-        order = 13,
+        order = 22,
         optional = true,
         groupName = "Destination",
         description = "Output filename prefix of the files to write",
@@ -111,7 +111,7 @@ public class KafkaToGcsFlex {
     void setOutputFilenamePrefix(String outputFilenamePrefix);
 
     @TemplateParameter.Integer(
-        order = 14,
+        order = 23,
         optional = true,
         description = "Maximum output shards",
         groupName = "Destination",

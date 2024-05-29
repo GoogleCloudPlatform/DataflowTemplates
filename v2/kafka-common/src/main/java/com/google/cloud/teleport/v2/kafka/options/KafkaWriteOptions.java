@@ -57,11 +57,11 @@ public interface KafkaWriteOptions extends PipelineOptions {
       name = "kafkaWriteUsernameSecretId",
       groupName = "Destination",
       parentName = "kafkaWriteAuthenticationMethod",
-      parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
+      parentTriggerValues = {KafkaAuthenticationMethod.SASL_MECHANISM},
       description = "Secret Version ID for Kafka username",
       helpText =
           "Secret Version ID from the Secret Manager to get Kafka"
-              + KafkaAuthenticationMethod.SASL_PLAIN
+              + KafkaAuthenticationMethod.SASL_MECHANISM
               + " username for the destination Kafka.",
       example =
           "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
@@ -74,10 +74,10 @@ public interface KafkaWriteOptions extends PipelineOptions {
       order = 6,
       name = "kafkaWritePasswordSecretId",
       parentName = "kafkaWriteAuthenticationMethod",
-      parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
+      parentTriggerValues = {KafkaAuthenticationMethod.SASL_MECHANISM},
       helpText =
           "Secret Version ID from the Secret Manager to get Kafka "
-              + KafkaAuthenticationMethod.SASL_PLAIN
+              + KafkaAuthenticationMethod.SASL_MECHANISM
               + " password for the destination Kafka.",
       description = "Secret Version ID of for Kafka password",
       example =
