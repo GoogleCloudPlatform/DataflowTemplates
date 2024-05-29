@@ -57,9 +57,9 @@ public class KafkaToKafka {
     run(options);
   }
 
-  public static PipelineResult run(KafkaToKafkaOptions options) throws IOException {
+  public static PipelineResult run(KafkaToKafkaOptions options) {
 
-    if (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+    if (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.PLAIN)) {
 
       checkArgument(
           options.getKafkaReadUsernameSecretId().trim().length() > 0,
@@ -87,7 +87,7 @@ public class KafkaToKafka {
       throw new UnsupportedOperationException(
           "Authentication method not supported: " + options.getKafkaReadAuthenticationMode());
     }
-    if (options.getKafkaWriteAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+    if (options.getKafkaWriteAuthenticationMethod().equals(KafkaAuthenticationMethod.PLAIN)) {
       checkArgument(
           options.getKafkaWriteUsernameSecretId().trim().length() > 0,
           "destinationUsernameSecretId required to access username for source Kafka");
