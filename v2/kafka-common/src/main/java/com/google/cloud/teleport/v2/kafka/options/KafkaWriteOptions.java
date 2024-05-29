@@ -72,6 +72,7 @@ public interface KafkaWriteOptions extends PipelineOptions {
   @TemplateParameter.Text(
       groupName = "Destination",
       order = 6,
+      optional = true,
       name = "kafkaWritePasswordSecretId",
       parentName = "kafkaWriteAuthenticationMethod",
       parentTriggerValues = {KafkaAuthenticationMethod.PLAIN},
