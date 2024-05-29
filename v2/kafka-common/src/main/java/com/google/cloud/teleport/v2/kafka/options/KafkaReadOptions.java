@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.kafka.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 
@@ -25,32 +26,23 @@ import org.apache.beam.sdk.options.PipelineOptions;
  */
 public interface KafkaReadOptions extends PipelineOptions {
 
-  @TemplateParameter.Text(
+  final class Offset {
+    public static final String LATEST = "latest";
+    public static final String EARLIEST = "earliest";
+  }
+
+  @TemplateParameter.KafkaTopic(
       order = 1,
+      name = "readBootstrapServerAndTopic",
       groupName = "Source",
-      optional = true,
-      regexes = {"[,:a-zA-Z0-9._-]+"},
-      description = "Kafka Bootstrap Server list",
-      helpText = "Kafka Bootstrap Server list, separated by commas.",
-      example = "localhost:9092,127.0.0.1:9093")
-  String getReadBootstrapServers();
+      description = "Source Kafka Topic",
+      helpText = "Kafka Topic to read the input from.")
+  String getReadBootstrapServerAndTopic();
 
-  void setReadBootstrapServers(String bootstrapServers);
-
-  @TemplateParameter.Text(
-      order = 2,
-      groupName = "Source",
-      optional = true,
-      regexes = {"[,a-zA-Z0-9._-]+"},
-      description = "Kafka Topic(s) to read input from",
-      helpText = "Kafka topic(s) to read input from.",
-      example = "topic1,topic2")
-  String getKafkaReadTopics();
-
-  void setKafkaReadTopics(String inputTopics);
+  void setReadBootstrapServerAndTopic(String value);
 
   @TemplateParameter.Boolean(
-      order = 3,
+      order = 2,
       groupName = "Source",
       name = "enableCommitOffsets",
       optional = true,
@@ -65,7 +57,7 @@ public interface KafkaReadOptions extends PipelineOptions {
   void setEnableCommitOffsets(Boolean value);
 
   @TemplateParameter.Text(
-      order = 4,
+      order = 3,
       groupName = "Source",
       optional = true,
       description = "Consumer Group ID",
@@ -76,42 +68,44 @@ public interface KafkaReadOptions extends PipelineOptions {
   void setConsumerGroupId(String value);
 
   @TemplateParameter.Enum(
-      order = 5,
+      order = 4,
       groupName = "Source",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption("earliest"),
-        @TemplateParameter.TemplateEnumOption("latest"),
+        @TemplateParameter.TemplateEnumOption(Offset.EARLIEST),
+        @TemplateParameter.TemplateEnumOption(Offset.LATEST),
       },
       optional = true,
       description = "Default Kafka Start Offset",
       helpText =
           "The Kafka offset to read from. If there are no committed offsets on Kafka, default offset will be used.")
-  @Default.String("latest")
+  @Default.String(Offset.LATEST)
   String getKafkaReadOffset();
 
   void setKafkaReadOffset(String value);
 
+  // TODO: Might need to override this in Kafka to BigQuery, Gcs template.
+  // This is not visible in the Kafka-to-Kafka template. Not sure why.
   @TemplateParameter.Enum(
-      order = 6,
+      order = 5,
       name = "kafkaReadAuthenticationMode",
       groupName = "Source",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption("NONE"),
-        @TemplateParameter.TemplateEnumOption("SASL_PLAIN"),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_MECHANISM),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SSL),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
       },
-      optional = false,
       description = "Authentication Mode",
-      helpText = "Kafka read authentication mode. Can be NONE or SASL_PLAIN")
+      helpText = "Kafka read authentication mode. Can be NONE, SASL_PLAIN or SSL")
   @Default.String("NONE")
   String getKafkaReadAuthenticationMode();
 
   void setKafkaReadAuthenticationMode(String value);
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 6,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
-      parentTriggerValues = {"SASL_PLAIN"},
+      parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
       optional = true,
       description = "Username",
       helpText =
@@ -123,10 +117,10 @@ public interface KafkaReadOptions extends PipelineOptions {
   void setKafkaReadUsernameSecretId(String value);
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 7,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
-      parentTriggerValues = {"SASL_PLAIN"},
+      parentTriggerValues = KafkaAuthenticationMethod.SASL_PLAIN,
       optional = true,
       description = "Password",
       helpText =
@@ -136,4 +130,81 @@ public interface KafkaReadOptions extends PipelineOptions {
   String getKafkaReadPasswordSecretId();
 
   void setKafkaReadPasswordSecretId(String value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 8,
+      optional = true,
+      name = "keystoreLocation",
+      groupName = "Source",
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      helpText =
+          "Cloud storage path for the Keystore location that contains the SSL certificate and private key.",
+      description = "Location of Keystore",
+      example = "gs://your-bucket/keystore.jks")
+  String getSourceKeystoreLocation();
+
+  void setSourceKeystoreLocation(String sourceKeystoreLocation);
+
+  @TemplateParameter.GcsReadFile(
+      order = 9,
+      optional = true,
+      name = "sourceSSL",
+      groupName = "Source",
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      description = "Truststore File Location",
+      helpText =
+          "Location of the jks file in Cloud Storage with SSL certificate to verify identity.",
+      example = "gs://your-bucket/truststore.jks")
+  String getSourceTruststoreLocation();
+
+  void setSourceTruststoreLocation(String sourceTruststoreLocation);
+
+  @TemplateParameter.Text(
+      order = 10,
+      optional = true,
+      name = "sourceTruststorePassword",
+      groupName = "Source",
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      helpText =
+          "Secret Version ID to get password to access secret in truststore for source Kafka.",
+      description = "Secret Version ID for Truststore Password",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+  String getSourceTruststorePasswordSecretId();
+
+  void setSourceTruststorePasswordSecretId(String sourceTruststorePasswordSecretId);
+
+  @TemplateParameter.Text(
+      order = 11,
+      optional = true,
+      name = "sourceKeystorePassword",
+      groupName = "Source",
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      helpText = "Secret Version ID to get password to access secret keystore, for source kafka.",
+      description = "Secret Version ID of Keystore Password",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+  String getSourceKeystorePasswordSecretId();
+
+  void setSourceKeystorePasswordSecretId(String sourceKeystorePasswordSecretId);
+
+  @TemplateParameter.Text(
+      order = 12,
+      optional = true,
+      name = "sourceKey",
+      parentName = "kafkaReadAuthenticationMode",
+      groupName = "Source",
+      parentTriggerValues = {KafkaAuthenticationMethod.SSL},
+      helpText =
+          "Secret Version ID of password to access private key inside the keystore, for source Kafka.",
+      description = "Secret Version ID of Private Key Password",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+  String getSourceKeyPasswordSecretId();
+
+  void setSourceKeyPasswordSecretId(String sourceKeyPasswordSecretId);
 }

@@ -21,8 +21,10 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
+import com.google.cloud.teleport.v2.kafka.utils.ConsumerProperties;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
+import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParamters;
 import com.google.cloud.teleport.v2.options.KafkaToBigQueryFlexOptions;
 import com.google.cloud.teleport.v2.transforms.AvroDynamicTransform;
 import com.google.cloud.teleport.v2.transforms.AvroTransform;
@@ -32,7 +34,6 @@ import com.google.cloud.teleport.v2.transforms.StringMessageToTableRow;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.MetadataValidator;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
-import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
@@ -107,7 +108,14 @@ import org.slf4j.LoggerFactory;
       "The Apache Kafka broker server must be running and be reachable from the Dataflow worker machines.",
       "The Apache Kafka topics must exist and the messages must be encoded in a valid JSON format."
     },
-    skipOptions = {"readBootstrapServers", "kafkaReadTopics", "useStorageWriteApi"},
+    skipOptions = {
+            "useStorageWriteApi",
+            "keystoreLocation",
+            "sourceSSL",
+            "sourceTruststorePassword",
+            "sourceKeystorePassword",
+            "sourceKey"
+    },
     hidden = true)
 public class KafkaToBigQueryFlex {
 
@@ -200,28 +208,20 @@ public class KafkaToBigQueryFlex {
 
     ImmutableMap<String, Object> kafkaConfig =
         ImmutableMap.<String, Object>builder()
-            .putAll(KafkaCommonUtils.configureKafkaOffsetCommit(options))
             .build();
 
-    if (options.getKafkaReadAuthenticationMode().equals("SASL_PLAIN")) {
+    kafkaConfig =
+        ImmutableMap.<String, Object>builder()
+            .putAll(kafkaConfig)
+            .putAll(ConsumerProperties.from(options))
+            .build();
 
-      String username = SecretManagerUtils.getSecret(options.getKafkaReadUsernameSecretId());
-      String password = SecretManagerUtils.getSecret(options.getKafkaReadPasswordSecretId());
-
-      kafkaConfig =
-          ImmutableMap.<String, Object>builder()
-              .putAll(kafkaConfig)
-              .putAll(setClientAuthConfig(username, password))
-              .build();
-    }
-
-    if (options.getMessageFormat() == null || options.getMessageFormat().equals("JSON")) {
+    if (options.getMessageFormat() == null || options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.JSON)) {
 
       return runJsonPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
 
-    } else if (options.getMessageFormat().equals("AVRO_CONFLUENT_WIRE_FORMAT")
-        || options.getMessageFormat().equals("AVRO_BINARY_ENCODING")) {
-
+    } else if (options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
+        || options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING)) {
       return runAvroPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
 
     } else {
@@ -234,15 +234,14 @@ public class KafkaToBigQueryFlex {
       KafkaToBigQueryFlexOptions options,
       List<String> topicsList,
       String bootstrapServers,
-      Map<String, Object> kafkaConfig)
-      throws IOException, RestClientException {
+      Map<String, Object> kafkaConfig) {
 
-    if (options.getMessageFormat().equals("AVRO_BINARY_ENCODING")
+    if (options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING)
         && options.getBinaryAvroSchemaPath() == null) {
       throw new IllegalArgumentException(
           "Avro schema is needed in order to read non confluent wire format messages.");
     }
-    if (options.getMessageFormat().equals("AVRO_CONFLUENT_WIRE_FORMAT")
+    if (options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
         && options.getSchemaRegistryConnectionUrl() == null
         && options.getConfluentAvroSchemaPath() == null) {
       throw new IllegalArgumentException(
@@ -262,14 +261,14 @@ public class KafkaToBigQueryFlex {
                     bootstrapServers,
                     topicsList,
                     kafkaConfig,
-                    null,
+                    false,
                     options.getEnableCommitOffsets()))
             .setCoder(
                 KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()));
 
     WriteResult writeResult = null;
 
-    if (options.getMessageFormat().equals("AVRO_BINARY_ENCODING")
+    if (options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING)
         && options.getBinaryAvroSchemaPath() != null) {
       writeResult =
           kafkaRecords.apply(
@@ -286,11 +285,11 @@ public class KafkaToBigQueryFlex {
                   options.getPersistKafkaKey(),
                   options.getUseAutoSharding()));
 
-    } else if (options.getMessageFormat().equals("AVRO_CONFLUENT_WIRE_FORMAT")
+    } else if (options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
         && (options.getSchemaRegistryConnectionUrl() != null
             || options.getConfluentAvroSchemaPath() != null)) {
 
-      if (options.getSchemaFormat().equals("SINGLE_SCHEMA_FILE")) {
+      if (options.getSchemaFormat().equals(KafkaTemplateParamters.SchemaFormat.SINGLE_SCHEMA_FILE)) {
 
         if (options.getConfluentAvroSchemaPath() != null && options.getOutputTableSpec() == null) {
           throw new IllegalArgumentException(
@@ -313,7 +312,7 @@ public class KafkaToBigQueryFlex {
                       options.getPersistKafkaKey(),
                       options.getUseAutoSharding()));
         }
-      } else if (options.getSchemaFormat().equals("SCHEMA_REGISTRY")) {
+      } else if (options.getSchemaFormat().equals(KafkaTemplateParamters.SchemaFormat.SCHEMA_REGISTRY)) {
 
         if (options.getSchemaRegistryConnectionUrl() != null
             && options.getOutputDataset() == null) {
@@ -358,7 +357,7 @@ public class KafkaToBigQueryFlex {
                     .via(KafkaToBigQueryFlex::wrapBigQueryInsertError))
             .setCoder(FAILSAFE_ELEMENT_CODER);
 
-    if (options.getOutputDeadletterTable() != null) {
+    if (options.getUseBigQueryDLQ() && options.getOutputDeadletterTable() != null) {
       /*
        * Step #3: Insert records that failed BigQuery inserts into a deadletter table.
        */
@@ -491,30 +490,6 @@ public class KafkaToBigQueryFlex {
     }
     return failsafeElement;
   }
-
-  /**
-   * Method to create Kafka Client Authentication Config with the given username and password.
-   *
-   * @param username Kafka username.
-   * @param password Kafka password.
-   * @return ImmutableMap object.
-   */
-  static ImmutableMap<String, Object> setClientAuthConfig(String username, String password) {
-    ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
-    properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
-    properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
-    properties.put(
-        SaslConfigs.SASL_JAAS_CONFIG,
-        "org.apache.kafka.common.security.plain.PlainLoginModule required"
-            + " username=\'"
-            + username
-            + "\'"
-            + " password=\'"
-            + password
-            + "\';");
-    return properties.buildOrThrow();
-  }
-
   static class ThrowErrorFn<T, W> extends DoFn<FailsafeElement<T, W>, FailsafeElement<T, W>> {
 
     @ProcessElement

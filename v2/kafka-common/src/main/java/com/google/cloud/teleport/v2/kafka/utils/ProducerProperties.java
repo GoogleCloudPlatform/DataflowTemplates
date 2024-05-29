@@ -13,66 +13,56 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.kafka.utils;
 
-import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
-import com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils;
+import com.google.cloud.teleport.v2.kafka.options.KafkaWriteOptions;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
-import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
-import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SslConfigs;
 
 /**
- * The {@link ConsumerProperties} is a utility class for constructing properties for Kafka
- * consumers. In this case, it is the Kafka source where we read the data from.
+ * The {@link ProducerProperties} is a utility class for constructing properties for Kafka
+ * producers. In this case, it is the Kafka destination where we write the data to.
  *
- * <p>The {@link ConsumerProperties} class provides a static method to generate consumer properties
- * required for configuring a Kafka consumer. These properties are needed to establish connections
+ * <p>The {@link ProducerProperties} class provides a static method to generate producer properties
+ * required for configuring a Kafka producer. These properties are needed to establish connections
  * to Kafka brokers. They ensure security through SASL authentication. The properties should specify
- * the necessary authentication credentials in order to establish successful connection to the
- * source Kafka.
+ * the necessary authentication credentials in order to establish a successful connection to the
+ * Kafka destination.
  */
-final class ConsumerProperties {
-
-  public static Map<String, Object> from(KafkaToKafkaOptions options) throws IOException {
+public class ProducerProperties {
+  public static Map<String, Object> from(KafkaWriteOptions options) throws IOException {
     Map<String, Object> properties = new HashMap<>();
-    properties.putAll(KafkaCommonUtils.configureKafkaOffsetCommit(options));
-    String authMethod = options.getSourceAuthenticationMethod();
+    String authMethod = options.getDestinationAuthenticationMethod();
     if (authMethod == null) {
       return properties;
     }
-    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
-
     if (authMethod.equals(KafkaAuthenticationMethod.SSL)) {
-
       properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, KafkaAuthenticationMethod.SSL);
-      properties.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getSourceKeystoreLocation());
+
       properties.put(
-          SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, options.getSourceTruststoreLocation());
+          SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, options.getDestinationKeystoreLocation());
+      properties.put(
+          SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, options.getDestinationTruststoreLocation());
       properties.put(
           SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
-          FileAwareConsumerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
-              + options.getSourceTruststorePasswordSecretId());
+          FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationTruststorePasswordSecretId());
       properties.put(
           SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
-          FileAwareConsumerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
-              + options.getSourceKeystorePasswordSecretId());
+          FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationKeystorePasswordSecretId());
       properties.put(
           SslConfigs.SSL_KEY_PASSWORD_CONFIG,
-          FileAwareConsumerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
-              + options.getSourceKeyPasswordSecretId());
+          FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationKeyPasswordSecretId());
       properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
-
     } else if (authMethod.equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
       properties.put(SaslConfigs.SASL_MECHANISM, KafkaAuthenticationMethod.SASL_MECHANISM);
-
       //         Note: in other languages, set sasl.username and sasl.password instead.
       properties.put(
           CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, KafkaAuthenticationMethod.SASL_PLAIN);
@@ -80,14 +70,15 @@ final class ConsumerProperties {
           SaslConfigs.SASL_JAAS_CONFIG,
           "org.apache.kafka.common.security.plain.PlainLoginModule required"
               + " username=\'"
-              + SecretManagerUtils.getSecret(options.getSourceUsernameSecretId())
+              + FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationUsernameSecretId()
               + "\'"
               + " password=\'"
-              + SecretManagerUtils.getSecret(options.getDestinationUsernameSecretId())
+              + FileAwareProducerFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getDestinationPasswordSecretId()
               + "\';");
-
     } else {
-      throw new UnsupportedEncodingException("Authentication method not supported: " + authMethod);
+      throw new UnsupportedOperationException("Authentication method not supported: " + authMethod);
     }
     return properties;
   }

@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
+import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParamters;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
@@ -73,75 +74,37 @@ public abstract class AvroWriteTransform
 
   public abstract String outputFilenamePrefix();
 
-  /** Expected Message format from the Kafka topics. */
-  enum MessageFormat {
-    /**
-     * Represents messages serialized in the Confluent wire format.
-     *
-     * <p>This format follows the Confluent wire format specification as documented in the Confluent
-     * Schema Registry. Messages serialized in this format are typically associated with a schema ID
-     * registered in a Schema Registry. In situations where access to the Schema Registry is
-     * unavailable, messages can still be deserialized using a schema provided by the user as a
-     * template parameter. The deserialization process utilizes binary encoding, as specified in the
-     * Avro Binary Encoding specification.
-     *
-     * @see <a
-     *     href="https://docs.confluent.io/platform/current/schema-registry/fundamentals/serdes-develop/index.html#wire-format">Confluent
-     *     Wire Format Documentation</a>
-     * @see <a href="https://avro.apache.org/docs/current/specification/#binary-encoding">Avro
-     *     Binary Encoding Specification</a>
-     */
-    CONFLUENT_WIRE_FORMAT,
-    /**
-     * Represents messages serialized in the Avro binary format.
-     *
-     * <p>This format follow the Avro Binary Encoding Specification. The schema used to serialize
-     * the Avro messages by the reader must be used to deserialize the bytes by the writer.
-     * Otherwise, there could be unexpected errors.
-     *
-     * @see <a href="https://avro.apache.org/docs/current/specification/#binary-encoding">Avro
-     *     Binary Encoding Specification</a>
-     */
-    // TODO: Pending implementation.
-    AVRO_BINARY_ENCODING,
-    /**
-     * Represents message serialized in the Avro Single Object.
-     *
-     * @see <a
-     *     href="https://avro.apache.org/docs/current/specification/#single-object-encoding">Avro
-     *     Single Object Encoding Specification</a>
-     */
-    // TODO: Pending implementation.
-    AVRO_SINGLE_OBJECT_ENCODING
-  }
-
   public static AvroWriteTransformBuilder newBuilder() {
     return new AutoValue_AvroWriteTransform.Builder();
   }
 
   public WriteFilesResult<AvroDestination> expand(
       PCollection<KafkaRecord<byte[], byte[]>> records) {
-    MessageFormat inputWireFormat = MessageFormat.valueOf(messageFormat());
-    switch (inputWireFormat) {
-      case CONFLUENT_WIRE_FORMAT:
-        String schemaRegistryURL = schemaRegistryURL();
-        String schemaPath = schemaPath();
-        if (schemaRegistryURL == null && schemaPath == null) {
-          throw new UnsupportedOperationException(
-              "A Schema Registry URL or static schemas are required for CONFLUENT_WIRE_FORMAT messages");
-        }
-        DoFn<KafkaRecord<byte[], byte[]>, GenericRecord> convertToBytes;
-        if (schemaRegistryURL != null) {
-          convertToBytes = new ConvertBytesToGenericRecord(schemaRegistryURL);
-        } else {
-          convertToBytes = new ConvertBytesToGenericRecord(schemaPath, true);
-        }
-        PCollection<GenericRecord> genericRecords =
-            records.apply(ParDo.of(convertToBytes)).setCoder(GenericRecordCoder.of());
-        return writeToGCS(genericRecords);
-      default:
+    String inputWireFormat = messageFormat();
+    if (inputWireFormat.equals(
+        KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)) {
+      String schemaRegistryURL = schemaRegistryURL();
+      String schemaPath = schemaPath();
+      if (schemaRegistryURL == null && schemaPath == null) {
         throw new UnsupportedOperationException(
-            "Message format other than Confluent wire format is not supported");
+            "A Schema Registry URL or static schemas are required for CONFLUENT_WIRE_FORMAT messages");
+      }
+      DoFn<KafkaRecord<byte[], byte[]>, GenericRecord> convertToBytes;
+      if (schemaRegistryURL != null) {
+        convertToBytes = new ConvertBytesToGenericRecord(schemaRegistryURL);
+      } else {
+        convertToBytes = new ConvertBytesToGenericRecord(schemaPath, true);
+      }
+      PCollection<GenericRecord> genericRecords =
+          records.apply(ParDo.of(convertToBytes)).setCoder(GenericRecordCoder.of());
+      return writeToGCS(genericRecords);
+    } else if (inputWireFormat.equals(
+        KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING)) {
+      throw new UnsupportedOperationException(
+          String.format("%s is not supported", inputWireFormat));
+    } else {
+      throw new UnsupportedOperationException(
+          "Message format other than Confluent wire format is not yet supported");
     }
   }
 

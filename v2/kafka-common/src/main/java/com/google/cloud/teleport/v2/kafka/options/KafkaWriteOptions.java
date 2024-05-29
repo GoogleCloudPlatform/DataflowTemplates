@@ -19,58 +19,21 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.Validation;
 
 /**
  * The {@link KafkaWriteOptions} interface provides the custom execution options passed by the
  * executor at the command-line.
  */
 public interface KafkaWriteOptions extends PipelineOptions {
-
-  @TemplateParameter.Text(
-      order = 1,
-      optional = true,
-      regexes = {"[,:a-zA-Z0-9._-]+"},
-      description = "Kafka Bootstrap Server list",
-      helpText = "Kafka Bootstrap Server list, separated by commas.",
-      example = "localhost:9092,127.0.0.1:9093")
-  String getWriteBootstrapServers();
-
-  void setWriteBootstrapServers(String bootstrapServers);
-
-  @TemplateParameter.Text(
-      order = 2,
-      optional = true,
-      regexes = {"[,a-zA-Z0-9._-]+"},
-      description = "Kafka topic(s) to write to",
-      helpText = "Kafka topic(s) to write to.",
-      example = "topic1,topic2")
-  String getKafkaWriteTopics();
-
-  void setWriteTopics(String inputTopics);
-
   @TemplateParameter.KafkaTopic(
       groupName = "Destination",
       order = 3,
-      name = "destinationTopic",
+      name = "writeBootstrapServerAndTopic",
       description = "Destination Kafka Topic",
-      helpText = "Kafka topic to write the output to.",
-      optional = false)
-  @Validation.Required
-  String getDestinationTopic();
+      helpText = "Kafka topic to write the output to.")
+  String getWriteBootstrapServerAndTopic();
 
-  void setDestinationTopic(String destinationTopic);
-
-  @TemplateParameter.Text(
-      groupName = "Destination",
-      order = 4,
-      description = "Project of Destination Kafka",
-      helpText = "Project where Destination Kafka resides.",
-      optional = false)
-  @Validation.Required
-  String getDestinationProject();
-
-  void setDestinationProject(String destinationProject);
+  void setWriteBootstrapServerAndTopic(String destinationTopic);
 
   @TemplateParameter.Enum(
       groupName = "Destination",
@@ -84,7 +47,6 @@ public interface KafkaWriteOptions extends PipelineOptions {
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
       },
       helpText = "Type of authentication mechanism to use with the destination Kafka.")
-  @Validation.Required
   @Default.String(KafkaAuthenticationMethod.NONE)
   String getDestinationAuthenticationMethod();
 

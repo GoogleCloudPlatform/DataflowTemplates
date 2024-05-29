@@ -16,8 +16,8 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParamters;
 import com.google.cloud.teleport.v2.templates.KafkaToGcsFlex;
-import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
@@ -36,37 +36,34 @@ public abstract class WriteTransform
   @Override
   public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord) {
     POutput pOutput = null;
-    WriteToGCSUtility.FileFormat outputFileFormat =
-        WriteToGCSUtility.FileFormat.valueOf(options().getOutputFileFormat().toUpperCase());
+    String outputFileFormat = options().getMessageFormat();
 
-    switch (outputFileFormat) {
-      case TEXT:
-        pOutput =
-            kafkaRecord.apply(
-                JsonWriteTransform.newBuilder()
-                    .setOutputFilenamePrefix(options().getOutputFilenamePrefix())
-                    .setNumShards(options().getNumShards())
-                    .setOutputDirectory(options().getOutputDirectory())
-                    .setWindowDuration(options().getWindowDuration())
-                    .setTempDirectory(options().getTempLocation())
-                    .build());
-        break;
-      case AVRO:
-        pOutput =
-            kafkaRecord.apply(
-                AvroWriteTransform.newBuilder()
-                    .setOutputDirectory(options().getOutputDirectory())
-                    .setOutputFilenamePrefix(options().getOutputFilenamePrefix())
-                    .setNumShards(options().getNumShards())
-                    .setMessageFormat(options().getMessageFormat())
-                    .setSchemaRegistryURL(options().getSchemaRegistryURL())
-                    .setSchemaPath(options().getSchemaPath())
-                    .setWindowDuration(options().getWindowDuration())
-                    .build());
-        break;
-      case PARQUET:
-        throw new UnsupportedOperationException(
-            "Parquet format is not yet supported for Kafka to GCS template.");
+    if (outputFileFormat.equals(KafkaTemplateParamters.MessageFormatConstants.JSON)) {
+      pOutput =
+          kafkaRecord.apply(
+              JsonWriteTransform.newBuilder()
+                  .setOutputFilenamePrefix(options().getOutputFilenamePrefix())
+                  .setNumShards(options().getNumShards())
+                  .setOutputDirectory(options().getOutputDirectory())
+                  .setWindowDuration(options().getWindowDuration())
+                  .setTempDirectory(options().getTempLocation())
+                  .build());
+    } else if (outputFileFormat.equals(
+        KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)) {
+      pOutput =
+          kafkaRecord.apply(
+              AvroWriteTransform.newBuilder()
+                  .setOutputDirectory(options().getOutputDirectory())
+                  .setOutputFilenamePrefix(options().getOutputFilenamePrefix())
+                  .setNumShards(options().getNumShards())
+                  .setMessageFormat(options().getMessageFormat())
+                  .setSchemaRegistryURL(options().getSchemaRegistryConnectionUrl())
+                  .setSchemaPath(options().getConfluentAvroSchemaPath())
+                  .setWindowDuration(options().getWindowDuration())
+                  .build());
+    } else {
+      throw new UnsupportedOperationException(
+          String.format("Message format: %s is not supported", options().getMessageFormat()));
     }
     return pOutput;
   }

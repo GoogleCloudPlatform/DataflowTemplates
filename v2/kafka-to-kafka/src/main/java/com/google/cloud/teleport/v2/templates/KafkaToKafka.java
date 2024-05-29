@@ -20,42 +20,36 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
-import com.google.cloud.teleport.v2.kafka.utils.FileAwareProducerFactoryFn;
-import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
+import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
+import com.google.cloud.teleport.v2.kafka.options.KafkaWriteOptions;
+import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
+import com.google.cloud.teleport.v2.kafka.utils.*;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
-import com.google.cloud.teleport.v2.options.KafkaToKafkaOptions;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Template(
     name = "Kafka_to_Kafka",
     category = TemplateCategory.STREAMING,
     displayName = "Kafka to Kafka",
     description = "A pipeline that writes data to a kafka destination from another kafka source",
-    optionsClass = KafkaToKafkaOptions.class,
+    optionsClass = KafkaToKafka.KafkaToKafkaOptions.class,
     flexContainerName = "kafka-to-kafka",
     contactInformation = "https://cloud.google.com/support",
-    skipOptions = {
-      "readBootstrapServers",
-      "kafkaReadTopics",
-      "kafkaReadAuthenticationMode",
-      "writeBootstrapServers",
-      "kafkaWriteTopics"
-    },
     hidden = true,
     streaming = false)
 public class KafkaToKafka {
-
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaToKafka.class);
+  public interface KafkaToKafkaOptions
+      extends PipelineOptions, KafkaReadOptions, KafkaWriteOptions, DataflowPipelineOptions {}
 
   public static void main(String[] args) throws IOException {
     UncaughtExceptionLogger.register();
@@ -66,15 +60,15 @@ public class KafkaToKafka {
 
   public static PipelineResult run(KafkaToKafkaOptions options) throws IOException {
 
-    if (options.getSourceAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+    if (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
 
       checkArgument(
-          options.getSourceUsernameSecretId().trim().length() > 0,
+          options.getKafkaReadUsernameSecretId().trim().length() > 0,
           "sourceUsernameSecretId required to access username for source Kafka");
       checkArgument(
-          options.getSourcePasswordSecretId().trim().length() > 0,
+          options.getKafkaReadPasswordSecretId().trim().length() > 0,
           "sourcePasswordSecretId required to access password for source kafka");
-    } else if (options.getSourceAuthenticationMethod().equals(KafkaAuthenticationMethod.SSL)) {
+    } else if (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.SSL)) {
       checkArgument(
           options.getSourceTruststoreLocation().trim().length() > 0,
           "sourceTruststoreLocation for trust store certificate required for ssl authentication");
@@ -92,7 +86,7 @@ public class KafkaToKafka {
           "sourceKeyPasswordSecretId version for key password required for SSL authentication");
     } else {
       throw new UnsupportedOperationException(
-          "Authentication method not supported: " + options.getSourceAuthenticationMethod());
+          "Authentication method not supported: " + options.getKafkaReadAuthenticationMode());
     }
     if (options.getDestinationAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
       checkArgument(
@@ -124,43 +118,42 @@ public class KafkaToKafka {
 
     String sourceTopic;
     String sourceBootstrapServers;
-    if (options.getSourceTopic() != null) {
+    if (options.getReadBootstrapServerAndTopic() != null) {
       List<String> sourceBootstrapServerAndTopicList =
           KafkaTopicUtils.getBootstrapServerAndTopic(
-              options.getSourceTopic(), options.getSourceProject());
+              options.getReadBootstrapServerAndTopic(), options.getProject());
       sourceTopic = sourceBootstrapServerAndTopicList.get(1);
       sourceBootstrapServers = sourceBootstrapServerAndTopicList.get(0);
     } else {
       throw new IllegalArgumentException(
           "Please provide a valid bootstrap server which matches `[,:a-zA-Z0-9._-]+` and a topic which matches `[,a-zA-Z0-9._-]+`");
     }
+
     String destinationTopic;
     String destinationBootstrapServers;
-    if (options.getDestinationTopic() != null) {
+    if (options.getWriteBootstrapServerAndTopic() != null) {
       List<String> destinationBootstrapServerAndTopicList =
           KafkaTopicUtils.getBootstrapServerAndTopic(
-              options.getDestinationTopic(), options.getDestinationProject());
+              options.getWriteBootstrapServerAndTopic(), options.getProject());
       destinationBootstrapServers = destinationBootstrapServerAndTopicList.get(0);
       destinationTopic = destinationBootstrapServerAndTopicList.get(1);
-
     } else {
       throw new IllegalArgumentException(
           "Please provide a valid bootstrap server which matches `[,:a-zA-Z0-9._-]+` and a topic which matches `[,a-zA-Z0-9._-]+`");
     }
-    if (options.getEnableCommitOffsets()) {}
 
     Pipeline pipeline = Pipeline.create(options);
     pipeline
         .apply(
             "Read from Kafka",
-            KafkaIO.<byte[], byte[]>read()
-                .withBootstrapServers(sourceBootstrapServers)
-                .withTopic(sourceTopic)
-                .withKeyDeserializer(ByteArrayDeserializer.class)
-                .withValueDeserializer(ByteArrayDeserializer.class)
-                .withConsumerConfigUpdates(ConsumerProperties.from(options))
-                .withConsumerFactoryFn(new FileAwareConsumerFactoryFn())
-                .withoutMetadata())
+                KafkaTransform
+                        .readBytesFromKafka(
+                                sourceBootstrapServers,
+                                Collections.singletonList(sourceTopic),
+                                ConsumerProperties.from(options),
+                        true,
+                                options.getEnableCommitOffsets())
+                        .withoutMetadata())
         .apply(
             "Write to Kafka",
             KafkaIO.<byte[], byte[]>write()
