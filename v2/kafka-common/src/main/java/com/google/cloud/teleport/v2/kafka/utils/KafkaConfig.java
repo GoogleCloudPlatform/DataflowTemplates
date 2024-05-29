@@ -69,7 +69,7 @@ public class KafkaConfig {
       String usernameSecretId,
       String passwordSecretId) {
     Map<String, Object> properties = new HashMap<>();
-    if (authMode == null) {
+    if (authMode == null || authMode.equals(KafkaAuthenticationMethod.NONE)) {
       return properties;
     }
 
