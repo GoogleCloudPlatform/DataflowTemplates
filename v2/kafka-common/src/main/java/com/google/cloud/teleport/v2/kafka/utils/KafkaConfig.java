@@ -19,8 +19,6 @@ import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.kafka.options.KafkaWriteOptions;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -32,15 +30,15 @@ import org.apache.kafka.common.config.SslConfigs;
  * producers.
  */
 public class KafkaConfig {
-  public static Map<String, Object> fromReadOptions(KafkaReadOptions options) throws IOException {
+  public static Map<String, Object> fromReadOptions(KafkaReadOptions options) {
     Map<String, Object> properties =
         from(
             options.getKafkaReadAuthenticationMode(),
-            null,
-            null,
-            null,
-            null,
-            null,
+                options.getSourceKeystoreLocation(),
+            options.getSourceTruststoreLocation(),
+            options.getSourceTruststorePasswordSecretId(),
+            options.getSourceKeystorePasswordSecretId(),
+            options.getSourceKeyPasswordSecretId(),
             options.getKafkaReadUsernameSecretId(),
             options.getKafkaReadPasswordSecretId());
 
@@ -49,16 +47,16 @@ public class KafkaConfig {
     return properties;
   }
 
-  public static Map<String, Object> fromWriteOptions(KafkaWriteOptions options) throws IOException {
+  public static Map<String, Object> fromWriteOptions(KafkaWriteOptions options) {
     return from(
-        options.getDestinationAuthenticationMethod(),
-        options.getDestinationKeystoreLocation(),
-        options.getDestinationTruststoreLocation(),
+        options.getKafkaWriteAuthenticationMethod(),
+        options.getKafkaWriteKeystoreLocation(),
+        options.getKafkaWriteTruststoreLocation(),
         options.getDestinationTruststorePasswordSecretId(),
-        options.getDestinationKeystorePasswordSecretId(),
-        options.getDestinationKeyPasswordSecretId(),
-        options.getDestinationUsernameSecretId(),
-        options.getDestinationPasswordSecretId());
+        options.getKafkaWriteKeystorePasswordSecretId(),
+        options.getKafkaWriteKeyPasswordSecretId(),
+        options.getKafkaWriteUsernameSecretId(),
+        options.getKafkaWritePasswordSecretId());
   }
 
   private static Map<String, Object> from(
@@ -70,7 +68,7 @@ public class KafkaConfig {
       String keyPasswordSecretId,
       String usernameSecretId,
       String passwordSecretId)
-      throws IOException {
+  {
     Map<String, Object> properties = new HashMap<>();
     if (authMode == null) {
       return properties;
@@ -90,7 +88,8 @@ public class KafkaConfig {
           SslConfigs.SSL_KEY_PASSWORD_CONFIG,
           FileAwareFactoryFn.SECRET_MANAGER_VALUE_PREFIX + keyPasswordSecretId);
       properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
-    } else if (authMode.equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+    }
+    else if (authMode.equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
       properties.put(SaslConfigs.SASL_MECHANISM, KafkaAuthenticationMethod.SASL_MECHANISM);
       //         Note: in other languages, set sasl.username and sasl.password instead.
       properties.put(
@@ -105,7 +104,7 @@ public class KafkaConfig {
               + SecretManagerUtils.getSecret(passwordSecretId)
               + "\';");
     } else {
-      throw new UnsupportedEncodingException("Authentication method not supported: " + authMode);
+      throw new RuntimeException("Authentication method not supported: " + authMode);
     }
     return properties;
   }

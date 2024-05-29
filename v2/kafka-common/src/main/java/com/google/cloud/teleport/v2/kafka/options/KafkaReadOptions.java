@@ -83,8 +83,6 @@ public interface KafkaReadOptions extends PipelineOptions {
 
   void setKafkaReadOffset(String value);
 
-  // TODO: Might need to override this in Kafka to BigQuery, Gcs template.
-  // This is not visible in the Kafka-to-Kafka template. Not sure why.
   @TemplateParameter.Enum(
       order = 5,
       name = "kafkaReadAuthenticationMode",
@@ -95,7 +93,7 @@ public interface KafkaReadOptions extends PipelineOptions {
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
       },
       description = "Authentication Mode",
-      helpText = "Kafka read authentication mode. Can be NONE, SASL_PLAIN or SSL")
+      helpText = "Kafka read authentication mode. Can be NONE, PLAIN or SSL")
   @Default.String("NONE")
   String getKafkaReadAuthenticationMode();
 
@@ -105,7 +103,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       order = 6,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
-      parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
+      parentTriggerValues = {KafkaAuthenticationMethod.SASL_MECHANISM},
       optional = true,
       description = "Username",
       helpText =
@@ -120,7 +118,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       order = 7,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
-      parentTriggerValues = KafkaAuthenticationMethod.SASL_PLAIN,
+      parentTriggerValues = KafkaAuthenticationMethod.SASL_MECHANISM,
       optional = true,
       description = "Password",
       helpText =

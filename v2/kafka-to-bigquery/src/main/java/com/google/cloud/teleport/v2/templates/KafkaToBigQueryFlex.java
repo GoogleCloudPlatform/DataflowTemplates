@@ -21,8 +21,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
-import com.google.cloud.teleport.v2.kafka.utils.ConsumerProperties;
-import com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaConfig;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
 import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParamters;
 import com.google.cloud.teleport.v2.options.KafkaToBigQueryFlexOptions;
@@ -160,8 +159,7 @@ public class KafkaToBigQueryFlex {
    * @param options The execution options.
    * @return The pipeline result.
    */
-  public static PipelineResult run(KafkaToBigQueryFlexOptions options)
-      throws IOException, RestClientException {
+  public static PipelineResult run(KafkaToBigQueryFlexOptions options) {
 
     // Enable Streaming Engine
     options.setEnableStreamingEngine(true);
@@ -213,7 +211,7 @@ public class KafkaToBigQueryFlex {
     kafkaConfig =
         ImmutableMap.<String, Object>builder()
             .putAll(kafkaConfig)
-            .putAll(ConsumerProperties.from(options))
+            .putAll(KafkaConfig.fromReadOptions(options))
             .build();
 
     if (options.getMessageFormat() == null || options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.JSON)) {

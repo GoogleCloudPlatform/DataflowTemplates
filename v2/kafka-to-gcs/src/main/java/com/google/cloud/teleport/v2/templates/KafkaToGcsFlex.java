@@ -22,8 +22,8 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.kafka.options.SchemaRegistryOptions;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
-import com.google.cloud.teleport.v2.kafka.utils.ConsumerProperties;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaConfig;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.transforms.WriteTransform;
@@ -67,14 +67,14 @@ public class KafkaToGcsFlex {
 
     @TemplateParameter.Enum(
         name = "kafkaReadAuthenticationMode",
-        order = 2,
+        order = 5,
         groupName = "Source",
         enumOptions = {
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_MECHANISM),
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
         },
         description = "Authentication Mode",
-        helpText = "Kafka read authentication mode. Can be NONE or SASL_PLAIN")
+        helpText = "Kafka read authentication mode. Can be NONE or PLAIN")
     @Default.String("NONE")
     String getKafkaReadAuthenticationMode();
 
@@ -149,7 +149,7 @@ public class KafkaToGcsFlex {
 
     options.setStreaming(true);
 
-    Map<String, Object> kafkaConfig = new HashMap<>(ConsumerProperties.from(options));
+    Map<String, Object> kafkaConfig = new HashMap<>(KafkaConfig.fromReadOptions(options));
 
     PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord;
     // Step 1: Read from Kafka as bytes.

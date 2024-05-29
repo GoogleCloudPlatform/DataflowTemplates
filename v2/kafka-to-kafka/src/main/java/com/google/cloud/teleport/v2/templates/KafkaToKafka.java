@@ -150,7 +150,7 @@ public class KafkaToKafka {
                         .readBytesFromKafka(
                                 sourceBootstrapServers,
                                 Collections.singletonList(sourceTopic),
-                                ConsumerProperties.from(options),
+                                KafkaConfig.fromReadOptions(options),
                         true,
                                 options.getEnableCommitOffsets())
                         .withoutMetadata())
@@ -161,7 +161,7 @@ public class KafkaToKafka {
                 .withTopic(destinationTopic)
                 .withKeySerializer(ByteArraySerializer.class)
                 .withValueSerializer(ByteArraySerializer.class)
-                .withProducerConfigUpdates(ProducerProperties.from(options))
+                .withProducerConfigUpdates(KafkaConfig.fromWriteOptions(options))
                 .withProducerFactoryFn(new FileAwareProducerFactoryFn()));
 
     return pipeline.run();
