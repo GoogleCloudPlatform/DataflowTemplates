@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -155,29 +154,6 @@ public class KafkaToGcsFlex {
     kafkaRecord = pipeline.apply(kafkaTransform);
     kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
     return pipeline.run();
-  }
-
-  public static void validateAuthOptions(KafkaToGcsOptions options) {
-    // Authenticate to Kafka brokers without any auth config. This can be the case when
-    // the dataflow pipeline and Kafka broker is on the same network.
-    if ((options.getKafkaReadUsernameSecretId().isBlank()
-            && !options.getKafkaReadPasswordSecretId().isBlank())
-        || (options.getKafkaReadPasswordSecretId().isBlank()
-            && !options.getKafkaReadUsernameSecretId().isBlank())) {
-      throw new IllegalArgumentException(
-          "Both username secret ID and password secret ID should be provided together or left null.");
-    }
-
-    if (!SecretVersionName.isParsableFrom(options.getKafkaReadUsernameSecretId())) {
-      throw new IllegalArgumentException(
-          "Provided Secret Username ID must be in the form"
-              + " projects/{project}/secrets/{secret}/versions/{secret_version}");
-    }
-    if (!SecretVersionName.isParsableFrom(options.getKafkaReadPasswordSecretId())) {
-      throw new IllegalArgumentException(
-          "Provided Secret Password ID must be in the form"
-              + " projects/{project}/secrets/{secret}/versions/{secret_version}");
-    }
   }
 
   public static void main(String[] args) {

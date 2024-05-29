@@ -60,7 +60,6 @@ public class KafkaToKafka {
   public static PipelineResult run(KafkaToKafkaOptions options) {
 
     if (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.PLAIN)) {
-
       checkArgument(
           options.getKafkaReadUsernameSecretId().trim().length() > 0,
           "sourceUsernameSecretId required to access username for source Kafka");
@@ -83,10 +82,12 @@ public class KafkaToKafka {
       checkArgument(
           options.getSourceKeyPasswordSecretId().trim().length() > 0,
           "sourceKeyPasswordSecretId version for key password required for SSL authentication");
+    } else if (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.NONE)) {
     } else {
       throw new UnsupportedOperationException(
           "Authentication method not supported: " + options.getKafkaReadAuthenticationMode());
     }
+
     if (options.getKafkaWriteAuthenticationMethod().equals(KafkaAuthenticationMethod.PLAIN)) {
       checkArgument(
           options.getKafkaWriteUsernameSecretId().trim().length() > 0,
@@ -110,6 +111,7 @@ public class KafkaToKafka {
       checkArgument(
           options.getKafkaWriteKeyPasswordSecretId().trim().length() > 0,
           "destinationKeyPasswordSecretId for source key password secret id version required for SSL authentication");
+    } else if (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.NONE)) {
     } else {
       throw new UnsupportedOperationException(
           "Authentication method not supported: " + options.getKafkaWriteAuthenticationMethod());
