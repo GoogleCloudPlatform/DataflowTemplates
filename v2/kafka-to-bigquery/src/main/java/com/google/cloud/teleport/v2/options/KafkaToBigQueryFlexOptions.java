@@ -52,7 +52,11 @@ public interface KafkaToBigQueryFlexOptions
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
       },
       description = "Kafka Read Authentication Mode",
-      helpText = "Kafka read authentication mode. Can be NONE or SASL_PLAIN")
+      helpText =
+          "Mode of authentication with the Kafka cluster. "
+              + "NONE for no authentication, "
+              + "SASL_PLAIN for SASL/PLAIN username/password, "
+              + "Note: Apache Kafka for BigQuery supports only SASL_PLAIN authentication mode")
   @Default.String("NONE")
   String getKafkaReadAuthenticationMode();
 
