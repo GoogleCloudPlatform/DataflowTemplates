@@ -55,7 +55,6 @@ import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.io.kafka.KafkaRecordCoder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -112,8 +111,7 @@ import org.slf4j.LoggerFactory;
       "sourceTruststorePassword",
       "sourceKeystorePassword",
       "sourceKey"
-    },
-    hidden = true)
+    })
 public class KafkaToBigQueryFlex {
 
   /* Logger for class. */

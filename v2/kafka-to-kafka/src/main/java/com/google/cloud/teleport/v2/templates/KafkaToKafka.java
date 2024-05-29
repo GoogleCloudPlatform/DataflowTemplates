@@ -45,9 +45,7 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
     description = "A pipeline that writes data to a kafka destination from another kafka source",
     optionsClass = KafkaToKafka.KafkaToKafkaOptions.class,
     flexContainerName = "kafka-to-kafka",
-    contactInformation = "https://cloud.google.com/support",
-    hidden = true,
-    streaming = false)
+    contactInformation = "https://cloud.google.com/support")
 public class KafkaToKafka {
   public interface KafkaToKafkaOptions
       extends PipelineOptions, KafkaReadOptions, KafkaWriteOptions, DataflowPipelineOptions {}

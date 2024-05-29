@@ -49,8 +49,6 @@ import org.apache.beam.sdk.values.PCollection;
     optionsClass = KafkaToGcsFlex.KafkaToGcsOptions.class,
     flexContainerName = "kafka-to-gcs-flex",
     contactInformation = "https://cloud.google.com/support",
-    hidden = true,
-    streaming = true,
     requirements = {"The output Google Cloud Storage directory must exist."},
     skipOptions = {
       "keystoreLocation",
@@ -65,7 +63,7 @@ public class KafkaToGcsFlex {
 
     @TemplateParameter.Enum(
         name = "kafkaReadAuthenticationMode",
-        order = 5,
+        order = 999,
         groupName = "Source",
         enumOptions = {
           @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_MECHANISM),
