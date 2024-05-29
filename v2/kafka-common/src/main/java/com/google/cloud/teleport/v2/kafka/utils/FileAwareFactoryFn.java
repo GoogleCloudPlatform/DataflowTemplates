@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
  * replaces all references to GCS paths with local files and all references to Secret Manager
  * secrets with their actual values.
  */
-abstract class FileAwareFactoryFn<T> implements SerializableFunction<Map<String, Object>, T> {
+public abstract class FileAwareFactoryFn<T> implements SerializableFunction<Map<String, Object>, T> {
   private static final String LOCAL_FILE_PREFIX = "/tmp/kafka";
 
   public static final String GCS_PATH_PREFIX = "gs://";
