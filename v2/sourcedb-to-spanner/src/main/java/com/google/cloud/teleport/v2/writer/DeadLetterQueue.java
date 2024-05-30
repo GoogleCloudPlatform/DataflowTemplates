@@ -169,7 +169,7 @@ public class DeadLetterQueue implements Serializable {
       json.put(f.name(), value == null ? null : value.toString());
     }
     return FailsafeElement.of(json.toString(), json.toString())
-        .setErrorMessage("TransformationFailed: " + String.valueOf(r.err()));
+        .setErrorMessage("TransformationFailed: " + r.err() + "\n" + r.getStackTraceString());
   }
 
   public void failedMutationsToDLQ(

@@ -22,12 +22,14 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.AvroTypeConvertorException;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -156,8 +158,15 @@ public class AvroToValueMapper {
     if (recordValue == null) {
       return null;
     }
+    String val = recordValue.toString();
+    // Map strings with value 1 and 0 to true and false respectively. BooleanUtils does not handle
+    // this by default.
+    // For ex: BIT(1) -> Unified type long -> Spanner Boolean uses this path.
+    if (Arrays.asList("0", "1").contains(val)) {
+      return val.equals("1");
+    }
     // BooleanUtils.toBoolean() never throws exception, so we don't need to catch it.
-    return BooleanUtils.toBoolean(recordValue.toString());
+    return BooleanUtils.toBoolean(val);
   }
 
   static Long avroFieldToLong(Object recordValue, Schema fieldSchema) {
@@ -253,6 +262,12 @@ public class AvroToValueMapper {
       if (recordValue == null) {
         return null;
       }
+      // BIT types are by default mapped to ByteArray by SMT and the unified type is LONG.
+      if (fieldSchema.getType().equals(Schema.Type.LONG)) {
+        BigInteger bigInt = BigInteger.valueOf(Long.valueOf(recordValue.toString()));
+        return ByteArray.copyFrom(bigInt.toByteArray());
+      }
+
       if (fieldSchema.getType().equals(Schema.Type.STRING)) {
         // For string avro type, expect hex encoded string.
         String s = recordValue.toString();

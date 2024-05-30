@@ -18,7 +18,9 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
+import java.io.PrintWriter;
 import java.io.Serializable;
+import java.io.StringWriter;
 import javax.annotation.Nullable;
 
 /** Carrier of all the context of a given row through the duration of this pipeline. */
@@ -47,5 +49,11 @@ public abstract class RowContext implements Serializable {
     public abstract Builder setErr(Throwable t);
 
     public abstract RowContext build();
+  }
+
+  public String getStackTraceString() {
+    StringWriter sw = new StringWriter();
+    err().printStackTrace(new PrintWriter(sw));
+    return sw.toString();
   }
 }
