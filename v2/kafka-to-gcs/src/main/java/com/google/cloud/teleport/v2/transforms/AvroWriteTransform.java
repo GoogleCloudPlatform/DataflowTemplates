@@ -85,14 +85,12 @@ public abstract class AvroWriteTransform
         KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)) {
       String schemaRegistryURL = schemaRegistryURL();
       String schemaPath = schemaPath();
-      assert schemaRegistryURL != null;
-      assert schemaPath != null;
-      if (schemaRegistryURL.isBlank() && schemaPath.isBlank()) {
+      if (schemaRegistryURL == null && schemaPath == null) {
         throw new UnsupportedOperationException(
-            "A Schema Registry URL or static schema is required for CONFLUENT_WIRE_FORMAT messages");
+            "A Schema Registry URL or static schemas are required for CONFLUENT_WIRE_FORMAT messages");
       }
       DoFn<KafkaRecord<byte[], byte[]>, GenericRecord> convertToBytes;
-      if (!schemaRegistryURL.isBlank()) {
+      if (schemaRegistryURL != null) {
         convertToBytes = new ConvertBytesToGenericRecord(schemaRegistryURL);
       } else {
         convertToBytes = new ConvertBytesToGenericRecord(schemaPath, true);

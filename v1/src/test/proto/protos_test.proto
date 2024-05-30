@@ -1,0 +1,6 @@
+syntax = "proto2";
+
+package com.google.cloud.teleport.spanner.tests;
+
+option java_multiple_files = true;
+option java_package = "com.google.cloud.teleport.spanner.tests";
