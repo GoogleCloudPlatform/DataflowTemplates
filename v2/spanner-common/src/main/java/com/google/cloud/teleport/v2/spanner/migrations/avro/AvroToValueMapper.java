@@ -154,18 +154,23 @@ public class AvroToValueMapper {
     return pgFunctions;
   }
 
+  /**
+   * This method tries to map different kinds of source types to a boolean. This could be longs,
+   * string as well as booleans.
+   */
   static Boolean avroFieldToBoolean(Object recordValue, Schema fieldSchema) {
     if (recordValue == null) {
       return null;
     }
     String val = recordValue.toString();
-    // Map strings with value 1 and 0 to true and false respectively. BooleanUtils does not handle
-    // this by default.
+    // If the value can be converted to a "0" or a "1", rely on this to map to boolean. This could
+    // be used for strings and long data types.
     // For ex: BIT(1) -> Unified type long -> Spanner Boolean uses this path.
     if (Arrays.asList("0", "1").contains(val)) {
       return val.equals("1");
     }
-    // BooleanUtils.toBoolean() never throws exception, so we don't need to catch it.
+    // Rely on booleanUtils to map the string to a bool if it was not a "0" or "1". This handles
+    // cases like True, true, t, f etc.
     return BooleanUtils.toBoolean(val);
   }
 

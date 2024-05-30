@@ -88,15 +88,10 @@ public class GenericRecordTypeConvertor {
                 spannerColumnType);
         result.put(spannerColName, value);
       } catch (NullPointerException e) {
-        LOG.error("Unable to transform change event", e);
         throw e;
       } catch (IllegalArgumentException e) {
-        LOG.error("Unable to transform change event", e);
         throw e;
       } catch (Exception e) {
-        LOG.error(
-            String.format("Unable to convert spanner value for spanner col: %s", spannerColName),
-            e);
         throw new RuntimeException(
             String.format("Unable to convert spanner value for spanner col: %s", spannerColName),
             e);
@@ -167,9 +162,9 @@ public class GenericRecordTypeConvertor {
       return null;
     }
     if (fieldSchema.getLogicalType() instanceof LogicalTypes.Date) {
-      TimeConversions.DateConversion dataConversion = new TimeConversions.DateConversion();
+      TimeConversions.DateConversion dateConversion = new TimeConversions.DateConversion();
       LocalDate date =
-          dataConversion.fromInt(
+          dateConversion.fromInt(
               Integer.valueOf(recordValue.toString()), fieldSchema, fieldSchema.getLogicalType());
       return date.format(DateTimeFormatter.ISO_LOCAL_DATE);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.Decimal) {
@@ -185,11 +180,12 @@ public class GenericRecordTypeConvertor {
       Long nanoseconds = TimeUnit.MILLISECONDS.toNanos(Long.valueOf(recordValue.toString()));
       return LocalTime.ofNanoOfDay(nanoseconds).format(DateTimeFormatter.ISO_LOCAL_TIME);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMicros) {
-      Long nanoseconds = Long.valueOf(recordValue.toString()) * TimeUnit.MICROSECONDS.toNanos(1);
+      // We cannot convert to nanoseconds directly here since that can overflow for Long.
+      Long micros = Long.valueOf(recordValue.toString());
       Instant timestamp =
           Instant.ofEpochSecond(
-              TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
-              nanoseconds % TimeUnit.SECONDS.toNanos(1));
+              TimeUnit.MICROSECONDS.toSeconds(micros),
+              (micros % TimeUnit.SECONDS.toMicros(1)) * TimeUnit.MICROSECONDS.toNanos(1));
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMillis) {
       Instant timestamp = Instant.ofEpochMilli(Long.valueOf(recordValue.toString()));

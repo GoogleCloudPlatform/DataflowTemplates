@@ -52,6 +52,9 @@ public abstract class RowContext implements Serializable {
   }
 
   public String getStackTraceString() {
+    if (err() == null) {
+      return null;
+    }
     StringWriter sw = new StringWriter();
     err().printStackTrace(new PrintWriter(sw));
     return sw.toString();
