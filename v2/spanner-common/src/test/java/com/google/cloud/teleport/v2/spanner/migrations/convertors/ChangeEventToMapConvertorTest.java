@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2;
+package com.google.cloud.teleport.v2.spanner.migrations.convertors;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -21,16 +21,16 @@ import static org.junit.Assert.assertEquals;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.teleport.v2.templates.SpannerTransactionWriterDoFn;
-import com.google.cloud.teleport.v2.templates.datastream.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.exceptions.TransformationException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.json.JSONObject;
 import org.junit.Test;
 
-public class SpannerTransactionWriterTest {
+public class ChangeEventToMapConvertorTest {
+
   static JSONObject getTestChangeEvent() {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
@@ -57,10 +57,7 @@ public class SpannerTransactionWriterTest {
   public void testConvertJsonNodeToMap() throws InvalidChangeEventException {
     JSONObject changeEvent = getTestChangeEvent();
     JsonNode ce = parseChangeEvent(changeEvent.toString());
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, null, null, "shadow_", "mysql", true, "", "", "");
-    Map<String, Object> result = spannerTransactionWriterDoFn.convertJsonNodeToMap(ce);
+    Map<String, Object> result = ChangeEventToMapConvertor.convertChangeEventToMap(ce);
     Map<String, Object> expectedMap = new HashMap<>();
     expectedMap.put("first_name", "A");
     expectedMap.put("last_name", "B");
@@ -79,14 +76,11 @@ public class SpannerTransactionWriterTest {
   @Test(expected = InvalidChangeEventException.class)
   public void testConvertEmptyJsonNodeToMap() throws InvalidChangeEventException {
     JsonNode ce = parseChangeEvent("");
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, null, null, "shadow_", "mysql", true, "", "", "");
-    Map<String, Object> result = spannerTransactionWriterDoFn.convertJsonNodeToMap(ce);
+    Map<String, Object> result = ChangeEventToMapConvertor.convertChangeEventToMap(ce);
   }
 
   @Test
-  public void testTransformChangeEventViaCustomTransformation() {
+  public void testTransformChangeEventViaCustomTransformation() throws TransformationException {
     JSONObject changeEvent = getTestChangeEvent();
     JsonNode ce = parseChangeEvent(changeEvent.toString());
 
@@ -96,12 +90,8 @@ public class SpannerTransactionWriterTest {
     spannerRecord.put("bool_column", true);
     spannerRecord.put("double_column", 1.4D);
     spannerRecord.put("byte_column", new byte[] {0x01});
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, null, null, "shadow_", "mysql", true, "", "", "");
     JsonNode result =
-        spannerTransactionWriterDoFn.transformChangeEventViaCustomTransformation(
-            ce, spannerRecord);
+        ChangeEventToMapConvertor.transformChangeEventViaCustomTransformation(ce, spannerRecord);
 
     // Verify the result
     JSONObject changeEventNew = new JSONObject();
@@ -122,7 +112,8 @@ public class SpannerTransactionWriterTest {
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testTransformChangeEventViaCustomTransformationUnsupportedType() {
+  public void testTransformChangeEventViaCustomTransformationUnsupportedType()
+      throws TransformationException {
     JSONObject changeEvent = getTestChangeEvent();
     JsonNode ce = parseChangeEvent(changeEvent.toString());
 
@@ -132,11 +123,7 @@ public class SpannerTransactionWriterTest {
     spannerRecord.put("first_name", "new_value");
     spannerRecord.put("age", 20);
     spannerRecord.put("object_type", mapEntry);
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, null, null, "shadow_", "mysql", true, "", "", "");
     JsonNode result =
-        spannerTransactionWriterDoFn.transformChangeEventViaCustomTransformation(
-            ce, spannerRecord);
+        ChangeEventToMapConvertor.transformChangeEventViaCustomTransformation(ce, spannerRecord);
   }
 }

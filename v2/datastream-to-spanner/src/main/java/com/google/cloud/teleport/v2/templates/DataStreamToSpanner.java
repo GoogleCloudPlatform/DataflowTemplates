@@ -30,12 +30,15 @@ import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
+import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
+import com.google.cloud.teleport.v2.templates.transform.ChangeEventTransformerDoFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
@@ -67,6 +70,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -604,28 +608,36 @@ public class DataStreamToSpanner {
               .apply("Reshuffle", Reshuffle.viaRandomKey());
     }
     /*
-     * Stage 2: Write records to Cloud Spanner
+     * Stage 2: Transform records
      */
     // Ingest transformation context file into memory.
     TransformationContext transformationContext =
         TransformationContextReader.getTransformationContext(
             options.getTransformationContextFilePath());
-    SpannerTransactionWriter.Result spannerWriteResults =
+
+    CustomTransformation customTransformation =
+        new CustomTransformation(
+            options.getTransformationJarPath(),
+            options.getTransformationClassName(),
+            options.getTransformationCustomParameters());
+
+    ChangeEventTransformerDoFn changeEventTransformerDoFn =
+        ChangeEventTransformerDoFn.create(
+            schema, transformationContext, options.getDatastreamSourceType(), customTransformation);
+
+    PCollectionTuple transformedRecords =
         jsonRecords.apply(
-            "Write events to Cloud Spanner",
-            new SpannerTransactionWriter(
-                spannerConfig,
-                ddlView,
-                schema,
-                transformationContext,
-                options.getShadowTablePrefix(),
-                options.getDatastreamSourceType(),
-                isRegularMode,
-                options.getTransformationCustomParameters(),
-                options.getTransformationJarPath(),
-                options.getTransformationClassName()));
+            "apply transformation",
+            ParDo.of(changeEventTransformerDoFn)
+                .withOutputTags(
+                    DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG,
+                    TupleTagList.of(
+                        Arrays.asList(
+                            DatastreamToSpannerConstants.FILTERED_EVENT_TAG,
+                            DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))));
+
     /*
-     * Stage 3: Write filtered records to GCS
+     * Stage 4: Write filtered records to GCS
      */
     String tempLocation =
         options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
@@ -636,8 +648,8 @@ public class DataStreamToSpanner {
             ? tempLocation + "filteredEvents/"
             : options.getFilteredEventsDirectory();
     LOG.info("Filtered events directory: {}", filterEventsDirectory);
-    spannerWriteResults
-        .filteredEvents()
+    transformedRecords
+        .get(DatastreamToSpannerConstants.FILTERED_EVENT_TAG)
         .apply(Window.into(FixedWindows.of(Duration.standardMinutes(10))))
         .apply(
             "Write Filtered Events To GCS",
@@ -646,8 +658,24 @@ public class DataStreamToSpanner {
                 .withSuffix(".json")
                 .withNumShards(1)
                 .withWindowedWrites());
+
     /*
-     * Stage 4: Write failures to GCS Dead Letter Queue
+     * Stage 5: Write transformed records to Cloud Spanner
+     */
+
+    SpannerTransactionWriter.Result spannerWriteResults =
+        transformedRecords
+            .get(DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG)
+            .apply(
+                "Write events to Cloud Spanner",
+                new SpannerTransactionWriter(
+                    spannerConfig,
+                    ddlView,
+                    options.getShadowTablePrefix(),
+                    options.getDatastreamSourceType(),
+                    isRegularMode));
+    /*
+     * Stage 6: Write failures to GCS Dead Letter Queue
      * a) Retryable errors are written to retry GCS Dead letter queue
      * b) Severe errors are written to severe GCS Dead letter queue
      */

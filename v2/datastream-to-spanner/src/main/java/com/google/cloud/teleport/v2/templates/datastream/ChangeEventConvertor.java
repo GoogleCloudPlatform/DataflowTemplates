@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.utils.ChangeEventUtils.getEventColumnKeys;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.spanner.Mutation;
@@ -25,16 +27,14 @@ import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ChangeEventUtils;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.common.collect.ImmutableList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /** Helper class with static methods that convert Change Events to Cloud Spanner mutations. */
 public class ChangeEventConvertor {
@@ -222,7 +222,7 @@ public class ChangeEventConvertor {
   private static Mutation changeEventToInsertOrUpdateMutation(Ddl ddl, JsonNode changeEvent)
       throws ChangeEventConvertorException, InvalidChangeEventException {
     String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
-    List<String> changeEventKeys = getEventColumnKeys(changeEvent);
+    List<String> changeEventKeys = ChangeEventUtils.getEventColumnKeys(changeEvent);
     try {
       Table table = ddl.table(tableName);
 
@@ -248,20 +248,5 @@ public class ChangeEventConvertor {
     } catch (Exception e) {
       throw new ChangeEventConvertorException(e);
     }
-  }
-
-  public static List<String> getEventColumnKeys(JsonNode changeEvent)
-      throws InvalidChangeEventException {
-    // Filter all keys which have the metadata prefix
-    Iterator<String> fieldNames = changeEvent.fieldNames();
-    List<String> eventColumnKeys =
-        StreamSupport.stream(
-                Spliterators.spliteratorUnknownSize(fieldNames, Spliterator.ORDERED), false)
-            .filter(f -> !f.startsWith(DatastreamConstants.EVENT_METADATA_KEY_PREFIX))
-            .collect(Collectors.toList());
-    if (eventColumnKeys.size() == 0) {
-      throw new InvalidChangeEventException("No data found in Datastream event. ");
-    }
-    return eventColumnKeys;
   }
 }

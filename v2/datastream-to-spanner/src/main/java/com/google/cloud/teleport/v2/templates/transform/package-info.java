@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2021 Google LLC
+ * Copyright (C) 2024 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,15 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
 
-/** Exceptions thrown when Datastream Events are missing required fields. */
-public class InvalidChangeEventException extends Exception {
-  public InvalidChangeEventException(Exception e) {
-    super(e);
-  }
-
-  public InvalidChangeEventException(String msg) {
-    super(msg);
-  }
-}
+/** A set of utilities to build and introspect Cloud Spanner DDL. */
+package com.google.cloud.teleport.v2.templates.transform;
