@@ -32,9 +32,9 @@ public interface SchemaRegistryOptions extends PipelineOptions {
             KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING),
         @TemplateParameter.TemplateEnumOption(KafkaTemplateParamters.MessageFormatConstants.JSON)
       },
-      description = "Message Format",
+      description = "Kafka Message Format",
       helpText =
-          "The Kafka message format. Can be AVRO_CONFLUENT_WIRE_FORMAT, AVRO_BINARY_ENCODING or JSON.")
+          "The format of the Kafka messages to read. The supported values are AVRO_CONFLUENT_WIRE_FORMAT (Confluent Schema Registry encoded Avro), AVRO_BINARY_ENCODING (Plain binary Avro), and JSON.")
   @Default.String(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
   String getMessageFormat();
 
@@ -70,7 +70,9 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       parentTriggerValues = {KafkaTemplateParamters.SchemaFormat.SINGLE_SCHEMA_FILE},
       description = "Cloud Storage path to the Avro schema file",
       optional = true,
-      helpText = "Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.")
+      helpText =
+          "The Google Cloud Storage path to the single Avro schema file used to "
+              + "decode all of the messages in a topic.")
   @Default.String("")
   String getConfluentAvroSchemaPath();
 
@@ -83,7 +85,9 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       parentTriggerValues = {KafkaTemplateParamters.SchemaFormat.SCHEMA_REGISTRY},
       description = "Schema Registry Connection URL",
       optional = true,
-      helpText = "Schema Registry Connection URL for a registry.")
+      helpText =
+          "The URL for the Confluent Schema Registry instance used to manage Avro schemas"
+              + " for message decoding.")
   @Default.String("")
   String getSchemaRegistryConnectionUrl();
 
@@ -96,7 +100,8 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       parentTriggerValues = {KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING},
       description = "Cloud Storage path to the Avro schema file",
       optional = true,
-      helpText = "Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.")
+      helpText =
+          "The Google Cloud Storage path to the Avro schema file used to decode binary-encoded Avro messages.")
   @Default.String("")
   String getBinaryAvroSchemaPath();
 
