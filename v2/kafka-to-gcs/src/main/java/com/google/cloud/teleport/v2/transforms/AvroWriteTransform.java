@@ -85,7 +85,6 @@ public abstract class AvroWriteTransform
         KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)) {
       String schemaRegistryURL = schemaRegistryURL();
       String schemaPath = schemaPath();
-      // Check for NPE.
       assert schemaRegistryURL != null;
       assert schemaPath != null;
       if (schemaRegistryURL.isBlank() && schemaPath.isBlank()) {
