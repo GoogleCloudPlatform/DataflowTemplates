@@ -123,7 +123,9 @@ import org.slf4j.LoggerFactory;
     },
     streaming = true,
     supportsAtLeastOnce = true,
-    supportsExactlyOnce = true)
+    supportsExactlyOnce = true,
+    hidden = true
+)
 public class KafkaToBigQuery {
 
   /* Logger for class. */
