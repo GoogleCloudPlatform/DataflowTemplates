@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import java.lang.reflect.Constructor;
 import java.net.URL;
@@ -25,40 +26,40 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class CustomTransformationImplFetcher {
-  private static final Logger LOG =
-      LoggerFactory.getLogger(CustomTransformationImplFetcher.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CustomTransformationImplFetcher.class);
   private static ISpannerMigrationTransformer spannerMigrationTransformer = null;
 
   public static synchronized ISpannerMigrationTransformer getCustomTransformationLogicImpl(
-      String customJarPath, String customClassName, String customParameters) {
+      CustomTransformation customTransformation) {
 
     if (spannerMigrationTransformer == null) {
-      spannerMigrationTransformer =
-          getApplyTransformationImpl(customJarPath, customClassName, customParameters);
+      spannerMigrationTransformer = getApplyTransformationImpl(customTransformation);
     }
     return spannerMigrationTransformer;
   }
 
   public static ISpannerMigrationTransformer getApplyTransformationImpl(
-      String customJarPath, String customClassName, String customParameters) {
-    if (!customJarPath.isEmpty() && !customClassName.isEmpty()) {
+      CustomTransformation customTransformation) {
+    if (!customTransformation.getJarPath().isEmpty()
+        && !customTransformation.getClassPath().isEmpty()) {
       LOG.info(
           "Getting spanner migration transformer : "
-              + customJarPath
+              + customTransformation.getJarPath()
               + " with class: "
-              + customClassName);
+              + customTransformation.getClassPath());
       try {
         // Get the start time of loading the custom class
         Instant startTime = Instant.now();
 
         // Getting the jar URL which contains target class
-        URL[] classLoaderUrls = JarFileReader.saveFilesLocally(customJarPath);
+        URL[] classLoaderUrls = JarFileReader.saveFilesLocally(customTransformation.getJarPath());
 
         // Create a new URLClassLoader
         URLClassLoader urlClassLoader = new URLClassLoader(classLoaderUrls);
 
         // Load the target class
-        Class<?> customTransformationClass = urlClassLoader.loadClass(customClassName);
+        Class<?> customTransformationClass =
+            urlClassLoader.loadClass(customTransformation.getClassPath());
 
         // Create a new instance from the loaded class
         Constructor<?> constructor = customTransformationClass.getConstructor();
@@ -68,12 +69,14 @@ public class CustomTransformationImplFetcher {
         Instant endTime = Instant.now();
         LOG.info(
             "Custom jar "
-                + customJarPath
+                + customTransformation.getJarPath()
                 + ": Took "
                 + (new Duration(startTime, endTime)).toString()
                 + " to load");
-        LOG.info("Invoking init of the custom class with input as {}", customParameters);
-        datastreamToSpannerTransformation.init(customParameters);
+        LOG.info(
+            "Invoking init of the custom class with input as {}",
+            customTransformation.getCustomParameters());
+        datastreamToSpannerTransformation.init(customTransformation.getCustomParameters());
         return datastreamToSpannerTransformation;
       } catch (Exception e) {
         throw new RuntimeException("Error loading custom class : " + e.getMessage());
