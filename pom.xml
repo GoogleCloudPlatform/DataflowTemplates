@@ -359,6 +359,9 @@
             <!-- Excluding auto-generated classes. -->
             <exclude>**/*AutoValue_*</exclude>
             <exclude>**/*Exception.*</exclude>
+            <exclude>**/constants/**</exclude>
+            <exclude>v2/spanner-common/src/main/java/com/google/cloud/teleport/v2/spanner/migrations/utils/JarFileReader.java</exclude>
+            <exclude>v2/spanner-common/src/main/java/com/google/cloud/teleport/v2/spanner/migrations/utils/CustomTransformationImplFetcher.java</exclude>
           </excludes>
         </configuration>
         <executions>

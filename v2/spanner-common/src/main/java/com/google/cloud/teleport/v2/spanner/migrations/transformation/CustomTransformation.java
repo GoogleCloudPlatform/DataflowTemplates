@@ -19,6 +19,7 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 
 import com.google.auto.value.AutoValue;
 import java.io.Serializable;
+import org.apache.parquet.Strings;
 
 @AutoValue
 public abstract class CustomTransformation implements Serializable {
@@ -46,8 +47,9 @@ public abstract class CustomTransformation implements Serializable {
 
       CustomTransformation customTransformation = autoBuild();
       checkState(
-          (customTransformation.jarPath() != null) == (customTransformation.classPath() != null),
-          "Both jarPath and classPath must be set or both must be null.");
+          (Strings.isNullOrEmpty(customTransformation.jarPath()))
+              == (Strings.isNullOrEmpty(customTransformation.classPath())),
+          "Both jarPath and classPath must be set or both must be empty/null.");
       return customTransformation;
     }
   }
