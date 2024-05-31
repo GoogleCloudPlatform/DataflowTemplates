@@ -135,15 +135,11 @@ public abstract class ChangeEventTransformerDoFn
         schema().verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
         changeEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent);
       }
-      if (transformationContext() != null) {
-        if (!MYSQL_SOURCE_TYPE.equals(sourceType())
-            || transformationContext().getSchemaToShardId() == null
-            || transformationContext().getSchemaToShardId().isEmpty()) {
-          shardId = ""; // Nothing to do
-        } else {
-          Map<String, String> schemaToShardId = transformationContext().getSchemaToShardId();
+      if (transformationContext() != null && MYSQL_SOURCE_TYPE.equals(sourceType())) {
+        Map<String, String> schemaToShardId = transformationContext().getSchemaToShardId();
+        if (schemaToShardId != null && !schemaToShardId.isEmpty()) {
           String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
-          shardId = schemaToShardId.get(schemaName);
+          shardId = schemaToShardId.getOrDefault(schemaName, "");
         }
       }
 
