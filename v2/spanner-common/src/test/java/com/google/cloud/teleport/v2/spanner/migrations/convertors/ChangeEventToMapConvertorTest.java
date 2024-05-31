@@ -39,6 +39,10 @@ public class ChangeEventToMapConvertorTest {
     changeEvent.put("bool_column", false);
     changeEvent.put("double_column", 1.3D);
     changeEvent.put("byte_column", new byte[] {0x00});
+    JSONObject nestedObject = new JSONObject();
+    nestedObject.put("nested_key", "nested_value");
+    changeEvent.put("nested_object", nestedObject);
+    changeEvent.put("null_column", JSONObject.NULL);
     return changeEvent;
   }
 
@@ -65,12 +69,18 @@ public class ChangeEventToMapConvertorTest {
     expectedMap.put("bool_column", false);
     expectedMap.put("double_column", 1.3D);
     expectedMap.put("byte_column", new byte[] {0x00});
+    Map<String, Object> expectedNestedMap = new HashMap<>();
+    expectedNestedMap.put("nested_key", "nested_value");
+    expectedMap.put("nested_object", expectedNestedMap);
+    expectedMap.put("null_column", null);
     assertEquals(expectedMap.get("first_name"), result.get("first_name"));
     assertEquals(expectedMap.get("age"), result.get("age"));
     assertEquals(expectedMap.get("last_name"), result.get("last_name"));
     assertEquals(expectedMap.get("bool_column"), result.get("bool_column"));
     assertEquals(expectedMap.get("double_column"), result.get("double_column"));
     assertArrayEquals((byte[]) expectedMap.get("byte_column"), (byte[]) result.get("byte_column"));
+    assertEquals(expectedNestedMap, result.get("nested_object"));
+    assertEquals(expectedMap.get("null_column"), result.get("null_column"));
   }
 
   @Test(expected = InvalidChangeEventException.class)

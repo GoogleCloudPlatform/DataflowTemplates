@@ -360,8 +360,8 @@
             <exclude>**/*AutoValue_*</exclude>
             <exclude>**/*Exception.*</exclude>
             <exclude>**/constants/**</exclude>
-            <exclude>**/spanner/migrations/utils/JarFileReader.*</exclude>
-            <exclude>**/spanner/migrations/utils/CustomTransformationImplFetcher.*</exclude>
+            <exclude>**/*JarFileReader.*</exclude>
+            <exclude>**/*CustomTransformationImplFetcher.*</exclude>
           </excludes>
         </configuration>
         <executions>
