@@ -42,6 +42,9 @@ component_management:
     paths:
     - "v2/datastream-to-spanner/**"
     - "v2/spanner-common/**"
+    - "!v2/datastream-to-spanner/src/main/java/com/google/cloud/teleport/v2/templates/constants/**"
+    - "!v2/spanner-common/src/main/java/com/google/cloud/teleport/v2/spanner/migrations/utils/JarFileReader.java"
+    - "!v2/spanner-common/src/main/java/com/google/cloud/teleport/v2/spanner/migrations/utils/CustomTransformationImplFetcher.java"
   - component_id: spanner-live-reverse-replication
     name: spanner-live-reverse-replication
     paths:
