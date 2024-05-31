@@ -360,7 +360,6 @@
             <exclude>**/*AutoValue_*</exclude>
             <exclude>**/*Exception.*</exclude>
             <exclude>**/constants/**</exclude>
-            <exclude>**/*Fetcher.*</exclude>
           </excludes>
         </configuration>
         <executions>
