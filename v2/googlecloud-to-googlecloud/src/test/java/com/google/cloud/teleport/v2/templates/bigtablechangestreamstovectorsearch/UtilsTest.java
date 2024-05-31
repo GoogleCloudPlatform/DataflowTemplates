@@ -78,7 +78,7 @@ public class UtilsTest {
               Utils.parseColumnMapping(badMapping);
             });
 
-    assertEquals("Malformed column mapping cf1:foo->bar->baz", ex.getMessage());
+    assertEquals("Malformed column mapping pair cf1:foo->bar->baz", ex.getMessage());
   }
 
   @Test
