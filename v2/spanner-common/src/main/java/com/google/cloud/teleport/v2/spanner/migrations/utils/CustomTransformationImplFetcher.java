@@ -40,26 +40,25 @@ public class CustomTransformationImplFetcher {
 
   public static ISpannerMigrationTransformer getApplyTransformationImpl(
       CustomTransformation customTransformation) {
-    if (!customTransformation.getJarPath().isEmpty()
-        && !customTransformation.getClassPath().isEmpty()) {
+    if (!customTransformation.jarPath().isEmpty() && !customTransformation.classPath().isEmpty()) {
       LOG.info(
           "Getting spanner migration transformer : "
-              + customTransformation.getJarPath()
+              + customTransformation.jarPath()
               + " with class: "
-              + customTransformation.getClassPath());
+              + customTransformation.classPath());
       try {
         // Get the start time of loading the custom class
         Instant startTime = Instant.now();
 
         // Getting the jar URL which contains target class
-        URL[] classLoaderUrls = JarFileReader.saveFilesLocally(customTransformation.getJarPath());
+        URL[] classLoaderUrls = JarFileReader.saveFilesLocally(customTransformation.jarPath());
 
         // Create a new URLClassLoader
         URLClassLoader urlClassLoader = new URLClassLoader(classLoaderUrls);
 
         // Load the target class
         Class<?> customTransformationClass =
-            urlClassLoader.loadClass(customTransformation.getClassPath());
+            urlClassLoader.loadClass(customTransformation.classPath());
 
         // Create a new instance from the loaded class
         Constructor<?> constructor = customTransformationClass.getConstructor();
@@ -69,14 +68,14 @@ public class CustomTransformationImplFetcher {
         Instant endTime = Instant.now();
         LOG.info(
             "Custom jar "
-                + customTransformation.getJarPath()
+                + customTransformation.jarPath()
                 + ": Took "
                 + (new Duration(startTime, endTime)).toString()
                 + " to load");
         LOG.info(
             "Invoking init of the custom class with input as {}",
-            customTransformation.getCustomParameters());
-        datastreamToSpannerTransformation.init(customTransformation.getCustomParameters());
+            customTransformation.customParameters());
+        datastreamToSpannerTransformation.init(customTransformation.customParameters());
         return datastreamToSpannerTransformation;
       } catch (Exception e) {
         throw new RuntimeException("Error loading custom class : " + e.getMessage());

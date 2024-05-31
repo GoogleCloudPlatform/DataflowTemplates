@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.convertors;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.cloud.teleport.v2.spanner.exceptions.TransformationException;
+import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ChangeEventUtils;
 import java.util.HashMap;
@@ -59,7 +59,8 @@ public class ChangeEventToMapConvertor {
   }
 
   public static JsonNode transformChangeEventViaCustomTransformation(
-      JsonNode changeEvent, Map<String, Object> spannerRecord) throws TransformationException {
+      JsonNode changeEvent, Map<String, Object> spannerRecord)
+      throws InvalidTransformationException {
     for (Map.Entry<String, Object> entry : spannerRecord.entrySet()) {
       String columnName = entry.getKey();
       Object columnValue = entry.getValue();
@@ -77,7 +78,7 @@ public class ChangeEventToMapConvertor {
       } else if (columnValue instanceof String) {
         ((ObjectNode) changeEvent).put(columnName, (String) columnValue);
       } else {
-        throw new TransformationException(
+        throw new InvalidTransformationException(
             "Column name(" + columnName + ") has unsupported column value(" + columnValue + ")");
       }
     }

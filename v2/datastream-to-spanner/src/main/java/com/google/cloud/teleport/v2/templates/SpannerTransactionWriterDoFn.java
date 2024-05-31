@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
  * <p>Change events that failed to be written will be pushed onto the secondary output tagged with
  * PERMANENT_ERROR_TAG/RETRYABLE_ERROR_TAG along with the exception that caused the failure.
  */
-public class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>, Timestamp>
+class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>, Timestamp>
     implements Serializable {
 
   // TODO - Change Cloud Spanner nomenclature in code used to read DDL.
@@ -102,7 +102,7 @@ public class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, S
   /* The run mode, whether it is regular or retry. */
   private final Boolean isRegularRunMode;
 
-  public SpannerTransactionWriterDoFn(
+  SpannerTransactionWriterDoFn(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
       String shadowTablePrefix,

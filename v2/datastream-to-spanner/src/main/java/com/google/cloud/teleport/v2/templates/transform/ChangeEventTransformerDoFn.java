@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.transform;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_SCHEMA_KEY;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_CHANGE_TYPE_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_TABLE_NAME_KEY;
 
@@ -23,7 +24,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.spanner.exceptions.TransformationException;
+import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSessionConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventToMapConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
@@ -35,7 +36,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformatio
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
-import com.google.cloud.teleport.v2.templates.SpannerTransactionWriterDoFn;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.Serializable;
@@ -78,25 +78,25 @@ public abstract class ChangeEventTransformerDoFn
   public abstract CustomTransformation customTransformation();
 
   private final Counter processedEvents =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Total events processed");
+      Metrics.counter(ChangeEventTransformerDoFn.class, "Total events processed");
 
   private final Counter filteredEvents =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Filtered events");
+      Metrics.counter(ChangeEventTransformerDoFn.class, "Filtered events");
 
   private final Counter transformedEvents =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Transformed events");
+      Metrics.counter(ChangeEventTransformerDoFn.class, "Transformed events");
 
   private final Counter skippedEvents =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Skipped events");
+      Metrics.counter(ChangeEventTransformerDoFn.class, "Skipped events");
   private final Counter failedEvents =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Other permanent errors");
+      Metrics.counter(ChangeEventTransformerDoFn.class, "Other permanent errors");
 
   private final Counter customTransformationException =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Custom Transformation Exceptions");
+      Metrics.counter(ChangeEventTransformerDoFn.class, "Custom Transformation Exceptions");
 
   private final Distribution applyCustomTransformationResponseTimeMetric =
       Metrics.distribution(
-          SpannerTransactionWriterDoFn.class, "apply_custom_transformation_impl_latency_ms");
+          ChangeEventTransformerDoFn.class, "apply_custom_transformation_impl_latency_ms");
 
   public static ChangeEventTransformerDoFn create(
       Schema schema,
@@ -136,11 +136,18 @@ public abstract class ChangeEventTransformerDoFn
         changeEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent);
       }
       if (transformationContext() != null) {
-        Map<String, String> schemaToShardId = transformationContext().getSchemaToShardId();
-        String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
-        shardId = schemaToShardId.get(schemaName);
+        if (!MYSQL_SOURCE_TYPE.equals(sourceType())
+            || transformationContext().getSchemaToShardId() == null
+            || transformationContext().getSchemaToShardId().isEmpty()) {
+          shardId = ""; // Nothing to do
+        } else {
+          Map<String, String> schemaToShardId = transformationContext().getSchemaToShardId();
+          String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
+          shardId = schemaToShardId.get(schemaName);
+        }
       }
 
+      // If custom jar is specified apply custom transformation to the change event
       if (datastreamToSpannerTransformer != null) {
         Instant startTimestamp = Instant.now();
         MigrationTransformationRequest migrationTransformationRequest =
@@ -169,7 +176,7 @@ public abstract class ChangeEventTransformerDoFn
       // errors to dlq for this.
       LOG.warn(e.getMessage());
       skippedEvents.inc();
-    } catch (TransformationException e) {
+    } catch (InvalidTransformationException e) {
       // Errors that result from the custom JAR during transformation are not retryable.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       customTransformationException.inc();

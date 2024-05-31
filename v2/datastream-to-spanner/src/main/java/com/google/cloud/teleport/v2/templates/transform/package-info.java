@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** A set of utilities to build and introspect Cloud Spanner DDL. */
+/** A set of transforms to be applied on the change event. */
 package com.google.cloud.teleport.v2.templates.transform;

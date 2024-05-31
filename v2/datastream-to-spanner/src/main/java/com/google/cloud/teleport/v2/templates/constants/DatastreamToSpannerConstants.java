@@ -23,18 +23,22 @@ import org.apache.beam.sdk.values.TupleTag;
 public class DatastreamToSpannerConstants {
 
   /** TAGS used for routing. * */
+
+  /* The tag for events filtered via custom transformation.*/
   public static final TupleTag<String> FILTERED_EVENT_TAG = new TupleTag<String>() {};
 
+  /* The tag for successfully transformed events. */
   public static final TupleTag<FailsafeElement<String, String>> TRANSFORMED_EVENT_TAG =
       new TupleTag<FailsafeElement<String, String>>() {};
 
+  /* The tag for events failed with non-retryable errors. */
   public static final TupleTag<FailsafeElement<String, String>> PERMANENT_ERROR_TAG =
       new TupleTag<FailsafeElement<String, String>>() {};
 
-  /* The Tag for retryable Failed mutations */
+  /* The Tag for retryable Failed mutations. */
   public static final TupleTag<FailsafeElement<String, String>> RETRYABLE_ERROR_TAG =
       new TupleTag<FailsafeElement<String, String>>() {};
 
-  /* The Tag for Successful mutations */
+  /* The Tag for Successful mutations. */
   public static final TupleTag<Timestamp> SUCCESSFUL_EVENT_TAG = new TupleTag<Timestamp>() {};
 }

@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.utils.ChangeEventUtils.getEventColumnKeys;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.spanner.Mutation;
@@ -48,7 +46,7 @@ public class ChangeEventConvertor {
       throw new ChangeEventConvertorException(
           "Table from change event does not exist in Spanner. table=" + tableName);
     }
-    List<String> changeEventColumns = getEventColumnKeys(changeEvent);
+    List<String> changeEventColumns = ChangeEventUtils.getEventColumnKeys(changeEvent);
     for (String changeEventColumn : changeEventColumns) {
       if (ddl.table(tableName).column(changeEventColumn) == null) {
         throw new ChangeEventConvertorException(
@@ -72,7 +70,7 @@ public class ChangeEventConvertor {
 
   static void convertChangeEventColumnKeysToLowerCase(JsonNode changeEvent)
       throws ChangeEventConvertorException, InvalidChangeEventException {
-    List<String> changeEventKeys = getEventColumnKeys(changeEvent);
+    List<String> changeEventKeys = ChangeEventUtils.getEventColumnKeys(changeEvent);
     ObjectNode jsonNode = (ObjectNode) changeEvent;
     for (String key : changeEventKeys) {
       // Skip keys that are in lower case.

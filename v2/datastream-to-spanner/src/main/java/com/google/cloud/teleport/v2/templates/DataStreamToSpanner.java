@@ -404,7 +404,7 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Custom jar location in Cloud Storage",
         helpText =
-            "Custom jar location in Cloud Storage that contains the advanced transformation logic for processing records"
+            "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records"
                 + " in forward migration.")
     @Default.String("")
     String getTransformationJarPath();
@@ -416,7 +416,7 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Custom class name",
         helpText =
-            "Fully qualified class name having the advanced transformation implementation.  It is a"
+            "Fully qualified class name having the custom transformation logic.  It is a"
                 + " mandatory field in case transformationJarPath is specified")
     @Default.String("")
     String getTransformationClassName();
@@ -428,7 +428,7 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Custom parameters for transformation",
         helpText =
-            "String containing any custom parameters to be passed to the advanced transformation class.")
+            "String containing any custom parameters to be passed to the custom transformation class.")
     @Default.String("")
     String getTransformationCustomParameters();
 
@@ -439,7 +439,7 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Filtered events directory",
         helpText =
-            "This is the file path to store the filtered events. Default is a directory"
+            "This is the file path to store the events filtered via custom transformation. Default is a directory"
                 + " under the Dataflow job's temp location. The default value is enough under most"
                 + " conditions.")
     @Default.String("")
@@ -610,16 +610,17 @@ public class DataStreamToSpanner {
     /*
      * Stage 2: Transform records
      */
+
     // Ingest transformation context file into memory.
     TransformationContext transformationContext =
         TransformationContextReader.getTransformationContext(
             options.getTransformationContextFilePath());
 
     CustomTransformation customTransformation =
-        new CustomTransformation(
-            options.getTransformationJarPath(),
-            options.getTransformationClassName(),
-            options.getTransformationCustomParameters());
+        CustomTransformation.builder(
+                options.getTransformationJarPath(), options.getTransformationClassName())
+            .setCustomParameters(options.getTransformationCustomParameters())
+            .build();
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
@@ -627,7 +628,7 @@ public class DataStreamToSpanner {
 
     PCollectionTuple transformedRecords =
         jsonRecords.apply(
-            "apply transformation",
+            "Apply Transformation to events",
             ParDo.of(changeEventTransformerDoFn)
                 .withOutputTags(
                     DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG,
@@ -637,7 +638,7 @@ public class DataStreamToSpanner {
                             DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))));
 
     /*
-     * Stage 4: Write filtered records to GCS
+     * Stage 3: Write filtered records to GCS
      */
     String tempLocation =
         options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
@@ -650,17 +651,13 @@ public class DataStreamToSpanner {
     LOG.info("Filtered events directory: {}", filterEventsDirectory);
     transformedRecords
         .get(DatastreamToSpannerConstants.FILTERED_EVENT_TAG)
-        .apply(Window.into(FixedWindows.of(Duration.standardMinutes(10))))
+        .apply(Window.into(FixedWindows.of(Duration.standardMinutes(1))))
         .apply(
             "Write Filtered Events To GCS",
-            TextIO.write()
-                .to(filterEventsDirectory)
-                .withSuffix(".json")
-                .withNumShards(1)
-                .withWindowedWrites());
+            TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites());
 
     /*
-     * Stage 5: Write transformed records to Cloud Spanner
+     * Stage 4: Write transformed records to Cloud Spanner
      */
 
     SpannerTransactionWriter.Result spannerWriteResults =
@@ -675,7 +672,7 @@ public class DataStreamToSpanner {
                     options.getDatastreamSourceType(),
                     isRegularMode));
     /*
-     * Stage 6: Write failures to GCS Dead Letter Queue
+     * Stage 5: Write failures to GCS Dead Letter Queue
      * a) Retryable errors are written to retry GCS Dead letter queue
      * b) Severe errors are written to severe GCS Dead letter queue
      */
@@ -699,6 +696,7 @@ public class DataStreamToSpanner {
     PCollection<FailsafeElement<String, String>> permanentErrors =
         PCollectionList.of(dlqErrorRecords)
             .and(spannerWriteResults.permanentErrors())
+            .and(transformedRecords.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))
             .apply(Flatten.pCollections())
             .apply("Reshuffle", Reshuffle.viaRandomKey());
     // increment the metrics
