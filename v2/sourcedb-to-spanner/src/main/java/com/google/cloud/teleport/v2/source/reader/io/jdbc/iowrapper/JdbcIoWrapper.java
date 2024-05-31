@@ -280,6 +280,10 @@ public final class JdbcIoWrapper implements IoWrapper {
                 StaticValueProvider.of(config.sourceDbURL()))
             .withMaxConnections(Math.toIntExact(config.maxConnections()));
 
+    if (!config.sqlInitSeq().isEmpty()) {
+      dataSourceConfig = dataSourceConfig.withConnectionInitSqls(config.sqlInitSeq());
+    }
+
     if (config.jdbcDriverJars() != null && !config.jdbcDriverJars().isEmpty()) {
       dataSourceConfig = dataSourceConfig.withDriverJars(config.jdbcDriverJars());
     }
@@ -289,6 +293,8 @@ public final class JdbcIoWrapper implements IoWrapper {
     if (!config.dbAuth().getPassword().get().isBlank()) {
       dataSourceConfig = dataSourceConfig.withPassword(config.dbAuth().getPassword().get());
     }
+
+    LOG.info("Final DatasourceConfiguration: {}", dataSourceConfig);
     return dataSourceConfig;
   }
 
