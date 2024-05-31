@@ -127,33 +127,15 @@ public abstract class ChangeEventTransformerDoFn
 
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
 
-      String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
-      Map<String, Object> sourceRecord =
-          ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
-      String shardId = "";
       if (!schema().isEmpty()) {
         schema().verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
         changeEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent);
       }
-      if (transformationContext() != null && MYSQL_SOURCE_TYPE.equals(sourceType())) {
-        Map<String, String> schemaToShardId = transformationContext().getSchemaToShardId();
-        if (schemaToShardId != null && !schemaToShardId.isEmpty()) {
-          String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
-          shardId = schemaToShardId.getOrDefault(schemaName, "");
-        }
-      }
 
       // If custom jar is specified apply custom transformation to the change event
       if (datastreamToSpannerTransformer != null) {
-        Instant startTimestamp = Instant.now();
-        MigrationTransformationRequest migrationTransformationRequest =
-            new MigrationTransformationRequest(
-                tableName, sourceRecord, shardId, changeEvent.get(EVENT_CHANGE_TYPE_KEY).asText());
         MigrationTransformationResponse migrationTransformationResponse =
-            datastreamToSpannerTransformer.toSpannerRow(migrationTransformationRequest);
-        Instant endTimestamp = Instant.now();
-        applyCustomTransformationResponseTimeMetric.update(
-            new Duration(startTimestamp, endTimestamp).getMillis());
+            getCustomTransformationResponse(changeEvent);
         if (migrationTransformationResponse.isEventFiltered()) {
           filteredEvents.inc();
           c.output(DatastreamToSpannerConstants.FILTERED_EVENT_TAG, msg.getPayload());
@@ -185,6 +167,33 @@ public abstract class ChangeEventTransformerDoFn
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       failedEvents.inc();
     }
+  }
+
+  MigrationTransformationResponse getCustomTransformationResponse(JsonNode changeEvent)
+      throws InvalidTransformationException, InvalidChangeEventException {
+    Map<String, Object> sourceRecord =
+        ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
+    String shardId = "";
+    String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
+
+    // Fetch shard id from transformation context.
+    if (transformationContext() != null && MYSQL_SOURCE_TYPE.equals(sourceType())) {
+      Map<String, String> schemaToShardId = transformationContext().getSchemaToShardId();
+      if (schemaToShardId != null && !schemaToShardId.isEmpty()) {
+        String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
+        shardId = schemaToShardId.getOrDefault(schemaName, "");
+      }
+    }
+    Instant startTimestamp = Instant.now();
+    MigrationTransformationRequest migrationTransformationRequest =
+        new MigrationTransformationRequest(
+            tableName, sourceRecord, shardId, changeEvent.get(EVENT_CHANGE_TYPE_KEY).asText());
+    MigrationTransformationResponse migrationTransformationResponse =
+        datastreamToSpannerTransformer.toSpannerRow(migrationTransformationRequest);
+    Instant endTimestamp = Instant.now();
+    applyCustomTransformationResponseTimeMetric.update(
+        new Duration(startTimestamp, endTimestamp).getMillis());
+    return migrationTransformationResponse;
   }
 
   void outputWithErrorTag(
