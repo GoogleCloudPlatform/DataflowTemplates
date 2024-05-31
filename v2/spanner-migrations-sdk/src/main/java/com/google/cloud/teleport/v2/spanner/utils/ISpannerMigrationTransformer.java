@@ -15,14 +15,14 @@
  */
 package com.google.cloud.teleport.v2.spanner.utils;
 
-import com.google.cloud.teleport.v2.spanner.exceptions.TransformationException;
+import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 
 public interface ISpannerMigrationTransformer {
   void init(String customParameters);
 
   MigrationTransformationResponse toSpannerRow(MigrationTransformationRequest request)
-      throws TransformationException;
+      throws InvalidTransformationException;
 
   MigrationTransformationResponse toSourceRow(MigrationTransformationRequest request)
-      throws TransformationException;
+      throws InvalidTransformationException;
 }

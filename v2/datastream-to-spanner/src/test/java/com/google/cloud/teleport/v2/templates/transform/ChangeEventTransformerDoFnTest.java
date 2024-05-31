@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.cloud.teleport.v2.spanner.exceptions.TransformationException;
+import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSessionConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventToMapConvertor;
@@ -92,7 +92,7 @@ public class ChangeEventTransformerDoFnTest {
 
   @Test
   public void testProcessElementWithCustomTransformation()
-      throws InvalidChangeEventException, TransformationException {
+      throws InvalidChangeEventException, InvalidTransformationException {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     Schema schema = mock(Schema.class);
@@ -143,7 +143,7 @@ public class ChangeEventTransformerDoFnTest {
 
   @Test
   public void testProcessElementWithCustomTransformationAndShardId()
-      throws InvalidChangeEventException, TransformationException {
+      throws InvalidChangeEventException, InvalidTransformationException {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     Schema schema = mock(Schema.class);
@@ -199,7 +199,7 @@ public class ChangeEventTransformerDoFnTest {
 
   @Test
   public void testProcessElementWithCustomTransformationFilterEvent()
-      throws InvalidChangeEventException, TransformationException {
+      throws InvalidChangeEventException, InvalidTransformationException {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     Schema schema = mock(Schema.class);
@@ -248,7 +248,46 @@ public class ChangeEventTransformerDoFnTest {
         argument.getValue());
   }
 
-  // Test case for T exception
+  @Test
+  public void testProcessElementWithInvalidTransformationException()
+      throws InvalidChangeEventException, InvalidTransformationException {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    Schema schema = mock(Schema.class);
+    CustomTransformation customTransformation = mock(CustomTransformation.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    ISpannerMigrationTransformer spannerMigrationTransformer =
+        mock(ISpannerMigrationTransformer.class);
 
-  // Test case for invalid CE exception
+    // Create failsafe element input for the DoFn
+    ObjectNode changeEvent = mapper.createObjectNode();
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put("first_name", "Johnny");
+    changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(changeEvent.toString(), changeEvent.toString());
+
+    Map<String, Object> sourceRecord =
+        ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
+    MigrationTransformationRequest expectedRequest =
+        new MigrationTransformationRequest("Users", sourceRecord, "", "INSERT");
+
+    when(schema.isEmpty()).thenReturn(true);
+    when(processContextMock.element()).thenReturn(failsafeElement);
+    when(spannerMigrationTransformer.toSpannerRow(expectedRequest))
+        .thenThrow(new InvalidTransformationException("invalid transformation"));
+
+    ChangeEventTransformerDoFn changeEventTransformerDoFn =
+        ChangeEventTransformerDoFn.create(schema, null, "mysql", customTransformation);
+    changeEventTransformerDoFn.setMapper(mapper);
+    changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
+    changeEventTransformerDoFn.processElement(processContextMock);
+
+    ArgumentCaptor<FailsafeElement<String, String>> argument =
+        ArgumentCaptor.forClass(FailsafeElement.class);
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG), argument.capture());
+    assertEquals("invalid transformation", argument.getValue().getErrorMessage());
+  }
 }

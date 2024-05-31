@@ -15,31 +15,40 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.transformation;
 
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkState;
+
+import com.google.auto.value.AutoValue;
 import java.io.Serializable;
 
-public class CustomTransformation implements Serializable {
-  String jarPath;
-  String classPath;
+@AutoValue
+public abstract class CustomTransformation implements Serializable {
+  public abstract String jarPath();
 
-  String customParameters;
+  public abstract String classPath();
 
-  public CustomTransformation(String jarPath, String classPath, String customParameters) {
-    this.jarPath = jarPath;
-    this.classPath = classPath;
-    this.customParameters = customParameters;
+  public abstract String customParameters();
+
+  public static CustomTransformation.Builder builder(String jarPath, String classPath) {
+    return new AutoValue_CustomTransformation.Builder().setJarPath(jarPath).setClassPath(classPath);
   }
 
-  public CustomTransformation() {}
+  @AutoValue.Builder
+  public abstract static class Builder {
+    public abstract CustomTransformation.Builder setJarPath(String jarPath);
 
-  public String getJarPath() {
-    return jarPath;
-  }
+    public abstract CustomTransformation.Builder setClassPath(String classPath);
 
-  public String getClassPath() {
-    return classPath;
-  }
+    public abstract CustomTransformation.Builder setCustomParameters(String customParameters);
 
-  public String getCustomParameters() {
-    return customParameters;
+    abstract CustomTransformation autoBuild();
+
+    public CustomTransformation build() {
+
+      CustomTransformation customTransformation = autoBuild();
+      checkState(
+          (customTransformation.jarPath() != null) == (customTransformation.classPath() != null),
+          "Both jarPath and classPath must be set or both must be null.");
+      return customTransformation;
+    }
   }
 }

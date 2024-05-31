@@ -21,7 +21,7 @@ import static org.junit.Assert.assertEquals;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.teleport.v2.spanner.exceptions.TransformationException;
+import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import java.io.IOException;
 import java.util.HashMap;
@@ -80,7 +80,8 @@ public class ChangeEventToMapConvertorTest {
   }
 
   @Test
-  public void testTransformChangeEventViaCustomTransformation() throws TransformationException {
+  public void testTransformChangeEventViaCustomTransformation()
+      throws InvalidTransformationException {
     JSONObject changeEvent = getTestChangeEvent();
     JsonNode ce = parseChangeEvent(changeEvent.toString());
 
@@ -111,9 +112,9 @@ public class ChangeEventToMapConvertorTest {
     assertEquals(expectedEvent.get("byte_column").asText(), result.get("byte_column").asText());
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expected = InvalidTransformationException.class)
   public void testTransformChangeEventViaCustomTransformationUnsupportedType()
-      throws TransformationException {
+      throws InvalidTransformationException {
     JSONObject changeEvent = getTestChangeEvent();
     JsonNode ce = parseChangeEvent(changeEvent.toString());
 

@@ -15,16 +15,16 @@
  */
 package com.google.cloud.teleport.v2.spanner.exceptions;
 
-public class TransformationException extends Exception {
-  public TransformationException(Exception e) {
+public class InvalidTransformationException extends Exception {
+  public InvalidTransformationException(Exception e) {
     super(e);
   }
 
-  public TransformationException(String message) {
+  public InvalidTransformationException(String message) {
     super(message);
   }
 
-  public TransformationException(String message, Exception e) {
+  public InvalidTransformationException(String message, Exception e) {
     super(message, e);
   }
 }
