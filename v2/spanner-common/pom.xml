@@ -69,6 +69,8 @@
                         <exclude>**/*Exception.*</exclude>
                         <!-- Excluding auto-generated classes. -->
                         <exclude>**/*AutoValue_*</exclude>
+                        <exclude>**/CustomTransformationImplFetcher.*</exclude>
+                        <exclude>**/JarFileReader.*</exclude>
                     </excludes>
                 </configuration>
                 <executions>
