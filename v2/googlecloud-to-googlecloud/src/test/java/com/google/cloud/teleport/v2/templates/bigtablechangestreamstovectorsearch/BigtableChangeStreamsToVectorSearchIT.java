@@ -67,6 +67,7 @@ public final class BigtableChangeStreamsToVectorSearchIT extends TemplateTestBas
       LoggerFactory.getLogger(BigtableChangeStreamsToVectorSearchIT.class);
 
   private static final String TEST_ZONE = "us-central1-b";
+  private static final String PROJECT_NUMBER = "269744978479"; // cloud-teleport-testing
   private BigtableResourceManager bigtableResourceManager;
   private static VectorSearchResourceManager vectorSearchResourceManager;
 
@@ -144,20 +145,14 @@ public final class BigtableChangeStreamsToVectorSearchIT extends TemplateTestBas
 
   @BeforeClass
   public static void setupClass() throws Exception {
-    var projectNumber =
-        TestProperties.getProperty("projectNumber", "", TestProperties.Type.PROPERTY);
-
     vectorSearchResourceManager =
-        VectorSearchResourceManager.findOrCreateTestInfra(projectNumber, REGION);
+        VectorSearchResourceManager.findOrCreateTestInfra(PROJECT_NUMBER, REGION);
   }
 
   @Before
   public void setup() throws Exception {
     // REGION and PROJECT are available, but we need the project number, not its name
-    var projectNumber =
-        TestProperties.getProperty("projectNumber", "", TestProperties.Type.PROPERTY);
-
-    LOG.info("Have project number {}", projectNumber);
+    LOG.info("Have project number {}", PROJECT_NUMBER);
     LOG.info("Have project {}", PROJECT);
     LOG.info("Have region number {}", REGION);
 
