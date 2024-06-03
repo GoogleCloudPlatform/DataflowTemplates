@@ -16,12 +16,29 @@
 package com.google.cloud.teleport.v2.spanner.utils;
 
 import java.util.Map;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 
-@Data
-@AllArgsConstructor
 public class MigrationTransformationResponse {
-  Map<String, Object> responseRow;
-  boolean isEventFiltered;
+  private Map<String, Object> responseRow;
+  private boolean isEventFiltered;
+
+  public Map<String, Object> getResponseRow() {
+    return responseRow;
+  }
+
+  public void setResponseRow(Map<String, Object> responseRow) {
+    this.responseRow = responseRow;
+  }
+
+  public boolean isEventFiltered() {
+    return isEventFiltered;
+  }
+
+  public void setEventFiltered(boolean eventFiltered) {
+    isEventFiltered = eventFiltered;
+  }
+
+  public MigrationTransformationResponse(Map<String, Object> responseRow, boolean isEventFiltered) {
+    this.responseRow = responseRow;
+    this.isEventFiltered = isEventFiltered;
+  }
 }

@@ -19,6 +19,7 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 
 import com.google.auto.value.AutoValue;
 import java.io.Serializable;
+import javax.annotation.Nullable;
 import org.apache.parquet.Strings;
 
 @AutoValue
@@ -27,6 +28,7 @@ public abstract class CustomTransformation implements Serializable {
 
   public abstract String classPath();
 
+  @Nullable
   public abstract String customParameters();
 
   public static CustomTransformation.Builder builder(String jarPath, String classPath) {
