@@ -59,6 +59,8 @@ public interface KafkaReadOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 3,
       groupName = "Source",
+      parentName = "enableCommitOffsets",
+      parentTriggerValues = {"true"},
       optional = true,
       description = "Consumer Group ID",
       helpText =
