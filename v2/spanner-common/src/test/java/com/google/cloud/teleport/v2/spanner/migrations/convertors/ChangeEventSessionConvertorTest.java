@@ -85,7 +85,7 @@ public class ChangeEventSessionConvertorTest {
   public void transformChangeEventViaSessionFileNamesTest() {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, new TransformationContext(), "");
+        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("product_id", "A");
@@ -109,7 +109,7 @@ public class ChangeEventSessionConvertorTest {
   public void transformChangeEventViaSessionFileSynthPKTest() {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, new TransformationContext(), "");
+        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");
@@ -125,6 +125,30 @@ public class ChangeEventSessionConvertorTest {
     changeEventNew.put(Constants.EVENT_UUID_KEY, "abc-123");
     changeEventNew.put("synth_id", "abc-123");
     JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
+    assertEquals(expectedEvent, actualEvent);
+  }
+
+  @Test
+  public void transformChangeEventDataTest() throws Exception {
+    Schema schema = getSchemaObject();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", true);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("first_name", "A");
+    changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    JsonNode actualEvent =
+        changeEventSessionConvertor.transformChangeEventData(ce, databaseClient, getTestDdl());
+
+    changeEvent = new JSONObject();
+    changeEvent.put("first_name", "A");
+    changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.198136676310106}}");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    JsonNode expectedEvent = parseChangeEvent(changeEvent.toString());
+
     assertEquals(expectedEvent, actualEvent);
   }
 
@@ -274,11 +298,35 @@ public class ChangeEventSessionConvertorTest {
   }
 
   @Test
+  public void shardedConfigDataTest() throws Exception {
+    Schema schema = getSchemaObject();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", true);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("first_name", "A");
+    changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    JsonNode actualEvent =
+        changeEventSessionConvertor.transformChangeEventData(ce, databaseClient, getTestDdl());
+
+    changeEvent = new JSONObject();
+    changeEvent.put("first_name", "A");
+    changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.198136676310106}}");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    JsonNode expectedEvent = parseChangeEvent(changeEvent.toString());
+
+    assertEquals(expectedEvent, actualEvent);
+  }
+
+  @Test
   public void transformChangeEventViaShardedSessionFileTest() {
     Schema schema = getShardedSchemaObject();
     TransformationContext transformationContext = getTransformationContext();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, transformationContext, "mysql");
+        new ChangeEventSessionConvertor(schema, transformationContext, "mysql", false);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");

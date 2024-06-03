@@ -329,8 +329,22 @@ public class DataStreamToSpanner {
 
     void setDatastreamSourceType(String value);
 
-    @TemplateParameter.Enum(
+    @TemplateParameter.Boolean(
         order = 19,
+        optional = true,
+        description =
+            "If true, rounds the decimal values in json columns to a number that can be stored"
+                + " without loss of precision.",
+        helpText =
+            "This flag if set, rounds the decimal values in json columns to a number that can be"
+                + " stored without loss of precision.")
+    @Default.Boolean(false)
+    Boolean getRoundJsonDecimals();
+
+    void setRoundJsonDecimals(Boolean value);
+
+    @TemplateParameter.Enum(
+        order = 20,
         optional = true,
         description = "Run mode - currently supported are : regular or retryDLQ",
         enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
@@ -341,7 +355,7 @@ public class DataStreamToSpanner {
     void setRunMode(String value);
 
     @TemplateParameter.GcsReadFile(
-        order = 20,
+        order = 21,
         optional = true,
         helpText =
             "Transformation context file path in cloud storage used to populate data used in"
@@ -353,7 +367,7 @@ public class DataStreamToSpanner {
     void setTransformationContextFilePath(String value);
 
     @TemplateParameter.Integer(
-        order = 21,
+        order = 22,
         optional = true,
         description = "Directory watch duration in minutes. Default: 10 minutes",
         helpText =
@@ -368,7 +382,7 @@ public class DataStreamToSpanner {
     void setDirectoryWatchDurationInMinutes(Integer value);
 
     @TemplateParameter.Enum(
-        order = 22,
+        order = 23,
         enumOptions = {
           @TemplateEnumOption("LOW"),
           @TemplateEnumOption("MEDIUM"),
@@ -385,7 +399,7 @@ public class DataStreamToSpanner {
     void setSpannerPriority(RpcPriority value);
 
     @TemplateParameter.PubsubSubscription(
-        order = 23,
+        order = 24,
         optional = true,
         description =
             "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ"
@@ -400,7 +414,7 @@ public class DataStreamToSpanner {
     void setDlqGcsPubSubSubscription(String value);
 
     @TemplateParameter.GcsReadFile(
-        order = 24,
+        order = 25,
         optional = true,
         description = "Custom jar location in Cloud Storage",
         helpText =
@@ -412,7 +426,7 @@ public class DataStreamToSpanner {
     void setTransformationJarPath(String value);
 
     @TemplateParameter.Text(
-        order = 25,
+        order = 26,
         optional = true,
         description = "Custom class name",
         helpText =
@@ -424,7 +438,7 @@ public class DataStreamToSpanner {
     void setTransformationClassName(String value);
 
     @TemplateParameter.Text(
-        order = 26,
+        order = 27,
         optional = true,
         description = "Custom parameters for transformation",
         helpText =
@@ -435,7 +449,7 @@ public class DataStreamToSpanner {
     void setTransformationCustomParameters(String value);
 
     @TemplateParameter.Text(
-        order = 27,
+        order = 28,
         optional = true,
         description = "Filtered events directory",
         helpText =
@@ -624,12 +638,19 @@ public class DataStreamToSpanner {
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, transformationContext, options.getDatastreamSourceType(), customTransformation);
+            schema,
+            transformationContext,
+            options.getDatastreamSourceType(),
+            customTransformation,
+            options.getRoundJsonDecimals(),
+            ddlView,
+            spannerConfig);
 
     PCollectionTuple transformedRecords =
         jsonRecords.apply(
             "Apply Transformation to events",
             ParDo.of(changeEventTransformerDoFn)
+                .withSideInputs(ddlView)
                 .withOutputTags(
                     DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG,
                     TupleTagList.of(

@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSessionConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventToMapConvertor;
@@ -41,10 +42,13 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.Serializable;
 import java.util.Map;
 import javax.annotation.Nullable;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
@@ -66,6 +70,9 @@ public abstract class ChangeEventTransformerDoFn
   // ChangeEventSessionConvertor utility object.
   private ChangeEventSessionConvertor changeEventSessionConvertor;
 
+  /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
+  private transient SpannerAccessor spannerAccessor;
+
   @Nullable
   public abstract Schema schema();
 
@@ -76,6 +83,13 @@ public abstract class ChangeEventTransformerDoFn
 
   @Nullable
   public abstract CustomTransformation customTransformation();
+
+  @Nullable
+  public abstract Boolean roundJsonDecimals();
+
+  public abstract PCollectionView<Ddl> ddlView();
+
+  public abstract SpannerConfig spannerConfig();
 
   private final Counter processedEvents =
       Metrics.counter(ChangeEventTransformerDoFn.class, "Total events processed");
@@ -102,9 +116,18 @@ public abstract class ChangeEventTransformerDoFn
       Schema schema,
       TransformationContext transformationContext,
       String sourceType,
-      CustomTransformation customTransformation) {
+      CustomTransformation customTransformation,
+      Boolean roundJsonDecimals,
+      PCollectionView<Ddl> ddlView,
+      SpannerConfig spannerConfig) {
     return new AutoValue_ChangeEventTransformerDoFn(
-        schema, transformationContext, sourceType, customTransformation);
+        schema,
+        transformationContext,
+        sourceType,
+        customTransformation,
+        roundJsonDecimals,
+        ddlView,
+        spannerConfig);
   }
 
   /** Setup function connects to Cloud Spanner. */
@@ -115,14 +138,16 @@ public abstract class ChangeEventTransformerDoFn
     datastreamToSpannerTransformer =
         CustomTransformationImplFetcher.getCustomTransformationLogicImpl(customTransformation());
     changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema(), transformationContext(), sourceType());
+        new ChangeEventSessionConvertor(
+            schema(), transformationContext(), sourceType(), roundJsonDecimals());
+    spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig());
   }
 
   @ProcessElement
   public void processElement(ProcessContext c) {
     FailsafeElement<String, String> msg = c.element();
     processedEvents.inc();
-
+    Ddl ddl = c.sideInput(ddlView());
     try {
 
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
@@ -131,6 +156,10 @@ public abstract class ChangeEventTransformerDoFn
         schema().verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
         changeEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent);
       }
+
+      changeEvent =
+          changeEventSessionConvertor.transformChangeEventData(
+              changeEvent, spannerAccessor.getDatabaseClient(), ddl);
 
       // If custom jar is specified apply custom transformation to the change event
       if (datastreamToSpannerTransformer != null) {
@@ -219,5 +248,9 @@ public abstract class ChangeEventTransformerDoFn
   public void setDatastreamToSpannerTransformer(
       ISpannerMigrationTransformer datastreamToSpannerTransformer) {
     this.datastreamToSpannerTransformer = datastreamToSpannerTransformer;
+  }
+
+  public void setSpannerAccessor(SpannerAccessor spannerAccessor) {
+    this.spannerAccessor = spannerAccessor;
   }
 }

@@ -53,6 +53,8 @@ public class ChangeEventToMapConvertor {
         sourceRecord.put(key, value.asLong());
       } else if (value.isNull()) {
         sourceRecord.put(key, null);
+      } else {
+        throw new InvalidChangeEventException("Invalid datatype for column: " + key);
       }
     }
     return sourceRecord;

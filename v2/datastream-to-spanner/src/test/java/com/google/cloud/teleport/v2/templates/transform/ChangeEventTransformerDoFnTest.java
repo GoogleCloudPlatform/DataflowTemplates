@@ -17,7 +17,10 @@ package com.google.cloud.teleport.v2.templates.transform;
 
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_CHANGE_TYPE_KEY;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -25,12 +28,15 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSessionConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventToMapConvertor;
-import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
@@ -42,13 +48,16 @@ import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
 public class ChangeEventTransformerDoFnTest {
   @Test
-  public void testProcessElementWithNonEmptySchema() {
+  public void testProcessElementWithNonEmptySchema() throws Exception {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     Schema schema = mock(Schema.class);
@@ -56,6 +65,10 @@ public class ChangeEventTransformerDoFnTest {
     DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
     ChangeEventSessionConvertor changeEventSessionConvertor =
         mock(ChangeEventSessionConvertor.class);
+    PCollectionView<Ddl> ddl = mock(PCollectionView.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
@@ -73,13 +86,20 @@ public class ChangeEventTransformerDoFnTest {
 
     when(schema.isEmpty()).thenReturn(false);
     when(processContextMock.element()).thenReturn(failsafeElement);
-    when(changeEventSessionConvertor.transformChangeEventViaSessionFile(eq(changeEvent)))
+    when(changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent))
         .thenReturn(changeEvent2);
+    when(changeEventSessionConvertor.transformChangeEventData(
+            changeEvent2, databaseClientMock, null))
+        .thenReturn(changeEvent2);
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(processContextMock.sideInput(ddl)).thenReturn(null);
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
-        ChangeEventTransformerDoFn.create(schema, null, "mysql", customTransformation);
+        ChangeEventTransformerDoFn.create(
+            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
+    changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
     changeEventTransformerDoFn.processElement(processContextMock);
 
     ArgumentCaptor<FailsafeElement> argument = ArgumentCaptor.forClass(FailsafeElement.class);
@@ -91,8 +111,7 @@ public class ChangeEventTransformerDoFnTest {
   }
 
   @Test
-  public void testProcessElementWithCustomTransformation()
-      throws InvalidChangeEventException, InvalidTransformationException {
+  public void testProcessElementWithCustomTransformation() throws Exception {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     Schema schema = mock(Schema.class);
@@ -100,6 +119,12 @@ public class ChangeEventTransformerDoFnTest {
     DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
     ISpannerMigrationTransformer spannerMigrationTransformer =
         mock(ISpannerMigrationTransformer.class);
+    PCollectionView<Ddl> ddl = mock(PCollectionView.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        mock(ChangeEventSessionConvertor.class);
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
@@ -126,11 +151,18 @@ public class ChangeEventTransformerDoFnTest {
     when(processContextMock.element()).thenReturn(failsafeElement);
     when(spannerMigrationTransformer.toSpannerRow(expectedRequest))
         .thenReturn(migrationTransformationResponse);
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(changeEventSessionConvertor.transformChangeEventData(
+            changeEvent, databaseClientMock, null))
+        .thenReturn(changeEvent);
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
-        ChangeEventTransformerDoFn.create(schema, null, "mysql", customTransformation);
+        ChangeEventTransformerDoFn.create(
+            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
+    changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
+    changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
     changeEventTransformerDoFn.processElement(processContextMock);
 
     ArgumentCaptor<FailsafeElement> argument = ArgumentCaptor.forClass(FailsafeElement.class);
@@ -142,8 +174,7 @@ public class ChangeEventTransformerDoFnTest {
   }
 
   @Test
-  public void testProcessElementWithCustomTransformationAndShardId()
-      throws InvalidChangeEventException, InvalidTransformationException {
+  public void testProcessElementWithCustomTransformationAndShardId() throws Exception {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     Schema schema = mock(Schema.class);
@@ -151,6 +182,13 @@ public class ChangeEventTransformerDoFnTest {
     DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
     ISpannerMigrationTransformer spannerMigrationTransformer =
         mock(ISpannerMigrationTransformer.class);
+    PCollectionView<Ddl> ddl = mock(PCollectionView.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        mock(ChangeEventSessionConvertor.class);
+
     Map<String, String> schemaToShardId = new HashMap<>();
     schemaToShardId.put("db1", "shard1");
     TransformationContext transformationContext = new TransformationContext(schemaToShardId);
@@ -181,12 +219,24 @@ public class ChangeEventTransformerDoFnTest {
     when(processContextMock.element()).thenReturn(failsafeElement);
     when(spannerMigrationTransformer.toSpannerRow(expectedRequest))
         .thenReturn(migrationTransformationResponse);
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(changeEventSessionConvertor.transformChangeEventData(
+            changeEvent, databaseClientMock, null))
+        .thenReturn(changeEvent);
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, transformationContext, "mysql", customTransformation);
+            schema,
+            transformationContext,
+            "mysql",
+            customTransformation,
+            false,
+            ddl,
+            spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
+    changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
+    changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
     changeEventTransformerDoFn.processElement(processContextMock);
 
     ArgumentCaptor<FailsafeElement> argument = ArgumentCaptor.forClass(FailsafeElement.class);
@@ -198,8 +248,7 @@ public class ChangeEventTransformerDoFnTest {
   }
 
   @Test
-  public void testProcessElementWithCustomTransformationFilterEvent()
-      throws InvalidChangeEventException, InvalidTransformationException {
+  public void testProcessElementWithCustomTransformationFilterEvent() throws Exception {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     Schema schema = mock(Schema.class);
@@ -207,6 +256,12 @@ public class ChangeEventTransformerDoFnTest {
     DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
     ISpannerMigrationTransformer spannerMigrationTransformer =
         mock(ISpannerMigrationTransformer.class);
+    PCollectionView<Ddl> ddl = mock(PCollectionView.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        mock(ChangeEventSessionConvertor.class);
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
@@ -233,11 +288,18 @@ public class ChangeEventTransformerDoFnTest {
     when(processContextMock.element()).thenReturn(failsafeElement);
     when(spannerMigrationTransformer.toSpannerRow(expectedRequest))
         .thenReturn(migrationTransformationResponse);
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(changeEventSessionConvertor.transformChangeEventData(
+            changeEvent, databaseClientMock, null))
+        .thenReturn(changeEvent);
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
-        ChangeEventTransformerDoFn.create(schema, null, "mysql", customTransformation);
+        ChangeEventTransformerDoFn.create(
+            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
+    changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
+    changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
     changeEventTransformerDoFn.processElement(processContextMock);
 
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
@@ -249,8 +311,7 @@ public class ChangeEventTransformerDoFnTest {
   }
 
   @Test
-  public void testProcessElementWithInvalidTransformationException()
-      throws InvalidChangeEventException, InvalidTransformationException {
+  public void testProcessElementWithInvalidTransformationException() throws Exception {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     Schema schema = mock(Schema.class);
@@ -258,6 +319,12 @@ public class ChangeEventTransformerDoFnTest {
     DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
     ISpannerMigrationTransformer spannerMigrationTransformer =
         mock(ISpannerMigrationTransformer.class);
+    PCollectionView<Ddl> ddl = mock(PCollectionView.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        mock(ChangeEventSessionConvertor.class);
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
@@ -277,11 +344,18 @@ public class ChangeEventTransformerDoFnTest {
     when(processContextMock.element()).thenReturn(failsafeElement);
     when(spannerMigrationTransformer.toSpannerRow(expectedRequest))
         .thenThrow(new InvalidTransformationException("invalid transformation"));
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(changeEventSessionConvertor.transformChangeEventData(
+            changeEvent, databaseClientMock, null))
+        .thenReturn(changeEvent);
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
-        ChangeEventTransformerDoFn.create(schema, null, "mysql", customTransformation);
+        ChangeEventTransformerDoFn.create(
+            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
+    changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
+    changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
     changeEventTransformerDoFn.processElement(processContextMock);
 
     ArgumentCaptor<FailsafeElement<String, String>> argument =
@@ -289,5 +363,164 @@ public class ChangeEventTransformerDoFnTest {
     verify(processContextMock, times(1))
         .output(eq(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG), argument.capture());
     assertEquals("invalid transformation", argument.getValue().getErrorMessage());
+  }
+
+  @Test
+  public void testProcessElementWithDroppedTableException() throws DroppedTableException {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    Schema schema = mock(Schema.class);
+    CustomTransformation customTransformation = mock(CustomTransformation.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    PCollectionView<Ddl> ddl = mock(PCollectionView.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+
+    // Create failsafe element input for the DoFn
+    ObjectNode changeEvent = mapper.createObjectNode();
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put("first_name", "Johnny");
+    changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(changeEvent.toString(), changeEvent.toString());
+
+    when(schema.isEmpty()).thenReturn(false);
+    doThrow(new DroppedTableException("Cannot find entry for Users"))
+        .when(schema)
+        .verifyTableInSession("Users");
+    when(processContextMock.element()).thenReturn(failsafeElement);
+
+    ChangeEventTransformerDoFn changeEventTransformerDoFn =
+        ChangeEventTransformerDoFn.create(
+            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
+    changeEventTransformerDoFn.setMapper(mapper);
+    changeEventTransformerDoFn.processElement(processContextMock);
+    verify(processContextMock, times(0)).output(any());
+  }
+
+  @Test
+  public void testProcessElementWithIllegalArgumentException() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    Schema schema = mock(Schema.class);
+    CustomTransformation customTransformation = mock(CustomTransformation.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    PCollectionView<Ddl> ddl = mock(PCollectionView.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        mock(ChangeEventSessionConvertor.class);
+
+    // Create failsafe element input for the DoFn
+    ObjectNode changeEvent = mapper.createObjectNode();
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put("first_name", "Johnny");
+    changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(changeEvent.toString(), changeEvent.toString());
+
+    when(schema.isEmpty()).thenReturn(false);
+    doThrow(
+            new IllegalArgumentException(
+                "Missing entry for Users in srcToId map, provide a valid session file."))
+        .when(schema)
+        .verifyTableInSession("Users");
+    when(processContextMock.element()).thenReturn(failsafeElement);
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(changeEventSessionConvertor.transformChangeEventData(
+            changeEvent, databaseClientMock, null))
+        .thenReturn(changeEvent);
+
+    ChangeEventTransformerDoFn changeEventTransformerDoFn =
+        ChangeEventTransformerDoFn.create(
+            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
+    changeEventTransformerDoFn.setMapper(mapper);
+    changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
+    changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
+    changeEventTransformerDoFn.processElement(processContextMock);
+    ArgumentCaptor<FailsafeElement<String, String>> argument =
+        ArgumentCaptor.forClass(FailsafeElement.class);
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG), argument.capture());
+    assertEquals(
+        "Missing entry for Users in srcToId map, provide a valid session file.",
+        argument.getValue().getErrorMessage());
+  }
+
+  @Test
+  public void testProcessElementWithException() {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    Schema schema = mock(Schema.class);
+    CustomTransformation customTransformation = mock(CustomTransformation.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    PCollectionView<Ddl> ddl = mock(PCollectionView.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+
+    String invalidJson = "{\"column\": {\"nestedColumn\": {\"invalidDatatype\":}}}";
+    FailsafeElement<String, String> failsafeElement = FailsafeElement.of(invalidJson, invalidJson);
+
+    when(schema.isEmpty()).thenReturn(true);
+    when(processContextMock.element()).thenReturn(failsafeElement);
+
+    ChangeEventTransformerDoFn changeEventTransformerDoFn =
+        ChangeEventTransformerDoFn.create(
+            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
+    changeEventTransformerDoFn.setMapper(mapper);
+    changeEventTransformerDoFn.processElement(processContextMock);
+
+    ArgumentCaptor<FailsafeElement<String, String>> argument =
+        ArgumentCaptor.forClass(FailsafeElement.class);
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG), argument.capture());
+    assertNotNull(argument.getValue().getErrorMessage());
+  }
+
+  @Test
+  public void testProcessElementWithInvalidChangeEventException() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    Schema schema = mock(Schema.class);
+    CustomTransformation customTransformation = mock(CustomTransformation.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    ISpannerMigrationTransformer spannerMigrationTransformer =
+        mock(ISpannerMigrationTransformer.class);
+    PCollectionView<Ddl> ddl = mock(PCollectionView.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        mock(ChangeEventSessionConvertor.class);
+
+    ObjectNode invalidArrayNode = mapper.createObjectNode();
+    ArrayNode invalidArray = invalidArrayNode.putArray("invalidKey");
+    invalidArray.add("not a number");
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(invalidArrayNode.toString(), invalidArrayNode.toString());
+
+    when(schema.isEmpty()).thenReturn(true);
+    when(processContextMock.element()).thenReturn(failsafeElement);
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(changeEventSessionConvertor.transformChangeEventData(
+            invalidArrayNode, databaseClientMock, null))
+        .thenReturn(invalidArrayNode);
+
+    ChangeEventTransformerDoFn changeEventTransformerDoFn =
+        ChangeEventTransformerDoFn.create(
+            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
+    changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
+    changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
+    changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
+    changeEventTransformerDoFn.setMapper(mapper);
+
+    changeEventTransformerDoFn.processElement(processContextMock);
+    ArgumentCaptor<FailsafeElement<String, String>> argument =
+        ArgumentCaptor.forClass(FailsafeElement.class);
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG), argument.capture());
+    assertEquals(
+        "Invalid byte array value for column: invalidKey", argument.getValue().getErrorMessage());
   }
 }
