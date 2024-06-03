@@ -16,7 +16,8 @@
 package com.google.cloud.teleport.v2.kafka.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParamters;
+import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters.MessageFormatConstants;
+import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters.SchemaFormat;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 
@@ -26,16 +27,14 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       name = "messageFormat",
       groupName = "Source",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption(
-            KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT),
-        @TemplateParameter.TemplateEnumOption(
-            KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING),
-        @TemplateParameter.TemplateEnumOption(KafkaTemplateParamters.MessageFormatConstants.JSON)
+        @TemplateParameter.TemplateEnumOption(MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT),
+        @TemplateParameter.TemplateEnumOption(MessageFormatConstants.AVRO_BINARY_ENCODING),
+        @TemplateParameter.TemplateEnumOption(MessageFormatConstants.JSON)
       },
       description = "Kafka Message Format",
       helpText =
           "The format of the Kafka messages to read. The supported values are AVRO_CONFLUENT_WIRE_FORMAT (Confluent Schema Registry encoded Avro), AVRO_BINARY_ENCODING (Plain binary Avro), and JSON.")
-  @Default.String(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
+  @Default.String(MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
   String getMessageFormat();
 
   void setMessageFormat(String value);
@@ -45,20 +44,18 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       name = "schemaFormat",
       groupName = "Source",
       parentName = "messageFormat",
-      parentTriggerValues = {
-        KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT
-      },
+      parentTriggerValues = {MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT},
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption(KafkaTemplateParamters.SchemaFormat.SCHEMA_REGISTRY),
-        @TemplateParameter.TemplateEnumOption(
-            KafkaTemplateParamters.SchemaFormat.SINGLE_SCHEMA_FILE),
+        @TemplateParameter.TemplateEnumOption(SchemaFormat.SCHEMA_REGISTRY),
+        @TemplateParameter.TemplateEnumOption(SchemaFormat.SINGLE_SCHEMA_FILE),
       },
       description = "Schema Source",
+      optional = true,
       helpText =
           "The Kafka schema format. Can be provided as SINGLE_SCHEMA_FILE or SCHEMA_REGISTRY. "
               + "If SINGLE_SCHEMA_FILE is specified, all messages should have the schema mentioned in the avro schema file. "
               + "If SCHEMA_REGISTRY is specified, the messages can have either a single schema or multiple schemas.")
-  @Default.String(KafkaTemplateParamters.SchemaFormat.SINGLE_SCHEMA_FILE)
+  @Default.String(SchemaFormat.SINGLE_SCHEMA_FILE)
   String getSchemaFormat();
 
   void setSchemaFormat(String value);
@@ -67,7 +64,7 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       order = 3,
       groupName = "Source",
       parentName = "schemaFormat",
-      parentTriggerValues = {KafkaTemplateParamters.SchemaFormat.SINGLE_SCHEMA_FILE},
+      parentTriggerValues = {SchemaFormat.SINGLE_SCHEMA_FILE},
       description = "Cloud Storage path to the Avro schema file",
       optional = true,
       helpText =
@@ -82,7 +79,7 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       order = 4,
       groupName = "Source",
       parentName = "schemaFormat",
-      parentTriggerValues = {KafkaTemplateParamters.SchemaFormat.SCHEMA_REGISTRY},
+      parentTriggerValues = {SchemaFormat.SCHEMA_REGISTRY},
       description = "Schema Registry Connection URL",
       optional = true,
       helpText =
@@ -97,7 +94,7 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       order = 5,
       groupName = "Source",
       parentName = "messageFormat",
-      parentTriggerValues = {KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING},
+      parentTriggerValues = {MessageFormatConstants.AVRO_BINARY_ENCODING},
       description = "Cloud Storage path to the Avro schema file",
       optional = true,
       helpText =

@@ -23,7 +23,6 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaConfig;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
-import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParamters;
 import com.google.cloud.teleport.v2.options.KafkaToBigQueryFlexOptions;
 import com.google.cloud.teleport.v2.transforms.AvroDynamicTransform;
 import com.google.cloud.teleport.v2.transforms.AvroTransform;
@@ -204,16 +203,12 @@ public class KafkaToBigQueryFlex {
      */
 
     if (options.getMessageFormat() == null
-        || options.getMessageFormat().equals(KafkaTemplateParamters.MessageFormatConstants.JSON)) {
+        || options.getMessageFormat().equals(MessageFormatConstants.JSON)) {
 
       return runJsonPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
 
-    } else if (options
-            .getMessageFormat()
-            .equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
-        || options
-            .getMessageFormat()
-            .equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING)) {
+    } else if (options.getMessageFormat().equals(MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
+        || options.getMessageFormat().equals(MessageFormatConstants.AVRO_BINARY_ENCODING)) {
       return runAvroPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
 
     } else {
@@ -228,16 +223,12 @@ public class KafkaToBigQueryFlex {
       String bootstrapServers,
       Map<String, Object> kafkaConfig) {
 
-    if (options
-            .getMessageFormat()
-            .equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING)
+    if (options.getMessageFormat().equals(MessageFormatConstants.AVRO_BINARY_ENCODING)
         && options.getBinaryAvroSchemaPath() == null) {
       throw new IllegalArgumentException(
           "Avro schema is needed in order to read non confluent wire format messages.");
     }
-    if (options
-            .getMessageFormat()
-            .equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
+    if (options.getMessageFormat().equals(MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
         && options.getSchemaRegistryConnectionUrl() == null
         && options.getConfluentAvroSchemaPath() == null) {
       throw new IllegalArgumentException(
@@ -260,9 +251,7 @@ public class KafkaToBigQueryFlex {
 
     WriteResult writeResult = null;
 
-    if (options
-            .getMessageFormat()
-            .equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING)
+    if (options.getMessageFormat().equals(MessageFormatConstants.AVRO_BINARY_ENCODING)
         && options.getBinaryAvroSchemaPath() != null) {
       writeResult =
           kafkaRecords.apply(
@@ -279,15 +268,11 @@ public class KafkaToBigQueryFlex {
                   options.getPersistKafkaKey(),
                   options.getUseAutoSharding()));
 
-    } else if (options
-            .getMessageFormat()
-            .equals(KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
+    } else if (options.getMessageFormat().equals(MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
         && (options.getSchemaRegistryConnectionUrl() != null
             || options.getConfluentAvroSchemaPath() != null)) {
 
-      if (options
-          .getSchemaFormat()
-          .equals(KafkaTemplateParamters.SchemaFormat.SINGLE_SCHEMA_FILE)) {
+      if (options.getSchemaFormat().equals(SchemaFormat.SINGLE_SCHEMA_FILE)) {
 
         if (options.getConfluentAvroSchemaPath() != null && options.getOutputTableSpec() == null) {
           throw new IllegalArgumentException(
@@ -310,9 +295,7 @@ public class KafkaToBigQueryFlex {
                       options.getPersistKafkaKey(),
                       options.getUseAutoSharding()));
         }
-      } else if (options
-          .getSchemaFormat()
-          .equals(KafkaTemplateParamters.SchemaFormat.SCHEMA_REGISTRY)) {
+      } else if (options.getSchemaFormat().equals(SchemaFormat.SCHEMA_REGISTRY)) {
 
         if (options.getSchemaRegistryConnectionUrl() != null
             && options.getOutputDataset() == null) {

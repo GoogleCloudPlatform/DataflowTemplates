@@ -103,7 +103,7 @@ public interface KafkaReadOptions extends PipelineOptions {
               + "Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, "
               + "and TLS for certificate-based authentication. "
               + "Apache Kafka for BigQuery only supports the SASL_PLAIN authentication mode.")
-  @Default.String("NONE")
+  @Default.String(KafkaAuthenticationMethod.SASL_PLAIN)
   String getKafkaReadAuthenticationMode();
 
   void setKafkaReadAuthenticationMode(String value);

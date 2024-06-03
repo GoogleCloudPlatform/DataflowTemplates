@@ -19,7 +19,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParamters;
 import com.google.common.io.Resources;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
@@ -83,17 +82,13 @@ public class KafkaToGcsIT extends TemplateTestBase {
 
   @Test
   public void testKafkaToGcsText() throws IOException, RestClientException {
-    baseKafkaToGcs(
-        b -> b.addParameter("messageFormat", KafkaTemplateParamters.MessageFormatConstants.JSON));
+    baseKafkaToGcs(b -> b.addParameter("messageFormat", MessageFormatConstants.JSON));
   }
 
   @Test
   public void testKafkaToGcsAvro() throws IOException, RestClientException {
     baseKafkaToGcs(
-        b ->
-            b.addParameter(
-                "messageFormat",
-                KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT));
+        b -> b.addParameter("messageFormat", MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT));
   }
 
   private void baseKafkaToGcs(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
