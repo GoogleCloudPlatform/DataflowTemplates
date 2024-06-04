@@ -8,7 +8,7 @@ list of scenarios which are not yet supported.
 to be implemented going forward
 * Tables with non integer keys
 * Support for additional sources
-* Support for tables with foreign keys
+* Support for tables with foreign keys and interleaving
 * Migrating sharded databases
 
 ## Getting Started

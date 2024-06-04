@@ -121,72 +121,53 @@ need valid resources for the required parameters.
 Provided that, the following command line can be used:
 
 ```shell
-# Adding timestamp just allows the name to be unique across multiple runs
-JOB_NAME="<job-name>-`date +'%Y-%m-%d-%H-%M-%S-%N'`"
-TEMPLATE_NAME="Sourcedb_to_Spanner_Flex"
-PROJECT="<GCP-PROJECT-NAME>"
+export PROJECT=<my-project>
+export BUCKET_NAME=<bucket-name>
+export REGION=us-central1
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Sourcedb_to_Spanner_Flex"
 
-# Note this changes the default project of your bash session.
-gcloud config set project $PROJECT
+### Required
+export SOURCE_DB_URL=<sourceDbURL>
+export INSTANCE_ID=<instanceId>
+export DATABASE_ID=<databaseId>
+export PROJECT_ID=<projectId>
+export DLQDIRECTORY=<DLQDirectory>
 
-# Below are GCS paths, they could be in same bucket separated by folders.
-TEMPLATE_BUCKET_NAME="<GCS_BUCKET_WHERE_TEMPLATE_IS_BUILT>"
-TEMPLATE_PATH="${TEMPLATE_BUCKET_NAME}/templates/flex/${TEMPLATE_NAME}"
-DLQ_DIRECTORY="<GCS_PATH_FOR_DLQ>"
+### Optional
+export JDBC_DRIVER_JARS=""
+export JDBC_DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
+export USERNAME=""
+export PASSWORD=""
+export TABLES=""
+export NUM_PARTITIONS=0
+export SPANNER_HOST=https://batch-spanner.googleapis.com
+export MAX_CONNECTIONS=0
+export SESSION_FILE_PATH=""
+export DISABLED_ALGORITHMS=<disabledAlgorithms>
+export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
+export DEFAULT_LOG_LEVEL=INFO
 
-# Source Parameters
-SRC_USER_ID="<SOURCE_DB_USER_ID>"
-SRC_PWD="<SOURCE_PASSWORD>"
-SRC_IP="<SOURCE_ID>"
-SOURCE_HOST="${SRC_IP}"
-SOURCE_PORT="3306"
-SOURCE_DB="<NAME_OF_SOURCE_DB>"
-
-# Spanner details
-SPANNER_INSTANCE_ID="<SPANNER_INSTANCE_ID>"
-SPANNER_DB_ID="<SPANNER_DB_ID>"
-
-
-# Dataflow Parameters
-WORKER_REGION="<REGION_TO_SPAWN_DATAFLOW_WORKERS like us-central1>"
-NETWORK="<VPC network to spawn dataflow workers>"
-SUBNETWORK="regions/${WORKER_REGION}/subnetworks/<SUBNET_NAME>"
-
-# Typical Configuration for dataflow scaling, please change as per load
-MAX_WORKERS=10
-NUM_WORKERS=10
-WORKER_MACHINE_TYPE="n1-highmem-32"
-# Override NUM_PARTITIONS for tall tables.
-# NUM_PARTITIONS="4000"
-
-set -x;
-date
-curl -H 'Content-type: application/json' -H "Authorization: Bearer $(gcloud auth print-access-token)" -XPOST "https://dataflow.googleapis.com/v1b3/projects/${PROJECT}/locations/${WORKER_REGION}/flexTemplates:launch" -d"{
-  \"launch_parameter\": {
-    \"jobName\": \"${JOB_NAME}\",
-    \"containerSpecGcsPath\": \"${TEMPLATE_PATH}\",
-    \"parameters\": {
-      \"sourceDbURL\":\"jdbc:mysql://${SOURCE_IP}:${SOURCE_PORT}/${SOURCE_DB}\",
-      \"username\": \"${SRC_USER_ID}\",
-      \"password\": \"${SRC_PWD}\",
-      \"instanceId\": \"${SPANNER_INSTANCE_ID}\",
-      \"databaseId\": \"${SPANNER_DB_ID}\",
-      \"projectId\": \"${PROJECT}\",
-      \"spannerHost\": \"https://batch-spanner.googleapis.com\",
-      \"workerMachineType\": \"${WORKER_MACHINE_TYPE}\",
-      \"DLQDirectory\":\"${DLQ_DIRECTORY}\",
-    },
-    \"environment\": {
-      \"maxWorkers\": \"${MAX_WORKERS}\",
-      \"numWorkers\": \"${NUM_WORKERS}\",
-      \"subnetwork\": \"${SUBNETWORK}\",
-      \"network\": \"${NETWORK}\",
-      \"workerRegion\": \"${WORKER_REGION}\",
-      \"additionalExperiments\": [\"disable_runner_v2\"],
-      \"additionalUserLabels\": {}
-    }
-  }
-}"
+gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
+  --project "$PROJECT" \
+  --region "$REGION" \
+  --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --parameters "jdbcDriverJars=$JDBC_DRIVER_JARS" \
+  --parameters "jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME" \
+  --parameters "sourceDbURL=$SOURCE_DB_URL" \
+  --parameters "username=$USERNAME" \
+  --parameters "password=$PASSWORD" \
+  --parameters "tables=$TABLES" \
+  --parameters "numPartitions=$NUM_PARTITIONS" \
+  --parameters "instanceId=$INSTANCE_ID" \
+  --parameters "databaseId=$DATABASE_ID" \
+  --parameters "projectId=$PROJECT_ID" \
+  --parameters "spannerHost=$SPANNER_HOST" \
+  --parameters "maxConnections=$MAX_CONNECTIONS" \
+  --parameters "sessionFilePath=$SESSION_FILE_PATH" \
+  --parameters "DLQDirectory=$DLQDIRECTORY" \
+  --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
+  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+  --parameters "defaultLogLevel=$DEFAULT_LOG_LEVEL"
 ```
 
 For more information about the command, please check:
@@ -200,35 +181,30 @@ and run the template in a single command. This may be useful for testing when
 changing the templates.
 
 ```shell
-# Below are GCS paths, they could be in same bucket separated by folders.
-TEMPLATE_BUCKET_NAME="<GCS_BUCKET_WHERE_TEMPLATE_IS_BUILT>"
-TEMPLATE_PATH="${TEMPLATE_BUCKET_NAME}/templates/flex/${TEMPLATE_NAME}"
-DLQ_DIRECTORY="<GCS_PATH_FOR_DLQ>"
+export PROJECT=<my-project>
+export BUCKET_NAME=<bucket-name>
+export REGION=us-central1
 
-# Source Parameters
-SRC_USER_ID="<SOURCE_DB_USER_ID>"
-SRC_PWD="<SOURCE_PASSWORD>"
-SRC_IP="<SOURCE_ID>"
-SOURCE_HOST="${SRC_IP}"
-SOURCE_PORT="3306"
-SOURCE_DB="<NAME_OF_SOURCE_DB>"
+### Required
+export SOURCE_DB_URL=<sourceDbURL>
+export INSTANCE_ID=<instanceId>
+export DATABASE_ID=<databaseId>
+export PROJECT_ID=<projectId>
+export DLQDIRECTORY=<DLQDirectory>
 
-# Spanner details
-SPANNER_INSTANCE_ID="<SPANNER_INSTANCE_ID>"
-SPANNER_DB_ID="<SPANNER_DB_ID>"
-
-
-# Dataflow Parameters
-WORKER_REGION="<REGION_TO_SPAWN_DATAFLOW_WORKERS like us-central1>"
-NETWORK="<VPC network to spawn dataflow workers>"
-SUBNETWORK="regions/${WORKER_REGION}/subnetworks/<SUBNET_NAME>"
-
-# Typical Configuration for dataflow scaling, please change as per load
-MAX_WORKERS=10
-NUM_WORKERS=10
-WORKER_MACHINE_TYPE="n1-highmem-32"
-# Override NUM_PARTITIONS for tall tables.
-# NUM_PARTITIONS="4000"
+### Optional
+export JDBC_DRIVER_JARS=""
+export JDBC_DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
+export USERNAME=""
+export PASSWORD=""
+export TABLES=""
+export NUM_PARTITIONS=0
+export SPANNER_HOST=https://batch-spanner.googleapis.com
+export MAX_CONNECTIONS=0
+export SESSION_FILE_PATH=""
+export DISABLED_ALGORITHMS=<disabledAlgorithms>
+export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
+export DEFAULT_LOG_LEVEL=INFO
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -237,9 +213,8 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters=sourceDbURL="jdbc:mysql://0.0.0.0:3306/<mysql_db_name>",username=<mysql user>,password=<mysql pass>,instanceId="<spanner instanceid>",databaseId="<spanner_database_id>",projectId="$PROJECT",DLQDirectory=gs://<gcs-dir> --additional-experiments=disable_runner_v2 \
--pl v2/sourcedb-to-spanner \
--am
+-Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceDbURL=$SOURCE_DB_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,DLQDirectory=$DLQDIRECTORY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,defaultLogLevel=$DEFAULT_LOG_LEVEL" \
+-f v2/sourcedb-to-spanner
 ```
 
 ## Terraform
