@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConsta
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.refEq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -149,7 +150,7 @@ public class ChangeEventTransformerDoFnTest {
 
     when(schema.isEmpty()).thenReturn(true);
     when(processContextMock.element()).thenReturn(failsafeElement);
-    when(spannerMigrationTransformer.toSpannerRow(expectedRequest))
+    when(spannerMigrationTransformer.toSpannerRow(refEq(expectedRequest)))
         .thenReturn(migrationTransformationResponse);
     when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
     when(changeEventSessionConvertor.transformChangeEventData(
@@ -217,7 +218,7 @@ public class ChangeEventTransformerDoFnTest {
 
     when(schema.isEmpty()).thenReturn(true);
     when(processContextMock.element()).thenReturn(failsafeElement);
-    when(spannerMigrationTransformer.toSpannerRow(expectedRequest))
+    when(spannerMigrationTransformer.toSpannerRow(refEq(expectedRequest)))
         .thenReturn(migrationTransformationResponse);
     when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
     when(changeEventSessionConvertor.transformChangeEventData(
@@ -286,7 +287,7 @@ public class ChangeEventTransformerDoFnTest {
 
     when(schema.isEmpty()).thenReturn(true);
     when(processContextMock.element()).thenReturn(failsafeElement);
-    when(spannerMigrationTransformer.toSpannerRow(expectedRequest))
+    when(spannerMigrationTransformer.toSpannerRow(refEq(expectedRequest)))
         .thenReturn(migrationTransformationResponse);
     when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
     when(changeEventSessionConvertor.transformChangeEventData(
@@ -342,8 +343,8 @@ public class ChangeEventTransformerDoFnTest {
 
     when(schema.isEmpty()).thenReturn(true);
     when(processContextMock.element()).thenReturn(failsafeElement);
-    when(spannerMigrationTransformer.toSpannerRow(expectedRequest))
-        .thenThrow(new InvalidTransformationException("invalid transformation"));
+    doThrow(new InvalidTransformationException("invalid transformation")).when(spannerMigrationTransformer).toSpannerRow(refEq(expectedRequest));
+
     when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
     when(changeEventSessionConvertor.transformChangeEventData(
             changeEvent, databaseClientMock, null))
