@@ -16,23 +16,11 @@
 package com.google.cloud.teleport.v2.templates.utils;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader;
 import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
-import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.util.MimeTypes;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Splitter;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.ByteStreams;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.Files;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -79,7 +67,7 @@ public class ShardingLogicImplFetcher {
         Instant startTime = Instant.now();
 
         // Getting the jar URL which contains target class
-        URL[] classLoaderUrls = saveFilesLocally(customJarPath);
+        URL[] classLoaderUrls = JarFileReader.saveFilesLocally(customJarPath);
 
         // Create a new URLClassLoader
         URLClassLoader urlClassLoader = new URLClassLoader(classLoaderUrls);
@@ -108,37 +96,5 @@ public class ShardingLogicImplFetcher {
     // else return the core implementation
     ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schema, skipDirName);
     return shardIdFetcher;
-  }
-
-  private static URL[] saveFilesLocally(String driverJars) {
-    List<String> listOfJarPaths = Splitter.on(',').trimResults().splitToList(driverJars);
-
-    final String destRoot = Files.createTempDir().getAbsolutePath();
-    List<URL> driverJarUrls = new ArrayList<>();
-    listOfJarPaths.stream()
-        .forEach(
-            jarPath -> {
-              try {
-                ResourceId sourceResourceId = FileSystems.matchNewResource(jarPath, false);
-                @SuppressWarnings("nullness")
-                File destFile = Paths.get(destRoot, sourceResourceId.getFilename()).toFile();
-                ResourceId destResourceId =
-                    FileSystems.matchNewResource(destFile.getAbsolutePath(), false);
-                copy(sourceResourceId, destResourceId);
-                LOG.info("Localized jar: " + sourceResourceId + " to: " + destResourceId);
-                driverJarUrls.add(destFile.toURI().toURL());
-              } catch (IOException e) {
-                LOG.warn("Unable to copy " + jarPath, e);
-              }
-            });
-    return driverJarUrls.stream().toArray(URL[]::new);
-  }
-
-  private static void copy(ResourceId source, ResourceId dest) throws IOException {
-    try (ReadableByteChannel rbc = FileSystems.open(source)) {
-      try (WritableByteChannel wbc = FileSystems.create(dest, MimeTypes.BINARY)) {
-        ByteStreams.copy(rbc, wbc);
-      }
-    }
   }
 }
