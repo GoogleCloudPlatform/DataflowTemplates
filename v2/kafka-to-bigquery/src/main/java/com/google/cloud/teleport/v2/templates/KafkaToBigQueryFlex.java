@@ -108,8 +108,8 @@ import org.slf4j.LoggerFactory;
       "keystoreLocation",
       "sourceSSL",
       "sourceTruststorePassword",
+      "sourceKey",
       "sourceKeystorePassword",
-      "sourceKey"
     })
 public class KafkaToBigQueryFlex {
 
