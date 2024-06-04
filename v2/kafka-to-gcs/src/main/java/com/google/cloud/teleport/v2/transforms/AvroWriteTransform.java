@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
-import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParamters;
+import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters.MessageFormatConstants;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
@@ -81,8 +81,7 @@ public abstract class AvroWriteTransform
   public WriteFilesResult<AvroDestination> expand(
       PCollection<KafkaRecord<byte[], byte[]>> records) {
     String inputWireFormat = messageFormat();
-    if (inputWireFormat.equals(
-        KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)) {
+    if (inputWireFormat.equals(MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)) {
       String schemaRegistryURL = schemaRegistryURL();
       String schemaPath = schemaPath();
       assert schemaRegistryURL != null;
@@ -100,8 +99,7 @@ public abstract class AvroWriteTransform
       PCollection<GenericRecord> genericRecords =
           records.apply(ParDo.of(convertToBytes)).setCoder(GenericRecordCoder.of());
       return writeToGCS(genericRecords);
-    } else if (inputWireFormat.equals(
-        KafkaTemplateParamters.MessageFormatConstants.AVRO_BINARY_ENCODING)) {
+    } else if (inputWireFormat.equals(MessageFormatConstants.AVRO_BINARY_ENCODING)) {
       throw new UnsupportedOperationException(
           String.format("%s is not supported", inputWireFormat));
     } else {

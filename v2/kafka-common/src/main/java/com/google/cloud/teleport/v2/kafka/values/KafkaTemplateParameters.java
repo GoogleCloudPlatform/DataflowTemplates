@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.kafka.values;
 
-public class KafkaTemplateParamters {
+public class KafkaTemplateParameters {
   public static class MessageFormatConstants {
     /**
      * Represents messages serialized in the Confluent wire format.

@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParamters;
+import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters.MessageFormatConstants;
 import com.google.cloud.teleport.v2.templates.KafkaToGcsFlex;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -38,7 +38,7 @@ public abstract class WriteTransform
     POutput pOutput = null;
     String outputFileFormat = options().getMessageFormat();
 
-    if (outputFileFormat.equals(KafkaTemplateParamters.MessageFormatConstants.JSON)) {
+    if (outputFileFormat.equals(MessageFormatConstants.JSON)) {
       pOutput =
           kafkaRecord.apply(
               JsonWriteTransform.newBuilder()
@@ -48,8 +48,7 @@ public abstract class WriteTransform
                   .setWindowDuration(options().getWindowDuration())
                   .setTempDirectory(options().getTempLocation())
                   .build());
-    } else if (outputFileFormat.equals(
-        KafkaTemplateParamters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)) {
+    } else if (outputFileFormat.equals(MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)) {
       pOutput =
           kafkaRecord.apply(
               AvroWriteTransform.newBuilder()
