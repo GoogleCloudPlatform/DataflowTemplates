@@ -21,6 +21,8 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.M
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider.MysqlJdbcValueMappings;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
+import com.google.common.collect.ImmutableList;
+import java.util.Calendar;
 import org.apache.beam.sdk.util.FluentBackoff;
 
 // TODO: Fine-tune the defaults based on benchmarking.
@@ -53,6 +55,25 @@ public class MySqlConfigDefaults {
 
   public static final long DEFAULT_MYSQL_RECONNECT_ATTEMPTS = 10L;
   public static final FluentBackoff DEFAULT_MYSQL_SCHEMA_DISCOVERY_BACKOFF = FluentBackoff.DEFAULT;
+
+  /**
+   * Default Initialization Sequence for the JDBC connection.
+   *
+   * <p>
+   *
+   * <ol>
+   *   <li>Session Timezone: session time zone is set to UTC to always retrieve timestamp in UTC.
+   *       The most idomatic way to achieve this via jdbc would be to pass a {@link Calendar} object
+   *       initialized to UTC to {@link java.sql.ResultSet#getTimestamp(String, Calendar)} api
+   *       (which is what we do in {@link MysqlJdbcValueMappings}), but due to bugs like <a
+   *       href="https://bugs.mysql.com/bug.php?id=95644">Bug#95644</a>, <a
+   *       href="https://bugs.mysql.com/bug.php?id=96276">Bug#96276</a>, <a
+   *       href="https://bugs.mysql.com/bug.php?id=93444">Bug#93444</a>, etc. in the older drivers,
+   *       we are also setting the session timezone to UTC.
+   * </ol>
+   */
+  public static final ImmutableList<String> DEFAULT_MYSQL_INIT_SEQ =
+      ImmutableList.of("SET TIME_ZONE = 'UTC'");
 
   private MySqlConfigDefaults() {}
 }
