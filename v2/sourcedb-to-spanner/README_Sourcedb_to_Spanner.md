@@ -121,49 +121,72 @@ need valid resources for the required parameters.
 Provided that, the following command line can be used:
 
 ```shell
-export PROJECT=<my-project>
-export BUCKET_NAME=<bucket-name>
-export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Sourcedb_to_Spanner_Flex"
+# Adding timestamp just allows the name to be unique across multiple runs
+JOB_NAME="<job-name>-`date +'%Y-%m-%d-%H-%M-%S-%N'`"
+TEMPLATE_NAME="Sourcedb_to_Spanner_Flex"
+PROJECT="<GCP-PROJECT-NAME>"
 
-### Required
-export INSTANCE_ID=<instanceId>
-export DATABASE_ID=<databaseId>
-export PROJECT_ID=<projectId>
+# Note this changes the default project of your bash session.
+gcloud config set project $PROJECT
 
-### Optional
-export DRIVER_JARS=<driverJars>
-export DRIVER_CLASS_NAME=<driverClassName>
-export CONNECTION_URL=<connectionURL>
-export CONNECTION_PROPERTIES=<connectionProperties>
-export USERNAME=<username>
-export PASSWORD=<password>
-export TABLES=<tables>
-export NUM_PARTITIONS=<numPartitions>
-export SPANNER_HOST=https://batch-spanner.googleapis.com
-export IGNORE_COLUMNS=<ignoreColumns>
-export DISABLED_ALGORITHMS=<disabledAlgorithms>
-export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
+# Below are GCS paths, they could be in same bucket separated by folders.
+TEMPLATE_BUCKET_NAME="<GCS_BUCKET_WHERE_TEMPLATE_IS_BUILT>"
+TEMPLATE_PATH="${TEMPLATE_BUCKET_NAME}/templates/flex/${TEMPLATE_NAME}"
+DLQ_DIRECTORY="<GCS_PATH_FOR_DLQ>"
 
-gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
-  --project "$PROJECT" \
-  --region "$REGION" \
-  --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "jdbcDriverJars=$DRIVER_JARS" \
-  --parameters "jdbcDriverClassName=$DRIVER_CLASS_NAME" \
-  --parameters "sourceConnectionURL=$CONNECTION_URL" \
-  --parameters "sourceConnectionProperties=$CONNECTION_PROPERTIES" \
-  --parameters "username=$USERNAME" \
-  --parameters "password=$PASSWORD" \
-  --parameters "tables=$TABLES" \
-  --parameters "numPartitions=$NUM_PARTITIONS" \
-  --parameters "instanceId=$INSTANCE_ID" \
-  --parameters "databaseId=$DATABASE_ID" \
-  --parameters "projectId=$PROJECT_ID" \
-  --parameters "spannerHost=$SPANNER_HOST" \
-  --parameters "ignoreColumns=$IGNORE_COLUMNS" \
-  --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
-  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE"
+# Source Parameters
+SRC_USER_ID="<SOURCE_DB_USER_ID>"
+SRC_PWD="<SOURCE_PASSWORD>"
+SRC_IP="<SOURCE_ID>"
+SOURCE_HOST="${SRC_IP}"
+SOURCE_PORT="3306"
+SOURCE_DB="<NAME_OF_SOURCE_DB>"
+
+# Spanner details
+SPANNER_INSTANCE_ID="<SPANNER_INSTANCE_ID>"
+SPANNER_DB_ID="<SPANNER_DB_ID>"
+
+
+# Dataflow Parameters
+WORKER_REGION="<REGION_TO_SPAWN_DATAFLOW_WORKERS like us-central1>"
+NETWORK="<VPC network to spawn dataflow workers>"
+SUBNETWORK="regions/${WORKER_REGION}/subnetworks/<SUBNET_NAME>"
+
+# Typical Configuration for dataflow scaling, please change as per load
+MAX_WORKERS=10
+NUM_WORKERS=10
+WORKER_MACHINE_TYPE="n1-highmem-32"
+# Override NUM_PARTITIONS for tall tables.
+# NUM_PARTITIONS="4000" 
+
+set -x;
+date
+curl -H 'Content-type: application/json' -H "Authorization: Bearer $(gcloud auth print-access-token)" -XPOST "https://dataflow.googleapis.com/v1b3/projects/${PROJECT}/locations/${WORKER_REGION}/flexTemplates:launch" -d"{
+  \"launch_parameter\": {
+    \"jobName\": \"${JOB_NAME}\",
+    \"containerSpecGcsPath\": \"${TEMPLATE_PATH}\",
+    \"parameters\": {
+      \"sourceDbURL\":\"jdbc:mysql://${SOURCE_IP}:${SOURCE_PORT}/${SOURCE_DB}\",
+      \"username\": \"${SRC_USER_ID}\",
+      \"password\": \"${SRC_PWD}\",
+      \"instanceId\": \"${SPANNER_INSTANCE_ID}\",
+      \"databaseId\": \"${SPANNER_DB_ID}\",
+      \"projectId\": \"${PROJECT}\",
+      \"spannerHost\": \"https://batch-spanner.googleapis.com\",
+      \"workerMachineType\": \"${WORKER_MACHINE_TYPE}\",
+      \"DLQDirectory\":\"${DLQ_DIRECTORY}\",
+    },
+    \"environment\": {
+      \"maxWorkers\": \"${MAX_WORKERS}\",
+      \"numWorkers\": \"${NUM_WORKERS}\",
+      \"subnetwork\": \"${SUBNETWORK}\",
+      \"network\": \"${NETWORK}\",
+      \"workerRegion\": \"${WORKER_REGION}\",
+      \"additionalExperiments\": [\"disable_runner_v2\"],
+      \"additionalUserLabels\": {}
+    }
+  }
+}"
 ```
 
 For more information about the command, please check:
@@ -177,28 +200,35 @@ and run the template in a single command. This may be useful for testing when
 changing the templates.
 
 ```shell
-export PROJECT=<my-project>
-export BUCKET_NAME=<bucket-name>
-export REGION=us-central1
+# Below are GCS paths, they could be in same bucket separated by folders.
+TEMPLATE_BUCKET_NAME="<GCS_BUCKET_WHERE_TEMPLATE_IS_BUILT>"
+TEMPLATE_PATH="${TEMPLATE_BUCKET_NAME}/templates/flex/${TEMPLATE_NAME}"
+DLQ_DIRECTORY="<GCS_PATH_FOR_DLQ>"
 
-### Required
-export INSTANCE_ID=<instanceId>
-export DATABASE_ID=<databaseId>
-export PROJECT_ID=<projectId>
+# Source Parameters
+SRC_USER_ID="<SOURCE_DB_USER_ID>"
+SRC_PWD="<SOURCE_PASSWORD>"
+SRC_IP="<SOURCE_ID>"
+SOURCE_HOST="${SRC_IP}"
+SOURCE_PORT="3306"
+SOURCE_DB="<NAME_OF_SOURCE_DB>"
 
-### Optional
-export DRIVER_JARS=<driverJars>
-export DRIVER_CLASS_NAME=<driverClassName>
-export CONNECTION_URL=<connectionURL>
-export CONNECTION_PROPERTIES=<connectionProperties>
-export USERNAME=<username>
-export PASSWORD=<password>
-export TABLES=<tables>
-export NUM_PARTITIONS=<numPartitions>
-export SPANNER_HOST=https://batch-spanner.googleapis.com
-export IGNORE_COLUMNS=<ignoreColumns>
-export DISABLED_ALGORITHMS=<disabledAlgorithms>
-export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
+# Spanner details
+SPANNER_INSTANCE_ID="<SPANNER_INSTANCE_ID>"
+SPANNER_DB_ID="<SPANNER_DB_ID>"
+
+
+# Dataflow Parameters
+WORKER_REGION="<REGION_TO_SPAWN_DATAFLOW_WORKERS like us-central1>"
+NETWORK="<VPC network to spawn dataflow workers>"
+SUBNETWORK="regions/${WORKER_REGION}/subnetworks/<SUBNET_NAME>"
+
+# Typical Configuration for dataflow scaling, please change as per load
+MAX_WORKERS=10
+NUM_WORKERS=10
+WORKER_MACHINE_TYPE="n1-highmem-32"
+# Override NUM_PARTITIONS for tall tables.
+# NUM_PARTITIONS="4000" 
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -207,7 +237,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="jdbcDriverJars=$DRIVER_JARS,jdbcDriverClassName=$DRIVER_CLASS_NAME,sourceConnectionURL=$CONNECTION_URL,sourceConnectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,ignoreColumns=$IGNORE_COLUMNS,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-Dparameters=sourceDbURL="jdbc:mysql://0.0.0.0:3306/<mysql_db_name>",username=<mysql user>,password=<mysql pass>,instanceId="<spanner instanceid>",databaseId="<spanner_database_id>",projectId="$PROJECT",DLQDirectory=gs://<gcs-dir> --additional-experiments=disable_runner_v2 \
 -pl v2/sourcedb-to-spanner \
 -am
 ```
@@ -241,18 +271,19 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
     projectId = "<projectId>"
+    sourceDbURL = "jdbc:mysql://some-host:3306/sampledb"
+    username = "<username>"
+    password = "<password>"
+
     # jdbcDriverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
     # jdbcDriverClassName = "com.mysql.jdbc.Driver"
-    # sourceConnectionURL = "jdbc:mysql://some-host:3306/sampledb"
-    # connectionProperties = "unicode=true;characterEncoding=UTF-8"
-    # username = "<username>"
-    # password = "<password>"
     # tables = "<tables>"
     # numPartitions = "<numPartitions>"
     # spannerHost = "https://batch-spanner.googleapis.com"
-    # ignoreColumns = "table1:column1;column2,table2:column1"
+    # maxConnections = 100
     # disabledAlgorithms = "SSLv3, RC4"
-    # extraFilesToStage = "gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id"
+    # sessionFilePath = "gs://your-bucket/file.txt"
+    # DLQDirectory = "gs://your-bucket/dir"
   }
 }
 ```
