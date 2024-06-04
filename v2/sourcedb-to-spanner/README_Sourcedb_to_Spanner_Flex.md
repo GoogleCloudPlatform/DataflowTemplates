@@ -25,22 +25,28 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
-* **sourceDbURL** (JDBC URL of the source database): The URL which can be used to connect to the source database. (Example: jdbc:mysql://10.10.10.10:3306/testdb)
-* **username** (username of the source database): The username which can be used to connect to the source database.
-* **password** (username of the source database): The username which can be used to connect to the source database.
-* **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
-* **databaseId** (Cloud Spanner Database Id.): The destination Cloud Spanner database.
-* **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
+### Required parameters
 
-### Optional Parameters
-* **jdbcDriverClassName** (JDBC driver class name): The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
-* **tables** (Comma seperated list of tables to migrate): Tables that will be migrated to Spanner. Leave this empty if all tabels are to be migrated. (Example: table1,table2).
-* **tables** (Number of partitions to create per table): A table is split into partitions and loaded independently. Use higher number of partitions for larger tables. (Example: 1000).
-* **spannerHost** (Cloud Spanner Endpoint): Use this endpoint to connect to Spanner. (Example: https://batch-spanner.googleapis.com)
-* **maxConnections** (Number of connections to create per source database): The max number of connections that can be used at any given time at source. (Example: 100)
-* **sessionFilePath** (GCS path of the session file): The GCS path of the schema mapping file to be used during migrations
-* **DLQDirectory** (GCS path of the dead letter queue direcotry): The GCS path of the schema mapping file to be used during migrations
+* **sourceDbURL** : The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`.
+* **instanceId** : The destination Cloud Spanner instance.
+* **databaseId** : The destination Cloud Spanner database.
+* **projectId** : This is the name of the Cloud Spanner project.
+* **DLQDirectory** : This directory is used to dump the failed records in a migration.
+
+### Optional parameters
+
+* **jdbcDriverJars** : The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar). Defaults to empty.
+* **jdbcDriverClassName** : The JDBC driver class name. (Example: com.mysql.jdbc.Driver). Defaults to: com.mysql.jdbc.Driver.
+* **username** : The username to be used for the JDBC connection. Defaults to empty.
+* **password** : The password to be used for the JDBC connection. Defaults to empty.
+* **tables** : Tables to read from using partitions. Defaults to empty.
+* **numPartitions** : The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1. Defaults to: 0.
+* **spannerHost** : The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
+* **maxConnections** : Configures the JDBC connection pool on each worker with maximum number of connections. Use a negative number for no limit. (Example: -1). Defaults to: 0.
+* **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from Spanner Migration Tool. Defaults to empty.
+* **disabledAlgorithms** : Comma separated algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4).
+* **extraFilesToStage** : Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>).
+* **defaultLogLevel** : Set Log level in the workers. Supported options are OFF, ERROR, WARN, INFO, DEBUG, TRACE. Defaults to INFO.
 
 
 
@@ -113,63 +119,53 @@ need valid resources for the required parameters.
 Provided that, the following command line can be used:
 
 ```shell
-# Adding timestamp just allows the name to be unique across multiple runs
-JOB_NAME="<job-name>-`date +'%Y-%m-%d-%H-%M-%S-%N'`"
-TEMPLATE_NAME="Sourcedb_to_Spanner_Flex"
-PROJECT="<GCP-PROJECT-NAME>"
+export PROJECT=<my-project>
+export BUCKET_NAME=<bucket-name>
+export REGION=us-central1
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Sourcedb_to_Spanner_Flex"
 
-# Note this changes the default project of your bash session.
-gcloud config set project $PROJECT
+### Required
+export SOURCE_DB_URL=<sourceDbURL>
+export INSTANCE_ID=<instanceId>
+export DATABASE_ID=<databaseId>
+export PROJECT_ID=<projectId>
+export DLQDIRECTORY=<DLQDirectory>
 
-
-# Below are GCS paths, they could be in same bucket separated by folders.
-TEMPLATE_BUCKET_NAME="<GCS_BUCKET_WHERE_TEMPLATE_IS_BUILT>"
-TEMPLATE_PATH="${TEMPLATE_BUCKET_NAME}/templates/flex/${TEMPLATE_NAME}"
-DLQ_DIRECTORY="<GCS_PATH_FOR_DLQ>"
-
-
-# Source Parameters
-SRC_USER_ID="<SOURCE_DB_USER_ID>"
-SRC_PWD="<SOURCE_PASSWORD>"
-SRC_IP="<SOURCE_ID>"
-SOURCE_HOST="${SRC_IP}"
-SOURCE_PORT="3306"
-SOURCE_DB="<NAME_OF_SOURCE_DB>"
-
-# Spanner details
-SPANNER_INSTANCE_ID="<SPANNER_INSTANCE_ID>"
-SPANNER_DB_ID="<SPANNER_DB_ID>"
-
-
-# Dataflow Parameters
-WORKER_REGION="<REGION_TO_SPAWN_DATAFLOW_WORKERS like us-central1>"
-NETWORK="<VPC network to spawn dataflow workers>"
-SUBNETWORK="regions/${WORKER_REGION}/subnetworks/<SUBNET_NAME>"
-
-# Typical Configuration for dataflow scaling, please change as per load
-MAX_WORKERS=10
-NUM_WORKERS=10
-WORKER_MACHINE_TYPE="n1-highmem-32"
-# Override NUM_PARTITIONS for tall tables.
-# NUM_PARTITIONS="4000"
+### Optional
+export JDBC_DRIVER_JARS=""
+export JDBC_DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
+export USERNAME=""
+export PASSWORD=""
+export TABLES=""
+export NUM_PARTITIONS=0
+export SPANNER_HOST=https://batch-spanner.googleapis.com
+export MAX_CONNECTIONS=0
+export SESSION_FILE_PATH=""
+export DISABLED_ALGORITHMS=<disabledAlgorithms>
+export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
+export DEFAULT_LOG_LEVEL=INFO
 
 gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "sourceHost=jdbc:mysql://${SOURCE_IP}:${SOURCE_PORT}/${SOURCE_DB}" \
+  --parameters "jdbcDriverJars=$JDBC_DRIVER_JARS" \
+  --parameters "jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME" \
+  --parameters "sourceDbURL=$SOURCE_DB_URL" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
+  --parameters "tables=$TABLES" \
+  --parameters "numPartitions=$NUM_PARTITIONS" \
   --parameters "instanceId=$INSTANCE_ID" \
   --parameters "databaseId=$DATABASE_ID" \
   --parameters "projectId=$PROJECT_ID" \
-  --parameters "jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME" \
-  --parameters "tables=$TABLES" \
-  --parameters "numPartitions=$NUM_PARTITIONS" \
   --parameters "spannerHost=$SPANNER_HOST" \
   --parameters "maxConnections=$MAX_CONNECTIONS" \
   --parameters "sessionFilePath=$SESSION_FILE_PATH" \
-  --parameters "DLQDirectory=$DLQ_DIRECTORY"
+  --parameters "DLQDirectory=$DLQDIRECTORY" \
+  --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
+  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+  --parameters "defaultLogLevel=$DEFAULT_LOG_LEVEL"
 ```
 
 For more information about the command, please check:
@@ -183,45 +179,30 @@ and run the template in a single command. This may be useful for testing when
 changing the templates.
 
 ```shell
-# Adding timestamp just allows the name to be unique across multiple runs
-JOB_NAME="<job-name>-`date +'%Y-%m-%d-%H-%M-%S-%N'`"
-TEMPLATE_NAME="Sourcedb_to_Spanner_Flex"
-PROJECT="<GCP-PROJECT-NAME>"
+export PROJECT=<my-project>
+export BUCKET_NAME=<bucket-name>
+export REGION=us-central1
 
-# Note this changes the default project of your bash session.
-gcloud config set project $PROJECT
+### Required
+export SOURCE_DB_URL=<sourceDbURL>
+export INSTANCE_ID=<instanceId>
+export DATABASE_ID=<databaseId>
+export PROJECT_ID=<projectId>
+export DLQDIRECTORY=<DLQDirectory>
 
-
-# Below are GCS paths, they could be in same bucket separated by folders.
-TEMPLATE_BUCKET_NAME="<GCS_BUCKET_WHERE_TEMPLATE_IS_BUILT>"
-TEMPLATE_PATH="${TEMPLATE_BUCKET_NAME}/templates/flex/${TEMPLATE_NAME}"
-DLQ_DIRECTORY="<GCS_PATH_FOR_DLQ>"
-
-
-# Source Parameters
-SRC_USER_ID="<SOURCE_DB_USER_ID>"
-SRC_PWD="<SOURCE_PASSWORD>"
-SRC_IP="<SOURCE_ID>"
-SOURCE_HOST="${SRC_IP}"
-SOURCE_PORT="3306"
-SOURCE_DB="<NAME_OF_SOURCE_DB>"
-
-# Spanner details
-SPANNER_INSTANCE_ID="<SPANNER_INSTANCE_ID>"
-SPANNER_DB_ID="<SPANNER_DB_ID>"
-
-
-# Dataflow Parameters
-WORKER_REGION="<REGION_TO_SPAWN_DATAFLOW_WORKERS like us-central1>"
-NETWORK="<VPC network to spawn dataflow workers>"
-SUBNETWORK="regions/${WORKER_REGION}/subnetworks/<SUBNET_NAME>"
-
-# Typical Configuration for dataflow scaling, please change as per load
-MAX_WORKERS=10
-NUM_WORKERS=10
-WORKER_MACHINE_TYPE="n1-highmem-32"
-# Override NUM_PARTITIONS for tall tables.
-# NUM_PARTITIONS="4000"
+### Optional
+export JDBC_DRIVER_JARS=""
+export JDBC_DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
+export USERNAME=""
+export PASSWORD=""
+export TABLES=""
+export NUM_PARTITIONS=0
+export SPANNER_HOST=https://batch-spanner.googleapis.com
+export MAX_CONNECTIONS=0
+export SESSION_FILE_PATH=""
+export DISABLED_ALGORITHMS=<disabledAlgorithms>
+export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
+export DEFAULT_LOG_LEVEL=INFO
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -230,8 +211,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="sourceDbURL=jdbc:mysql://$SOURCE_HOST:$SOURCE_PORT/$SOURCE_DB",username=$SRC_USER_ID,password=$SOURCE_PWD,instanceId=$SPANNER_INSTANCE_ID,databaseId=$SPANNER_DB_ID,projectId=$PROJECT,DLQDirectory=$DLQ_DIRECTORY
---additional-experiments=disable_runner_v2 \
+-Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceDbURL=$SOURCE_DB_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,DLQDirectory=$DLQDIRECTORY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,defaultLogLevel=$DEFAULT_LOG_LEVEL" \
 -f v2/sourcedb-to-spanner
 ```
 
@@ -276,22 +256,23 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
   name              = "sourcedb-to-spanner-flex"
   region            = var.region
   parameters        = {
+    sourceDbURL = "<sourceDbURL>"
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
     projectId = "<projectId>"
-    sourceDbURL = "jdbc:mysql://some-host:3306/sampledb"
-    username = "<username>"
-    password = "<password>"
-    DLQDirectory = "gs://your-bucket/dir"
-
+    DLQDirectory = "<DLQDirectory>"
     # jdbcDriverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
     # jdbcDriverClassName = "com.mysql.jdbc.Driver"
-    # tables = "<tables>"
-    # numPartitions = "<numPartitions>"
+    # username = ""
+    # password = ""
+    # tables = ""
+    # numPartitions = "0"
     # spannerHost = "https://batch-spanner.googleapis.com"
-    # maxConnections = 100
+    # maxConnections = "-1"
+    # sessionFilePath = ""
     # disabledAlgorithms = "SSLv3, RC4"
-    # sessionFilePath = "gs://your-bucket/file.txt
+    # extraFilesToStage = "gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>"
+    # defaultLogLevel = "INFO"
   }
 }
 ```
