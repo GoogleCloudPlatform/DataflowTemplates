@@ -111,7 +111,8 @@ public class KafkaToGcsIT extends TemplateTestBase {
                         + ";"
                         + topicName)
                 .addParameter("windowDuration", "10s")
-                .addParameter("schemaPath", getGcsPath("avro_schema.avsc"))
+                .addParameter("schemaFormat", "SINGLE_SCHEMA_FILE")
+                .addParameter("confluentAvroSchemaPath", getGcsPath("avro_schema.avsc"))
                 .addParameter("kafkaReadOffset", "earliest")
                 .addParameter("outputDirectory", getGcsPath(testName))
                 .addParameter("outputFilenamePrefix", testName + "-")
