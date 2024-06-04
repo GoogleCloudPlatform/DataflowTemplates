@@ -343,7 +343,9 @@ public class ChangeEventTransformerDoFnTest {
 
     when(schema.isEmpty()).thenReturn(true);
     when(processContextMock.element()).thenReturn(failsafeElement);
-    doThrow(new InvalidTransformationException("invalid transformation")).when(spannerMigrationTransformer).toSpannerRow(refEq(expectedRequest));
+    doThrow(new InvalidTransformationException("invalid transformation"))
+        .when(spannerMigrationTransformer)
+        .toSpannerRow(refEq(expectedRequest));
 
     when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
     when(changeEventSessionConvertor.transformChangeEventData(
