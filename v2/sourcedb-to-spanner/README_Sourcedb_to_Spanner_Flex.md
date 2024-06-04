@@ -282,6 +282,7 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     sourceDbURL = "jdbc:mysql://some-host:3306/sampledb"
     username = "<username>"
     password = "<password>"
+    DLQDirectory = "gs://your-bucket/dir"
 
     # jdbcDriverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
     # jdbcDriverClassName = "com.mysql.jdbc.Driver"
@@ -290,8 +291,7 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     # spannerHost = "https://batch-spanner.googleapis.com"
     # maxConnections = 100
     # disabledAlgorithms = "SSLv3, RC4"
-    # sessionFilePath = "gs://your-bucket/file.txt"
-    # DLQDirectory = "gs://your-bucket/dir"
+    # sessionFilePath = "gs://your-bucket/file.txt
   }
 }
 ```

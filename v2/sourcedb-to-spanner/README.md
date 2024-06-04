@@ -66,6 +66,7 @@ mvn test
 * **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
 * **databaseId** (Cloud Spanner Database Id.): The destination Cloud Spanner database.
 * **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
+* **DLQDirectory** (GCS path of the dead letter queue direcotry): The GCS path of the schema mapping file to be used during migrations
 
 #### Optional Parameters
 * **jdbcDriverClassName** (JDBC driver class name): The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
@@ -74,7 +75,6 @@ mvn test
 * **spannerHost** (Cloud Spanner Endpoint): Use this endpoint to connect to Spanner. (Example: https://batch-spanner.googleapis.com)
 * **maxConnections** (Number of connections to create per source database): The max number of connections that can be used at any given time at source. (Example: 100)
 * **sessionFilePath** (GCS path of the session file): The GCS path of the schema mapping file to be used during migrations
-* **DLQDirectory** (GCS path of the dead letter queue direcotry): The GCS path of the schema mapping file to be used during migrations
 
 Template can be executed using the following API call:
 ```sh
