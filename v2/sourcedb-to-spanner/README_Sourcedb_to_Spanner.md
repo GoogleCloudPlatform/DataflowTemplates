@@ -127,32 +127,33 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Sourcedb_to_Spanner_Flex"
 
 ### Required
+export SOURCE_DB_URL=<sourceDbURL>
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
 export PROJECT_ID=<projectId>
+export DLQDIRECTORY=<DLQDirectory>
 
 ### Optional
-export DRIVER_JARS=<driverJars>
-export DRIVER_CLASS_NAME=<driverClassName>
-export CONNECTION_URL=<connectionURL>
-export CONNECTION_PROPERTIES=<connectionProperties>
-export USERNAME=<username>
-export PASSWORD=<password>
-export TABLES=<tables>
-export NUM_PARTITIONS=<numPartitions>
+export JDBC_DRIVER_JARS=""
+export JDBC_DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
+export USERNAME=""
+export PASSWORD=""
+export TABLES=""
+export NUM_PARTITIONS=0
 export SPANNER_HOST=https://batch-spanner.googleapis.com
-export IGNORE_COLUMNS=<ignoreColumns>
+export MAX_CONNECTIONS=0
+export SESSION_FILE_PATH=""
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
+export DEFAULT_LOG_LEVEL=INFO
 
 gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "jdbcDriverJars=$DRIVER_JARS" \
-  --parameters "jdbcDriverClassName=$DRIVER_CLASS_NAME" \
-  --parameters "sourceConnectionURL=$CONNECTION_URL" \
-  --parameters "sourceConnectionProperties=$CONNECTION_PROPERTIES" \
+  --parameters "jdbcDriverJars=$JDBC_DRIVER_JARS" \
+  --parameters "jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME" \
+  --parameters "sourceDbURL=$SOURCE_DB_URL" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
   --parameters "tables=$TABLES" \
@@ -161,9 +162,12 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "databaseId=$DATABASE_ID" \
   --parameters "projectId=$PROJECT_ID" \
   --parameters "spannerHost=$SPANNER_HOST" \
-  --parameters "ignoreColumns=$IGNORE_COLUMNS" \
+  --parameters "maxConnections=$MAX_CONNECTIONS" \
+  --parameters "sessionFilePath=$SESSION_FILE_PATH" \
+  --parameters "DLQDirectory=$DLQDIRECTORY" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
-  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE"
+  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+  --parameters "defaultLogLevel=$DEFAULT_LOG_LEVEL"
 ```
 
 For more information about the command, please check:
@@ -182,23 +186,25 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
+export SOURCE_DB_URL=<sourceDbURL>
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
 export PROJECT_ID=<projectId>
+export DLQDIRECTORY=<DLQDirectory>
 
 ### Optional
-export DRIVER_JARS=<driverJars>
-export DRIVER_CLASS_NAME=<driverClassName>
-export CONNECTION_URL=<connectionURL>
-export CONNECTION_PROPERTIES=<connectionProperties>
-export USERNAME=<username>
-export PASSWORD=<password>
-export TABLES=<tables>
-export NUM_PARTITIONS=<numPartitions>
+export JDBC_DRIVER_JARS=""
+export JDBC_DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
+export USERNAME=""
+export PASSWORD=""
+export TABLES=""
+export NUM_PARTITIONS=0
 export SPANNER_HOST=https://batch-spanner.googleapis.com
-export IGNORE_COLUMNS=<ignoreColumns>
+export MAX_CONNECTIONS=0
+export SESSION_FILE_PATH=""
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
+export DEFAULT_LOG_LEVEL=INFO
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -207,9 +213,8 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="jdbcDriverJars=$DRIVER_JARS,jdbcDriverClassName=$DRIVER_CLASS_NAME,sourceConnectionURL=$CONNECTION_URL,sourceConnectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,ignoreColumns=$IGNORE_COLUMNS,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
--pl v2/sourcedb-to-spanner \
--am
+-Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceDbURL=$SOURCE_DB_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,DLQDirectory=$DLQDIRECTORY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,defaultLogLevel=$DEFAULT_LOG_LEVEL" \
+-f v2/sourcedb-to-spanner
 ```
 
 ## Terraform
@@ -241,18 +246,19 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
     projectId = "<projectId>"
+    sourceDbURL = "jdbc:mysql://some-host:3306/sampledb"
+    username = "<username>"
+    password = "<password>"
+    DLQDirectory = "gs://your-bucket/dir"
+
     # jdbcDriverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
     # jdbcDriverClassName = "com.mysql.jdbc.Driver"
-    # sourceConnectionURL = "jdbc:mysql://some-host:3306/sampledb"
-    # connectionProperties = "unicode=true;characterEncoding=UTF-8"
-    # username = "<username>"
-    # password = "<password>"
     # tables = "<tables>"
     # numPartitions = "<numPartitions>"
     # spannerHost = "https://batch-spanner.googleapis.com"
-    # ignoreColumns = "table1:column1;column2,table2:column1"
+    # maxConnections = 100
     # disabledAlgorithms = "SSLv3, RC4"
-    # extraFilesToStage = "gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id"
+    # sessionFilePath = "gs://your-bucket/file.txt"
   }
 }
 ```
