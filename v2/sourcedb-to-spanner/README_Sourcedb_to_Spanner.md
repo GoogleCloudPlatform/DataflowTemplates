@@ -157,7 +157,7 @@ MAX_WORKERS=10
 NUM_WORKERS=10
 WORKER_MACHINE_TYPE="n1-highmem-32"
 # Override NUM_PARTITIONS for tall tables.
-# NUM_PARTITIONS="4000" 
+# NUM_PARTITIONS="4000"
 
 set -x;
 date
@@ -228,7 +228,7 @@ MAX_WORKERS=10
 NUM_WORKERS=10
 WORKER_MACHINE_TYPE="n1-highmem-32"
 # Override NUM_PARTITIONS for tall tables.
-# NUM_PARTITIONS="4000" 
+# NUM_PARTITIONS="4000"
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

@@ -151,7 +151,7 @@ MAX_WORKERS=10
 NUM_WORKERS=10
 WORKER_MACHINE_TYPE="n1-highmem-32"
 # Override NUM_PARTITIONS for tall tables.
-# NUM_PARTITIONS="4000" 
+# NUM_PARTITIONS="4000"
 
 gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --project "$PROJECT" \
@@ -221,7 +221,7 @@ MAX_WORKERS=10
 NUM_WORKERS=10
 WORKER_MACHINE_TYPE="n1-highmem-32"
 # Override NUM_PARTITIONS for tall tables.
-# NUM_PARTITIONS="4000" 
+# NUM_PARTITIONS="4000"
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -230,7 +230,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="sourceDbURL=jdbc:mysql://$SOURCE_HOST:$SOURCE_PORT/$SOURCE_DB",username=$SRC_USER_ID,password=$SOURCE_PWD,instanceId=$SPANNER_INSTANCE_ID,databaseId=$SPANNER_DB_ID,projectId=$PROJECT,DLQDirectory=$DLQ_DIRECTORY 
+-Dparameters="sourceDbURL=jdbc:mysql://$SOURCE_HOST:$SOURCE_PORT/$SOURCE_DB",username=$SRC_USER_ID,password=$SOURCE_PWD,instanceId=$SPANNER_INSTANCE_ID,databaseId=$SPANNER_DB_ID,projectId=$PROJECT,DLQDirectory=$DLQ_DIRECTORY
 --additional-experiments=disable_runner_v2 \
 -f v2/sourcedb-to-spanner
 ```
