@@ -171,6 +171,7 @@ abstract class SpannerSchema implements Serializable {
     public abstract Type getType();
 
     private static Type parseSpannerType(String spannerType, Dialect dialect) {
+      String originalSpannerType = spannerType;
       spannerType = spannerType.toUpperCase();
       switch (dialect) {
         case GOOGLE_STANDARD_SQL:
@@ -203,6 +204,18 @@ abstract class SpannerSchema implements Serializable {
           }
           if ("JSON".equals(spannerType)) {
             return Type.json();
+          }
+          if(spannerType.startsWith("PROTO")) {
+            // Substring "PROTO<xxx>"
+            String protoTypeFqn = originalSpannerType
+                .substring(6, originalSpannerType.length() - 1);
+            return Type.proto(protoTypeFqn);
+          }
+          if(spannerType.startsWith("ENUM")) {
+            // Substring "ENUM<xxx>"
+            String enumTypeFqn = originalSpannerType
+                .substring(5, originalSpannerType.length() - 1);
+            return Type.protoEnum(enumTypeFqn);
           }
           if (spannerType.startsWith("ARRAY")) {
             // Substring "ARRAY<xxx>" or substring "ARRAY<xxx>(vector_length=>yyy)"

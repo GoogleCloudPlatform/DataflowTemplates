@@ -641,6 +641,7 @@ public class SpannerConverters {
       case BOOL:
         return currentRow.getBooleanList(columnName);
       case INT64:
+      case ENUM:
         return currentRow.getLongList(columnName);
       case FLOAT32:
         return currentRow.getFloatList(columnName);
@@ -653,6 +654,7 @@ public class SpannerConverters {
       case PG_JSONB:
         return currentRow.getPgJsonbList(columnName);
       case BYTES:
+      case PROTO:
         return currentRow.getBytesList(columnName).stream()
             .map(byteArray -> Base64.getEncoder().encodeToString(byteArray.toByteArray()))
             .collect(Collectors.toList());
@@ -701,6 +703,7 @@ public class SpannerConverters {
         return nullSafeColumnParser(
             (currentRow, columnName) -> Boolean.toString(currentRow.getBoolean(columnName)));
       case INT64:
+      case ENUM:
         return nullSafeColumnParser(
             (currentRow, columnName) -> Long.toString(currentRow.getLong(columnName)));
       case FLOAT32:
@@ -717,6 +720,7 @@ public class SpannerConverters {
       case PG_JSONB:
         return nullSafeColumnParser(Struct::getPgJsonb);
       case BYTES:
+      case PROTO:
         return nullSafeColumnParser(
             (currentRow, columnName) ->
                 Base64.getEncoder().encodeToString(currentRow.getBytes(columnName).toByteArray()));
@@ -744,6 +748,7 @@ public class SpannerConverters {
       case BOOL:
         return GSON.toJson(currentRow.getBooleanArray(columnName));
       case INT64:
+      case ENUM:
         return GSON.toJson(currentRow.getLongArray(columnName));
       case FLOAT32:
         return GSON.toJson(currentRow.getFloatArray(columnName));
@@ -753,6 +758,7 @@ public class SpannerConverters {
       case PG_NUMERIC:
         return GSON.toJson(currentRow.getStringList(columnName));
       case BYTES:
+      case PROTO:
         return GSON.toJson(
             currentRow.getBytesList(columnName).stream()
                 .map(byteArray -> Base64.getEncoder().encodeToString(byteArray.toByteArray()))

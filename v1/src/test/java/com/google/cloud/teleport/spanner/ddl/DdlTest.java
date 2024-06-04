@@ -37,6 +37,7 @@ import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.common.base.Optional;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -869,6 +870,27 @@ public class DdlTest {
     assertThat(
         statements.get(1),
         equalToCompressingWhiteSpace("CREATE SEQUENCE \"MyPGSequence2\" BIT_REVERSED_POSITIVE"));
+    assertNotNull(ddl.hashCode());
+  }
+
+  @Test
+  public void protobundle() {
+    Ddl.Builder builder = Ddl.builder();
+    builder.mergeProtoBundle(
+        ImmutableSet.of(
+            "com.google.cloud.teleport.spanner.tests.TestMessage",
+            "com.google.cloud.teleport.spanner.tests.TestEnum"));
+    Ddl ddl = builder.build();
+    String expectedProtoBundle =
+        "CREATE PROTO BUNDLE ("
+            + " com.google.cloud.teleport.spanner.tests.TestMessage,"
+            + " com.google.cloud.teleport.spanner.tests.TestEnum,"
+            + ")";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedProtoBundle));
+
+    List<String> statements = ddl.statements();
+    assertEquals(1, statements.size());
+    assertThat(statements.get(0), equalToCompressingWhiteSpace(expectedProtoBundle));
     assertNotNull(ddl.hashCode());
   }
 

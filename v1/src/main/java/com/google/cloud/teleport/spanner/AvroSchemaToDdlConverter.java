@@ -474,6 +474,10 @@ public class AvroSchemaToDdlConverter {
         return "numeric";
       case JSON:
         return "JSON";
+      case PROTO:
+        return "PROTO<" + spannerType.getProtoTypeFqn() + ">";
+      case ENUM:
+        return "ENUM<" + spannerType.getProtoTypeFqn() + ">";
       case ARRAY:
         {
           if (supportArray) {

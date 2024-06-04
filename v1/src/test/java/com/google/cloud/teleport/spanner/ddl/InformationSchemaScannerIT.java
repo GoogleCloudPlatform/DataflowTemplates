@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.BatchClient;
@@ -33,6 +34,8 @@ import com.google.cloud.teleport.spanner.IntegrationTest;
 import com.google.cloud.teleport.spanner.SpannerServerResource;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.common.collect.HashMultimap;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -98,32 +101,46 @@ public class InformationSchemaScannerIT {
   @Test
   public void tableWithAllTypes() throws Exception {
     String allTypes =
-        "CREATE TABLE `alltypes` ("
-            + " `first_name`                            STRING(MAX),"
-            + " `last_name`                             STRING(5),"
-            + " `id`                                    INT64 NOT NULL,"
-            + " `bool_field`                            BOOL,"
-            + " `int64_field`                           INT64,"
-            + " `float32_field`                         FLOAT32,"
-            + " `float64_field`                         FLOAT64,"
-            + " `string_field`                          STRING(76),"
-            + " `bytes_field`                           BYTES(13),"
-            + " `timestamp_field`                       TIMESTAMP,"
-            + " `date_field`                            DATE,"
-            + " `arr_bool_field`                        ARRAY<BOOL>,"
-            + " `arr_int64_field`                       ARRAY<INT64>,"
-            + " `arr_float32_field`                     ARRAY<FLOAT32>,"
-            + " `arr_float64_field`                     ARRAY<FLOAT64>,"
-            + " `arr_string_field`                      ARRAY<STRING(15)>,"
-            + " `arr_bytes_field`                       ARRAY<BYTES(MAX)>,"
-            + " `arr_timestamp_field`                   ARRAY<TIMESTAMP>,"
-            + " `arr_date_field`                        ARRAY<DATE>,"
-            + " `embedding_vector`                      ARRAY<FLOAT64>(vector_length=>16),"
+        "CREATE PROTO BUNDLE ("
+            + " com.google.cloud.teleport.spanner.tests.TestMessage,"
+            + " com.google.cloud.teleport.spanner.tests.TestEnum"
+            + ")"
+            + "CREATE TABLE `alltypes` ("
+            + " `first_name`            STRING(MAX),"
+            + " `last_name`             STRING(5),"
+            + " `id`                    INT64 NOT NULL,"
+            + " `bool_field`            BOOL,"
+            + " `int64_field`           INT64,"
+            + " `float32_field`         FLOAT32,"
+            + " `float64_field`         FLOAT64,"
+            + " `string_field`          STRING(76),"
+            + " `bytes_field`           BYTES(13),"
+            + " `timestamp_field`       TIMESTAMP,"
+            + " `date_field`            DATE,"
+            + " `proto_field`           com.google.cloud.teleport.spanner.tests.TestMessage,"
+            + " `enum_field`            com.google.cloud.teleport.spanner.tests.TestEnum,"
+            + " `arr_bool_field`        ARRAY<BOOL>,"
+            + " `arr_int64_field`       ARRAY<INT64>,"
+            + " `arr_float32_field`     ARRAY<FLOAT32>,"
+            + " `arr_float64_field`     ARRAY<FLOAT64>,"
+            + " `arr_string_field`      ARRAY<STRING(15)>,"
+            + " `arr_bytes_field`       ARRAY<BYTES(MAX)>,"
+            + " `arr_timestamp_field`   ARRAY<TIMESTAMP>,"
+            + " `arr_date_field`        ARRAY<DATE>,"
+            + " `embedding_vector`      ARRAY<FLOAT64>(vector_length=>16),"
+            + " `arr_proto_field`       ARRAY<com.google.cloud.teleport.spanner.tests.TestMessage>,"
+            + " `arr_enum_field`        ARRAY<com.google.cloud.teleport.spanner.tests.TestEnum>,"
             + " ) PRIMARY KEY (`first_name` ASC, `last_name` DESC, `id` ASC)";
 
-    spannerServer.createDatabase(dbId, Collections.singleton(allTypes));
+    FileDescriptorSet.Builder fileDescriptorSetBuilder = FileDescriptorSet.newBuilder();
+    fileDescriptorSetBuilder.addFile(
+        com.google.cloud.teleport.spanner.tests.TestMessage.getDescriptor().getFile().toProto());
+    ByteString protoDescriptorBytes = fileDescriptorSetBuilder.build().toByteString();
+
+    spannerServer.createDatabase(dbId, Collections.singleton(allTypes), protoDescriptorBytes);
     Ddl ddl = getDatabaseDdl();
 
+    assertEquals(FileDescriptorSet.parseFrom(protoDescriptorBytes), ddl.protoDescriptors());
     assertThat(ddl.allTables(), hasSize(1));
     assertThat(ddl.table("alltypes"), notNullValue());
     assertThat(ddl.table("aLlTYPeS"), notNullValue());
@@ -148,6 +165,12 @@ public class InformationSchemaScannerIT {
     assertThat(table.column("bytes_field").size(), equalTo(13));
     assertThat(table.column("timestamp_field").type(), equalTo(Type.timestamp()));
     assertThat(table.column("date_field").type(), equalTo(Type.date()));
+    assertThat(
+        table.column("proto_field").type(),
+        equalTo(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage")));
+    assertThat(
+        table.column("enum_field").type(),
+        equalTo(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum")));
     assertThat(table.column("arr_bool_field").type(), equalTo(Type.array(Type.bool())));
     assertThat(table.column("arr_int64_field").type(), equalTo(Type.array(Type.int64())));
     assertThat(table.column("arr_float32_field").type(), equalTo(Type.array(Type.float32())));
@@ -160,6 +183,12 @@ public class InformationSchemaScannerIT {
     assertThat(table.column("arr_date_field").type(), equalTo(Type.array(Type.date())));
     assertThat(table.column("embedding_vector").type(), equalTo(Type.array(Type.float64())));
     assertThat(table.column("embedding_vector").arrayLength(), equalTo(16));
+    assertThat(
+        table.column("arr_proto_field").type(),
+        equalTo(Type.array(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage"))));
+    assertThat(
+        table.column("arr_enum_field").type(),
+        equalTo(Type.array(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum"))));
 
     // Check not-null.
     assertThat(table.column("first_name").notNull(), is(false));

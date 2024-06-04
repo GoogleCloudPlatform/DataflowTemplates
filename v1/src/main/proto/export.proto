@@ -57,4 +57,12 @@ message Export {
   repeated Table change_streams = 3;
   // The set of sequences that were exported.
   repeated Table sequences = 5;
+
+  // Contains a protobuf-serialized google.protobuf.FileDescriptorSet for
+  // proto_descriptors (from spanner_database_admin.proto)
+  bytes proto_descriptors = 6;
+
+  // Contains a list of fully qualified names of protobuf Message and Enum types
+  // used in the database for proto_bundle.
+  repeated string proto_bundle = 7;
 }
