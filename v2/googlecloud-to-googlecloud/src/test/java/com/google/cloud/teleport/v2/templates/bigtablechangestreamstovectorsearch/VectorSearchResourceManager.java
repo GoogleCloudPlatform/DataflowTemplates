@@ -232,7 +232,7 @@ public class VectorSearchResourceManager implements ResourceManager {
                 .setInitialRpcTimeout(Duration.ZERO)
                 .setRpcTimeoutMultiplier(1.0)
                 .setMaxRpcTimeout(Duration.ZERO)
-                .setTotalTimeout(Duration.ofMinutes(40))
+                .setTotalTimeout(Duration.ofMinutes(120))
                 .build());
 
     var indexSettings = IndexServiceSettings.newBuilder().setEndpoint(host);
