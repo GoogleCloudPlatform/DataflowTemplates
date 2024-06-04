@@ -714,6 +714,7 @@ public class DataStreamToSpanner {
         reconsumedElements
             .get(DeadLetterQueueManager.PERMANENT_ERRORS)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    // TODO: Write errors from transformer and spanner writer into separate folders
     PCollection<FailsafeElement<String, String>> permanentErrors =
         PCollectionList.of(dlqErrorRecords)
             .and(spannerWriteResults.permanentErrors())
