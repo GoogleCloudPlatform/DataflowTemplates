@@ -32,6 +32,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.avro.LogicalType;
@@ -209,6 +210,31 @@ public class GenericRecordTypeConvertorTest {
         GenericRecordTypeConvertor.handleLogicalFieldType(
             col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
     assertEquals("Test varchar_col conversion: ", "Hellogcds", result);
+  }
+
+  @Test
+  public void testTimestampLogicalTypeLimits() {
+    Map<Long, String> testCases = new HashMap<>();
+    testCases.put(1602599400056483L, "2020-10-13T14:30:00.056483Z"); // Original case
+    testCases.put(-62135596800000000L, "0001-01-01T00:00:00Z"); // Min timestamp
+    testCases.put(253402300799999999L, "9999-12-31T23:59:59.999999Z"); // Max timestamp
+    testCases.put(-30610224000000000L, "1000-01-01T00:00:00Z");
+    testCases.put(253402214400000000L, "9999-12-31T00:00:00Z");
+    testCases.put(70678915200000000L, "4209-09-23T00:00:00Z");
+    testCases.put(96038611200000000L, "5013-05-06T00:00:00Z");
+    testCases.put(-47749305600000000L, "0456-11-19T00:00:00Z");
+    testCases.put(-62098444800000000L, "0002-03-07T00:00:00Z");
+    testCases.put(56074229063257557L, "3746-12-03T06:44:23.257557Z");
+    testCases.put(-57549851159000000L, "0146-04-26T18:14:01Z");
+
+    for (Map.Entry<Long, String> entry : testCases.entrySet()) {
+      String result =
+          GenericRecordTypeConvertor.handleLogicalFieldType(
+              "timestamp_micros_col",
+              entry.getKey(),
+              LogicalTypes.timestampMicros().addToSchema(Schema.create(Schema.Type.LONG)));
+      assertEquals("Test timestamp for epoch " + entry.getKey() + ": ", entry.getValue(), result);
+    }
   }
 
   @Test
