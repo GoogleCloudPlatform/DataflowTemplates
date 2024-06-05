@@ -96,7 +96,12 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
 
       List<Struct> rows = spannerResourceManager.readTableRecords(tableName, "id", colName);
       for (Struct row : rows) {
-        LOG.info("Found row: {}", row);
+        // Limit logs printed for very large strings.
+        String rowString = row.toString();
+        if (rowString.length() > 1000) {
+          rowString = rowString.substring(0, 1000);
+        }
+        LOG.info("Found row: {}", rowString);
       }
       SpannerAsserts.assertThatStructs(rows)
           .hasRecordsUnorderedCaseInsensitiveColumns(entry.getValue());
@@ -122,16 +127,13 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
         createRows("bigint", "40", "9223372036854775807", "-9223372036854775808", "NULL"));
     expectedData.put(
         "binary",
-        createRows(
-            "binary",
-            "eDU4MD" + repeatString("A", 27) + "...",
-            repeatString("/", 33) + "...",
-            "NULL"));
+        createRows("binary", "eDU4MD" + repeatString("A", 334), repeatString("/", 340), "NULL"));
     expectedData.put("bit", createRows("bit", "f/////////8=", "NULL"));
-    expectedData.put("blob", createRows("blob", "eDU4MDA=", repeatString("/", 33) + "...", "NULL"));
+    expectedData.put("blob", createRows("blob", "eDU4MDA=", repeatString("/", 87380), "NULL"));
     expectedData.put("bool", createRows("bool", "false", "true", "NULL"));
     expectedData.put("boolean", createRows("boolean", "false", "true", "NULL"));
-    expectedData.put("char", createRows("char", "a", repeatString("a", 33) + "...", "NULL"));
+    expectedData.put(
+        "char", createRows("char", "a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...", "NULL"));
     expectedData.put("date", createRows("date", "2012-09-17", "1000-01-01", "9999-12-31", "NULL"));
     expectedData.put(
         "datetime",
@@ -153,15 +155,15 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
         "double",
         createRows("double", "52.67", "1.7976931348623157E308", "-1.7976931348623157E308", "NULL"));
     expectedData.put("enum", createRows("enum", "1", "NULL"));
-    expectedData.put("float", createRows("float", "45.56", "3.4e+38", "-3.4e+38", "NULL"));
+    expectedData.put("float", createRows("float", "45.56", "3.4E38", "-3.4E38", "NULL"));
     expectedData.put("int", createRows("int", "30", "2147483647", "-2147483648", "NULL"));
     expectedData.put(
-        "longblob", createRows("longblob", "eDU4MDA=", repeatString("/", 33) + "...", "NULL"));
+        "longblob", createRows("longblob", "eDU4MDA=", repeatString("/", 87380), "NULL"));
     expectedData.put(
         "longtext",
         createRows("longtext", "longtext", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...", "NULL"));
     expectedData.put(
-        "mediumblob", createRows("mediumblob", "eDU4MDA=", repeatString("/", 33) + "...", "NULL"));
+        "mediumblob", createRows("mediumblob", "eDU4MDA=", repeatString("/", 87380), "NULL"));
     expectedData.put("mediumint", createRows("mediumint", "20", "NULL"));
     expectedData.put(
         "mediumtext",
@@ -178,13 +180,13 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
             "2038-01-19T03:14:07Z",
             "NULL"));
     expectedData.put(
-        "tinyblob", createRows("tinyblob", "eDU4MDA=", repeatString("/", 33) + "...", "NULL"));
+        "tinyblob", createRows("tinyblob", "eDU4MDA=", repeatString("/", 340), "NULL"));
     expectedData.put("tinyint", createRows("tinyint", "10", "127", "-128", "NULL"));
     expectedData.put(
-        "tinytext", createRows("tinytext", "tinytext", repeatString("a", 33) + "...", "NULL"));
+        "tinytext",
+        createRows("tinytext", "tinytext", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...", "NULL"));
     expectedData.put(
-        "varbinary",
-        createRows("varbinary", "eDU4MDA=", repeatString("/", 33) + "..." + "8=", "NULL"));
+        "varbinary", createRows("varbinary", "eDU4MDA=", repeatString("/", 86666) + "8=", "NULL"));
     expectedData.put(
         "varchar", createRows("varchar", "abc", repeatString("a", 33) + "...", "NULL"));
     expectedData.put("year", createRows("year", "2022", "1901", "2155", "NULL"));
