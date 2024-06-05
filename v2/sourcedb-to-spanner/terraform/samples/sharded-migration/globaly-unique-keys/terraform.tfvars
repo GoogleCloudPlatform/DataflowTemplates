@@ -25,7 +25,7 @@ common_params = {
 
 jobs = [
   {
-    sourceDbURL           = "jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8"
+    sourceDbURL           = "jdbc:mysql://127.0.0.1/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8"
     username              = "your-db-username"
     password              = "your-db-password"
     tables                = "table1,table2"
