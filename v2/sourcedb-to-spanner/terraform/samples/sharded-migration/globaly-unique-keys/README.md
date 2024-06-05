@@ -7,6 +7,8 @@ This Terraform example illustrates launching multiple bulk migration Datafllow j
 3. Appropriate permissions are added to the service account running Terraform to allow resource creation.
 4. Appropriate permissions are provided to the service account running Dataflow to write to Spanner.
 
+Given these assumptions, it copies data from multiple source MySQL databases to the same Spanner database.
+
 ## Description
 
 This sample contains the following files -
@@ -14,7 +16,8 @@ This sample contains the following files -
 1. `main.tf` - This contains the Terraform resources which will be created.
 2. `outputs.tf` - This declares the outputs that will be output as part of running this terraform example.
 3. `variables.tf` - This declares the input variables that are required to configure the resources.
-4. `terraform.tfvars` - This contains the dummy inputs that need to be populated to run this example. 
+4. `terraform.tf` - This contains the required providers for this sample.
+5. `terraform.tfvars` - This contains the dummy inputs that need to be populated to run this example.
 
 ## How to run 
 
