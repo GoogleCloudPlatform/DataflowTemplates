@@ -9,7 +9,6 @@ common_params = {
   projectId                    = "your-cloud-spanner-project-id"
   spannerHost                  = "https://batch-spanner.googleapis.com"
   sessionFilePath              = "gs://your-bucket/session-file.json"
-  disabledAlgorithms           = "SSLv3, RC4"
   extraFilesToStage            = "gs://your-bucket/extra-file.txt"
   additional_experiments       = ["enable_stackdriver_agent_metrics"]
   autoscaling_algorithm        = "THROUGHPUT_BASED"
