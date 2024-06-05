@@ -49,6 +49,7 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -60,6 +61,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class})
 @TemplateIntegrationTest(BigtableChangeStreamsToVectorSearch.class)
 @RunWith(JUnit4.class)
+@Ignore("Tests are flaky as indexes take forever to be created causing timeouts.")
 public final class BigtableChangeStreamsToVectorSearchIT extends TemplateTestBase {
 
   private static final Logger LOG =
