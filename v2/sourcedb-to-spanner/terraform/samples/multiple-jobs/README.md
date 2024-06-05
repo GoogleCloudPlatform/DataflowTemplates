@@ -7,7 +7,7 @@ This Terraform example illustrates launching multiple bulk migration Datafllow j
 3. Appropriate permissions are provided to the service account running Dataflow to write to Spanner.
 4. A GCS bucket has been provided to write the DLQ records to.
 
-Given these assumptions, it copies data from multiple source MySQL databases to the same Spanner database.
+Given these assumptions, it copies data from multiple source MySQL databases to the configured Spanner database(s).
 
 ## Description
 
