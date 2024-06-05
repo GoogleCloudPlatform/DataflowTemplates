@@ -37,8 +37,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
 * **writeDisposition** : BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
 * **createDisposition** : BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED.
-* **pythonExternalTextTransformGcsPath** : The Cloud Storage path pattern for the Python code containing your user-defined functions. (Example: gs://your-bucket/your-function.py).
-* **pythonExternalTextTransformFunctionName** : The name of the function to call from your Python file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
 * **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
 * **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
 * **javascriptTextTransformReloadIntervalMinutes** : Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
@@ -146,8 +144,6 @@ export UDF_OUTPUT_TOPIC=<udfOutputTopic>
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export WRITE_DISPOSITION=WRITE_APPEND
 export CREATE_DISPOSITION=CREATE_IF_NEEDED
-export PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH=<pythonExternalTextTransformGcsPath>
-export PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME=<pythonExternalTextTransformFunctionName>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
@@ -170,8 +166,6 @@ gcloud dataflow flex-template run "pubsub-proto-to-bigquery-flex-job" \
   --parameters "writeDisposition=$WRITE_DISPOSITION" \
   --parameters "createDisposition=$CREATE_DISPOSITION" \
   --parameters "outputTopic=$OUTPUT_TOPIC" \
-  --parameters "pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH" \
-  --parameters "pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
   --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
@@ -209,8 +203,6 @@ export UDF_OUTPUT_TOPIC=<udfOutputTopic>
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export WRITE_DISPOSITION=WRITE_APPEND
 export CREATE_DISPOSITION=CREATE_IF_NEEDED
-export PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH=<pythonExternalTextTransformGcsPath>
-export PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME=<pythonExternalTextTransformFunctionName>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
@@ -225,7 +217,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-proto-to-bigquery-flex-job" \
 -DtemplateName="PubSub_Proto_to_BigQuery_Flex" \
--Dparameters="protoSchemaPath=$PROTO_SCHEMA_PATH,fullMessageName=$FULL_MESSAGE_NAME,preserveProtoFieldNames=$PRESERVE_PROTO_FIELD_NAMES,bigQueryTableSchemaPath=$BIG_QUERY_TABLE_SCHEMA_PATH,udfOutputTopic=$UDF_OUTPUT_TOPIC,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,inputSubscription=$INPUT_SUBSCRIPTION,outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,createDisposition=$CREATE_DISPOSITION,outputTopic=$OUTPUT_TOPIC,pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH,pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
+-Dparameters="protoSchemaPath=$PROTO_SCHEMA_PATH,fullMessageName=$FULL_MESSAGE_NAME,preserveProtoFieldNames=$PRESERVE_PROTO_FIELD_NAMES,bigQueryTableSchemaPath=$BIG_QUERY_TABLE_SCHEMA_PATH,udfOutputTopic=$UDF_OUTPUT_TOPIC,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,inputSubscription=$INPUT_SUBSCRIPTION,outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,createDisposition=$CREATE_DISPOSITION,outputTopic=$OUTPUT_TOPIC,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
 -f v2/pubsub-binary-to-bigquery
 ```
 
@@ -281,8 +273,6 @@ resource "google_dataflow_flex_template_job" "pubsub_proto_to_bigquery_flex" {
     # useStorageWriteApiAtLeastOnce = "false"
     # writeDisposition = "WRITE_APPEND"
     # createDisposition = "CREATE_IF_NEEDED"
-    # pythonExternalTextTransformGcsPath = "gs://your-bucket/your-function.py"
-    # pythonExternalTextTransformFunctionName = "'transform' or 'transform_udf1'"
     # javascriptTextTransformGcsPath = "gs://your-bucket/your-function.js"
     # javascriptTextTransformFunctionName = "'transform' or 'transform_udf1'"
     # javascriptTextTransformReloadIntervalMinutes = "0"
