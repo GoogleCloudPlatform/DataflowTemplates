@@ -149,4 +149,21 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
       throws NoSuchElementException {
     return schema.getSpannerColumnNames(spannerTable);
   }
+
+  @Override
+  public String getShardIdColumnName(String namespace, String spannerTableName) {
+    if (!schema.getSpannerToID().containsKey(spannerTableName)) {
+      throw new NoSuchElementException(
+          String.format("Spanner table '%s' not found", spannerTableName));
+    }
+    try {
+      String tableId = schema.getSpannerToID().get(spannerTableName).getName();
+      SpannerTable table = schema.getSpSchema().get(tableId);
+      String colId = table.getShardIdColumn();
+      return table.getColDefs().get(colId).getName();
+    } catch (NullPointerException e) {
+      throw new RuntimeException(
+          "Found null while fetching shard id, please provide a session file is valid.", e);
+    }
+  }
 }
