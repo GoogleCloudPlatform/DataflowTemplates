@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.avro;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -49,11 +50,21 @@ public class GenericRecordTypeConvertor {
 
   private final ISchemaMapper schemaMapper;
 
+  private final TransformationContext transformationContext;
+
   private final String namespace;
 
-  public GenericRecordTypeConvertor(ISchemaMapper schemaMapper, String namespace) {
+  private final String dbName;
+
+  public GenericRecordTypeConvertor(
+      ISchemaMapper schemaMapper,
+      TransformationContext transformationContext,
+      String namespace,
+      String dbName) {
     this.schemaMapper = schemaMapper;
+    this.transformationContext = transformationContext;
     this.namespace = namespace;
+    this.dbName = dbName;
   }
 
   /**
@@ -97,6 +108,26 @@ public class GenericRecordTypeConvertor {
             e);
       }
     }
+    result = populateShardId(result, spannerTableName);
+    return result;
+  }
+
+  private Map<String, Value> populateShardId(Map<String, Value> result, String spannerTableName) {
+    if (transformationContext.getSchemaToShardId() == null
+        || transformationContext.getSchemaToShardId().isEmpty()) {
+      return result;
+    }
+    String shardIdCol = schemaMapper.getShardIdColumnName(namespace, spannerTableName);
+    if (shardIdCol == null || shardIdCol.isBlank()) {
+      return result;
+    }
+    Map<String, String> schemaToShardId = transformationContext.getSchemaToShardId();
+    if (!schemaToShardId.containsKey(dbName)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "shard Id entry for schema %s does not exist in transformation context", dbName));
+    }
+    result.put(shardIdCol, Value.string(schemaToShardId.get(dbName)));
     return result;
   }
 

@@ -21,9 +21,11 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import java.io.Serializable;
 import java.util.Map;
@@ -51,9 +53,17 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
 
   public abstract Map<String, SourceTableReference> tableIdMapper();
 
+  public abstract TransformationContext transformationContext();
+
+  public abstract SourceSchemaReference sourceSchemaReference();
+
   public static SourceRowToMutationDoFn create(
-      ISchemaMapper iSchemaMapper, Map<String, SourceTableReference> tableIdMapper) {
-    return new AutoValue_SourceRowToMutationDoFn(iSchemaMapper, tableIdMapper);
+      ISchemaMapper iSchemaMapper,
+      Map<String, SourceTableReference> tableIdMapper,
+      TransformationContext transformationContext,
+      SourceSchemaReference sourceSchemaReference) {
+    return new AutoValue_SourceRowToMutationDoFn(
+        iSchemaMapper, tableIdMapper, transformationContext, sourceSchemaReference);
   }
 
   @ProcessElement
@@ -75,7 +85,8 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
       GenericRecord record = sourceRow.getPayload();
       String srcTableName = tableIdMapper().get(sourceRow.tableSchemaUUID()).sourceTableName();
       GenericRecordTypeConvertor genericRecordTypeConvertor =
-          new GenericRecordTypeConvertor(iSchemaMapper(), "");
+          new GenericRecordTypeConvertor(
+              iSchemaMapper(), transformationContext(), "", sourceSchemaReference().dbName());
       Map<String, Value> values =
           genericRecordTypeConvertor.transformChangeEvent(record, srcTableName);
       String spannerTableName = iSchemaMapper().getSpannerTableName("", srcTableName);
