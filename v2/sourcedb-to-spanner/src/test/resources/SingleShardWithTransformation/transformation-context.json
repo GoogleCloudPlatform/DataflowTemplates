@@ -1,0 +1,5 @@
+{
+  "SchemaToShardId": {
+    "SingleShardWithTransformationTable": "shard_id1"
+  }
+}

@@ -41,8 +41,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An integration test for {@link SourceDbToSpanner} Flex template which tests a basic migration on
- * a simple schema.
+ * An integration test for {@link SourceDbToSpanner} Flex template which tests all data types
+ * migration.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
@@ -80,6 +80,7 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
+            null,
             null,
             null,
             mySQLResourceManager,

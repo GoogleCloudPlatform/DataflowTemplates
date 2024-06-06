@@ -19,10 +19,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -30,58 +26,47 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
-import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * An integration test for {@link SourceDbToSpanner} Flex template which tests a basic migration on
- * a simple schema.
+ * An integration test for {@link SourceDbToSpanner} Flex template which tests a single sharded
+ * migration on a simple schema.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class SourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
-  private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerSimpleIT.class);
-  private static HashSet<SourceDbToSpannerSimpleIT> testInstances = new HashSet<>();
+public class SingleShardWithTransformation extends SourceDbToSpannerITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final String SPANNER_DDL_RESOURCE = "SourceDbToSpannerSimpleIT/spanner-schema.sql";
+  private static final String MYSQL_DUMP_FILE_RESOURCE =
+      "SingleShardWithTransformation/source-schema.sql";
 
-  private static final String TABLE = "SimpleTable";
+  private static final String SPANNER_DDL_RESOURCE =
+      "SingleShardWithTransformation/spanner-schema.sql";
 
-  private static final String ID = "id";
+  private static final String SESSION_FILE_RESOURCE = "SingleShardWithTransformation/session.json";
+
+  private static final String TRANSFORMATION_CONTEXT_FILE_RESOURCE =
+      "SingleShardWithTransformation/transformation-context.json";
+
+  private static final String TABLE = "SingleShardWithTransformationTable";
+
+  private static final String PKID = "pkid";
 
   private static final String NAME = "name";
 
-  private JDBCResourceManager.JDBCSchema getMySQLSchema() {
-    HashMap<String, String> columns = new HashMap<>();
-    columns.put(ID, "INTEGER NOT NULL");
-    columns.put(NAME, "VARCHAR(200)");
-    return new JDBCResourceManager.JDBCSchema(columns, ID);
-  }
+  private static final String STATUS = "status";
 
-  private List<Map<String, Object>> getMySQLData() {
-    List<Map<String, Object>> data = new ArrayList<>();
-    for (int i = 0; i < 100; i++) {
-      Map<String, Object> values = new HashMap<>();
-      values.put(ID, i);
-      values.put(NAME, RandomStringUtils.randomAlphabetic(10));
-      data.add(values);
-    }
-    return data;
-  }
+  private static final String SHARD_ID = "migration_shard_id";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class. \
@@ -99,23 +84,32 @@ public class SourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
   }
 
   @Test
-  public void simpleTest() throws IOException {
-    List<Map<String, Object>> mySQLData = getMySQLData();
-    mySQLResourceManager.createTable(TABLE, getMySQLSchema());
-    mySQLResourceManager.write(TABLE, mySQLData);
+  public void singleShardWithIdPopulationTest() throws Exception {
+    loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
-            null,
-            null,
+            SESSION_FILE_RESOURCE,
+            TRANSFORMATION_CONTEXT_FILE_RESOURCE,
             null,
             mySQLResourceManager,
             spannerResourceManager,
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
-    SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE, ID, NAME))
-        .hasRecordsUnorderedCaseInsensitiveColumns(mySQLData);
+
+    SpannerAsserts.assertThatStructs(
+            spannerResourceManager.readTableRecords(TABLE, PKID, NAME, STATUS, SHARD_ID))
+        .hasRecordsUnorderedCaseInsensitiveColumns(getExpectedData());
+  }
+
+  private List<Map<String, Object>> getExpectedData() {
+    return List.of(
+        Map.of(PKID, 1, NAME, "Alice", STATUS, "active", SHARD_ID, "shard_id1"),
+        Map.of(PKID, 2, NAME, "Bob", STATUS, "inactive", SHARD_ID, "shard_id1"),
+        Map.of(PKID, 3, NAME, "Carol", STATUS, "pending", SHARD_ID, "shard_id1"),
+        Map.of(PKID, 4, NAME, "David", STATUS, "complete", SHARD_ID, "shard_id1"),
+        Map.of(PKID, 5, NAME, "Emily", STATUS, "error", SHARD_ID, "shard_id1"));
   }
 }
