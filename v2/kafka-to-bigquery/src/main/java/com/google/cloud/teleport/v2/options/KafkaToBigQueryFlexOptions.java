@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.options;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.kafka.options.SchemaRegistryOptions;
-import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.Default;
 
@@ -42,23 +41,6 @@ public interface KafkaToBigQueryFlexOptions
   String getReadBootstrapServerAndTopic();
 
   void setReadBootstrapServerAndTopic(String value);
-
-  @TemplateParameter.Enum(
-      name = "kafkaReadAuthenticationMode",
-      order = 2,
-      groupName = "Source",
-      enumOptions = {
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
-      },
-      description = "Kafka Read Authentication Mode",
-      helpText =
-          "The mode of authentication to use with the Kafka cluster. "
-              + "Use NONE for no authentication"
-              + " or SASL_PLAIN for SASL/PLAIN username and password. "
-              + " Apache Kafka for BigQuery only supports the SASL_PLAIN authentication mode.")
-  @Default.String(KafkaAuthenticationMethod.SASL_PLAIN)
-  String getKafkaReadAuthenticationMode();
 
   @TemplateParameter.Boolean(
       order = 3,
