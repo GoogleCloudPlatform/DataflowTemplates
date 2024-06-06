@@ -25,17 +25,14 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
+* **readBootstrapServers** : Kafka Bootstrap Server list, separated by commas. (Example: localhost:9092,127.0.0.1:9093).
 * **bootstrapServers** : The host address of the running Apache Kafka broker servers in a comma-separated list. Each host address must be in the format `35.70.252.199:9092`. (Example: localhost:9092,127.0.0.1:9093).
+* **kafkaReadTopics** : Kafka topic(s) to read input from. (Example: topic1,topic2).
 * **inputTopics** : The Apache Kafka input topics to read from in a comma-separated list.  (Example: topic1,topic2).
 * **outputDeadletterTable** : BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
 * **messageFormat** : The message format. Can be AVRO or JSON. Defaults to: JSON.
 * **avroSchemaPath** : Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.
 * **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-* **readBootstrapServers** : Kafka Bootstrap Server list, separated by commas. (Example: localhost:9092,127.0.0.1:9093).
-* **kafkaReadTopics** : Kafka topic(s) to read input from. (Example: topic1,topic2).
-* **kafkaReadOffset** : The Kafka Offset to read from. Defaults to: latest.
-* **kafkaReadUsernameSecretId** : Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
-* **kafkaReadPasswordSecretId** : Secret Manager secret ID for the SASL_PLAIN password. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version} (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
 * **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js).
 * **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
 * **javascriptTextTransformReloadIntervalMinutes** : Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is 0, UDF reloading is disabled. The default value is 0.
@@ -135,17 +132,14 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Kafka_to_BigQuery
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
 
 ### Optional
+export READ_BOOTSTRAP_SERVERS=<readBootstrapServers>
 export BOOTSTRAP_SERVERS=<bootstrapServers>
+export KAFKA_READ_TOPICS=<kafkaReadTopics>
 export INPUT_TOPICS=<inputTopics>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export MESSAGE_FORMAT=JSON
 export AVRO_SCHEMA_PATH=<avroSchemaPath>
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
-export READ_BOOTSTRAP_SERVERS=<readBootstrapServers>
-export KAFKA_READ_TOPICS=<kafkaReadTopics>
-export KAFKA_READ_OFFSET=latest
-export KAFKA_READ_USERNAME_SECRET_ID=<kafkaReadUsernameSecretId>
-export KAFKA_READ_PASSWORD_SECRET_ID=<kafkaReadPasswordSecretId>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
@@ -159,17 +153,14 @@ gcloud dataflow flex-template run "kafka-to-bigquery-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --parameters "readBootstrapServers=$READ_BOOTSTRAP_SERVERS" \
   --parameters "bootstrapServers=$BOOTSTRAP_SERVERS" \
+  --parameters "kafkaReadTopics=$KAFKA_READ_TOPICS" \
   --parameters "inputTopics=$INPUT_TOPICS" \
   --parameters "outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
   --parameters "messageFormat=$MESSAGE_FORMAT" \
   --parameters "avroSchemaPath=$AVRO_SCHEMA_PATH" \
   --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
-  --parameters "readBootstrapServers=$READ_BOOTSTRAP_SERVERS" \
-  --parameters "kafkaReadTopics=$KAFKA_READ_TOPICS" \
-  --parameters "kafkaReadOffset=$KAFKA_READ_OFFSET" \
-  --parameters "kafkaReadUsernameSecretId=$KAFKA_READ_USERNAME_SECRET_ID" \
-  --parameters "kafkaReadPasswordSecretId=$KAFKA_READ_PASSWORD_SECRET_ID" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
   --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
@@ -200,17 +191,14 @@ export REGION=us-central1
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
 
 ### Optional
+export READ_BOOTSTRAP_SERVERS=<readBootstrapServers>
 export BOOTSTRAP_SERVERS=<bootstrapServers>
+export KAFKA_READ_TOPICS=<kafkaReadTopics>
 export INPUT_TOPICS=<inputTopics>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export MESSAGE_FORMAT=JSON
 export AVRO_SCHEMA_PATH=<avroSchemaPath>
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
-export READ_BOOTSTRAP_SERVERS=<readBootstrapServers>
-export KAFKA_READ_TOPICS=<kafkaReadTopics>
-export KAFKA_READ_OFFSET=latest
-export KAFKA_READ_USERNAME_SECRET_ID=<kafkaReadUsernameSecretId>
-export KAFKA_READ_PASSWORD_SECRET_ID=<kafkaReadPasswordSecretId>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
@@ -227,7 +215,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="kafka-to-bigquery-job" \
 -DtemplateName="Kafka_to_BigQuery" \
--Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,inputTopics=$INPUT_TOPICS,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,messageFormat=$MESSAGE_FORMAT,avroSchemaPath=$AVRO_SCHEMA_PATH,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,readBootstrapServers=$READ_BOOTSTRAP_SERVERS,kafkaReadTopics=$KAFKA_READ_TOPICS,kafkaReadOffset=$KAFKA_READ_OFFSET,kafkaReadUsernameSecretId=$KAFKA_READ_USERNAME_SECRET_ID,kafkaReadPasswordSecretId=$KAFKA_READ_PASSWORD_SECRET_ID,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,createDisposition=$CREATE_DISPOSITION,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
+-Dparameters="readBootstrapServers=$READ_BOOTSTRAP_SERVERS,bootstrapServers=$BOOTSTRAP_SERVERS,kafkaReadTopics=$KAFKA_READ_TOPICS,inputTopics=$INPUT_TOPICS,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,messageFormat=$MESSAGE_FORMAT,avroSchemaPath=$AVRO_SCHEMA_PATH,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,createDisposition=$CREATE_DISPOSITION,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
 -f v2/kafka-to-bigquery
 ```
 
@@ -273,17 +261,14 @@ resource "google_dataflow_flex_template_job" "kafka_to_bigquery" {
   region            = var.region
   parameters        = {
     outputTableSpec = "<outputTableSpec>"
+    # readBootstrapServers = "localhost:9092,127.0.0.1:9093"
     # bootstrapServers = "localhost:9092,127.0.0.1:9093"
+    # kafkaReadTopics = "topic1,topic2"
     # inputTopics = "topic1,topic2"
     # outputDeadletterTable = "your-project-id:your-dataset.your-table-name"
     # messageFormat = "JSON"
     # avroSchemaPath = "<avroSchemaPath>"
     # useStorageWriteApiAtLeastOnce = "false"
-    # readBootstrapServers = "localhost:9092,127.0.0.1:9093"
-    # kafkaReadTopics = "topic1,topic2"
-    # kafkaReadOffset = "latest"
-    # kafkaReadUsernameSecretId = "projects/your-project-id/secrets/your-secret/versions/your-secret-version"
-    # kafkaReadPasswordSecretId = "projects/your-project-id/secrets/your-secret/versions/your-secret-version"
     # javascriptTextTransformGcsPath = "gs://my-bucket/my-udfs/my_file.js"
     # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # javascriptTextTransformReloadIntervalMinutes = "0"
