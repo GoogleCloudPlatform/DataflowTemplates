@@ -27,6 +27,7 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.ProjectId(
       order = 1,
+      groupName = "Source",
       optional = true,
       description = "Spanner Project ID",
       helpText =
@@ -39,6 +40,7 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       description = "Spanner instance ID",
       helpText = "The instance ID of the Spanner database to read from.")
   String getSpannerInstanceId();
@@ -47,6 +49,7 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 3,
+      groupName = "Source",
       description = "Spanner database ID",
       helpText = "The database ID of the Spanner database to export.")
   String getSpannerDatabaseId();
@@ -55,6 +58,7 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 4,
+      groupName = "Source",
       description = "Spanner table name",
       helpText = "The table name of the Spanner database to export.")
   String getSpannerTableId();

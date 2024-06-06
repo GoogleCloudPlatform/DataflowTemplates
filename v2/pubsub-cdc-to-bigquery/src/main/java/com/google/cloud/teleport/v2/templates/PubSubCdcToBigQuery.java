@@ -132,6 +132,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input subscription",
         helpText =
             "Pub/Sub subscription to read the input from, in the format of"
@@ -166,6 +167,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         description = "BigQuery Dataset Name or Template: dataset_name or {column_name}",
         helpText = "The name for the dataset to contain the replica table.")
     @Default.String("{_metadata_dataset}")
@@ -175,6 +177,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "BigQuery Table Name or Template: table_name or {column_name}",
         helpText =
             "The location of the BigQuery table to write the output to. If a table does not "
@@ -186,6 +189,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 6,
+        groupName = "Target",
         optional = true,
         description = "BigQuery output table (Deprecated)",
         helpText =

@@ -31,6 +31,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.ProjectId(
       order = 1,
+      groupName = "Source",
       optional = true,
       description = "Spanner Project ID",
       helpText =
@@ -43,6 +44,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       description = "Spanner instance ID",
       helpText = "The Spanner instance to read change streams from.")
   @Validation.Required
@@ -52,6 +54,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 3,
+      groupName = "Source",
       description = "Spanner database",
       helpText = "The Spanner database to read change streams from.")
   @Validation.Required
@@ -105,6 +108,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 8,
+      groupName = "Source",
       description = "Spanner change stream",
       helpText = "The name of the Spanner change stream to read from.")
   @Validation.Required
@@ -166,6 +170,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 13,
+      groupName = "Target",
       description = "BigQuery dataset",
       helpText = "The BigQuery dataset for change streams output.")
   @Validation.Required
@@ -175,6 +180,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.ProjectId(
       order = 14,
+      groupName = "Target",
       optional = true,
       description = "BigQuery project ID",
       helpText = "The BigQuery project. The default value is the project for the Dataflow job.")
@@ -185,6 +191,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 15,
+      groupName = "Target",
       optional = true,
       description = "BigQuery table name Template",
       helpText = "The template for the name of the BigQuery table that contains the changelog.")
