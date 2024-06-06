@@ -106,11 +106,11 @@ import org.slf4j.LoggerFactory;
     },
     skipOptions = {
       "useStorageWriteApi",
-      "keystoreLocation",
-      "sourceSSL",
-      "sourceTruststorePassword",
-      "sourceKey",
-      "sourceKeystorePassword",
+      "kafkaReadKeystoreLocation",
+      "kafkaReadTruststoreLocation",
+      "kafkaReadTruststorePasswordSecretId",
+      "kafkaReadKeystorePasswordSecretId",
+      "kafkaReadKeyPasswordSecretId"
     })
 public class KafkaToBigQueryFlex {
 

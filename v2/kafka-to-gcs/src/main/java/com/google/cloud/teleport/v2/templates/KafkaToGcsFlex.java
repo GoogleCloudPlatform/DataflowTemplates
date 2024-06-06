@@ -50,11 +50,11 @@ import org.apache.beam.sdk.values.PCollection;
     contactInformation = "https://cloud.google.com/support",
     requirements = {"The output Google Cloud Storage directory must exist."},
     skipOptions = {
-      "keystoreLocation",
-      "sourceSSL",
-      "sourceTruststorePassword",
-      "sourceKeystorePassword",
-      "sourceKey",
+      "kafkaReadKeystoreLocation",
+      "kafkaReadTruststoreLocation",
+      "kafkaReadTruststorePasswordSecretId",
+      "kafkaReadKeystorePasswordSecretId",
+      "kafkaReadKeyPasswordSecretId"
     })
 public class KafkaToGcsFlex {
   public interface KafkaToGcsOptions
