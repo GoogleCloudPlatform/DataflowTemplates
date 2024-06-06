@@ -32,3 +32,12 @@ Update Movie Set actor=27 where id1=1 AND id2=1; Insert into Movie values(18, 12
 ## S1L2 - shard2
 Insert into Movie values(18, 23, 'Mov945', 18); Insert into Movie values(26, 12, 'Mov764', 9); Insert into Movie values(17, 27, 'Mov294', 25);
 Update Movie Set actor=8 where id1=26 AND id2=12; Insert into Movie values(13, 8, 'Tester828', 15); delete from Movie where id1=17 AND id2=27;
+
+
+## Custom transformation test
+
+## S1L1 - shard1
+Insert into Customers values(1, 'first1', 'last1'); Insert into Customers values(2, 'first2', 'last2');
+
+## S1L2 - shard2
+Insert into Customers values(1, 'first1', 'last1'); Insert into Customers values(2, 'first2', 'last2');

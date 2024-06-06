@@ -187,3 +187,79 @@ Insert into Users values(1, 'Lorem', 'Epsum', 20); Insert into Users values(2, '
 ## Authors
 INSERT INTO Authors (id, name) VALUES (1, 'J.R.R. Tolkien'); INSERT INTO Authors (id, name) VALUES (2, 'Jane Austen'); INSERT INTO Authors (id, name) VALUES (3, 'Douglas Adams');
 
+## AllDatatypeTransformation
+INSERT INTO `AllDatatypeTransformation` VALUES (
+    'example1', 10, 'Some text 1', '2023-05-23',
+    100, 123456, 12.34, 123.456,
+    12345.67, '2023-05-23 12:34:56', '2023-05-23 12:34:56', '12:34:56',
+    '2023', X'48656C6C6F', '1', 1,
+    X'0102030405060708090A0B0C0D0E0F1011121314', B'1010101'
+);
+
+INSERT INTO `AllDatatypeTransformation` VALUES (
+    'example2', 20, 'Some text 2', '2022-12-31',
+    200, 987654, 23.45, 234.567,
+    23456.78, '2022-12-31 23:59:59', '2022-12-31 23:59:59', '23:59:59',
+    '2022', X'576F726C64', '2', 0,
+    X'141312111009080706050403020100FFFFEFEDED', B'0101010'
+);
+
+INSERT INTO `AllDatatypeTransformation` VALUES (
+    'example3', 30, 'Some text 3', '2024-01-01',
+    300, 112233, 34.56, 345.678,
+    34567.89, '2024-01-01 00:00:00', '2024-01-01 00:00:00', '00:00:00',
+    '2024', X'536F6D6520626C6F62', '3', 1,
+    X'00112233445566778899AABBCCDDEEFF00112233', B'1110001'
+);
+
+INSERT INTO `AllDatatypeTransformation` VALUES (
+    'example4', 40, 'Some text 4', '2021-11-11',
+    400, 223344, 45.67, 456.789,
+    45678.90, '2021-11-11 11:11:11', '2021-11-11 11:11:11', '11:11:11',
+    '2021', X'416E6F7468657220626C6F62', '1', 0,
+    X'FFEEDDCCBBAA99887766554433221100AABBCCDD', B'1111111'
+);
+
+UPDATE `AllDatatypeTransformation` SET
+    `tinyint_column` = 25,
+    `text_column` = 'Updated text 2',
+    `date_column` = '2023-01-01',
+    `int_column` = 250,
+    `bigint_column` = 56789,
+    `float_column` = 25.45,
+    `double_column` = 345.678,
+    `decimal_column` = 23456.79,
+    `datetime_column` = '2023-01-01 12:00:00',
+    `timestamp_column` = '2023-01-01 12:00:00',
+    `time_column` = '12:00:00',
+    `year_column` = '2023',
+    `blob_column` = X'1234567890ABCDEF',
+    `enum_column` = '3',
+    `bool_column` = 1,
+    `binary_column` = X'1234567890ABCDEF1234567890ABCDEF12345678',
+    `bit_column` = B'1111111'
+WHERE `varchar_column` = 'example2';
+
+UPDATE `AllDatatypeTransformation` SET
+    `tinyint_column` = 35,
+    `text_column` = 'Updated text 3',
+    `date_column` = '2024-01-02',
+    `int_column` = 350,
+    `bigint_column` = 88000,
+    `float_column` = 35.67,
+    `double_column` = 456.789,
+    `decimal_column` = 34567.90,
+    `datetime_column` = '2024-01-02 00:00:00',
+    `timestamp_column` = '2024-01-02 00:00:00',
+    `time_column` = '01:00:00',
+    `year_column` = '2025',
+    `blob_column` = X'ABCDEF1234567890',
+    `enum_column` = '1',
+    `bool_column` = 0,
+    `binary_column` = X'ABCDEF1234567890ABCDEF1234567890ABCDEF12',
+    `bit_column` = B'0000000'
+WHERE `varchar_column` = 'example3';
+
+DELETE FROM AllDatatypeTransformation WHERE varchar_column = 'example4';
+
+

@@ -100,7 +100,8 @@ public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
                   {
                     put("inputFileFormat", "avro");
                   }
-                });
+                },
+                null);
       }
       if (jobInfo2 == null) {
         jobInfo2 =
@@ -115,7 +116,8 @@ public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
                   {
                     put("inputFileFormat", "avro");
                   }
-                });
+                },
+                null);
       }
     }
   }
