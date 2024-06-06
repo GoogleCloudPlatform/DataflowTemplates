@@ -6,7 +6,7 @@ Pick a sample that is closest to your use-case, and use it as a starting point, 
 
 ## List of examples
 
-1. [Sharded migration for globally unique keys](sharded-migration/globaly-unique-keys/README.md)
+1. [Launching multiple bulk migration jobs](multiple-jobs/README.md)
 
 ## How to add a new sample
 
@@ -15,5 +15,6 @@ This ensures uniformity in the style in which terraform samples are written.
 
 ```shell
 mkdir my-new-sample
-cp -r sharded-migration/globally-unique-keys/
+cd my-new-sample
+cp -r multiple-jobs/
 ```
