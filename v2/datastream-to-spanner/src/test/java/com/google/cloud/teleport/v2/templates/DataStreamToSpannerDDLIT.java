@@ -19,7 +19,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -61,8 +60,6 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
   private static final String TABLE6 = "Books";
   private static final String TABLE7 = "Authors";
 
-  private static final String TRANSFORMATION_TABLE = "AllDatatypeTransformation";
-
   private static HashSet<DataStreamToSpannerDDLIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
@@ -75,7 +72,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
    * @throws IOException
    */
   @Before
-  public void setUp() throws IOException, InterruptedException {
+  public void setUp() throws IOException {
     // Prevent cleaning up of dataflow job after a test method is executed.
     skipBaseCleanup = true;
     synchronized (DataStreamToSpannerDDLIT.class) {
@@ -84,11 +81,6 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-        createAndUploadJarToGcs("DatatypeIT");
-        CustomTransformation customTransformation =
-            CustomTransformation.builder(
-                    "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
-                .build();
         jobInfo =
             launchDataflowJob(
                 getClass().getSimpleName(),
@@ -101,8 +93,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
                   {
                     put("inputFileFormat", "avro");
                   }
-                },
-                customTransformation);
+                });
       }
     }
   }
@@ -229,59 +220,6 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     assertThatResult(result).meetsConditions();
 
     assertAllDatatypeColumns2TableCdcContents();
-  }
-
-  @Test
-  public void migrationTestWithAllDatatypeTransformation() {
-    // Construct a ChainedConditionCheck with 4 stages.
-    // 1. Send initial wave of events
-    // 2. Wait on Spanner to have events
-    ChainedConditionCheck conditionCheck =
-        ChainedConditionCheck.builder(
-                List.of(
-                    uploadDataStreamFile(
-                        jobInfo,
-                        TRANSFORMATION_TABLE,
-                        "backfill.avro",
-                        "DataStreamToSpannerDDLIT/mysql-backfill-AllDatatypeTransformation.avro"),
-                    SpannerRowsCheck.builder(spannerResourceManager, TRANSFORMATION_TABLE)
-                        .setMinRows(3)
-                        .setMaxRows(3)
-                        .build()))
-            .build();
-
-    // Wait for conditions
-    PipelineOperator.Result result =
-        pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
-
-    // Assert Conditions
-    assertThatResult(result).meetsConditions();
-
-    assertAllDatatypeTransformationTableBackfillContents();
-
-    conditionCheck =
-        ChainedConditionCheck.builder(
-                List.of(
-                    uploadDataStreamFile(
-                        jobInfo,
-                        TRANSFORMATION_TABLE,
-                        "cdc.avro",
-                        "DataStreamToSpannerDDLIT/mysql-cdc-AllDatatypeTransformation.avro"),
-                    SpannerRowsCheck.builder(spannerResourceManager, TRANSFORMATION_TABLE)
-                        .setMinRows(2)
-                        .setMaxRows(2)
-                        .build()))
-            .build();
-
-    result =
-        pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
-
-    // Assert Conditions
-    assertThatResult(result).meetsConditions();
-
-    assertAllDatatypeTransformationTableCdcContents();
   }
 
   @Test
@@ -603,126 +541,6 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
                     + ", tinyblob_column, tinytext_column, blob_column, mediumblob_column, mediumtext_column"
                     + ", longblob_column, longtext_column, enum_column, bool_column, binary_column"
                     + ", varbinary_column, bit_column, decimal_column from AllDatatypeColumns2"))
-        .hasRecordsUnorderedCaseInsensitiveColumns(events);
-  }
-
-  private void assertAllDatatypeTransformationTableBackfillContents() {
-    List<Map<String, Object>> events = new ArrayList<>();
-
-    Map<String, Object> row = new HashMap<>();
-    row.put("varchar_column", "example2");
-    row.put("tinyint_column", 21);
-    row.put("text_column", "Some text 2 append");
-    row.put("date_column", "2023-01-01");
-    row.put("int_column", 201);
-    row.put("bigint_column", 987655);
-    row.put("float_column", 24.45);
-    row.put("double_column", 235.567);
-    row.put("decimal_column", 23457.78);
-    row.put("datetime_column", "2022-12-31T23:59:58Z");
-    row.put("timestamp_column", "2022-12-31T23:59:58Z");
-    row.put("time_column", "86399001000");
-    row.put("year_column", "2023");
-    row.put("blob_column", "V29ybWQ=");
-    row.put("enum_column", "1");
-    row.put("bool_column", true);
-    row.put("binary_column", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
-    row.put("bit_column", "Ew==");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("varchar_column", "example3");
-    row.put("tinyint_column", 31);
-    row.put("text_column", "Some text 3 append");
-    row.put("date_column", "2024-01-02");
-    row.put("int_column", 301);
-    row.put("bigint_column", 112234);
-    row.put("float_column", 35.56);
-    row.put("double_column", 346.678);
-    row.put("decimal_column", 34568.89);
-    row.put("datetime_column", "2023-12-31T23:59:59Z");
-    row.put("timestamp_column", "2023-12-31T23:59:59Z");
-    row.put("time_column", "1000");
-    row.put("year_column", "2025");
-    row.put("blob_column", "V29ybWQ=");
-    row.put("enum_column", "1");
-    row.put("bool_column", true);
-    row.put("binary_column", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
-    row.put("bit_column", "Ew==");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("varchar_column", "example4");
-    row.put("tinyint_column", 41);
-    row.put("text_column", "Some text 4 append");
-    row.put("date_column", "2021-11-12");
-    row.put("int_column", 401);
-    row.put("bigint_column", 223345);
-    row.put("float_column", 46.67);
-    row.put("double_column", 457.789);
-    row.put("decimal_column", 45679.90);
-    row.put("datetime_column", "2021-11-11T11:11:10Z");
-    row.put("timestamp_column", "2021-11-11T11:11:10Z");
-    row.put("time_column", "40271001000");
-    row.put("year_column", "2022");
-    row.put("blob_column", "V29ybWQ=");
-    row.put("enum_column", "1");
-    row.put("bool_column", true);
-    row.put("binary_column", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
-    row.put("bit_column", "Ew==");
-    events.add(row);
-
-    SpannerAsserts.assertThatStructs(
-            spannerResourceManager.runQuery("select* from AllDatatypeTransformation"))
-        .hasRecordsUnorderedCaseInsensitiveColumns(events);
-  }
-
-  private void assertAllDatatypeTransformationTableCdcContents() {
-    List<Map<String, Object>> events = new ArrayList<>();
-    Map<String, Object> row = new HashMap<>();
-    row.put("varchar_column", "example2");
-    row.put("tinyint_column", 25);
-    row.put("text_column", "Updated text 2");
-    row.put("date_column", "2023-01-01");
-    row.put("int_column", 250);
-    row.put("bigint_column", 56789);
-    row.put("float_column", 25.45);
-    row.put("double_column", 345.678);
-    row.put("decimal_column", 23456.79);
-    row.put("datetime_column", "2023-01-01T12:00:00Z");
-    row.put("timestamp_column", "2023-01-01T12:00:00Z");
-    row.put("time_column", "43200000000");
-    row.put("year_column", "2023");
-    row.put("blob_column", "EjRWeJCrze8=");
-    row.put("enum_column", "3");
-    row.put("bool_column", true);
-    row.put("binary_column", "EjRWeJCrze8SNFZ4kKvN7xI0Vng=");
-    row.put("bit_column", "ASc=");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("varchar_column", "example3");
-    row.put("tinyint_column", 35);
-    row.put("text_column", "Updated text 3");
-    row.put("date_column", "2024-01-02");
-    row.put("int_column", 350);
-    row.put("bigint_column", 88000);
-    row.put("float_column", 35.67);
-    row.put("double_column", 456.789);
-    row.put("decimal_column", 34567.90);
-    row.put("datetime_column", "2024-01-02T00:00:00Z");
-    row.put("timestamp_column", "2024-01-02T00:00:00Z");
-    row.put("time_column", "3600000000");
-    row.put("year_column", "2025");
-    row.put("blob_column", "q83vEjRWeJA=");
-    row.put("enum_column", "1");
-    row.put("bool_column", false);
-    row.put("binary_column", "q83vEjRWeJCrze8SNFZ4kKvN7xI=");
-    row.put("bit_column", "AA==");
-    events.add(row);
-
-    SpannerAsserts.assertThatStructs(
-            spannerResourceManager.runQuery("select * from AllDatatypeTransformation"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 

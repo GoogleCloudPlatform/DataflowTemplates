@@ -101,25 +101,3 @@ CREATE TABLE `Authors` (
     `name` varchar(200),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARSET=latin1;
-
-CREATE TABLE `AllDatatypeTransformation` (
- `varchar_column` varchar(20) NOT NULL, -- To: varchar_column STRING(20)
- `tinyint_column` tinyint,              -- To: tinyint_column INT64
- `text_column` text,                    -- To: text_column STRING(MAX)
- `date_column` date,                    -- To: date_column DATE
- `int_column` int,                      -- To: int_column INT64
- `bigint_column` bigint,                -- To: bigint_column INT64
- `float_column` float(10,2),            -- To: float_column FLOAT64
- `double_column` double,                -- To: double_column FLOAT64
- `decimal_column` decimal(10,2),        -- To: decimal_column NUMERIC
- `datetime_column` datetime,            -- To: datetime_column TIMESTAMP
- `timestamp_column` timestamp,          -- To: timestamp_column TIMESTAMP
- `time_column` time,                    -- To: time_column STRING(MAX)
- `year_column` year,                    -- To: year_column STRING(MAX)
- `blob_column` blob,                    -- To: blob_column BYTES(MAX)
- `enum_column` enum('1','2','3'),       -- To: enum_column STRING(MAX)
- `bool_column` tinyint(1),              -- To: bool_column BOOL
- `binary_column` binary(20),            -- To: binary_column BYTES(MAX)
- `bit_column` bit(7),                   -- To: bit_column BYTES(MAX)
- PRIMARY KEY (`varchar_column`)
-);

@@ -19,7 +19,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -62,8 +61,6 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
   private static final String TABLE = "Users";
   private static final String MOVIE_TABLE = "Movie";
 
-  private static final String CUSTOMERS_TABLE = "Customers";
-
   private static final String SESSION_FILE_RESOURCE =
       "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/mysql-session.json";
 
@@ -89,7 +86,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
    * @throws IOException
    */
   @Before
-  public void setUp() throws IOException, InterruptedException {
+  public void setUp() throws IOException {
     // Prevent cleaning up of dataflow job after a test method is executed.
     skipBaseCleanup = true;
     synchronized (DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT.class) {
@@ -101,11 +98,6 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
       if (pubsubResourceManager == null) {
         pubsubResourceManager = setUpPubSubResourceManager();
       }
-      createAndUploadJarToGcs("shard1");
-      CustomTransformation customTransformation =
-          CustomTransformation.builder(
-                  "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
-              .build();
       if (jobInfo1 == null) {
         jobInfo1 =
             launchDataflowJob(
@@ -119,8 +111,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
                   {
                     put("inputFileFormat", "avro");
                   }
-                },
-                customTransformation);
+                });
       }
       if (jobInfo2 == null) {
         jobInfo2 =
@@ -135,8 +126,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
                   {
                     put("inputFileFormat", "avro");
                   }
-                },
-                null);
+                });
       }
     }
   }
@@ -280,90 +270,6 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
 
     // Assert specific rows
     assertMovieTableContents();
-  }
-
-  @Test
-  public void customTransformationMultiShardMigration() {
-    // Migrates Customer table from 2 logical shards. Asserts data from all the shards are going to
-    // Spanner. This test case changes populates spanner column value based on the following logic
-    // full_name = first_name + last_name
-    // and migration_shard_id = id + logical_shard_id
-    // It verifies that the migration respects both the custom transformation and the addition of
-    // new column(full_name) and migration_shard_id.
-    ChainedConditionCheck conditionCheck =
-        ChainedConditionCheck.builder(
-                List.of(
-                    uploadDataStreamFile(
-                        jobInfo1,
-                        CUSTOMERS_TABLE,
-                        "Customers-shard1.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Customers-shard1.avro"),
-                    uploadDataStreamFile(
-                        jobInfo1,
-                        CUSTOMERS_TABLE,
-                        "Customers-shard2.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Customers-shard2.avro")))
-            .build();
-
-    // Wait for conditions
-    PipelineOperator.Result result =
-        pipelineOperator()
-            .waitForCondition(createConfig(jobInfo1, Duration.ofMinutes(8)), conditionCheck);
-
-    // Assert Conditions
-    assertThatResult(result).meetsConditions();
-
-    ConditionCheck rowsConditionCheck =
-        SpannerRowsCheck.builder(spannerResourceManager, CUSTOMERS_TABLE)
-            .setMinRows(4)
-            .setMaxRows(4)
-            .build();
-    result =
-        pipelineOperator()
-            .waitForCondition(createConfig(jobInfo1, Duration.ofMinutes(8)), rowsConditionCheck);
-    assertThatResult(result).meetsConditions();
-
-    // Assert specific rows
-    assertCustomersTableContents();
-  }
-
-  private void assertCustomersTableContents() {
-    List<Map<String, Object>> events = new ArrayList<>();
-
-    Map<String, Object> row = new HashMap<>();
-    row.put("id", 1);
-    row.put("first_name", "first1");
-    row.put("last_name", "last1");
-    row.put("full_name", "first1 last1");
-    row.put("migration_shard_id", "L1_1");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 2);
-    row.put("first_name", "first2");
-    row.put("last_name", "last2");
-    row.put("full_name", "first2 last2");
-    row.put("migration_shard_id", "L1_2");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 1);
-    row.put("first_name", "first1");
-    row.put("last_name", "last1");
-    row.put("full_name", "first1 last1");
-    row.put("migration_shard_id", "L2_1");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 2);
-    row.put("first_name", "first2");
-    row.put("last_name", "last2");
-    row.put("full_name", "first2 last2");
-    row.put("migration_shard_id", "L2_2");
-    events.add(row);
-
-    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Customers"))
-        .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
   private void assertUsersTableContents() {
