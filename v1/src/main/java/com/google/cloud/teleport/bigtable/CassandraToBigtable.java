@@ -70,6 +70,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         regexes = {"^[a-zA-Z0-9\\.\\-,]*$"},
         description = "Cassandra Hosts",
         helpText = "The hosts of the Apache Cassandra nodes in a comma-separated list.")
@@ -80,6 +81,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Integer(
         order = 2,
+        groupName = "Source",
         optional = true,
         description = "Cassandra Port",
         helpText =
@@ -92,6 +94,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {"^[a-zA-Z0-9][a-zA-Z0-9_]{0,47}$"},
         description = "Cassandra Keyspace",
         helpText = "The Apache Cassandra keyspace where the table is located.")
@@ -102,6 +105,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Source",
         regexes = {"^[a-zA-Z][a-zA-Z0-9_]*$"},
         description = "Cassandra Table",
         helpText = "The Apache Cassandra table to copy.")
@@ -112,6 +116,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.ProjectId(
         order = 5,
+        groupName = "Target",
         description = "Bigtable Project ID",
         helpText = "The Google Cloud project ID associated with the Bigtable instance.")
     ValueProvider<String> getBigtableProjectId();
@@ -121,6 +126,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Target",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Target Bigtable Instance",
         helpText = "The ID of the Bigtable instance that the Apache Cassandra table is copied to.")
@@ -131,6 +137,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 7,
+        groupName = "Target",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Target Bigtable Table",
         helpText = "The name of the Bigtable table that the Apache Cassandra table is copied to.")
@@ -141,6 +148,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Target",
         optional = true,
         regexes = {"[-_.a-zA-Z0-9]+"},
         description = "The Default Bigtable Column Family",
@@ -154,6 +162,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 9,
+        groupName = "Target",
         optional = true,
         description = "The Row Key Separator",
         helpText = "The separator used to build row-keys. The default value is '#'.")
@@ -165,6 +174,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Boolean(
         order = 10,
+        groupName = "Target",
         optional = true,
         description = "If true, large rows will be split into multiple MutateRows requests",
         helpText =
