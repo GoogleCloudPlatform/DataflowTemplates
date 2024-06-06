@@ -6,8 +6,6 @@ common_params = {
   on_delete             = "cancel"  # Or "cancel" if you prefer
   project               = "your-google-cloud-project-id"
   region                = "us-central1"  # Or your desired region
-  instanceId            = "your-spanner-instance-id"
-  databaseId            = "your-spanner-database-id"
   projectId             = "your-google-cloud-project-id"
   service_account_email = "your-project-id-compute@developer.gserviceaccount.com"
 }
