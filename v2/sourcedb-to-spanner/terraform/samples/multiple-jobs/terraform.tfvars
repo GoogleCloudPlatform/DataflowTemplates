@@ -4,8 +4,6 @@ common_params = {
   region                       = "us-central1"  # Or your desired region
   jdbcDriverJars               = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
   jdbcDriverClassName          = "com.mysql.jdbc.Driver"
-  instanceId                   = "your-spanner-instance-id"
-  databaseId                   = "your-spanner-database-id"
   projectId                    = "your-cloud-spanner-project-id"
   spannerHost                  = "https://batch-spanner.googleapis.com"
   sessionFilePath              = "gs://your-bucket/session-file.json"
@@ -24,6 +22,8 @@ common_params = {
 
 jobs = [
   {
+    instanceId            = "your-spanner-instance-id"
+    databaseId            = "your-spanner-database-id"
     sourceDbURL           = "jdbc:mysql://127.0.0.1/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8"
     username              = "your-db-username"
     password              = "your-db-password"
@@ -41,6 +41,8 @@ jobs = [
     num_workers           = 5
   },
   {
+    instanceId            = "your-spanner-instance-id"
+    databaseId            = "your-spanner-database-id"
     sourceDbURL           = "jdbc:mysql://another-db-host:3306/different-db"
     username              = "another-username"
     password              = "another-password"

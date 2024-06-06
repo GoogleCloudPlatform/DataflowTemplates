@@ -6,8 +6,6 @@ variable "common_params" {
     region                       = string
     jdbcDriverJars               = optional(string)
     jdbcDriverClassName          = optional(string)
-    instanceId                   = string
-    databaseId                   = string
     projectId                    = string
     spannerHost                  = optional(string, "https://batch-spanner.googleapis.com")
     sessionFilePath              = optional(string)
@@ -29,6 +27,8 @@ variable "common_params" {
 variable "jobs" {
   description = "List of job configurations. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/README_Sourcedb_to_Spanner_Flex.md for the description of the parameters below."
   type        = list(object({
+    instanceId            = string
+    databaseId            = string
     sourceDbURL           = string
     username              = string
     password              = string

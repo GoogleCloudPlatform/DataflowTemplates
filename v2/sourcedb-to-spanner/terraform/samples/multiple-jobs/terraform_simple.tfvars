@@ -14,6 +14,8 @@ common_params = {
 
 jobs = [
   {
+    instanceId   = "your-spanner-instance-id"
+    databaseId   = "your-spanner-database-id"
     sourceDbURL  = "jdbc:mysql://127.0.0.1/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8"
     username     = "your-db-username"
     password     = "your-db-password"
@@ -22,6 +24,8 @@ jobs = [
     num_workers  = 2
   },
   {
+    instanceId   = "your-spanner-instance-id"
+    databaseId   = "your-spanner-database-id"
     sourceDbURL  = "jdbc:mysql://127.0.0.1/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8"
     username     = "your-db-username"
     password     = "your-db-password"

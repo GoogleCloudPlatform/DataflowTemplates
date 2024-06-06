@@ -27,8 +27,8 @@ resource "google_dataflow_flex_template_job" "generated" {
     password            = var.jobs[count.index].password
     tables              = var.jobs[count.index].tables
     numPartitions       = tostring(var.jobs[count.index].numPartitions)
-    instanceId          = var.common_params.instanceId
-    databaseId          = var.common_params.databaseId
+    instanceId          = var.jobs[count.index].instanceId
+    databaseId          = var.jobs[count.index].databaseId
     projectId           = var.common_params.projectId
     spannerHost         = var.common_params.spannerHost
     maxConnections      = tostring(var.jobs[count.index].maxConnections)
@@ -61,4 +61,3 @@ resource "google_dataflow_flex_template_job" "generated" {
   staging_location             = var.common_params.staging_location
   temp_location                = var.common_params.temp_location
 }
-
