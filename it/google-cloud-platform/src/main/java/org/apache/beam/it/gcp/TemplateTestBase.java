@@ -632,6 +632,20 @@ public abstract class TemplateTestBase {
         table.getTable());
   }
 
+  protected LaunchConfig.Builder enableRunnerV2(LaunchConfig.Builder config) {
+    return config.addEnvironment(
+        "additionalExperiments", Collections.singletonList("use_runner_v2"));
+  }
+
+  protected LaunchConfig.Builder disableRunnerV2(LaunchConfig.Builder config) {
+    return config.addEnvironment(
+        "additionalExperiments", Collections.singletonList("disable_runner_v2"));
+  }
+
+  protected LaunchConfig.Builder enableStreamingEngine(LaunchConfig.Builder config) {
+    return config.addEnvironment("enableStreamingEngine", true);
+  }
+
   /**
    * Append experiment to the given launch options.
    *
