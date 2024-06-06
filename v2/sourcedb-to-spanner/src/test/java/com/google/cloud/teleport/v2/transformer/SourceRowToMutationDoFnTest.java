@@ -28,6 +28,7 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import java.util.List;
@@ -88,7 +89,13 @@ public class SourceRowToMutationDoFnTest {
         .thenReturn(List.of("spFirstName", "spLastName"));
 
     PCollection<Mutation> mutations =
-        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper));
+        transform(
+            sourceRows,
+            SourceRowToMutationDoFn.create(
+                mockIschemaMapper,
+                tableIdMapper,
+                new TransformationContext(),
+                SourceSchemaReference.builder().setDbName("testDB").build()));
 
     PAssert.that(mutations)
         .containsInAnyOrder(
@@ -123,7 +130,13 @@ public class SourceRowToMutationDoFnTest {
     ISchemaMapper mockIschemaMapper =
         mock(ISchemaMapper.class, Mockito.withSettings().serializable());
     PCollection<Mutation> mutations =
-        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper));
+        transform(
+            sourceRows,
+            SourceRowToMutationDoFn.create(
+                mockIschemaMapper,
+                tableIdMapper,
+                new TransformationContext(),
+                SourceSchemaReference.builder().setDbName("testDB").build()));
 
     PAssert.that(mutations).empty();
     pipeline.run();
@@ -154,7 +167,13 @@ public class SourceRowToMutationDoFnTest {
         .thenThrow(NoSuchElementException.class);
 
     PCollection<Mutation> mutations =
-        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper));
+        transform(
+            sourceRows,
+            SourceRowToMutationDoFn.create(
+                mockIschemaMapper,
+                tableIdMapper,
+                new TransformationContext(),
+                SourceSchemaReference.builder().setDbName("testDB").build()));
 
     PAssert.that(mutations).empty();
     pipeline.run();

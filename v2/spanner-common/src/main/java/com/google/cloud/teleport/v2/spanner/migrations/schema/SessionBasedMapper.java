@@ -48,6 +48,12 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
     validateSchemaAndDdl(schema, ddl);
   }
 
+  public SessionBasedMapper(Schema schema, Ddl ddl) throws InputMismatchException {
+    this.schema = schema;
+    this.ddl = ddl;
+    validateSchemaAndDdl(schema, ddl);
+  }
+
   static void validateSchemaAndDdl(Schema schema, Ddl ddl) throws InputMismatchException {
     List<String> schemaTableNames = new ArrayList<>(schema.getToSource().keySet());
     Collections.sort(schemaTableNames);
@@ -152,12 +158,13 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
 
   @Override
   public String getShardIdColumnName(String namespace, String spannerTableName) {
-    if (!schema.getSpannerToID().containsKey(spannerTableName)) {
+    Map<String, NameAndCols> spanToId = schema.getSpannerToID();
+    if (!spanToId.containsKey(spannerTableName)) {
       throw new NoSuchElementException(
           String.format("Spanner table '%s' not found", spannerTableName));
     }
     try {
-      String tableId = schema.getSpannerToID().get(spannerTableName).getName();
+      String tableId = spanToId.get(spannerTableName).getName();
       SpannerTable table = schema.getSpSchema().get(tableId);
       String colId = table.getShardIdColumn();
       return table.getColDefs().get(colId).getName();

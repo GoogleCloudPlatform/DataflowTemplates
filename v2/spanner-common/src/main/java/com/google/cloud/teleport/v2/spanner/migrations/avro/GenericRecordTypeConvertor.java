@@ -76,12 +76,19 @@ public class GenericRecordTypeConvertor {
     Map<String, Value> result = new HashMap<>();
     String spannerTableName = schemaMapper.getSpannerTableName(namespace, srcTableName);
     List<String> spannerColNames = schemaMapper.getSpannerColumns(namespace, spannerTableName);
+    // This is null/blank for identity/non-sharded cases.
+    String shardIdCol = schemaMapper.getShardIdColumnName(namespace, spannerTableName);
     for (String spannerColName : spannerColNames) {
       /**
-       * TODO: Handle columns that will not exist at source - synth id - shard id - multi-column
+       * TODO: Handle columns that will not exist at source - synth id - multi-column
        * transformations - auto-gen keys - Default columns - generated columns
        */
       try {
+        // If current column is migration shard id, populate value.
+        if (spannerColName.equals(shardIdCol)) {
+          result = populateShardId(result, shardIdCol);
+          continue;
+        }
         String srcColName =
             schemaMapper.getSourceColumnName(namespace, spannerTableName, spannerColName);
         Type spannerColumnType =
@@ -108,17 +115,12 @@ public class GenericRecordTypeConvertor {
             e);
       }
     }
-    result = populateShardId(result, spannerTableName);
     return result;
   }
 
-  private Map<String, Value> populateShardId(Map<String, Value> result, String spannerTableName) {
+  private Map<String, Value> populateShardId(Map<String, Value> result, String shardIdCol) {
     if (transformationContext.getSchemaToShardId() == null
         || transformationContext.getSchemaToShardId().isEmpty()) {
-      return result;
-    }
-    String shardIdCol = schemaMapper.getShardIdColumnName(namespace, spannerTableName);
-    if (shardIdCol == null || shardIdCol.isBlank()) {
       return result;
     }
     Map<String, String> schemaToShardId = transformationContext.getSchemaToShardId();
