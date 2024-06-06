@@ -2,11 +2,13 @@
 Kafka to BigQuery template
 ---
 The Apache Kafka to BigQuery template is a streaming pipeline which ingests text
-data from Apache Kafka, executes a user-defined function (UDF), and outputs the
-resulting records to BigQuery. Any errors which occur in the transformation of
-the data, execution of the UDF, or inserting into the output table are inserted
-into a separate errors table in BigQuery. If the errors table does not exist
-prior to execution, then it is created.
+data from Apache Kafka, and outputs the resulting records to BigQuery. Any errors
+which occur in the transformation of the data, or inserting into the output table
+are inserted into a separate errors table in BigQuery. For any errors which occur
+in the transformation of the data, the original records can be inserted into a
+seperate Kafka topic. The template supports reading a Kafka topic which contains
+single/multiple schema(s). It can write to a single or multiple BigQuery tables,
+depending on the schema of records.
 
 
 :memo: This is a Google-provided template! Please
@@ -21,29 +23,40 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
+* **readBootstrapServerAndTopic** : Kafka Topic to read the input from.
+* **kafkaReadAuthenticationMode** : The mode of authentication to use with the Kafka cluster. Use NONE for no authentication or SASL_PLAIN for SASL/PLAIN username and password.  Apache Kafka for BigQuery only supports the SASL_PLAIN authentication mode. Defaults to: SASL_PLAIN.
+* **writeMode** : Write Mode: write records to one table or multiple tables (based on schema). The DYNAMIC_TABLE_NAMES mode is supported only for AVRO_CONFLUENT_WIRE_FORMAT Source Message Format and SCHEMA_REGISTRY Schema Source. The target table name will be auto-generated based on the Avro schema name of each message, it could either be a single schema (creating a single table) or multiple schemas (creating multiple tables). The SINGLE_TABLE_NAME mode writes to a single table (single schema) specified by the user. Defaults to SINGLE_TABLE_NAME.
+* **useBigQueryDLQ** : If true, failed messages will be written to BigQuery with extra error information. The deadletter table should be created with no schema. Defaults to: false.
+* **messageFormat** : The format of the Kafka messages to read. The supported values are AVRO_CONFLUENT_WIRE_FORMAT (Confluent Schema Registry encoded Avro), AVRO_BINARY_ENCODING (Plain binary Avro), and JSON. Defaults to: AVRO_CONFLUENT_WIRE_FORMAT.
 
 ### Optional parameters
 
 * **outputTableSpec** : BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
-* **writeDisposition** : BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
-* **createDisposition** : BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED.
-* **outputDeadletterTable** : BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
-* **messageFormat** : The Kafka message format. Can be AVRO or JSON. Defaults to: AVRO.
-* **avroFormat** : This parameter is used to indicate what format to use for the avro messages. Default is CONFLUENT_WIRE_FORMAT.
-* **avroSchemaPath** : Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.
-* **schemaRegistryConnectionUrl** : Schema Registry Connection URL for a registry which supports Confluent wire format.
-* **outputDataset** : BigQuery output dataset to write the output to. Tables will be created dynamically in the dataset. If the tables are created beforehand, the table names should follow the specified naming convention. The name should be `bqTableNamePrefix + Avro Schema FullName` {@link org.apache.avro.Schema.getFullName}, each word will be seperated by a hyphen '-'.
 * **persistKafkaKey** : If true, the pipeline will persist the Kafka message key in the BigQuery table, in a `_key` field of type `BYTES`. Default is false (Key is ignored).
+* **outputProject** : BigQuery output project in wehich the dataset resides. Tables will be created dynamically in the dataset. Defaults to empty.
+* **outputDataset** : BigQuery output dataset to write the output to. Tables will be created dynamically in the dataset. If the tables are created beforehand, the table names should follow the specified naming convention. The name should be `bqTableNamePrefix + Avro Schema FullName` , each word will be separated by a hyphen '-'. Defaults to empty.
 * **bqTableNamePrefix** : Naming prefix to be used while creating BigQuery output tables. Only applicable when using schema registry. Defaults to empty.
+* **createDisposition** : BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED.
+* **writeDisposition** : BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
+* **useAutoSharding** : If true, the pipeline uses auto-sharding when writng to BigQueryThe default value is `true`.
+* **numStorageWriteApiStreams** : Specifies the number of write streams, this parameter must be set. Default is 0.
+* **storageWriteApiTriggeringFrequencySec** : Specifies the triggering frequency in seconds, this parameter must be set. Default is 5 seconds.
 * **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-* **readBootstrapServers** : Kafka Bootstrap Server list, separated by commas. (Example: localhost:9092,127.0.0.1:9093).
-* **kafkaReadTopics** : Kafka topic(s) to read input from. (Example: topic1,topic2).
-* **kafkaReadOffset** : The Kafka Offset to read from. Defaults to: latest.
-* **kafkaReadUsernameSecretId** : Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
-* **kafkaReadPasswordSecretId** : Secret Manager secret ID for the SASL_PLAIN password. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version} (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
-* **useStorageWriteApi** : If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
-* **numStorageWriteApiStreams** : When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
-* **storageWriteApiTriggeringFrequencySec** : When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.
+* **outputDeadletterTable** : BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. (Example: your-project-id:your-dataset.your-table-name).
+* **enableCommitOffsets** : Commit offsets of processed messages to Kafka. If enabled, this will minimize the gaps or duplicate processing of messages when restarting the pipeline. Requires specifying the Consumer Group ID. Defaults to: false.
+* **consumerGroupId** : The unique identifier for the consumer group that this pipeline belongs to. Required if Commit Offsets to Kafka is enabled. Defaults to empty.
+* **kafkaReadOffset** : The starting point for reading messages when no committed offsets exist. The earliest starts from the beginning, the latest from the newest message. Defaults to: latest.
+* **kafkaReadUsernameSecretId** : The Google Cloud Secret Manager secret ID that contains the Kafka username to use with SASL_PLAIN authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>). Defaults to empty.
+* **kafkaReadPasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the Kafka password to use with SASL_PLAIN authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>). Defaults to empty.
+* **kafkaReadKeystoreLocation** : The Google Cloud Storage path to the Java KeyStore (JKS) file that contains the TLS certificate and private key to use when authenticating with the Kafka cluster. (Example: gs://your-bucket/keystore.jks).
+* **kafkaReadTruststoreLocation** : The Google Cloud Storage path to the Java TrustStore (JKS) file that contains the trusted certificates to use to verify the identity of the Kafka broker.
+* **kafkaReadTruststorePasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to use to access the Java TrustStore (JKS) file for Kafka TLS authentication (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
+* **kafkaReadKeystorePasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to use to access the Java KeyStore (JKS) file for Kafka TLS authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
+* **kafkaReadKeyPasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to use to access the private key within the Java KeyStore (JKS) file for Kafka TLS authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
+* **schemaFormat** : The Kafka schema format. Can be provided as SINGLE_SCHEMA_FILE or SCHEMA_REGISTRY. If SINGLE_SCHEMA_FILE is specified, all messages should have the schema mentioned in the avro schema file. If SCHEMA_REGISTRY is specified, the messages can have either a single schema or multiple schemas. Defaults to: SINGLE_SCHEMA_FILE.
+* **confluentAvroSchemaPath** : The Google Cloud Storage path to the single Avro schema file used to decode all of the messages in a topic. Defaults to empty.
+* **schemaRegistryConnectionUrl** : The URL for the Confluent Schema Registry instance used to manage Avro schemas for message decoding. Defaults to empty.
+* **binaryAvroSchemaPath** : The Google Cloud Storage path to the Avro schema file used to decode binary-encoded Avro messages. Defaults to empty.
 
 
 
@@ -122,53 +135,75 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Kafka_to_BigQuery_Flex"
 
 ### Required
+export READ_BOOTSTRAP_SERVER_AND_TOPIC=<readBootstrapServerAndTopic>
+export KAFKA_READ_AUTHENTICATION_MODE=SASL_PLAIN
+export WRITE_MODE=SINGLE_TABLE_NAME
+export USE_BIG_QUERY_DLQ=false
+export MESSAGE_FORMAT=AVRO_CONFLUENT_WIRE_FORMAT
 
 ### Optional
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
-export WRITE_DISPOSITION=WRITE_APPEND
-export CREATE_DISPOSITION=CREATE_IF_NEEDED
-export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
-export MESSAGE_FORMAT=AVRO
-export AVRO_FORMAT=CONFLUENT_WIRE_FORMAT
-export AVRO_SCHEMA_PATH=<avroSchemaPath>
-export SCHEMA_REGISTRY_CONNECTION_URL=<schemaRegistryConnectionUrl>
-export OUTPUT_DATASET=<outputDataset>
 export PERSIST_KAFKA_KEY=false
+export OUTPUT_PROJECT=""
+export OUTPUT_DATASET=""
 export BQ_TABLE_NAME_PREFIX=""
-export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
-export READ_BOOTSTRAP_SERVERS=<readBootstrapServers>
-export KAFKA_READ_TOPICS=<kafkaReadTopics>
-export KAFKA_READ_OFFSET=latest
-export KAFKA_READ_USERNAME_SECRET_ID=<kafkaReadUsernameSecretId>
-export KAFKA_READ_PASSWORD_SECRET_ID=<kafkaReadPasswordSecretId>
-export USE_STORAGE_WRITE_API=false
+export CREATE_DISPOSITION=CREATE_IF_NEEDED
+export WRITE_DISPOSITION=WRITE_APPEND
+export USE_AUTO_SHARDING=true
 export NUM_STORAGE_WRITE_API_STREAMS=0
 export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=<storageWriteApiTriggeringFrequencySec>
+export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
+export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
+export ENABLE_COMMIT_OFFSETS=false
+export CONSUMER_GROUP_ID=""
+export KAFKA_READ_OFFSET=latest
+export KAFKA_READ_USERNAME_SECRET_ID=""
+export KAFKA_READ_PASSWORD_SECRET_ID=""
+export KAFKA_READ_KEYSTORE_LOCATION=<kafkaReadKeystoreLocation>
+export KAFKA_READ_TRUSTSTORE_LOCATION=<kafkaReadTruststoreLocation>
+export KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID=<kafkaReadTruststorePasswordSecretId>
+export KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID=<kafkaReadKeystorePasswordSecretId>
+export KAFKA_READ_KEY_PASSWORD_SECRET_ID=<kafkaReadKeyPasswordSecretId>
+export SCHEMA_FORMAT=SINGLE_SCHEMA_FILE
+export CONFLUENT_AVRO_SCHEMA_PATH=""
+export SCHEMA_REGISTRY_CONNECTION_URL=""
+export BINARY_AVRO_SCHEMA_PATH=""
 
 gcloud dataflow flex-template run "kafka-to-bigquery-flex-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --parameters "readBootstrapServerAndTopic=$READ_BOOTSTRAP_SERVER_AND_TOPIC" \
+  --parameters "kafkaReadAuthenticationMode=$KAFKA_READ_AUTHENTICATION_MODE" \
   --parameters "outputTableSpec=$OUTPUT_TABLE_SPEC" \
-  --parameters "writeDisposition=$WRITE_DISPOSITION" \
-  --parameters "createDisposition=$CREATE_DISPOSITION" \
-  --parameters "outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
-  --parameters "messageFormat=$MESSAGE_FORMAT" \
-  --parameters "avroFormat=$AVRO_FORMAT" \
-  --parameters "avroSchemaPath=$AVRO_SCHEMA_PATH" \
-  --parameters "schemaRegistryConnectionUrl=$SCHEMA_REGISTRY_CONNECTION_URL" \
-  --parameters "outputDataset=$OUTPUT_DATASET" \
   --parameters "persistKafkaKey=$PERSIST_KAFKA_KEY" \
+  --parameters "writeMode=$WRITE_MODE" \
+  --parameters "outputProject=$OUTPUT_PROJECT" \
+  --parameters "outputDataset=$OUTPUT_DATASET" \
   --parameters "bqTableNamePrefix=$BQ_TABLE_NAME_PREFIX" \
+  --parameters "createDisposition=$CREATE_DISPOSITION" \
+  --parameters "writeDisposition=$WRITE_DISPOSITION" \
+  --parameters "useAutoSharding=$USE_AUTO_SHARDING" \
+  --parameters "numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS" \
+  --parameters "storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
   --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
-  --parameters "readBootstrapServers=$READ_BOOTSTRAP_SERVERS" \
-  --parameters "kafkaReadTopics=$KAFKA_READ_TOPICS" \
+  --parameters "useBigQueryDLQ=$USE_BIG_QUERY_DLQ" \
+  --parameters "outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
+  --parameters "enableCommitOffsets=$ENABLE_COMMIT_OFFSETS" \
+  --parameters "consumerGroupId=$CONSUMER_GROUP_ID" \
   --parameters "kafkaReadOffset=$KAFKA_READ_OFFSET" \
   --parameters "kafkaReadUsernameSecretId=$KAFKA_READ_USERNAME_SECRET_ID" \
   --parameters "kafkaReadPasswordSecretId=$KAFKA_READ_PASSWORD_SECRET_ID" \
-  --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
-  --parameters "numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS" \
-  --parameters "storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC"
+  --parameters "kafkaReadKeystoreLocation=$KAFKA_READ_KEYSTORE_LOCATION" \
+  --parameters "kafkaReadTruststoreLocation=$KAFKA_READ_TRUSTSTORE_LOCATION" \
+  --parameters "kafkaReadTruststorePasswordSecretId=$KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID" \
+  --parameters "kafkaReadKeystorePasswordSecretId=$KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID" \
+  --parameters "kafkaReadKeyPasswordSecretId=$KAFKA_READ_KEY_PASSWORD_SECRET_ID" \
+  --parameters "messageFormat=$MESSAGE_FORMAT" \
+  --parameters "schemaFormat=$SCHEMA_FORMAT" \
+  --parameters "confluentAvroSchemaPath=$CONFLUENT_AVRO_SCHEMA_PATH" \
+  --parameters "schemaRegistryConnectionUrl=$SCHEMA_REGISTRY_CONNECTION_URL" \
+  --parameters "binaryAvroSchemaPath=$BINARY_AVRO_SCHEMA_PATH"
 ```
 
 For more information about the command, please check:
@@ -187,28 +222,39 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
+export READ_BOOTSTRAP_SERVER_AND_TOPIC=<readBootstrapServerAndTopic>
+export KAFKA_READ_AUTHENTICATION_MODE=SASL_PLAIN
+export WRITE_MODE=SINGLE_TABLE_NAME
+export USE_BIG_QUERY_DLQ=false
+export MESSAGE_FORMAT=AVRO_CONFLUENT_WIRE_FORMAT
 
 ### Optional
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
-export WRITE_DISPOSITION=WRITE_APPEND
-export CREATE_DISPOSITION=CREATE_IF_NEEDED
-export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
-export MESSAGE_FORMAT=AVRO
-export AVRO_FORMAT=CONFLUENT_WIRE_FORMAT
-export AVRO_SCHEMA_PATH=<avroSchemaPath>
-export SCHEMA_REGISTRY_CONNECTION_URL=<schemaRegistryConnectionUrl>
-export OUTPUT_DATASET=<outputDataset>
 export PERSIST_KAFKA_KEY=false
+export OUTPUT_PROJECT=""
+export OUTPUT_DATASET=""
 export BQ_TABLE_NAME_PREFIX=""
-export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
-export READ_BOOTSTRAP_SERVERS=<readBootstrapServers>
-export KAFKA_READ_TOPICS=<kafkaReadTopics>
-export KAFKA_READ_OFFSET=latest
-export KAFKA_READ_USERNAME_SECRET_ID=<kafkaReadUsernameSecretId>
-export KAFKA_READ_PASSWORD_SECRET_ID=<kafkaReadPasswordSecretId>
-export USE_STORAGE_WRITE_API=false
+export CREATE_DISPOSITION=CREATE_IF_NEEDED
+export WRITE_DISPOSITION=WRITE_APPEND
+export USE_AUTO_SHARDING=true
 export NUM_STORAGE_WRITE_API_STREAMS=0
 export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=<storageWriteApiTriggeringFrequencySec>
+export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
+export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
+export ENABLE_COMMIT_OFFSETS=false
+export CONSUMER_GROUP_ID=""
+export KAFKA_READ_OFFSET=latest
+export KAFKA_READ_USERNAME_SECRET_ID=""
+export KAFKA_READ_PASSWORD_SECRET_ID=""
+export KAFKA_READ_KEYSTORE_LOCATION=<kafkaReadKeystoreLocation>
+export KAFKA_READ_TRUSTSTORE_LOCATION=<kafkaReadTruststoreLocation>
+export KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID=<kafkaReadTruststorePasswordSecretId>
+export KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID=<kafkaReadKeystorePasswordSecretId>
+export KAFKA_READ_KEY_PASSWORD_SECRET_ID=<kafkaReadKeyPasswordSecretId>
+export SCHEMA_FORMAT=SINGLE_SCHEMA_FILE
+export CONFLUENT_AVRO_SCHEMA_PATH=""
+export SCHEMA_REGISTRY_CONNECTION_URL=""
+export BINARY_AVRO_SCHEMA_PATH=""
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -217,7 +263,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="kafka-to-bigquery-flex-job" \
 -DtemplateName="Kafka_to_BigQuery_Flex" \
--Dparameters="outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,createDisposition=$CREATE_DISPOSITION,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,messageFormat=$MESSAGE_FORMAT,avroFormat=$AVRO_FORMAT,avroSchemaPath=$AVRO_SCHEMA_PATH,schemaRegistryConnectionUrl=$SCHEMA_REGISTRY_CONNECTION_URL,outputDataset=$OUTPUT_DATASET,persistKafkaKey=$PERSIST_KAFKA_KEY,bqTableNamePrefix=$BQ_TABLE_NAME_PREFIX,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,readBootstrapServers=$READ_BOOTSTRAP_SERVERS,kafkaReadTopics=$KAFKA_READ_TOPICS,kafkaReadOffset=$KAFKA_READ_OFFSET,kafkaReadUsernameSecretId=$KAFKA_READ_USERNAME_SECRET_ID,kafkaReadPasswordSecretId=$KAFKA_READ_PASSWORD_SECRET_ID,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
+-Dparameters="readBootstrapServerAndTopic=$READ_BOOTSTRAP_SERVER_AND_TOPIC,kafkaReadAuthenticationMode=$KAFKA_READ_AUTHENTICATION_MODE,outputTableSpec=$OUTPUT_TABLE_SPEC,persistKafkaKey=$PERSIST_KAFKA_KEY,writeMode=$WRITE_MODE,outputProject=$OUTPUT_PROJECT,outputDataset=$OUTPUT_DATASET,bqTableNamePrefix=$BQ_TABLE_NAME_PREFIX,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,useAutoSharding=$USE_AUTO_SHARDING,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,useBigQueryDLQ=$USE_BIG_QUERY_DLQ,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,enableCommitOffsets=$ENABLE_COMMIT_OFFSETS,consumerGroupId=$CONSUMER_GROUP_ID,kafkaReadOffset=$KAFKA_READ_OFFSET,kafkaReadUsernameSecretId=$KAFKA_READ_USERNAME_SECRET_ID,kafkaReadPasswordSecretId=$KAFKA_READ_PASSWORD_SECRET_ID,kafkaReadKeystoreLocation=$KAFKA_READ_KEYSTORE_LOCATION,kafkaReadTruststoreLocation=$KAFKA_READ_TRUSTSTORE_LOCATION,kafkaReadTruststorePasswordSecretId=$KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID,kafkaReadKeystorePasswordSecretId=$KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID,kafkaReadKeyPasswordSecretId=$KAFKA_READ_KEY_PASSWORD_SECRET_ID,messageFormat=$MESSAGE_FORMAT,schemaFormat=$SCHEMA_FORMAT,confluentAvroSchemaPath=$CONFLUENT_AVRO_SCHEMA_PATH,schemaRegistryConnectionUrl=$SCHEMA_REGISTRY_CONNECTION_URL,binaryAvroSchemaPath=$BINARY_AVRO_SCHEMA_PATH" \
 -f v2/kafka-to-bigquery
 ```
 
@@ -262,26 +308,37 @@ resource "google_dataflow_flex_template_job" "kafka_to_bigquery_flex" {
   name              = "kafka-to-bigquery-flex"
   region            = var.region
   parameters        = {
+    readBootstrapServerAndTopic = "<readBootstrapServerAndTopic>"
+    kafkaReadAuthenticationMode = "SASL_PLAIN"
+    writeMode = "SINGLE_TABLE_NAME"
+    useBigQueryDLQ = "false"
+    messageFormat = "AVRO_CONFLUENT_WIRE_FORMAT"
     # outputTableSpec = "<outputTableSpec>"
-    # writeDisposition = "WRITE_APPEND"
-    # createDisposition = "CREATE_IF_NEEDED"
-    # outputDeadletterTable = "your-project-id:your-dataset.your-table-name"
-    # messageFormat = "AVRO"
-    # avroFormat = "CONFLUENT_WIRE_FORMAT"
-    # avroSchemaPath = "<avroSchemaPath>"
-    # schemaRegistryConnectionUrl = "<schemaRegistryConnectionUrl>"
-    # outputDataset = "<outputDataset>"
     # persistKafkaKey = "false"
+    # outputProject = ""
+    # outputDataset = ""
     # bqTableNamePrefix = ""
-    # useStorageWriteApiAtLeastOnce = "false"
-    # readBootstrapServers = "localhost:9092,127.0.0.1:9093"
-    # kafkaReadTopics = "topic1,topic2"
-    # kafkaReadOffset = "latest"
-    # kafkaReadUsernameSecretId = "projects/your-project-id/secrets/your-secret/versions/your-secret-version"
-    # kafkaReadPasswordSecretId = "projects/your-project-id/secrets/your-secret/versions/your-secret-version"
-    # useStorageWriteApi = "false"
+    # createDisposition = "CREATE_IF_NEEDED"
+    # writeDisposition = "WRITE_APPEND"
+    # useAutoSharding = "true"
     # numStorageWriteApiStreams = "0"
     # storageWriteApiTriggeringFrequencySec = "<storageWriteApiTriggeringFrequencySec>"
+    # useStorageWriteApiAtLeastOnce = "false"
+    # outputDeadletterTable = "your-project-id:your-dataset.your-table-name"
+    # enableCommitOffsets = "false"
+    # consumerGroupId = ""
+    # kafkaReadOffset = "latest"
+    # kafkaReadUsernameSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # kafkaReadPasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # kafkaReadKeystoreLocation = "gs://your-bucket/keystore.jks"
+    # kafkaReadTruststoreLocation = "<kafkaReadTruststoreLocation>"
+    # kafkaReadTruststorePasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # kafkaReadKeystorePasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # kafkaReadKeyPasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # schemaFormat = "SINGLE_SCHEMA_FILE"
+    # confluentAvroSchemaPath = ""
+    # schemaRegistryConnectionUrl = ""
+    # binaryAvroSchemaPath = ""
   }
 }
 ```

@@ -1,5 +1,5 @@
 
-YAML Template
+YAML template
 ---
 The YAML Template is used to run Dataflow pipelines written in Beam YAML. The
 YAML pipeline can be passed to the template directly as a raw string or the
@@ -44,7 +44,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=python/src/main/java/.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=python/src/main/java/com/google/cloud/teleport/templates/python/YAMLTemplate.java)
 
 ### Templates Plugin
 
@@ -75,7 +75,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Yaml_Template" \
--f v2/python
+-f python
 ```
 
 
@@ -151,7 +151,7 @@ mvn clean package -PtemplatesRun \
 -DjobName="yaml-template-job" \
 -DtemplateName="Yaml_Template" \
 -Dparameters="yaml_pipeline=$YAML_PIPELINE,yaml_pipeline_file=$YAML_PIPELINE_FILE,jinja_variables=$JINJA_VARIABLES" \
--f v2/python
+-f python
 ```
 
 ## Terraform
