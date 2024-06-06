@@ -48,10 +48,20 @@ terraform apply
 
 This will launch the configured jobs and produce an output like below -
 
-TODO: Add output
 ```shell
+Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 
+Outputs:
+
+dataflow_job_ids = [
+  "2024-06-05_00_41_11-4759981257849547781",
+]
+dataflow_job_urls = [
+  "https://console.cloud.google.com/dataflow/jobs/us-central1/2024-06-05_00_41_11-4759981257849547781",
+]
 ```
+
+**Note:** Each of the jobs will have a random suffix added to it to prevent name collisions. 
 
 ### Cleanup
 
