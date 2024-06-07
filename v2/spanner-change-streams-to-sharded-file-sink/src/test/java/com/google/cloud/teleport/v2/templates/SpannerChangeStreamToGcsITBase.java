@@ -101,8 +101,7 @@ public class SpannerChangeStreamToGcsITBase extends TemplateTestBase {
     IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
 
     if (exec.waitFor() != 0) {
-      throw new RuntimeException(
-          "Error staging template, check Maven logs.");
+      throw new RuntimeException("Error staging template, check Maven logs.");
     }
     gcsResourceManager.uploadArtifact(
         "input/customShard.jar",
