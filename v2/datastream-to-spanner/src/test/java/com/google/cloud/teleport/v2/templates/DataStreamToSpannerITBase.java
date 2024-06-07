@@ -252,7 +252,6 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
   public void createAndUploadJarToGcs(String gcsPathPrefix)
       throws IOException, InterruptedException {
-    String currentWorkingDirectory = System.getProperty("user.dir");
     String[] commands = {"cd ../spanner-custom-shard"};
 
     // Join the commands with && to execute them sequentially
@@ -264,8 +263,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
 
     if (exec.waitFor() != 0) {
-      throw new RuntimeException(
-          "Error staging template, check Maven logs." + currentWorkingDirectory);
+      throw new RuntimeException("Error staging template, check Maven logs.");
     }
     gcsClient.uploadArtifact(
         gcsPathPrefix + "/customTransformation.jar",

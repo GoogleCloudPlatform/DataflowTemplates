@@ -172,7 +172,29 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
                         jobInfo1,
                         TABLE,
                         "Users-backfill-logical-shard2.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard2.avro")))
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard2.avro")
+                    // TODO: Uncomment the cdc checks once spanner row matcher is in place
+                    // Currently, we have a conditional check on spanner row count to validate if
+                    // desired number of rows are present in spanner, if yes, we proceed with
+                    // assertions.
+                    // In test cases with cdc events where cdc file might have equal number
+                    // of inserts and deletes resulting in spanner count after cdc same as spanner
+                    // count before cdc can result in a situation where condition check passes
+                    // because spanner counts match but the test cases later fail during assertion.
+                    // In order to ensure that such situation doesn't occur we need to validate
+                    // actual row data rather than comparing counts and enhance implement a
+                    // SpannerRowMatcher.
+
+                    /*uploadDataStreamFile(
+                            jobInfo1,
+                            TABLE,
+                            "Users-cdc-logical-shard1.avro",
+                            "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard1.avro"),
+                    uploadDataStreamFile(
+                            jobInfo1,
+                            TABLE,
+                            "Users-cdc-logical-shard2.avro",
+                            "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard2.avro")*/ ))
             .build();
 
     // Wait for conditions
@@ -195,7 +217,18 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
                         jobInfo2,
                         TABLE,
                         "Users-backfill-logical-shard4.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard4.avro")))
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard4.avro")
+                    // TODO: Uncomment the cdc checks once spanner row matcher is in place
+                    /*uploadDataStreamFile(
+                            jobInfo2,
+                            TABLE,
+                            "Users-cdc-logical-shard3.avro",
+                            "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard3.avro"),
+                    uploadDataStreamFile(
+                            jobInfo2,
+                            TABLE,
+                            "Users-cdc-logical-shard4.avro",
+                            "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard4.avro")*/ ))
             .build();
 
     result =
