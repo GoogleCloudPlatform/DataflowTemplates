@@ -150,6 +150,7 @@ public class MySQLDMLGenerator extends DMLGenerator {
         break;
       case "binary":
       case "varbinary":
+      case "bit":
         response = getHexString(colValue);
         break;
       default:

@@ -699,12 +699,13 @@ public final class DMLGeneratorTestMySQL {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',X'62696c5f636f6c') ON"
             + " DUPLICATE KEY UPDATE  FirstName = 'kk', LastName = X'62696c5f636f6c'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
