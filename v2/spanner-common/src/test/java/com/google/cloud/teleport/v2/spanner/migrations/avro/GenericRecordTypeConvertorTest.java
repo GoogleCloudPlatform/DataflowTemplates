@@ -65,6 +65,9 @@ public class GenericRecordTypeConvertorTest {
     Schema varcharType =
         new LogicalType(GenericRecordTypeConvertor.CustomAvroTypes.VARCHAR)
             .addToSchema(SchemaBuilder.builder().stringType());
+    Schema unsupportedType =
+        new LogicalType(GenericRecordTypeConvertor.CustomAvroTypes.UNSUPPORTED)
+            .addToSchema(SchemaBuilder.builder().nullType());
 
     // Build the schema using the created types
     return SchemaBuilder.record("logicalTypes")
@@ -96,6 +99,9 @@ public class GenericRecordTypeConvertorTest {
         .noDefault()
         .name("varchar_col")
         .type(varcharType)
+        .noDefault()
+        .name("unsupported_col")
+        .type(unsupportedType)
         .noDefault()
         .endRecord();
   }
@@ -156,6 +162,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("json_col", "{\"k1\":\"v1\"}");
     genericRecord.put("number_col", "289452");
     genericRecord.put("varchar_col", "Hellogcds");
+    genericRecord.put("unsupported_col", null);
 
     String col = "date_col";
     String result =
@@ -210,6 +217,12 @@ public class GenericRecordTypeConvertorTest {
         GenericRecordTypeConvertor.handleLogicalFieldType(
             col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
     assertEquals("Test varchar_col conversion: ", "Hellogcds", result);
+
+    col = "unsupported_col";
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+    assertEquals("Test unsupported_col conversion: ", null, result);
   }
 
   @Test

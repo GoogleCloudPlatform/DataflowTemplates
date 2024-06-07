@@ -147,3 +147,33 @@ CREATE TABLE year_table (
   id INT64 NOT NULL,
   year_col STRING(MAX),
 ) PRIMARY KEY(id);
+
+CREATE TABLE spatial_linestring (
+  id INT64 NOT NULL,
+  path STRING(MAX),
+) PRIMARY KEY(id);
+
+CREATE TABLE spatial_multilinestring (
+  id INT64 NOT NULL,
+  paths STRING(MAX),
+) PRIMARY KEY(id);
+
+CREATE TABLE spatial_multipoint (
+  id INT64 NOT NULL,
+  points STRING(MAX),
+) PRIMARY KEY(id);
+
+CREATE TABLE spatial_multipolygon (
+  id INT64 NOT NULL,
+  areas STRING(MAX),
+) PRIMARY KEY(id);
+
+CREATE TABLE spatial_point (
+  id INT64 NOT NULL,
+  location STRING(MAX),
+) PRIMARY KEY(id);
+
+CREATE TABLE spatial_polygon (
+  id INT64 NOT NULL,
+  area STRING(MAX),
+) PRIMARY KEY(id);
