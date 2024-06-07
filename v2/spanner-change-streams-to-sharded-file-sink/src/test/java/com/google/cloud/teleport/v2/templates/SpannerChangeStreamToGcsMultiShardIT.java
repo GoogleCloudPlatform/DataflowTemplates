@@ -19,6 +19,8 @@ import static org.apache.beam.it.gcp.artifacts.matchers.ArtifactAsserts.assertTh
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
@@ -40,6 +42,8 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.gcp.storage.conditions.GCSArtifactsCheck;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -218,5 +222,82 @@ public class SpannerChangeStreamToGcsMultiShardIT extends SpannerChangeStreamToG
     assertThatArtifacts(artifactsShardB).hasContent("SingerId\\\":\\\"3");
     assertThatArtifacts(artifactsShardC).hasContent("SingerId\\\":\\\"4");
     assertThatArtifacts(artifactsShardC).hasContent("SingerId\\\":\\\"5");
+  }
+
+  @Test
+  public void testForwardMigrationFiltered() throws IOException, java.lang.InterruptedException {
+    // Construct a ChainedConditionCheck with below stages.
+    // 1. Wait for the metadata table to have the start time of reader job
+    // 2. Write 1 records per shard to Spanner with the transaction tag as txBy=
+    // 3. Wait and check there are no files in GCS for that shard
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    SpannerRowsCheck.builder(
+                            spannerMetadataResourceManager, "spanner_to_gcs_metadata")
+                        .setMinRows(1)
+                        .setMaxRows(1)
+                        .build()))
+            .build();
+    // Wait for conditions
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), conditionCheck);
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+    // Perform writes to Spanner
+    writeSpannerDataForForwardMigration(7, "seven", "testShardD");
+    // Assert file present in GCS with the needed data
+    assertFileContentsInGCSForFilteredRecords();
+  }
+
+  private void assertFileContentsInGCSForFilteredRecords() {
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    GCSArtifactsCheck.builder(
+                            gcsResourceManager, "output/testShardD/", Pattern.compile(".*\\.txt$"))
+                        .setMinSize(0)
+                        .setMaxSize(0)
+                        .build()))
+            .build();
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(6)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+  }
+
+  private void writeSpannerDataForForwardMigration(int singerId, String firstName, String shardId) {
+    // Write a single record to Spanner for the given logical shard
+    // Add the record with the transaction tag as txBy=
+    SpannerConfig spannerConfig =
+        SpannerConfig.create()
+            .withProjectId(PROJECT)
+            .withInstanceId(spannerResourceManager.getInstanceId())
+            .withDatabaseId(spannerResourceManager.getDatabaseId());
+    SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+    spannerAccessor
+        .getDatabaseClient()
+        .readWriteTransaction(
+            Options.tag("txBy=forwardMigration"),
+            Options.priority(spannerConfig.getRpcPriority().get()))
+        .run(
+            (TransactionCallable<Void>)
+                transaction -> {
+                  Mutation m =
+                      Mutation.newInsertOrUpdateBuilder("Singers")
+                          .set("SingerId")
+                          .to(singerId)
+                          .set("FirstName")
+                          .to(firstName)
+                          .set("migration_shard_id")
+                          .to(shardId)
+                          .build();
+                  transaction.buffer(m);
+                  return null;
+                });
   }
 }
