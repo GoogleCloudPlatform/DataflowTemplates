@@ -257,8 +257,8 @@ public class SpannerChangeStreamToGcsMultiShardIT extends SpannerChangeStreamToG
                 List.of(
                     GCSArtifactsCheck.builder(
                             gcsResourceManager, "output/testShardD/", Pattern.compile(".*\\.txt$"))
-                        .setMinSize(0)
-                        .setMaxSize(0)
+                        .setMinSize(1)
+                        .setMaxSize(1)
                         .build()))
             .build();
 
@@ -267,7 +267,7 @@ public class SpannerChangeStreamToGcsMultiShardIT extends SpannerChangeStreamToG
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(6)), conditionCheck);
 
     // Assert Conditions
-    assertThatResult(result).meetsConditions();
+    assertThatResult(result).hasTimedOut();
   }
 
   private void writeSpannerDataForForwardMigration(int singerId, String firstName, String shardId) {
