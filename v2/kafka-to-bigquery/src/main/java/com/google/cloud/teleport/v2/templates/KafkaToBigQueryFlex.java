@@ -43,6 +43,8 @@ import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
+import org.apache.beam.sdk.coders.CoderRegistry;
+import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -365,6 +367,16 @@ public class KafkaToBigQueryFlex {
       List<String> topicsList,
       String bootstrapServers,
       Map<String, Object> kafkaConfig) {
+
+    // Register the coder for pipeline
+    FailsafeElementCoder<KV<String, String>, String> coder =
+        FailsafeElementCoder.of(
+            KvCoder.of(
+                NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of())),
+            NullableCoder.of(StringUtf8Coder.of()));
+
+    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+    coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
     PCollectionTuple convertedTableRows;
     convertedTableRows =
