@@ -258,7 +258,7 @@ public class GCSToSourceDb {
   public static void main(String[] args) {
     UncaughtExceptionLogger.register();
 
-    LOG.info("Starting Ordered Changestream Buffer to SourceDb");
+    LOG.info("Starting GCS to SourceDb");
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 

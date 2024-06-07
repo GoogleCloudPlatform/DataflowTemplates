@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.templates.constants.Constants;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.commons.dbcp2.PoolingDriver;
 import org.apache.commons.pool2.ObjectPool;
 import org.slf4j.Logger;
@@ -50,5 +51,28 @@ public class MySQLDao extends BaseDao {
     }
     ObjectPool connectionPool = getObjectPool(sqlUrl, sqlUser, sqlPasswd);
     this.driver.registerPool(this.poolName, connectionPool);
+  }
+
+  public void batchWrite(List<String> batchStatements) throws SQLException {
+    // catch exception specific to MySQL connection errors
+    try {
+      super.batchWrite(batchStatements);
+    } catch (com.mysql.cj.jdbc.exceptions.CommunicationsException e) {
+      // TODO: retry handling is configurable with retry count
+      LOG.warn(
+          "MySQL Connection exception while executing SQL for shard : "
+              + this.shardId
+              + ", will retry : "
+              + e.getMessage());
+      // gives indication that the shard is being retried
+      Metrics.counter(MySQLDao.class, "db_connection_retry_" + shardId).inc();
+
+      // handling the connection retry
+      try {
+        Thread.sleep(1000);
+      } catch (java.lang.InterruptedException ex) {
+        throw new RuntimeException(ex);
+      }
+    }
   }
 }

@@ -76,42 +76,6 @@ public abstract class BaseDao implements Serializable {
         }
         statement.executeBatch();
         status = true;
-      } catch (org.postgresql.util.PSQLException e) {
-        final String sqlState = e.getSQLState();
-
-        if (sqlState.equals("08000")
-            || sqlState.equals("08003")
-            || sqlState.equals("08006")
-            || sqlState.equals("08001")
-            || sqlState.equals("08004")
-            || sqlState.equals("08P01")) {
-          // TODO: retry handling is configurable with retry count
-          LOG.warn(
-              "PostgreSQL Connection exception while executing SQL for shard : "
-                  + this.shardId
-                  + ", will retry : "
-                  + e.getMessage());
-          // gives indication that the shard is being retried
-          Metrics.counter(PostgreSQLDao.class, "PostgreSQL_retry_" + shardId).inc();
-        } else {
-          throw e;
-        }
-      } catch (com.mysql.cj.jdbc.exceptions.CommunicationsException e) {
-        // TODO: retry handling is configurable with retry count
-        LOG.warn(
-            "MySQL Connection exception while executing SQL for shard : "
-                + this.shardId
-                + ", will retry : "
-                + e.getMessage());
-        // gives indication that the shard is being retried
-        Metrics.counter(MySQLDao.class, "mySQL_retry_" + shardId).inc();
-
-        // handling the connection retry
-        try {
-          Thread.sleep(1000);
-        } catch (java.lang.InterruptedException ex) {
-          throw new RuntimeException(ex);
-        }
       } catch (java.sql.SQLNonTransientConnectionException e) {
         if (e.getMessage().contains("Server shutdown in progress")) {
           LOG.warn(
@@ -120,7 +84,7 @@ public abstract class BaseDao implements Serializable {
                   + ", will retry : "
                   + e.getMessage());
           // gives indication that the shard is being retried
-          Metrics.counter(BaseDao.class, "BaseDao_retry_" + shardId).inc();
+          Metrics.counter(BaseDao.class, "db_connection_retry_" + shardId).inc();
           try {
             Thread.sleep(1000);
           } catch (java.lang.InterruptedException ex) {
@@ -138,7 +102,7 @@ public abstract class BaseDao implements Serializable {
                   + ", will retry : "
                   + e.getMessage());
           // gives indication that the shard is being retried
-          Metrics.counter(BaseDao.class, "DB_retry_" + shardId).inc();
+          Metrics.counter(BaseDao.class, "db_connection_retry_" + shardId).inc();
           try {
             Thread.sleep(1000);
           } catch (java.lang.InterruptedException ex) {
