@@ -253,7 +253,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   public void createAndUploadJarToGcs(String gcsPathPrefix)
       throws IOException, InterruptedException {
     String currentWorkingDirectory = System.getProperty("user.dir");
-    String[] commands = {"cd ../spanner-custom-shard", "mvn clean install -X"};
+    String[] commands = {"cd ../spanner-custom-shard"};
 
     // Join the commands with && to execute them sequentially
     String[] shellCommand = {"/bin/bash", "-c", String.join(" && ", commands)};
