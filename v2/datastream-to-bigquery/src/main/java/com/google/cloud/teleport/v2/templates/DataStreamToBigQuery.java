@@ -146,6 +146,7 @@ public class DataStreamToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 1,
+        groupName = "Source",
         description = "File location for Datastream file output in Cloud Storage.",
         helpText =
             "The file location for Datastream file output in Cloud Storage, in the format: gs://<BUCKET_NAME>/<ROOT_PATH>/.")
@@ -210,6 +211,7 @@ public class DataStreamToBigQuery {
         order = 7,
         optional = true,
         description = "Project Id for BigQuery datasets.",
+        groupName = "Target",
         helpText =
             "The ID of the Google Cloud project that contains the BigQuery datasets to output data into. The default for this parameter is the project where the Dataflow pipeline is running.")
     String getOutputProjectId();
@@ -218,6 +220,7 @@ public class DataStreamToBigQuery {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Target",
         description = "Name or template for the dataset to contain staging tables.",
         helpText =
             "The name of the dataset that contains staging tables. This parameter supports templates, for example {_metadata_dataset}_log or my_dataset_log. Normally, this parameter is a dataset name. Defaults to: {_metadata_dataset}.")
@@ -229,6 +232,7 @@ public class DataStreamToBigQuery {
     @TemplateParameter.Text(
         order = 9,
         optional = true,
+        groupName = "Target",
         description = "Template for the name of staging tables.",
         helpText =
             "The template to use to name the staging tables. For example, {_metadata_table}). Defaults to: {_metadata_table}_log.")
@@ -239,6 +243,7 @@ public class DataStreamToBigQuery {
 
     @TemplateParameter.Text(
         order = 10,
+        groupName = "Target",
         description = "Template for the dataset to contain replica tables.",
         helpText =
             "The name of the dataset that contains the replica tables. This parameter supports templates, for example {_metadata_dataset} or my_dataset. Normally, this parameter is a dataset name. Defaults to: {_metadata_dataset}.")
@@ -249,6 +254,7 @@ public class DataStreamToBigQuery {
 
     @TemplateParameter.Text(
         order = 11,
+        groupName = "Target",
         optional = true,
         description = "Template for the name of replica tables.",
         helpText =

@@ -143,6 +143,7 @@ public final class GoogleAdsToBigQuery {
 
     @TemplateParameter.Password(
         order = 7,
+        groupName = "Source",
         description = "OAuth 2.0 Client Secret for the specified Client ID",
         helpText =
             "The OAuth 2.0 client secret that corresponds to the specified client ID. See Create a client ID and client secret (https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret).")

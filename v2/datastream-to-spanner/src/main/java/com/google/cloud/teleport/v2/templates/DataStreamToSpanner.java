@@ -140,6 +140,7 @@ public class DataStreamToSpanner {
   public interface Options extends PipelineOptions, StreamingOptions {
     @TemplateParameter.GcsReadFile(
         order = 1,
+        groupName = "Source",
         description = "File location for Datastream file output in Cloud Storage.",
         helpText =
             "The Cloud Storage file location that contains the Datastream files to replicate. Typically, "
@@ -173,6 +174,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         description = "Cloud Spanner Instance Id.",
         helpText = "The Spanner instance where the changes are replicated.")
     String getInstanceId();
@@ -181,6 +183,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "Cloud Spanner Database Id.",
         helpText = "The Spanner database where the changes are replicated.")
     String getDatabaseId();
@@ -189,6 +192,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.ProjectId(
         order = 6,
+        groupName = "Target",
         optional = true,
         description = "Cloud Spanner Project Id.",
         helpText = "The Spanner project ID.")
@@ -198,6 +202,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 7,
+        groupName = "Target",
         optional = true,
         description = "The Cloud Spanner Endpoint to call",
         helpText = "The Cloud Spanner endpoint to call in the template.",
@@ -221,6 +226,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 9,
+        groupName = "Source",
         description = "Datastream stream name.",
         helpText =
             "The name or template for the stream to poll for schema information and source type.")

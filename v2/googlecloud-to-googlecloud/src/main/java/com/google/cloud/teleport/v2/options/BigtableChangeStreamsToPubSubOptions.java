@@ -33,6 +33,7 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.Text(
       order = 1,
+      groupName = "Target",
       description = "The output Pub/Sub topic name",
       helpText = "The name of the destination Pub/Sub topic.")
   @Validation.Required
@@ -119,6 +120,7 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.ProjectId(
       order = 9,
+      groupName = "Target",
       optional = true,
       description = "PubSub project ID",
       helpText = "The Bigtable project ID. The default is the project of the Dataflow job.")
