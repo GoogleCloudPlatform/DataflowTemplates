@@ -90,6 +90,7 @@ public class SpannerChangeStreamToGcsITBase extends TemplateTestBase {
 
   public void createAndUploadJarToGcs(GcsResourceManager gcsResourceManager)
       throws IOException, InterruptedException {
+    String previousWorkingDirectory = System.getProperty("user.dir");
     String[] commands = {"cd ../spanner-custom-shard", "mvn install"};
 
     // Join the commands with && to execute them sequentially
@@ -101,7 +102,8 @@ public class SpannerChangeStreamToGcsITBase extends TemplateTestBase {
     IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
 
     if (exec.waitFor() != 0) {
-      throw new RuntimeException("Error staging template, check Maven logs.");
+      throw new RuntimeException(
+          "Error staging template, check Maven logs." + previousWorkingDirectory);
     }
     gcsResourceManager.uploadArtifact(
         "input/customShard.jar",
