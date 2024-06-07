@@ -352,7 +352,14 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     Map<String, Object> row = new HashMap<>();
     row.put("id", 1);
     row.put("name", "Tester1");
-    row.put("age_spanner", 20);
+    row.put("age_spanner", 101);
+    row.put("migration_shard_id", "L1");
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 2);
+    row.put("name", "Tester2");
+    row.put("age_spanner", 102);
     row.put("migration_shard_id", "L1");
     events.add(row);
 
@@ -364,16 +371,16 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 13);
-    row.put("name", "Tester13");
-    row.put("age_spanner", 113);
-    row.put("migration_shard_id", "L1");
+    row.put("id", 4);
+    row.put("name", "Tester4");
+    row.put("age_spanner", 104);
+    row.put("migration_shard_id", "L2");
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 4);
-    row.put("name", "Tester4");
-    row.put("age_spanner", 21);
+    row.put("id", 5);
+    row.put("name", "Tester5");
+    row.put("age_spanner", 105);
     row.put("migration_shard_id", "L2");
     events.add(row);
 
@@ -385,16 +392,16 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 14);
-    row.put("name", "Tester14");
-    row.put("age_spanner", 114);
-    row.put("migration_shard_id", "L2");
+    row.put("id", 7);
+    row.put("name", "Tester7");
+    row.put("age_spanner", 107);
+    row.put("migration_shard_id", "L3");
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 7);
-    row.put("name", "Tester7");
-    row.put("age_spanner", 22);
+    row.put("id", 8);
+    row.put("name", "Tester8");
+    row.put("age_spanner", 108);
     row.put("migration_shard_id", "L3");
     events.add(row);
 
@@ -406,16 +413,9 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 15);
-    row.put("name", "Tester15");
-    row.put("age_spanner", 115);
-    row.put("migration_shard_id", "L3");
-    events.add(row);
-
-    row = new HashMap<>();
     row.put("id", 10);
     row.put("name", "Tester10");
-    row.put("age_spanner", 23);
+    row.put("age_spanner", 110);
     row.put("migration_shard_id", "L4");
     events.add(row);
 
@@ -427,9 +427,9 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 16);
-    row.put("name", "Tester16");
-    row.put("age_spanner", 116);
+    row.put("id", 11);
+    row.put("name", "Tester11");
+    row.put("age_spanner", 111);
     row.put("migration_shard_id", "L4");
     events.add(row);
 
