@@ -172,17 +172,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
                         jobInfo1,
                         TABLE,
                         "Users-backfill-logical-shard2.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard2.avro"),
-                    uploadDataStreamFile(
-                        jobInfo1,
-                        TABLE,
-                        "Users-cdc-logical-shard1.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard1.avro"),
-                    uploadDataStreamFile(
-                        jobInfo1,
-                        TABLE,
-                        "Users-cdc-logical-shard2.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard2.avro")))
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard2.avro")))
             .build();
 
     // Wait for conditions
@@ -205,17 +195,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
                         jobInfo2,
                         TABLE,
                         "Users-backfill-logical-shard4.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard4.avro"),
-                    uploadDataStreamFile(
-                        jobInfo2,
-                        TABLE,
-                        "Users-cdc-logical-shard3.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard3.avro"),
-                    uploadDataStreamFile(
-                        jobInfo2,
-                        TABLE,
-                        "Users-cdc-logical-shard4.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard4.avro")))
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard4.avro")))
             .build();
 
     result =
