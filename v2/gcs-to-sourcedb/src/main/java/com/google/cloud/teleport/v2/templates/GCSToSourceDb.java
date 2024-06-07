@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.templates.GCSToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -33,6 +34,7 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Default;
@@ -42,6 +44,10 @@ import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.values.PCollection;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -248,6 +254,51 @@ public class GCSToSourceDb {
     String getRunIdentifier();
 
     void setRunIdentifier(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 15,
+        optional = true,
+        description = "Custom jar location in Cloud Storage",
+        helpText =
+            "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records"
+                + " in reverse replication.")
+    @Default.String("")
+    String getTransformationJarPath();
+
+    void setTransformationJarPath(String value);
+
+    @TemplateParameter.Text(
+        order = 16,
+        optional = true,
+        description = "Custom class name",
+        helpText =
+            "Fully qualified class name having the custom transformation logic.  It is a"
+                + " mandatory field in case transformationJarPath is specified")
+    @Default.String("")
+    String getTransformationClassName();
+
+    void setTransformationClassName(String value);
+
+    @TemplateParameter.Text(
+        order = 17,
+        optional = true,
+        description = "Custom parameters for transformation",
+        helpText =
+            "String containing any custom parameters to be passed to the custom transformation class.")
+    @Default.String("")
+    String getTransformationCustomParameters();
+
+    void setTransformationCustomParameters(String value);
+
+    @TemplateParameter.Text(
+        order = 18,
+        optional = true,
+        description = "Filtered events directory",
+        helpText = "This is the file path to store the events filtered via custom transformation.")
+    @Default.String("")
+    String getFilteredEventsDirectory();
+
+    void setFilteredEventsDirectory(String value);
   }
 
   /**
@@ -302,6 +353,12 @@ public class GCSToSourceDb {
                 .getDialect();
 
     Map<String, ProcessingContext> processingContextMap = null;
+    CustomTransformation customTransformation =
+        CustomTransformation.builder(
+                options.getTransformationJarPath(), options.getTransformationClassName())
+            .setCustomParameters(options.getTransformationCustomParameters())
+            .build();
+
     processingContextMap =
         ProcessingContextGenerator.getProcessingContextForGCS(
             options.getSourceShardsFilePath(),
@@ -321,21 +378,32 @@ public class GCSToSourceDb {
 
     LOG.info("The size of  processing context is : " + processingContextMap.size());
 
-    pipeline
+    PCollection<String> filteredEvents =
+        pipeline
+            .apply(
+                "Create Context",
+                Create.of(processingContextMap)
+                    .withCoder(
+                        KvCoder.of(
+                            StringUtf8Coder.of(), SerializableCoder.of(ProcessingContext.class))))
+            .apply(
+                "Write to source",
+                ParDo.of(
+                    new GcsToSourceStreamer(
+                        options.getTimerIntervalInMilliSec(),
+                        spannerMetadataConfig,
+                        tableSuffix,
+                        isMetadataDbPostgres,
+                        customTransformation)));
+
+    filteredEvents
+        .apply(Window.into(FixedWindows.of(Duration.standardMinutes(1))))
         .apply(
-            "Create Context",
-            Create.of(processingContextMap)
-                .withCoder(
-                    KvCoder.of(
-                        StringUtf8Coder.of(), SerializableCoder.of(ProcessingContext.class))))
-        .apply(
-            "Write to source",
-            ParDo.of(
-                new GcsToSourceStreamer(
-                    options.getTimerIntervalInMilliSec(),
-                    spannerMetadataConfig,
-                    tableSuffix,
-                    isMetadataDbPostgres)));
+            "Write Filtered Events To GCS",
+            TextIO.write()
+                .to(options.getFilteredEventsDirectory())
+                .withSuffix(".json")
+                .withWindowedWrites());
 
     return pipeline.run();
   }

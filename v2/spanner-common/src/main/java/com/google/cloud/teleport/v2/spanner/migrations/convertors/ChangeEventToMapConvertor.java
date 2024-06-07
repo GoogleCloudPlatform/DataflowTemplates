@@ -21,8 +21,10 @@ import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationExce
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ChangeEventUtils;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import org.json.JSONObject;
 
 public class ChangeEventToMapConvertor {
   public static Map<String, Object> convertChangeEventToMap(JsonNode changeEvent)
@@ -85,5 +87,21 @@ public class ChangeEventToMapConvertor {
       }
     }
     return changeEvent;
+  }
+
+  public static Map<String, Object> combineJsonObjects(
+      JSONObject newValuesJson, JSONObject keysJson) {
+    Map<String, Object> combinedMap = new HashMap<>();
+    addJsonToMap(newValuesJson, combinedMap);
+    addJsonToMap(keysJson, combinedMap);
+    return combinedMap;
+  }
+
+  private static void addJsonToMap(JSONObject jsonObject, Map<String, Object> map) {
+    Iterator<String> keys = jsonObject.keys();
+    while (keys.hasNext()) {
+      String key = keys.next();
+      map.put(key, jsonObject.get(key));
+    }
   }
 }

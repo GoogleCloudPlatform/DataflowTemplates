@@ -15,7 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates.processing.handler;
 
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventToMapConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
+import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
+import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.dao.MySqlDao;
 import com.google.cloud.teleport.v2.templates.processing.dml.DMLGenerator;
@@ -23,6 +27,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -36,12 +41,24 @@ public class InputRecordProcessor {
 
   private static final Logger LOG = LoggerFactory.getLogger(InputRecordProcessor.class);
 
+  private static List<TrimmedShardedDataChangeRecord> filteredEvents;
+
+  public static List<TrimmedShardedDataChangeRecord> getFilteredEvents() {
+    return filteredEvents;
+  }
+
+  public static void setFilteredEvents(List<TrimmedShardedDataChangeRecord> filteredEvents) {
+    LOG.info("set filtered events" + filteredEvents.size());
+    InputRecordProcessor.filteredEvents = filteredEvents;
+  }
+
   public static void processRecords(
       List<TrimmedShardedDataChangeRecord> recordList,
       Schema schema,
       MySqlDao dao,
       String shardId,
-      String sourceDbTimezoneOffset) {
+      String sourceDbTimezoneOffset,
+      ISpannerMigrationTransformer spannerToSourceTransformer) {
 
     try {
       boolean capturedlagMetric = false;
@@ -53,7 +70,7 @@ public class InputRecordProcessor {
       numRecReadFromGcsMetric.inc(recordList.size());
       Distribution lagMetric =
           Metrics.distribution(shardId, "replication_lag_in_seconds_" + shardId);
-
+      filteredEvents = new ArrayList<>();
       List<String> dmlBatch = new ArrayList<>();
       for (TrimmedShardedDataChangeRecord chrec : recordList) {
         String tableName = chrec.getTableName();
@@ -62,7 +79,17 @@ public class InputRecordProcessor {
         String newValueJsonStr = chrec.getMods().get(0).getNewValuesJson();
         JSONObject newValuesJson = new JSONObject(newValueJsonStr);
         JSONObject keysJson = new JSONObject(keysJsonStr);
-
+        Map<String, Object> mapRequest =
+            ChangeEventToMapConvertor.combineJsonObjects(keysJson, newValuesJson);
+        MigrationTransformationRequest migrationTransformationRequest =
+            new MigrationTransformationRequest(tableName, mapRequest, shardId, modType);
+        MigrationTransformationResponse migrationTransformationResponse =
+            spannerToSourceTransformer.toSourceRow(migrationTransformationRequest);
+        if (migrationTransformationResponse.isEventFiltered()) {
+          LOG.info("reaching here");
+          filteredEvents.add(chrec);
+          continue;
+        }
         String dmlStatement =
             DMLGenerator.getDMLStatement(
                 modType, tableName, schema, newValuesJson, keysJson, sourceDbTimezoneOffset);
@@ -80,6 +107,7 @@ public class InputRecordProcessor {
           replicationLag = ChronoUnit.SECONDS.between(commitTsInst, instTime);
         }
       }
+      setFilteredEvents(filteredEvents);
 
       Instant daoStartTime = Instant.now();
       dao.batchWrite(dmlBatch);

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.processing.handler;
 
+import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.common.ShardProgress;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
@@ -36,7 +37,10 @@ public class GCSToSourceStreamingHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSToSourceStreamingHandler.class);
 
-  public static String process(ProcessingContext taskContext, SpannerDao spannerDao) {
+  public static String process(
+      ProcessingContext taskContext,
+      SpannerDao spannerDao,
+      ISpannerMigrationTransformer spannerToSourceTransformer) {
     String shardId = taskContext.getShard().getLogicalShardId();
     GCSReader inputFileReader = new GCSReader(taskContext, spannerDao);
     String fileProcessedStartInterval = taskContext.getStartTimestamp();
@@ -76,7 +80,12 @@ public class GCSToSourceStreamingHandler {
               .getMySqlDao(shardId);
 
       InputRecordProcessor.processRecords(
-          records, taskContext.getSchema(), dao, shardId, taskContext.getSourceDbTimezoneOffset());
+          records,
+          taskContext.getSchema(),
+          dao,
+          shardId,
+          taskContext.getSourceDbTimezoneOffset(),
+          spannerToSourceTransformer);
       markShardSuccess(taskContext, spannerDao, fileProcessedStartInterval);
       dao.cleanup();
       LOG.info(
