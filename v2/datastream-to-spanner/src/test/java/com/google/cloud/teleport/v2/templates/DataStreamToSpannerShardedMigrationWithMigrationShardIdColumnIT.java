@@ -160,6 +160,18 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     // shards each. Migrates Users table from 4 logical shards. Asserts data from all the shards are
     // going to Spanner. Checks whether migration shard id column is populated properly based on the
     // transformation context.
+
+    // Currently, we have a conditional check on spanner row count to validate if
+    // desired number of rows are present in spanner, if yes, we proceed with
+    // assertions.
+    // In test cases with cdc events where cdc file might have equal number
+    // of inserts and deletes resulting in spanner count after cdc same as spanner
+    // count before cdc can result in a situation where condition check passes
+    // because spanner counts match but the test cases later fail during assertion which can be a
+    // possible source of flakiness.
+    // In order to ensure that such situation doesn't occur we need to validate
+    // actual row data rather than comparing counts and enhance implement a
+    // SpannerRowMatcher.
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
@@ -172,29 +184,17 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
                         jobInfo1,
                         TABLE,
                         "Users-backfill-logical-shard2.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard2.avro")
-                    // TODO: Uncomment the cdc checks once spanner row matcher is in place
-                    // Currently, we have a conditional check on spanner row count to validate if
-                    // desired number of rows are present in spanner, if yes, we proceed with
-                    // assertions.
-                    // In test cases with cdc events where cdc file might have equal number
-                    // of inserts and deletes resulting in spanner count after cdc same as spanner
-                    // count before cdc can result in a situation where condition check passes
-                    // because spanner counts match but the test cases later fail during assertion.
-                    // In order to ensure that such situation doesn't occur we need to validate
-                    // actual row data rather than comparing counts and enhance implement a
-                    // SpannerRowMatcher.
-
-                    /*uploadDataStreamFile(
-                            jobInfo1,
-                            TABLE,
-                            "Users-cdc-logical-shard1.avro",
-                            "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard1.avro"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard2.avro"),
                     uploadDataStreamFile(
-                            jobInfo1,
-                            TABLE,
-                            "Users-cdc-logical-shard2.avro",
-                            "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard2.avro")*/ ))
+                        jobInfo1,
+                        TABLE,
+                        "Users-cdc-logical-shard1.avro",
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard1.avro"),
+                    uploadDataStreamFile(
+                        jobInfo1,
+                        TABLE,
+                        "Users-cdc-logical-shard2.avro",
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard2.avro")))
             .build();
 
     // Wait for conditions
@@ -217,18 +217,17 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
                         jobInfo2,
                         TABLE,
                         "Users-backfill-logical-shard4.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard4.avro")
-                    // TODO: Uncomment the cdc checks once spanner row matcher is in place
-                    /*uploadDataStreamFile(
-                            jobInfo2,
-                            TABLE,
-                            "Users-cdc-logical-shard3.avro",
-                            "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard3.avro"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard4.avro"),
                     uploadDataStreamFile(
-                            jobInfo2,
-                            TABLE,
-                            "Users-cdc-logical-shard4.avro",
-                            "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard4.avro")*/ ))
+                        jobInfo2,
+                        TABLE,
+                        "Users-cdc-logical-shard3.avro",
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard3.avro"),
+                    uploadDataStreamFile(
+                        jobInfo2,
+                        TABLE,
+                        "Users-cdc-logical-shard4.avro",
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard4.avro")))
             .build();
 
     result =
@@ -385,14 +384,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     Map<String, Object> row = new HashMap<>();
     row.put("id", 1);
     row.put("name", "Tester1");
-    row.put("age_spanner", 101);
-    row.put("migration_shard_id", "L1");
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 2);
-    row.put("name", "Tester2");
-    row.put("age_spanner", 102);
+    row.put("age_spanner", 20);
     row.put("migration_shard_id", "L1");
     events.add(row);
 
@@ -404,16 +396,16 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 4);
-    row.put("name", "Tester4");
-    row.put("age_spanner", 104);
-    row.put("migration_shard_id", "L2");
+    row.put("id", 13);
+    row.put("name", "Tester13");
+    row.put("age_spanner", 113);
+    row.put("migration_shard_id", "L1");
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 5);
-    row.put("name", "Tester5");
-    row.put("age_spanner", 105);
+    row.put("id", 4);
+    row.put("name", "Tester4");
+    row.put("age_spanner", 21);
     row.put("migration_shard_id", "L2");
     events.add(row);
 
@@ -425,16 +417,16 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 7);
-    row.put("name", "Tester7");
-    row.put("age_spanner", 107);
-    row.put("migration_shard_id", "L3");
+    row.put("id", 14);
+    row.put("name", "Tester14");
+    row.put("age_spanner", 114);
+    row.put("migration_shard_id", "L2");
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 8);
-    row.put("name", "Tester8");
-    row.put("age_spanner", 108);
+    row.put("id", 7);
+    row.put("name", "Tester7");
+    row.put("age_spanner", 22);
     row.put("migration_shard_id", "L3");
     events.add(row);
 
@@ -446,9 +438,16 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     events.add(row);
 
     row = new HashMap<>();
+    row.put("id", 15);
+    row.put("name", "Tester15");
+    row.put("age_spanner", 115);
+    row.put("migration_shard_id", "L3");
+    events.add(row);
+
+    row = new HashMap<>();
     row.put("id", 10);
     row.put("name", "Tester10");
-    row.put("age_spanner", 110);
+    row.put("age_spanner", 23);
     row.put("migration_shard_id", "L4");
     events.add(row);
 
@@ -460,9 +459,9 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     events.add(row);
 
     row = new HashMap<>();
-    row.put("id", 11);
-    row.put("name", "Tester11");
-    row.put("age_spanner", 111);
+    row.put("id", 16);
+    row.put("name", "Tester16");
+    row.put("age_spanner", 116);
     row.put("migration_shard_id", "L4");
     events.add(row);
 
