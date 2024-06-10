@@ -34,8 +34,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
-import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
 import com.google.cloud.teleport.v2.transformer.SourceRowToMutationDoFn;
 import com.google.cloud.teleport.v2.writer.DeadLetterQueue;
 import com.google.cloud.teleport.v2.writer.SpannerWriter;
@@ -135,10 +133,6 @@ public class SourceDbToSpanner {
     SpannerConfig spannerConfig = createSpannerConfig(options);
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ISchemaMapper schemaMapper = getSchemaMapper(options, ddl);
-    // Ingest transformation context file into memory.
-    TransformationContext transformationContext =
-        TransformationContextReader.getTransformationContext(
-            options.getTransformationContextFilePath());
 
     List<String> tablesToMigrate = listTablesToMigrate(options, schemaMapper, ddl);
 

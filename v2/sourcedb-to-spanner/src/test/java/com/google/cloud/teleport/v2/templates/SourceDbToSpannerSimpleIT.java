@@ -109,7 +109,6 @@ public class SourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
             getClass().getSimpleName(),
             null,
             null,
-            null,
             mySQLResourceManager,
             spannerResourceManager,
             null);

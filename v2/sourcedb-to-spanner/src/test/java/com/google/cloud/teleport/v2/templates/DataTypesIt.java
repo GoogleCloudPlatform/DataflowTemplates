@@ -82,7 +82,6 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
             getClass().getSimpleName(),
             null,
             null,
-            null,
             mySQLResourceManager,
             spannerResourceManager,
             null);

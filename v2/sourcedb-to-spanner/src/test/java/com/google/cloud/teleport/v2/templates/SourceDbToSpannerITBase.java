@@ -128,7 +128,6 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
   protected PipelineLauncher.LaunchInfo launchDataflowJob(
       String identifierSuffix,
       String sessionFileResourceName,
-      String transformationContextFileResourceName,
       String gcsPathPrefix,
       JDBCResourceManager jdbcResourceManager,
       SpannerResourceManager spannerResourceManager,
@@ -139,11 +138,6 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       gcsClient.uploadArtifact(
           gcsPathPrefix + "/session.json",
           Resources.getResource(sessionFileResourceName).getPath());
-    }
-    if (transformationContextFileResourceName != null) {
-      gcsClient.uploadArtifact(
-          gcsPathPrefix + "/transformationContext.json",
-          Resources.getResource(transformationContextFileResourceName).getPath());
     }
 
     Map<String, String> params =
@@ -161,11 +155,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     if (sessionFileResourceName != null) {
       params.put("sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json"));
     }
-    if (transformationContextFileResourceName != null) {
-      params.put(
-          "transformationContextFilePath",
-          getGcsPath(gcsPathPrefix + "/transformationContext.json"));
-    }
+
     // overridden parameters
     if (jobParameters != null) {
       for (Map.Entry<String, String> entry : jobParameters.entrySet()) {

@@ -173,16 +173,4 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String getDLQDirectory();
 
   void setDLQDirectory(String value);
-
-  @TemplateParameter.GcsReadFile(
-      order = 15,
-      optional = true,
-      helpText =
-          "Transformation context file path in cloud storage used to populate data used in"
-              + " transformations performed during migrations. Eg: Maps db to shard id to"
-              + " identify the db from which shard a row was migrated",
-      description = "Transformation context file path in cloud storage")
-  String getTransformationContextFilePath();
-
-  void setTransformationContextFilePath(String value);
 }
