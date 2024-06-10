@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
@@ -87,6 +88,8 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
+
+    // Validate supported data types.
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
     for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
       String type = entry.getKey();
@@ -105,6 +108,21 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
       }
       SpannerAsserts.assertThatStructs(rows)
           .hasRecordsUnorderedCaseInsensitiveColumns(entry.getValue());
+    }
+
+    // Validate unsupported types.
+    List<String> unsupportedTypeTables =
+        List.of(
+            "spatial_linestring",
+            "spatial_multilinestring",
+            "spatial_multipoint",
+            "spatial_multipolygon",
+            "spatial_point",
+            "spatial_polygon");
+
+    for (String table : unsupportedTypeTables) {
+      // Unsupported rows should still be migrated. Each source table has 1 row.
+      assertThat(spannerResourceManager.getRowCount(table)).isEqualTo(1L);
     }
   }
 

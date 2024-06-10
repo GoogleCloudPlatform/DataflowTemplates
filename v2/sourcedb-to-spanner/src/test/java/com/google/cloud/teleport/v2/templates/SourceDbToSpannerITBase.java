@@ -84,6 +84,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
         if (!stmt.trim().isEmpty()) {
           // Skip SELECT statements
           if (!stmt.trim().toUpperCase().startsWith("SELECT")) {
+            LOG.info("Executing statement: {}", stmt);
             statement.executeUpdate(stmt);
           }
         }

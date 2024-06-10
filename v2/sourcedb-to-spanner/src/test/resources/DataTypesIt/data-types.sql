@@ -278,5 +278,53 @@ INSERT INTO `year_table` (`year_col`) VALUES (NULL);
 INSERT INTO set_table (set_col) VALUES (NULL);
 
 
+CREATE TABLE IF NOT EXISTS spatial_point (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    location POINT
+);
+
+INSERT INTO spatial_point (location) VALUES (POINT(77.5946, 12.9716));
+
+
+CREATE TABLE IF NOT EXISTS spatial_linestring (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    path LINESTRING
+);
+
+INSERT INTO spatial_linestring (path)
+VALUES (LineString(Point(77.5946, 12.9716), Point(77.6100, 12.9600)));
+
+CREATE TABLE IF NOT EXISTS spatial_polygon (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    area POLYGON
+);
+
+INSERT INTO spatial_polygon (area)
+VALUES (Polygon(LineString(Point(77.5946, 12.9716), Point(77.6100, 12.9600), Point(77.6000, 12.9500), Point(77.5946, 12.9716))));
+
+CREATE TABLE IF NOT EXISTS spatial_multipoint (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    points MULTIPOINT
+);
+
+INSERT INTO spatial_multipoint (points) VALUES (MultiPoint(Point(77.5946, 12.9716), Point(77.6100, 12.9600)));
+
+CREATE TABLE IF NOT EXISTS spatial_multilinestring (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    paths MULTILINESTRING
+);
+
+INSERT INTO spatial_multilinestring (paths)
+VALUES (MultiLineString(LineString(Point(77.5946, 12.9716), Point(77.6100, 12.9600)), LineString(Point(77.6000, 12.9500), Point(77.6200, 12.9400))));
+
+CREATE TABLE IF NOT EXISTS spatial_multipolygon (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    areas MULTIPOLYGON
+);
+
+INSERT INTO spatial_multipolygon (areas)
+VALUES (MultiPolygon(Polygon(LineString(Point(77.5946, 12.9716), Point(77.6100, 12.9600), Point(77.6000, 12.9500), Point(77.5946, 12.9716))),
+                     Polygon(LineString(Point(77.6200, 12.9400), Point(77.6300, 12.9300), Point(77.6400, 12.9450), Point(77.6200, 12.9400)))));
+
 
 

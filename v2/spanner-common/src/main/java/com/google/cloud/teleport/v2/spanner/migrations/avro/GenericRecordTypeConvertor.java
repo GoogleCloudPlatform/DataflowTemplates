@@ -153,6 +153,7 @@ public class GenericRecordTypeConvertor {
     public static final String VARCHAR = "varchar";
     public static final String NUMBER = "number";
     public static final String JSON = "json";
+    public static final String UNSUPPORTED = "unsupported";
   }
 
   /** Avro logical types are converted to an equivalent string type. */
@@ -199,6 +200,9 @@ public class GenericRecordTypeConvertor {
     } else if (fieldSchema.getLogicalType() != null
         && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.VARCHAR)) {
       return recordValue.toString();
+    } else if (fieldSchema.getLogicalType() != null
+        && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.UNSUPPORTED)) {
+      return null;
     } else {
       LOG.error("Unknown field type {} for field {} in {}.", fieldSchema, fieldName, recordValue);
       throw new UnsupportedOperationException(
