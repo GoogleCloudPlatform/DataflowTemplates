@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source.reader.io.row;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import java.io.Serializable;
+import javax.annotation.Nullable;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 
@@ -34,6 +35,14 @@ public abstract class SourceRow implements Serializable {
    * @return tableSchemaUUID
    */
   public abstract String tableSchemaUUID();
+
+  /**
+   * Get the corresponding shardId for the row. This should be NULL for non-sharded cases.
+   *
+   * @return shardId
+   */
+  @Nullable
+  public abstract String shardId();
 
   /**
    * Get the readTime epoch in microseconds.
@@ -75,9 +84,9 @@ public abstract class SourceRow implements Serializable {
    * @param readTimeMicros read time.
    * @return builder.
    */
-  public static Builder builder(SourceTableSchema schema, long readTimeMicros) {
+  public static Builder builder(SourceTableSchema schema, String shardId, long readTimeMicros) {
     var builder = new AutoValue_SourceRow.Builder();
-    builder.initialize(schema, readTimeMicros);
+    builder.initialize(schema, shardId, readTimeMicros);
     return builder;
   }
 
@@ -85,6 +94,9 @@ public abstract class SourceRow implements Serializable {
   public abstract static class Builder {
     @SuppressWarnings("CheckReturnValue")
     abstract Builder setTableSchemaUUID(String value);
+
+    @SuppressWarnings("CheckReturnValue")
+    public abstract Builder setShardId(String value);
 
     @SuppressWarnings("CheckReturnValue")
     abstract Builder setRecord(SerializableGenericRecord value);
@@ -102,8 +114,9 @@ public abstract class SourceRow implements Serializable {
 
     // Note: AutoValue requires a no-args constructor.
 
-    protected void initialize(SourceTableSchema schema, long readTimeMicros) {
+    protected void initialize(SourceTableSchema schema, String shardId, long readTimeMicros) {
       this.setTableSchemaUUID(schema.tableSchemaUUID());
+      this.setShardId(shardId);
       this.recordBuilder = new GenericRecordBuilder(schema.avroSchema());
       this.recordBuilder.set(SourceTableSchema.READ_TIME_STAMP_FIELD_NAME, readTimeMicros);
       this.payloadBuilder =

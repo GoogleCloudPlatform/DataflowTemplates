@@ -30,13 +30,10 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.common.io.Resources;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
@@ -369,7 +366,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("timestamp_col", 1602599400056483L);
     genericRecord.put("date_col", 738991);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), null, "", null);
+        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "", null);
     Map<String, Value> actual =
         genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
     Map<String, Value> expected =
@@ -398,7 +395,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("timestamp_col", null);
     genericRecord.put("date_col", null);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), null, "", null);
+        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "", null);
     Map<String, Value> actual =
         genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
     Map<String, Value> expected =
@@ -425,7 +422,7 @@ public class GenericRecordTypeConvertorTest {
   @Test
   public void transformChangeEventTest_illegalUnionType() {
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), null, "", null);
+        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "", null);
     Schema schema =
         SchemaBuilder.builder()
             .unionOf()
@@ -456,7 +453,7 @@ public class GenericRecordTypeConvertorTest {
     GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
     genericRecord.put("bool_col", true);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(mockSchemaMapper, null, "", null);
+        new GenericRecordTypeConvertor(mockSchemaMapper, "", null);
 
     genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
   }
@@ -476,7 +473,7 @@ public class GenericRecordTypeConvertorTest {
     GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
     genericRecord.put("bool_col", true);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(mockSchemaMapper, null, "", null);
+        new GenericRecordTypeConvertor(mockSchemaMapper, "", null);
 
     assertThrows(
         NullPointerException.class,
@@ -495,7 +492,7 @@ public class GenericRecordTypeConvertorTest {
         .thenThrow(new RuntimeException());
 
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(mockSchemaMapper, null, "", null);
+        new GenericRecordTypeConvertor(mockSchemaMapper, "", null);
     assertThrows(
         RuntimeException.class,
         () -> genericRecordTypeConvertor.transformChangeEvent(null, "all_types"));
@@ -516,11 +513,6 @@ public class GenericRecordTypeConvertorTest {
                 .endRecord());
     genericRecord.put("int_col", 5);
 
-    Path transformationContextPath =
-        Paths.get(Resources.getResource("transformation-context.json").getPath());
-    TransformationContext transformationContext =
-        TransformationContextReader.getTransformationContext(transformationContextPath.toString());
-
     GenericRecordTypeConvertor genericRecordTypeConvertor =
         new GenericRecordTypeConvertor(
             new IdentityMapper(
@@ -535,13 +527,12 @@ public class GenericRecordTypeConvertorTest {
                     .end()
                     .endTable()
                     .build()),
-            transformationContext,
             "",
-            "shard1");
+            "xyz");
     Map<String, Value> actual =
         genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
     Map<String, Value> expected = Map.of("int_col", Value.int64(5));
-    // When using identity mapper, shard id should not get populated despite transformation context.
+    // When using identity mapper, shard id should not get populated since shard id col won't exist.
     assertEquals(expected, actual);
   }
 
@@ -598,30 +589,18 @@ public class GenericRecordTypeConvertorTest {
                 .endRecord());
     genericRecord.put("name", "name1");
 
-    Path transformationContextPath =
-        Paths.get(Resources.getResource("transformation-context.json").getPath());
-    TransformationContext transformationContext =
-        TransformationContextReader.getTransformationContext(transformationContextPath.toString());
-
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(shardedMapper, transformationContext, "", "shard1");
+        new GenericRecordTypeConvertor(shardedMapper, "", "id1");
     Map<String, Value> actual =
         genericRecordTypeConvertor.transformChangeEvent(genericRecord, "people");
     Map<String, Value> expected =
         Map.of("new_name", Value.string("name1"), "migration_shard_id", Value.string("id1"));
     assertEquals(expected, actual);
 
-    GenericRecordTypeConvertor transformationContextEmptyGRTC =
-        new GenericRecordTypeConvertor(shardedMapper, new TransformationContext(), "", "abc");
-    actual = transformationContextEmptyGRTC.transformChangeEvent(genericRecord, "people");
+    // Null shard id case, shard id population should be skipped.
+    genericRecordTypeConvertor = new GenericRecordTypeConvertor(shardedMapper, "", null);
+    actual = genericRecordTypeConvertor.transformChangeEvent(genericRecord, "people");
     // Shard id should not be present.
     assertEquals(Map.of("new_name", Value.string("name1")), actual);
-
-    GenericRecordTypeConvertor invalidGRTC =
-        new GenericRecordTypeConvertor(
-            shardedMapper, transformationContext, "", "nonexistentDbName");
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> invalidGRTC.transformChangeEvent(genericRecord, "people"));
   }
 }

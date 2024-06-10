@@ -28,7 +28,6 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import java.util.List;
@@ -56,7 +55,7 @@ public class SourceRowToMutationDoFnTest {
     final String testTable = "srcTable";
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     SourceRow sourceRow =
-        SourceRow.builder(schema, 12412435345L)
+        SourceRow.builder(schema, null, 12412435345L)
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();
@@ -89,13 +88,7 @@ public class SourceRowToMutationDoFnTest {
         .thenReturn(List.of("spFirstName", "spLastName"));
 
     PCollection<Mutation> mutations =
-        transform(
-            sourceRows,
-            SourceRowToMutationDoFn.create(
-                mockIschemaMapper,
-                tableIdMapper,
-                new TransformationContext(),
-                SourceSchemaReference.builder().setDbName("testDB").build()));
+        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper));
 
     PAssert.that(mutations)
         .containsInAnyOrder(
@@ -113,7 +106,7 @@ public class SourceRowToMutationDoFnTest {
     final String testTable = "srcTable";
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     SourceRow sourceRow =
-        SourceRow.builder(schema, 12412435345L)
+        SourceRow.builder(schema, null, 12412435345L)
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();
@@ -130,13 +123,7 @@ public class SourceRowToMutationDoFnTest {
     ISchemaMapper mockIschemaMapper =
         mock(ISchemaMapper.class, Mockito.withSettings().serializable());
     PCollection<Mutation> mutations =
-        transform(
-            sourceRows,
-            SourceRowToMutationDoFn.create(
-                mockIschemaMapper,
-                tableIdMapper,
-                new TransformationContext(),
-                SourceSchemaReference.builder().setDbName("testDB").build()));
+        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper));
 
     PAssert.that(mutations).empty();
     pipeline.run();
@@ -147,7 +134,7 @@ public class SourceRowToMutationDoFnTest {
     final String testTable = "srcTable";
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     SourceRow sourceRow =
-        SourceRow.builder(schema, 12412435345L)
+        SourceRow.builder(schema, null, 12412435345L)
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();
@@ -167,13 +154,7 @@ public class SourceRowToMutationDoFnTest {
         .thenThrow(NoSuchElementException.class);
 
     PCollection<Mutation> mutations =
-        transform(
-            sourceRows,
-            SourceRowToMutationDoFn.create(
-                mockIschemaMapper,
-                tableIdMapper,
-                new TransformationContext(),
-                SourceSchemaReference.builder().setDbName("testDB").build()));
+        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper));
 
     PAssert.that(mutations).empty();
     pipeline.run();

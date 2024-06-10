@@ -157,11 +157,7 @@ public class SourceDbToSpanner {
 
     // Transform source data to Spanner Compatible Data
     SourceRowToMutationDoFn transformDoFn =
-        SourceRowToMutationDoFn.create(
-            schemaMapper,
-            getTableIDToRefMap(srcSchema),
-            transformationContext,
-            srcSchema.schemaReference());
+        SourceRowToMutationDoFn.create(schemaMapper, getTableIDToRefMap(srcSchema));
     PCollectionTuple transformationResult =
         sourceRows.apply(
             "Transform",

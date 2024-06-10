@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.spanner.migrations.avro;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -50,21 +49,14 @@ public class GenericRecordTypeConvertor {
 
   private final ISchemaMapper schemaMapper;
 
-  private final TransformationContext transformationContext;
-
   private final String namespace;
 
-  private final String dbName;
+  private final String shardId;
 
-  public GenericRecordTypeConvertor(
-      ISchemaMapper schemaMapper,
-      TransformationContext transformationContext,
-      String namespace,
-      String dbName) {
+  public GenericRecordTypeConvertor(ISchemaMapper schemaMapper, String namespace, String shardId) {
     this.schemaMapper = schemaMapper;
-    this.transformationContext = transformationContext;
     this.namespace = namespace;
-    this.dbName = dbName;
+    this.shardId = shardId;
   }
 
   /**
@@ -119,17 +111,10 @@ public class GenericRecordTypeConvertor {
   }
 
   private Map<String, Value> populateShardId(Map<String, Value> result, String shardIdCol) {
-    if (transformationContext.getSchemaToShardId() == null
-        || transformationContext.getSchemaToShardId().isEmpty()) {
+    if (shardId == null || shardId.isBlank()) {
       return result;
     }
-    Map<String, String> schemaToShardId = transformationContext.getSchemaToShardId();
-    if (!schemaToShardId.containsKey(dbName)) {
-      throw new IllegalArgumentException(
-          String.format(
-              "shard Id entry for schema %s does not exist in transformation context", dbName));
-    }
-    result.put(shardIdCol, Value.string(schemaToShardId.get(dbName)));
+    result.put(shardIdCol, Value.string(shardId));
     return result;
   }
 
