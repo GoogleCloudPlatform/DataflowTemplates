@@ -119,17 +119,10 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             b.addParameter("messageFormat", "AVRO_CONFLUENT_WIRE_FORMAT")
                 .addParameter("schemaFormat", "SINGLE_SCHEMA_FILE")
                 .addParameter("confluentAvroSchemaPath", getGcsPath("avro_schema.avsc"))
-                .addParameter("schemaRegistryConnectionUrl", "")
-                .addParameter("binaryAvroSchemaPath", "gs://FAKE")
                 .addParameter("writeMode", "SINGLE_TABLE_NAME")
                 .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
-                .addParameter("outputProject", "")
-                .addParameter("outputDataset", "")
-                .addParameter("bqTableNamePrefix", "")
                 .addParameter("useBigQueryDLQ", "false")
-                .addParameter("kafkaReadAuthenticationMode", "NONE")
-                .addParameter("kafkaReadUsernameSecretId", "")
-                .addParameter("kafkaReadPasswordSecretId", ""));
+                .addParameter("kafkaReadAuthenticationMode", "NONE"));
   }
 
   @Test
@@ -144,17 +137,10 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             b.addParameter("messageFormat", "AVRO_CONFLUENT_WIRE_FORMAT")
                 .addParameter("schemaFormat", "SINGLE_SCHEMA_FILE")
                 .addParameter("confluentAvroSchemaPath", getGcsPath("avro_schema.avsc"))
-                .addParameter("schemaRegistryConnectionUrl", "")
-                .addParameter("binaryAvroSchemaPath", "gs://FAKE")
                 .addParameter("writeMode", "SINGLE_TABLE_NAME")
                 .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
-                .addParameter("outputProject", "")
-                .addParameter("outputDataset", "")
-                .addParameter("bqTableNamePrefix", "")
                 .addParameter("useBigQueryDLQ", "false")
                 .addParameter("kafkaReadAuthenticationMode", "NONE")
-                .addParameter("kafkaReadUsernameSecretId", "")
-                .addParameter("kafkaReadPasswordSecretId", "")
                 .addParameter("persistKafkaKey", "true"));
   }
 
@@ -165,16 +151,12 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             b.addParameter("messageFormat", "AVRO_CONFLUENT_WIRE_FORMAT")
                 .addParameter("schemaFormat", "SCHEMA_REGISTRY")
                 .addParameter("schemaRegistryConnectionUrl", "http://10.128.0.60:8081")
-                .addParameter("confluentAvroSchemaPath", "gs://FAKE")
-                .addParameter("binaryAvroSchemaPath", "gs://FAKE")
                 .addParameter("writeMode", "DYNAMIC_TABLE_NAMES")
                 .addParameter("outputProject", PROJECT)
                 .addParameter("outputDataset", bqDatasetId)
                 .addParameter("bqTableNamePrefix", "")
                 .addParameter("useBigQueryDLQ", "false")
-                .addParameter("kafkaReadAuthenticationMode", "NONE")
-                .addParameter("kafkaReadUsernameSecretId", "")
-                .addParameter("kafkaReadPasswordSecretId", ""));
+                .addParameter("kafkaReadAuthenticationMode", "NONE"));
   }
 
   @Test
@@ -185,16 +167,12 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             b.addParameter("messageFormat", "AVRO_CONFLUENT_WIRE_FORMAT")
                 .addParameter("schemaFormat", "SCHEMA_REGISTRY")
                 .addParameter("schemaRegistryConnectionUrl", "http://10.128.0.60:8081")
-                .addParameter("confluentAvroSchemaPath", "gs://FAKE")
-                .addParameter("binaryAvroSchemaPath", "gs://FAKE")
                 .addParameter("writeMode", "DYNAMIC_TABLE_NAMES")
                 .addParameter("outputProject", PROJECT)
                 .addParameter("outputDataset", bqDatasetId)
                 .addParameter("bqTableNamePrefix", "")
                 .addParameter("useBigQueryDLQ", "false")
                 .addParameter("kafkaReadAuthenticationMode", "NONE")
-                .addParameter("kafkaReadUsernameSecretId", "")
-                .addParameter("kafkaReadPasswordSecretId", "")
                 .addParameter("persistKafkaKey", "true"));
   }
 
@@ -206,18 +184,11 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
         b ->
             b.addParameter("messageFormat", "AVRO_BINARY_ENCODING")
                 .addParameter("schemaFormat", "SINGLE_SCHEMA_FILE")
-                .addParameter("confluentAvroSchemaPath", "gs://FAKE")
-                .addParameter("schemaRegistryConnectionUrl", "")
                 .addParameter("binaryAvroSchemaPath", getGcsPath("avro_schema.avsc"))
                 .addParameter("writeMode", "SINGLE_TABLE_NAME")
                 .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
-                .addParameter("outputProject", "")
-                .addParameter("outputDataset", "")
-                .addParameter("bqTableNamePrefix", "")
                 .addParameter("useBigQueryDLQ", "false")
-                .addParameter("kafkaReadAuthenticationMode", "NONE")
-                .addParameter("kafkaReadUsernameSecretId", "")
-                .addParameter("kafkaReadPasswordSecretId", ""));
+                .addParameter("kafkaReadAuthenticationMode", "NONE"));
   }
 
   @Test
@@ -231,18 +202,11 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
         b ->
             b.addParameter("messageFormat", "AVRO_BINARY_ENCODING")
                 .addParameter("schemaFormat", "SINGLE_SCHEMA_FILE")
-                .addParameter("confluentAvroSchemaPath", "gs://FAKE")
-                .addParameter("schemaRegistryConnectionUrl", "")
                 .addParameter("binaryAvroSchemaPath", getGcsPath("avro_schema.avsc"))
                 .addParameter("writeMode", "SINGLE_TABLE_NAME")
                 .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
-                .addParameter("outputProject", "")
-                .addParameter("outputDataset", "")
-                .addParameter("bqTableNamePrefix", "")
                 .addParameter("useBigQueryDLQ", "false")
                 .addParameter("kafkaReadAuthenticationMode", "NONE")
-                .addParameter("kafkaReadUsernameSecretId", "")
-                .addParameter("kafkaReadPasswordSecretId", "")
                 .addParameter("persistKafkaKey", "true"));
   }
 
@@ -256,18 +220,11 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             b.addParameter("messageFormat", "AVRO_CONFLUENT_WIRE_FORMAT")
                 .addParameter("schemaFormat", "SINGLE_SCHEMA_FILE")
                 .addParameter("confluentAvroSchemaPath", getGcsPath("avro_schema.avsc"))
-                .addParameter("schemaRegistryConnectionUrl", "")
-                .addParameter("binaryAvroSchemaPath", "gs://FAKE")
                 .addParameter("writeMode", "SINGLE_TABLE_NAME")
                 .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
-                .addParameter("outputProject", "")
-                .addParameter("outputDataset", "")
-                .addParameter("bqTableNamePrefix", "")
                 .addParameter("useBigQueryDLQ", "true")
                 .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId))
-                .addParameter("kafkaReadAuthenticationMode", "NONE")
-                .addParameter("kafkaReadUsernameSecretId", "")
-                .addParameter("kafkaReadPasswordSecretId", ""));
+                .addParameter("kafkaReadAuthenticationMode", "NONE"));
   }
 
   private Schema getDeadletterSchema() {
