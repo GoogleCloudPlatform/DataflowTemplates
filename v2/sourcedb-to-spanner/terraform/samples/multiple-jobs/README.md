@@ -5,7 +5,7 @@ This Terraform example illustrates launching multiple bulk migration Datafllow j
 1. MySQL source can establish network connectivity with Dataflow.
 2. Appropriate permissions are added to the service account running Terraform to allow resource creation.
 3. Appropriate permissions are provided to the service account running Dataflow to write to Spanner.
-4. A GCS bucket has been provided to write the DLQ records to.
+4. A GCS bucket has been provided to write the DLQ records to in case of failures.
 
 Given these assumptions, it copies data from multiple source MySQL databases to the configured Spanner database(s).
 
