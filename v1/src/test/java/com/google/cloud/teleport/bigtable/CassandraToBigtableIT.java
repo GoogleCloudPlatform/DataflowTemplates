@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
 @TemplateIntegrationTest(CassandraToBigtable.class)
 @RunWith(JUnit4.class)
 public class CassandraToBigtableIT extends TemplateTestBase {
+
   private static final Logger LOG = LoggerFactory.getLogger(CassandraToBigtableIT.class);
 
   private CassandraResourceManager cassandraResourceManager;
