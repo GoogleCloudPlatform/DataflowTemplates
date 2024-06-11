@@ -30,12 +30,15 @@ import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
+import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
+import com.google.cloud.teleport.v2.templates.transform.ChangeEventTransformerDoFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
@@ -48,6 +51,7 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Default;
@@ -60,10 +64,13 @@ import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.View;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,6 +140,7 @@ public class DataStreamToSpanner {
   public interface Options extends PipelineOptions, StreamingOptions {
     @TemplateParameter.GcsReadFile(
         order = 1,
+        groupName = "Source",
         description = "File location for Datastream file output in Cloud Storage.",
         helpText =
             "The Cloud Storage file location that contains the Datastream files to replicate. Typically, "
@@ -166,6 +174,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         description = "Cloud Spanner Instance Id.",
         helpText = "The Spanner instance where the changes are replicated.")
     String getInstanceId();
@@ -174,6 +183,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "Cloud Spanner Database Id.",
         helpText = "The Spanner database where the changes are replicated.")
     String getDatabaseId();
@@ -182,6 +192,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.ProjectId(
         order = 6,
+        groupName = "Target",
         optional = true,
         description = "Cloud Spanner Project Id.",
         helpText = "The Spanner project ID.")
@@ -191,6 +202,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 7,
+        groupName = "Target",
         optional = true,
         description = "The Cloud Spanner Endpoint to call",
         helpText = "The Cloud Spanner endpoint to call in the template.",
@@ -214,6 +226,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 9,
+        groupName = "Source",
         description = "Datastream stream name.",
         helpText =
             "The name or template for the stream to poll for schema information and source type.")
@@ -405,6 +418,54 @@ public class DataStreamToSpanner {
     String getDlqGcsPubSubSubscription();
 
     void setDlqGcsPubSubSubscription(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 25,
+        optional = true,
+        description = "Custom jar location in Cloud Storage",
+        helpText =
+            "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records"
+                + " in forward migration.")
+    @Default.String("")
+    String getTransformationJarPath();
+
+    void setTransformationJarPath(String value);
+
+    @TemplateParameter.Text(
+        order = 26,
+        optional = true,
+        description = "Custom class name",
+        helpText =
+            "Fully qualified class name having the custom transformation logic.  It is a"
+                + " mandatory field in case transformationJarPath is specified")
+    @Default.String("")
+    String getTransformationClassName();
+
+    void setTransformationClassName(String value);
+
+    @TemplateParameter.Text(
+        order = 27,
+        optional = true,
+        description = "Custom parameters for transformation",
+        helpText =
+            "String containing any custom parameters to be passed to the custom transformation class.")
+    @Default.String("")
+    String getTransformationCustomParameters();
+
+    void setTransformationCustomParameters(String value);
+
+    @TemplateParameter.Text(
+        order = 28,
+        optional = true,
+        description = "Filtered events directory",
+        helpText =
+            "This is the file path to store the events filtered via custom transformation. Default is a directory"
+                + " under the Dataflow job's temp location. The default value is enough under most"
+                + " conditions.")
+    @Default.String("")
+    String getFilteredEventsDirectory();
+
+    void setFilteredEventsDirectory(String value);
   }
 
   private static void validateSourceType(Options options) {
@@ -567,26 +628,78 @@ public class DataStreamToSpanner {
               .apply("Reshuffle", Reshuffle.viaRandomKey());
     }
     /*
-     * Stage 2: Write records to Cloud Spanner
+     * Stage 2: Transform records
      */
+
     // Ingest transformation context file into memory.
     TransformationContext transformationContext =
         TransformationContextReader.getTransformationContext(
             options.getTransformationContextFilePath());
-    SpannerTransactionWriter.Result spannerWriteResults =
+
+    CustomTransformation customTransformation =
+        CustomTransformation.builder(
+                options.getTransformationJarPath(), options.getTransformationClassName())
+            .setCustomParameters(options.getTransformationCustomParameters())
+            .build();
+
+    ChangeEventTransformerDoFn changeEventTransformerDoFn =
+        ChangeEventTransformerDoFn.create(
+            schema,
+            transformationContext,
+            options.getDatastreamSourceType(),
+            customTransformation,
+            options.getRoundJsonDecimals(),
+            ddlView,
+            spannerConfig);
+
+    PCollectionTuple transformedRecords =
         jsonRecords.apply(
-            "Write events to Cloud Spanner",
-            new SpannerTransactionWriter(
-                spannerConfig,
-                ddlView,
-                schema,
-                transformationContext,
-                options.getShadowTablePrefix(),
-                options.getDatastreamSourceType(),
-                options.getRoundJsonDecimals(),
-                isRegularMode));
+            "Apply Transformation to events",
+            ParDo.of(changeEventTransformerDoFn)
+                .withSideInputs(ddlView)
+                .withOutputTags(
+                    DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG,
+                    TupleTagList.of(
+                        Arrays.asList(
+                            DatastreamToSpannerConstants.FILTERED_EVENT_TAG,
+                            DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))));
+
     /*
-     * Stage 3: Write failures to GCS Dead Letter Queue
+     * Stage 3: Write filtered records to GCS
+     */
+    String tempLocation =
+        options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
+            ? options.as(DataflowPipelineOptions.class).getTempLocation()
+            : options.as(DataflowPipelineOptions.class).getTempLocation() + "/";
+    String filterEventsDirectory =
+        options.getFilteredEventsDirectory().isEmpty()
+            ? tempLocation + "filteredEvents/"
+            : options.getFilteredEventsDirectory();
+    LOG.info("Filtered events directory: {}", filterEventsDirectory);
+    transformedRecords
+        .get(DatastreamToSpannerConstants.FILTERED_EVENT_TAG)
+        .apply(Window.into(FixedWindows.of(Duration.standardMinutes(1))))
+        .apply(
+            "Write Filtered Events To GCS",
+            TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites());
+
+    /*
+     * Stage 4: Write transformed records to Cloud Spanner
+     */
+
+    SpannerTransactionWriter.Result spannerWriteResults =
+        transformedRecords
+            .get(DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG)
+            .apply(
+                "Write events to Cloud Spanner",
+                new SpannerTransactionWriter(
+                    spannerConfig,
+                    ddlView,
+                    options.getShadowTablePrefix(),
+                    options.getDatastreamSourceType(),
+                    isRegularMode));
+    /*
+     * Stage 5: Write failures to GCS Dead Letter Queue
      * a) Retryable errors are written to retry GCS Dead letter queue
      * b) Severe errors are written to severe GCS Dead letter queue
      */
@@ -607,9 +720,11 @@ public class DataStreamToSpanner {
         reconsumedElements
             .get(DeadLetterQueueManager.PERMANENT_ERRORS)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    // TODO: Write errors from transformer and spanner writer into separate folders
     PCollection<FailsafeElement<String, String>> permanentErrors =
         PCollectionList.of(dlqErrorRecords)
             .and(spannerWriteResults.permanentErrors())
+            .and(transformedRecords.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))
             .apply(Flatten.pCollections())
             .apply("Reshuffle", Reshuffle.viaRandomKey());
     // increment the metrics

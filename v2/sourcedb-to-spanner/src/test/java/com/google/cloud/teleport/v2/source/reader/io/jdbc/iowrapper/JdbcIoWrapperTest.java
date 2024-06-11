@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -226,5 +228,27 @@ public class JdbcIoWrapperTest {
                     .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
                     .setDialectAdapter(mockDialectAdapter)
                     .build()));
+  }
+
+  @Test
+  public void testGetTablesToMigrate() {
+    ImmutableList<String> tablesToMigrate =
+        JdbcIoWrapper.getTablesToMigrate(ImmutableList.of("a", "b"), ImmutableList.of("a"));
+    assertEquals(1, tablesToMigrate.size());
+    assertTrue(tablesToMigrate.contains("a"));
+
+    ImmutableList<String> tablesToMigrate2 =
+        JdbcIoWrapper.getTablesToMigrate(ImmutableList.of(), ImmutableList.of("x", "y"));
+    assertEquals(2, tablesToMigrate2.size());
+    assertTrue(tablesToMigrate2.contains("x"));
+    assertTrue(tablesToMigrate2.contains("y"));
+
+    ImmutableList<String> tablesToMigrate3 =
+        JdbcIoWrapper.getTablesToMigrate(
+            ImmutableList.of("p", "q", "r"), ImmutableList.of("p", "q", "r"));
+    assertEquals(3, tablesToMigrate3.size());
+    assertTrue(tablesToMigrate3.contains("p"));
+    assertTrue(tablesToMigrate3.contains("q"));
+    assertTrue(tablesToMigrate3.contains("r"));
   }
 }

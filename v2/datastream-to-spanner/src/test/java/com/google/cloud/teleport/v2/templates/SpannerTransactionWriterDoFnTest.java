@@ -33,8 +33,8 @@ import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
-import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSessionConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.Iterator;
@@ -57,7 +57,7 @@ public class SpannerTransactionWriterDoFnTest {
     DataflowWorkerHarnessOptions options =
         PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(spannerConfig, null, null, null, "", "mysql", false, true);
+        new SpannerTransactionWriterDoFn(spannerConfig, null, "", "mysql", true);
     String result = spannerTransactionWriterDoFn.getTxnTag(options);
     assertEquals(result, "txBy=123");
   }
@@ -104,7 +104,7 @@ public class SpannerTransactionWriterDoFnTest {
   }
 
   @Test
-  public void testProcessElement() throws Exception {
+  public void testProcessElement() {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     SpannerConfig spannerConfig = mock(SpannerConfig.class);
@@ -116,8 +116,6 @@ public class SpannerTransactionWriterDoFnTest {
     TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
     TransactionContext transactionContext = mock(TransactionContext.class);
     ValueProvider<Options.RpcPriority> rpcPriorityValueProviderMock = mock(ValueProvider.class);
-    ChangeEventSessionConvertor changeEventSessionConvertor =
-        mock(ChangeEventSessionConvertor.class);
 
     String[] args = new String[] {"--jobId=123"};
     DataflowWorkerHarnessOptions options =
@@ -141,8 +139,6 @@ public class SpannerTransactionWriterDoFnTest {
     when(rpcPriorityValueProviderMock.get()).thenReturn(Options.RpcPriority.LOW);
     when(spannerConfig.getRpcPriority()).thenReturn(rpcPriorityValueProviderMock);
     when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
-    when(changeEventSessionConvertor.transformChangeEventData(eq(outputObject), any(), eq(ddl)))
-        .thenReturn(outputObject);
     when(transactionCallableMock.run(any()))
         .thenAnswer(
             invocation -> {
@@ -152,10 +148,8 @@ public class SpannerTransactionWriterDoFnTest {
     when(databaseClientMock.readWriteTransaction(any(), any())).thenReturn(transactionCallableMock);
 
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            spannerConfig, ddlView, schema, null, "shadow", "mysql", false, true);
+        new SpannerTransactionWriterDoFn(spannerConfig, ddlView, "shadow", "mysql", true);
     spannerTransactionWriterDoFn.setMapper(mapper);
-    spannerTransactionWriterDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
     spannerTransactionWriterDoFn.setSpannerAccessor(spannerAccessor);
     spannerTransactionWriterDoFn.processElement(processContextMock);
     ArgumentCaptor<Iterable<Mutation>> argument = ArgumentCaptor.forClass(Iterable.class);
@@ -195,7 +189,7 @@ public class SpannerTransactionWriterDoFnTest {
   }
 
   @Test
-  public void testProcessElementWithInvalidChangeEvent() throws Exception {
+  public void testProcessElementWithInvalidChangeEvent() {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     SpannerConfig spannerConfig = mock(SpannerConfig.class);
@@ -203,8 +197,6 @@ public class SpannerTransactionWriterDoFnTest {
     PCollectionView<Ddl> ddlView = mock(PCollectionView.class);
     Schema schema = mock(Schema.class);
     DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
-    ChangeEventSessionConvertor changeEventSessionConvertor =
-        mock(ChangeEventSessionConvertor.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
     outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
@@ -220,20 +212,16 @@ public class SpannerTransactionWriterDoFnTest {
     when(processContextMock.element()).thenReturn(failsafeElement);
     when(processContextMock.sideInput(any())).thenReturn(ddl);
     when(schema.isEmpty()).thenReturn(true);
-    when(changeEventSessionConvertor.transformChangeEventData(eq(outputObject), any(), eq(ddl)))
-        .thenReturn(outputObject);
 
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            spannerConfig, ddlView, schema, null, "shadow", "mysql", false, true);
+        new SpannerTransactionWriterDoFn(spannerConfig, ddlView, "shadow", "mysql", true);
     spannerTransactionWriterDoFn.setMapper(mapper);
-    spannerTransactionWriterDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
     spannerTransactionWriterDoFn.setSpannerAccessor(spannerAccessor);
     spannerTransactionWriterDoFn.processElement(processContextMock);
 
     ArgumentCaptor<FailsafeElement> argument = ArgumentCaptor.forClass(FailsafeElement.class);
     verify(processContextMock, times(1))
-        .output(eq(SpannerTransactionWriter.PERMANENT_ERROR_TAG), argument.capture());
+        .output(eq(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG), argument.capture());
     assertEquals(
         "Table from change event does not exist in Spanner. table=Users1",
         argument.getValue().getErrorMessage());

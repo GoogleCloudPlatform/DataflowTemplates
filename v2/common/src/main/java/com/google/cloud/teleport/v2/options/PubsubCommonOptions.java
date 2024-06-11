@@ -32,6 +32,7 @@ public final class PubsubCommonOptions {
 
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input subscription",
         helpText = "The Pub/Sub input subscription to read from.",
         example = "projects/<PROJECT_ID>/subscription/<SUBSCRIPTION_ID>")
@@ -62,6 +63,7 @@ public final class PubsubCommonOptions {
 
     @TemplateParameter.PubsubTopic(
         order = 3,
+        groupName = "Target",
         description = "Output Pub/Sub topic",
         helpText = "The Pub/Sub topic to use for unprocessed records.",
         example = "projects/<PROJECT_ID>/topics/<TOPIC_NAME>")

@@ -91,12 +91,16 @@ public abstract class JdbcIOWrapperConfig {
   @Nullable
   public abstract Integer maxFetchSize();
 
+  /** Sequence of Sql Init statements for the connection. */
+  public abstract ImmutableList<String> sqlInitSeq();
+
   public static Builder builderWithMySqlDefaults() {
     return new AutoValue_JdbcIOWrapperConfig.Builder()
         .setSchemaMapperType(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_MAPPER_TYPE)
         .setDialectAdapter(MySqlConfigDefaults.DEFAULT_MYSQL_DIALECT_ADAPTER)
         .setValueMappingsProvider(MySqlConfigDefaults.DEFAULT_MYSQL_VALUE_MAPPING_PROVIDER)
         .setMaxConnections(MySqlConfigDefaults.DEFAULT_MYSQL_MAX_CONNECTIONS)
+        .setSqlInitSeq(MySqlConfigDefaults.DEFAULT_MYSQL_INIT_SEQ)
         .setSchemaDiscoveryBackOff(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_DISCOVERY_BACKOFF)
         .setTables(ImmutableList.of())
         .setTableVsPartitionColumns(ImmutableMap.of())
@@ -135,6 +139,8 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setMaxPartitions(Integer value);
 
     public abstract Builder setMaxFetchSize(Integer value);
+
+    public abstract Builder setSqlInitSeq(ImmutableList<String> value);
 
     public abstract Builder setMaxConnections(Long value);
 

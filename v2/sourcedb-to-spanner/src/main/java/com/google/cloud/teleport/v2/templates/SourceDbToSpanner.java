@@ -142,6 +142,7 @@ public class SourceDbToSpanner {
                 OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
                     options, tablesToMigrate)));
     SourceSchema srcSchema = reader.getSourceSchema();
+
     ReaderTransform readerTransform = reader.getReaderTransform();
 
     PCollectionTuple rowsAndTables = pipeline.apply("Read rows", readerTransform.readTransform());
@@ -167,7 +168,8 @@ public class SourceDbToSpanner {
                 .setCoder(SerializableCoder.of(RowContext.class)));
 
     // Dump Failed rows to DLQ
-    DeadLetterQueue dlq = DeadLetterQueue.create(options.getDLQDirectory());
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(options.getDLQDirectory(), ddl, getTableIDToRefMap(srcSchema));
     dlq.failedMutationsToDLQ(failedMutations);
     dlq.failedTransformsToDLQ(
         transformationResult
@@ -232,24 +234,28 @@ public class SourceDbToSpanner {
     }
 
     List<String> tablesToMigrate = new ArrayList<>();
-    for (String table : sourceTablesConfigured) {
+    for (String srcTable : sourceTablesConfigured) {
       String spannerTable = null;
       try {
-        spannerTable = mapper.getSpannerTableName("", table);
+        spannerTable = mapper.getSpannerTableName("", srcTable);
       } catch (NoSuchElementException e) {
-        LOG.info("could not fetch spanner table from mapper: {}", table);
+        LOG.info("could not fetch spanner table from mapper: {}", srcTable);
+        continue;
       }
-      if (spannerTable != null && ddl.table(spannerTable) != null) {
-        // If spanner table exists against source - mark for migration
-        tablesToMigrate.add(table);
-      } else {
+
+      if (spannerTable == null) {
+        LOG.warn("skipping source table as there is no mapped spanner table: {} ", spannerTable);
+      } else if (ddl.table(spannerTable) == null) {
         LOG.warn(
-            "skipping source table as corresponding spanner table is not present: {} "
-                + "spannerTable: {}",
-            table,
+            "skipping source table: {} as there is no matching spanner table: {} ",
+            srcTable,
             spannerTable);
+      } else {
+        // source table has matching spanner table on current spanner instance
+        tablesToMigrate.add(srcTable);
       }
     }
+
     if (tablesToMigrate.isEmpty()) {
       LOG.error("aborting migration as no tables found to migrate");
       throw new InvalidOptionsException("no configured tables can be migrated");

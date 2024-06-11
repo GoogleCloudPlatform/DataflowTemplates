@@ -96,6 +96,7 @@ public class CdcToBigQueryChangeApplierPipeline {
     @TemplateParameter.Text(
         order = 1,
         optional = true,
+        groupName = "Source",
         regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Pub/Sub topic(s) to read from",
         helpText = "Comma-separated list of PubSub topics to where CDC data is being pushed.")
@@ -106,6 +107,7 @@ public class CdcToBigQueryChangeApplierPipeline {
     @TemplateParameter.Text(
         order = 2,
         regexes = {"[^/]+"},
+        groupName = "Source",
         description = "Input subscriptions to the template",
         helpText =
             "The comma-separated list of Pub/Sub input subscriptions to read from, in the format `<SUBSCRIPTION_NAME>,<SUBSCRIPTION_NAME>, ...`")
@@ -116,6 +118,7 @@ public class CdcToBigQueryChangeApplierPipeline {
     @TemplateParameter.Text(
         order = 3,
         regexes = {".+"},
+        groupName = "Target",
         description = "Output BigQuery dataset for Changelog tables",
         helpText =
             "The BigQuery dataset to store the staging tables in, in the format <DATASET_NAME>.")
@@ -126,6 +129,7 @@ public class CdcToBigQueryChangeApplierPipeline {
     @TemplateParameter.Text(
         order = 4,
         regexes = {".+"},
+        groupName = "Target",
         description = "Output BigQuery dataset for replica tables",
         helpText =
             "The location of the BigQuery dataset to store the replica tables in, in the format <DATASET_NAME>.")

@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.kafka.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 
@@ -25,32 +26,23 @@ import org.apache.beam.sdk.options.PipelineOptions;
  */
 public interface KafkaReadOptions extends PipelineOptions {
 
-  @TemplateParameter.Text(
+  final class Offset {
+    public static final String LATEST = "latest";
+    public static final String EARLIEST = "earliest";
+  }
+
+  @TemplateParameter.KafkaTopic(
       order = 1,
+      name = "readBootstrapServerAndTopic",
       groupName = "Source",
-      optional = true,
-      regexes = {"[,:a-zA-Z0-9._-]+"},
-      description = "Kafka Bootstrap Server list",
-      helpText = "Kafka Bootstrap Server list, separated by commas.",
-      example = "localhost:9092,127.0.0.1:9093")
-  String getReadBootstrapServers();
+      description = "Source Kafka Topic",
+      helpText = "Kafka Topic to read the input from.")
+  String getReadBootstrapServerAndTopic();
 
-  void setReadBootstrapServers(String bootstrapServers);
-
-  @TemplateParameter.Text(
-      order = 2,
-      groupName = "Source",
-      optional = true,
-      regexes = {"[,a-zA-Z0-9._-]+"},
-      description = "Kafka Topic(s) to read input from",
-      helpText = "Kafka topic(s) to read input from.",
-      example = "topic1,topic2")
-  String getKafkaReadTopics();
-
-  void setKafkaReadTopics(String inputTopics);
+  void setReadBootstrapServerAndTopic(String value);
 
   @TemplateParameter.Boolean(
-      order = 3,
+      order = 2,
       groupName = "Source",
       name = "enableCommitOffsets",
       optional = true,
@@ -65,75 +57,159 @@ public interface KafkaReadOptions extends PipelineOptions {
   void setEnableCommitOffsets(Boolean value);
 
   @TemplateParameter.Text(
-      order = 4,
+      order = 3,
       groupName = "Source",
+      parentName = "enableCommitOffsets",
+      parentTriggerValues = {"true"},
       optional = true,
       description = "Consumer Group ID",
-      helpText = "Consumer group ID to commit offsets to Kafka.")
+      helpText =
+          "The unique identifier for the consumer group that this pipeline belongs to."
+              + " Required if Commit Offsets to Kafka is enabled.")
   @Default.String("")
   String getConsumerGroupId();
 
   void setConsumerGroupId(String value);
 
   @TemplateParameter.Enum(
-      order = 5,
+      order = 4,
       groupName = "Source",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption("earliest"),
-        @TemplateParameter.TemplateEnumOption("latest"),
+        @TemplateParameter.TemplateEnumOption(Offset.EARLIEST),
+        @TemplateParameter.TemplateEnumOption(Offset.LATEST),
       },
       optional = true,
       description = "Default Kafka Start Offset",
       helpText =
-          "The Kafka offset to read from. If there are no committed offsets on Kafka, default offset will be used.")
-  @Default.String("latest")
+          "The starting point for reading messages when no committed offsets exist."
+              + " The earliest starts from the beginning, the latest from the newest message.")
+  @Default.String(Offset.LATEST)
   String getKafkaReadOffset();
 
   void setKafkaReadOffset(String value);
 
   @TemplateParameter.Enum(
-      order = 6,
+      order = 5,
       name = "kafkaReadAuthenticationMode",
       groupName = "Source",
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption("NONE"),
-        @TemplateParameter.TemplateEnumOption("SASL_PLAIN"),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.TLS),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
       },
-      optional = false,
-      description = "Authentication Mode",
-      helpText = "Kafka read authentication mode. Can be NONE or SASL_PLAIN")
-  @Default.String("NONE")
+      description = "Kafka Source Authentication Mode",
+      helpText =
+          "The mode of authentication to use with the Kafka cluster. "
+              + "Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, "
+              + "and TLS for certificate-based authentication. "
+              + "Apache Kafka for BigQuery only supports the SASL_PLAIN authentication mode.")
+  @Default.String(KafkaAuthenticationMethod.SASL_PLAIN)
   String getKafkaReadAuthenticationMode();
 
   void setKafkaReadAuthenticationMode(String value);
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 6,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
-      parentTriggerValues = {"SASL_PLAIN"},
-      optional = false,
-      description = "Username",
+      parentTriggerValues = {KafkaAuthenticationMethod.SASL_PLAIN},
+      optional = true,
+      description = "Secret Version ID For Kafka SASL/PLAIN Username",
       helpText =
-          "Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}.",
-      example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
+          "The Google Cloud Secret Manager secret ID that contains the Kafka username "
+              + "to use with SASL_PLAIN authentication.",
+      example = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>")
   @Default.String("")
   String getKafkaReadUsernameSecretId();
 
   void setKafkaReadUsernameSecretId(String value);
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 7,
       groupName = "Source",
       parentName = "kafkaReadAuthenticationMode",
-      parentTriggerValues = {"SASL_PLAIN"},
-      optional = false,
-      description = "Password",
+      parentTriggerValues = KafkaAuthenticationMethod.SASL_PLAIN,
+      optional = true,
+      description = "Secret Version ID For Kafka SASL/PLAIN Password",
       helpText =
-          "Secret Manager secret ID for the SASL_PLAIN password. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
-      example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
+          "The Google Cloud Secret Manager secret ID that contains the Kafka password to use with SASL_PLAIN authentication.",
+      example = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>")
   @Default.String("")
   String getKafkaReadPasswordSecretId();
 
   void setKafkaReadPasswordSecretId(String value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 8,
+      optional = true,
+      groupName = "Source",
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
+      helpText =
+          "The Google Cloud Storage path to the Java KeyStore (JKS) file that contains the "
+              + "TLS certificate and private key to use when authenticating with the Kafka cluster.",
+      description = "Location of Keystore",
+      example = "gs://your-bucket/keystore.jks")
+  String getKafkaReadKeystoreLocation();
+
+  void setKafkaReadKeystoreLocation(String sourceKeystoreLocation);
+
+  @TemplateParameter.GcsReadFile(
+      order = 9,
+      optional = true,
+      groupName = "Source",
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
+      description = "Truststore File Location",
+      helpText =
+          "The Google Cloud Storage path to the Java TrustStore (JKS) file that contains"
+              + " the trusted certificates to use to verify the identity of the Kafka broker.")
+  String getKafkaReadTruststoreLocation();
+
+  void setKafkaReadTruststoreLocation(String sourceTruststoreLocation);
+
+  @TemplateParameter.Text(
+      order = 10,
+      optional = true,
+      groupName = "Source",
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
+      description = "Secret Version ID for Truststore Password",
+      helpText =
+          "The Google Cloud Secret Manager secret ID that contains the password to "
+              + "use to access the Java TrustStore (JKS) file for Kafka TLS authentication",
+      example = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>")
+  String getKafkaReadTruststorePasswordSecretId();
+
+  void setKafkaReadTruststorePasswordSecretId(String sourceTruststorePasswordSecretId);
+
+  @TemplateParameter.Text(
+      order = 11,
+      optional = true,
+      groupName = "Source",
+      parentName = "kafkaReadAuthenticationMode",
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
+      description = "Secret Version ID of Keystore Password",
+      helpText =
+          "The Google Cloud Secret Manager secret ID that contains the password to"
+              + " use to access the Java KeyStore (JKS) file for Kafka TLS authentication.",
+      example = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>")
+  String getKafkaReadKeystorePasswordSecretId();
+
+  void setKafkaReadKeystorePasswordSecretId(String sourceKeystorePasswordSecretId);
+
+  @TemplateParameter.Text(
+      order = 12,
+      optional = true,
+      parentName = "kafkaReadAuthenticationMode",
+      groupName = "Source",
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
+      helpText =
+          "The Google Cloud Secret Manager secret ID that contains the password to use to access the private key within the Java KeyStore (JKS) file"
+              + " for Kafka TLS authentication.",
+      description = "Secret Version ID of Private Key Password",
+      example = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>")
+  String getKafkaReadKeyPasswordSecretId();
+
+  void setKafkaReadKeyPasswordSecretId(String sourceKeyPasswordSecretId);
 }

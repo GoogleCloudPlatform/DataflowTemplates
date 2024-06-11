@@ -18,6 +18,7 @@
 package org.apache.beam.it.gcp.storage.conditions;
 
 import com.google.auto.value.AutoValue;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
@@ -27,6 +28,7 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 
 @AutoValue
 public abstract class GCSArtifactsCheck extends ConditionCheck {
+
   abstract GcsResourceManager gcsResourceManager();
 
   abstract String prefix();
@@ -37,6 +39,9 @@ public abstract class GCSArtifactsCheck extends ConditionCheck {
 
   @Nullable
   abstract Integer maxSize();
+
+  @Nullable
+  abstract String artifactContentMatcher();
 
   @Override
   public String getDescription() {
@@ -50,20 +55,52 @@ public abstract class GCSArtifactsCheck extends ConditionCheck {
         prefix(), regex(), minSize());
   }
 
+  private int countContentOccurrences(String content, List<Artifact> artifacts) {
+    // Initialize the count of occurrences
+    int count = 0;
+    // Iterate through the artifacts and count occurrences of the content
+    for (Artifact artifact : artifacts) {
+      String artifactContent = new String(artifact.contents(), StandardCharsets.UTF_8);
+      Pattern pattern = Pattern.compile(Pattern.quote(content));
+      java.util.regex.Matcher matcher = pattern.matcher(artifactContent);
+      while (matcher.find()) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   @Override
   public CheckResult check() {
     List<Artifact> artifacts = gcsResourceManager().listArtifacts(prefix(), regex());
-    if (artifacts.size() < minSize()) {
-      return new CheckResult(
-          false,
-          String.format("Expected %d artifacts but has only %d", minSize(), artifacts.size()));
+    if (artifactContentMatcher() != null) {
+      int count = countContentOccurrences(artifactContentMatcher(), artifacts);
+      if (count < minSize()) {
+        return new CheckResult(
+            false,
+            String.format(
+                "Expected %d artifacts with content matcher %s but has only %d",
+                minSize(), artifactContentMatcher(), count));
+      }
+      if (maxSize() != null && count > maxSize()) {
+        return new CheckResult(
+            false,
+            String.format(
+                "Expected up to %d artifacts with content matcher %s but found %d",
+                maxSize(), artifactContentMatcher(), count));
+      }
+    } else {
+      if (artifacts.size() < minSize()) {
+        return new CheckResult(
+            false,
+            String.format("Expected %d artifacts but has only %d", minSize(), artifacts.size()));
+      }
+      if (maxSize() != null && artifacts.size() > maxSize()) {
+        return new CheckResult(
+            false,
+            String.format("Expected up to %d artifacts but found %d", maxSize(), artifacts.size()));
+      }
     }
-    if (maxSize() != null && artifacts.size() > maxSize()) {
-      return new CheckResult(
-          false,
-          String.format("Expected up to %d artifacts but found %d", maxSize(), artifacts.size()));
-    }
-
     if (maxSize() != null) {
       return new CheckResult(
           true,
@@ -99,6 +136,9 @@ public abstract class GCSArtifactsCheck extends ConditionCheck {
     public abstract GCSArtifactsCheck.Builder setMinSize(Integer minSize);
 
     public abstract GCSArtifactsCheck.Builder setMaxSize(Integer maxSize);
+
+    public abstract GCSArtifactsCheck.Builder setArtifactContentMatcher(
+        String artifactContentMatcher);
 
     abstract GCSArtifactsCheck autoBuild();
 

@@ -19,6 +19,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters.MessageFormatConstants;
 import com.google.common.io.Resources;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
@@ -82,12 +83,13 @@ public class KafkaToGcsIT extends TemplateTestBase {
 
   @Test
   public void testKafkaToGcsText() throws IOException, RestClientException {
-    baseKafkaToGcs(b -> b.addParameter("outputFileFormat", "TEXT"));
+    baseKafkaToGcs(b -> b.addParameter("messageFormat", MessageFormatConstants.JSON));
   }
 
   @Test
   public void testKafkaToGcsAvro() throws IOException, RestClientException {
-    baseKafkaToGcs(b -> b.addParameter("outputFileFormat", "AVRO"));
+    baseKafkaToGcs(
+        b -> b.addParameter("messageFormat", MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT));
   }
 
   private void baseKafkaToGcs(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
@@ -100,11 +102,13 @@ public class KafkaToGcsIT extends TemplateTestBase {
         paramsAdder.apply(
             LaunchConfig.builder(testName, specPath)
                 .addParameter(
-                    "readBootstrapServers",
-                    kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", ""))
-                .addParameter("kafkaReadTopics", topicName)
+                    "readBootstrapServerAndTopic",
+                    kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "")
+                        + ";"
+                        + topicName)
                 .addParameter("windowDuration", "10s")
-                .addParameter("schemaPath", getGcsPath("avro_schema.avsc"))
+                .addParameter("schemaFormat", "SINGLE_SCHEMA_FILE")
+                .addParameter("confluentAvroSchemaPath", getGcsPath("avro_schema.avsc"))
                 .addParameter("kafkaReadOffset", "earliest")
                 .addParameter("outputDirectory", getGcsPath(testName))
                 .addParameter("outputFilenamePrefix", testName + "-")

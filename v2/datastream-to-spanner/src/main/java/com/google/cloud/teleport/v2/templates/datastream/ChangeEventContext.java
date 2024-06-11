@@ -20,6 +20,7 @@ import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

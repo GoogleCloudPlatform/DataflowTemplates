@@ -99,6 +99,7 @@ public class DataStreamToSQL {
   public interface Options extends PipelineOptions, StreamingOptions {
     @TemplateParameter.GcsReadFile(
         order = 1,
+        groupName = "Source",
         description = "File location for Datastream file input in Cloud Storage.",
         helpText =
             "The file location for the Datastream files in Cloud Storage to replicate. This file location is typically the root path for the stream.")
@@ -131,6 +132,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Source",
         optional = true,
         description = "Name or template for the stream to poll for schema information.",
         helpText =
@@ -178,6 +180,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Target",
         description = "Database Host to connect on.",
         helpText = "The SQL host to connect on.")
     String getDatabaseHost();
@@ -186,6 +189,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 9,
+        groupName = "Target",
         optional = true,
         description = "Database Port to connect on.",
         helpText = "The SQL database port to connect to. The default value is `5432`.")
@@ -213,6 +217,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 12,
+        groupName = "Target",
         optional = true,
         description = "SQL Database Name.",
         helpText = "The name of the SQL database to connect to. The default value is `postgres`.")
@@ -235,6 +240,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 14,
+        groupName = "Target",
         optional = true,
         description = "Custom connection string.",
         helpText =

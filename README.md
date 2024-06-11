@@ -65,6 +65,7 @@ follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/
     - [Synchronizing CDC data to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cdc_To_BigQuery_Template&type=code)
     - [Text Files on Cloud Storage to Pub/Sub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Stream_GCS_Text_to_Cloud_PubSub&type=code)
 - Process Data in Bulk (batch)
+    - [Any SourceDB to Cloud Spanner](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Sourcedb_To_Spanner&type=code)
     - [AstraDB to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20AstraDB_To_BigQuery&type=code)
     - [Avro Files on Cloud Storage to Cloud Bigtable](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_Avro_to_Cloud_Bigtable&type=code)
     - [Avro Files on Cloud Storage to Cloud Spanner](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_Avro_to_Cloud_Spanner&type=code)

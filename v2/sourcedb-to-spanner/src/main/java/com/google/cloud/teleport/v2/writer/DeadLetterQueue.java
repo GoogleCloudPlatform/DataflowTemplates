@@ -16,17 +16,28 @@
 package com.google.cloud.teleport.v2.writer;
 
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
+import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.constants.MetricCounters;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.Serializable;
+import java.util.Map;
+import org.apache.avro.Schema.Field;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
@@ -34,6 +45,7 @@ import org.apache.beam.sdk.values.PDone;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,13 +56,26 @@ public class DeadLetterQueue implements Serializable {
 
   private final String dlqDirectory;
 
+  private final Ddl ddl;
+
   private final PTransform<PCollection<String>, PDone> dlqTransform;
+
+  private final Map<String, SourceTableReference> tableIDToRefMap;
 
   public static final Counter FAILED_MUTATION_COUNTER =
       Metrics.counter(SpannerWriter.class, MetricCounters.FAILED_MUTATION_ERRORS);
 
-  public static DeadLetterQueue create(String dlqDirectory) {
-    return new DeadLetterQueue(dlqDirectory);
+  private static final SourceTableReference UNKNOWN_TABLE =
+      SourceTableReference.builder()
+          .setSourceTableName("UNKNOWN")
+          .setSourceTableSchemaUUID("DEFAULT-UUID")
+          .setSourceSchemaReference(
+              SourceSchemaReference.builder().setNamespace("").setDbName("UNKOWN").build())
+          .build();
+
+  public static DeadLetterQueue create(
+      String dlqDirectory, Ddl ddl, Map<String, SourceTableReference> tableIDToRefMap) {
+    return new DeadLetterQueue(dlqDirectory, ddl, tableIDToRefMap);
   }
 
   public String getDlqDirectory() {
@@ -61,9 +86,12 @@ public class DeadLetterQueue implements Serializable {
     return dlqTransform;
   }
 
-  private DeadLetterQueue(String dlqDirectory) {
+  private DeadLetterQueue(
+      String dlqDirectory, Ddl ddl, Map<String, SourceTableReference> tableIDToRefMap) {
     this.dlqDirectory = dlqDirectory;
     this.dlqTransform = createDLQTransform(dlqDirectory);
+    this.ddl = ddl;
+    this.tableIDToRefMap = tableIDToRefMap;
   }
 
   @VisibleForTesting
@@ -109,19 +137,39 @@ public class DeadLetterQueue implements Serializable {
       PCollection<@UnknownKeyFor @NonNull @Initialized RowContext> failedRows) {
     // TODO - add the exception message
     LOG.warn("added failed transformation output to pipeline");
-    DoFn<RowContext, String> rowContextToString =
-        new DoFn<RowContext, String>() {
+    DoFn<RowContext, FailsafeElement<String, String>> rowContextToString =
+        new DoFn<RowContext, FailsafeElement<String, String>>() {
           @ProcessElement
           public void processElement(
-              @Element RowContext rowContext, OutputReceiver<String> out, ProcessContext c) {
-            c.output(rowContext.row().getPayload().toString());
+              @Element RowContext rowContext,
+              OutputReceiver<FailsafeElement<String, String>> out,
+              ProcessContext c) {
+            c.output(rowContextToDlqElement(rowContext));
           }
         };
     failedRows
         .apply("failedRowTransformString", ParDo.of(rowContextToString))
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+        .apply("SanitizeTransformWriteDLQ", MapElements.via(new StringDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
         .apply("TransformerDLQ", dlqTransform);
     LOG.info("added dlq stage after transformer");
+  }
+
+  @VisibleForTesting
+  protected FailsafeElement<String, String> rowContextToDlqElement(RowContext r) {
+    GenericRecord record = r.row().getPayload();
+    JSONObject json = new JSONObject();
+
+    String sourceTableName =
+        tableIDToRefMap.getOrDefault(r.row().tableSchemaUUID(), UNKNOWN_TABLE).sourceTableName();
+    json.put("_metadata_table", sourceTableName);
+    for (Field f : record.getSchema().getFields()) {
+      Object value = record.get(f.name());
+      json.put(f.name(), value == null ? null : value.toString());
+    }
+    return FailsafeElement.of(json.toString(), json.toString())
+        .setErrorMessage("TransformationFailed: " + r.err() + "\n" + r.getStackTraceString());
   }
 
   public void failedMutationsToDLQ(
@@ -133,20 +181,39 @@ public class DeadLetterQueue implements Serializable {
         .apply(
             "failedMutationToString",
             ParDo.of(
-                new DoFn<MutationGroup, String>() {
+                new DoFn<MutationGroup, FailsafeElement<String, String>>() {
                   @ProcessElement
                   public void processElement(
-                      @Element MutationGroup mg, OutputReceiver<String> out, ProcessContext c) {
+                      @Element MutationGroup mg,
+                      OutputReceiver<FailsafeElement<String, String>> out,
+                      ProcessContext c) {
                     for (Mutation m : mg) {
                       LOG.debug("saving failed mutation to DLQ Table: {}", m);
-                      out.output(m.toString());
+                      out.output(mutationToDlqElement(m));
                     }
                     FAILED_MUTATION_COUNTER.inc(mg.size());
                     LOG.info("completed stringifying of failed mutations: {}", mg.size());
                   }
                 }))
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+        .apply("SanitizeSpannerWriteDLQ", MapElements.via(new StringDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
         .apply("WriterDLQ", dlqTransform);
     LOG.info("added dlq stage after writer");
+  }
+
+  @VisibleForTesting
+  protected FailsafeElement<String, String> mutationToDlqElement(Mutation m) {
+    JSONObject json = new JSONObject();
+    json.put("_metadata_table", m.getTable());
+
+    Map<String, Value> mutationMap = m.asMap();
+    for (Map.Entry<String, Value> entry : mutationMap.entrySet()) {
+      Value value = entry.getValue();
+      json.put(entry.getKey(), value == null ? null : String.valueOf(value));
+    }
+
+    return FailsafeElement.of(json.toString(), json.toString())
+        .setErrorMessage("SpannerWriteFailed");
   }
 }

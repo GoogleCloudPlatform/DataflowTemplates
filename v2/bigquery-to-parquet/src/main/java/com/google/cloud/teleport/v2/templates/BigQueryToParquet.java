@@ -146,6 +146,7 @@ public class BigQueryToParquet {
     @TemplateParameter.BigQueryTable(
         order = 1,
         description = "BigQuery table to export",
+        groupName = "Source",
         helpText = "The BigQuery input table location.",
         example = "your-project:your-dataset.your-table-name")
     @Required
@@ -156,6 +157,7 @@ public class BigQueryToParquet {
     @TemplateParameter.GcsWriteFile(
         order = 2,
         description = "Output Cloud Storage file(s)",
+        groupName = "Target",
         helpText = "The Cloud Storage folder to write the Parquet files to.",
         example = "gs://your-bucket/export/")
     @Required

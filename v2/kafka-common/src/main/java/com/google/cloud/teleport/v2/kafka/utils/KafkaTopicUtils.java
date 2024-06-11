@@ -24,7 +24,8 @@ public class KafkaTopicUtils {
   private static final Pattern GMK_PATTERN =
       Pattern.compile("^projects/([^/]+)/locations/([^/]+)/clusters/([^/]+)/topics/([^/]+)$");
 
-  public static List<String> getBootstrapServerAndTopic(String bootstrapServerAndTopicString) {
+  public static List<String> getBootstrapServerAndTopic(
+      String bootstrapServerAndTopicString, String project) {
     Matcher matcher = GMK_PATTERN.matcher(bootstrapServerAndTopicString);
     String bootstrapServer = null;
     String topicName = null;
@@ -35,7 +36,7 @@ public class KafkaTopicUtils {
               + "."
               + matcher.group(2)
               + ".managedkafka."
-              + matcher.group(1)
+              + project
               + ".cloud.goog:9092";
       topicName = matcher.group(4);
     } else {

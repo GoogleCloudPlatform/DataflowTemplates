@@ -29,6 +29,7 @@ public class BigQueryToMongoDbOptions {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Target",
         description = "MongoDB Connection URI",
         helpText = "The MongoDB connection URI in the format mongodb+srv://:@.")
     String getMongoDbUri();
@@ -37,6 +38,7 @@ public class BigQueryToMongoDbOptions {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         description = "MongoDB Database",
         helpText = "Database in MongoDB to store the collection.",
         example = "my-db")
@@ -46,6 +48,7 @@ public class BigQueryToMongoDbOptions {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Target",
         description = "MongoDB collection",
         helpText = "The name of the collection in the MongoDB database.",
         example = "my-collection")
@@ -59,6 +62,7 @@ public class BigQueryToMongoDbOptions {
 
     @TemplateParameter.BigQueryTable(
         order = 1,
+        groupName = "Source",
         description = "BigQuery source table",
         helpText = "The BigQuery table to read from.",
         example = "bigquery-project:dataset.input_table")

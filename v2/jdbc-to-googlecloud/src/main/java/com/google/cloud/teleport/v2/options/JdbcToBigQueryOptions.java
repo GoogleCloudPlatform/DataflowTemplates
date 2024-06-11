@@ -26,7 +26,6 @@ public interface JdbcToBigQueryOptions
       order = 1,
       optional = false,
       regexes = {"^.+$"},
-      groupName = "Source",
       description = "Comma-separated Cloud Storage path(s) of the JDBC driver(s)",
       helpText = "The comma-separated list of driver JAR files.",
       example = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar")
@@ -38,7 +37,6 @@ public interface JdbcToBigQueryOptions
       order = 2,
       optional = false,
       regexes = {"^.+$"},
-      groupName = "Source",
       description = "JDBC driver class name",
       helpText = "The JDBC driver class name.",
       example = "com.mysql.jdbc.Driver")
@@ -65,7 +63,6 @@ public interface JdbcToBigQueryOptions
       order = 4,
       optional = true,
       regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
-      groupName = "Source",
       description = "JDBC connection property string.",
       helpText =
           "The properties string to use for the JDBC connection. The format of the string must "
@@ -82,7 +79,6 @@ public interface JdbcToBigQueryOptions
       order = 5,
       optional = true,
       regexes = {"^.+$"},
-      groupName = "Source",
       description = "JDBC connection username.",
       helpText =
           "The username to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string.")
@@ -93,7 +89,6 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Password(
       order = 6,
       optional = true,
-      groupName = "Source",
       description = "JDBC connection password.",
       helpText =
           "The password to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string.")
@@ -105,7 +100,6 @@ public interface JdbcToBigQueryOptions
       order = 7,
       optional = true,
       regexes = {"^.+$"},
-      groupName = "Source",
       description = "JDBC source SQL query",
       helpText =
           "The query to run on the source to extract the data. Note that some JDBC SQL and BigQuery types, although sharing the same name, have some differences. "
@@ -130,7 +124,6 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.GcsWriteFolder(
       order = 9,
       optional = false,
-      groupName = "Target",
       description = "Temporary directory for BigQuery loading process",
       helpText = "The temporary directory for the BigQuery loading process.",
       example = "gs://your-bucket/your-files/temp_dir")
@@ -141,7 +134,6 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.KmsEncryptionKey(
       order = 10,
       optional = true,
-      groupName = "Source",
       description = "Google Cloud KMS key",
       helpText =
           "The Cloud KMS encryption key to use to decrypt the username, password, and connection string. If you  "
@@ -154,7 +146,6 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Boolean(
       order = 11,
       optional = true,
-      groupName = "Source",
       description = "Whether to use column alias to map the rows.",
       helpText =
           "If set to `true`, the pipeline uses the column alias (`AS`) instead of the column name to map the rows to BigQuery. Defaults to `false`.")
@@ -166,7 +157,6 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Boolean(
       order = 12,
       optional = true,
-      groupName = "Target",
       description = "Whether to truncate data before writing",
       helpText =
           "If set to `true`, the pipeline truncates before loading data into BigQuery. Defaults to `false`, which causes the pipeline to append data.")
@@ -178,7 +168,6 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Text(
       order = 13,
       optional = true,
-      groupName = "Source",
       description = "The name of a column of numeric type that will be used for partitioning.",
       helpText =
           "If this parameter is provided with the name of the `table` defined as an optional parameter, JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.")
@@ -189,7 +178,6 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Text(
       order = 14,
       optional = true,
-      groupName = "Source",
       description = "Name of the table in the external database.",
       helpText =
           "The table to read from when using partitions. This parameter also accepts a subquery in parentheses.",
@@ -201,7 +189,6 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Integer(
       order = 15,
       optional = true,
-      groupName = "Source",
       description = "The number of partitions.",
       helpText =
           "The number of partitions. With the lower and upper bound, this value forms partition strides for generated `WHERE` clause expressions that are used to split the partition column evenly. When the input is less than `1`, the number is set to `1`.")
@@ -212,7 +199,6 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Long(
       order = 16,
       optional = true,
-      groupName = "Source",
       description = "Lower bound of partition column.",
       helpText =
           "The lower bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types.")
@@ -223,7 +209,6 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Long(
       order = 17,
       optional = true,
-      groupName = "Source",
       description = "Upper bound of partition column",
       helpText =
           "The upper bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types.")
@@ -234,7 +219,6 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Integer(
       order = 18,
       optional = true,
-      groupName = "Source",
       description = "Fetch Size",
       // TODO: remove the "Not used for partitioned reads" once
       // https://github.com/apache/beam/pull/28999 is released.

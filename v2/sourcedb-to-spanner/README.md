@@ -1,16 +1,15 @@
 # SourceDB to Spanner Dataflow Template
 
 The [SourceDBToSpanner](src/main/java/com/google/cloud/teleport/v2/templates/SourceDbToSpanner.java) pipeline
-ingests data by reading from a database via JDBC, optionally applies a Javascript or Python UDF if supplied
-and writes the data to Cloud Spanner database.
+ingests data by reading from a database via JDBC and writes the data to Cloud Spanner database.
 
 Currently, this template works for a basic set of use cases. A not comprehensive
 list of scenarios which are not yet supported.
 to be implemented going forward
-* Generic schema mapping
 * Tables with non integer keys
 * Support for additional sources
-* Support for all datatypes supported in MySQL (And other sources when added)
+* Support for tables with foreign keys and interleaving
+* Migrating sharded databases
 
 ## Getting Started
 
@@ -36,10 +35,6 @@ export APP_ROOT=/template/${IMAGE_NAME}
 export DATAFLOW_JAVA_COMMAND_SPEC=${APP_ROOT}/resources/${IMAGE_NAME}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${IMAGE_NAME}-image-spec.json
 
-export TOPIC=projects/${PROJECT}/topics/<topic-name>
-export SUBSCRIPTION=projects/${PROJECT}/subscriptions/<subscription-name>
-export DEADLETTER_TABLE=${PROJECT}:${DATASET_TEMPLATE}.dead_letter
-
 gcloud config set project ${PROJECT}
 ```
 
@@ -64,20 +59,31 @@ mvn test
 
 ### Executing Template
 
-The template requires the following parameters:
-* **jdbcDriverJars** (Comma-separated Cloud Storage path(s) of the JDBC driver(s)): The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
-* **jdbcDriverClassName** (JDBC driver class name): The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
-* **jdbcConnectionURL** (JDBC connection URL string.): The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. Note the difference between an Oracle non-RAC database connection string (`jdbc:oracle:thin:@some-host:<port>:<sid>`) and an Oracle RAC database connection string (`jdbc:oracle:thin:@//some-host[:<port>]/<service_name>`). (Example: jdbc:mysql://some-host:3306/sampledb).
+#### Required Parameters
+* **sourceDbURL** (JDBC URL of the source database): The URL which can be used to connect to the source database. (Example: jdbc:mysql://10.10.10.10:3306/testdb)
+* **username** (username of the source database): The username which can be used to connect to the source database.
+* **password** (username of the source database): The username which can be used to connect to the source database.
 * **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
 * **databaseId** (Cloud Spanner Database Id.): The destination Cloud Spanner database.
 * **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
+* **DLQDirectory** (GCS path of the dead letter queue direcotry): The GCS path of the schema mapping file to be used during migrations
 
+#### Optional Parameters
+* **jdbcDriverJars** (Comma-separated Cloud Storage path(s) of the JDBC driver(s)): The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
+* **jdbcDriverClassName** (JDBC driver class name): The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
+* **tables** (Comma seperated list of tables to migrate): Tables that will be migrated to Spanner. Leave this empty if all tabels are to be migrated. (Example: table1,table2).
+* **numPartitions** (Number of partitions to create per table): A table is split into partitions and loaded independently. Use higher number of partitions for larger tables. (Example: 1000).
+* **spannerHost** (Cloud Spanner Endpoint): Use this endpoint to connect to Spanner. (Example: https://batch-spanner.googleapis.com)
+* **maxConnections** (Number of connections to create per source database): The max number of connections that can be used at any given time at source. (Example: 100)
+* **sessionFilePath** (GCS path of the session file): The GCS path of the schema mapping file to be used during migrations
 
 Template can be executed using the following API call:
 ```sh
 export JOB_NAME="${IMAGE_NAME}-`date +%Y%m%d-%H%M%S-%N`"
-gcloud beta dataflow flex-template run ${JOB_NAME} \
+
+gcloud dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters instanceId=${INSTANCE_ID},databaseId=${DATABASE_ID},inputFilePattern=${GCS_LOCATION},outputDeadletterTable=${DEADLETTER_TABLE}
+        --parameters sourceDbURL="jdbc:mysql://<source_ip>:3306/<mysql_db_name>",username=<mysql user>,password=<mysql pass>,instanceId="<spanner instanceid>",databaseId="<spanner_database_id>",projectId="$PROJECT",DLQDirectory=gs://<gcs-dir> \
+        --additional-experiments=disable_runner_v2
 ```

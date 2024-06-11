@@ -76,6 +76,7 @@ public interface BigtableChangeStreamsToGcsOptions
 
   @TemplateParameter.GcsWriteFolder(
       order = 5,
+      groupName = "Target",
       description = "Output file directory in Cloud Storage",
       helpText =
           "The path and filename prefix for writing output files. Must end with a slash. "

@@ -29,9 +29,12 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.DataSourceConfiguration;
@@ -174,10 +177,9 @@ public final class JdbcIoWrapper implements IoWrapper {
    */
   private static ImmutableList<TableConfig> autoInferTableConfigs(
       JdbcIOWrapperConfig config, SchemaDiscovery schemaDiscovery, DataSource dataSource) {
-    ImmutableList<String> tables =
-        (config.tables().isEmpty())
-            ? schemaDiscovery.discoverTables(dataSource, config.sourceSchemaReference())
-            : config.tables();
+    ImmutableList<String> discoveredTables =
+        schemaDiscovery.discoverTables(dataSource, config.sourceSchemaReference());
+    ImmutableList<String> tables = getTablesToMigrate(config.tables(), discoveredTables);
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexes =
         schemaDiscovery.discoverTableIndexes(dataSource, config.sourceSchemaReference(), tables);
     ImmutableList.Builder<TableConfig> tableConfigsBuilder = ImmutableList.builder();
@@ -218,6 +220,22 @@ public final class JdbcIoWrapper implements IoWrapper {
       tableConfigsBuilder.add(configBuilder.build());
     }
     return tableConfigsBuilder.build();
+  }
+
+  @VisibleForTesting
+  protected static ImmutableList<String> getTablesToMigrate(
+      ImmutableList<String> configTables, ImmutableList<String> discoveredTables) {
+    List<String> tables = null;
+    if (configTables.isEmpty()) {
+      tables = discoveredTables;
+    } else {
+      tables =
+          configTables.stream()
+              .filter(t -> discoveredTables.contains(t))
+              .collect(Collectors.toList());
+    }
+    LOG.info("final list of tables to migrate: {}", tables);
+    return ImmutableList.copyOf(tables);
   }
 
   /**
@@ -262,6 +280,10 @@ public final class JdbcIoWrapper implements IoWrapper {
                 StaticValueProvider.of(config.sourceDbURL()))
             .withMaxConnections(Math.toIntExact(config.maxConnections()));
 
+    if (!config.sqlInitSeq().isEmpty()) {
+      dataSourceConfig = dataSourceConfig.withConnectionInitSqls(config.sqlInitSeq());
+    }
+
     if (config.jdbcDriverJars() != null && !config.jdbcDriverJars().isEmpty()) {
       dataSourceConfig = dataSourceConfig.withDriverJars(config.jdbcDriverJars());
     }
@@ -271,6 +293,8 @@ public final class JdbcIoWrapper implements IoWrapper {
     if (!config.dbAuth().getPassword().get().isBlank()) {
       dataSourceConfig = dataSourceConfig.withPassword(config.dbAuth().getPassword().get());
     }
+
+    LOG.info("Final DatasourceConfiguration: {}", dataSourceConfig);
     return dataSourceConfig;
   }
 

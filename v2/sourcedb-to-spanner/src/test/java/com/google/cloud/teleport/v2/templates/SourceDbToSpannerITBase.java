@@ -20,20 +20,30 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.JDBCBaseIT;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base class for SourceDbToSpanner integration tests. It provides helper functions related to
  * environment setup and assertConditions.
  */
 public class SourceDbToSpannerITBase extends JDBCBaseIT {
+  private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerITBase.class);
+
   public MySQLResourceManager setUpMySQLResourceManager() {
     return MySQLResourceManager.builder(testName).build();
   }
@@ -42,6 +52,47 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     return SpannerResourceManager.builder(testName, PROJECT, REGION)
         .maybeUseStaticInstance()
         .build();
+  }
+
+  protected void loadSQLFileResource(JDBCResourceManager jdbcResourceManager, String resourcePath)
+      throws Exception {
+    String sql =
+        String.join(
+            " ", Resources.readLines(Resources.getResource(resourcePath), StandardCharsets.UTF_8));
+    loadSQLToJdbcResourceManager(jdbcResourceManager, sql);
+  }
+
+  protected void loadSQLToJdbcResourceManager(JDBCResourceManager jdbcResourceManager, String sql)
+      throws Exception {
+    LOG.info("Loading sql to jdbc resource manager");
+    try {
+      Connection connection =
+          DriverManager.getConnection(
+              jdbcResourceManager.getUri(),
+              jdbcResourceManager.getUsername(),
+              jdbcResourceManager.getPassword());
+
+      // Preprocess SQL to handle multi-line statements and newlines
+      sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ");
+
+      // Split into individual statements
+      String[] statements = sql.split(";");
+
+      // Execute each statement
+      Statement statement = connection.createStatement();
+      for (String stmt : statements) {
+        if (!stmt.trim().isEmpty()) {
+          // Skip SELECT statements
+          if (!stmt.trim().toUpperCase().startsWith("SELECT")) {
+            LOG.info("Executing statement: {}", stmt);
+            statement.executeUpdate(stmt);
+          }
+        }
+      }
+    } catch (Exception e) {
+      throw new Exception("Failed to load SQL into database", e);
+    }
+    LOG.info("Successfully loaded sql to jdbc resource manager");
   }
 
   /**
@@ -53,16 +104,15 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
    */
   public void createSpannerDDL(SpannerResourceManager spannerResourceManager, String resourceName)
       throws IOException {
+    LOG.info("Creating spanner DDL");
     String ddl =
         String.join(
             " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
     ddl = ddl.trim();
-    String[] ddls = ddl.split(";");
-    for (String d : ddls) {
-      if (!d.isBlank()) {
-        spannerResourceManager.executeDdlStatement(d);
-      }
-    }
+    List<String> ddls =
+        Arrays.stream(ddl.split(";")).filter(d -> !d.isBlank()).collect(Collectors.toList());
+    spannerResourceManager.executeDdlStatements(ddls);
+    LOG.info("Successfully created spanner DDL");
   }
 
   /**
@@ -119,7 +169,8 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);
 
     options.setParameters(params);
-
+    options.addEnvironment("additionalExperiments", List.of("disable_runner_v2"));
+    options.addEnvironment("numWorkers", 2);
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
     assertThatPipeline(jobInfo).isRunning();

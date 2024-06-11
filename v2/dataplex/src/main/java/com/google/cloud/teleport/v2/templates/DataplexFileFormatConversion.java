@@ -126,6 +126,7 @@ public class DataplexFileFormatConversion {
           "^(projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/assets\\/[^\\n\\r\\/]+|projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/entities\\/[^\\n\\r\\/,]+(,projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/entities\\/[^\\n\\r\\/,]+)*)$"
         },
         description = "Dataplex asset name or Dataplex entity names for the files to be converted.",
+        groupName = "Source",
         helpText =
             "Dataplex asset or Dataplex entities that contain the input files. Format:"
                 + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
@@ -170,6 +171,7 @@ public class DataplexFileFormatConversion {
         regexes = {
           "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/assets\\/[^\\n\\r\\/]+$"
         },
+        groupName = "Target",
         description = "Dataplex asset name for the destination Cloud Storage bucket.",
         helpText =
             "Name of the Dataplex asset that contains Cloud Storage bucket where output files will"

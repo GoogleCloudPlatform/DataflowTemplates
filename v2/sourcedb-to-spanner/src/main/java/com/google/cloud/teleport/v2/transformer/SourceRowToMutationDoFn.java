@@ -85,7 +85,6 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
           .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS)
           .output(RowContext.builder().setRow(sourceRow).setMutation(mutation).build());
     } catch (Exception e) {
-      LOG.error("unable to transform source row to spanner mutation: {}", e.getMessage());
       transformerErrors.inc();
       output
           .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)

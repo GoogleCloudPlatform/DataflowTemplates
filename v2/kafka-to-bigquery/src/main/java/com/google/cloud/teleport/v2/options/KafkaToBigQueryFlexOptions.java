@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
+import com.google.cloud.teleport.v2.kafka.options.SchemaRegistryOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.Default;
 
@@ -25,125 +26,24 @@ import org.apache.beam.sdk.options.Default;
  * executor at the command-line.
  */
 public interface KafkaToBigQueryFlexOptions
-    extends DataflowPipelineOptions, KafkaReadOptions, BigQueryStorageApiStreamingOptions {
-
-  @TemplateParameter.Text(
-      order = 1,
-      groupName = "Source",
-      optional = true,
-      regexes = {"[,:a-zA-Z0-9._-]+"},
-      description = "Kafka Bootstrap Server",
-      helpText = "Kafka Bootstrap Server list, separated by commas.",
-      example = "localhost:9092,127.0.0.1:9093",
-      hiddenUi = true)
-  @Override
-  String getReadBootstrapServers();
-
-  void setReadBootstrapServers(String bootstrapServers);
-
-  @TemplateParameter.Text(
-      order = 2,
-      groupName = "Source",
-      optional = true,
-      regexes = {"[,a-zA-Z0-9._-]+"},
-      description = "Kafka Topic(s)",
-      helpText = "Kafka topic(s) to read input from.",
-      example = "topic1,topic2",
-      hiddenUi = true)
-  @Override
-  String getKafkaReadTopics();
-
-  void setKafkaReadTopics(String inputTopics);
-
+    extends DataflowPipelineOptions,
+        KafkaReadOptions,
+        BigQueryStorageApiStreamingOptions,
+        SchemaRegistryOptions {
+  // This is a duplicate option that already exist in KafkaReadOptions but keeping it here
+  // so the KafkaTopic appears above the authentication enum on the Templates UI.
   @TemplateParameter.KafkaTopic(
       order = 1,
       name = "readBootstrapServerAndTopic",
       groupName = "Source",
-      optional = false,
       description = "Source Kafka Topic",
       helpText = "Kafka Topic to read the input from.")
   String getReadBootstrapServerAndTopic();
 
   void setReadBootstrapServerAndTopic(String value);
 
-  @TemplateParameter.Enum(
-      order = 2,
-      name = "messageFormat",
-      groupName = "Source",
-      enumOptions = {
-        @TemplateParameter.TemplateEnumOption("AVRO_CONFLUENT_WIRE_FORMAT"),
-        @TemplateParameter.TemplateEnumOption("AVRO_BINARY_ENCODING"),
-        @TemplateParameter.TemplateEnumOption("JSON")
-      },
-      optional = false,
-      description = "Message Format",
-      helpText =
-          "The Kafka message format. Can be AVRO_CONFLUENT_WIRE_FORMAT, AVRO_BINARY_ENCODING or JSON.")
-  String getMessageFormat();
-
-  void setMessageFormat(String value);
-
-  @TemplateParameter.Enum(
-      order = 3,
-      name = "schemaFormat",
-      groupName = "Source",
-      parentName = "messageFormat",
-      parentTriggerValues = {"AVRO_CONFLUENT_WIRE_FORMAT"},
-      enumOptions = {
-        @TemplateParameter.TemplateEnumOption("SINGLE_SCHEMA_FILE"),
-        @TemplateParameter.TemplateEnumOption("SCHEMA_REGISTRY"),
-      },
-      optional = false,
-      description = "Schema Source",
-      helpText =
-          "The Kafka schema format. Can be provided as SINGLE_SCHEMA_FILE or SCHEMA_REGISTRY. "
-              + "If SINGLE_SCHEMA_FILE is specified, all messages should have the schema mentioned in the avro schema file. "
-              + "If SCHEMA_REGISTRY is specified, the messages can have either a single schema or multiple schemas.")
-  String getSchemaFormat();
-
-  void setSchemaFormat(String value);
-
-  @TemplateParameter.GcsReadFile(
-      order = 4,
-      groupName = "Source",
-      parentName = "schemaFormat",
-      parentTriggerValues = {"SINGLE_SCHEMA_FILE"},
-      optional = true,
-      description = "Cloud Storage path to the Avro schema file",
-      helpText = "Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.")
-  @Default.String("")
-  String getConfluentAvroSchemaPath();
-
-  void setConfluentAvroSchemaPath(String schemaPath);
-
-  @TemplateParameter.Text(
-      order = 5,
-      groupName = "Source",
-      parentName = "schemaFormat",
-      parentTriggerValues = {"SCHEMA_REGISTRY"},
-      optional = false,
-      description = "Schema Registry Connection URL",
-      helpText = "Schema Registry Connection URL for a registry.")
-  @Default.String("")
-  String getSchemaRegistryConnectionUrl();
-
-  void setSchemaRegistryConnectionUrl(String schemaRegistryConnectionUrl);
-
-  @TemplateParameter.GcsReadFile(
-      order = 12,
-      groupName = "Source",
-      parentName = "messageFormat",
-      parentTriggerValues = {"AVRO_BINARY_ENCODING"},
-      optional = true,
-      description = "Cloud Storage path to the Avro schema file",
-      helpText = "Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.")
-  @Default.String("")
-  String getBinaryAvroSchemaPath();
-
-  void setBinaryAvroSchemaPath(String schemaPath);
-
   @TemplateParameter.Boolean(
-      order = 13,
+      order = 3,
       groupName = "Source",
       optional = true,
       description = "Persist the Kafka Message Key to the BigQuery table",
@@ -155,7 +55,7 @@ public interface KafkaToBigQueryFlexOptions
   void setPersistKafkaKey(Boolean value);
 
   @TemplateParameter.Enum(
-      order = 14,
+      order = 4,
       name = "writeMode",
       groupName = "Destination",
       enumOptions = {
@@ -177,7 +77,7 @@ public interface KafkaToBigQueryFlexOptions
   void setWriteMode(String value);
 
   @TemplateParameter.BigQueryTable(
-      order = 15,
+      order = 3,
       parentName = "writeMode",
       parentTriggerValues = {"SINGLE_TABLE_NAME"},
       groupName = "Destination",
@@ -191,11 +91,11 @@ public interface KafkaToBigQueryFlexOptions
   void setOutputTableSpec(String value);
 
   @TemplateParameter.Text(
-      order = 16,
+      order = 5,
       groupName = "Destination",
       parentName = "writeMode",
       parentTriggerValues = {"DYNAMIC_TABLE_NAMES"},
-      optional = false,
+      optional = true,
       description = "BigQuery output project",
       helpText =
           "BigQuery output project in wehich the dataset resides. Tables will be created dynamically in the dataset.")
@@ -205,11 +105,11 @@ public interface KafkaToBigQueryFlexOptions
   void setOutputProject(String value);
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 6,
       groupName = "Destination",
       parentName = "writeMode",
       parentTriggerValues = {"DYNAMIC_TABLE_NAMES"},
-      optional = false,
+      optional = true,
       description = "BigQuery output dataset",
       helpText =
           "BigQuery output dataset to write the output to. Tables will be created dynamically in the dataset."
@@ -222,10 +122,10 @@ public interface KafkaToBigQueryFlexOptions
   void setOutputDataset(String value);
 
   @TemplateParameter.Text(
-      order = 18,
+      order = 7,
       parentName = "writeMode",
       parentTriggerValues = {"DYNAMIC_TABLE_NAMES"},
-      optional = false,
+      optional = true,
       description = "BigQuery Table naming prefix",
       helpText =
           "Naming prefix to be used while creating BigQuery output tables. Only applicable when using schema registry.")
@@ -235,7 +135,7 @@ public interface KafkaToBigQueryFlexOptions
   void setBqTableNamePrefix(String value);
 
   @TemplateParameter.Enum(
-      order = 19,
+      order = 8,
       groupName = "Destination",
       enumOptions = {
         @TemplateParameter.TemplateEnumOption("WRITE_APPEND"),
@@ -253,7 +153,7 @@ public interface KafkaToBigQueryFlexOptions
   void setWriteDisposition(String writeDisposition);
 
   @TemplateParameter.Enum(
-      order = 20,
+      order = 8,
       groupName = "Destination",
       enumOptions = {
         @TemplateParameter.TemplateEnumOption("CREATE_IF_NEEDED"),
@@ -269,7 +169,7 @@ public interface KafkaToBigQueryFlexOptions
   void setCreateDisposition(String createDisposition);
 
   @TemplateParameter.Boolean(
-      order = 21,
+      order = 9,
       groupName = "Destination",
       optional = true,
       description = "Use BigQuery Storage Write API",
@@ -282,7 +182,7 @@ public interface KafkaToBigQueryFlexOptions
   Boolean getUseStorageWriteApi();
 
   @TemplateParameter.Boolean(
-      order = 22,
+      order = 10,
       groupName = "Destination",
       optional = true,
       description = "Use auto-sharding when writing to BigQuery",
@@ -296,7 +196,7 @@ public interface KafkaToBigQueryFlexOptions
   void setUseAutoSharding(Boolean value);
 
   @TemplateParameter.Integer(
-      order = 23,
+      order = 11,
       groupName = "Destination",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
@@ -306,7 +206,7 @@ public interface KafkaToBigQueryFlexOptions
   Integer getNumStorageWriteApiStreams();
 
   @TemplateParameter.Integer(
-      order = 24,
+      order = 12,
       groupName = "Destination",
       optional = true,
       description = "Triggering frequency in seconds for BigQuery Storage Write API",
@@ -317,7 +217,7 @@ public interface KafkaToBigQueryFlexOptions
   Integer getStorageWriteApiTriggeringFrequencySec();
 
   @TemplateParameter.Boolean(
-      order = 25,
+      order = 13,
       groupName = "Destination",
       optional = true,
       description = "Use at at-least-once semantics in BigQuery Storage Write API",
@@ -333,21 +233,21 @@ public interface KafkaToBigQueryFlexOptions
   void setUseStorageWriteApiAtLeastOnce(Boolean value);
 
   @TemplateParameter.Boolean(
-      order = 26,
+      order = 14,
       name = "useBigQueryDLQ",
       groupName = "Dead Letter Queue",
       optional = false,
       description = "Write errors to BigQuery",
       helpText =
           "If true, failed messages will be written to BigQuery with extra error information. "
-              + "If the deadletter table exists beforehand, it should be created with no schema.")
+              + "The deadletter table should be created with no schema.")
   @Default.Boolean(false)
   Boolean getUseBigQueryDLQ();
 
   void setUseBigQueryDLQ(Boolean value);
 
   @TemplateParameter.BigQueryTable(
-      order = 27,
+      order = 15,
       groupName = "Dead Letter Queue",
       parentName = "useBigQueryDLQ",
       parentTriggerValues = {"true"},
@@ -355,8 +255,7 @@ public interface KafkaToBigQueryFlexOptions
       description = "Dead-letter Table",
       helpText =
           "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
-              + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
-              + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
+              + "(e.g., mismatched schema, malformed json) are written to this table.",
       example = "your-project-id:your-dataset.your-table-name")
   String getOutputDeadletterTable();
 

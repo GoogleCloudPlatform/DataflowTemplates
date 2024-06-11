@@ -130,6 +130,7 @@ public class PubsubToPubsub {
   public interface Options extends PipelineOptions, StreamingOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input subscription",
         helpText = "The Pub/Sub subscription to read the input from.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
@@ -140,6 +141,7 @@ public class PubsubToPubsub {
 
     @TemplateParameter.PubsubTopic(
         order = 2,
+        groupName = "Target",
         description = "Output Pub/Sub topic",
         helpText = "The Pub/Sub topic to write the output to.",
         example = "projects/your-project-id/topics/your-topic-name")

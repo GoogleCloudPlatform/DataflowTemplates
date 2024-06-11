@@ -123,7 +123,8 @@ import org.slf4j.LoggerFactory;
     },
     streaming = true,
     supportsAtLeastOnce = true,
-    supportsExactlyOnce = true)
+    supportsExactlyOnce = true,
+    hidden = true)
 public class KafkaToBigQuery {
 
   /* Logger for class. */
@@ -193,6 +194,7 @@ public class KafkaToBigQuery {
      */
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = true,
         regexes = {"[,:a-zA-Z0-9._-]+"},
         description = "Kafka Bootstrap Server list",
@@ -220,6 +222,7 @@ public class KafkaToBigQuery {
     @Deprecated
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         optional = true,
         regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Kafka topic(s) to read the input from",
@@ -393,7 +396,8 @@ public class KafkaToBigQuery {
              */
             .apply(
                 "ReadFromKafka",
-                KafkaTransform.readStringFromKafka(bootstrapServers, topicsList, kafkaConfig, null))
+                KafkaTransform.readStringFromKafka(
+                    bootstrapServers, topicsList, kafkaConfig, null, false))
 
             /*
              * Step #2: Transform the Kafka Messages into TableRows

@@ -44,11 +44,16 @@ import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.TableManifest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
+import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.avro.Schema;
@@ -142,6 +147,18 @@ public class ExportTransformTest {
             "sequence",
             "sequence manifest");
 
+    FileDescriptorProto.Builder builder = FileDescriptorProto.newBuilder();
+    builder
+        .addMessageType(
+            com.google.cloud.teleport.spanner.tests.TestMessage.getDescriptor().toProto())
+        .addEnumType(com.google.cloud.teleport.spanner.tests.TestEnum.getDescriptor().toProto());
+    FileDescriptorSet.Builder fileDescriptorSetBuilder = FileDescriptorSet.newBuilder();
+    fileDescriptorSetBuilder.addFile(builder);
+    FileDescriptorSet protoDescriptors = fileDescriptorSetBuilder.build();
+    ImmutableSet<String> protoBundle =
+        ImmutableSet.of(
+            "com.google.cloud.teleport.spanner.tests.TestMessage",
+            "com.google.cloud.teleport.spanner.tests.TestEnum");
     PCollection<List<Export.Table>> metadataTables =
         pipeline
             .apply("Initialize table manifests", Create.of(tablesAndManifests))
@@ -158,6 +175,8 @@ public class ExportTransformTest {
     ddlBuilder.createModel("model1").remote(true).endModel();
     ddlBuilder.createChangeStream("changeStream").endChangeStream();
     ddlBuilder.createSequence("sequence").endSequence();
+    ddlBuilder.mergeProtoBundle(protoBundle);
+    ddlBuilder.mergeProtoDescriptors(protoDescriptors);
     Ddl ddl = ddlBuilder.build();
     PCollectionView<Ddl> ddlView = pipeline.apply(Create.of(ddl)).apply(View.asSingleton());
     PCollectionView<Dialect> dialectView =
@@ -169,6 +188,8 @@ public class ExportTransformTest {
             "Test adding database option to manifest",
             ParDo.of(new CreateDatabaseManifest(ddlView, dialectView))
                 .withSideInputs(ddlView, dialectView));
+
+    final ByteString protoDescriptorsResult = protoDescriptors.toByteString();
 
     // The output JSON may contain the tables in any order, so a string comparison is not
     // sufficient. Have to convert the manifest string to a protobuf. Also for the checker function
@@ -185,6 +206,8 @@ public class ExportTransformTest {
                   }
                   Export manifestProto = builder1.build();
                   assertThat(manifestProto.getDialect(), is(ProtoDialect.GOOGLE_STANDARD_SQL));
+                  assertEquals(protoDescriptorsResult, manifestProto.getProtoDescriptors());
+                  assertEquals(protoBundle, new HashSet<>(manifestProto.getProtoBundleList()));
 
                   assertThat(manifestProto.getTablesCount(), is(3));
                   for (Table table : manifestProto.getTablesList()) {

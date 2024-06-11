@@ -75,6 +75,7 @@ public class BigtableChangeStreamsToHBase {
     /** Hbase specific configs. Mirrors configurations on hbase-site.xml. */
     @TemplateParameter.Text(
         description = "Zookeeper quorum host",
+        groupName = "Target",
         helpText = "Zookeeper quorum host, corresponds to hbase.zookeeper.quorum host")
     String getHbaseZookeeperQuorumHost();
 
@@ -83,6 +84,7 @@ public class BigtableChangeStreamsToHBase {
     @TemplateParameter.Text(
         optional = true,
         description = "Zookeeper quorum port",
+        groupName = "Target",
         helpText = "Zookeeper quorum port, corresponds to hbase.zookeeper.quorum port")
     @Default.String("2181")
     String getHbaseZookeeperQuorumPort();
@@ -91,6 +93,7 @@ public class BigtableChangeStreamsToHBase {
 
     @TemplateParameter.Text(
         description = "Hbase root directory",
+        groupName = "Target",
         helpText = "Hbase root directory, corresponds to hbase.rootdir")
     String getHbaseRootDir();
 

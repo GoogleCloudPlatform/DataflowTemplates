@@ -138,6 +138,7 @@ public class JmsToPubsub {
   public interface JmsToPubsubOptions extends PipelineOptions {
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         optional = true,
         regexes = {"[,\\/:a-zA-Z0-9._-]+"},
         description = "JMS Host IP",
@@ -150,6 +151,7 @@ public class JmsToPubsub {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = false,
         regexes = {"[a-zA-Z0-9._-]+"},
         description = "JMS Queue/Topic Name to read the input from",
@@ -174,6 +176,7 @@ public class JmsToPubsub {
 
     @TemplateParameter.PubsubTopic(
         order = 4,
+        groupName = "Target",
         description = "Output Pub/Sub topic",
         helpText =
             "The name of the Pub/Sub topic to publish data to, in the format `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.",

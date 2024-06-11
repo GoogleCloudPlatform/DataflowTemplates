@@ -146,6 +146,7 @@ public interface BigtableCommonOptions extends GcpOptions {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Source Bigtable Instance ID",
         helpText = "The source Bigtable instance ID.")
@@ -156,6 +157,7 @@ public interface BigtableCommonOptions extends GcpOptions {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         description = "Source Cloud Bigtable table ID",
         helpText = "The source Bigtable table ID.")
     @Validation.Required
@@ -166,6 +168,7 @@ public interface BigtableCommonOptions extends GcpOptions {
     @TemplateParameter.ProjectId(
         order = 3,
         optional = true,
+        groupName = "Source",
         description = "Source Cloud Bigtable Project ID",
         helpText = "The Bigtable project ID. The default is the project for the Dataflow job.")
     @Default.String("")
@@ -192,6 +195,7 @@ public interface BigtableCommonOptions extends GcpOptions {
     @TemplateParameter.Text(
         order = 1,
         optional = true,
+        groupName = "Source",
         description = "Cloud Bigtable change streams metadata instance ID",
         helpText = "The Bigtable change streams metadata instance ID.")
     @Default.String("")
@@ -202,6 +206,7 @@ public interface BigtableCommonOptions extends GcpOptions {
     @TemplateParameter.Text(
         order = 2,
         optional = true,
+        groupName = "Source",
         description = "Cloud Bigtable change streams metadata table ID",
         helpText =
             "The ID of the Bigtable change streams connector metadata table. If not "

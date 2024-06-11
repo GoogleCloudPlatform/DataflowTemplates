@@ -13,21 +13,30 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **sourceBootstrapServers** : Kafka Bootstrap Server List, separated by commas to read messages from the given input topic. (Example: localhost:9092, 127.0.0.1:9093).
-* **inputTopic** : Kafka topic(s) to read the input from the given source bootstrap server. (Example: topic1,topic2).
-* **outputTopic** : Topics to write to in the destination Kafka for the data read from the source Kafka. (Example: topic1,topic2).
-* **destinationBootstrapServer** : Destination kafka Bootstrap Server to write data to. (Example: localhost:9092).
+* **readBootstrapServerAndTopic** : Kafka Topic to read the input from.
+* **kafkaReadAuthenticationMode** : The mode of authentication to use with the Kafka cluster. Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, and TLS for certificate-based authentication. Apache Kafka for BigQuery only supports the SASL_PLAIN authentication mode. Defaults to: SASL_PLAIN.
+* **writeBootstrapServerAndTopic** : Kafka topic to write the output to.
+* **kafkaWriteAuthenticationMethod** : The mode of authentication to use with the Kafka cluster. Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, and TLS for certificate-based authentication. Defaults to: NONE.
 
 ### Optional parameters
 
-* **migrationType** : Migration type for the data movement from a source to a destination kafka.
-* **authenticationMethod** : Type of authentication mechanism to authenticate to Kafka.
-* **sourceUsernameSecretId** : Secret version id from the secret manager to get Kafka SASL_PLAIN username for source Kafka. (Example: projects/your-project-number/secrets/your-secret-name/versions/your-secret-version).
-* **sourcePasswordSecretId** : Secret version id from the secret manager to get Kafka SASL_PLAIN password for the source Kafka. (Example: projects/your-project-number/secrets/your-secret-name/versions/your-secret-version).
-* **destinationUsernameSecretId** : Secret version id from the secret manager to get Kafka SASL_PLAIN username for the destination Kafka. (Example: projects/your-project-number/secrets/your-secret-name/versions/your-secret-version).
-* **destinationPasswordSecretId** :  Secret version id from the secret manager to get Kafka SASL_PLAIN password for the destination Kafka. (Example: projects/your-project-number/secrets/your-secret-name/versions/your-secret-version).
-* **secretStoreUrl** : URL to credentials in Vault.
-* **vaultToken** : Token to use for Vault.
+* **enableCommitOffsets** : Commit offsets of processed messages to Kafka. If enabled, this will minimize the gaps or duplicate processing of messages when restarting the pipeline. Requires specifying the Consumer Group ID. Defaults to: false.
+* **consumerGroupId** : The unique identifier for the consumer group that this pipeline belongs to. Required if Commit Offsets to Kafka is enabled. Defaults to empty.
+* **kafkaReadOffset** : The starting point for reading messages when no committed offsets exist. The earliest starts from the beginning, the latest from the newest message. Defaults to: latest.
+* **kafkaReadUsernameSecretId** : The Google Cloud Secret Manager secret ID that contains the Kafka username to use with SASL_PLAIN authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>). Defaults to empty.
+* **kafkaReadPasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the Kafka password to use with SASL_PLAIN authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>). Defaults to empty.
+* **kafkaReadKeystoreLocation** : The Google Cloud Storage path to the Java KeyStore (JKS) file that contains the TLS certificate and private key to use when authenticating with the Kafka cluster. (Example: gs://your-bucket/keystore.jks).
+* **kafkaReadTruststoreLocation** : The Google Cloud Storage path to the Java TrustStore (JKS) file that contains the trusted certificates to use to verify the identity of the Kafka broker.
+* **kafkaReadTruststorePasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to use to access the Java TrustStore (JKS) file for Kafka TLS authentication (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
+* **kafkaReadKeystorePasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to use to access the Java KeyStore (JKS) file for Kafka TLS authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
+* **kafkaReadKeyPasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to use to access the private key within the Java KeyStore (JKS) file for Kafka TLS authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
+* **kafkaWriteUsernameSecretId** : The Google Cloud Secret Manager secret ID that contains the Kafka username  for SASL_PLAIN authentication with the destination Kafka cluster. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>). Defaults to empty.
+* **kafkaWritePasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the Kafka password to use for SASL_PLAIN authentication with the destination Kafka cluster. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>). Defaults to empty.
+* **kafkaWriteKeystoreLocation** : The Google Cloud Storage path to the Java KeyStore (JKS) file that contains the TLS certificate and private key for authenticating with the destination Kafka cluster. (Example: gs://<BUCKET>/<KEYSTORE>.jks).
+* **kafkaWriteTruststoreLocation** : The Google Cloud Storage path to the Java TrustStore (JKS) file that contains the trusted certificates to use to verify the identity of the destination Kafka broker.
+* **kafkaWriteTruststorePasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to use to access the Java TrustStore (JKS) file for TLS authentication with the destination Kafka cluster. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
+* **kafkaWriteKeystorePasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to access the Java KeyStore (JKS) file to use for TLS authentication with the destination Kafka cluster. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
+* **kafkaWriteKeyPasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to use to access the private key within the Java KeyStore (JKS) file for TLS authentication with the destination Kafka cluster. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
 
 
 
@@ -106,37 +115,55 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Kafka_to_Kafka"
 
 ### Required
-export SOURCE_BOOTSTRAP_SERVERS=<sourceBootstrapServers>
-export INPUT_TOPIC=<inputTopic>
-export OUTPUT_TOPIC=<outputTopic>
-export DESTINATION_BOOTSTRAP_SERVER=<destinationBootstrapServer>
+export READ_BOOTSTRAP_SERVER_AND_TOPIC=<readBootstrapServerAndTopic>
+export KAFKA_READ_AUTHENTICATION_MODE=SASL_PLAIN
+export WRITE_BOOTSTRAP_SERVER_AND_TOPIC=<writeBootstrapServerAndTopic>
+export KAFKA_WRITE_AUTHENTICATION_METHOD=NONE
 
 ### Optional
-export MIGRATION_TYPE=<migrationType>
-export AUTHENTICATION_METHOD=<authenticationMethod>
-export SOURCE_USERNAME_SECRET_ID=<sourceUsernameSecretId>
-export SOURCE_PASSWORD_SECRET_ID=<sourcePasswordSecretId>
-export DESTINATION_USERNAME_SECRET_ID=<destinationUsernameSecretId>
-export DESTINATION_PASSWORD_SECRET_ID=<destinationPasswordSecretId>
-export SECRET_STORE_URL=<secretStoreUrl>
-export VAULT_TOKEN=<vaultToken>
+export ENABLE_COMMIT_OFFSETS=false
+export CONSUMER_GROUP_ID=""
+export KAFKA_READ_OFFSET=latest
+export KAFKA_READ_USERNAME_SECRET_ID=""
+export KAFKA_READ_PASSWORD_SECRET_ID=""
+export KAFKA_READ_KEYSTORE_LOCATION=<kafkaReadKeystoreLocation>
+export KAFKA_READ_TRUSTSTORE_LOCATION=<kafkaReadTruststoreLocation>
+export KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID=<kafkaReadTruststorePasswordSecretId>
+export KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID=<kafkaReadKeystorePasswordSecretId>
+export KAFKA_READ_KEY_PASSWORD_SECRET_ID=<kafkaReadKeyPasswordSecretId>
+export KAFKA_WRITE_USERNAME_SECRET_ID=""
+export KAFKA_WRITE_PASSWORD_SECRET_ID=""
+export KAFKA_WRITE_KEYSTORE_LOCATION=<kafkaWriteKeystoreLocation>
+export KAFKA_WRITE_TRUSTSTORE_LOCATION=<kafkaWriteTruststoreLocation>
+export KAFKA_WRITE_TRUSTSTORE_PASSWORD_SECRET_ID=<kafkaWriteTruststorePasswordSecretId>
+export KAFKA_WRITE_KEYSTORE_PASSWORD_SECRET_ID=<kafkaWriteKeystorePasswordSecretId>
+export KAFKA_WRITE_KEY_PASSWORD_SECRET_ID=<kafkaWriteKeyPasswordSecretId>
 
 gcloud dataflow flex-template run "kafka-to-kafka-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "sourceBootstrapServers=$SOURCE_BOOTSTRAP_SERVERS" \
-  --parameters "inputTopic=$INPUT_TOPIC" \
-  --parameters "outputTopic=$OUTPUT_TOPIC" \
-  --parameters "destinationBootstrapServer=$DESTINATION_BOOTSTRAP_SERVER" \
-  --parameters "migrationType=$MIGRATION_TYPE" \
-  --parameters "authenticationMethod=$AUTHENTICATION_METHOD" \
-  --parameters "sourceUsernameSecretId=$SOURCE_USERNAME_SECRET_ID" \
-  --parameters "sourcePasswordSecretId=$SOURCE_PASSWORD_SECRET_ID" \
-  --parameters "destinationUsernameSecretId=$DESTINATION_USERNAME_SECRET_ID" \
-  --parameters "destinationPasswordSecretId=$DESTINATION_PASSWORD_SECRET_ID" \
-  --parameters "secretStoreUrl=$SECRET_STORE_URL" \
-  --parameters "vaultToken=$VAULT_TOKEN"
+  --parameters "readBootstrapServerAndTopic=$READ_BOOTSTRAP_SERVER_AND_TOPIC" \
+  --parameters "enableCommitOffsets=$ENABLE_COMMIT_OFFSETS" \
+  --parameters "consumerGroupId=$CONSUMER_GROUP_ID" \
+  --parameters "kafkaReadOffset=$KAFKA_READ_OFFSET" \
+  --parameters "kafkaReadAuthenticationMode=$KAFKA_READ_AUTHENTICATION_MODE" \
+  --parameters "kafkaReadUsernameSecretId=$KAFKA_READ_USERNAME_SECRET_ID" \
+  --parameters "kafkaReadPasswordSecretId=$KAFKA_READ_PASSWORD_SECRET_ID" \
+  --parameters "kafkaReadKeystoreLocation=$KAFKA_READ_KEYSTORE_LOCATION" \
+  --parameters "kafkaReadTruststoreLocation=$KAFKA_READ_TRUSTSTORE_LOCATION" \
+  --parameters "kafkaReadTruststorePasswordSecretId=$KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID" \
+  --parameters "kafkaReadKeystorePasswordSecretId=$KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID" \
+  --parameters "kafkaReadKeyPasswordSecretId=$KAFKA_READ_KEY_PASSWORD_SECRET_ID" \
+  --parameters "writeBootstrapServerAndTopic=$WRITE_BOOTSTRAP_SERVER_AND_TOPIC" \
+  --parameters "kafkaWriteAuthenticationMethod=$KAFKA_WRITE_AUTHENTICATION_METHOD" \
+  --parameters "kafkaWriteUsernameSecretId=$KAFKA_WRITE_USERNAME_SECRET_ID" \
+  --parameters "kafkaWritePasswordSecretId=$KAFKA_WRITE_PASSWORD_SECRET_ID" \
+  --parameters "kafkaWriteKeystoreLocation=$KAFKA_WRITE_KEYSTORE_LOCATION" \
+  --parameters "kafkaWriteTruststoreLocation=$KAFKA_WRITE_TRUSTSTORE_LOCATION" \
+  --parameters "kafkaWriteTruststorePasswordSecretId=$KAFKA_WRITE_TRUSTSTORE_PASSWORD_SECRET_ID" \
+  --parameters "kafkaWriteKeystorePasswordSecretId=$KAFKA_WRITE_KEYSTORE_PASSWORD_SECRET_ID" \
+  --parameters "kafkaWriteKeyPasswordSecretId=$KAFKA_WRITE_KEY_PASSWORD_SECRET_ID"
 ```
 
 For more information about the command, please check:
@@ -155,20 +182,29 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export SOURCE_BOOTSTRAP_SERVERS=<sourceBootstrapServers>
-export INPUT_TOPIC=<inputTopic>
-export OUTPUT_TOPIC=<outputTopic>
-export DESTINATION_BOOTSTRAP_SERVER=<destinationBootstrapServer>
+export READ_BOOTSTRAP_SERVER_AND_TOPIC=<readBootstrapServerAndTopic>
+export KAFKA_READ_AUTHENTICATION_MODE=SASL_PLAIN
+export WRITE_BOOTSTRAP_SERVER_AND_TOPIC=<writeBootstrapServerAndTopic>
+export KAFKA_WRITE_AUTHENTICATION_METHOD=NONE
 
 ### Optional
-export MIGRATION_TYPE=<migrationType>
-export AUTHENTICATION_METHOD=<authenticationMethod>
-export SOURCE_USERNAME_SECRET_ID=<sourceUsernameSecretId>
-export SOURCE_PASSWORD_SECRET_ID=<sourcePasswordSecretId>
-export DESTINATION_USERNAME_SECRET_ID=<destinationUsernameSecretId>
-export DESTINATION_PASSWORD_SECRET_ID=<destinationPasswordSecretId>
-export SECRET_STORE_URL=<secretStoreUrl>
-export VAULT_TOKEN=<vaultToken>
+export ENABLE_COMMIT_OFFSETS=false
+export CONSUMER_GROUP_ID=""
+export KAFKA_READ_OFFSET=latest
+export KAFKA_READ_USERNAME_SECRET_ID=""
+export KAFKA_READ_PASSWORD_SECRET_ID=""
+export KAFKA_READ_KEYSTORE_LOCATION=<kafkaReadKeystoreLocation>
+export KAFKA_READ_TRUSTSTORE_LOCATION=<kafkaReadTruststoreLocation>
+export KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID=<kafkaReadTruststorePasswordSecretId>
+export KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID=<kafkaReadKeystorePasswordSecretId>
+export KAFKA_READ_KEY_PASSWORD_SECRET_ID=<kafkaReadKeyPasswordSecretId>
+export KAFKA_WRITE_USERNAME_SECRET_ID=""
+export KAFKA_WRITE_PASSWORD_SECRET_ID=""
+export KAFKA_WRITE_KEYSTORE_LOCATION=<kafkaWriteKeystoreLocation>
+export KAFKA_WRITE_TRUSTSTORE_LOCATION=<kafkaWriteTruststoreLocation>
+export KAFKA_WRITE_TRUSTSTORE_PASSWORD_SECRET_ID=<kafkaWriteTruststorePasswordSecretId>
+export KAFKA_WRITE_KEYSTORE_PASSWORD_SECRET_ID=<kafkaWriteKeystorePasswordSecretId>
+export KAFKA_WRITE_KEY_PASSWORD_SECRET_ID=<kafkaWriteKeyPasswordSecretId>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -177,7 +213,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="kafka-to-kafka-job" \
 -DtemplateName="Kafka_to_Kafka" \
--Dparameters="sourceBootstrapServers=$SOURCE_BOOTSTRAP_SERVERS,inputTopic=$INPUT_TOPIC,outputTopic=$OUTPUT_TOPIC,destinationBootstrapServer=$DESTINATION_BOOTSTRAP_SERVER,migrationType=$MIGRATION_TYPE,authenticationMethod=$AUTHENTICATION_METHOD,sourceUsernameSecretId=$SOURCE_USERNAME_SECRET_ID,sourcePasswordSecretId=$SOURCE_PASSWORD_SECRET_ID,destinationUsernameSecretId=$DESTINATION_USERNAME_SECRET_ID,destinationPasswordSecretId=$DESTINATION_PASSWORD_SECRET_ID,secretStoreUrl=$SECRET_STORE_URL,vaultToken=$VAULT_TOKEN" \
+-Dparameters="readBootstrapServerAndTopic=$READ_BOOTSTRAP_SERVER_AND_TOPIC,enableCommitOffsets=$ENABLE_COMMIT_OFFSETS,consumerGroupId=$CONSUMER_GROUP_ID,kafkaReadOffset=$KAFKA_READ_OFFSET,kafkaReadAuthenticationMode=$KAFKA_READ_AUTHENTICATION_MODE,kafkaReadUsernameSecretId=$KAFKA_READ_USERNAME_SECRET_ID,kafkaReadPasswordSecretId=$KAFKA_READ_PASSWORD_SECRET_ID,kafkaReadKeystoreLocation=$KAFKA_READ_KEYSTORE_LOCATION,kafkaReadTruststoreLocation=$KAFKA_READ_TRUSTSTORE_LOCATION,kafkaReadTruststorePasswordSecretId=$KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID,kafkaReadKeystorePasswordSecretId=$KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID,kafkaReadKeyPasswordSecretId=$KAFKA_READ_KEY_PASSWORD_SECRET_ID,writeBootstrapServerAndTopic=$WRITE_BOOTSTRAP_SERVER_AND_TOPIC,kafkaWriteAuthenticationMethod=$KAFKA_WRITE_AUTHENTICATION_METHOD,kafkaWriteUsernameSecretId=$KAFKA_WRITE_USERNAME_SECRET_ID,kafkaWritePasswordSecretId=$KAFKA_WRITE_PASSWORD_SECRET_ID,kafkaWriteKeystoreLocation=$KAFKA_WRITE_KEYSTORE_LOCATION,kafkaWriteTruststoreLocation=$KAFKA_WRITE_TRUSTSTORE_LOCATION,kafkaWriteTruststorePasswordSecretId=$KAFKA_WRITE_TRUSTSTORE_PASSWORD_SECRET_ID,kafkaWriteKeystorePasswordSecretId=$KAFKA_WRITE_KEYSTORE_PASSWORD_SECRET_ID,kafkaWriteKeyPasswordSecretId=$KAFKA_WRITE_KEY_PASSWORD_SECRET_ID" \
 -f v2/kafka-to-kafka
 ```
 
@@ -222,18 +258,27 @@ resource "google_dataflow_flex_template_job" "kafka_to_kafka" {
   name              = "kafka-to-kafka"
   region            = var.region
   parameters        = {
-    sourceBootstrapServers = "localhost:9092, 127.0.0.1:9093"
-    inputTopic = "topic1,topic2"
-    outputTopic = "topic1,topic2"
-    destinationBootstrapServer = "localhost:9092"
-    # migrationType = "<migrationType>"
-    # authenticationMethod = "<authenticationMethod>"
-    # sourceUsernameSecretId = "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
-    # sourcePasswordSecretId = "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
-    # destinationUsernameSecretId = "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
-    # destinationPasswordSecretId = "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version"
-    # secretStoreUrl = "<secretStoreUrl>"
-    # vaultToken = "<vaultToken>"
+    readBootstrapServerAndTopic = "<readBootstrapServerAndTopic>"
+    kafkaReadAuthenticationMode = "SASL_PLAIN"
+    writeBootstrapServerAndTopic = "<writeBootstrapServerAndTopic>"
+    kafkaWriteAuthenticationMethod = "NONE"
+    # enableCommitOffsets = "false"
+    # consumerGroupId = ""
+    # kafkaReadOffset = "latest"
+    # kafkaReadUsernameSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # kafkaReadPasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # kafkaReadKeystoreLocation = "gs://your-bucket/keystore.jks"
+    # kafkaReadTruststoreLocation = "<kafkaReadTruststoreLocation>"
+    # kafkaReadTruststorePasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # kafkaReadKeystorePasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # kafkaReadKeyPasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # kafkaWriteUsernameSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # kafkaWritePasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # kafkaWriteKeystoreLocation = "gs://<BUCKET>/<KEYSTORE>.jks"
+    # kafkaWriteTruststoreLocation = "<kafkaWriteTruststoreLocation>"
+    # kafkaWriteTruststorePasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # kafkaWriteKeystorePasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # kafkaWriteKeyPasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
   }
 }
 ```

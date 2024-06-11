@@ -101,6 +101,7 @@ public class CSVToBigQuery {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         description = "Cloud Storage Input File(s)",
         helpText = "The Cloud Storage path to the CSV file that contains the text to process.",
         regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
@@ -111,6 +112,7 @@ public class CSVToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 2,
+        groupName = "Target",
         description = "Cloud Storage location of your BigQuery schema file, described as a JSON",
         helpText = "The Cloud Storage path to the JSON file that defines your BigQuery schema.")
     ValueProvider<String> getSchemaJSONPath();
@@ -119,6 +121,7 @@ public class CSVToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 3,
+        groupName = "Target",
         description = "BigQuery output table",
         helpText =
             "The name of the BigQuery table that stores your processed data. If you reuse an existing "

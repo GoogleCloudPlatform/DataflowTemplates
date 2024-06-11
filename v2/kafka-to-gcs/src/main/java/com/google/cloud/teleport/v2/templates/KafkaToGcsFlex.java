@@ -15,20 +15,15 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
+import com.google.cloud.teleport.v2.kafka.options.SchemaRegistryOptions;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
-import com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaConfig;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
-import com.google.cloud.teleport.v2.transforms.WriteToGCSAvro;
-import com.google.cloud.teleport.v2.transforms.WriteToGCSParquet;
-import com.google.cloud.teleport.v2.transforms.WriteToGCSText;
 import com.google.cloud.teleport.v2.transforms.WriteTransform;
-import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
-import com.google.common.collect.ImmutableMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,8 +36,6 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.common.config.SaslConfigs;
 
 @Template(
     name = "Kafka_to_Gcs_Flex",
@@ -54,53 +47,27 @@ import org.apache.kafka.common.config.SaslConfigs;
     optionsClass = KafkaToGcsFlex.KafkaToGcsOptions.class,
     flexContainerName = "kafka-to-gcs-flex",
     contactInformation = "https://cloud.google.com/support",
-    hidden = true,
-    streaming = true,
-    requirements = {"The output Google Cloud Storage directory must exist."},
-    skipOptions = {"readBootstrapServers", "kafkaReadTopics"})
+    requirements = {"The output Google Cloud Storage directory must exist."})
 public class KafkaToGcsFlex {
-  /**
-   * The {@link KafkaToGcsOptions} interface provides the custom execution options passed by the
-   * executor at the command-line.
-   */
   public interface KafkaToGcsOptions
-      extends PipelineOptions,
-          DataflowPipelineOptions,
-          KafkaReadOptions,
-          WriteToGCSText.WriteToGCSTextOptions,
-          WriteToGCSParquet.WriteToGCSParquetOptions,
-          WriteToGCSAvro.WriteToGCSAvroOptions {
+      extends PipelineOptions, DataflowPipelineOptions, KafkaReadOptions, SchemaRegistryOptions {
 
+    // This is a duplicate option that already exist in KafkaReadOptions but keeping it here
+    // so the KafkaTopic appears above the authentication enum on the Templates UI.
     @TemplateParameter.KafkaTopic(
         order = 1,
         name = "readBootstrapServerAndTopic",
         groupName = "Source",
-        optional = false,
         description = "Source Kafka Topic",
         helpText = "Kafka Topic to read the input from.")
     String getReadBootstrapServerAndTopic();
 
     void setReadBootstrapServerAndTopic(String value);
 
-    @TemplateParameter.Enum(
-        order = 3,
-        groupName = "MessageFormat",
-        enumOptions = {
-          @TemplateParameter.TemplateEnumOption("TEXT"),
-          @TemplateParameter.TemplateEnumOption("AVRO"),
-          @TemplateParameter.TemplateEnumOption("PARQUET")
-        },
-        description = "File format of the desired output files. (TEXT, AVRO or PARQUET)",
-        helpText =
-            "The file format of the desired output files. Can be TEXT, AVRO or PARQUET. Defaults to TEXT")
-    @Default.String("TEXT")
-    String getOutputFileFormat();
-
-    void setOutputFileFormat(String outputFileFormat);
-
     @TemplateParameter.Duration(
-        order = 4,
+        order = 20,
         optional = true,
+        groupName = "Destination",
         description = "Window duration",
         helpText =
             "The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for "
@@ -111,113 +78,56 @@ public class KafkaToGcsFlex {
 
     void setWindowDuration(String windowDuration);
 
+    @TemplateParameter.GcsWriteFolder(
+        order = 21,
+        groupName = "Destination",
+        description = "Output file directory in Cloud Storage",
+        helpText = "The path and filename prefix for writing output files. Must end with a slash.",
+        example = "gs://your-bucket/your-path/")
+    String getOutputDirectory();
+
+    void setOutputDirectory(String outputDirectory);
+
     @TemplateParameter.Text(
-        order = 5,
-        groupName = "MessageFormat",
+        order = 22,
         optional = true,
-        description = "Schema Registry URL for decoding Confluent Wire Format messages",
-        helpText =
-            "Provide the full URL of your Schema Registry (e.g., http://your-registry:8081) if your Kafka messages are encoded in Confluent Wire Format. Leave blank for other formats.")
-    String getSchemaRegistryURL();
+        groupName = "Destination",
+        description = "Output filename prefix of the files to write",
+        helpText = "The prefix to place on each windowed file.",
+        example = "output-")
+    @Default.String("output")
+    String getOutputFilenamePrefix();
 
-    void setSchemaRegistryURL(String schemaRegistryURL);
+    void setOutputFilenamePrefix(String outputFilenamePrefix);
 
-    @TemplateParameter.Text(
-        order = 6,
+    @TemplateParameter.Integer(
+        order = 23,
         optional = true,
-        groupName = "MessageFormat",
-        description = "Path to your Avro schema file (required for Avro formats)",
-        example = "gs://<bucket_name>/schema1.avsc",
+        description = "Maximum output shards",
+        groupName = "Destination",
         helpText =
-            "Specify the Google Cloud Storage path (or other accessible path) to the Avro schema (.avsc) file that defines the structure of your Kafka messages.")
-    String getSchemaPath();
+            "The maximum number of output shards produced when writing. A higher number of "
+                + "shards means higher throughput for writing to Cloud Storage, but potentially higher "
+                + "data aggregation cost across shards when processing output Cloud Storage files. "
+                + "Default value is decided by Dataflow.")
+    @Default.Integer(0)
+    Integer getNumShards();
 
-    void setSchemaPath(String schema);
-
-    @TemplateParameter.Enum(
-        order = 7,
-        groupName = "MessageFormat",
-        enumOptions = {
-          @TemplateParameter.TemplateEnumOption("CONFLUENT_WIRE_FORMAT"),
-          @TemplateParameter.TemplateEnumOption("AVRO_BINARY_ENCODING"),
-          @TemplateParameter.TemplateEnumOption("AVRO_SINGLE_OBJECT_ENCODING")
-        },
-        optional = true,
-        description = "The format in which your Kafka messages are encoded",
-        helpText =
-            "Choose the encoding used for your Kafka messages:\n"
-                + " - CONFLUENT_WIRE_FORMAT: Confluent format, requires a Schema Registry URL.\n"
-                + " - AVRO_BINARY_ENCODING: Avro's compact binary format.\n"
-                + " - AVRO_SINGLE_OBJECT_ENCODING: Avro, but each message is a single Avro object.")
-    @Default.String("CONFLUENT_WIRE_FORMAT")
-    String getMessageFormat();
-
-    void setMessageFormat(String messageFormat);
-
-    @TemplateParameter.Text(
-        order = 8,
-        groupName = "Kafka SASL_PLAIN Authentication parameter",
-        description =
-            "Username to be used with SASL_PLAIN mechanism for Kafka, stored in Google Cloud Secret Manager",
-        helpText =
-            "Secret Manager secret ID for the SASL_PLAIN username. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
-        example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version",
-        optional = true)
-    @Default.String("")
-    String getUserNameSecretID();
-
-    void setUserNameSecretID(String userNameSecretID);
-
-    @TemplateParameter.Text(
-        order = 9,
-        groupName = "Kafka SASL_PLAIN Authentication parameter",
-        description =
-            "Password to be used with SASL_PLAIN mechanism for Kafka, stored in Google Cloud Secret Manager",
-        helpText =
-            "Secret Manager secret ID for the SASL_PLAIN password. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}",
-        example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version",
-        optional = true)
-    @Default.String("")
-    String getPasswordSecretID();
-
-    void setPasswordSecretID(String passwordSecretID);
-  }
-
-  /* Logger for class */
-  private static final String topicsSplitDelimiter = ",";
-  private static boolean useKafkaAuth = true;
-
-  public static class ClientAuthConfig {
-    public static ImmutableMap<String, Object> getSaslPlainConfig(
-        String username, String password) {
-      ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
-      properties.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
-      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
-      properties.put(
-          SaslConfigs.SASL_JAAS_CONFIG,
-          "org.apache.kafka.common.security.plain.PlainLoginModule required"
-              + " username=\'"
-              + username
-              + "\'"
-              + " password=\'"
-              + password
-              + "\';");
-      return properties.buildOrThrow();
-    }
+    void setNumShards(Integer numShards);
   }
 
   public static PipelineResult run(KafkaToGcsOptions options) throws UnsupportedOperationException {
 
     // Create the Pipeline
     Pipeline pipeline = Pipeline.create(options);
-
+    String bootstrapServes;
     List<String> topicsList;
-    String bootstrapServers;
     if (options.getReadBootstrapServerAndTopic() != null) {
       List<String> bootstrapServerAndTopicList =
-          KafkaTopicUtils.getBootstrapServerAndTopic(options.getReadBootstrapServerAndTopic());
+          KafkaTopicUtils.getBootstrapServerAndTopic(
+              options.getReadBootstrapServerAndTopic(), options.getProject());
       topicsList = List.of(bootstrapServerAndTopicList.get(1));
-      bootstrapServers = bootstrapServerAndTopicList.get(0);
+      bootstrapServes = bootstrapServerAndTopicList.get(0);
     } else {
       throw new IllegalArgumentException(
           "Please provide a valid bootstrap server which matches `[,:a-zA-Z0-9._-]+` and a topic which matches `[,a-zA-Z0-9._-]+`");
@@ -225,62 +135,22 @@ public class KafkaToGcsFlex {
 
     options.setStreaming(true);
 
-    Map<String, Object> kafkaConfig = new HashMap<>();
-
-    // Authenticate to Kafka only when user provides authentication params.
-    if (useKafkaAuth) {
-      String kafkaSaslPlainUserName = SecretManagerUtils.getSecret(options.getUserNameSecretID());
-      String kafkaSaslPlainPassword = SecretManagerUtils.getSecret(options.getPasswordSecretID());
-      kafkaConfig.putAll(
-          ClientAuthConfig.getSaslPlainConfig(kafkaSaslPlainUserName, kafkaSaslPlainPassword));
-    }
-    // Configure offset value, group id and finalizing offset to consumer group.
-    kafkaConfig.putAll(KafkaCommonUtils.configureKafkaOffsetCommit(options));
+    Map<String, Object> kafkaConfig = new HashMap<>(KafkaConfig.fromReadOptions(options));
 
     PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord;
     // Step 1: Read from Kafka as bytes.
     KafkaIO.Read<byte[], byte[]> kafkaTransform =
         KafkaTransform.readBytesFromKafka(
-            options.getReadBootstrapServers(),
-            topicsList,
-            kafkaConfig,
-            null,
-            options.getEnableCommitOffsets());
+            bootstrapServes, topicsList, kafkaConfig, options.getEnableCommitOffsets());
     kafkaRecord = pipeline.apply(kafkaTransform);
     kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
     return pipeline.run();
   }
 
-  public static void validateAuthOptions(KafkaToGcsOptions options) {
-    // Authenticate to Kafka brokers without any auth config. This can be the case when
-    // the dataflow pipeline and Kafka broker is on the same network.
-    if (options.getUserNameSecretID().isBlank() && options.getPasswordSecretID().isBlank()) {
-      useKafkaAuth = false;
-      return;
-    }
-
-    if ((options.getUserNameSecretID().isBlank() && !options.getPasswordSecretID().isBlank())
-        || (options.getPasswordSecretID().isBlank() && !options.getUserNameSecretID().isBlank())) {
-      throw new IllegalArgumentException(
-          "Both username secret ID and password secret ID should be provided together or left null.");
-    }
-
-    if (!SecretVersionName.isParsableFrom(options.getUserNameSecretID())) {
-      throw new IllegalArgumentException(
-          "Provided Secret Username ID must be in the form"
-              + " projects/{project}/secrets/{secret}/versions/{secret_version}");
-    }
-    if (!SecretVersionName.isParsableFrom(options.getPasswordSecretID())) {
-      throw new IllegalArgumentException(
-          "Provided Secret Password ID must be in the form"
-              + " projects/{project}/secrets/{secret}/versions/{secret_version}");
-    }
-  }
-
   public static void main(String[] args) {
     KafkaToGcsOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToGcsOptions.class);
-    validateAuthOptions(options);
+
     run(options);
   }
 }

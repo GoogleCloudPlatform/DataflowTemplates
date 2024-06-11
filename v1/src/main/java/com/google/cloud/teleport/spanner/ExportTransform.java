@@ -908,6 +908,10 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       }
       exportManifest.addAllDatabaseOptions(ddl.databaseOptions());
       exportManifest.setDialect(ProtoDialect.valueOf(dialect.name()));
+      if (ddl.protoDescriptors() != null) {
+        exportManifest.setProtoDescriptors(ddl.protoDescriptors().toByteString());
+      }
+      exportManifest.addAllProtoBundle(ddl.protoBundle());
       try {
         out.output(JsonFormat.printer().print(exportManifest.build()));
       } catch (InvalidProtocolBufferException e) {
