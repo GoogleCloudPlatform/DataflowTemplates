@@ -160,6 +160,18 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     // shards each. Migrates Users table from 4 logical shards. Asserts data from all the shards are
     // going to Spanner. Checks whether migration shard id column is populated properly based on the
     // transformation context.
+
+    // Currently, we have a conditional check on spanner row count to validate if
+    // desired number of rows are present in spanner, if yes, we proceed with
+    // assertions.
+    // In test cases with cdc events where cdc file might have equal number
+    // of inserts and deletes resulting in spanner count after cdc same as spanner
+    // count before cdc can result in a situation where condition check passes
+    // because spanner counts match but the test cases later fail during assertion which can be a
+    // possible source of flakiness.
+    // In order to ensure that such situation doesn't occur we need to validate
+    // actual row data rather than comparing counts and enhance implement a
+    // SpannerRowMatcher.
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
