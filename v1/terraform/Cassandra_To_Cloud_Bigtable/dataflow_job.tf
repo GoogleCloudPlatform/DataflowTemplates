@@ -95,6 +95,11 @@ variable "splitLargeRows" {
   default     = null
 }
 
+variable "cassandraColumnSchema" {
+  type        = string
+  description = "GCS path to schema to copy Cassandra writetimes to Bigtable. The command to generate this schema is `select json * from system_schema.columns where keyspace_name=$CASSANDRA_KEYSPACE and table_name=$CASSANDRA_TABLE`, refer to the template README for more details. Requires Cassandra version 2.2 onwards for JSON support."
+  default     = null
+}
 
 provider "google" {
   project = var.project

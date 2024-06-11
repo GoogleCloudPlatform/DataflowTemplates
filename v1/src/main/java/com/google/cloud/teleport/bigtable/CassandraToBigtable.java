@@ -30,10 +30,14 @@ import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.SdkHarnessOptions;
+import org.apache.beam.sdk.options.SdkHarnessOptions.LogLevel;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.Row;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This Dataflow Template performs a one off copy of one table from Apache Cassandra to Cloud
@@ -182,16 +186,42 @@ final class CassandraToBigtable {
     ValueProvider<Boolean> getSplitLargeRows();
 
     void setSplitLargeRows(ValueProvider<Boolean> splitLargeRows);
+
+    @TemplateParameter.GcsReadFile(
+        order = 11,
+        optional = true,
+        description =
+            "GCS path to Cassandra JSON column schema. If set, the template will use the schema info to copy Cassandra write time to Bigtable cells",
+        helpText =
+            "GCS path to schema to copy Cassandra writetimes to Bigtable. The command to generate this schema is `select json * from system_schema.columns where keyspace_name=$CASSANDRA_KEYSPACE and table_name=$CASSANDRA_TABLE`, refer to the template README for more details. Requires Cassandra version 2.2 onwards for JSON support.")
+    ValueProvider<String> getCassandraColumnSchema();
+
+    void setCassandraColumnSchema(ValueProvider<String> cassandraColumnSchema);
+
+    @TemplateParameter.Boolean(
+        order = 12,
+        optional = true,
+        description = "If true, sets Bigtable cell timestamp to 0 if writetime is not present.",
+        helpText =
+            "The flag for setting Bigtable cell timestamp to 0 if Cassandra writetime is not present. The default behavior for when this flag is not set is to set the Bigtable cell timestamp as the template replication time, i.e. now.")
+    @Default.Boolean(false)
+    ValueProvider<Boolean> getSetZeroTimestamp();
+
+    void setSetZeroTimestamp(ValueProvider<Boolean> setZeroTimestamp);
   }
+
+  private static final Logger LOG = LoggerFactory.getLogger(CassandraToBigtable.class);
 
   /**
    * Runs a pipeline to copy one Cassandra table to Cloud Bigtable.
    *
    * @param args arguments to the pipeline
    */
-  public static void main(String[] args) {
-
+  public static void main(String[] args) throws Exception {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+
+    // TODO: remove, setting as debug for now
+    options.as(SdkHarnessOptions.class).setDefaultSdkHarnessLogLevel(LogLevel.INFO);
 
     // Split the Cassandra Hosts value provider into a list value provider.
     ValueProvider.NestedValueProvider<List<String>, String> hosts =
@@ -205,26 +235,20 @@ final class CassandraToBigtable {
     SerializableFunction<Session, Mapper> cassandraObjectMapperFactory =
         new CassandraRowMapperFactory(options.getCassandraTable(), options.getCassandraKeyspace());
 
-    // TODO: first try to test this. Why does the IT test not work?
-    // TODO: if read option contains "ReadWriteTime=True", then query for table column schema first
-    // CassandraIO.Read<Row> tableColumnSchema = CassandraIO.<Row>read()
-    //     .withHosts(hosts)
-    //     .withPort(options.getCassandraPort())
-    //     .withKeyspace(options.getCassandraKeyspace())
-    //     .withTable(options.getCassandraTable())
-    //     .withQuery("") // TODO: table schema query
-    //     .withCoder(SerializableCoder.of(Row.class));
-
-    // TODO: create a new query and pass it down to source
     CassandraIO.Read<Row> source =
         CassandraIO.<Row>read()
             .withHosts(hosts)
             .withPort(options.getCassandraPort())
             .withKeyspace(options.getCassandraKeyspace())
             .withTable(options.getCassandraTable())
-            .withMapperFactoryFn(cassandraObjectMapperFactory)    // TODO: modify the mapper so tablename gets ingested
+            .withMapperFactoryFn(cassandraObjectMapperFactory)
             .withEntity(Row.class)
-            .withCoder(SerializableCoder.of(Row.class));
+            .withCoder(SerializableCoder.of(Row.class))
+            .withQuery(
+                new CassandraWritetimeQueryProvider(
+                    options.getCassandraColumnSchema(),
+                    options.getCassandraKeyspace(),
+                    options.getCassandraTable()));
 
     BigtableIO.Write sink =
         BigtableIO.write()
@@ -240,7 +264,9 @@ final class CassandraToBigtable {
                     options.getRowKeySeparator(),
                     options.getDefaultColumnFamily(),
                     options.getSplitLargeRows(),
-                    BeamRowToBigtableFn.MAX_MUTATION_PER_REQUEST)))
+                    BeamRowToBigtableFn.MAX_MUTATION_PER_REQUEST,
+                    options.getCassandraColumnSchema(),
+                    options.getSetZeroTimestamp())))
         .apply("Write to Bigtable", sink);
     p.run();
   }
