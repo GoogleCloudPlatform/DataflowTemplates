@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.kafka.transforms;
 
+import com.google.cloud.teleport.v2.kafka.utils.FileAwareSchemaRegistryFactoryFn;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
@@ -23,6 +24,7 @@ import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientExcept
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
@@ -45,12 +47,15 @@ public class KafkaRecordToGenericRecordFailsafeElementFn
   private Schema schema;
   private String topicName = "fake_topic";
   private String schemaRegistryConnectionUrl;
+  private Map<String, Object> schemaRegistrySslConfig;
   private String messageFormat; // "AVRO_BINARY_ENCODING" or "AVRO_CONFLUENT_WIRE_FORMAT"
   private static final int DEFAULT_CACHE_CAPACITY = 1000;
 
   // Constructors for different configurations
-  public KafkaRecordToGenericRecordFailsafeElementFn(String schemaRegistryConnectionUrl) {
+  public KafkaRecordToGenericRecordFailsafeElementFn(
+      String schemaRegistryConnectionUrl, Map<String, Object> schemaRegistrySslConfig) {
     this.schemaRegistryConnectionUrl = schemaRegistryConnectionUrl;
+    this.schemaRegistrySslConfig = schemaRegistrySslConfig;
   }
 
   public KafkaRecordToGenericRecordFailsafeElementFn(Schema schema, String messageFormat) {
@@ -63,8 +68,12 @@ public class KafkaRecordToGenericRecordFailsafeElementFn
   public void setup() throws IOException, RestClientException {
     // Unified setup logic
     if (schemaRegistryConnectionUrl != null && !schemaRegistryConnectionUrl.isBlank()) {
+      FileAwareSchemaRegistryFactoryFn processor = new FileAwareSchemaRegistryFactoryFn();
       this.schemaRegistryClient =
-          new CachedSchemaRegistryClient(schemaRegistryConnectionUrl, DEFAULT_CACHE_CAPACITY);
+          new CachedSchemaRegistryClient(
+              this.schemaRegistryConnectionUrl,
+              DEFAULT_CACHE_CAPACITY,
+              processor.apply(this.schemaRegistrySslConfig));
       this.kafkaDeserializer = new KafkaAvroDeserializer(this.schemaRegistryClient);
     } else if (schema != null && messageFormat.equals("AVRO_BINARY_ENCODING")) {
       this.binaryDeserializer = new BinaryAvroDeserializer(schema);

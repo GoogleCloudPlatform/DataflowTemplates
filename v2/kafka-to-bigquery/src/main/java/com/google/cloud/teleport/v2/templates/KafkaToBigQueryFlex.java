@@ -328,7 +328,10 @@ public class KafkaToBigQueryFlex {
     WriteResult writeResult;
     writeResult =
         kafkaRecords
-            .apply(AvroDynamicTransform.of(options.getSchemaRegistryConnectionUrl()))
+            .apply(
+                AvroDynamicTransform.of(
+                    options.getSchemaRegistryConnectionUrl(),
+                    KafkaConfig.fromSchemaRegistryOptions(options)))
             .apply(
                 BigQueryWriteUtils.BigQueryDynamicWrite.of(
                     options.getOutputProject(),

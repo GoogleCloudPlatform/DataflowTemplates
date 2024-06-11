@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.kafka.transforms;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import java.util.Map;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
@@ -37,12 +38,17 @@ public class AvroDynamicTransform
         PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>> {
   private String schemaRegistryConnectionUrl;
 
-  private AvroDynamicTransform(String schemaRegistryConnectionUrl) {
+  private Map<String, Object> schemaRegistrySslConfig;
+
+  private AvroDynamicTransform(
+      String schemaRegistryConnectionUrl, Map<String, Object> schemaRegistrySslConfig) {
     this.schemaRegistryConnectionUrl = schemaRegistryConnectionUrl;
+    this.schemaRegistrySslConfig = schemaRegistrySslConfig;
   }
 
-  public static AvroDynamicTransform of(String schemaRegistryConnectionUrl) {
-    return new AvroDynamicTransform(schemaRegistryConnectionUrl);
+  public static AvroDynamicTransform of(
+      String schemaRegistryConnectionUrl, Map<String, Object> schemaRegistrySslConfig) {
+    return new AvroDynamicTransform(schemaRegistryConnectionUrl, schemaRegistrySslConfig);
   }
 
   public PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> expand(
@@ -54,7 +60,7 @@ public class AvroDynamicTransform
                 "ConvertKafkaRecordsToGenericRecordsWrappedinFailsafeElement",
                 ParDo.of(
                     new KafkaRecordToGenericRecordFailsafeElementFn(
-                        this.schemaRegistryConnectionUrl)))
+                        this.schemaRegistryConnectionUrl, this.schemaRegistrySslConfig)))
             .setCoder(
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),

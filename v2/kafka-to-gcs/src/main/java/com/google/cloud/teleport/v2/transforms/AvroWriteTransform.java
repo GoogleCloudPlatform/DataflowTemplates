@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters;
 import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters.MessageFormatConstants;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import java.util.Map;
 import java.util.Objects;
 import javax.annotation.Nullable;
 import org.apache.avro.Schema;
@@ -65,6 +66,8 @@ public abstract class AvroWriteTransform
 
   public abstract @Nullable String schemaRegistryURL();
 
+  public abstract Map<String, Object> schemaRegistrySslConfig();
+
   public abstract @Nullable String confluentSchemaPath();
 
   public abstract @Nullable String binaryAvroSchemaPath();
@@ -93,7 +96,8 @@ public abstract class AvroWriteTransform
         failsafeElementPCollection =
             records.apply(AvroTransform.of(inputWireFormat, confluentSchemaPath()));
       } else if (schemaFormat().equals(KafkaTemplateParameters.SchemaFormat.SCHEMA_REGISTRY)) {
-        failsafeElementPCollection = records.apply(AvroDynamicTransform.of(schemaRegistryURL()));
+        failsafeElementPCollection =
+            records.apply(AvroDynamicTransform.of(schemaRegistryURL(), schemaRegistrySslConfig()));
       } else {
         throw new RuntimeException("Unsupported message format");
       }
@@ -135,6 +139,9 @@ public abstract class AvroWriteTransform
 
     public abstract AvroWriteTransformBuilder setSchemaRegistryURL(
         @Nullable String schemaRegistryURL);
+
+    public abstract AvroWriteTransformBuilder setSchemaRegistrySslConfig(
+        Map<String, Object> schemaRegistrySslConfig);
 
     public abstract AvroWriteTransformBuilder setConfluentSchemaPath(String value);
 
