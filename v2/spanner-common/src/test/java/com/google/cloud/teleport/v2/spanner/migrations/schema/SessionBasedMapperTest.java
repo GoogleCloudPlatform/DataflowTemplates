@@ -257,7 +257,8 @@ public class SessionBasedMapperTest {
     erronousSchema.setSpannerToID(spanToId);
     ISchemaMapper erronousMapper = new SessionBasedMapper(erronousSchema, shardedDdl);
     assertThrows(
-        RuntimeException.class, () -> erronousMapper.getShardIdColumnName("", "nonexistent_table"));
+        NullPointerException.class,
+        () -> erronousMapper.getShardIdColumnName("", "nonexistent_table"));
   }
 
   @Test(expected = NoSuchElementException.class)
