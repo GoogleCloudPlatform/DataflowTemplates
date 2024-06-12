@@ -82,6 +82,7 @@ public class DataStreamMapper extends BigQueryMapper<TableRow, KV<TableId, Table
   @Override
   public Map<String, StandardSQLTypeName> getInputSchema(TableId tableId, TableRow row) {
     String streamName = (String) row.get("_metadata_stream");
+    LOG.info("Reaching here 1" + streamName);
     String schemaName = (String) row.get("_metadata_schema");
     String tableName = (String) row.get("_metadata_table");
 

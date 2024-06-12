@@ -16,13 +16,13 @@
 package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
 import com.google.cloud.teleport.v2.templates.processing.handler.GCSToSourceStreamingHandler;
-import com.google.cloud.teleport.v2.templates.processing.handler.InputRecordProcessor;
 import org.apache.beam.sdk.coders.BooleanCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -42,7 +42,6 @@ import org.apache.beam.sdk.transforms.DoFn.OnTimerContext;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.values.KV;
-import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
@@ -50,10 +49,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Handles the per-shard processing from GCS to source DB. */
-public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, String> {
+public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Void> {
   private static final Logger LOG = LoggerFactory.getLogger(GcsToSourceStreamer.class);
-
-  public static final TupleTag<String> FILTERED_RECORDS_TAG = new TupleTag<String>() {};
   private int incrementIntervalInMilliSeconds = 1;
   private transient SpannerDao spannerDao;
   private String tableSuffix;
@@ -61,6 +58,10 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Str
   private boolean isMetadataDbPostgres;
   private CustomTransformation customTransformation;
   private ISpannerMigrationTransformer spannerToSourceTransformer;
+
+  private boolean writeFilteredEvents;
+
+  private Storage storage;
 
   private static final Counter num_shards =
       Metrics.counter(GcsToSourceStreamer.class, "num_shards");
@@ -70,12 +71,16 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Str
       SpannerConfig spannerConfig,
       String tableSuffix,
       boolean isMetadataDbPostgres,
-      CustomTransformation customTransformation) {
+      CustomTransformation customTransformation,
+      boolean writeFilteredEvents,
+      Storage storage) {
     this.incrementIntervalInMilliSeconds = incrementIntervalInMilliSeconds;
     this.spannerConfig = spannerConfig;
     this.tableSuffix = tableSuffix;
     this.isMetadataDbPostgres = isMetadataDbPostgres;
     this.customTransformation = customTransformation;
+    this.writeFilteredEvents = writeFilteredEvents;
+    this.storage = storage;
   }
 
   /** Setup function connects to Cloud Spanner. */
@@ -168,8 +173,7 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Str
       @TimerId("timer") Timer timer,
       @StateId("keyString") ValueState<String> keyString,
       @StateId("startString") ValueState<String> startString,
-      @StateId("stopProcessing") ValueState<Boolean> stopProcessing,
-      MultiOutputReceiver outputReceiver) {
+      @StateId("stopProcessing") ValueState<Boolean> stopProcessing) {
     String shardId = keyString.read();
     LOG.info(
         "Shard " + shardId + ": started timer processing for expiry time: " + context.timestamp());
@@ -185,10 +189,7 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Str
 
         String processedStartTs =
             GCSToSourceStreamingHandler.process(
-                taskContext, spannerDao, spannerToSourceTransformer);
-        outputReceiver
-            .get(FILTERED_RECORDS_TAG)
-            .output(InputRecordProcessor.getFilteredEvents().toString());
+                taskContext, spannerDao, spannerToSourceTransformer, writeFilteredEvents, storage);
         Instant nextTimer = Instant.now().plus(Duration.millis(incrementIntervalInMilliSeconds));
         com.google.cloud.Timestamp startTs =
             com.google.cloud.Timestamp.parseTimestamp(processedStartTs);

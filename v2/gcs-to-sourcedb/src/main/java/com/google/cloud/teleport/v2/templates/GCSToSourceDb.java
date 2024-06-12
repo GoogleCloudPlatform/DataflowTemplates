@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -34,7 +36,6 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Default;
@@ -44,10 +45,6 @@ import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.windowing.FixedWindows;
-import org.apache.beam.sdk.transforms.windowing.Window;
-import org.apache.beam.sdk.values.PCollection;
-import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -290,15 +287,16 @@ public class GCSToSourceDb {
 
     void setTransformationCustomParameters(String value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Boolean(
         order = 18,
         optional = true,
-        description = "Filtered events directory",
-        helpText = "This is the file path to store the events filtered via custom transformation.")
-    @Default.String("")
-    String getFilteredEventsDirectory();
+        description = "Write filtered events to GCS",
+        helpText =
+            "This is a flag which if set to true will write filtered events from custom transformation to GCS.")
+    @Default.Boolean(true)
+    Boolean getWriteFilteredEvents();
 
-    void setFilteredEventsDirectory(String value);
+    void setWriteFilteredEvents(Boolean value);
   }
 
   /**
@@ -378,32 +376,30 @@ public class GCSToSourceDb {
 
     LOG.info("The size of  processing context is : " + processingContextMap.size());
 
-    PCollection<String> filteredEvents =
-        pipeline
-            .apply(
-                "Create Context",
-                Create.of(processingContextMap)
-                    .withCoder(
-                        KvCoder.of(
-                            StringUtf8Coder.of(), SerializableCoder.of(ProcessingContext.class))))
-            .apply(
-                "Write to source",
-                ParDo.of(
-                    new GcsToSourceStreamer(
-                        options.getTimerIntervalInMilliSec(),
-                        spannerMetadataConfig,
-                        tableSuffix,
-                        isMetadataDbPostgres,
-                        customTransformation)));
+    Storage storage =
+        StorageOptions.newBuilder()
+            .setProjectId(options.getSpannerProjectId())
+            .build()
+            .getService();
 
-    filteredEvents
-        .apply(Window.into(FixedWindows.of(Duration.standardMinutes(1))))
+    pipeline
         .apply(
-            "Write Filtered Events To GCS",
-            TextIO.write()
-                .to(options.getFilteredEventsDirectory())
-                .withSuffix(".json")
-                .withWindowedWrites());
+            "Create Context",
+            Create.of(processingContextMap)
+                .withCoder(
+                    KvCoder.of(
+                        StringUtf8Coder.of(), SerializableCoder.of(ProcessingContext.class))))
+        .apply(
+            "Write to source",
+            ParDo.of(
+                new GcsToSourceStreamer(
+                    options.getTimerIntervalInMilliSec(),
+                    spannerMetadataConfig,
+                    tableSuffix,
+                    isMetadataDbPostgres,
+                    customTransformation,
+                    options.getWriteFilteredEvents(),
+                    storage)));
 
     return pipeline.run();
   }
