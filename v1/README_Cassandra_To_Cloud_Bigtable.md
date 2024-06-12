@@ -36,7 +36,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **defaultColumnFamily** : The name of the column family of the Bigtable table. The default value is default.
 * **rowKeySeparator** : The separator used to build row-keys. The default value is '#'.
 * **splitLargeRows** : The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. .
-* **cassandraColumnSchema** : GCS path to schema to copy Cassandra writetimes to Bigtable. The command to generate this schema is ```cqlsh -e "select json * from system_schema.columns where keyspace_name=$CASSANDRA_KEYSPACE and table_name=$CASSANDRA_TABLE`" > column_schema.json```. Users should upload `column_schema.json` to the GCS path specified in this option, e.g. `gs://<project>/column_schema.json`. Requires Cassandra version 2.2 onwards for JSON support.
+* **cassandraColumnSchema** : GCS path to schema to copy Cassandra writetimes to Bigtable. The command to generate this schema is ```cqlsh -e "select json * from system_schema.columns where keyspace_name='$CASSANDRA_KEYSPACE' and table_name='$CASSANDRA_TABLE'`" > column_schema.json```. Set $CASSANDRA_COLUMN_SCHEMA to a GCS path, e.g. `gs://$BUCKET_NAME/column_schema.json`. Then upload the schema to GCS: `gcloud storage cp column_schema.json $CASSANDRA_COLUMN_SCHEMA`. Requires Cassandra version 2.2 onwards for JSON support.
 * **setZeroTimestamp** : The flag for setting Bigtable cell timestamp to 0 if Cassandra writetime is not present. The default behavior for when this flag is not set is to set the Bigtable cell timestamp as the template replication time, i.e. now.
 
 
