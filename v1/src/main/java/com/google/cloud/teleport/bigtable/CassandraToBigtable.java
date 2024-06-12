@@ -220,9 +220,6 @@ final class CassandraToBigtable {
   public static void main(String[] args) throws Exception {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
-    // TODO: remove, setting as debug for now
-    options.as(SdkHarnessOptions.class).setDefaultSdkHarnessLogLevel(LogLevel.INFO);
-
     // Split the Cassandra Hosts value provider into a list value provider.
     ValueProvider.NestedValueProvider<List<String>, String> hosts =
         ValueProvider.NestedValueProvider.of(
