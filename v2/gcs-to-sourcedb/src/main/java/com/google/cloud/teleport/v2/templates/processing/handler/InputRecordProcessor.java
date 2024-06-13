@@ -48,7 +48,6 @@ public class InputRecordProcessor {
   }
 
   public static void setFilteredEvents(List<TrimmedShardedDataChangeRecord> filteredEvents) {
-    LOG.info("set filtered events" + filteredEvents.size());
     InputRecordProcessor.filteredEvents = filteredEvents;
   }
 
