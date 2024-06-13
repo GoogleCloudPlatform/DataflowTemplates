@@ -30,15 +30,17 @@ public class SourceRowTest extends TestCase {
   @Test
   public void testSourceRowBuilds() {
     final String testTable = "testTable";
+    final String shardId = "id1";
     final long testReadTime = 1712751118L;
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     SourceRow sourceRow =
-        SourceRow.builder(schema, testReadTime)
+        SourceRow.builder(schema, shardId, testReadTime)
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();
 
     assertThat(sourceRow.tableSchemaUUID()).isEqualTo(schema.tableSchemaUUID());
+    assertThat(sourceRow.shardId()).isEqualTo(shardId);
     assertThat(sourceRow.getReadTimeMicros()).isEqualTo(testReadTime);
     assertThat(sourceRow.getPayload().get("firstName")).isEqualTo("abc");
     assertThat(sourceRow.getPayload().get("lastName")).isEqualTo("def");
@@ -53,7 +55,7 @@ public class SourceRowTest extends TestCase {
     Assert.assertThrows(
         java.lang.NullPointerException.class,
         () ->
-            SourceRow.builder(schema, testReadTime)
+            SourceRow.builder(schema, null, testReadTime)
                 /* Invalid Field */
                 .setField("middleName", "abc")
                 .setField("lastName", "def")

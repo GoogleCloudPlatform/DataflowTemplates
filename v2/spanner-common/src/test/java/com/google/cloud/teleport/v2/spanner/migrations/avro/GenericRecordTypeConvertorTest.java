@@ -29,9 +29,12 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.common.io.Resources;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -376,7 +379,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("timestamp_col", 1602599400056483L);
     genericRecord.put("date_col", 738991);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "");
+        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "", null);
     Map<String, Value> actual =
         genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
     Map<String, Value> expected =
@@ -405,7 +408,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("timestamp_col", null);
     genericRecord.put("date_col", null);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "");
+        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "", null);
     Map<String, Value> actual =
         genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
     Map<String, Value> expected =
@@ -432,7 +435,7 @@ public class GenericRecordTypeConvertorTest {
   @Test
   public void transformChangeEventTest_illegalUnionType() {
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "");
+        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "", null);
     Schema schema =
         SchemaBuilder.builder()
             .unionOf()
@@ -463,7 +466,7 @@ public class GenericRecordTypeConvertorTest {
     GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
     genericRecord.put("bool_col", true);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(mockSchemaMapper, "");
+        new GenericRecordTypeConvertor(mockSchemaMapper, "", null);
 
     genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
   }
@@ -483,7 +486,7 @@ public class GenericRecordTypeConvertorTest {
     GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
     genericRecord.put("bool_col", true);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(mockSchemaMapper, "");
+        new GenericRecordTypeConvertor(mockSchemaMapper, "", null);
 
     assertThrows(
         NullPointerException.class,
@@ -502,11 +505,115 @@ public class GenericRecordTypeConvertorTest {
         .thenThrow(new RuntimeException());
 
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(mockSchemaMapper, "");
+        new GenericRecordTypeConvertor(mockSchemaMapper, "", null);
     assertThrows(
         RuntimeException.class,
         () -> genericRecordTypeConvertor.transformChangeEvent(null, "all_types"));
     // Verify that the mock method was called.
     Mockito.verify(mockSchemaMapper).getSourceColumnName(anyString(), anyString(), anyString());
+  }
+
+  @Test
+  public void transformChangeEventTest_identityMapper_noShardIdPopulation() {
+    GenericRecord genericRecord =
+        new GenericData.Record(
+            SchemaBuilder.record("all_types")
+                .namespace("com.test.schema")
+                .fields()
+                .name("int_col")
+                .type(unionNullType(Schema.create(Schema.Type.LONG)))
+                .noDefault()
+                .endRecord());
+    genericRecord.put("int_col", 5);
+
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(
+            new IdentityMapper(
+                Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
+                    .createTable("all_types")
+                    .column("int_col")
+                    .int64()
+                    .notNull()
+                    .endColumn()
+                    .primaryKey()
+                    .asc("int_col")
+                    .end()
+                    .endTable()
+                    .build()),
+            "",
+            "xyz");
+    Map<String, Value> actual =
+        genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
+    Map<String, Value> expected = Map.of("int_col", Value.int64(5));
+    // When using identity mapper, shard id should not get populated since shard id col won't exist.
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  public void transformChangeEventTest_ShardIdPopulation() {
+    Ddl shardedDdl =
+        Ddl.builder()
+            .createTable("new_cart")
+            .column("new_quantity")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("new_product_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .column("new_user_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .primaryKey()
+            .asc("new_user_id")
+            .asc("new_product_id")
+            .end()
+            .endTable()
+            .createTable("new_people")
+            .column("migration_shard_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .column("new_name")
+            .string()
+            .size(20)
+            .endColumn()
+            .primaryKey()
+            .asc("migration_shard_id")
+            .asc("new_name")
+            .end()
+            .endTable()
+            .build();
+
+    String shardedSessionFilePath =
+        Paths.get(Resources.getResource("session-file-sharded.json").getPath()).toString();
+
+    ISchemaMapper shardedMapper = new SessionBasedMapper(shardedSessionFilePath, shardedDdl);
+    GenericRecord genericRecord =
+        new GenericData.Record(
+            SchemaBuilder.record("people")
+                .namespace("com.test.schema")
+                .fields()
+                .name("name")
+                .type(unionNullType(Schema.create(Schema.Type.STRING)))
+                .noDefault()
+                .endRecord());
+    genericRecord.put("name", "name1");
+
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(shardedMapper, "", "id1");
+    Map<String, Value> actual =
+        genericRecordTypeConvertor.transformChangeEvent(genericRecord, "people");
+    Map<String, Value> expected =
+        Map.of("new_name", Value.string("name1"), "migration_shard_id", Value.string("id1"));
+    assertEquals(expected, actual);
+
+    // Null shard id case, shard id population should be skipped.
+    genericRecordTypeConvertor = new GenericRecordTypeConvertor(shardedMapper, "", null);
+    actual = genericRecordTypeConvertor.transformChangeEvent(genericRecord, "people");
+    // Shard id should not be present.
+    assertEquals(Map.of("new_name", Value.string("name1")), actual);
   }
 }

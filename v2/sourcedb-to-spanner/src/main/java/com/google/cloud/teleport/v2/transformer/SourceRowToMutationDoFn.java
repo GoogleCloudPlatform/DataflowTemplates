@@ -75,7 +75,7 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
       GenericRecord record = sourceRow.getPayload();
       String srcTableName = tableIdMapper().get(sourceRow.tableSchemaUUID()).sourceTableName();
       GenericRecordTypeConvertor genericRecordTypeConvertor =
-          new GenericRecordTypeConvertor(iSchemaMapper(), "");
+          new GenericRecordTypeConvertor(iSchemaMapper(), "", sourceRow.shardId());
       Map<String, Value> values =
           genericRecordTypeConvertor.transformChangeEvent(record, srcTableName);
       String spannerTableName = iSchemaMapper().getSpannerTableName("", srcTableName);

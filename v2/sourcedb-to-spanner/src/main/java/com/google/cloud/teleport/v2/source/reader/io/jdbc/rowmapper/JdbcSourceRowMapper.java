@@ -72,7 +72,8 @@ public final class JdbcSourceRowMapper implements JdbcIO.RowMapper<SourceRow> {
   @Override
   public @UnknownKeyFor @Nullable @Initialized SourceRow mapRow(
       @UnknownKeyFor @NonNull @Initialized ResultSet resultSet) {
-    var builder = SourceRow.builder(sourceTableSchema, getCurrentTimeMicros());
+    /** TODO: Populate shardId from shardingConfig. */
+    var builder = SourceRow.builder(sourceTableSchema, null, getCurrentTimeMicros());
     this.sourceTableSchema
         .sourceColumnNameToSourceColumnType()
         .entrySet()
