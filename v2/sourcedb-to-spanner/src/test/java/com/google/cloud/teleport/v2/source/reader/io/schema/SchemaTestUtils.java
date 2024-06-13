@@ -23,6 +23,10 @@ public class SchemaTestUtils {
   static final String TEST_FIELD_NAME_1 = "firstName";
   static final String TEST_FIELD_NAME_2 = "lastName";
 
+  public static SourceSchemaReference generateSchemaReference(String namespace, String dbName) {
+    return SourceSchemaReference.builder().setNamespace(namespace).setDbName(dbName).build();
+  }
+
   public static SourceTableSchema generateTestTableSchema(String tableName) {
     return SourceTableSchema.builder()
         .setTableName(tableName)

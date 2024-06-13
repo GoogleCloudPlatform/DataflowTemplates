@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaDiscoveryImpl;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
@@ -121,7 +122,12 @@ public final class JdbcIoWrapper implements IoWrapper {
                       .setSourceTableName(sourceTableSchema.tableName())
                       .setSourceTableSchemaUUID(sourceTableSchema.tableSchemaUUID())
                       .build(),
-                  getJdbcIO(config, dataSourceConfiguration, tableConfig, sourceTableSchema));
+                  getJdbcIO(
+                      config,
+                      dataSourceConfiguration,
+                      sourceSchema.schemaReference(),
+                      tableConfig,
+                      sourceTableSchema));
             })
         .collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, Map.Entry::getValue));
   }
@@ -251,6 +257,7 @@ public final class JdbcIoWrapper implements IoWrapper {
   private static PTransform<PBegin, PCollection<SourceRow>> getJdbcIO(
       JdbcIOWrapperConfig config,
       DataSourceConfiguration dataSourceConfiguration,
+      SourceSchemaReference sourceSchemaReference,
       TableConfig tableConfig,
       SourceTableSchema sourceTableSchema) {
     ReadWithPartitions<SourceRow, @UnknownKeyFor @NonNull @Initialized Long> jdbcIO =
@@ -259,7 +266,8 @@ public final class JdbcIoWrapper implements IoWrapper {
             .withPartitionColumn(tableConfig.partitionColumns().get(0))
             .withDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
             .withRowMapper(
-                new JdbcSourceRowMapper(config.valueMappingsProvider(), sourceTableSchema));
+                new JdbcSourceRowMapper(
+                    config.valueMappingsProvider(), sourceSchemaReference, sourceTableSchema));
     if (tableConfig.maxPartitions() != null) {
       jdbcIO = jdbcIO.withNumPartitions(tableConfig.maxPartitions());
     }

@@ -50,9 +50,10 @@ public class SourceRowToMutationDoFnTest {
   @Test
   public void testSourceRowToMutationDoFn() {
     final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     SourceRow sourceRow =
-        SourceRow.builder(schema, null, 12412435345L)
+        SourceRow.builder(schemaRef, schema, null, 12412435345L)
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();
@@ -92,9 +93,10 @@ public class SourceRowToMutationDoFnTest {
   @Test
   public void testSourceRowToMutationDoFn_invalidTableUUID() {
     final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     SourceRow sourceRow =
-        SourceRow.builder(schema, null, 12412435345L)
+        SourceRow.builder(schemaRef, schema, null, 12412435345L)
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();
@@ -111,9 +113,10 @@ public class SourceRowToMutationDoFnTest {
   @Test
   public void testSourceRowToMutationDoFn_transformException() {
     final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     SourceRow sourceRow =
-        SourceRow.builder(schema, null, 12412435345L)
+        SourceRow.builder(schemaRef, schema, null, 12412435345L)
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();

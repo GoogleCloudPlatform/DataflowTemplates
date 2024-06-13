@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.row;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import java.io.Serializable;
 import javax.annotation.Nullable;
@@ -28,6 +29,20 @@ import org.apache.avro.generic.GenericRecordBuilder;
  */
 @AutoValue
 public abstract class SourceRow implements Serializable {
+
+  /**
+   * Get the namespace of the database for the row.
+   *
+   * @return namespace
+   */
+  public abstract String namespace();
+
+  /**
+   * Get the database name for the row. This is the logical database name for sharded setups.
+   *
+   * @return dbName
+   */
+  public abstract String dbName();
 
   /**
    * Get the tableSchemaUUID for easy lookup for the schemaMappingInterface.
@@ -74,31 +89,43 @@ public abstract class SourceRow implements Serializable {
   /**
    * returns an initialized builder for SourceRow.
    *
-   * <p><b>Note:</b> The caller has to provide only the payload schema, readTime and just add the
-   * fields. The caller does not need to worry about how the SourceRow is represented or encoded.
+   * <p><b>Note:</b> The caller has to provide the schema reference (namespace and dbName),
+   * tableSchema, readTime and just add the fields. The caller does not need to worry about how the
+   * SourceRow is represented or encoded.
    *
    * <p><b>Example</b>
    *
    * <pre>
-   *     SourceTableSchema.builder(scientistsTablePayloadSchema, readTime)
+   *     SourceTableSchema.builder(dbSchemaRef,scientistsTablePayloadSchema, readTime)
    *     .setField("firstName", "Albert")
    *     .setField("lastName", "Einstein")
    *     .setField("NobelPrize", true)
    *     .build();
    *    </pre>
    *
-   * @param schema schema of the source table.
+   * @param sourceSchemaReference reference for the source table's schema.
+   * @param sourceTableSchema schema of the source table.
    * @param readTimeMicros read time.
    * @return builder.
    */
-  public static Builder builder(SourceTableSchema schema, String shardId, long readTimeMicros) {
+  public static Builder builder(
+      SourceSchemaReference sourceSchemaReference,
+      SourceTableSchema sourceTableSchema,
+      String shardId,
+      long readTimeMicros) {
     var builder = new AutoValue_SourceRow.Builder();
-    builder.initialize(schema, shardId, readTimeMicros);
+    builder.initialize(sourceSchemaReference, sourceTableSchema, shardId, readTimeMicros);
     return builder;
   }
 
   @AutoValue.Builder
   public abstract static class Builder {
+    @SuppressWarnings("CheckReturnValue")
+    abstract Builder setNamespace(String value);
+
+    @SuppressWarnings("CheckReturnValue")
+    abstract Builder setDbName(String value);
+
     @SuppressWarnings("CheckReturnValue")
     abstract Builder setTableSchemaUUID(String value);
 
@@ -124,15 +151,24 @@ public abstract class SourceRow implements Serializable {
 
     // Note: AutoValue requires a no-args constructor.
 
-    protected void initialize(SourceTableSchema schema, String shardId, long readTimeMicros) {
-      this.setTableSchemaUUID(schema.tableSchemaUUID());
-      this.setTableName(schema.tableName());
+    protected void initialize(
+        SourceSchemaReference sourceSchemaReference,
+        SourceTableSchema sourceTableSchema,
+        String shardId,
+        long readTimeMicros) {
+      this.setNamespace(sourceSchemaReference.namespace());
+      this.setDbName(sourceSchemaReference.dbName());
+      this.setTableSchemaUUID(sourceTableSchema.tableSchemaUUID());
+      this.setTableName(sourceTableSchema.tableName());
       this.setShardId(shardId);
-      this.recordBuilder = new GenericRecordBuilder(schema.avroSchema());
+      this.recordBuilder = new GenericRecordBuilder(sourceTableSchema.avroSchema());
       this.recordBuilder.set(SourceTableSchema.READ_TIME_STAMP_FIELD_NAME, readTimeMicros);
       this.payloadBuilder =
           new GenericRecordBuilder(
-              schema.avroSchema().getField(SourceTableSchema.PAYLOAD_FIELD_NAME).schema());
+              sourceTableSchema
+                  .avroSchema()
+                  .getField(SourceTableSchema.PAYLOAD_FIELD_NAME)
+                  .schema());
     }
 
     public Builder setField(String fieldName, Object value) {

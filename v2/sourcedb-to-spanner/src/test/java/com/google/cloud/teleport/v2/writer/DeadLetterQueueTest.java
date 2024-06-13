@@ -108,11 +108,12 @@ public class DeadLetterQueueTest {
   public void testFailedRowsToLog() {
     DeadLetterQueue dlq = DeadLetterQueue.create("LOG", spannerDdl);
     final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
     RowContext r1 =
         RowContext.builder()
             .setRow(
-                SourceRow.builder(schema, null, 12412435345L)
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
                     .setField("firstName", "abc")
                     .setField("lastName", "def")
                     .build())
@@ -133,6 +134,7 @@ public class DeadLetterQueueTest {
   @Test
   public void testRowContextToDlqElement() {
     final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
 
     DeadLetterQueue dlq = DeadLetterQueue.create("testDir", spannerDdl);
@@ -140,7 +142,7 @@ public class DeadLetterQueueTest {
     RowContext r1 =
         RowContext.builder()
             .setRow(
-                SourceRow.builder(schema, null, 12412435345L)
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
                     .setField("firstName", "abc")
                     .setField("lastName", "def")
                     .build())
