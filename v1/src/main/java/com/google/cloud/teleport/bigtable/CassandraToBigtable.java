@@ -30,8 +30,6 @@ import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.SdkHarnessOptions;
-import org.apache.beam.sdk.options.SdkHarnessOptions.LogLevel;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
