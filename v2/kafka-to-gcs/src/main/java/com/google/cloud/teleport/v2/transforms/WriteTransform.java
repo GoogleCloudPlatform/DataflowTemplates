@@ -48,7 +48,8 @@ public abstract class WriteTransform
                   .setWindowDuration(options().getWindowDuration())
                   .setTempDirectory(options().getTempLocation())
                   .build());
-    } else if (outputFileFormat.equals(MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)) {
+    } else if (outputFileFormat.equals(MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
+        || outputFileFormat.equals(MessageFormatConstants.AVRO_BINARY_ENCODING)) {
       pOutput =
           kafkaRecord.apply(
               AvroWriteTransform.newBuilder()
@@ -57,7 +58,9 @@ public abstract class WriteTransform
                   .setNumShards(options().getNumShards())
                   .setMessageFormat(options().getMessageFormat())
                   .setSchemaRegistryURL(options().getSchemaRegistryConnectionUrl())
-                  .setSchemaPath(options().getConfluentAvroSchemaPath())
+                  .setConfluentSchemaPath(options().getConfluentAvroSchemaPath())
+                  .setBinaryAvroSchemaPath(options().getBinaryAvroSchemaPath())
+                  .setSchemaFormat(options().getSchemaFormat())
                   .setWindowDuration(options().getWindowDuration())
                   .build());
     } else {
