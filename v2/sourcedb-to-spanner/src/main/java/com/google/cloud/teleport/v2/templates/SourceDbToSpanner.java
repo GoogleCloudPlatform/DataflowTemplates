@@ -52,7 +52,6 @@ import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.SdkHarnessOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
@@ -114,7 +113,6 @@ public class SourceDbToSpanner {
     // Parse the user options passed from the command-line
     SourceDbToSpannerOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(SourceDbToSpannerOptions.class);
-
     run(options);
   }
 
@@ -128,7 +126,6 @@ public class SourceDbToSpanner {
   static PipelineResult run(SourceDbToSpannerOptions options) {
     // TODO - Validate if options are as expected
     Pipeline pipeline = Pipeline.create(options);
-    options.as(SdkHarnessOptions.class).setDefaultSdkHarnessLogLevel(options.getDefaultLogLevel());
 
     SpannerConfig spannerConfig = createSpannerConfig(options);
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
