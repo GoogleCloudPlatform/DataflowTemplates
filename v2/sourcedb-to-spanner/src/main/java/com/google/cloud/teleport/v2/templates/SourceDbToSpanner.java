@@ -187,7 +187,7 @@ public class SourceDbToSpanner {
     }
     return schemaMapper;
   }
- 
+
   /*
    * Return the available tables to migrate based on the following.
    * 1. Fetch tables from schema mapper. Override with tables from options if present

@@ -117,7 +117,7 @@ public class SourceRowToMutationDoFnTest {
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();
-    PCollection<SourceRow> sourceRows = pipeline.apply(Create.of(sourceRow)); 
+    PCollection<SourceRow> sourceRows = pipeline.apply(Create.of(sourceRow));
     ISchemaMapper mockIschemaMapper =
         mock(ISchemaMapper.class, Mockito.withSettings().serializable());
     when(mockIschemaMapper.getSpannerTableName(anyString(), anyString()))
