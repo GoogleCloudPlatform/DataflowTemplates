@@ -37,6 +37,13 @@ public abstract class SourceRow implements Serializable {
   public abstract String tableSchemaUUID();
 
   /**
+   * Get the tableName metadata for the row.
+   *
+   * @return tableName
+   */
+  public abstract String tableName();
+
+  /**
    * Get the corresponding shardId for the row. This should be NULL for non-sharded cases.
    *
    * @return shardId
@@ -96,6 +103,9 @@ public abstract class SourceRow implements Serializable {
     abstract Builder setTableSchemaUUID(String value);
 
     @SuppressWarnings("CheckReturnValue")
+    abstract Builder setTableName(String value);
+
+    @SuppressWarnings("CheckReturnValue")
     public abstract Builder setShardId(String value);
 
     @SuppressWarnings("CheckReturnValue")
@@ -116,6 +126,7 @@ public abstract class SourceRow implements Serializable {
 
     protected void initialize(SourceTableSchema schema, String shardId, long readTimeMicros) {
       this.setTableSchemaUUID(schema.tableSchemaUUID());
+      this.setTableName(schema.tableName());
       this.setShardId(shardId);
       this.recordBuilder = new GenericRecordBuilder(schema.avroSchema());
       this.recordBuilder.set(SourceTableSchema.READ_TIME_STAMP_FIELD_NAME, readTimeMicros);

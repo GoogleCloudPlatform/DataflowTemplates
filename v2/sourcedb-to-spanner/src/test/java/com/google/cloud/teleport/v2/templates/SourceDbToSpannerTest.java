@@ -16,26 +16,19 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.io.Resources;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.junit.Before;
@@ -192,25 +185,5 @@ public class SourceDbToSpannerTest {
     ISchemaMapper schemaMapper = SourceDbToSpanner.getSchemaMapper(mockOptions, spannerDdl);
     List<String> tables =
         SourceDbToSpanner.listTablesToMigrate(mockOptions, schemaMapper, spannerDdl);
-  }
-
-  @Test
-  public void createTableIdToRefMap() {
-    SourceSchema srcSchema =
-        SourceSchema.builder()
-            .setSchemaReference(SourceSchemaReference.builder().setDbName("test").build())
-            .addTableSchema(
-                SourceTableSchema.builder()
-                    .setTableName("testTable")
-                    .setTableSchemaUUID("uuid1")
-                    .addSourceColumnNameToSourceColumnType(
-                        "col1", new SourceColumnType("int", new Long[] {}, new Long[] {}))
-                    .build())
-            .build();
-
-    Map<String, SourceTableReference> tableIDToRefMap =
-        SourceDbToSpanner.getTableIDToRefMap(srcSchema);
-    assertEquals(tableIDToRefMap.get("uuid1").getName(), "Db.test.Table.testTable");
-    assertNull(tableIDToRefMap.get("uuid2"));
   }
 }

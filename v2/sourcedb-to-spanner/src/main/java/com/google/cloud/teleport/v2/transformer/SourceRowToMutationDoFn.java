@@ -21,7 +21,6 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.templates.RowContext;
@@ -49,11 +48,8 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
 
   public abstract ISchemaMapper iSchemaMapper();
 
-  public abstract Map<String, SourceTableReference> tableIdMapper();
-
-  public static SourceRowToMutationDoFn create(
-      ISchemaMapper iSchemaMapper, Map<String, SourceTableReference> tableIdMapper) {
-    return new AutoValue_SourceRowToMutationDoFn(iSchemaMapper, tableIdMapper);
+  public static SourceRowToMutationDoFn create(ISchemaMapper iSchemaMapper) {
+    return new AutoValue_SourceRowToMutationDoFn(iSchemaMapper);
   }
 
   @ProcessElement
@@ -61,19 +57,10 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
     SourceRow sourceRow = c.element();
     LOG.debug("Starting transformation for Source Row {}", sourceRow);
 
-    if (!tableIdMapper().containsKey(sourceRow.tableSchemaUUID())) {
-      // TODO: Remove LOG statements from processElement once counters and DLQ is supported.
-      // TODO: Add metric for ignored rows
-      LOG.error(
-          "cannot find valid sourceTable for tableId: {} in tableIdMapper",
-          sourceRow.tableSchemaUUID());
-      transformerErrors.inc();
-      return;
-    }
     try {
       // TODO: update namespace in constructor when Spanner namespace support is added.
       GenericRecord record = sourceRow.getPayload();
-      String srcTableName = tableIdMapper().get(sourceRow.tableSchemaUUID()).sourceTableName();
+      String srcTableName = sourceRow.tableName();
       GenericRecordTypeConvertor genericRecordTypeConvertor =
           new GenericRecordTypeConvertor(iSchemaMapper(), "", sourceRow.shardId());
       Map<String, Value> values =

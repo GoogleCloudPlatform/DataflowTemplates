@@ -25,8 +25,6 @@ import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
@@ -40,9 +38,7 @@ import com.google.cloud.teleport.v2.writer.SpannerWriter;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
@@ -147,8 +143,7 @@ public class SourceDbToSpanner {
     PCollection<SourceRow> sourceRows = rowsAndTables.get(readerTransform.sourceRowTag());
 
     // Transform source data to Spanner Compatible Data
-    SourceRowToMutationDoFn transformDoFn =
-        SourceRowToMutationDoFn.create(schemaMapper, getTableIDToRefMap(srcSchema));
+    SourceRowToMutationDoFn transformDoFn = SourceRowToMutationDoFn.create(schemaMapper);
     PCollectionTuple transformationResult =
         sourceRows.apply(
             "Transform",
@@ -166,8 +161,7 @@ public class SourceDbToSpanner {
                 .setCoder(SerializableCoder.of(RowContext.class)));
 
     // Dump Failed rows to DLQ
-    DeadLetterQueue dlq =
-        DeadLetterQueue.create(options.getDLQDirectory(), ddl, getTableIDToRefMap(srcSchema));
+    DeadLetterQueue dlq = DeadLetterQueue.create(options.getDLQDirectory(), ddl);
     dlq.failedMutationsToDLQ(failedMutations);
     dlq.failedTransformsToDLQ(
         transformationResult
@@ -192,21 +186,6 @@ public class SourceDbToSpanner {
       schemaMapper = new SessionBasedMapper(options.getSessionFilePath(), ddl);
     }
     return schemaMapper;
-  }
-
-  @VisibleForTesting
-  static Map<String, SourceTableReference> getTableIDToRefMap(SourceSchema srcSchema) {
-    Map<String, SourceTableReference> tableIdMapper = new HashMap<>();
-    for (SourceTableSchema srcTableSchema : srcSchema.tableSchemas()) {
-      tableIdMapper.put(
-          srcTableSchema.tableSchemaUUID(),
-          SourceTableReference.builder()
-              .setSourceSchemaReference(srcSchema.schemaReference())
-              .setSourceTableName(srcTableSchema.tableName())
-              .setSourceTableSchemaUUID(srcTableSchema.tableSchemaUUID())
-              .build());
-    }
-    return tableIdMapper;
   }
 
   /*
