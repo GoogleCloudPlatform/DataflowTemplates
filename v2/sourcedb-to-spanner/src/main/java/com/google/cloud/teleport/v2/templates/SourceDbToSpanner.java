@@ -130,6 +130,7 @@ public class SourceDbToSpanner {
     SpannerConfig spannerConfig = createSpannerConfig(options);
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ISchemaMapper schemaMapper = getSchemaMapper(options, ddl);
+
     List<String> tablesToMigrate = listTablesToMigrate(options, schemaMapper, ddl);
 
     // Read data from source

@@ -140,6 +140,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
           gcsPathPrefix + "/session.json",
           Resources.getResource(sessionFileResourceName).getPath());
     }
+
     Map<String, String> params =
         new HashMap<>() {
           {

@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
@@ -170,5 +171,11 @@ public class IdentityMapperTest {
   @Test(expected = UnsupportedOperationException.class)
   public void testSourceTablesToMigrateNamespace() {
     mapper.getSourceTablesToMigrate("test");
+  }
+
+  @Test
+  public void getShardIdColumnName() {
+    assertNull(mapper.getShardIdColumnName("", ""));
+    assertNull(mapper.getShardIdColumnName("xyz", "abc"));
   }
 }

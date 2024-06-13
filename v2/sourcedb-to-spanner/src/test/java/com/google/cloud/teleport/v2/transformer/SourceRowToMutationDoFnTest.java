@@ -55,7 +55,7 @@ public class SourceRowToMutationDoFnTest {
     final String testTable = "srcTable";
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     SourceRow sourceRow =
-        SourceRow.builder(schema, 12412435345L)
+        SourceRow.builder(schema, null, 12412435345L)
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();
@@ -106,7 +106,7 @@ public class SourceRowToMutationDoFnTest {
     final String testTable = "srcTable";
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     SourceRow sourceRow =
-        SourceRow.builder(schema, 12412435345L)
+        SourceRow.builder(schema, null, 12412435345L)
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();
@@ -134,7 +134,7 @@ public class SourceRowToMutationDoFnTest {
     final String testTable = "srcTable";
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     SourceRow sourceRow =
-        SourceRow.builder(schema, 12412435345L)
+        SourceRow.builder(schema, null, 12412435345L)
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();

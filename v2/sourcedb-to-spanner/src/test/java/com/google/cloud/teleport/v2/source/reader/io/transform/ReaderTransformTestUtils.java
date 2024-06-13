@@ -112,7 +112,7 @@ public class ReaderTransformTestUtils implements Serializable {
       ArrayList<SourceRow> sourceRows = new ArrayList<>();
       for (int i = 0; i < this.rowCount; i++) {
         sourceRows.add(
-            SourceRow.builder(this.sourceTableSchema, testTime())
+            SourceRow.builder(this.sourceTableSchema, null, testTime())
                 .setField("firstName", UUID.randomUUID().toString())
                 .setField("lastName", UUID.randomUUID().toString())
                 .build());

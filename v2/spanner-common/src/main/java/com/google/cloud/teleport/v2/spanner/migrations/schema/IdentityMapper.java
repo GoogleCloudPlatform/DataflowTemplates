@@ -104,4 +104,9 @@ public class IdentityMapper implements ISchemaMapper, Serializable {
     }
     return spTable.columns().stream().map(column -> column.name()).collect(Collectors.toList());
   }
+
+  @Override
+  public String getShardIdColumnName(String namespace, String spannerTableName) {
+    return null;
+  }
 }
