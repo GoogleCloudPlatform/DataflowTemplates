@@ -16,8 +16,6 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.spanner.Dialect;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -293,7 +291,7 @@ public class GCSToSourceDb {
         description = "Write filtered events to GCS",
         helpText =
             "This is a flag which if set to true will write filtered events from custom transformation to GCS.")
-    @Default.Boolean(true)
+    @Default.Boolean(false)
     Boolean getWriteFilteredEvents();
 
     void setWriteFilteredEvents(Boolean value);
@@ -376,12 +374,6 @@ public class GCSToSourceDb {
 
     LOG.info("The size of  processing context is : " + processingContextMap.size());
 
-    Storage storage =
-        StorageOptions.newBuilder()
-            .setProjectId(options.getSpannerProjectId())
-            .build()
-            .getService();
-
     pipeline
         .apply(
             "Create Context",
@@ -399,7 +391,7 @@ public class GCSToSourceDb {
                     isMetadataDbPostgres,
                     customTransformation,
                     options.getWriteFilteredEvents(),
-                    storage)));
+                    options.getSpannerProjectId())));
 
     return pipeline.run();
   }

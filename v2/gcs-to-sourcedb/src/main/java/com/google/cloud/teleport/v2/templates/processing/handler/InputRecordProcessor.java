@@ -79,16 +79,19 @@ public class InputRecordProcessor {
         String newValueJsonStr = chrec.getMods().get(0).getNewValuesJson();
         JSONObject newValuesJson = new JSONObject(newValueJsonStr);
         JSONObject keysJson = new JSONObject(keysJsonStr);
-        Map<String, Object> mapRequest =
-            ChangeEventToMapConvertor.combineJsonObjects(keysJson, newValuesJson);
-        MigrationTransformationRequest migrationTransformationRequest =
-            new MigrationTransformationRequest(tableName, mapRequest, shardId, modType);
-        MigrationTransformationResponse migrationTransformationResponse =
-            spannerToSourceTransformer.toSourceRow(migrationTransformationRequest);
-        if (migrationTransformationResponse.isEventFiltered()) {
-          LOG.info("reaching here");
-          filteredEvents.add(chrec);
-          continue;
+        if (spannerToSourceTransformer != null) {
+          Map<String, Object> mapRequest =
+              ChangeEventToMapConvertor.combineJsonObjects(keysJson, newValuesJson);
+          MigrationTransformationRequest migrationTransformationRequest =
+              new MigrationTransformationRequest(tableName, mapRequest, shardId, modType);
+          MigrationTransformationResponse migrationTransformationResponse =
+              spannerToSourceTransformer.toSourceRow(migrationTransformationRequest);
+          if (migrationTransformationResponse.isEventFiltered()) {
+            filteredEvents.add(chrec);
+            continue;
+          }
+          ChangeEventToMapConvertor.updateJsonWithMap(
+              migrationTransformationResponse.getResponseRow(), keysJson, newValuesJson);
         }
         String dmlStatement =
             DMLGenerator.getDMLStatement(

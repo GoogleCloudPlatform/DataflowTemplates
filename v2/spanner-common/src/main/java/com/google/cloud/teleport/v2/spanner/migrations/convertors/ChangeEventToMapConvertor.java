@@ -90,7 +90,7 @@ public class ChangeEventToMapConvertor {
   }
 
   public static Map<String, Object> combineJsonObjects(
-      JSONObject newValuesJson, JSONObject keysJson) {
+      JSONObject keysJson, JSONObject newValuesJson) {
     Map<String, Object> combinedMap = new HashMap<>();
     addJsonToMap(newValuesJson, combinedMap);
     addJsonToMap(keysJson, combinedMap);
@@ -102,6 +102,22 @@ public class ChangeEventToMapConvertor {
     while (keys.hasNext()) {
       String key = keys.next();
       map.put(key, jsonObject.get(key));
+    }
+  }
+
+  public static void updateJsonWithMap(
+      Map<String, Object> map, JSONObject keysJson, JSONObject newValuesJson) {
+    for (Map.Entry<String, Object> entry : map.entrySet()) {
+      String key = entry.getKey();
+      Object value = entry.getValue();
+
+      if (keysJson.has(key)) {
+        keysJson.put(key, value);
+      }
+
+      if (newValuesJson.has(key)) {
+        newValuesJson.put(key, value);
+      }
     }
   }
 }

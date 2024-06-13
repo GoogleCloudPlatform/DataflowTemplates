@@ -151,7 +151,6 @@ public abstract class ChangeEventTransformerDoFn
     try {
 
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
-      LOG.info("Reaching here 3" + changeEvent.get("_metadata_stream"));
       if (!schema().isEmpty()) {
         schema().verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
         changeEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent);

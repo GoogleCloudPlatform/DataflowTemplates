@@ -604,6 +604,7 @@ public class DataStreamToSpanner {
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
     if (isRegularMode) {
       LOG.info("Regular Datastream flow");
+      LOG.info("Reaching here 2" + options.getStreamName());
       PCollection<FailsafeElement<String, String>> datastreamJsonRecords =
           pipeline.apply(
               new DataStreamIO(

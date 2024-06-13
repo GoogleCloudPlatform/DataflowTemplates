@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
@@ -61,7 +62,9 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
 
   private boolean writeFilteredEvents;
 
-  private Storage storage;
+  private String projectId;
+
+  private transient Storage storage;
 
   private static final Counter num_shards =
       Metrics.counter(GcsToSourceStreamer.class, "num_shards");
@@ -73,14 +76,14 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
       boolean isMetadataDbPostgres,
       CustomTransformation customTransformation,
       boolean writeFilteredEvents,
-      Storage storage) {
+      String projectId) {
     this.incrementIntervalInMilliSeconds = incrementIntervalInMilliSeconds;
     this.spannerConfig = spannerConfig;
     this.tableSuffix = tableSuffix;
     this.isMetadataDbPostgres = isMetadataDbPostgres;
     this.customTransformation = customTransformation;
     this.writeFilteredEvents = writeFilteredEvents;
-    this.storage = storage;
+    this.projectId = projectId;
   }
 
   /** Setup function connects to Cloud Spanner. */
@@ -90,6 +93,7 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
     while (retry) {
       try {
         spannerDao = new SpannerDao(spannerConfig, tableSuffix, isMetadataDbPostgres);
+        storage = StorageOptions.newBuilder().setProjectId(projectId).build().getService();
         retry = false;
       } catch (SpannerException e) {
         LOG.info("Exception in setup of AssignShardIdFn {}", e.getMessage());
