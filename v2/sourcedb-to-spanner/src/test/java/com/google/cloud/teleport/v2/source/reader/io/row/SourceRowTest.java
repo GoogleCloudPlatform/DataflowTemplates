@@ -40,6 +40,7 @@ public class SourceRowTest extends TestCase {
             .build();
 
     assertThat(sourceRow.tableSchemaUUID()).isEqualTo(schema.tableSchemaUUID());
+    assertThat(sourceRow.tableName()).isEqualTo(schema.tableName());
     assertThat(sourceRow.shardId()).isEqualTo(shardId);
     assertThat(sourceRow.getReadTimeMicros()).isEqualTo(testReadTime);
     assertThat(sourceRow.getPayload().get("firstName")).isEqualTo("abc");
