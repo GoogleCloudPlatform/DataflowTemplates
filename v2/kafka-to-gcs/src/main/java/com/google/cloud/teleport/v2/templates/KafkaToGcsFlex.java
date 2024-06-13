@@ -117,7 +117,6 @@ public class KafkaToGcsFlex {
   }
 
   public static PipelineResult run(KafkaToGcsOptions options) throws UnsupportedOperationException {
-
     // Create the Pipeline
     Pipeline pipeline = Pipeline.create(options);
     String bootstrapServes;
@@ -143,6 +142,7 @@ public class KafkaToGcsFlex {
         KafkaTransform.readBytesFromKafka(
             bootstrapServes, topicsList, kafkaConfig, options.getEnableCommitOffsets());
     kafkaRecord = pipeline.apply(kafkaTransform);
+
     kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
     return pipeline.run();
   }

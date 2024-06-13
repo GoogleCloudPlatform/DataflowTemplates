@@ -57,7 +57,9 @@ public abstract class WriteTransform
                   .setNumShards(options().getNumShards())
                   .setMessageFormat(options().getMessageFormat())
                   .setSchemaRegistryURL(options().getSchemaRegistryConnectionUrl())
-                  .setSchemaPath(options().getConfluentAvroSchemaPath())
+                  .setConfluentSchemaPath(options().getConfluentAvroSchemaPath())
+                  .setBinaryAvroSchemaPath(options().getBinaryAvroSchemaPath())
+                  .setSchemaFormat(options().getSchemaFormat())
                   .setWindowDuration(options().getWindowDuration())
                   .build());
     } else {
