@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
@@ -29,6 +30,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
@@ -161,13 +164,12 @@ public class TimezoneIT extends TemplateTestBase {
   }
 
   private void assertRowInMySQL() throws InterruptedException {
-    long rowCount = 0;
-    for (int i = 0; rowCount != 3 && i < 100; ++i) {
-      rowCount = jdbcResourceManager.getRowCount(TABLE);
-      LOG.info("Row count = {}, Waiting for 10s if row count not = 3", rowCount);
-      Thread.sleep(10000);
-    }
-    assertThat(rowCount).isEqualTo(3);
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(writerJobInfo, Duration.ofMinutes(10)),
+                () -> jdbcResourceManager.getRowCount(TABLE) == 3);
+    assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows =
         jdbcResourceManager.runSQLQuery("SELECT id,time_colm FROM Users ORDER BY id");
     assertThat(rows).hasSize(3);
