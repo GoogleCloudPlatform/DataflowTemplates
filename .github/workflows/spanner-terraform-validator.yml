@@ -42,7 +42,7 @@ jobs:
           echo "Verifying sample: $SAMPLE"
           
           echo "Verifying terraform configuration..."
-          terraform init "$SAMPLE"
+          terraform init -chdir "$SAMPLE"
           terraform validate "$SAMPLE" 
       
           for FILE in $FILE_LIST; do
