@@ -11,7 +11,7 @@ on:
     - 'v2/sourcedb-to-spanner/terraform/samples/**'
 
 jobs:
-  verify-structure:
+  verify-terraform-samples:
     runs-on: ubuntu-latest
 
     steps:
