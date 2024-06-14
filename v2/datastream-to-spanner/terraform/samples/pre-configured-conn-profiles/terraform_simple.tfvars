@@ -1,8 +1,8 @@
 # Common Parameters
 common_params = {
-  project               = "<YOUR_PROJECT_ID>"
+  project = "<YOUR_PROJECT_ID>"
   # Replace with your GCP project ID
-  region                = "<YOUR_REGION>"
+  region = "<YOUR_REGION>"
   # Replace with your desired GCP region
   service_account_email = "<YOUR_SERVICE_ACCOUNT_EMAIL>"
   # Replace with your service account email, this is what Dataflow will run as.
@@ -14,9 +14,9 @@ datastream_params = {
   # ID of the MySQL source connection profile
   target_connection_profile_id = "<YOUR_TARGET_CONNECTION_PROFILE_ID>"
   # ID of the GCS target connection profile
-  target_gcs_bucket_name       = "<YOUR_TARGET_GCS_BUCKET_NAME>"
+  target_gcs_bucket_name = "<YOUR_TARGET_GCS_BUCKET_NAME>"
   # Name of the target GCS bucket used in the target connection profile above.
-  mysql_databases              = [
+  mysql_databases = [
     {
       database = "<YOUR_DATABASE_NAME>"
       tables   = []
@@ -34,8 +34,8 @@ dataflow_params = {
     # ID of the target Cloud Spanner instance
   }
   runner_params = {
-    max_workers = 10 # Adjust based on your requirements
-    num_workers = 4  # Adjust based on your requirements
+    max_workers = 10       # Adjust based on your requirements
+    num_workers = 4        # Adjust based on your requirements
     on_delete   = "cancel" # Or "drain"
   }
 }

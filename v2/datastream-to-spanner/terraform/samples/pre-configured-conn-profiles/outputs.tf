@@ -1,7 +1,7 @@
 # Resource IDs
 output "resource_ids" {
   description = "IDs of resources created during migration setup."
-  value       = {
+  value = {
     datastream_source_connection_profile = var.datastream_params.source_connection_profile_id
     datastream_target_connection_profile = var.datastream_params.target_connection_profile_id
     datastream_stream                    = google_datastream_stream.mysql_to_gcs.stream_id
@@ -15,7 +15,7 @@ output "resource_ids" {
 # Resource URLs (for easy access in Google Cloud Console)
 output "resource_urls" {
   description = "URLs to access resources in the Google Cloud Console."
-  value       = {
+  value = {
     datastream_source_connection_profile = "https://console.cloud.google.com/datastream/connection-profiles/locations/${var.common_params.region}/instances/${var.datastream_params.source_connection_profile_id}?project=${var.common_params.project}"
     datastream_target_connection_profile = "https://console.cloud.google.com/datastream/connection-profiles/locations/${var.common_params.region}/instances/${var.datastream_params.target_connection_profile_id}?project=${var.common_params.project}"
     datastream_stream                    = "https://console.cloud.google.com/datastream/streams/locations/${var.common_params.region}/instances/${google_datastream_stream.mysql_to_gcs.stream_id}?project=${var.common_params.project}"
