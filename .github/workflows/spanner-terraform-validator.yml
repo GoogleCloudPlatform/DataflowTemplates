@@ -43,8 +43,9 @@ jobs:
           
           echo "Verifying terraform configuration..."
           terraform -chdir="$SAMPLE" init
-          terraform -chdir="$SAMPLE" validate 
-      
+          terraform -chdir="$SAMPLE" validate
+        
+          echo "Verifying sample structure..."
           for FILE in $FILE_LIST; do
             if [[ ! -f "$SAMPLE/$FILE" ]]; then
               echo "ERROR: Missing file: $SAMPLE/$FILE"
