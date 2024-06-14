@@ -17,7 +17,10 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
-
+    - name: Verify Datastream-to-spanner Terraform formatting
+      uses: dflook/terraform-fmt-check@v1
+      with:
+        path: v2/datastream-to-spanner/terraform/samples
     - name: Verify Terraform sample structure
       id: find-samples
       run: |
@@ -55,8 +58,3 @@ jobs:
           exit 1  # Indicate failure if there were any failed samples
         fi
         echo "All samples validated successfully!"
-
-    - name: Verify Datastream-to-spanner Terraform formatting
-      uses: dflook/terraform-fmt-check@v1
-      with:
-          path: v2/datastream-to-spanner/terraform/samples

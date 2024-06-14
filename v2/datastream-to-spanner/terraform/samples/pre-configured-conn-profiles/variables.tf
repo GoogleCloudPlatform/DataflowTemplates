@@ -1,6 +1,6 @@
 variable "common_params" {
   description = "Parameters that are common to multiple resources"
-  type        = object({
+  type = object({
     project = string
     region  = string
   })
@@ -8,9 +8,9 @@ variable "common_params" {
 
 variable "datastream_params" {
   description = "Parameters to setup Datastream"
-  type        = object({
-    source_connection_profile_id  = string
-    target_connection_profile_id  = string
+  type = object({
+    source_connection_profile_id = string
+    target_connection_profile_id = string
     # Datastream does not expose a data source to read connection profile information
     # so the bucket has to be explicitly added. This will be simplified in the
     # future to only require the target_connection_profile_id
@@ -19,7 +19,7 @@ variable "datastream_params" {
     stream_id                     = optional(string, "mysql-stream")
     max_concurrent_cdc_tasks      = optional(number, 50)
     max_concurrent_backfill_tasks = optional(number, 50)
-    mysql_databases               = list(object({
+    mysql_databases = list(object({
       database = string
       tables   = optional(list(string))
     }))
@@ -28,7 +28,7 @@ variable "datastream_params" {
 
 variable "dataflow_params" {
   description = "Parameters for the Dataflow job. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/README_Sourcedb_to_Spanner_Flex.md for the description of the parameters below."
-  type        = object({
+  type = object({
     template_params = object({
       shadow_table_prefix                 = optional(string)
       create_shadow_tables                = optional(bool)
