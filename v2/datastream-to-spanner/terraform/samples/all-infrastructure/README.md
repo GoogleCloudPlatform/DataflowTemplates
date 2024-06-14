@@ -2,8 +2,8 @@
 
 > **_SCENARIO:_** This Terraform example illustrates launching a live migration job
 > for a MySQL
-> source, setting up all the required cloud infrastructure. Only the source
-> details are needed as input.
+> source, setting up all the required cloud infrastructure. **Only the source
+> details are needed as input.**
 
 It takes the following assumptions -
 

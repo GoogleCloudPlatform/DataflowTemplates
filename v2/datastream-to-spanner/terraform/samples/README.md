@@ -6,7 +6,8 @@ Pick a sample that is closest to your use-case, and use it as a starting point, 
 
 ## List of examples
 
-1. [Running a live migration for a public-access enabled source instance](base-example/README.md)
+1. [MySQL source to Spanner end-to-end](all-infrastructure/README.md)
+2. [Pre-configured Datastream connection profiles](pre-configured-conn-profiles/README.md)
 
 ## How to add a new sample
 
@@ -15,5 +16,5 @@ This ensures uniformity in the style in which terraform samples are written.
 
 ```shell
 mkdir my-new-sample
-cp -r base-example/* my-new-sample/
+cp -r all-infrastructure/* my-new-sample/
 ```
