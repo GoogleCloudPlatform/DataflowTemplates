@@ -25,7 +25,7 @@ jobs:
       uses: dflook/terraform-fmt-check@v1
       with:
         path: ${{ matrix.terraform_paths }}
-    - name: Verify Terraform sample structure
+    - name: Verify Terraform template and required structure
       id: find-samples
       run: |
         SAMPLES=$(find ${{ matrix.terraform_paths }} -mindepth 1 -maxdepth 1 -type d)
@@ -55,6 +55,7 @@ jobs:
         
           if [[ ! " ${FAILED_SAMPLES[*]} " =~ " ${SAMPLE} " ]]; then # Check if sample is in failed list
             echo "Verified sample successfully: $SAMPLE"
+            echo "----------------------"
           fi
         done  
         echo "Verification completed!"
