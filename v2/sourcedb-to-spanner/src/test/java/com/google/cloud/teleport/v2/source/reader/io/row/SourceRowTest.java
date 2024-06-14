@@ -40,8 +40,7 @@ public class SourceRowTest extends TestCase {
             .setField("lastName", "def")
             .build();
 
-    assertThat(sourceRow.namespace()).isEqualTo("public");
-    assertThat(sourceRow.dbName()).isEqualTo("mydb");
+    assertThat(sourceRow.sourceSchemaReference()).isEqualTo(schemaRef);
     assertThat(sourceRow.tableSchemaUUID()).isEqualTo(schema.tableSchemaUUID());
     assertThat(sourceRow.tableName()).isEqualTo(schema.tableName());
     assertThat(sourceRow.shardId()).isEqualTo(shardId);

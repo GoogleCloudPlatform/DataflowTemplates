@@ -136,8 +136,7 @@ public class JdbcSourceRowMapperTest {
       while (rs.next()) {
         valueIdx++;
         var sourceRow = mapper.mapRow(rs);
-        assertEquals("public", sourceRow.namespace());
-        assertEquals("mydb", sourceRow.dbName());
+        assertEquals(sourceSchemaRef, sourceRow.sourceSchemaReference());
         assertEquals(testTable, sourceRow.tableName());
         for (int colIdx = 0; colIdx < testCols.size(); colIdx++) {
           if (valueIdx < maxNonNullValues) {

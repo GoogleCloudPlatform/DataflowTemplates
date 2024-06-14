@@ -31,18 +31,11 @@ import org.apache.avro.generic.GenericRecordBuilder;
 public abstract class SourceRow implements Serializable {
 
   /**
-   * Get the namespace of the database for the row.
+   * Get the reference to source schema.
    *
-   * @return namespace
+   * @return sourceSchemaReference
    */
-  public abstract String namespace();
-
-  /**
-   * Get the database name for the row. This is the logical database name for sharded setups.
-   *
-   * @return dbName
-   */
-  public abstract String dbName();
+  public abstract SourceSchemaReference sourceSchemaReference();
 
   /**
    * Get the tableSchemaUUID for easy lookup for the schemaMappingInterface.
@@ -121,10 +114,7 @@ public abstract class SourceRow implements Serializable {
   @AutoValue.Builder
   public abstract static class Builder {
     @SuppressWarnings("CheckReturnValue")
-    abstract Builder setNamespace(String value);
-
-    @SuppressWarnings("CheckReturnValue")
-    abstract Builder setDbName(String value);
+    abstract Builder setSourceSchemaReference(SourceSchemaReference value);
 
     @SuppressWarnings("CheckReturnValue")
     abstract Builder setTableSchemaUUID(String value);
@@ -156,8 +146,7 @@ public abstract class SourceRow implements Serializable {
         SourceTableSchema sourceTableSchema,
         String shardId,
         long readTimeMicros) {
-      this.setNamespace(sourceSchemaReference.namespace());
-      this.setDbName(sourceSchemaReference.dbName());
+      this.setSourceSchemaReference(sourceSchemaReference);
       this.setTableSchemaUUID(sourceTableSchema.tableSchemaUUID());
       this.setTableName(sourceTableSchema.tableName());
       this.setShardId(shardId);
