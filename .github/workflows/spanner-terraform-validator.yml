@@ -25,6 +25,14 @@ jobs:
       uses: dflook/terraform-fmt-check@v1
       with:
         path: v2/sourcedb-to-spanner/terraform/samples
+    - name: Verify Datastream-to-spanner Terraform Samples
+      uses: dflook/terraform-validate@v1
+      with:
+          path: v2/datastream-to-spanner/terraform/samples
+    - name: Verify sourcedb-to-spanner Terraform Samples
+      uses: dflook/terraform-validate@v1
+      with:
+        path: v2/sourcedb-to-spanner/terraform/samples
     - name: Verify Terraform sample structure
       id: find-samples
       run: |
