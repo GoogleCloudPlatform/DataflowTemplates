@@ -42,8 +42,8 @@ jobs:
           echo "Verifying sample: $SAMPLE"
           
           echo "Verifying terraform configuration..."
-          terraform init -chdir "$SAMPLE"
-          terraform validate "$SAMPLE" 
+          terraform -chdir "$SAMPLE" init
+          terraform -chdir "$SAMPLE" validate 
       
           for FILE in $FILE_LIST; do
             if [[ ! -f "$SAMPLE/$FILE" ]]; then
