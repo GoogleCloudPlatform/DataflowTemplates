@@ -1,0 +1,43 @@
+name: Verify Spanner Terraform files
+
+on:
+  pull_request:
+    branches:
+    - main  # Adjust the branch if needed
+    paths:
+    # Include spanner terraform sample paths only
+    - '.github/workflows/spanner-terraform-validator.yml'
+    - 'v2/datastream-to-spanner/terraform/samples/**'
+    - 'v2/sourcedb-to-spanner/terraform/samples/**'
+
+jobs:
+  verify-structure:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Find Terraform Samples
+      id: find-samples
+      run: |
+        SAMPLES=$(find v2/datastream-to-spanner/terraform/samples v2/sourcedb-to-spanner/terraform/samples -type d -maxdepth 1)  # Replace with your directories
+        echo "SAMPLES=$SAMPLES" >> $GITHUB_OUTPUT
+
+    - name: Verify Sample Structure
+      run: |
+        for SAMPLE in ${{ steps.find-projects.outputs.SAMPLES }}; do
+          if [[ ! -d "SAMPLES" ]]; then
+            echo "Skipping non-directory: $SAMPLE"
+            continue
+          fi
+      
+          echo "Verifying sample: $SAMPLE"
+        
+          for FILE in main.tf outputs.tf variables.tf terraform.tf terraform.tfvars terraform_simple.tfvars; do
+            if [[ ! -f "$SAMPLE/$FILE" ]]; then
+              echo "ERROR: Missing file: $PROJECT/$FILE"
+              exit 1
+            fi
+          done
+        done
