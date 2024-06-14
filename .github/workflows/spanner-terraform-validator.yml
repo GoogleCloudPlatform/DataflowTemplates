@@ -38,6 +38,8 @@ jobs:
           echo "Skipping non-directory: $SAMPLE"
             continue
           fi
+          echo "Verifying terraform configuration..."
+          dflook/terraform-validate@v1 --path "$SAMPLE" 
         
           echo "Verifying sample: $SAMPLE"
         
