@@ -42,7 +42,7 @@ jobs:
           echo "Verifying sample: $SAMPLE"
           
           echo "Verifying terraform configuration..."
-          dflook/terraform-validate@v1 --path "$SAMPLE" 
+          terraform validate --path "$SAMPLE" 
       
           for FILE in $FILE_LIST; do
             if [[ ! -f "$SAMPLE/$FILE" ]]; then
