@@ -32,7 +32,7 @@
           }
         },
         "c5": {
-          "Name": "company_name_sp",
+          "Name": "company_name",
           "T": {
             "Name": "STRING",
             "Len": 100,
@@ -132,7 +132,7 @@
           }
         },
         "c14": {
-          "Name": "employee_address_sp",
+          "Name": "employee_address",
           "T": {
             "Name": "STRING",
             "Len": 100,
