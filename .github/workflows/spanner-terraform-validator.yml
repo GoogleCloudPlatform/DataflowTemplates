@@ -25,18 +25,10 @@ jobs:
       uses: dflook/terraform-fmt-check@v1
       with:
         path: ${{ matrix.terraform_paths }}
-    - name: Verify Datastream-to-spanner Terraform Samples
-      uses: dflook/terraform-validate@v1
-      with:
-          path: v2/datastream-to-spanner/terraform/samples
-    - name: Verify sourcedb-to-spanner Terraform Samples
-      uses: dflook/terraform-validate@v1
-      with:
-        path: v2/sourcedb-to-spanner/terraform/samples
     - name: Verify Terraform sample structure
       id: find-samples
       run: |
-        SAMPLES=$(find v2/datastream-to-spanner/terraform/samples v2/sourcedb-to-spanner/terraform/samples -mindepth 1 -maxdepth 1 -type d)
+        SAMPLES=$(find ${{ matrix.terraform_paths }} -mindepth 1 -maxdepth 1 -type d)
         echo "Identified sample directories:" $SAMPLES
         FILE_LIST=(main.tf outputs.tf variables.tf terraform.tf terraform.tfvars terraform_simple.tfvars README.md)
         FAILED_SAMPLES=()
