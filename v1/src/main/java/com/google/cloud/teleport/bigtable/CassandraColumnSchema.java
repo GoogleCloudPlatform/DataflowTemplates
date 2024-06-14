@@ -130,7 +130,7 @@ class CassandraColumnSchema {
       String keyspace, String table, List<String> primaryKeyColumns, List<String> regularColumns) {
 
     Select query =
-        selectFrom(String.format("\"%s\"", keyspace), String.format("\"%s\"", table))
+        selectFrom(keyspace, table)
             .columns(primaryKeyColumns)
             .columns(regularColumns);
 
