@@ -1,42 +1,31 @@
-## Sample Scenario: MySQL to Spanner using MySQL source configuration
+## Sample Scenario: MySQL to Spanner using pre-configured connection profiles
 
 > **_SCENARIO:_** This Terraform example illustrates launching a live migration job
 > for a MySQL
-> source, setting up all the required cloud infrastructure. Only the source
-> details are needed as input.
+> source, **given pre-created Datastream source and target connection profiles**.
+> As a
+> result, it does not create any new buckets in the GCP account.
 
 It takes the following assumptions -
 
 1. `Service account`/`User account` being used to run Terraform has permissions
-   to create and
-   destroy -
-    1. Datastream connection profiles
-    2. Datastream streams
-    3. GCS buckets
-    4. Pubsub topics
-    5. Pubsub subscriptions
-    6. Dataflow jobs
-2. MySQL source has whitelisted Datastream public IPs for access via
-   the [IP Whitelisting guide](https://cloud.google.com/datastream/docs/network-connectivity-options#ipallowlists).
-3. MySQL source has been configured to be read by Datastream by following
-   the [configure your source MySQL guide](https://cloud.google.com/datastream/docs/configure-your-source-mysql-database).
-4. Service account used to run Dataflow has permissions to write to Spanner, in
+   to create and destroy -
+    1. Datastream streams
+    2. Pubsub topics
+    3. Pubsub subscriptions
+    4. Dataflow jobs
+2. Service account used to run Dataflow has permissions to write to Spanner, in
    addition
    to [other required permissions](https://cloud.google.com/dataflow/docs/concepts/security-and-permissions).
 
 Given these assumptions, it uses a supplied source database connection
 configuration and creates the following resources -
 
-1. **Source datastream connection profile** - This allows Datastream to connect
-   to the MySQL instance (using IP whitelisting).
-2. **GCS bucket** - A GCS bucket to for Datastream to write the source data to.
-3. **Target datastream connection profile** - The connection profile to
-   configure the created bucket in Datastream.
-4. **Pubsub topic and subscription** - This contains GCS object notifications as
+1. **Pubsub topic and subscription** - This contains GCS object notifications as
    files are written to GCS for consumption by the Dataflow job.
-5. **Bucket notification** - Creates the GCS bucket notification which publish
+2. **Bucket notification** - Creates the GCS bucket notification which publish
    to the pubsub topic created.
-6. **Dataflow job** - The Dataflow job which reads from GCS and writes to
+3. **Dataflow job** - The Dataflow job which reads from GCS and writes to
    Spanner.
 
 ## Description
@@ -87,16 +76,16 @@ terraform apply --var-file=terraform_simple.tfvars
 This will launch the configured jobs and produce an output like below -
 
 ```shell
-Apply complete! Resources: 13 added, 0 changed, 0 destroyed.
+Apply complete! Resources: 10 added, 0 changed, 0 destroyed.
 
 Outputs:
 
 resource_ids = {
   "dataflow_job" = "2024-06-14_03_01_00-3421054840094926119"
-  "datastream_source_connection_profile" = "source-mysql-thorough-wombat"
+  "datastream_source_connection_profile" = "your-source-connection-profile-here"
   "datastream_stream" = "mysql-stream-thorough-wombat"
-  "datastream_target_connection_profile" = "target-gcs-thorough-wombat"
-  "gcs_bucket" = "live-migration-thorough-wombat"
+  "datastream_target_connection_profile" = "your-target-connection-profile-here"
+  "gcs_bucket" = "your-target-gcs-bucket-here"
   "pubsub_subscription" = "live-migration-thorough-wombat-sub"
   "pubsub_topic" = "live-migration-thorough-wombat"
 }
@@ -121,9 +110,3 @@ Once the jobs have finished running, you can clean up by running -
 ```shell
 terraform destroy
 ```
-
-#### Note on GCS buckets
-
-The GCS bucket that is created will be cleaned up during `terraform destroy`.
-If you want to exclude the GCS bucket from deletion due to any reason, you
-can exclude it from the state file using `terraform state rm` command.

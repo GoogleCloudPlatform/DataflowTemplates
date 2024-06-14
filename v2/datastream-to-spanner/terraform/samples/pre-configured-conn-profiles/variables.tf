@@ -9,14 +9,12 @@ variable "common_params" {
 variable "datastream_params" {
   description = "Parameters to setup Datastream"
   type        = object({
-    source_connection_profile_id  = optional(string, "source-mysql")
-    mysql_host                    = string
-    mysql_username                = string
-    mysql_password                = string
-    mysql_port                    = number
-    target_connection_profile_id  = optional(string, "target-gcs")
-    gcs_bucket_name               = optional(string, "live-migration")
-    gcs_root_path                 = optional(string, "/")
+    source_connection_profile_id  = string
+    target_connection_profile_id  = string
+    # Datastream does not expose a data source to read connection profile information
+    # so the bucket has to be explicitly added. This will be simplified in the
+    # future to only require the target_connection_profile_id
+    target_gcs_bucket_name        = string
     pubsub_topic_name             = optional(string, "live-migration")
     stream_id                     = optional(string, "mysql-stream")
     max_concurrent_cdc_tasks      = optional(number, 50)
