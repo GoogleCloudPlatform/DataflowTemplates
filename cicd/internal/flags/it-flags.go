@@ -32,6 +32,10 @@ var (
 	dPrivateConnectivity string
 	dReleaseMode         bool
 	dRetryFailures       string
+	dCloudProxyHost      string
+	dCloudProxyPort      string
+	dCloudProxyPassword  string
+	dOracleInstance      string
 )
 
 // Registers all common flags. Must be called before flag.Parse().
@@ -44,6 +48,10 @@ func RegisterItFlags() {
 	flag.StringVar(&dPrivateConnectivity, "it-private-connectivity", "", "(optional) A GCP private connectivity endpoint")
 	flag.BoolVar(&dReleaseMode, "it-release", false, "(optional) Set if tests are being executed for a release")
 	flag.StringVar(&dRetryFailures, "it-retry-failures", "0", "Number of retries attempts for failing tests")
+	flag.StringVar(&dCloudProxyHost, "it-cloud-proxy-host", "10.128.0.34", "Hostname or IP address of static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxyPort, "it-cloud-proxy-port", "33134", "Port number of static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxyPassword, "it-cloud-proxy-password", "t>5xl%J(&qTK6?FaZ", "Password of static Cloud Auth Proxy")
+	flag.StringVar(&dOracleInstance, "it-oracle-host", "10.128.0.90", "Hostname or IP address of static Oracle DB")
 }
 
 func Region() string {
@@ -96,4 +104,20 @@ func FailureMode() string {
 
 func RetryFailures() string {
 	return "-Dsurefire.rerunFailingTestsCount=" + dRetryFailures
+}
+
+func CloudProxyHost() string {
+	return "-DcloudProxyHost=" + dCloudProxyHost
+}
+
+func CloudProxyPort() string {
+	return "-DcloudProxyPort=" + dCloudProxyPort
+}
+
+func CloudProxyPassword() string {
+	return "-DcloudProxyPassword=" + dCloudProxyPassword
+}
+
+func StaticOracleInstance() string {
+	return "-DcloudOracleHost=" + dOracleInstance
 }
