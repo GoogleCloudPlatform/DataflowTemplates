@@ -1,15 +1,16 @@
 ## Sample Scenario: MySQL to Spanner using MySQL source configuration
 
-> **_SCENARIO:_** This Terraform example illustrates launching a live migration job
+> **_SCENARIO:_** This Terraform example illustrates launching a live migration
+> job
 > for a MySQL
 > source, setting up all the required cloud infrastructure. **Only the source
 > details are needed as input.**
 
 It takes the following assumptions -
 
-1. `Service account`/`User account` being used to run Terraform has permissions
-   to create and
-   destroy -
+1. `Service account`/`User account` being used to run Terraform
+   has [permissions](https://cloud.google.com/iam/docs/manage-access-service-accounts#multiple-roles-console)
+   to create and destroy -
     1. Datastream connection profiles
     2. Datastream streams
     3. GCS buckets

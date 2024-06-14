@@ -1,14 +1,17 @@
 ## Sample Scenario: MySQL to Spanner using pre-configured connection profiles
 
-> **_SCENARIO:_** This Terraform example illustrates launching a live migration job
+> **_SCENARIO:_** This Terraform example illustrates launching a live migration
+> job
 > for a MySQL
-> source, **given pre-created Datastream source and target connection profiles**.
+> source, **given pre-created Datastream source and target connection profiles
+**.
 > As a
 > result, it does not create any new buckets in the GCP account.
 
 It takes the following assumptions -
 
-1. `Service account`/`User account` being used to run Terraform has permissions
+1. `Service account`/`User account` being used to run Terraform
+   has [permissions](https://cloud.google.com/iam/docs/manage-access-service-accounts#multiple-roles-console)
    to create and destroy -
     1. Datastream streams
     2. Pubsub topics
