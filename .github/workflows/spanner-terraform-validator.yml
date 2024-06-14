@@ -23,6 +23,7 @@ jobs:
       run: |
         SAMPLES=$(find v2/datastream-to-spanner/terraform/samples v2/sourcedb-to-spanner/terraform/samples -mindepth 1 -maxdepth 1 -type d)  # Replace with your directories
         echo "SAMPLES=$SAMPLES<<$EOF" >> $GITHUB_OUTPUT
+        echo $GITHUB_OUTPUT
 
     - name: Verify Sample Structure
       run: |
