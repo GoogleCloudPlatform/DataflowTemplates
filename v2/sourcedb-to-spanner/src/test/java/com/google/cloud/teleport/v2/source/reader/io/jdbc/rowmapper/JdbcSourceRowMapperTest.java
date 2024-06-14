@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -25,6 +26,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.exception.ValueMappingException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider.MysqlJdbcValueMappings;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.Interval;
@@ -122,8 +124,10 @@ public class JdbcSourceRowMapperTest {
                 sourceTableSchemaBuilder.addSourceColumnNameToSourceColumnType(
                     col.colName(), col.sourceColumnType()));
 
+    var sourceSchemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     JdbcSourceRowMapper mapper =
-        new JdbcSourceRowMapper(new MysqlJdbcValueMappings(), sourceTableSchemaBuilder.build());
+        new JdbcSourceRowMapper(
+            new MysqlJdbcValueMappings(), sourceSchemaRef, sourceTableSchemaBuilder.build());
 
     // Read Test Database and verify mapper.
     try (var statement = conn.createStatement()) {
@@ -132,6 +136,8 @@ public class JdbcSourceRowMapperTest {
       while (rs.next()) {
         valueIdx++;
         var sourceRow = mapper.mapRow(rs);
+        assertEquals(sourceSchemaRef, sourceRow.sourceSchemaReference());
+        assertEquals(testTable, sourceRow.tableName());
         for (int colIdx = 0; colIdx < testCols.size(); colIdx++) {
           if (valueIdx < maxNonNullValues) {
             assertThat(sourceRow.getPayload().get(colIdx))
@@ -158,9 +164,10 @@ public class JdbcSourceRowMapperTest {
             col ->
                 sourceTableSchemaBuilder.addSourceColumnNameToSourceColumnType(
                     col.colName(), col.sourceColumnType()));
-
+    var sourceSchemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     JdbcSourceRowMapper mapper =
-        new JdbcSourceRowMapper(new MysqlJdbcValueMappings(), sourceTableSchemaBuilder.build());
+        new JdbcSourceRowMapper(
+            new MysqlJdbcValueMappings(), sourceSchemaRef, sourceTableSchemaBuilder.build());
     ResultSet mockResultSet =
         Mockito.mock(
             ResultSet.class,
@@ -209,8 +216,9 @@ public class JdbcSourceRowMapperTest {
             .addSourceColumnNameToSourceColumnType(
                 "unsupported_col", new SourceColumnType("UNSUPPORTED", new Long[] {}, null))
             .build();
+    var sourceSchemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     JdbcSourceRowMapper mapper =
-        new JdbcSourceRowMapper(new MysqlJdbcValueMappings(), sourceTableSchema);
+        new JdbcSourceRowMapper(new MysqlJdbcValueMappings(), sourceSchemaRef, sourceTableSchema);
     assertThat(mapper.mapRow(mockResultSet).getPayload().get("unsupported_col")).isNull();
   }
 

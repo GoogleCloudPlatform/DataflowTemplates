@@ -75,7 +75,8 @@ public class ReaderTransformTestUtils implements Serializable {
                     .setSourceTableName(table.tableName())
                     .setSourceTableSchemaUUID(table.tableSchemaUUID())
                     .build(),
-                new TestTableReaderTransform(table, this.rowCountPerTable)));
+                new TestTableReaderTransform(
+                    this.sourceSchemaReference, table, this.rowCountPerTable)));
     return builder.build();
   }
 
@@ -89,7 +90,8 @@ public class ReaderTransformTestUtils implements Serializable {
                     .setSourceTableName(tableSchema.tableName())
                     .setSourceTableSchemaUUID(tableSchema.tableSchemaUUID())
                     .build(),
-                new TestTableReaderTransform(tableSchema, this.rowCountPerTable)));
+                new TestTableReaderTransform(
+                    this.sourceSchemaReference, tableSchema, this.rowCountPerTable)));
     return builder.build();
   }
 
@@ -98,10 +100,16 @@ public class ReaderTransformTestUtils implements Serializable {
   }
 
   class TestTableReaderTransform extends PTransform<PBegin, PCollection<SourceRow>> {
+    SourceSchemaReference sourceSchemaReference;
+
     SourceTableSchema sourceTableSchema;
     long rowCount;
 
-    TestTableReaderTransform(SourceTableSchema sourceTableSchema, long rowCount) {
+    TestTableReaderTransform(
+        SourceSchemaReference sourceSchemaReference,
+        SourceTableSchema sourceTableSchema,
+        long rowCount) {
+      this.sourceSchemaReference = sourceSchemaReference;
       this.sourceTableSchema = sourceTableSchema;
       this.rowCount = rowCount;
     }
@@ -112,7 +120,7 @@ public class ReaderTransformTestUtils implements Serializable {
       ArrayList<SourceRow> sourceRows = new ArrayList<>();
       for (int i = 0; i < this.rowCount; i++) {
         sourceRows.add(
-            SourceRow.builder(this.sourceTableSchema, null, testTime())
+            SourceRow.builder(this.sourceSchemaReference, this.sourceTableSchema, null, testTime())
                 .setField("firstName", UUID.randomUUID().toString())
                 .setField("lastName", UUID.randomUUID().toString())
                 .build());
