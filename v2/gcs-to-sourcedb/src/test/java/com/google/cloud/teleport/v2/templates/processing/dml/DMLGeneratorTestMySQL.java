@@ -35,7 +35,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
-public final class DMLGeneratorTest {
+public final class DMLGeneratorTestMySQL {
 
   @Test
   public void tableAndAllColumnNameTypesMatch() {
@@ -46,12 +46,12 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
-
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
@@ -69,12 +69,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
@@ -92,12 +93,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES ('999',222,'ll') ON DUPLICATE"
             + " KEY UPDATE  FirstName = 222, LastName = 'll'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
@@ -116,12 +118,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
@@ -141,12 +144,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
@@ -164,10 +168,11 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SomeRandomName\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql = "";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
@@ -185,11 +190,12 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql = "";
     String sql =
         sql =
-            DMLGenerator.getDMLStatement(
+            dmlGenerator.getDMLStatement(
                 modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
@@ -207,13 +213,14 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,Bday) VALUES (999,"
             + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')) ON DUPLICATE KEY"
             + " UPDATE  Bday =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+10:00");
 
     // workaround comparison to bypass TAP flaky behavior
@@ -231,12 +238,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"FirstName\":\"kk\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
@@ -269,6 +277,7 @@ public final class DMLGeneratorTest {
     String newValueJsonStr = chrec.getMods().get(0).getNewValuesJson();
     JSONObject newValuesJson = new JSONObject(newValueJsonStr);
     JSONObject keyValuesJson = new JSONObject(keysJsonStr);
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO"
@@ -289,7 +298,7 @@ public final class DMLGeneratorTest {
             + " date_column = '2023-05-18', double_column = 42.42, smallint_column = 22,"
             + " varchar_column = 'abc'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // Note that this fails in critique since the column order is not predictable
@@ -308,12 +317,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',NULL) ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'kk', LastName = NULL";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
@@ -331,10 +341,11 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\",\"FirstName\":\"kk\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "DELETE";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql = "DELETE FROM Singers WHERE  FirstName = 'kk' AND  SingerId = 999";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
@@ -352,12 +363,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'k''k','ll') ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'k''k', LastName = 'll'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
@@ -379,6 +391,7 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"id\":\"12\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO"
@@ -386,7 +399,7 @@ public final class DMLGeneratorTest {
             + " VALUES (12,'''','''')"
             + " ON DUPLICATE KEY UPDATE  varchar_column = '''', blob_column = ''''";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // Note that this fails in critique since the column order is not predictable
@@ -410,6 +423,7 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"id\":\"12\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO"
@@ -417,7 +431,7 @@ public final class DMLGeneratorTest {
             + " VALUES (12,'''''','''''')"
             + " ON DUPLICATE KEY UPDATE  varchar_column = '''''', blob_column = ''''''";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // Note that this fails in critique since the column order is not predictable
@@ -441,6 +455,7 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"id\":\"12\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO"
@@ -448,7 +463,7 @@ public final class DMLGeneratorTest {
             + " VALUES (12,'\\\\''','\\\\''')"
             + " ON DUPLICATE KEY UPDATE  varchar_column = '\\\\''', blob_column = '\\\\'''";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // Note that this fails in critique since the column order is not predictable
@@ -473,12 +488,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"id\":\"12\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\t','\t'"
             + ") ON DUPLICATE KEY UPDATE  varchar_column = '\t', blob_column = '\t'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // Note that this fails in critique since the column order is not predictable
@@ -503,12 +519,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"id\":\"12\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\b','\b'"
             + ") ON DUPLICATE KEY UPDATE  varchar_column = '\b', blob_column = '\b'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // Note that this fails in critique since the column order is not predictable
@@ -533,12 +550,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"id\":\"12\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\n','\n'"
             + ") ON DUPLICATE KEY UPDATE  varchar_column = '\n', blob_column = '\n'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // Note that this fails in critique since the column order is not predictable
@@ -563,12 +581,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"id\":\"12\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\r','\r'"
             + ") ON DUPLICATE KEY UPDATE  varchar_column = '\r', blob_column = '\r'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // Note that this fails in critique since the column order is not predictable
@@ -593,12 +612,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"id\":\"12\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\f','\f'"
             + ") ON DUPLICATE KEY UPDATE  varchar_column = '\f', blob_column = '\f'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // Note that this fails in critique since the column order is not predictable
@@ -623,12 +643,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"id\":\"12\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\"','\"'"
             + ") ON DUPLICATE KEY UPDATE  varchar_column = '\"', blob_column = '\"'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // Note that this fails in critique since the column order is not predictable
@@ -653,12 +674,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"id\":\"12\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\\\\','\\\\'"
             + ") ON DUPLICATE KEY UPDATE  varchar_column = '\\\\', blob_column = '\\\\'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // Note that this fails in critique since the column order is not predictable
@@ -677,12 +699,13 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
+    DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator("mysql");
 
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',X'62696c5f636f6c') ON"
             + " DUPLICATE KEY UPDATE  FirstName = 'kk', LastName = X'62696c5f636f6c'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior

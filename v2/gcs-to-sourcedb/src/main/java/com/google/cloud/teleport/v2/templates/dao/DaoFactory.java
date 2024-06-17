@@ -15,25 +15,50 @@
  */
 package com.google.cloud.teleport.v2.templates.dao;
 
+import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /** DaoFactory, currently only supports MySql. */
 public class DaoFactory {
-  private String sqlUrl = "";
-  private String sqlUser = "";
-  private String sqlPasswd = "";
 
-  private MySqlDao mySqlDao;
+  private static final Logger LOG = LoggerFactory.getLogger(DaoFactory.class);
 
-  public DaoFactory(String sqlUrl, String sqlUser, String sqlPasswd) {
-    this.sqlUrl = sqlUrl;
-    this.sqlUser = sqlUser;
-    this.sqlPasswd = sqlPasswd;
-  }
+  public static BaseDao getDao(ProcessingContext taskContext) throws IllegalArgumentException {
 
-  public MySqlDao getMySqlDao(String shardId) {
-    if (this.mySqlDao != null) {
-      return this.mySqlDao;
+    LOG.info(String.format("Getting the %s DAO", taskContext.getSourceDbType()));
+
+    if ("mysql".equals(taskContext.getSourceDbType())) {
+      String sqlUrl =
+          "jdbc:mysql://"
+              + taskContext.getShard().getHost()
+              + ":"
+              + taskContext.getShard().getPort()
+              + "/"
+              + taskContext.getShard().getDbName();
+      return new MySQLDao(
+          sqlUrl,
+          taskContext.getShard().getUserName(),
+          taskContext.getShard().getPassword(),
+          taskContext.getShard().getLogicalShardId(),
+          "");
+    } else if ("postgresql".equals(taskContext.getSourceDbType())) {
+      String sqlUrl =
+          "jdbc:postgresql://"
+              + taskContext.getShard().getHost()
+              + ":"
+              + taskContext.getShard().getPort()
+              + "/"
+              + taskContext.getShard().getDbName();
+      return new PostgreSQLDao(
+          sqlUrl,
+          taskContext.getShard().getUserName(),
+          taskContext.getShard().getPassword(),
+          taskContext.getShard().getLogicalShardId(),
+          "");
+    } else {
+      throw new IllegalArgumentException(
+          String.format("No DAO found for source type %s", taskContext.getSourceDbType()));
     }
-    this.mySqlDao = new MySqlDao(this.sqlUrl, this.sqlUser, this.sqlPasswd, shardId);
-    return this.mySqlDao;
   }
 }

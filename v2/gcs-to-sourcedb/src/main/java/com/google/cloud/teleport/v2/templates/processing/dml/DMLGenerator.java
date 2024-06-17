@@ -34,10 +34,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Creates DML statements. */
-public class DMLGenerator {
+public abstract class DMLGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(DMLGenerator.class);
 
-  public static String getDMLStatement(
+  abstract String getUpsertStatement(
+      String tableName,
+      Set<String> primaryKeys,
+      Map<String, String> columnNameValues,
+      Map<String, String> pkcolumnNameValues);
+
+  abstract String getDeleteStatement(String tableName, Map<String, String> pkcolumnNameValues);
+
+  abstract String getColumnValueByType(
+      String columnType, String colValue, String sourceDbTimezoneOffset);
+
+  public String getDMLStatement(
       String modType,
       String spannerTableName,
       Schema schema,
@@ -111,87 +122,7 @@ public class DMLGenerator {
     }
   }
 
-  private static String getUpsertStatement(
-      String tableName,
-      Set<String> primaryKeys,
-      Map<String, String> columnNameValues,
-      Map<String, String> pkcolumnNameValues) {
-
-    String allColumns = "";
-    String allValues = "";
-    String updateValues = "";
-
-    for (Map.Entry<String, String> entry : pkcolumnNameValues.entrySet()) {
-      String colName = entry.getKey();
-      String colValue = entry.getValue();
-
-      allColumns += colName + ",";
-      allValues += colValue + ",";
-    }
-
-    if (columnNameValues.size() == 0) { // if there are only PKs
-      // trim the last ','
-      allColumns = allColumns.substring(0, allColumns.length() - 1);
-      allValues = allValues.substring(0, allValues.length() - 1);
-
-      String returnVal =
-          "INSERT INTO " + tableName + "(" + allColumns + ")" + " VALUES (" + allValues + ") ";
-      return returnVal;
-    }
-    int index = 0;
-
-    for (Map.Entry<String, String> entry : columnNameValues.entrySet()) {
-      String colName = entry.getKey();
-      String colValue = entry.getValue();
-      allColumns += colName;
-      allValues += colValue;
-      if (!primaryKeys.contains(colName)) {
-        updateValues += " " + colName + " = " + colValue;
-      }
-
-      if (index + 1 < columnNameValues.size()) {
-        allColumns += ",";
-        allValues += ",";
-        updateValues += ",";
-      }
-      index++;
-    }
-    String returnVal =
-        "INSERT INTO "
-            + tableName
-            + "("
-            + allColumns
-            + ")"
-            + " VALUES ("
-            + allValues
-            + ") "
-            + "ON DUPLICATE KEY UPDATE "
-            + updateValues;
-
-    return returnVal;
-  }
-
-  private static String getDeleteStatement(
-      String tableName, Map<String, String> pkcolumnNameValues) {
-    String deleteValues = "";
-
-    int index = 0;
-    for (Map.Entry<String, String> entry : pkcolumnNameValues.entrySet()) {
-      String colName = entry.getKey();
-      String colValue = entry.getValue();
-
-      deleteValues += " " + colName + " = " + colValue;
-      if (index + 1 < pkcolumnNameValues.size()) {
-        deleteValues += " AND ";
-      }
-      index++;
-    }
-    String returnVal = "DELETE FROM " + tableName + " WHERE " + deleteValues;
-
-    return returnVal;
-  }
-
-  private static Map<String, String> getColumnValues(
+  Map<String, String> getColumnValues(
       SpannerTable spannerTable,
       SourceTable sourceTable,
       JSONObject newValuesJson,
@@ -256,7 +187,7 @@ public class DMLGenerator {
     return response;
   }
 
-  private static Map<String, String> getPkColumnValues(
+  Map<String, String> getPkColumnValues(
       SpannerTable spannerTable,
       SourceTable sourceTable,
       JSONObject newValuesJson,
@@ -318,7 +249,7 @@ public class DMLGenerator {
     return response;
   }
 
-  private static String getMappedColumnValue(
+  String getMappedColumnValue(
       SpannerColumnDefinition spannerColDef,
       SourceColumnDefinition sourceColDef,
       JSONObject valuesJson,
@@ -359,74 +290,21 @@ public class DMLGenerator {
     return response;
   }
 
-  private static String getColumnValueByType(
-      String columnType, String colValue, String sourceDbTimezoneOffset) {
-    String response = "";
-    String cleanedNullBytes = "";
-    String decodedString = "";
-    switch (columnType) {
-      case "varchar":
-      case "char":
-      case "text":
-      case "tinytext":
-      case "mediumtext":
-      case "longtext":
-      case "enum":
-      case "date":
-      case "time":
-      case "year":
-      case "set":
-      case "json":
-      case "geometry":
-      case "geometrycollection":
-      case "point":
-      case "multipoint":
-      case "linestring":
-      case "multilinestring":
-      case "polygon":
-      case "multipolygon":
-      case "tinyblob":
-      case "mediumblob":
-      case "blob":
-      case "longblob":
-        response = getQuotedEscapedString(colValue);
-        break;
-      case "timestamp":
-      case "datetime":
-        colValue = colValue.substring(0, colValue.length() - 1); // trim the Z for mysql
-        response =
-            " CONVERT_TZ("
-                + getQuotedEscapedString(colValue)
-                + ",'+00:00','"
-                + sourceDbTimezoneOffset
-                + "')";
-
-        break;
-      case "binary":
-      case "varbinary":
-      case "bit":
-        response = getHexString(colValue);
-        break;
-      default:
-        response = colValue;
-    }
-    return response;
-  }
-
-  private static String escapeString(String input) {
+  String escapeString(String input) {
     String cleanedNullBytes = StringUtils.replace(input, "\u0000", "");
     cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "'", "''");
     cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "\\", "\\\\");
+
     return cleanedNullBytes;
   }
 
-  private static String getQuotedEscapedString(String input) {
+  String getQuotedEscapedString(String input) {
     String cleanedString = escapeString(input);
     String response = "\'" + cleanedString + "\'";
     return response;
   }
 
-  private static String getHexString(String input) {
+  String getHexString(String input) {
     String cleanedString = escapeString(input);
     String hexString = Hex.encodeHexString(cleanedString.getBytes());
     String response = "X\'" + hexString + "\'";

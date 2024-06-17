@@ -19,8 +19,8 @@ import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.common.ShardProgress;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.dao.BaseDao;
 import com.google.cloud.teleport.v2.templates.dao.DaoFactory;
-import com.google.cloud.teleport.v2.templates.dao.MySqlDao;
 import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
 import com.google.cloud.teleport.v2.templates.utils.GCSReader;
 import com.google.cloud.teleport.v2.templates.utils.ShardProgressTracker;
@@ -35,6 +35,8 @@ import org.slf4j.LoggerFactory;
 public class GCSToSourceStreamingHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSToSourceStreamingHandler.class);
+
+  // TODO check if constructor is required to initialize ProcessingContext
 
   public static String process(ProcessingContext taskContext, SpannerDao spannerDao) {
     String shardId = taskContext.getShard().getLogicalShardId();
@@ -60,23 +62,15 @@ public class GCSToSourceStreamingHandler {
         return fileProcessedStartInterval;
       }
 
-      String connectString =
-          "jdbc:mysql://"
-              + taskContext.getShard().getHost()
-              + ":"
-              + taskContext.getShard().getPort()
-              + "/"
-              + taskContext.getShard().getDbName();
-
-      MySqlDao dao =
-          new DaoFactory(
-                  connectString,
-                  taskContext.getShard().getUserName(),
-                  taskContext.getShard().getPassword())
-              .getMySqlDao(shardId);
+      BaseDao dao = DaoFactory.getDao(taskContext);
 
       InputRecordProcessor.processRecords(
-          records, taskContext.getSchema(), dao, shardId, taskContext.getSourceDbTimezoneOffset());
+          taskContext.getSourceDbType(),
+          records,
+          taskContext.getSchema(),
+          dao,
+          shardId,
+          taskContext.getSourceDbTimezoneOffset());
       markShardSuccess(taskContext, spannerDao, fileProcessedStartInterval);
       dao.cleanup();
       LOG.info(
@@ -84,6 +78,7 @@ public class GCSToSourceStreamingHandler {
     } catch (Exception e) {
       Metrics.counter(GCSToSourceStreamingHandler.class, "shard_failed_" + shardId).inc();
       markShardFailure(taskContext, spannerDao, fileProcessedStartInterval);
+      Metrics.counter(GCSToSourceStreamingHandler.class, "shard_failed_" + shardId).inc();
       throw new RuntimeException("Failure when processing records", e);
     }
     return fileProcessedStartInterval;
@@ -105,6 +100,7 @@ public class GCSToSourceStreamingHandler {
       String fileProcessedStartInterval) {
     ShardProgressTracker shardProgressTracker =
         new ShardProgressTracker(spannerDao, taskContext.getRunId());
+    String fileStartTime = taskContext.getStartTimestamp();
     com.google.cloud.Timestamp startTs = null;
     startTs = com.google.cloud.Timestamp.parseTimestamp(fileProcessedStartInterval);
 
