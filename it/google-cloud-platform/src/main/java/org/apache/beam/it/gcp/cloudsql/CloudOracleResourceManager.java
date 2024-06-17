@@ -36,11 +36,16 @@ public class CloudOracleResourceManager extends CloudSqlResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(CloudOracleResourceManager.class);
 
+  private static final String DEFAULT_SYSTEM_IDENTIFIER = "xe";
+
   private static final int DEFAULT_ORACLE_PORT = 1521;
 
-  private CloudOracleResourceManager(Builder builder) {
+  private String systemIdentifier;
+
+  protected CloudOracleResourceManager(Builder builder) {
     super(builder);
 
+    this.systemIdentifier = builder.systemIdentifier;
     System.setProperty("oracle.jdbc.timezoneAsRegion", "false");
   }
 
@@ -65,27 +70,65 @@ public class CloudOracleResourceManager extends CloudSqlResourceManager {
     return "SELECT * FROM " + tableName + " WHERE ROWNUM <= 1";
   }
 
+  /**
+   * Return the SID of the connected DB.
+   *
+   * @return the SID.
+   */
+  public String getSystemIdentifier() {
+    return this.systemIdentifier;
+  }
+
   /** Builder for {@link CloudOracleResourceManager}. */
   public static final class Builder extends CloudSqlResourceManager.Builder {
+
+    private String systemIdentifier;
 
     public Builder(String testId) {
       super(testId);
 
-      this.setDatabaseName("xe");
-      this.setPort(DEFAULT_ORACLE_PORT);
-
-      // Currently only supports static Oracle instance on GCE
-      this.maybeUseStaticInstance();
+      this.setSystemIdentifier(DEFAULT_SYSTEM_IDENTIFIER);
+      this.setDatabaseName(this.systemIdentifier);
     }
 
-    public Builder maybeUseStaticInstance() {
+    @Override
+    protected void configureHost() {
       if (System.getProperty("cloudOracleHost") != null) {
         this.setHost(System.getProperty("cloudOracleHost"));
       } else {
         LOG.warn("Missing -DcloudOracleHost.");
       }
-      this.useStaticContainer();
+    }
 
+    @Override
+    protected void configurePort() {
+      if (System.getProperty("cloudOraclePort") != null) {
+        this.setPort(Integer.parseInt(System.getProperty("cloudOraclePort")));
+      } else {
+        this.setPort(DEFAULT_ORACLE_PORT);
+      }
+    }
+
+    @Override
+    protected void configureUsername() {
+      if (System.getProperty("cloudOracleUsername") != null) {
+        this.setUsername(System.getProperty("cloudOracleUsername"));
+      } else {
+        super.configureUsername();
+      }
+    }
+
+    @Override
+    protected void configurePassword() {
+      if (System.getProperty("cloudOraclePassword") != null) {
+        this.setPassword(System.getProperty("cloudOraclePassword"));
+      } else {
+        super.configurePassword();
+      }
+    }
+
+    public Builder setSystemIdentifier(String systemIdentifier) {
+      this.systemIdentifier = systemIdentifier;
       return this;
     }
 
