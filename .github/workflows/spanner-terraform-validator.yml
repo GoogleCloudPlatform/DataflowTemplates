@@ -16,7 +16,6 @@ jobs:
     strategy:
       matrix:
         terraform_paths:
-          - v2/datastream-to-spanner/terraform/samples
           - v2/sourcedb-to-spanner/terraform/samples
     steps:
     - name: Checkout Code
