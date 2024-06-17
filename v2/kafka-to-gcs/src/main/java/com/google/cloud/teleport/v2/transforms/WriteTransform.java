@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaConfig;
 import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters.MessageFormatConstants;
 import com.google.cloud.teleport.v2.templates.KafkaToGcsFlex;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
@@ -58,6 +59,7 @@ public abstract class WriteTransform
                   .setNumShards(options().getNumShards())
                   .setMessageFormat(options().getMessageFormat())
                   .setSchemaRegistryURL(options().getSchemaRegistryConnectionUrl())
+                  .setSchemaRegistrySslConfig(KafkaConfig.fromSchemaRegistryOptions(options()))
                   .setConfluentSchemaPath(options().getConfluentAvroSchemaPath())
                   .setBinaryAvroSchemaPath(options().getBinaryAvroSchemaPath())
                   .setSchemaFormat(options().getSchemaFormat())

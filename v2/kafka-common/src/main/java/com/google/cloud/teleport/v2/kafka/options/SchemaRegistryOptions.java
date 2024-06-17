@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.kafka.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters.MessageFormatConstants;
 import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters.SchemaFormat;
 import org.apache.beam.sdk.options.Default;
@@ -103,4 +104,88 @@ public interface SchemaRegistryOptions extends PipelineOptions {
   String getBinaryAvroSchemaPath();
 
   void setBinaryAvroSchemaPath(String schemaPath);
+
+  @TemplateParameter.Enum(
+      order = 6,
+      name = "schemaRegistryAuthenticationMode",
+      groupName = "Source",
+      parentName = "schemaFormat",
+      parentTriggerValues = {SchemaFormat.SCHEMA_REGISTRY},
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.TLS),
+      },
+      optional = true,
+      description = "Authentication Mode",
+      helpText = "Schema Registry authentication mode. Can be NONE or TLS.")
+  @Default.String(KafkaAuthenticationMethod.NONE)
+  String getSchemaRegistryAuthenticationMode();
+
+  void setSchemaRegistryAuthenticationMode(String value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 7,
+      parentName = "schemaRegistryAuthenticationMode",
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
+      optional = true,
+      description = "Truststore File Location",
+      helpText =
+          "Location of the SSL certificate where the trust store for authentication to Schema Registry are stored.",
+      example = "/your-bucket/truststore.jks")
+  String getSchemaRegistryTruststoreLocation();
+
+  void setSchemaRegistryTruststoreLocation(String truststoreLocation);
+
+  @TemplateParameter.Text(
+      order = 8,
+      parentName = "schemaRegistryAuthenticationMode",
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
+      optional = true,
+      description = "Truststore Password",
+      helpText =
+          "SecretId in secret manager where the password to access secret in truststore is stored.",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+  String getSchemaRegistryTruststorePasswordSecretId();
+
+  void setSchemaRegistryTruststorePasswordSecretId(String truststorePasswordSecretId);
+
+  @TemplateParameter.GcsReadFile(
+      order = 9,
+      parentName = "schemaRegistryAuthenticationMode",
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
+      optional = true,
+      description = "Keystore File Location",
+      helpText = "Keystore location that contains the SSL certificate and private key.",
+      example = "/your-bucket/keystore.jks")
+  String getSchemaRegistryKeystoreLocation();
+
+  void setSchemaRegistryKeystoreLocation(String keystoreLocation);
+
+  @TemplateParameter.Text(
+      order = 10,
+      parentName = "schemaRegistryAuthenticationMode",
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
+      optional = true,
+      description = "Keystore Password",
+      helpText = "SecretId in secret manager where the password to access the keystore file",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+  String getSchemaRegistryKeystorePasswordSecretId();
+
+  void setSchemaRegistryKeystorePasswordSecretId(String keystorePasswordSecretId);
+
+  @TemplateParameter.Text(
+      order = 11,
+      parentName = "schemaRegistryAuthenticationMode",
+      parentTriggerValues = {KafkaAuthenticationMethod.TLS},
+      optional = true,
+      description = "Private Key Password",
+      helpText =
+          "SecretId of password required to access the client's private key stored within the keystore",
+      example =
+          "projects/your-project-number/secrets/your-secret-name/versions/your-secret-version")
+  String getSchemaRegistryKeyPasswordSecretId();
+
+  void setSchemaRegistryKeyPasswordSecretId(String keyPasswordSecretId);
 }
