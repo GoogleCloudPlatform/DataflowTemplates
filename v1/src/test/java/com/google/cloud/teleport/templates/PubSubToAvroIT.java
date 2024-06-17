@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -73,6 +74,16 @@ public class PubSubToAvroIT extends TemplateTestBase {
 
   @Test
   public void testTopicToAvro() throws IOException {
+    testTopicToAvroBase(Function.identity());
+  }
+
+  @Test
+  public void testTopicToAvroStreamingEngine() throws IOException {
+    testTopicToAvroBase(this::enableStreamingEngine);
+  }
+
+  private void testTopicToAvroBase(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException {
     // Arrange
     String name = testName;
     Pattern expectedFilePattern = Pattern.compile(".*topic-output-.*");
@@ -81,11 +92,12 @@ public class PubSubToAvroIT extends TemplateTestBase {
     // Act
     LaunchInfo info =
         launchTemplate(
-            LaunchConfig.builder(testName, specPath)
-                .addParameter("inputTopic", topic.toString())
-                .addParameter("outputDirectory", getGcsPath(testName))
-                .addParameter("avroTempDirectory", getGcsPath("avro_tmp"))
-                .addParameter("outputFilenamePrefix", "topic-output-"));
+            paramsAdder.apply(
+                LaunchConfig.builder(testName, specPath)
+                    .addParameter("inputTopic", topic.toString())
+                    .addParameter("outputDirectory", getGcsPath(testName))
+                    .addParameter("avroTempDirectory", getGcsPath("avro_tmp"))
+                    .addParameter("outputFilenamePrefix", "topic-output-")));
     assertThatPipeline(info).isRunning();
 
     ImmutableSet<String> messages =

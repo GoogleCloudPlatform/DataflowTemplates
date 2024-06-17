@@ -27,6 +27,7 @@ import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -65,6 +66,16 @@ public class TextToPubsubIT extends TemplateTestBase {
 
   @Test
   public void testTextToTopic() throws IOException {
+    testTextToTopicBase(Function.identity());
+  }
+
+  @Test
+  public void testTextToTopicStreamingEngine() throws IOException {
+    testTextToTopicBase(this::enableStreamingEngine);
+  }
+
+  private void testTextToTopicBase(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException {
     // Arrange
     Map<String, String> artifacts =
         Map.of(
@@ -82,9 +93,10 @@ public class TextToPubsubIT extends TemplateTestBase {
     SubscriptionName outputSubscription =
         pubsubResourceManager.createSubscription(outputTopic, "output-subscription");
     LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, specPath)
-            .addParameter("inputFilePattern", getInputFilePattern())
-            .addParameter("outputTopic", outputTopic.toString());
+        paramsAdder.apply(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("inputFilePattern", getInputFilePattern())
+                .addParameter("outputTopic", outputTopic.toString()));
 
     // Act
     LaunchInfo info = launchTemplate(options);
