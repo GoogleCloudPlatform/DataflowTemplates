@@ -1,0 +1,70 @@
+name: Spanner Terraform Validator
+
+on:
+  pull_request:
+    branches:
+    - main  # Adjust the branch if needed
+    paths:
+    # Include spanner terraform sample paths only
+    - '.github/workflows/spanner-terraform-validator.yml'
+    - 'v2/datastream-to-spanner/terraform/samples/**'
+    - 'v2/sourcedb-to-spanner/terraform/samples/**'
+
+jobs:
+  verify-terraform-samples:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        terraform_paths:
+          - v2/datastream-to-spanner/terraform/samples
+          - v2/sourcedb-to-spanner/terraform/samples
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+    - name: Verify Terraform formatting
+      uses: dflook/terraform-fmt-check@v1
+      with:
+        path: ${{ matrix.terraform_paths }}
+    - name: Verify Terraform template and required structure
+      id: find-samples
+      run: |
+        SAMPLES=$(find ${{ matrix.terraform_paths }} -mindepth 1 -maxdepth 1 -type d)
+        echo "Identified sample directories:" $SAMPLES
+        FILE_LIST=(main.tf outputs.tf variables.tf terraform.tf terraform.tfvars terraform_simple.tfvars README.md)
+        FAILED_SAMPLES=()
+        
+        for SAMPLE in $SAMPLES; do
+          if [[ ! -d "$SAMPLE" ]]; then
+          echo "Skipping non-directory: $SAMPLE"
+            continue
+          fi
+          
+          echo "Verifying sample: $SAMPLE"
+          
+          echo "Verifying terraform configuration..."
+          terraform -chdir="$SAMPLE" init
+          terraform -chdir="$SAMPLE" validate
+        
+          echo "Verifying sample structure..."
+          for FILE in $FILE_LIST; do
+            if [[ ! -f "$SAMPLE/$FILE" ]]; then
+              echo "ERROR: Missing file: $SAMPLE/$FILE"
+              FAILED_SAMPLES+=("$SAMPLE")
+              break
+            fi
+          done
+        
+          if [[ ! " ${FAILED_SAMPLES[*]} " =~ " ${SAMPLE} " ]]; then # Check if sample is in failed list
+            echo "Verified sample successfully: $SAMPLE"
+            echo "----------------------"
+          fi
+        done  
+        echo "Verification completed!"
+        if [[ ${#FAILED_SAMPLES[@]} -gt 0 ]]; then
+          echo "The following samples failed validation:"
+          for SAMPLE in "${FAILED_SAMPLES[@]}"; do
+            echo "- $SAMPLE"
+          done
+          exit 1  # Indicate failure if there were any failed samples
+        fi
+        echo "All samples validated successfully!"

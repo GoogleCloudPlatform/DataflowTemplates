@@ -1,6 +1,6 @@
 variable "common_params" {
   description = "Parameters which are common across jobs. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/README_Sourcedb_to_Spanner_Flex.md for the description of the parameters below."
-  type        = object({
+  type = object({
     on_delete                    = optional(string, "drain")
     project                      = string
     region                       = string
@@ -26,7 +26,7 @@ variable "common_params" {
 
 variable "jobs" {
   description = "List of job configurations. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/README_Sourcedb_to_Spanner_Flex.md for the description of the parameters below."
-  type        = list(object({
+  type = list(object({
     instanceId            = string
     databaseId            = string
     sourceDbURL           = string
