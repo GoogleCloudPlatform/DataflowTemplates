@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
@@ -42,9 +42,9 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
-import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
-import org.apache.beam.it.common.PipelineOperator.Result;
+import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
@@ -60,9 +60,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Integration test for {@link DLPTextToBigQueryStreaming} (Stream_DLP_GCS_Text_to_BigQuery_Flex).
- */
+/** Integration test for {@link DLPTextToBigQueryStreaming} (Stream_DLP_GCS_Text_to_BigQuery). */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(DLPTextToBigQueryStreaming.class)
 @RunWith(JUnit4.class)
@@ -90,22 +88,6 @@ public class DLPTextToBigQueryStreamingIT extends TemplateTestBase {
   }
 
   @Test
-  public void testDLPTextToBigQuery() throws IOException {
-    // Create a template to hash card number + CVV
-    DeidentifyTemplate deidentifyTemplate = createRecordTypeTemplate();
-
-    testDLPTextToBigQueryBase(
-        Function.identity(),
-        (record) -> {
-          assertThat((String) record.get("Card_Num")).isNotEqualTo("4111111111111111");
-          assertThat((String) record.get("CVVCVV2")).isNotEqualTo("360");
-          assertThat((String) record.get("Comments"))
-              .isEqualTo("Please change my number to 604-406-9050. Thanks");
-        },
-        deidentifyTemplate);
-  }
-
-  @Test
   public void testDLPTextToBigQueryInspect() throws IOException {
     // Create a template to hash card number + CVV
     DeidentifyTemplate deidentifyTemplate = createInfoTypeTemplate();
@@ -125,15 +107,12 @@ public class DLPTextToBigQueryStreamingIT extends TemplateTestBase {
   }
 
   @Test
-  public void testDLPTextToBigQueryWithStorageApi() throws IOException {
+  public void testDLPTextToBigQuery() throws IOException {
     // Create a template to hash card number + CVV
     DeidentifyTemplate deidentifyTemplate = createRecordTypeTemplate();
 
     testDLPTextToBigQueryBase(
-        b ->
-            b.addParameter("useStorageWriteApi", "true")
-                .addParameter("numStorageWriteApiStreams", "1")
-                .addParameter("storageWriteApiTriggeringFrequencySec", "5"),
+        Function.identity(),
         (record) -> {
           assertThat((String) record.get("Card_Num")).isNotEqualTo("4111111111111111");
           assertThat((String) record.get("CVVCVV2")).isNotEqualTo("360");
@@ -143,7 +122,7 @@ public class DLPTextToBigQueryStreamingIT extends TemplateTestBase {
         deidentifyTemplate);
   }
 
-  private void testDLPTextToBigQueryBase(
+  public void testDLPTextToBigQueryBase(
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder,
       Consumer<Map<String, Object>> recordAsserts,
       DeidentifyTemplate deidentifyTemplate)
@@ -152,7 +131,7 @@ public class DLPTextToBigQueryStreamingIT extends TemplateTestBase {
     String dataset = bigQueryClient.createDataset(REGION);
 
     // Act
-    LaunchInfo info =
+    PipelineLauncher.LaunchInfo info =
         launchTemplate(
             paramsAdder.apply(
                 LaunchConfig.builder(testName, specPath)
@@ -164,7 +143,7 @@ public class DLPTextToBigQueryStreamingIT extends TemplateTestBase {
     assertThatPipeline(info).isRunning();
 
     TableId targetTableId = TableId.of(PROJECT, dataset, "input");
-    Result result =
+    PipelineOperator.Result result =
         pipelineOperator()
             // drain doesn't seem to work with the TextIO GCS files watching that the template uses
             .waitForConditionAndCancel(
