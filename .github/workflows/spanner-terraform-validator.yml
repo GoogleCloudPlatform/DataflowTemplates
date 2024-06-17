@@ -45,15 +45,23 @@ jobs:
           terraform -chdir="$SAMPLE" validate
         
           echo "Verifying sample structure..."
-          for FILE in $FILE_LIST; do
+          MISSING_FILES=() # Initialize empty list for missing files in each sample
+          for FILE in ${FILE_LIST[@]}; do
             if [[ ! -f "$SAMPLE/$FILE" ]]; then
               echo "ERROR: Missing file: $SAMPLE/$FILE"
-              FAILED_SAMPLES+=("$SAMPLE")
-              break
+              MISSING_FILES+=("$FILE") # Add missing file to list
             fi
           done
         
-          if [[ ! " ${FAILED_SAMPLES[*]} " =~ " ${SAMPLE} " ]]; then # Check if sample is in failed list
+          if [[ ${#MISSING_FILES[@]} -gt 0 ]]; then # Check if there are any missing files
+            echo "Sample failed validation: $SAMPLE"
+            echo "Missing files:"
+            for FILE in "${MISSING_FILES[@]}"; do
+              echo "- $FILE"
+              done
+            FAILED_SAMPLES+=("$SAMPLE") # Add the sample to failed list
+            echo "----------------------"
+          else
             echo "Verified sample successfully: $SAMPLE"
             echo "----------------------"
           fi
