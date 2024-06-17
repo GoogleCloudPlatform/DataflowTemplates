@@ -49,7 +49,7 @@ public class GCSToSourceStreamingHandler {
       ProcessingContext taskContext,
       SpannerDao spannerDao,
       ISpannerMigrationTransformer spannerToSourceTransformer,
-      boolean writeFilteredEvents,
+      boolean writeFilteredEventsToGcs,
       Storage storage) {
     String shardId = taskContext.getShard().getLogicalShardId();
     GCSReader inputFileReader = new GCSReader(taskContext, spannerDao);
@@ -97,8 +97,8 @@ public class GCSToSourceStreamingHandler {
           spannerToSourceTransformer);
       List<TrimmedShardedDataChangeRecord> filteredEvents =
           InputRecordProcessor.getFilteredEvents();
-      if (writeFilteredEvents && !filteredEvents.isEmpty()) {
-        writeFilteredEvents(taskContext, storage, filteredEvents);
+      if (writeFilteredEventsToGcs && !filteredEvents.isEmpty()) {
+        writeFilteredEventsToGcs(taskContext, storage, filteredEvents);
       }
       markShardSuccess(taskContext, spannerDao, fileProcessedStartInterval);
       dao.cleanup();
@@ -112,7 +112,7 @@ public class GCSToSourceStreamingHandler {
     return fileProcessedStartInterval;
   }
 
-  private static void writeFilteredEvents(
+  private static void writeFilteredEventsToGcs(
       ProcessingContext taskContext,
       Storage storage,
       List<TrimmedShardedDataChangeRecord> filteredEvents) {

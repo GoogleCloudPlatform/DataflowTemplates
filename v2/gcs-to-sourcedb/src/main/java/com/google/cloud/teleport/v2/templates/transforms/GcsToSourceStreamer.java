@@ -60,7 +60,7 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
   private CustomTransformation customTransformation;
   private ISpannerMigrationTransformer spannerToSourceTransformer;
 
-  private boolean writeFilteredEvents;
+  private boolean writeFilteredEventsToGcs;
 
   private String projectId;
 
@@ -75,14 +75,14 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
       String tableSuffix,
       boolean isMetadataDbPostgres,
       CustomTransformation customTransformation,
-      boolean writeFilteredEvents,
+      boolean writeFilteredEventsToGcs,
       String projectId) {
     this.incrementIntervalInMilliSeconds = incrementIntervalInMilliSeconds;
     this.spannerConfig = spannerConfig;
     this.tableSuffix = tableSuffix;
     this.isMetadataDbPostgres = isMetadataDbPostgres;
     this.customTransformation = customTransformation;
-    this.writeFilteredEvents = writeFilteredEvents;
+    this.writeFilteredEventsToGcs = writeFilteredEventsToGcs;
     this.projectId = projectId;
   }
 
@@ -93,10 +93,12 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
     while (retry) {
       try {
         spannerDao = new SpannerDao(spannerConfig, tableSuffix, isMetadataDbPostgres);
-        storage = StorageOptions.newBuilder().setProjectId(projectId).build().getService();
+        if (writeFilteredEventsToGcs) {
+          storage = StorageOptions.newBuilder().setProjectId(projectId).build().getService();
+        }
         retry = false;
       } catch (SpannerException e) {
-        LOG.info("Exception in setup of AssignShardIdFn {}", e.getMessage());
+        LOG.info("Exception in setup of GcsToSourceStreamer {}", e.getMessage());
         if (e.getMessage().contains("RESOURCE_EXHAUSTED")) {
           try {
             Thread.sleep(10000);
@@ -193,7 +195,11 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
 
         String processedStartTs =
             GCSToSourceStreamingHandler.process(
-                taskContext, spannerDao, spannerToSourceTransformer, writeFilteredEvents, storage);
+                taskContext,
+                spannerDao,
+                spannerToSourceTransformer,
+                writeFilteredEventsToGcs,
+                storage);
         Instant nextTimer = Instant.now().plus(Duration.millis(incrementIntervalInMilliSeconds));
         com.google.cloud.Timestamp startTs =
             com.google.cloud.Timestamp.parseTimestamp(processedStartTs);

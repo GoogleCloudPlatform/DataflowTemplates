@@ -292,9 +292,9 @@ public class GCSToSourceDb {
         helpText =
             "This is a flag which if set to true will write filtered events from custom transformation to GCS.")
     @Default.Boolean(false)
-    Boolean getWriteFilteredEvents();
+    Boolean getWriteFilteredEventsToGcs();
 
-    void setWriteFilteredEvents(Boolean value);
+    void setWriteFilteredEventsToGcs(Boolean value);
   }
 
   /**
@@ -390,7 +390,7 @@ public class GCSToSourceDb {
                     tableSuffix,
                     isMetadataDbPostgres,
                     customTransformation,
-                    options.getWriteFilteredEvents(),
+                    options.getWriteFilteredEventsToGcs(),
                     options.getSpannerProjectId())));
 
     return pipeline.run();
