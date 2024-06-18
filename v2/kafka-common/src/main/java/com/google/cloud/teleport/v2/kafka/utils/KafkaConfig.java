@@ -133,6 +133,15 @@ public class KafkaConfig {
               + " password=\'"
               + SecretManagerUtils.getSecret(passwordSecretId)
               + "\';");
+    } else if (authMode.equals(KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS)) {
+      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
+      properties.put(SaslConfigs.SASL_MECHANISM, "OAUTHBEARER");
+      properties.put(
+          SaslConfigs.SASL_LOGIN_CALLBACK_HANDLER_CLASS,
+          "com.google.cloud.teleport.v2.kafka.auth.GcpLoginCallbackHandler");
+      properties.put(
+          SaslConfigs.SASL_JAAS_CONFIG,
+          "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;");
     } else {
       throw new RuntimeException("Authentication method not supported: " + authMode);
     }
