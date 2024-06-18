@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
@@ -37,7 +39,11 @@ public class SessionBasedMapperTest {
 
   SessionBasedMapper mapper;
 
+  SessionBasedMapper shardedMapper;
+
   Ddl ddl;
+
+  Ddl shardedDdl;
 
   @Before
   public void setup() throws IOException {
@@ -72,98 +78,49 @@ public class SessionBasedMapperTest {
             .endTable()
             .build();
 
+    shardedDdl =
+        Ddl.builder()
+            .createTable("new_cart")
+            .column("new_quantity")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("new_product_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .column("new_user_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .primaryKey()
+            .asc("new_user_id")
+            .asc("new_product_id")
+            .end()
+            .endTable()
+            .createTable("new_people")
+            .column("migration_shard_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .column("new_name")
+            .string()
+            .size(20)
+            .endColumn()
+            .primaryKey()
+            .asc("migration_shard_id")
+            .asc("new_name")
+            .end()
+            .endTable()
+            .build();
+
     String sessionFilePath =
         Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
             .toString();
     this.mapper = new SessionBasedMapper(sessionFilePath, ddl);
-  }
-
-  private static Schema getSchemaObject() {
-    // Add Synthetic PKs.
-    Map<String, SyntheticPKey> syntheticPKeys = getSyntheticPks();
-    // Add SrcSchema.
-    Map<String, SourceTable> srcSchema = getSampleSrcSchema();
-    // Add SpSchema.
-    Map<String, SpannerTable> spSchema = getSampleSpSchema();
-    Schema expectedSchema = new Schema(spSchema, syntheticPKeys, srcSchema);
-    expectedSchema.setToSpanner(new HashMap<String, NameAndCols>());
-    expectedSchema.setToSource(new HashMap<String, NameAndCols>());
-    expectedSchema.setSrcToID(new HashMap<String, NameAndCols>());
-    expectedSchema.setSpannerToID(new HashMap<String, NameAndCols>());
-    expectedSchema.generateMappings();
-    return expectedSchema;
-  }
-
-  private static Map<String, SyntheticPKey> getSyntheticPks() {
-    Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
-    syntheticPKeys.put("t2", new SyntheticPKey("c6", 0));
-    return syntheticPKeys;
-  }
-
-  private static Map<String, SourceTable> getSampleSrcSchema() {
-    Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
-    Map<String, SourceColumnDefinition> t1SrcColDefs =
-        new HashMap<String, SourceColumnDefinition>();
-    t1SrcColDefs.put(
-        "c1",
-        new SourceColumnDefinition(
-            "product_id", new SourceColumnType("varchar", new Long[] {20L}, null)));
-    t1SrcColDefs.put(
-        "c2", new SourceColumnDefinition("quantity", new SourceColumnType("bigint", null, null)));
-    t1SrcColDefs.put(
-        "c3",
-        new SourceColumnDefinition(
-            "user_id", new SourceColumnType("varchar", new Long[] {20L}, null)));
-    srcSchema.put(
-        "t1",
-        new SourceTable(
-            "cart",
-            "my_schema",
-            new String[] {"c3", "c1", "c2"},
-            t1SrcColDefs,
-            new ColumnPK[] {new ColumnPK("c3", 1), new ColumnPK("c1", 2)}));
-    Map<String, SourceColumnDefinition> t2SrcColDefs =
-        new HashMap<String, SourceColumnDefinition>();
-    t2SrcColDefs.put(
-        "c5",
-        new SourceColumnDefinition(
-            "name", new SourceColumnType("varchar", new Long[] {20L}, null)));
-    srcSchema.put(
-        "t2", new SourceTable("people", "my_schema", new String[] {"c5"}, t2SrcColDefs, null));
-    return srcSchema;
-  }
-
-  private static Map<String, SpannerTable> getSampleSpSchema() {
-    Map<String, SpannerTable> spSchema = new HashMap<String, SpannerTable>();
-    Map<String, SpannerColumnDefinition> t1SpColDefs =
-        new HashMap<String, SpannerColumnDefinition>();
-    t1SpColDefs.put(
-        "c2", new SpannerColumnDefinition("new_quantity", new SpannerColumnType("INT64", false)));
-    t1SpColDefs.put(
-        "c3", new SpannerColumnDefinition("new_user_id", new SpannerColumnType("STRING", false)));
-    spSchema.put(
-        "t1",
-        new SpannerTable(
-            "new_cart",
-            new String[] {"c2", "c3"},
-            t1SpColDefs,
-            new ColumnPK[] {new ColumnPK("c3", 1), new ColumnPK("c2", 2)},
-            ""));
-    Map<String, SpannerColumnDefinition> t2SpColDefs =
-        new HashMap<String, SpannerColumnDefinition>();
-    t2SpColDefs.put(
-        "c5", new SpannerColumnDefinition("new_name", new SpannerColumnType("STRING", false)));
-    t2SpColDefs.put(
-        "c6", new SpannerColumnDefinition("synth_id", new SpannerColumnType("INT64", false)));
-    spSchema.put(
-        "t2",
-        new SpannerTable(
-            "new_people",
-            new String[] {"c5", "c6"},
-            t2SpColDefs,
-            new ColumnPK[] {new ColumnPK("c6", 1)},
-            ""));
-    return spSchema;
+    String shardedSessionFilePath =
+        Paths.get(Resources.getResource("session-file-sharded.json").getPath()).toString();
+    this.shardedMapper = new SessionBasedMapper(shardedSessionFilePath, shardedDdl);
   }
 
   @Test
@@ -283,6 +240,27 @@ public class SessionBasedMapperTest {
     assertEquals(expectedColumns, result);
   }
 
+  @Test
+  public void testGetShardIdColumnName() {
+    String shardIdCol = shardedMapper.getShardIdColumnName("", "new_people");
+    assertEquals("migration_shard_id", shardIdCol);
+
+    assertThrows(
+        NoSuchElementException.class,
+        () -> shardedMapper.getShardIdColumnName("", "nonexistent_table"));
+
+    String shardedSessionFilePath =
+        Paths.get(Resources.getResource("session-file-sharded.json").getPath()).toString();
+    Schema erronousSchema = SessionFileReader.read(shardedSessionFilePath);
+    Map<String, NameAndCols> spanToId = erronousSchema.getSpannerToID();
+    spanToId.put("nonexistent_table", new NameAndCols(null, null));
+    erronousSchema.setSpannerToID(spanToId);
+    ISchemaMapper erronousMapper = new SessionBasedMapper(erronousSchema, shardedDdl);
+    assertThrows(
+        NullPointerException.class,
+        () -> erronousMapper.getShardIdColumnName("", "nonexistent_table"));
+  }
+
   @Test(expected = NoSuchElementException.class)
   public void testGetSpannerColumnsMissingTable() {
     String spannerTable = "WrongTableName";
@@ -314,5 +292,27 @@ public class SessionBasedMapperTest {
         SessionFileReader.read(
             Paths.get(Resources.getResource("session-file.json").getPath()).toString());
     SessionBasedMapper.validateSchemaAndDdl(schema, ddl);
+  }
+
+  @Test
+  public void testSourceTablesToMigrate() {
+    List<String> sourceTablesToMigrate = mapper.getSourceTablesToMigrate("");
+    assertTrue(sourceTablesToMigrate.contains("cart"));
+    assertTrue(sourceTablesToMigrate.contains("people"));
+    assertEquals(2, sourceTablesToMigrate.size());
+  }
+
+  @Test(expected = InputMismatchException.class)
+  public void testSourceTablesToMigrateEmpty() {
+    // Expected to fail as spanner tables mentioned in session file do not exist
+    SessionBasedMapper emptymapper =
+        new SessionBasedMapper(
+            Paths.get(Resources.getResource("session-file-empty.json").getPath()).toString(), ddl);
+    List<String> sourceTablesToMigrate = emptymapper.getSourceTablesToMigrate("");
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testSourceTablesToMigrateNamespace() {
+    mapper.getSourceTablesToMigrate("test");
   }
 }

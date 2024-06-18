@@ -1,0 +1,112 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.source.reader.io.schema;
+
+import com.google.auto.value.AutoValue;
+import com.google.common.base.Preconditions;
+
+@AutoValue
+/**
+ * Information About Source Column Indexes. Each index is identified with a unique Index Name. When
+ * a list of {@llink SourceColumnIndexInfo} is discovered, a composite index will have multiple
+ * columns associated with the same indexName with unique ordinal positions.
+ */
+public abstract class SourceColumnIndexInfo {
+
+  /**
+   * @return name of the column.
+   */
+  public abstract String columnName();
+
+  /**
+   * Whether this index is primary. Note: for primary index, the isUniqe will always be true, and
+   * index name will typically be "PRIMARY".
+   *
+   * @return true if the index is primary.
+   */
+  public abstract boolean isPrimary();
+
+  /**
+   * @return true if the index is unique.
+   */
+  public abstract boolean isUnique();
+
+  /**
+   * @return approximate cardinality of the index.
+   */
+  public abstract long cardinality();
+
+  /**
+   * @return ordinal position of {@link SourceColumnIndexInfo#columnName()} within the {@link
+   *     SourceColumnIndexInfo#indexName()}.
+   */
+  public abstract long ordinalPosition();
+
+  /**
+   * @return name of the index.
+   */
+  public abstract String indexName();
+
+  /**
+   * A general classification of this index column's data type for choosing right {@link
+   * org.apache.beam.sdk.values.TypeDescriptor} for {@link org.apache.beam.sdk.io.jdbc.JdbcIO}.
+   *
+   * @return index type.
+   */
+  public abstract IndexType indexType();
+
+  /**
+   * Builder for {@link SourceColumnIndexInfo}.
+   *
+   * @return builder.
+   */
+  public static Builder builder() {
+    return new AutoValue_SourceColumnIndexInfo.Builder();
+  }
+
+  @AutoValue.Builder
+  public abstract static class Builder {
+
+    public abstract Builder setColumnName(String value);
+
+    public abstract Builder setIsPrimary(boolean value);
+
+    public abstract Builder setIsUnique(boolean value);
+
+    public abstract Builder setCardinality(long value);
+
+    public abstract Builder setOrdinalPosition(long value);
+
+    public abstract Builder setIndexName(String value);
+
+    public abstract Builder setIndexType(IndexType value);
+
+    abstract SourceColumnIndexInfo autoBuild();
+
+    public SourceColumnIndexInfo build() {
+      SourceColumnIndexInfo indexInfo = autoBuild();
+      Preconditions.checkState(
+          (indexInfo.isPrimary()) ? indexInfo.isUnique() : true, "Primary Index must be unique.");
+      return indexInfo;
+    }
+  }
+
+  public enum IndexType {
+    NUMERIC,
+    DATE_TIME,
+    OTHER
+  };
+}

@@ -72,6 +72,7 @@ public class MysqlMappingProviderTest {
         .put("ENUM", "\"string\"")
         .put("FLOAT", "\"float\"")
         .put("INTEGER", "\"int\"")
+        .put("INTEGER UNSIGNED", "\"long\"")
         .put("JSON", "{\"type\":\"string\",\"logicalType\":\"json\"}")
         .put("LONGBLOB", "\"string\"")
         .put("LONGTEXT", "\"string\"")

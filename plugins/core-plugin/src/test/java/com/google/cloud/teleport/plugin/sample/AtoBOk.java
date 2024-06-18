@@ -98,12 +98,12 @@ public class AtoBOk {
     @Default.Boolean(false)
     Boolean getParamWithGroupName();
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Boolean(
         order = 9,
         parentName = "paramWithGroupName",
         parentTriggerValues = {"true"},
         description = "N/A",
-        helpText = "Text that has parent name and parent trigger value")
+        helpText = "Boolean that has parent name and parent trigger value")
     @Default.Boolean(false)
     Boolean getParamWithParentName();
 
@@ -114,5 +114,57 @@ public class AtoBOk {
         example =
             "projects/project-foo/locations/us-central1/clusters/cluster-bar/topics/topic-baz")
     String getInputKafkaTopic();
+
+    @TemplateParameter.GcsReadBucket(
+        order = 11,
+        description = "Cloud Storage Bucket to read from",
+        helpText = "Cloud Storage Bucket to read from")
+    @Default.String("")
+    String getGcsReadBucket();
+
+    @TemplateParameter.GcsWriteBucket(
+        order = 12,
+        description = "Cloud Storage Bucket to write",
+        helpText = "Cloud Storage Bucket to write")
+    @Default.String("")
+    String getGcsWriteBucket();
+
+    @TemplateParameter.JavascriptUdfFile(
+        order = 13,
+        description = "JavaScript UDF in Cloud Storage",
+        helpText = "JavaScript UDF in Cloud Storage")
+    @Default.String("")
+    String javascriptUdfFile();
+
+    @TemplateParameter.MachineType(
+        order = 14,
+        description = "N/A",
+        helpText = "String that is machine type")
+    @Default.String("")
+    String getMachineType();
+
+    @TemplateParameter.ServiceAccount(
+        order = 15,
+        description = "Google Cloud service account email",
+        helpText = "Google Cloud service account email",
+        example = "some@name.iam.gserviceaccount.com")
+    @Default.String("")
+    String getServiceAccount();
+
+    @TemplateParameter.WorkerRegion(
+        order = 16,
+        description = "Worker region",
+        helpText = "Worker region",
+        example = "us-west1")
+    @Default.String("")
+    String getWorkerRegion();
+
+    @TemplateParameter.WorkerZone(
+        order = 17,
+        description = "Worker zone",
+        helpText = "Worker zone",
+        example = "us-west1-a")
+    @Default.String("")
+    String getWorkerZone();
   }
 }

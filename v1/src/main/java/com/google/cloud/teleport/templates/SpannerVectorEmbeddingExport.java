@@ -87,6 +87,7 @@ public class SpannerVectorEmbeddingExport {
   public interface SpannerToVectorEmbeddingJsonOptions extends PipelineOptions {
     @TemplateParameter.ProjectId(
         order = 10,
+        groupName = "Source",
         description = "Cloud Spanner Project Id",
         helpText = "The project ID of the Spanner instance.")
     ValueProvider<String> getSpannerProjectId();
@@ -95,6 +96,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 20,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]*[a-z0-9]"},
         description = "Cloud Spanner instance ID",
         helpText = "The ID of the Spanner instance to export the vector embeddings from.")
@@ -104,6 +106,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 30,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9_\\-]*[a-z0-9]"},
         description = "Cloud Spanner database ID",
         helpText = "The ID of the Spanner database to export the vector embeddings from.")
@@ -113,6 +116,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 40,
+        groupName = "Source",
         regexes = {"^.+$"},
         description = "Spanner Table",
         helpText = "The Spanner table to read from.")
@@ -122,6 +126,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 50,
+        groupName = "Source",
         description = "Columns to Export from Spanner Table",
         helpText =
             "A comma-separated list of required columns for the Vertex AI Vector Search index. The ID and embedding columns are required by Vector Search. If your column names don't match the Vertex AI Vector Search index input structure, create column mappings by using aliases. If the column names don't match the format expected by Vertex AI, use the notation from:to. For example, if you have columns named id and my_embedding, specify id, my_embedding:embedding.")
@@ -131,6 +136,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.GcsWriteFolder(
         order = 60,
+        groupName = "Target",
         description = "Output files folder in Cloud Storage",
         helpText =
             "The Cloud Storage folder to write output files to. The path must end with a slash.",
@@ -141,6 +147,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 70,
+        groupName = "Target",
         description = "Output files prefix in Cloud Storage",
         helpText = "The filename prefix for writing output files.",
         example = "vector-embeddings")
@@ -150,6 +157,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 80,
+        groupName = "Source",
         optional = true,
         description = "Cloud Spanner Endpoint to call",
         helpText =
@@ -162,6 +170,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 90,
+        groupName = "Source",
         optional = true,
         regexes = {
           "^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):(([0-9]{2})(\\.[0-9]+)?)Z$"
@@ -177,6 +186,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Boolean(
         order = 100,
+        groupName = "Source",
         optional = true,
         description = "Use independent compute resource (Spanner DataBoost).",
         helpText =
@@ -188,6 +198,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Enum(
         order = 110,
+        groupName = "Source",
         enumOptions = {
           @TemplateEnumOption("LOW"),
           @TemplateEnumOption("MEDIUM"),

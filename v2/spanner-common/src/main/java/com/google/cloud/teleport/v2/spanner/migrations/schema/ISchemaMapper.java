@@ -26,6 +26,14 @@ public interface ISchemaMapper extends Serializable {
   Dialect getDialect();
 
   /**
+   * Return the source tables configured for migration.
+   *
+   * @param namespace is currently not operational.
+   * @return
+   */
+  List<String> getSourceTablesToMigrate(String namespace);
+
+  /**
    * Retrieves the corresponding Spanner table name given a source table name.
    *
    * @param namespace is currently not operational.
@@ -63,4 +71,11 @@ public interface ISchemaMapper extends Serializable {
    */
   List<String> getSpannerColumns(String namespace, String spannerTable)
       throws NoSuchElementException;
+
+  /**
+   * Retrieves the name of the shard id column for a Spanner table.
+   *
+   * @param namespace is currently not operational.
+   */
+  String getShardIdColumnName(String namespace, String spannerTableName);
 }

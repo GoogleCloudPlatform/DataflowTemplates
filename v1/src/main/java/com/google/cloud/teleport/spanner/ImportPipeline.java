@@ -65,6 +65,7 @@ public class ImportPipeline {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Target",
         regexes = {"^[a-z0-9\\-]+$"},
         description = "Cloud Spanner instance ID",
         helpText = "The instance ID of the Spanner database.")
@@ -74,6 +75,7 @@ public class ImportPipeline {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         regexes = {"^[a-z_0-9\\-]+$"},
         description = "Cloud Spanner database ID",
         helpText = "The database ID of the Spanner database.")
@@ -83,6 +85,7 @@ public class ImportPipeline {
 
     @TemplateParameter.GcsReadFolder(
         order = 3,
+        groupName = "Source",
         description = "Cloud storage input directory",
         helpText = "The Cloud Storage path where the Avro files are imported from.")
     ValueProvider<String> getInputDir();
@@ -91,6 +94,7 @@ public class ImportPipeline {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         optional = true,
         description = "Cloud Spanner Endpoint to call",
         helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
@@ -163,6 +167,7 @@ public class ImportPipeline {
 
     @TemplateParameter.ProjectId(
         order = 9,
+        groupName = "Target",
         optional = true,
         description = "Cloud Spanner Project Id",
         helpText =
@@ -186,6 +191,7 @@ public class ImportPipeline {
 
     @TemplateParameter.Enum(
         order = 11,
+        groupName = "Target",
         enumOptions = {
           @TemplateEnumOption("LOW"),
           @TemplateEnumOption("MEDIUM"),

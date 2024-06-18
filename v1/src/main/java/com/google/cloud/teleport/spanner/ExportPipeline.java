@@ -77,6 +77,7 @@ public class ExportPipeline {
   public interface ExportPipelineOptions extends PipelineOptions {
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]*[a-z0-9]"},
         description = "Cloud Spanner instance ID",
         helpText = "The instance ID of the Spanner database that you want to export.")
@@ -86,6 +87,7 @@ public class ExportPipeline {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9_\\-]*[a-z0-9]"},
         description = "Cloud Spanner database ID",
         helpText = "The database ID of the Spanner database that you want to export.")
@@ -95,6 +97,7 @@ public class ExportPipeline {
 
     @TemplateParameter.GcsWriteFolder(
         order = 3,
+        groupName = "Target",
         description = "Cloud Storage output directory",
         helpText =
             "The Cloud Storage path to export Avro files to. The export job creates a new directory under this path that contains the exported files.",
@@ -121,6 +124,7 @@ public class ExportPipeline {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Source",
         optional = true,
         description = "Cloud Spanner Endpoint to call",
         helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
@@ -154,6 +158,7 @@ public class ExportPipeline {
 
     @TemplateParameter.ProjectId(
         order = 8,
+        groupName = "Source",
         optional = true,
         description = "Cloud Spanner Project Id",
         helpText =
@@ -175,11 +180,13 @@ public class ExportPipeline {
 
     @TemplateParameter.Text(
         order = 10,
+        groupName = "Source",
         optional = true,
-        regexes = {"^[a-zA-Z0-9_]+(,[a-zA-Z0-9_]+)*$"},
+        regexes = {"^[a-zA-Z0-9_\\.]+(,[a-zA-Z0-9_\\.]+)*$"},
         description = "Cloud Spanner table name(s).",
         helpText =
-            "A comma-separated list of tables specifying the subset of the Spanner database to export. If you set this parameter, you must either include all of the related tables (parent tables and foreign key referenced tables) or set the `shouldExportRelatedTables` parameter to `true`.")
+            "A comma-separated list of tables specifying the subset of the Spanner database to export. If you set this parameter, you must either include all of the related tables (parent tables and foreign key referenced tables) or set the `shouldExportRelatedTables` parameter to `true`."
+                + "If the table is in named schema, please use fully qualified name. For example: `sch1.foo` in which `sch1` is the schema name and `foo` is the table name.")
     @Default.String(value = "")
     ValueProvider<String> getTableNames();
 
@@ -187,6 +194,7 @@ public class ExportPipeline {
 
     @TemplateParameter.Boolean(
         order = 11,
+        groupName = "Source",
         optional = true,
         description = "Export necessary Related Spanner tables.",
         helpText =
@@ -198,6 +206,7 @@ public class ExportPipeline {
 
     @TemplateParameter.Enum(
         order = 12,
+        groupName = "Source",
         enumOptions = {
           @TemplateEnumOption("LOW"),
           @TemplateEnumOption("MEDIUM"),
@@ -213,6 +222,7 @@ public class ExportPipeline {
 
     @TemplateParameter.Boolean(
         order = 13,
+        groupName = "Source",
         optional = true,
         description = "Use independent compute resource (Spanner DataBoost).",
         helpText =

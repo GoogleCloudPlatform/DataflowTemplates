@@ -24,6 +24,7 @@ import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Model;
+import com.google.cloud.teleport.spanner.ddl.NamedSchema;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.proto.ExportProtos;
@@ -348,6 +349,21 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<String> allNamedSchemaNames =
+        ddl.apply(
+            "List all named schema names",
+            ParDo.of(
+                new DoFn<Ddl, String>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Ddl ddl = c.element();
+                    for (NamedSchema t : ddl.schemas()) {
+                      c.output(t.name());
+                    }
+                  }
+                }));
+
     // Generate a unique output directory name.
     final PCollectionView<String> outputDirectoryName =
         p.apply(Create.of(1))
@@ -394,7 +410,13 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                                     shouldExportTimestampAsLogicalType.get())
                                 .convert(c.element());
                         for (Schema schema : avroSchemas) {
-                          c.output(KV.of(schema.getName(), new SerializableSchemaSupplier(schema)));
+                          // Here we need to use the real spanner object name which the name will be
+                          // used as the write
+                          // destination in SchemaBasedDynamicDestinations
+                          c.output(
+                              KV.of(
+                                  AvroUtil.getSpannerObjectName(schema),
+                                  new SerializableSchemaSupplier(schema)));
                         }
                       }
                     }))
@@ -513,13 +535,32 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
-    // Empty tables, views, models, change streams and sequences are handled together,
+    PCollection<KV<String, Iterable<String>>> namedSchemas =
+        allNamedSchemaNames.apply(
+            "Export named schemas",
+            ParDo.of(
+                new DoFn<String, KV<String, Iterable<String>>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String namedSchema = c.element();
+                    LOG.info("Exporting named schema: " + namedSchema);
+                    // This file will contain the schema definition for the named schema.
+                    c.output(
+                        KV.of(
+                            namedSchema,
+                            Collections.singleton(namedSchema + ".avro-00000-of-00001")));
+                  }
+                }));
+
+    // Empty tables, views, models, change streams, sequences and named schema are handled together,
     // because we export them as empty Avro files that only contain the Avro schemas.
     PCollection<KV<String, Iterable<String>>> emptySchemaFiles =
         PCollectionList.of(emptyTablesAndViews)
             .and(models)
             .and(changeStreams)
             .and(sequences)
+            .and(namedSchemas)
             .apply("Combine all empty schema files", Flatten.pCollections());
 
     emptySchemaFiles =
@@ -690,7 +731,11 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         // The EMPTY_EXPORT_FILE still needs to have a rudimentary schema for it to be created.
         return SchemaBuilder.record("Empty").fields().endRecord();
       }
-      return si.get(tableName).get();
+      SerializableSchemaSupplier supplier = si.get(tableName);
+      if (supplier == null) {
+        LOG.warn("Can not find supplier using {}", tableName);
+      }
+      return supplier.get();
     }
 
     @Override
@@ -863,6 +908,10 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       }
       exportManifest.addAllDatabaseOptions(ddl.databaseOptions());
       exportManifest.setDialect(ProtoDialect.valueOf(dialect.name()));
+      if (ddl.protoDescriptors() != null) {
+        exportManifest.setProtoDescriptors(ddl.protoDescriptors().toByteString());
+      }
+      exportManifest.addAllProtoBundle(ddl.protoBundle());
       try {
         out.output(JsonFormat.printer().print(exportManifest.build()));
       } catch (InvalidProtocolBufferException e) {

@@ -72,6 +72,7 @@ public interface KinesisToPubsubOptions
 
   @TemplateParameter.Text(
       order = 5,
+      groupName = "Source",
       optional = false,
       description = "Name of the Kinesis Data stream to read from",
       helpText =
@@ -84,6 +85,7 @@ public interface KinesisToPubsubOptions
 
   @TemplateParameter.PubsubTopic(
       order = 6,
+      groupName = "Target",
       description = "Output Pub/Sub topic",
       helpText =
           "The name of the topic to which data should published, "

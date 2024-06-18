@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper;
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.source.reader.io.exception.ValueMappingException;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -38,6 +39,9 @@ import org.slf4j.LoggerFactory;
 public final class JdbcSourceRowMapper implements JdbcIO.RowMapper<SourceRow> {
 
   private final JdbcValueMappingsProvider mappingsProvider;
+
+  private final SourceSchemaReference sourceSchemaReference;
+
   private final SourceTableSchema sourceTableSchema;
 
   private static final Logger logger = LoggerFactory.getLogger(JdbcSourceRowMapper.class);
@@ -52,8 +56,11 @@ public final class JdbcSourceRowMapper implements JdbcIO.RowMapper<SourceRow> {
    * @param sourceTableSchema Schema of source table.
    */
   public JdbcSourceRowMapper(
-      JdbcValueMappingsProvider mappingsProvider, SourceTableSchema sourceTableSchema) {
+      JdbcValueMappingsProvider mappingsProvider,
+      SourceSchemaReference sourceSchemaReference,
+      SourceTableSchema sourceTableSchema) {
     this.mappingsProvider = mappingsProvider;
+    this.sourceSchemaReference = sourceSchemaReference;
     this.sourceTableSchema = sourceTableSchema;
   }
 
@@ -72,7 +79,9 @@ public final class JdbcSourceRowMapper implements JdbcIO.RowMapper<SourceRow> {
   @Override
   public @UnknownKeyFor @Nullable @Initialized SourceRow mapRow(
       @UnknownKeyFor @NonNull @Initialized ResultSet resultSet) {
-    var builder = SourceRow.builder(sourceTableSchema, getCurrentTimeMicros());
+    /** TODO: Populate shardId from shardingConfig. */
+    var builder =
+        SourceRow.builder(sourceSchemaReference, sourceTableSchema, null, getCurrentTimeMicros());
     this.sourceTableSchema
         .sourceColumnNameToSourceColumnType()
         .entrySet()

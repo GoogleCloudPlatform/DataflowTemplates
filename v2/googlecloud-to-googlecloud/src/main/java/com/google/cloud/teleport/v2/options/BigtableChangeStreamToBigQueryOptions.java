@@ -30,6 +30,7 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 1,
+      groupName = "Target",
       description = "BigQuery dataset",
       helpText = "The dataset name of the destination BigQuery table.")
   @Validation.Required
@@ -77,6 +78,7 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   @TemplateParameter.ProjectId(
       order = 5,
+      groupName = "Target",
       optional = true,
       description = "BigQuery project ID",
       helpText = "The BigQuery dataset project ID. The default is the project for the Dataflow job")

@@ -36,6 +36,7 @@ public interface SpannerChangeStreamsToGcsOptions
 
   @TemplateParameter.ProjectId(
       order = 1,
+      groupName = "Source",
       optional = true,
       description = "Spanner Project ID",
       helpText =
@@ -47,6 +48,7 @@ public interface SpannerChangeStreamsToGcsOptions
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       description = "Spanner instance ID",
       helpText = "The Spanner instance ID to read change streams data from.")
   @Validation.Required
@@ -56,6 +58,7 @@ public interface SpannerChangeStreamsToGcsOptions
 
   @TemplateParameter.Text(
       order = 3,
+      groupName = "Source",
       description = "Spanner database",
       helpText = "The Spanner database to read change streams data from.")
   @Validation.Required
@@ -103,6 +106,7 @@ public interface SpannerChangeStreamsToGcsOptions
 
   @TemplateParameter.Text(
       order = 8,
+      groupName = "Source",
       description = "Spanner change stream",
       helpText = "The name of the Spanner change stream to read from.")
   @Validation.Required

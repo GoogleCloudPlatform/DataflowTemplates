@@ -12,3 +12,11 @@ CREATE TABLE IF NOT EXISTS Movie (
     actor INT64,
     migration_shard_id STRING(50),
 ) PRIMARY KEY (id2, id1, migration_shard_id);
+
+CREATE TABLE IF NOT EXISTS Customers (
+    id INT64 NOT NULL,
+    first_name STRING(200),
+    last_name STRING(200),
+    full_name STRING(200),
+    migration_shard_id STRING(50),
+) PRIMARY KEY (migration_shard_id, id);

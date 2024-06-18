@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.utils;
 
 import com.google.cloud.teleport.v2.neo4j.logicaltypes.IsoDateTime;
+import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import java.math.BigDecimal;
@@ -222,17 +223,20 @@ public class DataCastingUtils {
       map.put(fieldName, fromBeamType(fieldName, field.getType(), row.getValue(fieldName)));
     }
 
-    for (Mapping m : target.getMappings()) {
+    for (Mapping mapping : target.getMappings()) {
       // if row is empty continue
       if (listFullOfNulls(row.getValues())) {
         continue;
       }
-      // lookup data type
-      if (StringUtils.isNotEmpty(m.getConstant())) {
-        if (StringUtils.isNotEmpty(m.getName())) {
-          map.put(m.getName(), m.getConstant());
+      var role = mapping.getRole();
+      if (role == RoleType.label || role == RoleType.type) {
+        continue;
+      }
+      if (StringUtils.isNotEmpty(mapping.getConstant())) {
+        if (StringUtils.isNotEmpty(mapping.getName())) {
+          map.put(mapping.getName(), mapping.getConstant());
         } else {
-          map.put(m.getConstant(), m.getConstant());
+          map.put(mapping.getConstant(), mapping.getConstant());
         }
       }
     }

@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.templates.common;
 
+import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
+import static com.google.cloud.teleport.spanner.common.NameUtils.splitName;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
@@ -51,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
+import kotlin.Pair;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
@@ -83,6 +87,7 @@ public class SpannerConverters {
   public interface SpannerReadOptions extends PipelineOptions {
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         regexes = {"^.+$"},
         description = "Spanner Table",
         helpText = "The Spanner table to read the data from.")
@@ -93,6 +98,7 @@ public class SpannerConverters {
 
     @TemplateParameter.ProjectId(
         order = 2,
+        groupName = "Source",
         description = "Read data from Cloud Spanner Project Id",
         helpText =
             "The ID of the Google Cloud project that contains the Spanner database to read data from.")
@@ -103,6 +109,7 @@ public class SpannerConverters {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {".+"},
         description = "Read data from Cloud Spanner Instance",
         helpText = "The instance ID of the requested table.")
@@ -113,6 +120,7 @@ public class SpannerConverters {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Source",
         regexes = {".+"},
         description = "Read data from Cloud Spanner Database ",
         helpText = "The database ID of the requested table.")
@@ -123,6 +131,7 @@ public class SpannerConverters {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Source",
         optional = true,
         description = "Cloud Spanner Endpoint to call",
         helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
@@ -135,6 +144,7 @@ public class SpannerConverters {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Source",
         optional = true,
         regexes = {
           "^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):(([0-9]{2})(\\.[0-9]+)?)Z$"
@@ -154,6 +164,7 @@ public class SpannerConverters {
 
     @TemplateParameter.Boolean(
         order = 7,
+        groupName = "Source",
         optional = true,
         description = "Use independent compute resource (Spanner DataBoost).",
         helpText =
@@ -343,14 +354,18 @@ public class SpannerConverters {
             read =
                 ReadOperation.create()
                     .withQuery(
-                        String.format("SELECT %s FROM `%s`", columnsListAsString, table().get()))
+                        String.format(
+                            "SELECT %s FROM %s",
+                            columnsListAsString, quoteIdentifier(table().get(), dialect)))
                     .withPartitionOptions(partitionOptions);
             break;
           case POSTGRESQL:
             read =
                 ReadOperation.create()
                     .withQuery(
-                        String.format("SELECT %s FROM \"%s\";", columnsListAsString, table().get()))
+                        String.format(
+                            "SELECT %s FROM %s;",
+                            columnsListAsString, quoteIdentifier(table().get(), dialect)))
                     .withPartitionOptions(partitionOptions);
             break;
           default:
@@ -404,36 +419,46 @@ public class SpannerConverters {
     private LinkedHashMap<String, String> getAllColumns(
         ReadContext context, String tableName, Dialect dialect) {
       LinkedHashMap<String, String> columns = Maps.newLinkedHashMap();
-      String statement;
+      Pair<String, String> paths = splitName(tableName, dialect);
+      Statement statement;
       ResultSet resultSet;
       switch (dialect) {
         case GOOGLE_STANDARD_SQL:
-          statement =
+          String googleSQL =
               "SELECT COLUMN_NAME, SPANNER_TYPE FROM INFORMATION_SCHEMA.COLUMNS "
-                  + "WHERE TABLE_NAME=@table_name AND TABLE_CATALOG='' AND TABLE_SCHEMA='' "
-                  + "AND IS_GENERATED = 'NEVER' "
-                  + "ORDER BY ORDINAL_POSITION";
-          resultSet =
-              context.executeQuery(
-                  Statement.newBuilder(statement).bind("table_name").to(tableName).build());
+                  + "WHERE TABLE_NAME=@table_name AND TABLE_SCHEMA=@schema_name "
+                  + "AND IS_GENERATED = 'NEVER' ORDER BY ORDINAL_POSITION";
+          statement =
+              Statement.newBuilder(googleSQL)
+                  .bind("table_name")
+                  .to(paths.getSecond())
+                  .bind("schema_name")
+                  .to(paths.getFirst())
+                  .build();
           break;
         case POSTGRESQL:
-          statement =
+          String postgreSQL =
               "SELECT COLUMN_NAME, SPANNER_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME=$1"
-                  + " AND TABLE_SCHEMA NOT IN ('information_schema', 'spanner_sys', 'pg_catalog')"
+                  + " AND TABLE_SCHEMA=$2"
                   + " AND IS_GENERATED = 'NEVER' ORDER BY ORDINAL_POSITION;";
-          resultSet =
-              context.executeQuery(
-                  Statement.newBuilder(statement).bind("p1").to(tableName).build());
+          statement =
+              Statement.newBuilder(postgreSQL)
+                  .bind("p1")
+                  .to(paths.getSecond())
+                  .bind("p2")
+                  .to(paths.getFirst())
+                  .build();
           break;
         default:
           throw new IllegalArgumentException(String.format("Unrecognized dialect: %s", dialect));
       }
-      LOG.info("Got schema information. Reading columns.");
+      LOG.info("Got schema information. Reading columns:" + statement.toString());
+      resultSet = context.executeQuery(statement);
       while (resultSet.next()) {
         Struct currentRow = resultSet.getCurrentRowAsStruct();
         columns.put(currentRow.getString(0), currentRow.getString(1));
       }
+      LOG.info("Columns:" + columns.toString());
       return columns;
     }
   }
@@ -623,6 +648,7 @@ public class SpannerConverters {
       case BOOL:
         return currentRow.getBooleanList(columnName);
       case INT64:
+      case ENUM:
         return currentRow.getLongList(columnName);
       case FLOAT32:
         return currentRow.getFloatList(columnName);
@@ -635,6 +661,7 @@ public class SpannerConverters {
       case PG_JSONB:
         return currentRow.getPgJsonbList(columnName);
       case BYTES:
+      case PROTO:
         return currentRow.getBytesList(columnName).stream()
             .map(byteArray -> Base64.getEncoder().encodeToString(byteArray.toByteArray()))
             .collect(Collectors.toList());
@@ -683,6 +710,7 @@ public class SpannerConverters {
         return nullSafeColumnParser(
             (currentRow, columnName) -> Boolean.toString(currentRow.getBoolean(columnName)));
       case INT64:
+      case ENUM:
         return nullSafeColumnParser(
             (currentRow, columnName) -> Long.toString(currentRow.getLong(columnName)));
       case FLOAT32:
@@ -699,6 +727,7 @@ public class SpannerConverters {
       case PG_JSONB:
         return nullSafeColumnParser(Struct::getPgJsonb);
       case BYTES:
+      case PROTO:
         return nullSafeColumnParser(
             (currentRow, columnName) ->
                 Base64.getEncoder().encodeToString(currentRow.getBytes(columnName).toByteArray()));
@@ -726,6 +755,7 @@ public class SpannerConverters {
       case BOOL:
         return GSON.toJson(currentRow.getBooleanArray(columnName));
       case INT64:
+      case ENUM:
         return GSON.toJson(currentRow.getLongArray(columnName));
       case FLOAT32:
         return GSON.toJson(currentRow.getFloatArray(columnName));
@@ -735,6 +765,7 @@ public class SpannerConverters {
       case PG_NUMERIC:
         return GSON.toJson(currentRow.getStringList(columnName));
       case BYTES:
+      case PROTO:
         return GSON.toJson(
             currentRow.getBytesList(columnName).stream()
                 .map(byteArray -> Base64.getEncoder().encodeToString(byteArray.toByteArray()))

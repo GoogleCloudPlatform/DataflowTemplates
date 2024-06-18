@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.SizedType;
@@ -74,10 +76,9 @@ public abstract class Column implements Serializable {
     if (dialect() != Dialect.GOOGLE_STANDARD_SQL && dialect() != Dialect.POSTGRESQL) {
       throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
     }
-    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
     appendable
-        .append(String.format("%1$-40s", identifierQuote + name() + identifierQuote))
-        .append(typeString());
+        .append(String.format("%1$-40s", quoteIdentifier(name(), dialect())))
+        .append(typeString(true));
     if (notNull()) {
       appendable.append(" NOT NULL");
     }
@@ -126,9 +127,17 @@ public abstract class Column implements Serializable {
 
   public String typeString() {
     if (arrayLength() != null) {
-      return SizedType.typeString(type(), size(), arrayLength().intValue());
+      return SizedType.typeString(
+          type(), size(), arrayLength(), /* outputAsDdlRepresentation= */ false);
     }
-    return SizedType.typeString(type(), size());
+    return SizedType.typeString(type(), size(), /* outputAsDdlRepresentation= */ false);
+  }
+
+  public String typeString(boolean outputAsDdlRepresentation) {
+    if (arrayLength() != null) {
+      return SizedType.typeString(type(), size(), arrayLength(), outputAsDdlRepresentation);
+    }
+    return SizedType.typeString(type(), size(), outputAsDdlRepresentation);
   }
 
   /** A builder for {@link Column}. */
@@ -264,6 +273,14 @@ public abstract class Column implements Serializable {
 
     public Builder pgJsonb() {
       return type(Type.pgJsonb());
+    }
+
+    public Builder proto(String protoTypeFqn) {
+      return type(Type.proto(protoTypeFqn));
+    }
+
+    public Builder protoEnum(String enumTypeFqn) {
+      return type(Type.protoEnum(enumTypeFqn));
     }
 
     public Builder max() {

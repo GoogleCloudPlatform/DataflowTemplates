@@ -26,6 +26,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
 
   @TemplateParameter.PubsubSubscription(
       order = 1,
+      groupName = "Source",
       description = "Pub/Sub input subscription",
       helpText =
           "The Pub/Sub input subscription to read from, in the format of 'projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>'",
@@ -48,6 +49,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 3,
+      groupName = "Target",
       optional = false,
       regexes = {
         "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"

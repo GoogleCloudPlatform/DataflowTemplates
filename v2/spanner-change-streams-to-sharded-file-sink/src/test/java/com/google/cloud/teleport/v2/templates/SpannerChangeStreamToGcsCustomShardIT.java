@@ -54,7 +54,8 @@ import org.slf4j.LoggerFactory;
 @TemplateIntegrationTest(SpannerChangeStreamsToShardedFileSink.class)
 @RunWith(JUnit4.class)
 public class SpannerChangeStreamToGcsCustomShardIT extends SpannerChangeStreamToGcsITBase {
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamToGcsSimpleIT.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(SpannerChangeStreamToGcsCustomShardIT.class);
   private static HashSet<SpannerChangeStreamToGcsCustomShardIT> testInstances = new HashSet<>();
 
   private static GcsResourceManager gcsResourceManager;
@@ -81,7 +82,7 @@ public class SpannerChangeStreamToGcsCustomShardIT extends SpannerChangeStreamTo
   @Before
   public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
-    synchronized (SpannerChangeStreamToGcsSimpleIT.class) {
+    synchronized (SpannerChangeStreamToGcsCustomShardIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         gcsResourceManager = createGcsResourceManager(getClass().getSimpleName());
@@ -102,7 +103,8 @@ public class SpannerChangeStreamToGcsCustomShardIT extends SpannerChangeStreamTo
                 spannerMetadataResourceManager,
                 getClass().getSimpleName(),
                 "input/customShard.jar",
-                "com.custom.CustomShardIdFetcherForIT");
+                "com.custom.CustomShardIdFetcherForIT",
+                true);
       }
     }
   }
@@ -181,7 +183,7 @@ public class SpannerChangeStreamToGcsCustomShardIT extends SpannerChangeStreamTo
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(6)), conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -190,8 +192,6 @@ public class SpannerChangeStreamToGcsCustomShardIT extends SpannerChangeStreamTo
         gcsResourceManager.listArtifacts("output/testShardA/", Pattern.compile(".*\\.txt$"));
     List<Artifact> artifactsShardB =
         gcsResourceManager.listArtifacts("output/testShardB/", Pattern.compile(".*\\.txt$"));
-    assertThatArtifacts(artifactsShardB).hasFiles();
-    assertThatArtifacts(artifactsShardA).hasFiles();
     // checks that any of the artifact has the given content
     assertThatArtifacts(artifactsShardB).hasContent("SingerId\\\":\\\"2");
     assertThatArtifacts(artifactsShardB).hasContent("SingerId\\\":\\\"4");

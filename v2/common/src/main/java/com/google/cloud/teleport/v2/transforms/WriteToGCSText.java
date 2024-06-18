@@ -107,6 +107,7 @@ public abstract class WriteToGCSText extends PTransform<PCollection<KV<String, S
 
     @TemplateParameter.GcsWriteFolder(
         order = 1,
+        groupName = "Target",
         description = "Output file directory in Cloud Storage",
         helpText = "The path and filename prefix for writing output files. Must end with a slash.",
         example = "gs://your-bucket/your-path")
@@ -117,6 +118,7 @@ public abstract class WriteToGCSText extends PTransform<PCollection<KV<String, S
     @TemplateParameter.Text(
         order = 2,
         optional = true,
+        groupName = "Target",
         description = "Output filename prefix of the files to write",
         helpText = "The prefix to place on each windowed file.",
         example = "output-")

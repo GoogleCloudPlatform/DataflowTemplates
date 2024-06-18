@@ -1,0 +1,78 @@
+syntax = "proto2";
+
+package com.google.cloud.teleport.spanner.tests;
+
+option java_multiple_files = true;
+option java_package = "com.google.cloud.teleport.spanner.tests";
+
+message TestMessage {
+  // Scalar mapped types
+  optional string value = 1;
+  optional bool boolean = 2;
+  optional bytes byte = 3;
+  optional int64 int_64 = 4;
+  optional sint64 sint_64 = 5;
+  optional sfixed64 sfixed_64 = 6;
+  optional double float_64 = 7;
+  optional TestEnum test_enum = 8;
+  optional TestMessage3 test_message3 = 9;
+  // repeated mapped types
+  repeated string str_arr = 10;
+  repeated bool bool_arr = 11;
+  repeated bytes byte_arr = 12;
+  repeated int64 int64_arr = 13;
+  repeated sint64 sint64_arr = 14;
+  repeated sfixed64 sfixed64_arr = 15;
+  repeated double float64_arr = 16;
+  repeated TestEnum test_enum_arr = 17;
+  repeated TestMessage3 test_message3_arr = 18;
+  // scalar unmapped types
+  optional int32 int_32 = 19;
+  optional sint32 sint_32 = 20;
+  optional sfixed32 sfixed_32 = 21;
+  optional float float_32 = 22;
+  optional uint64 uint_64 = 23;
+  optional fixed64 fixed_64 = 24;
+  optional uint32 uint_32 = 25;
+  optional fixed32 fixed_32 = 26;
+  // repeated unmapped types
+  repeated int32 int32_arr = 27;
+  repeated sint32 sint32_arr = 28;
+  repeated sfixed32 sfixed32_arr = 29;
+  repeated float float32_arr = 30;
+  repeated uint64 uint64_arr = 31;
+  repeated fixed64 fixed64_arr = 32;
+  repeated uint32 uint32_arr = 33;
+  repeated fixed32 fixed32_arr = 34;
+}
+
+message TestMessage2 {
+  optional string value = 1;
+}
+
+message TestMessage3 {
+  optional string value = 1;
+}
+
+enum TestEnum {
+  UNDEFINED = 0;
+  VALUE1 = 1;
+  VALUE2 = 2;
+  VALUE3 = 3;
+  VALUE4 = 4;
+  VALUE5 = 5;
+  VALUE6 = 6;
+  VALUE7 = 7;
+  VALUE8 = 8;
+  VALUE9 = 9;
+  VALUE10 = 10;
+}
+
+enum TestEnum2 {
+  UNDEF = 0;
+  VAL1 = 1;
+  VAL2 = 2;
+  VAL3 = 3;
+  VAL4 = 4;
+  VAL5 = 5;
+}

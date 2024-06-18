@@ -21,7 +21,6 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
 import com.google.cloud.teleport.v2.options.BigQueryCommonOptions;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
@@ -124,7 +123,8 @@ import org.slf4j.LoggerFactory;
     },
     streaming = true,
     supportsAtLeastOnce = true,
-    supportsExactlyOnce = true)
+    supportsExactlyOnce = true,
+    hidden = true)
 public class KafkaToBigQuery {
 
   /* Logger for class. */
@@ -158,10 +158,33 @@ public class KafkaToBigQuery {
    * at the command-line.
    */
   public interface KafkaToBQOptions
-      extends KafkaReadOptions,
-          JavascriptTextTransformerOptions,
+      extends JavascriptTextTransformerOptions,
           BigQueryCommonOptions.WriteOptions,
           BigQueryStorageApiStreamingOptions {
+
+    @TemplateParameter.Text(
+        order = 1,
+        groupName = "Source",
+        optional = true,
+        regexes = {"[,:a-zA-Z0-9._-]+"},
+        description = "Kafka Bootstrap Server list",
+        helpText = "Kafka Bootstrap Server list, separated by commas.",
+        example = "localhost:9092,127.0.0.1:9093")
+    String getReadBootstrapServers();
+
+    void setReadBootstrapServers(String bootstrapServers);
+
+    @TemplateParameter.Text(
+        order = 2,
+        groupName = "Source",
+        optional = true,
+        regexes = {"[,a-zA-Z0-9._-]+"},
+        description = "Kafka Topic(s) to read input from",
+        helpText = "Kafka topic(s) to read input from.",
+        example = "topic1,topic2")
+    String getKafkaReadTopics();
+
+    void setKafkaReadTopics(String value);
 
     /**
      * Get bootstrap server across releases.
@@ -171,6 +194,7 @@ public class KafkaToBigQuery {
      */
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = true,
         regexes = {"[,:a-zA-Z0-9._-]+"},
         description = "Kafka Bootstrap Server list",
@@ -198,6 +222,7 @@ public class KafkaToBigQuery {
     @Deprecated
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         optional = true,
         regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Kafka topic(s) to read the input from",
@@ -371,7 +396,8 @@ public class KafkaToBigQuery {
              */
             .apply(
                 "ReadFromKafka",
-                KafkaTransform.readStringFromKafka(bootstrapServers, topicsList, kafkaConfig, null))
+                KafkaTransform.readStringFromKafka(
+                    bootstrapServers, topicsList, kafkaConfig, null, false))
 
             /*
              * Step #2: Transform the Kafka Messages into TableRows

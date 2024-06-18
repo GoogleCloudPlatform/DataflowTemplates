@@ -28,6 +28,22 @@ import javax.sql.DataSource;
 public interface SchemaDiscovery {
 
   /**
+   * Discover Tables to migrate. This method could be used to auto infer tables to migrate if not
+   * passed via options.
+   *
+   * @param dataSource Provider for JDBC connection.
+   * @param sourceSchemaReference Source database name and (optionally namespace)
+   * @return The list of table names for the given database.
+   * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
+   *     <p><b>Note:</b>
+   *     <p>The Implementations must log every exception and generate metrics as appropriate. Any
+   *     retriable error must be retried as needed.
+   */
+  ImmutableList<String> discoverTables(
+      DataSource dataSource, SourceSchemaReference sourceSchemaReference)
+      throws SchemaDiscoveryException;
+
+  /**
    * Discover the schema of tables to migrate.
    *
    * @param dataSource Provider for JDBC connection.
@@ -40,6 +56,24 @@ public interface SchemaDiscovery {
    *     retriable error must be retried as needed.
    */
   ImmutableMap<String, ImmutableMap<String, SourceColumnType>> discoverTableSchema(
+      DataSource dataSource,
+      SourceSchemaReference sourceSchemaReference,
+      ImmutableList<String> tables)
+      throws SchemaDiscoveryException;
+
+  /**
+   * Discover the indexes of tables to migrate.
+   *
+   * @param dataSource Provider for JDBC connection.
+   * @param sourceSchemaReference Source database name and (optionally namespace)
+   * @param tables Tables to migrate.
+   * @return The discovered indexes.
+   * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
+   *     <p><b>Note:</b>
+   *     <p>The Implementations must log every exception and generate metrics as appropriate. Any
+   *     retriable error must be retried as needed.
+   */
+  ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoverTableIndexes(
       DataSource dataSource,
       SourceSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)

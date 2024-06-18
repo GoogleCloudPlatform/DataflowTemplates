@@ -212,6 +212,7 @@ public class TextIOToBigQuery {
           BigQueryStorageApiBatchOptions {
     @TemplateParameter.GcsReadFile(
         order = 1,
+        groupName = "Source",
         optional = false,
         description = "The GCS location of the text you'd like to process",
         helpText = "The gs:// path to the text in Cloud Storage you'd like to process.",
@@ -234,6 +235,7 @@ public class TextIOToBigQuery {
     @TemplateParameter.BigQueryTable(
         order = 3,
         optional = false,
+        groupName = "Target",
         description = "Output table to write to",
         helpText =
             "The location of the BigQuery table to use to store the processed data. If you reuse an existing table, it is overwritten.",
@@ -242,7 +244,7 @@ public class TextIOToBigQuery {
 
     void setOutputTable(String value);
 
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.JavascriptUdfFile(
         order = 4,
         optional = false,
         description = "GCS path to javascript fn for transforming output",

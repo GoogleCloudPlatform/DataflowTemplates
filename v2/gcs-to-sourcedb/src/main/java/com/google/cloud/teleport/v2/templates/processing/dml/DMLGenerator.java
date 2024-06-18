@@ -404,6 +404,7 @@ public class DMLGenerator {
         break;
       case "binary":
       case "varbinary":
+      case "bit":
         response = getHexString(colValue);
         break;
       default:

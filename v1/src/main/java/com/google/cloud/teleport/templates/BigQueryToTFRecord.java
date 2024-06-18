@@ -330,6 +330,7 @@ public class BigQueryToTFRecord {
 
     @TemplateParameter.GcsWriteFolder(
         order = 1,
+        groupName = "Target",
         description = "Output Cloud Storage directory.",
         helpText =
             "The top-level Cloud Storage path prefix to use when writing the training, testing, and validation TFRecord files. Subdirectories for resulting training, testing, and validation TFRecord files are automatically generated from `outputDirectory`.",
@@ -340,6 +341,7 @@ public class BigQueryToTFRecord {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         optional = true,
         regexes = {"^[A-Za-z_0-9.]*"},
         description = "The output suffix for TFRecord files",

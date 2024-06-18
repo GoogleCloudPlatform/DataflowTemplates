@@ -167,6 +167,7 @@ public class GCSToSourceDb {
 
     @TemplateParameter.GcsReadFolder(
         order = 8,
+        groupName = "Source",
         optional = false,
         description = "GCS input directory path",
         helpText = "Path from where to read the change stream files.")

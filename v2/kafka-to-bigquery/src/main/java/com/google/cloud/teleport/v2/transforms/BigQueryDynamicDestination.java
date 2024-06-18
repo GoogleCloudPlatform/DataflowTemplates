@@ -58,8 +58,13 @@ public class BigQueryDynamicDestination
 
   @Override
   public TableDestination getTable(GenericRecord element) {
-    // tablename + record name (same across schemas) + schema id?
-    String bqQualifiedFullName = element.getSchema().getFullName().replace(".", "-");
+    String sanitizedNamespace =
+        BigQueryAvroUtils.sanitizeString(element.getSchema().getNamespace());
+    String sanitizedName = BigQueryAvroUtils.sanitizeString(element.getSchema().getName());
+
+    String bqQualifiedFullName =
+        sanitizedNamespace + (sanitizedNamespace.isBlank() ? "" : "-") + sanitizedName;
+
     String tableName =
         this.tableNamePrefix + (this.tableNamePrefix.isBlank() ? "" : "-") + bqQualifiedFullName;
     String tableSpec = this.projectName + ":" + this.datasetName + "." + tableName;

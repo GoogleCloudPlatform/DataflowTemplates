@@ -19,6 +19,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters.MessageFormatConstants;
 import com.google.common.io.Resources;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
@@ -54,9 +55,9 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link KafkaToGcs2} (Kafka_to_GCS_2). */
+/** Integration test for {@link KafkaToGcsFlex} (Kafka_to_GCS_2). */
 @Category(TemplateIntegrationTest.class)
-@TemplateIntegrationTest(KafkaToGcs2.class)
+@TemplateIntegrationTest(KafkaToGcsFlex.class)
 @RunWith(JUnit4.class)
 public class KafkaToGcsIT extends TemplateTestBase {
 
@@ -81,13 +82,12 @@ public class KafkaToGcsIT extends TemplateTestBase {
   }
 
   @Test
-  public void testKafkaToGcsText() throws IOException, RestClientException {
-    baseKafkaToGcs(b -> b.addParameter("outputFileFormat", "TEXT"));
-  }
-
-  @Test
   public void testKafkaToGcsAvro() throws IOException, RestClientException {
-    baseKafkaToGcs(b -> b.addParameter("outputFileFormat", "AVRO"));
+    baseKafkaToGcs(
+        b ->
+            b.addParameter("messageFormat", MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
+                .addParameter("schemaFormat", "SINGLE_SCHEMA_FILE")
+                .addParameter("confluentAvroSchemaPath", getGcsPath("avro_schema.avsc")));
   }
 
   private void baseKafkaToGcs(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
@@ -100,15 +100,16 @@ public class KafkaToGcsIT extends TemplateTestBase {
         paramsAdder.apply(
             LaunchConfig.builder(testName, specPath)
                 .addParameter(
-                    "bootstrapServers",
-                    kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", ""))
-                .addParameter("inputTopics", topicName)
+                    "readBootstrapServerAndTopic",
+                    kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "")
+                        + ";"
+                        + topicName)
                 .addParameter("windowDuration", "10s")
-                .addParameter("schemaPath", getGcsPath("avro_schema.avsc"))
-                .addParameter("offset", "earliest")
+                .addParameter("kafkaReadOffset", "earliest")
                 .addParameter("outputDirectory", getGcsPath(testName))
                 .addParameter("outputFilenamePrefix", testName + "-")
-                .addParameter("numShards", "2"));
+                .addParameter("numShards", "2")
+                .addParameter("kafkaReadAuthenticationMode", "NONE"));
 
     // Act
     LaunchInfo info = launchTemplate(options);

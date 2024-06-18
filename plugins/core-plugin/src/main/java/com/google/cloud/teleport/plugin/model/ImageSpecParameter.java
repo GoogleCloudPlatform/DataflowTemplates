@@ -168,7 +168,23 @@ public class ImageSpecParameter {
         this.setOptional(simpleTextParam.optional());
         this.setHiddenUi(simpleTextParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
-
+        break;
+      case "JavascriptUdfFile":
+        TemplateParameter.JavascriptUdfFile javascriptUdfFileParam =
+            (TemplateParameter.JavascriptUdfFile) parameterAnnotation;
+        if (!javascriptUdfFileParam.name().isEmpty()) {
+          this.setName(javascriptUdfFileParam.name());
+        }
+        processDescriptions(
+            javascriptUdfFileParam.groupName(),
+            javascriptUdfFileParam.description(),
+            javascriptUdfFileParam.helpText(),
+            javascriptUdfFileParam.example());
+        this.setParentName(javascriptUdfFileParam.parentName());
+        this.setParentTriggerValues(javascriptUdfFileParam.parentTriggerValues());
+        this.setOptional(javascriptUdfFileParam.optional());
+        this.setHiddenUi(javascriptUdfFileParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.JAVASCRIPT_UDF_FILE);
         break;
       case "GcsReadFile":
         TemplateParameter.GcsReadFile gcsReadFileParam =
@@ -204,6 +220,23 @@ public class ImageSpecParameter {
         this.setHiddenUi(gcsReadFolderParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.GCS_READ_FOLDER);
         break;
+      case "GcsReadBucket":
+        TemplateParameter.GcsReadBucket gcsReadBucketParam =
+            (TemplateParameter.GcsReadBucket) parameterAnnotation;
+        if (!gcsReadBucketParam.name().isEmpty()) {
+          this.setName(gcsReadBucketParam.name());
+        }
+        processDescriptions(
+            gcsReadBucketParam.groupName(),
+            gcsReadBucketParam.description(),
+            gcsReadBucketParam.helpText(),
+            gcsReadBucketParam.example());
+        this.setParentName(gcsReadBucketParam.parentName());
+        this.setParentTriggerValues(gcsReadBucketParam.parentTriggerValues());
+        this.setOptional(gcsReadBucketParam.optional());
+        this.setHiddenUi(gcsReadBucketParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.GCS_READ_BUCKET);
+        break;
       case "GcsWriteFile":
         TemplateParameter.GcsWriteFile gcsWriteFileParam =
             (TemplateParameter.GcsWriteFile) parameterAnnotation;
@@ -237,6 +270,23 @@ public class ImageSpecParameter {
         this.setOptional(gcsWriteFolderParam.optional());
         this.setHiddenUi(gcsWriteFolderParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.GCS_WRITE_FOLDER);
+        break;
+      case "GcsWriteBucket":
+        TemplateParameter.GcsWriteBucket gcsWriteBucketParam =
+            (TemplateParameter.GcsWriteBucket) parameterAnnotation;
+        if (!gcsWriteBucketParam.name().isEmpty()) {
+          this.setName(gcsWriteBucketParam.name());
+        }
+        processDescriptions(
+            gcsWriteBucketParam.groupName(),
+            gcsWriteBucketParam.description(),
+            gcsWriteBucketParam.helpText(),
+            gcsWriteBucketParam.example());
+        this.setParentName(gcsWriteBucketParam.parentName());
+        this.setParentTriggerValues(gcsWriteBucketParam.parentTriggerValues());
+        this.setOptional(gcsWriteBucketParam.optional());
+        this.setHiddenUi(gcsWriteBucketParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.GCS_WRITE_BUCKET);
         break;
       case "PubsubSubscription":
         TemplateParameter.PubsubSubscription pubsubSubscriptionParam =
@@ -304,6 +354,74 @@ public class ImageSpecParameter {
         this.setOptional(projectIdParam.optional());
         this.setHiddenUi(projectIdParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
+        break;
+      case "MachineType":
+        TemplateParameter.MachineType machineTypeParam =
+            (TemplateParameter.MachineType) parameterAnnotation;
+        if (!machineTypeParam.name().isEmpty()) {
+          this.setName(machineTypeParam.name());
+        }
+        processDescriptions(
+            machineTypeParam.groupName(),
+            machineTypeParam.description(),
+            machineTypeParam.helpText(),
+            machineTypeParam.example());
+        this.setParentName(machineTypeParam.parentName());
+        this.setParentTriggerValues(machineTypeParam.parentTriggerValues());
+        this.setOptional(machineTypeParam.optional());
+        this.setHiddenUi(machineTypeParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.MACHINE_TYPE);
+        break;
+      case "ServiceAccount":
+        TemplateParameter.ServiceAccount serviceAccountParam =
+            (TemplateParameter.ServiceAccount) parameterAnnotation;
+        if (!serviceAccountParam.name().isEmpty()) {
+          this.setName(serviceAccountParam.name());
+        }
+        processDescriptions(
+            serviceAccountParam.groupName(),
+            serviceAccountParam.description(),
+            serviceAccountParam.helpText(),
+            serviceAccountParam.example());
+        this.setParentName(serviceAccountParam.parentName());
+        this.setParentTriggerValues(serviceAccountParam.parentTriggerValues());
+        this.setOptional(serviceAccountParam.optional());
+        this.setHiddenUi(serviceAccountParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.SERVICE_ACCOUNT);
+        break;
+      case "WorkerRegion":
+        TemplateParameter.WorkerRegion workerRegionParam =
+            (TemplateParameter.WorkerRegion) parameterAnnotation;
+        if (!workerRegionParam.name().isEmpty()) {
+          this.setName(workerRegionParam.name());
+        }
+        processDescriptions(
+            workerRegionParam.groupName(),
+            workerRegionParam.description(),
+            workerRegionParam.helpText(),
+            workerRegionParam.example());
+        this.setParentName(workerRegionParam.parentName());
+        this.setParentTriggerValues(workerRegionParam.parentTriggerValues());
+        this.setOptional(workerRegionParam.optional());
+        this.setHiddenUi(workerRegionParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.WORKER_REGION);
+        break;
+      case "WorkerZone":
+        TemplateParameter.WorkerZone workerZoneParam =
+            (TemplateParameter.WorkerZone) parameterAnnotation;
+        if (!workerZoneParam.name().isEmpty()) {
+          this.setName(workerZoneParam.name());
+        }
+        processDescriptions(
+            workerZoneParam.groupName(),
+            workerZoneParam.description(),
+            workerZoneParam.helpText(),
+            workerZoneParam.example());
+        this.setParentName(workerZoneParam.parentName());
+        this.setParentTriggerValues(workerZoneParam.parentTriggerValues());
+        this.setOptional(workerZoneParam.optional());
+        this.setHiddenUi(workerZoneParam.hiddenUi());
+        this.setParamType(ImageSpecParameterType.WORKER_ZONE);
         break;
       case "Boolean":
         TemplateParameter.Boolean booleanParam = (TemplateParameter.Boolean) parameterAnnotation;

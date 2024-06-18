@@ -19,24 +19,42 @@ import static com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.confi
 
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class OptionsToConfigBuilder {
+  private static final Logger LOG = LoggerFactory.getLogger(OptionsToConfigBuilder.class);
 
   public static final class MySql {
 
+    private static String extractDbFromURL(String url) {
+      URI uri;
+      try {
+        uri = new URI(url);
+      } catch (URISyntaxException e) {
+        throw new RuntimeException(String.format("Unable to parse url: %s", url), e);
+      }
+      // Remove '/' before returning.
+      return uri.getPath().substring(1);
+    }
+
     public static JdbcIOWrapperConfig configWithMySqlDefaultsFromOptions(
-        SourceDbToSpannerOptions options) {
+        SourceDbToSpannerOptions options, List<String> tables) {
       JdbcIOWrapperConfig.Builder builder = builderWithMySqlDefaults();
       builder =
           builder
-              .setSourceHost(options.getSourceHost())
-              .setSourcePort(options.getSourcePort())
+              .setSourceDbURL(options.getSourceDbURL())
               .setSourceSchemaReference(
-                  SourceSchemaReference.builder().setDbName(options.getSourceDB()).build())
+                  SourceSchemaReference.builder()
+                      .setDbName(
+                          // Strip off the prefix 'jdbc:' which the library cannot handle.
+                          extractDbFromURL(options.getSourceDbURL().substring(5)))
+                      .build())
               .setDbAuth(
                   LocalCredentialsProvider.builder()
                       .setUserName(options.getUsername())
@@ -45,53 +63,13 @@ public final class OptionsToConfigBuilder {
               .setJdbcDriverClassName(options.getJdbcDriverClassName())
               .setJdbcDriverJars(options.getJdbcDriverJars())
               .setShardID("Unsupported"); /*TODO: Support Sharded Migration */
-      if (options.getSourceConnectionProperties() != "") {
-        builder = builder.setConnectionProperties(options.getSourceConnectionProperties());
-      }
       if (options.getMaxConnections() != 0) {
         builder.setMaxConnections((long) options.getMaxConnections());
       }
-      if (options.getReconnectsEnabled()) {
-        builder.setAutoReconnect(true);
-        if (options.getReconnectAttempts() != 0) {
-          builder.setReconnectAttempts((long) options.getReconnectAttempts());
-        }
-      }
-      ImmutableMap<String, String> tablesWithPartitionColumns =
-          getTablesWithPartitionColumn(options);
-      ImmutableList<TableConfig> tableConfigs =
-          tablesWithPartitionColumns.entrySet().stream()
-              .map(
-                  entry -> {
-                    TableConfig.Builder configBuilder =
-                        TableConfig.builder(entry.getKey()).withPartitionColum(entry.getValue());
-                    if (options.getNumPartitions() != 0) {
-                      configBuilder = configBuilder.setMaxPartitions(options.getNumPartitions());
-                    }
-                    if (options.getFetchSize() != 0) {
-                      configBuilder = configBuilder.setMaxFetchSize(options.getFetchSize());
-                    }
-                    return configBuilder.build();
-                  })
-              .collect(ImmutableList.toImmutableList());
-      builder = builder.setTableConfigs(tableConfigs);
+      builder.setMaxPartitions(options.getNumPartitions());
+      builder = builder.setTables(ImmutableList.copyOf(tables));
       return builder.build();
     }
-  }
-
-  private static ImmutableMap<String, String> getTablesWithPartitionColumn(
-      SourceDbToSpannerOptions options) {
-    String[] tables = options.getTables().split(",");
-    String[] partitionColumns = options.getPartitionColumns().split(",");
-    if (tables.length != partitionColumns.length) {
-      throw new RuntimeException(
-          "invalid configuration. Partition column count does not match " + "tables count.");
-    }
-    ImmutableMap.Builder<String, String> tableWithPartitionColumnBuilder = ImmutableMap.builder();
-    for (int i = 0; i < tables.length; i++) {
-      tableWithPartitionColumnBuilder.put(tables[i], partitionColumns[i]);
-    }
-    return tableWithPartitionColumnBuilder.build();
   }
 
   private OptionsToConfigBuilder() {}

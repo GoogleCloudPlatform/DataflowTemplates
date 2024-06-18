@@ -24,6 +24,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
+import org.apache.parquet.Strings;
 
 /**
  * This mapper directly maps table and column names without any modification. For fetching
@@ -42,11 +43,20 @@ public class IdentityMapper implements ISchemaMapper, Serializable {
     return ddl.dialect();
   }
 
+  public List<String> getSourceTablesToMigrate(String namespace) {
+    if (!Strings.isNullOrEmpty(namespace)) {
+      throw new UnsupportedOperationException(
+          "can not resolve namespace and namespace support " + "is not added yet: " + namespace);
+    }
+    return ddl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
+  }
+
   @Override
   public String getSpannerTableName(String namespace, String srcTable)
       throws NoSuchElementException {
     if (ddl.table(srcTable) == null) {
-      throw new NoSuchElementException(String.format("Spanner table '%s' not found", srcTable));
+      throw new NoSuchElementException(
+          String.format("Spanner table not found for source: '%s'", srcTable));
     }
     return srcTable;
   }
@@ -93,5 +103,10 @@ public class IdentityMapper implements ISchemaMapper, Serializable {
       throw new NoSuchElementException(String.format("Spanner table '%s' not found", spannerTable));
     }
     return spTable.columns().stream().map(column -> column.name()).collect(Collectors.toList());
+  }
+
+  @Override
+  public String getShardIdColumnName(String namespace, String spannerTableName) {
+    return null;
   }
 }

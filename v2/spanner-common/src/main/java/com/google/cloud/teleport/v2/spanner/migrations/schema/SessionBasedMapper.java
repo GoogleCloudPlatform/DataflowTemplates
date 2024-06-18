@@ -28,7 +28,10 @@ import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.stream.Collectors;
+import org.apache.curator.shaded.com.google.common.collect.ImmutableList;
+import org.apache.parquet.Strings;
 
 /**
  * This mapper uses an SMT session file to map table and column names. For fetching destination data
@@ -42,6 +45,12 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
 
   public SessionBasedMapper(String sessionFilePath, Ddl ddl) throws InputMismatchException {
     this.schema = SessionFileReader.read(sessionFilePath);
+    this.ddl = ddl;
+    validateSchemaAndDdl(schema, ddl);
+  }
+
+  public SessionBasedMapper(Schema schema, Ddl ddl) throws InputMismatchException {
+    this.schema = schema;
     this.ddl = ddl;
     validateSchemaAndDdl(schema, ddl);
   }
@@ -76,6 +85,14 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
   @Override
   public Dialect getDialect() {
     return ddl.dialect();
+  }
+
+  public List<String> getSourceTablesToMigrate(String namespace) {
+    if (!Strings.isNullOrEmpty(namespace)) {
+      throw new UnsupportedOperationException(
+          "can not resolve namespace and namespace support " + "is not added yet: " + namespace);
+    }
+    return ImmutableList.copyOf(schema.getToSpanner().keySet());
   }
 
   @Override
@@ -138,5 +155,56 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
   public List<String> getSpannerColumns(String namespace, String spannerTable)
       throws NoSuchElementException {
     return schema.getSpannerColumnNames(spannerTable);
+  }
+
+  @Override
+  public String getShardIdColumnName(String namespace, String spannerTableName) {
+    Map<String, NameAndCols> spanToId = schema.getSpannerToID();
+    if (!spanToId.containsKey(spannerTableName)) {
+      throw new NoSuchElementException(
+          String.format("Spanner table '%s' not found", spannerTableName));
+    }
+
+    String tableId =
+        Objects.requireNonNull(
+                spanToId.get(spannerTableName),
+                String.format(
+                    "Found null table in spanToId for table %s, please provide a valid session file.",
+                    spannerTableName))
+            .getName();
+    Objects.requireNonNull(
+        tableId,
+        String.format(
+            "Found null table id for table %s, please provide a valid session file.",
+            spannerTableName));
+    SpannerTable table =
+        Objects.requireNonNull(
+                schema.getSpSchema(), "Found null spSchema, please provide a valid session file.")
+            .get(tableId);
+    Objects.requireNonNull(
+        table,
+        String.format(
+            "Found null table for tableId %s, please provide a valid session file.", tableId));
+    String colId =
+        Objects.requireNonNull(
+            table.getShardIdColumn(),
+            String.format(
+                "Found null shard id column for table %s, please provide a valid session file.",
+                spannerTableName));
+    Objects.requireNonNull(
+        table.getColDefs(),
+        String.format(
+            "Found null col defs for table %s, please provide a valid session file.",
+            spannerTableName));
+    SpannerColumnDefinition shardColDef =
+        Objects.requireNonNull(
+            table.getColDefs().get(colId),
+            String.format(
+                "No col def found for colId %s, please provide a valid session file.", colId));
+    return Objects.requireNonNull(
+        shardColDef.getName(),
+        String.format(
+            "Found null shard col name for table %s, colId %s, please provide a valid session file.",
+            spannerTableName, colId));
   }
 }

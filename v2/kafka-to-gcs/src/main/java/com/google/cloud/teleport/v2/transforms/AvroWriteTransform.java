@@ -16,15 +16,14 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
+import com.google.cloud.teleport.v2.kafka.transforms.AvroDynamicTransform;
+import com.google.cloud.teleport.v2.kafka.transforms.AvroTransform;
+import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters;
+import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters.MessageFormatConstants;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
-import com.google.cloud.teleport.v2.utils.SchemaUtils;
-import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
-import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
-import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
-import java.io.IOException;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
+import java.util.Map;
+import java.util.Objects;
 import javax.annotation.Nullable;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -56,8 +55,6 @@ import org.apache.commons.codec.digest.DigestUtils;
 public abstract class AvroWriteTransform
     extends PTransform<
         PCollection<KafkaRecord<byte[], byte[]>>, WriteFilesResult<AvroDestination>> {
-  private static final String subject = "UNUSED";
-  static final int DEFAULT_CACHE_CAPACITY = 1000;
 
   public abstract String outputDirectory();
 
@@ -69,51 +66,15 @@ public abstract class AvroWriteTransform
 
   public abstract @Nullable String schemaRegistryURL();
 
-  public abstract @Nullable String schemaPath();
+  public abstract Map<String, Object> schemaRegistrySslConfig();
+
+  public abstract @Nullable String confluentSchemaPath();
+
+  public abstract @Nullable String binaryAvroSchemaPath();
+
+  public abstract String schemaFormat();
 
   public abstract String outputFilenamePrefix();
-
-  /** Expected Message format from the Kafka topics. */
-  enum MessageFormat {
-    /**
-     * Represents messages serialized in the Confluent wire format.
-     *
-     * <p>This format follows the Confluent wire format specification as documented in the Confluent
-     * Schema Registry. Messages serialized in this format are typically associated with a schema ID
-     * registered in a Schema Registry. In situations where access to the Schema Registry is
-     * unavailable, messages can still be deserialized using a schema provided by the user as a
-     * template parameter. The deserialization process utilizes binary encoding, as specified in the
-     * Avro Binary Encoding specification.
-     *
-     * @see <a
-     *     href="https://docs.confluent.io/platform/current/schema-registry/fundamentals/serdes-develop/index.html#wire-format">Confluent
-     *     Wire Format Documentation</a>
-     * @see <a href="https://avro.apache.org/docs/current/specification/#binary-encoding">Avro
-     *     Binary Encoding Specification</a>
-     */
-    CONFLUENT_WIRE_FORMAT,
-    /**
-     * Represents messages serialized in the Avro binary format.
-     *
-     * <p>This format follow the Avro Binary Encoding Specification. The schema used to serialize
-     * the Avro messages by the reader must be used to deserialize the bytes by the writer.
-     * Otherwise, there could be unexpected errors.
-     *
-     * @see <a href="https://avro.apache.org/docs/current/specification/#binary-encoding">Avro
-     *     Binary Encoding Specification</a>
-     */
-    // TODO: Pending implementation.
-    AVRO_BINARY_ENCODING,
-    /**
-     * Represents message serialized in the Avro Single Object.
-     *
-     * @see <a
-     *     href="https://avro.apache.org/docs/current/specification/#single-object-encoding">Avro
-     *     Single Object Encoding Specification</a>
-     */
-    // TODO: Pending implementation.
-    AVRO_SINGLE_OBJECT_ENCODING
-  }
 
   public static AvroWriteTransformBuilder newBuilder() {
     return new AutoValue_AvroWriteTransform.Builder();
@@ -121,28 +82,49 @@ public abstract class AvroWriteTransform
 
   public WriteFilesResult<AvroDestination> expand(
       PCollection<KafkaRecord<byte[], byte[]>> records) {
-    MessageFormat inputWireFormat = MessageFormat.valueOf(messageFormat());
-    switch (inputWireFormat) {
-      case CONFLUENT_WIRE_FORMAT:
-        String schemaRegistryURL = schemaRegistryURL();
-        String schemaPath = schemaPath();
-        if (schemaRegistryURL == null && schemaPath == null) {
-          throw new UnsupportedOperationException(
-              "A Schema Registry URL or static schemas are required for CONFLUENT_WIRE_FORMAT messages");
-        }
-        DoFn<KafkaRecord<byte[], byte[]>, GenericRecord> convertToBytes;
-        if (schemaRegistryURL != null) {
-          convertToBytes = new ConvertBytesToGenericRecord(schemaRegistryURL);
-        } else {
-          convertToBytes = new ConvertBytesToGenericRecord(schemaPath, true);
-        }
-        PCollection<GenericRecord> genericRecords =
-            records.apply(ParDo.of(convertToBytes)).setCoder(GenericRecordCoder.of());
-        return writeToGCS(genericRecords);
-      default:
-        throw new UnsupportedOperationException(
-            "Message format other than Confluent wire format is not supported");
+    String inputWireFormat = messageFormat();
+    PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
+        failsafeElementPCollection;
+
+    if (inputWireFormat.equals(MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)) {
+      if (Objects.requireNonNull(schemaRegistryURL()).isBlank()
+          && Objects.requireNonNull(confluentSchemaPath()).isEmpty()) {
+        throw new IllegalArgumentException(
+            "Either Schema Registry Connection URL or Confluent Avro Schema Path must be provided for AVRO_CONFLUENT_WIRE_FORMAT.");
+      }
+      if ((schemaFormat().equals(KafkaTemplateParameters.SchemaFormat.SINGLE_SCHEMA_FILE))) {
+        failsafeElementPCollection =
+            records.apply(AvroTransform.of(inputWireFormat, confluentSchemaPath()));
+      } else if (schemaFormat().equals(KafkaTemplateParameters.SchemaFormat.SCHEMA_REGISTRY)) {
+        failsafeElementPCollection =
+            records.apply(AvroDynamicTransform.of(schemaRegistryURL(), schemaRegistrySslConfig()));
+      } else {
+        throw new RuntimeException("Unsupported message format");
+      }
+    } else if (inputWireFormat.equals(MessageFormatConstants.AVRO_BINARY_ENCODING)
+        && !(Objects.requireNonNull(binaryAvroSchemaPath())).isEmpty()) {
+      failsafeElementPCollection =
+          records.apply(AvroTransform.of(messageFormat(), binaryAvroSchemaPath()));
+    } else {
+      throw new RuntimeException("Unsupported message format");
     }
+
+    PCollection<GenericRecord> genericRecordPCollection =
+        failsafeElementPCollection.apply(
+            ParDo.of(
+                new DoFn<
+                    FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>, GenericRecord>() {
+                  @ProcessElement
+                  public void expand(
+                      @Element
+                          FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>
+                              failsafeElement,
+                      OutputReceiver<GenericRecord> o) {
+                    o.output(failsafeElement.getPayload());
+                  }
+                }));
+
+    return writeToGCS(genericRecordPCollection);
   }
 
   @AutoValue.Builder
@@ -158,7 +140,14 @@ public abstract class AvroWriteTransform
     public abstract AvroWriteTransformBuilder setSchemaRegistryURL(
         @Nullable String schemaRegistryURL);
 
-    public abstract AvroWriteTransformBuilder setSchemaPath(@Nullable String schemaInfo);
+    public abstract AvroWriteTransformBuilder setSchemaRegistrySslConfig(
+        Map<String, Object> schemaRegistrySslConfig);
+
+    public abstract AvroWriteTransformBuilder setConfluentSchemaPath(String value);
+
+    public abstract AvroWriteTransformBuilder setBinaryAvroSchemaPath(String value);
+
+    public abstract AvroWriteTransformBuilder setSchemaFormat(String value);
 
     public abstract AvroWriteTransformBuilder setOutputFilenamePrefix(String value);
 
@@ -193,57 +182,6 @@ public abstract class AvroWriteTransform
             .withNaming(
                 (SerializableFunction<AvroDestination, FileIO.Write.FileNaming>)
                     AvroFileNaming::new));
-  }
-
-  public static class ConvertBytesToGenericRecord
-      extends DoFn<KafkaRecord<byte[], byte[]>, GenericRecord> {
-    private transient SchemaRegistryClient schemaRegistryClient;
-    private String schemaRegistryURL = null;
-    private String schemaPath = null;
-    private boolean useMock;
-
-    public ConvertBytesToGenericRecord(String schemaRegistryURL) {
-      this.schemaRegistryURL = schemaRegistryURL;
-    }
-
-    public ConvertBytesToGenericRecord(String schemaPath, boolean useMock) {
-      this.schemaPath = schemaPath;
-      this.useMock = useMock;
-    }
-
-    @DoFn.Setup
-    public void setup() {
-      if (useMock) {
-        schemaRegistryClient = new MockSchemaRegistryClient();
-        registerSchema(schemaRegistryClient, schemaPath);
-      } else {
-        schemaRegistryClient =
-            new CachedSchemaRegistryClient(schemaRegistryURL, DEFAULT_CACHE_CAPACITY);
-      }
-    }
-
-    @ProcessElement
-    // TODO: Add Dead letter queue when deserialization error happens.
-    public void processElement(
-        @Element KafkaRecord<byte[], byte[]> kafkaRecord, OutputReceiver<GenericRecord> o) {
-      KafkaAvroDeserializer deserializer = new KafkaAvroDeserializer(schemaRegistryClient);
-      if (!useMock) {
-        o.output(
-            (GenericRecord)
-                deserializer.deserialize(kafkaRecord.getTopic(), kafkaRecord.getKV().getValue()));
-      } else {
-        o.output((GenericRecord) deserializer.deserialize(subject, kafkaRecord.getKV().getValue()));
-      }
-    }
-  }
-
-  static void registerSchema(SchemaRegistryClient mockSchemaRegistryClient, String schemaFilePath) {
-    try {
-      // Register schemas under the fake subject name.
-      mockSchemaRegistryClient.register(subject, SchemaUtils.getAvroSchema(schemaFilePath), 1, 1);
-    } catch (IOException | RestClientException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   class AvroFileNaming implements FileIO.Write.FileNaming {

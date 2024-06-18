@@ -23,6 +23,8 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMap
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.util.FluentBackoff;
 
 /**
@@ -32,17 +34,17 @@ import org.apache.beam.sdk.util.FluentBackoff;
 @AutoValue
 public abstract class JdbcIOWrapperConfig {
 
-  /** Source Endpoint. */
-  public abstract String sourceHost();
-
-  /** Source Port. */
-  public abstract String sourcePort();
+  /** Source URL. */
+  public abstract String sourceDbURL();
 
   /** {@link SourceSchemaReference}. */
   public abstract SourceSchemaReference sourceSchemaReference();
 
-  /** Table Configurations. */
-  public abstract ImmutableList<TableConfig> tableConfigs();
+  /** List of Tables to migrate. Auto-inferred if emtpy. */
+  public abstract ImmutableList<String> tables();
+
+  /** Configured Partition Column. If unspecified for a table, it's auto-inferred. */
+  public abstract ImmutableMap<String, ImmutableList<String>> tableVsPartitionColumns();
 
   /** Shard ID. */
   public abstract String shardID();
@@ -68,57 +70,55 @@ public abstract class JdbcIOWrapperConfig {
   /** Source Row Mapping Provider. */
   public abstract JdbcValueMappingsProvider valueMappingsProvider();
 
-  /*
-   * Properties string to use for the JDBC connection.
-   * Format of the string must be [propertyName=property;]
-   * Defaults to a vetted configuration based on benchmarking results.
-   * Example:
-   *    "maxTotal=160;maxpoolsize=160;maxIdle=160;minIdle=160"
-   *       + ";wait_timeout=57600"
-   *        + ";interactive_timeout=57600"
-   *        + ";idletimeout=3600"
-   *        + ";maxwaittime=600_000"
-   *        + ";maxWaitMillis=600_000"
-   *        + ";maxConnLifetimeMillis=600_000"
-   *        +
-   * ";testOnCreate=true;testOnBorrow=true;testOnReturn=true;testWhileIdle=true"
-   */
-  public abstract String connectionProperties();
-
-  /** Auto Reconnect for dropped connections. */
-  public abstract Boolean autoReconnect();
-
-  /** Reconnect Attempts for Auto Reconnect default 10. */
-  public abstract Long reconnectAttempts();
-
   /** Max Number of connections. */
   public abstract Long maxConnections();
 
   /** BackOff Strategy for Schema Discovery retries. Defaults to {@link FluentBackoff#DEFAULT}. */
   public abstract FluentBackoff schemaDiscoveryBackOff();
 
+  /**
+   * Max number of read partitions. If not-null uses the user supplied maxPartitions, instead of
+   * auto-inference. defaults to null.
+   */
+  @Nullable
+  public abstract Integer maxPartitions();
+
+  /**
+   * Configures the size of data read in db, per db read call. Defaults to beam's DEFAULT_FETCH_SIZE
+   * of 50_000. For manually fine-tuning this, take into account the read ahead buffer pool settings
+   * (innodb_read_ahead_threshold) and the worker memory.
+   */
+  @Nullable
+  public abstract Integer maxFetchSize();
+
+  /** Sequence of Sql Init statements for the connection. */
+  public abstract ImmutableList<String> sqlInitSeq();
+
   public static Builder builderWithMySqlDefaults() {
     return new AutoValue_JdbcIOWrapperConfig.Builder()
         .setSchemaMapperType(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_MAPPER_TYPE)
         .setDialectAdapter(MySqlConfigDefaults.DEFAULT_MYSQL_DIALECT_ADAPTER)
         .setValueMappingsProvider(MySqlConfigDefaults.DEFAULT_MYSQL_VALUE_MAPPING_PROVIDER)
-        .setAutoReconnect(MySqlConfigDefaults.DEFAULT_MYSQL_AUTO_RECONNECT)
-        .setReconnectAttempts(MySqlConfigDefaults.DEFAULT_MYSQL_RECONNECT_ATTEMPTS)
-        .setConnectionProperties(MySqlConfigDefaults.DEFAULT_MYSQL_CONNECTION_PROPERTIES)
         .setMaxConnections(MySqlConfigDefaults.DEFAULT_MYSQL_MAX_CONNECTIONS)
-        .setSchemaDiscoveryBackOff(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_DISCOVERY_BACKOFF);
+        .setSqlInitSeq(MySqlConfigDefaults.DEFAULT_MYSQL_INIT_SEQ)
+        .setSchemaDiscoveryBackOff(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_DISCOVERY_BACKOFF)
+        .setTables(ImmutableList.of())
+        .setTableVsPartitionColumns(ImmutableMap.of())
+        .setMaxPartitions(null)
+        .setMaxFetchSize(null);
   }
 
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setSourceHost(String value);
-
-    public abstract Builder setSourcePort(String value);
+    public abstract Builder setSourceDbURL(String value);
 
     public abstract Builder setSourceSchemaReference(SourceSchemaReference value);
 
-    public abstract Builder setTableConfigs(ImmutableList<TableConfig> value);
+    public abstract Builder setTables(ImmutableList<String> value);
+
+    public abstract Builder setTableVsPartitionColumns(
+        ImmutableMap<String, ImmutableList<String>> value);
 
     public abstract Builder setShardID(String value);
 
@@ -134,13 +134,13 @@ public abstract class JdbcIOWrapperConfig {
 
     public abstract Builder setJdbcDriverClassName(String value);
 
-    public abstract Builder setConnectionProperties(String value);
-
-    public abstract Builder setReconnectAttempts(Long value);
-
-    public abstract Builder setAutoReconnect(Boolean value);
-
     public abstract Builder setSchemaDiscoveryBackOff(FluentBackoff value);
+
+    public abstract Builder setMaxPartitions(Integer value);
+
+    public abstract Builder setMaxFetchSize(Integer value);
+
+    public abstract Builder setSqlInitSeq(ImmutableList<String> value);
 
     public abstract Builder setMaxConnections(Long value);
 

@@ -95,6 +95,7 @@ public class PubsubToAvro {
       extends PipelineOptions, StreamingOptions, WindowedFilenamePolicyOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input subscription",
         helpText =
             "Pub/Sub subscription to read the input from, in the format of"
@@ -106,6 +107,7 @@ public class PubsubToAvro {
 
     @TemplateParameter.PubsubTopic(
         order = 2,
+        groupName = "Source",
         description = "Pub/Sub input topic",
         helpText =
             "The Pub/Sub topic to subscribe to for message consumption. The topic name must be in the format projects/<PROJECT_ID>/topics/<TOPIC_NAME>.")
@@ -123,6 +125,7 @@ public class PubsubToAvro {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
+        groupName = "Target",
         description = "Output file directory in Cloud Storage",
         helpText =
             "The output directory where output Avro files are archived. Must contain / at the end. For example: gs://example-bucket/example-directory/")
@@ -133,6 +136,7 @@ public class PubsubToAvro {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         optional = true,
         description = "Output filename prefix of the files to write",
         helpText = "The output filename prefix for the Avro files.",
@@ -144,6 +148,7 @@ public class PubsubToAvro {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Target",
         optional = true,
         description = "Output filename suffix of the files to write",
         helpText = "The output filename suffix for the Avro files.")

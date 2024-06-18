@@ -89,7 +89,11 @@ public class SpannerTableFilter {
     Queue<Table> tables = new LinkedList<Table>();
 
     for (String t : tableNames) {
-      tables.add(ddl.table(t));
+      Table table = ddl.table(t);
+      // If table can not found, we ignore it here. Otherwise it may cause NPE.
+      if (table != null) {
+        tables.add(ddl.table(t));
+      }
     }
     return tables;
   }

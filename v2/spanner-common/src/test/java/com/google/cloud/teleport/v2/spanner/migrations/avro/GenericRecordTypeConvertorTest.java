@@ -29,9 +29,13 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.common.io.Resources;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.avro.LogicalType;
@@ -64,6 +68,9 @@ public class GenericRecordTypeConvertorTest {
     Schema varcharType =
         new LogicalType(GenericRecordTypeConvertor.CustomAvroTypes.VARCHAR)
             .addToSchema(SchemaBuilder.builder().stringType());
+    Schema unsupportedType =
+        new LogicalType(GenericRecordTypeConvertor.CustomAvroTypes.UNSUPPORTED)
+            .addToSchema(SchemaBuilder.builder().nullType());
 
     // Build the schema using the created types
     return SchemaBuilder.record("logicalTypes")
@@ -95,6 +102,9 @@ public class GenericRecordTypeConvertorTest {
         .noDefault()
         .name("varchar_col")
         .type(varcharType)
+        .noDefault()
+        .name("unsupported_col")
+        .type(unsupportedType)
         .noDefault()
         .endRecord();
   }
@@ -155,6 +165,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("json_col", "{\"k1\":\"v1\"}");
     genericRecord.put("number_col", "289452");
     genericRecord.put("varchar_col", "Hellogcds");
+    genericRecord.put("unsupported_col", null);
 
     String col = "date_col";
     String result =
@@ -209,6 +220,37 @@ public class GenericRecordTypeConvertorTest {
         GenericRecordTypeConvertor.handleLogicalFieldType(
             col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
     assertEquals("Test varchar_col conversion: ", "Hellogcds", result);
+
+    col = "unsupported_col";
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+    assertEquals("Test unsupported_col conversion: ", null, result);
+  }
+
+  @Test
+  public void testTimestampLogicalTypeLimits() {
+    Map<Long, String> testCases = new HashMap<>();
+    testCases.put(1602599400056483L, "2020-10-13T14:30:00.056483Z"); // Original case
+    testCases.put(-62135596800000000L, "0001-01-01T00:00:00Z"); // Min timestamp
+    testCases.put(253402300799999999L, "9999-12-31T23:59:59.999999Z"); // Max timestamp
+    testCases.put(-30610224000000000L, "1000-01-01T00:00:00Z");
+    testCases.put(253402214400000000L, "9999-12-31T00:00:00Z");
+    testCases.put(70678915200000000L, "4209-09-23T00:00:00Z");
+    testCases.put(96038611200000000L, "5013-05-06T00:00:00Z");
+    testCases.put(-47749305600000000L, "0456-11-19T00:00:00Z");
+    testCases.put(-62098444800000000L, "0002-03-07T00:00:00Z");
+    testCases.put(56074229063257557L, "3746-12-03T06:44:23.257557Z");
+    testCases.put(-57549851159000000L, "0146-04-26T18:14:01Z");
+
+    for (Map.Entry<Long, String> entry : testCases.entrySet()) {
+      String result =
+          GenericRecordTypeConvertor.handleLogicalFieldType(
+              "timestamp_micros_col",
+              entry.getKey(),
+              LogicalTypes.timestampMicros().addToSchema(Schema.create(Schema.Type.LONG)));
+      assertEquals("Test timestamp for epoch " + entry.getKey() + ": ", entry.getValue(), result);
+    }
   }
 
   @Test
@@ -337,7 +379,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("timestamp_col", 1602599400056483L);
     genericRecord.put("date_col", 738991);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "");
+        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "", null);
     Map<String, Value> actual =
         genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
     Map<String, Value> expected =
@@ -366,7 +408,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("timestamp_col", null);
     genericRecord.put("date_col", null);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "");
+        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "", null);
     Map<String, Value> actual =
         genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
     Map<String, Value> expected =
@@ -393,7 +435,7 @@ public class GenericRecordTypeConvertorTest {
   @Test
   public void transformChangeEventTest_illegalUnionType() {
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "");
+        new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "", null);
     Schema schema =
         SchemaBuilder.builder()
             .unionOf()
@@ -424,7 +466,7 @@ public class GenericRecordTypeConvertorTest {
     GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
     genericRecord.put("bool_col", true);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(mockSchemaMapper, "");
+        new GenericRecordTypeConvertor(mockSchemaMapper, "", null);
 
     genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
   }
@@ -444,7 +486,7 @@ public class GenericRecordTypeConvertorTest {
     GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
     genericRecord.put("bool_col", true);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(mockSchemaMapper, "");
+        new GenericRecordTypeConvertor(mockSchemaMapper, "", null);
 
     assertThrows(
         NullPointerException.class,
@@ -463,11 +505,115 @@ public class GenericRecordTypeConvertorTest {
         .thenThrow(new RuntimeException());
 
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(mockSchemaMapper, "");
+        new GenericRecordTypeConvertor(mockSchemaMapper, "", null);
     assertThrows(
         RuntimeException.class,
         () -> genericRecordTypeConvertor.transformChangeEvent(null, "all_types"));
     // Verify that the mock method was called.
     Mockito.verify(mockSchemaMapper).getSourceColumnName(anyString(), anyString(), anyString());
+  }
+
+  @Test
+  public void transformChangeEventTest_identityMapper_noShardIdPopulation() {
+    GenericRecord genericRecord =
+        new GenericData.Record(
+            SchemaBuilder.record("all_types")
+                .namespace("com.test.schema")
+                .fields()
+                .name("int_col")
+                .type(unionNullType(Schema.create(Schema.Type.LONG)))
+                .noDefault()
+                .endRecord());
+    genericRecord.put("int_col", 5);
+
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(
+            new IdentityMapper(
+                Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
+                    .createTable("all_types")
+                    .column("int_col")
+                    .int64()
+                    .notNull()
+                    .endColumn()
+                    .primaryKey()
+                    .asc("int_col")
+                    .end()
+                    .endTable()
+                    .build()),
+            "",
+            "xyz");
+    Map<String, Value> actual =
+        genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
+    Map<String, Value> expected = Map.of("int_col", Value.int64(5));
+    // When using identity mapper, shard id should not get populated since shard id col won't exist.
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  public void transformChangeEventTest_ShardIdPopulation() {
+    Ddl shardedDdl =
+        Ddl.builder()
+            .createTable("new_cart")
+            .column("new_quantity")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("new_product_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .column("new_user_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .primaryKey()
+            .asc("new_user_id")
+            .asc("new_product_id")
+            .end()
+            .endTable()
+            .createTable("new_people")
+            .column("migration_shard_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .column("new_name")
+            .string()
+            .size(20)
+            .endColumn()
+            .primaryKey()
+            .asc("migration_shard_id")
+            .asc("new_name")
+            .end()
+            .endTable()
+            .build();
+
+    String shardedSessionFilePath =
+        Paths.get(Resources.getResource("session-file-sharded.json").getPath()).toString();
+
+    ISchemaMapper shardedMapper = new SessionBasedMapper(shardedSessionFilePath, shardedDdl);
+    GenericRecord genericRecord =
+        new GenericData.Record(
+            SchemaBuilder.record("people")
+                .namespace("com.test.schema")
+                .fields()
+                .name("name")
+                .type(unionNullType(Schema.create(Schema.Type.STRING)))
+                .noDefault()
+                .endRecord());
+    genericRecord.put("name", "name1");
+
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(shardedMapper, "", "id1");
+    Map<String, Value> actual =
+        genericRecordTypeConvertor.transformChangeEvent(genericRecord, "people");
+    Map<String, Value> expected =
+        Map.of("new_name", Value.string("name1"), "migration_shard_id", Value.string("id1"));
+    assertEquals(expected, actual);
+
+    // Null shard id case, shard id population should be skipped.
+    genericRecordTypeConvertor = new GenericRecordTypeConvertor(shardedMapper, "", null);
+    actual = genericRecordTypeConvertor.transformChangeEvent(genericRecord, "people");
+    // Shard id should not be present.
+    assertEquals(Map.of("new_name", Value.string("name1")), actual);
   }
 }
