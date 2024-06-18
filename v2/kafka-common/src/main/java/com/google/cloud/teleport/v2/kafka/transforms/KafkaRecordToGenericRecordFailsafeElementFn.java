@@ -98,8 +98,8 @@ public class KafkaRecordToGenericRecordFailsafeElementFn
             (GenericRecord)
                 kafkaDeserializer.deserialize(
                     element.getTopic(), element.getHeaders(), element.getKV().getValue());
-        context.output(FailsafeElement.of(element, result));
       }
+      context.output(FailsafeElement.of(element, result));
     } catch (Exception e) {
       new RuntimeException("Failed during deserialization: " + e.toString());
     }
