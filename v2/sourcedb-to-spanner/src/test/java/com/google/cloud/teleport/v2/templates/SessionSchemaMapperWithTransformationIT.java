@@ -44,17 +44,22 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class SessionSchemaMapperIT extends SourceDbToSpannerITBase {
-  private static final Logger LOG = LoggerFactory.getLogger(SessionSchemaMapperIT.class);
-  private static final HashSet<SessionSchemaMapperIT> testInstances = new HashSet<>();
+public class SessionSchemaMapperWithTransformationIT extends SourceDbToSpannerITBase {
+  private static final Logger LOG =
+      LoggerFactory.getLogger(SessionSchemaMapperWithTransformationIT.class);
+  private static final HashSet<SessionSchemaMapperWithTransformationIT> testInstances =
+      new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final String SESSION_FILE_RESOURCE = "SchemaMapperIT/company-session.json";
   private static final String MYSQL_DDL_RESOURCE = "SchemaMapperIT/company-mysql-schema.sql";
-  private static final String SPANNER_DDL_RESOURCE = "SchemaMapperIT/company-spanner-schema.sql";
+
+  private static final String SESSION_FILE_WITH_TRANSFORMATION_RESOURCE =
+      "SchemaMapperIT/company-session-with-transformation.json";
+  private static final String SPANNER_DDL_WITH_TRANSFORMATION_RESOURCE =
+      "SchemaMapperIT/company-spanner-schema-with-transformation.sql";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class. \
@@ -72,43 +77,42 @@ public class SessionSchemaMapperIT extends SourceDbToSpannerITBase {
   }
 
   @Test
-  public void noTransformationTest() throws Exception {
+  public void transformationTest() throws Exception {
     loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
-    createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+    createSpannerDDL(spannerResourceManager, SPANNER_DDL_WITH_TRANSFORMATION_RESOURCE);
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
-            SESSION_FILE_RESOURCE,
+            SESSION_FILE_WITH_TRANSFORMATION_RESOURCE,
             "mapper",
             mySQLResourceManager,
             spannerResourceManager,
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
-    List<Map<String, Object>> companyMySQL =
-        mySQLResourceManager.runSQLQuery("SELECT company_id, company_name FROM company");
+    List<Map<String, Object>> companyMySQL = mySQLResourceManager.readTable("company");
     ImmutableList<Struct> companySpanner =
-        spannerResourceManager.readTableRecords("company", "company_id", "company_name");
-    LOG.info("total company records: {}", companySpanner == null ? -1 : companySpanner.size());
-    LOG.info("loaded company data: {}", companySpanner);
+        spannerResourceManager.readTableRecords(
+            "company", "company_id", "company_name", "created_on");
 
     SpannerAsserts.assertThatStructs(companySpanner)
         .hasRecordsUnorderedCaseInsensitiveColumns(companyMySQL);
+    SpannerAsserts.assertThatStructs(companySpanner).hasRows(companyMySQL.size());
 
     List<Map<String, Object>> employeeMySQL =
         mySQLResourceManager.runSQLQuery(
-            "SELECT employee_id, company_id, employee_name, employee_address FROM employee");
+            "SELECT employee_id, company_id, employee_name, employee_address as employee_address_sp FROM employee");
     ImmutableList<Struct> employeeSpanner =
         spannerResourceManager.readTableRecords(
-            "employee", "employee_id", "company_id", "employee_name", "employee_address");
+            "employee", "employee_id", "company_id", "employee_name", "employee_address_sp");
 
     SpannerAsserts.assertThatStructs(employeeSpanner)
         .hasRecordsUnorderedCaseInsensitiveColumns(employeeMySQL);
+    SpannerAsserts.assertThatStructs(companySpanner).hasRows(employeeMySQL.size());
 
     ImmutableList<Struct> employeeAttribute =
         spannerResourceManager.readTableRecords(
             "employee_attribute", "employee_id", "attribute_name", "value");
-
-    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(4); // Supports composite keys
+    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(4); // Works for composite keys
   }
 }

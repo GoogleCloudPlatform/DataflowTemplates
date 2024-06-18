@@ -1,7 +1,7 @@
 CREATE TABLE `company` (
                            `company_id` int(11) PRIMARY KEY NOT NULL,
                            `company_name` varchar(100) DEFAULT NULL,
-                           `created_on` date DEFAULT NOW()
+                           `created_on` date
 );
 
 INSERT INTO `company` VALUES
@@ -14,7 +14,7 @@ CREATE TABLE `employee` (
                             `company_id` int(11) DEFAULT NULL,
                             `employee_name` varchar(100) DEFAULT NULL,
                             `employee_address` varchar(100) DEFAULT NULL,
-                            `created_on` date DEFAULT NOW()
+                            `created_on` date
 );
 
 INSERT INTO `employee` VALUES
@@ -27,7 +27,7 @@ CREATE TABLE `employee_attribute` (
                                       `employee_id` int(11) NOT NULL,
                                       `attribute_name` varchar(100) NOT NULL,
                                       `value` varchar(100) DEFAULT NULL,
-                                      `updated_on` date DEFAULT NOW(),
+                                      `updated_on` date,
                                       PRIMARY KEY (`employee_id`,`attribute_name`)
 );
 
@@ -36,3 +36,8 @@ INSERT INTO `employee_attribute` VALUES
                                      (101,'iq','120','2024-06-10'),
                                      (102,'iq','20','2024-06-10'),
                                      (300,'endurance','20','2024-06-10');
+
+CREATE TABLE `mysql_extra` (
+                           `test_id` int(11) PRIMARY KEY NOT NULL,
+                           `test_name` varchar(100) DEFAULT NULL
+);

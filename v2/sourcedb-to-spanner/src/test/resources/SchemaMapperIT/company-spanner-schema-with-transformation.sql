@@ -3,16 +3,16 @@ CREATE TABLE
 (
     company_id      INT64 NOT NULL,
     company_name    STRING(100),
-    created_on      STRING(100),    -- Converted created on to String
+    created_on      STRING(100),
 ) PRIMARY KEY
   (company_id);
 CREATE TABLE
-    employee_sp                     -- Renamed employee to employee_sp
+    employee_sp
 (
     employee_id         INT64 NOT NULL,
     company_id          INT64,
     employee_name       STRING(100),
-    employee_address_sp STRING(100), -- Added employee_address to employee_address_sp
+    employee_address_sp STRING(100),
     created_on          DATE,
 ) PRIMARY KEY
   (employee_id);

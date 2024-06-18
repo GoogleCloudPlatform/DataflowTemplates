@@ -26,14 +26,3 @@ CREATE TABLE
     updated_on     DATE,
 ) PRIMARY KEY
   (employee_id, attribute_name);
-
-CREATE TABLE
-    employee
-(
-    employee_id         INT64 NOT NULL,
-    company_id          INT64,
-    employee_name       STRING(100),
-    employee_address    STRING(100),
-    created_on          DATE,
-) PRIMARY KEY
-  (employee_id);
