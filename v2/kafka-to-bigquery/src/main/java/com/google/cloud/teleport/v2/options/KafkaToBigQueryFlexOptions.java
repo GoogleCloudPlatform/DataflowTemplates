@@ -48,7 +48,7 @@ public interface KafkaToBigQueryFlexOptions
       optional = true,
       description = "Persist the Kafka Message Key to the BigQuery table",
       helpText =
-          "If true, the pipeline will persist the Kafka message key in the BigQuery table, in a `_key` field of type `BYTES`. Default is false (Key is ignored).")
+          "If true, the pipeline will persist the Kafka message key in the BigQuery table, in a `_key` field of type `BYTES`. Default is `false` (Key is ignored).")
   @Default.Boolean(false)
   Boolean getPersistKafkaKey();
 
@@ -65,12 +65,12 @@ public interface KafkaToBigQueryFlexOptions
       optional = false,
       description = "Table Name Strategy",
       helpText =
-          "Write Mode: write records to one table or multiple tables (based on schema)."
-              + " The DYNAMIC_TABLE_NAMES mode is supported only for AVRO_CONFLUENT_WIRE_FORMAT Source Message Format"
-              + " and SCHEMA_REGISTRY Schema Source. The target table name will be auto-generated based on the Avro"
+          "Write records to one table or multiple tables (based on schema)."
+              + " The `DYNAMIC_TABLE_NAMES` mode is supported only for `AVRO_CONFLUENT_WIRE_FORMAT` Source Message Format"
+              + " and `SCHEMA_REGISTRY` Schema Source. The target table name will be auto-generated based on the Avro"
               + " schema name of each message, it could either be a single schema (creating a single table) or"
-              + " multiple schemas (creating multiple tables). The SINGLE_TABLE_NAME mode writes to a single"
-              + " table (single schema) specified by the user. Defaults to SINGLE_TABLE_NAME.")
+              + " multiple schemas (creating multiple tables). The `SINGLE_TABLE_NAME` mode writes to a single"
+              + " table (single schema) specified by the user. Defaults to `SINGLE_TABLE_NAME`.")
   @Default.String("SINGLE_TABLE_NAME")
   String getWriteMode();
 
@@ -115,7 +115,7 @@ public interface KafkaToBigQueryFlexOptions
           "BigQuery output dataset to write the output to. Tables will be created dynamically in the dataset."
               + " If the tables are created beforehand, the table names should follow the specified naming convention."
               + " The name should be `bqTableNamePrefix + Avro Schema FullName` ,"
-              + " each word will be separated by a hyphen '-'.")
+              + " each word will be separated by a hyphen `-`.")
   @Default.String("")
   String getOutputDataset();
 
@@ -145,7 +145,7 @@ public interface KafkaToBigQueryFlexOptions
       optional = true,
       description = "Write Disposition to use for BigQuery",
       helpText =
-          "BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE.",
+          "BigQuery WriteDisposition. For example: `WRITE_APPEND`, `WRITE_EMPTY` or `WRITE_TRUNCATE`.",
       hiddenUi = true)
   @Default.String("WRITE_APPEND")
   String getWriteDisposition();
@@ -161,7 +161,7 @@ public interface KafkaToBigQueryFlexOptions
       },
       optional = true,
       description = "Create Disposition to use for BigQuery",
-      helpText = "BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER.",
+      helpText = "BigQuery CreateDisposition. For example: `CREATE_IF_NEEDED`, `CREATE_NEVER`.",
       hiddenUi = true)
   @Default.String("CREATE_IF_NEEDED")
   String getCreateDisposition();
@@ -200,7 +200,7 @@ public interface KafkaToBigQueryFlexOptions
       groupName = "Destination",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
-      helpText = "Specifies the number of write streams, this parameter must be set. Default is 0.")
+      helpText = "Specifies the number of write streams, this parameter must be set. Default is `0`.")
   @Override
   @Default.Integer(0)
   Integer getNumStorageWriteApiStreams();
@@ -239,7 +239,7 @@ public interface KafkaToBigQueryFlexOptions
       optional = false,
       description = "Write errors to BigQuery",
       helpText =
-          "If true, failed messages will be written to BigQuery with extra error information. "
+          "If `true`, failed messages will be written to BigQuery with extra error information. "
               + "The deadletter table should be created with no schema.")
   @Default.Boolean(false)
   Boolean getUseBigQueryDLQ();
