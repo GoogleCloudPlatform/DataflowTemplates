@@ -29,15 +29,11 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class KafkaRecordToGenericRecordFailsafeElementFn
     extends DoFn<
         KafkaRecord<byte[], byte[]>, FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
     implements Serializable {
-  private static final Logger LOG =
-      LoggerFactory.getLogger(KafkaRecordToGenericRecordFailsafeElementFn.class);
 
   private transient KafkaAvroDeserializer kafkaDeserializer;
   private transient BinaryAvroDeserializer binaryDeserializer;
@@ -45,7 +41,7 @@ public class KafkaRecordToGenericRecordFailsafeElementFn
 
   // Flexible options for schema and encoding configuration
   private Schema schema;
-  private String topicName = "fake_topic";
+  private final String topicName = "fake_topic";
   private String schemaRegistryConnectionUrl;
   private Map<String, Object> schemaRegistrySslConfig;
   private String messageFormat; // "AVRO_BINARY_ENCODING" or "AVRO_CONFLUENT_WIRE_FORMAT"
@@ -102,10 +98,10 @@ public class KafkaRecordToGenericRecordFailsafeElementFn
             (GenericRecord)
                 kafkaDeserializer.deserialize(
                     element.getTopic(), element.getHeaders(), element.getKV().getValue());
+        context.output(FailsafeElement.of(element, result));
       }
     } catch (Exception e) {
-      LOG.error("Failed during deserialization: " + e.toString());
+      new RuntimeException("Failed during deserialization: " + e.toString());
     }
-    context.output(FailsafeElement.of(element, result));
   }
 }
