@@ -28,7 +28,7 @@ public interface CommonTemplateOptions extends PipelineOptions {
       optional = true,
       description = "Disabled algorithms to override jdk.tls.disabledAlgorithms",
       helpText =
-          "Comma separated algorithms to disable. If this value is set to none, no algorithm is "
+          "Comma separated algorithms to disable. If this value is set to `none`, no algorithm is "
               + "disabled. Use this parameter with caution, because the algorithms disabled "
               + "by default might have vulnerabilities or performance issues.",
       example = "SSLv3, RC4")
@@ -47,7 +47,7 @@ public interface CommonTemplateOptions extends PipelineOptions {
           "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. "
               + "These files are saved in the /extra_files directory in each worker.",
       example =
-          "gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>")
+          "gs://BUCKET/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>")
   String getExtraFilesToStage();
 
   void setExtraFilesToStage(String extraFilesToStage);
@@ -65,7 +65,7 @@ public interface CommonTemplateOptions extends PipelineOptions {
       },
       description = "Log level in the workers, defaults to INFO",
       helpText =
-          "Set Log level in the workers. Supported options are OFF, ERROR, WARN, INFO, DEBUG, TRACE. Defaults to INFO")
+          "Set Log level in the workers. Supported options are `OFF`, `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE`. Defaults to `INFO`")
   @Default.Enum("INFO")
   SdkHarnessOptions.LogLevel getDefaultLogLevel();
 
