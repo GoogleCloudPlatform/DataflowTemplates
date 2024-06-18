@@ -12,6 +12,7 @@ on:
     # Include spanner terraform sample paths only
     - '.github/workflows/spanner-terraform-validator.yml'
     - 'v2/datastream-to-spanner/terraform/samples/**'
+    - 'v2/sourcedb-to-spanner/terraform/samples/**'
 
 jobs:
   verify-terraform-samples:
@@ -20,6 +21,7 @@ jobs:
       matrix:
         terraform_paths:
         - v2/datastream-to-spanner/terraform/samples
+        - v2/spanner-common/terraform/samples
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
