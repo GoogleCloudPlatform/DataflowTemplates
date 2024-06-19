@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.processing.handler;
 
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
+import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.common.ShardProgress;
@@ -104,6 +105,10 @@ public class GCSToSourceStreamingHandler {
       dao.cleanup();
       LOG.info(
           "Shard " + shardId + ": Successfully processed batch of " + records.size() + " records.");
+    } catch (InvalidTransformationException e) {
+      Metrics.counter(GCSToSourceStreamingHandler.class, "shard_failed_" + shardId).inc();
+      markShardFailure(taskContext, spannerDao, fileProcessedStartInterval);
+      throw new RuntimeException("Failure when processing records", e);
     } catch (Exception e) {
       Metrics.counter(GCSToSourceStreamingHandler.class, "shard_failed_" + shardId).inc();
       markShardFailure(taskContext, spannerDao, fileProcessedStartInterval);
