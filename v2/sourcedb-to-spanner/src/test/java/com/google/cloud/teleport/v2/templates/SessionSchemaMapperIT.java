@@ -89,8 +89,6 @@ public class SessionSchemaMapperIT extends SourceDbToSpannerITBase {
         mySQLResourceManager.runSQLQuery("SELECT company_id, company_name FROM company");
     ImmutableList<Struct> companySpanner =
         spannerResourceManager.readTableRecords("company", "company_id", "company_name");
-    LOG.info("total company records: {}", companySpanner == null ? -1 : companySpanner.size());
-    LOG.info("loaded company data: {}", companySpanner);
 
     SpannerAsserts.assertThatStructs(companySpanner)
         .hasRecordsUnorderedCaseInsensitiveColumns(companyMySQL);

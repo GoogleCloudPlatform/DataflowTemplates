@@ -185,12 +185,11 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
         table,
         String.format(
             "Found null table for tableId %s, please provide a valid session file.", tableId));
-    String colId =
-        Objects.requireNonNull(
-            table.getShardIdColumn(),
-            String.format(
-                "Found null shard id column for table %s, please provide a valid session file.",
-                spannerTableName));
+
+    String colId = table.getShardIdColumn();
+    if (!Strings.isNullOrEmpty(colId)) {
+      return null;
+    }
     Objects.requireNonNull(
         table.getColDefs(),
         String.format(
