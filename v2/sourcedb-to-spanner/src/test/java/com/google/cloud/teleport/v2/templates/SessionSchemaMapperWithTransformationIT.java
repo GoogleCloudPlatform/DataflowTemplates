@@ -99,18 +99,21 @@ public class SessionSchemaMapperWithTransformationIT extends SourceDbToSpannerIT
         .hasRecordsUnorderedCaseInsensitiveColumns(companyMySQL);
     SpannerAsserts.assertThatStructs(companySpanner).hasRows(companyMySQL.size());
 
-    List<Map<String, Object>> employeeMySQL =
-        mySQLResourceManager.runSQLQuery(
-            "SELECT employee_id, company_id, employee_name, employee_address as employee_address_sp FROM employee");
+    List<Map<String, Object>> employeeMySQL = mySQLResourceManager.readTable("employee");
     ImmutableList<Struct> employeeSpanner =
         spannerResourceManager.readTableRecords(
             "employee_sp", "employee_id", "company_id", "employee_name", "employee_address_sp");
-    LOG.info("mysql records: {}", employeeMySQL);
-    LOG.info("spanner records: {}", employeeSpanner);
+
+    LOG.info(
+        "renaming mysql columns as per transformation"); // AS alias does not work in these tests
+    for (Map<String, Object> emp : employeeMySQL) {
+      emp.put("employee_address_sp", emp.remove("employee_address"));
+      emp.remove("created_on");
+    }
 
     SpannerAsserts.assertThatStructs(employeeSpanner)
         .hasRecordsUnorderedCaseInsensitiveColumns(employeeMySQL);
-    SpannerAsserts.assertThatStructs(companySpanner).hasRows(employeeMySQL.size());
+    SpannerAsserts.assertThatStructs(employeeSpanner).hasRows(employeeMySQL.size());
 
     ImmutableList<Struct> employeeAttribute =
         spannerResourceManager.readTableRecords(
