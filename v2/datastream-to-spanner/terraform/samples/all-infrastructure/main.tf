@@ -2,13 +2,17 @@ resource "random_pet" "migration_id" {
   prefix = "smt"
 }
 
+locals {
+  migration_id = var.common_params.migration_id != null ? var.common_params.migration_id : random_pet.migration_id.id
+}
+
 # Create a private connectivity configuration if needed.
 resource "google_datastream_private_connection" "datastream_private_connection" {
   depends_on            = [google_project_service.enabled_apis]
   count                 = var.datastream_params.private_connectivity != null ? 1 : 0
-  display_name          = "${random_pet.migration_id.id}-${var.datastream_params.private_connectivity.private_connectivity_id}"
+  display_name          = "${local.migration_id}-${var.datastream_params.private_connectivity.private_connectivity_id}"
   location              = var.common_params.region
-  private_connection_id = "${random_pet.migration_id.id}-${var.datastream_params.private_connectivity.vpc_name}"
+  private_connection_id = "${local.migration_id}-${var.datastream_params.private_connectivity.vpc_name}"
 
   labels = {
     "migration_id" = random_pet.migration_id.id
@@ -23,9 +27,9 @@ resource "google_datastream_private_connection" "datastream_private_connection" 
 # MySQL Source Connection Profile
 resource "google_datastream_connection_profile" "source_mysql" {
   depends_on            = [google_project_service.enabled_apis]
-  display_name          = "${random_pet.migration_id.id}-${var.datastream_params.source_connection_profile_id}"
+  display_name          = "${local.migration_id}-${var.datastream_params.source_connection_profile_id}"
   location              = var.common_params.region
-  connection_profile_id = "${random_pet.migration_id.id}-${var.datastream_params.source_connection_profile_id}"
+  connection_profile_id = "${local.migration_id}-${var.datastream_params.source_connection_profile_id}"
 
   mysql_profile {
     hostname = var.datastream_params.mysql_host
@@ -51,7 +55,7 @@ resource "google_datastream_connection_profile" "source_mysql" {
 # GCS Bucket for Datastream
 resource "google_storage_bucket" "datastream_bucket" {
   depends_on                  = [google_project_service.enabled_apis]
-  name                        = "${random_pet.migration_id.id}-${var.datastream_params.gcs_bucket_name}"
+  name                        = "${local.migration_id}-${var.datastream_params.gcs_bucket_name}"
   location                    = var.common_params.region
   uniform_bucket_level_access = true
   force_destroy               = true
@@ -62,7 +66,7 @@ resource "google_storage_bucket" "datastream_bucket" {
 
 # Pub/Sub Topic for Datastream
 resource "google_pubsub_topic" "datastream_topic" {
-  name    = "${random_pet.migration_id.id}-${var.datastream_params.pubsub_topic_name}"
+  name    = "${local.migration_id}-${var.datastream_params.pubsub_topic_name}"
   project = var.common_params.project
   labels = {
     "migration_id" = random_pet.migration_id.id
@@ -115,9 +119,9 @@ resource "google_datastream_connection_profile" "target_gcs" {
     google_storage_bucket.datastream_bucket,
     google_storage_notification.bucket_notification
   ] # Create the target profile once the bucket and its notification is created.
-  display_name          = "${random_pet.migration_id.id}-${var.datastream_params.target_connection_profile_id}"
+  display_name          = "${local.migration_id}-${var.datastream_params.target_connection_profile_id}"
   location              = var.common_params.region
-  connection_profile_id = "${random_pet.migration_id.id}-${var.datastream_params.target_connection_profile_id}"
+  connection_profile_id = "${local.migration_id}-${var.datastream_params.target_connection_profile_id}"
 
   gcs_profile {
     bucket    = google_storage_bucket.datastream_bucket.name
@@ -137,9 +141,9 @@ resource "google_datastream_stream" "mysql_to_gcs" {
     google_pubsub_subscription.datastream_subscription
   ]
   # Create the stream once the source and target profiles are created along with the subscription.
-  stream_id     = "-${random_pet.migration_id.id}-${var.datastream_params.stream_id}"
+  stream_id     = "-${local.migration_id}-${var.datastream_params.stream_id}"
   location      = var.common_params.region
-  display_name  = "${random_pet.migration_id.id}-${var.datastream_params.stream_id}"
+  display_name  = "${local.migration_id}-${var.datastream_params.stream_id}"
   desired_state = "RUNNING"
   backfill_all {
   }
@@ -243,7 +247,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
   launcher_machine_type        = var.dataflow_params.runner_params.launcher_machine_type
   machine_type                 = var.dataflow_params.runner_params.machine_type
   max_workers                  = var.dataflow_params.runner_params.max_workers
-  name                         = "${random_pet.migration_id.id}-${var.dataflow_params.runner_params.job_name}"
+  name                         = "${local.migration_id}-${var.dataflow_params.runner_params.job_name}"
   network                      = var.dataflow_params.runner_params.network
   num_workers                  = var.dataflow_params.runner_params.num_workers
   sdk_container_image          = var.dataflow_params.runner_params.sdk_container_image

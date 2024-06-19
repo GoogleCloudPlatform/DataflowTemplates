@@ -1,7 +1,8 @@
 # Common Parameters
 common_params = {
-  project = "<YOUR_PROJECT_ID>" # Replace with your GCP project ID
-  region  = "<YOUR_GCP_REGION>" # Replace with your desired GCP region
+  project      = "<YOUR_PROJECT_ID>"   # Replace with your GCP project ID
+  region       = "<YOUR_GCP_REGION>"   # Replace with your desired GCP region
+  migration_id = "<YOUR_MIGRATION_ID>" #Will be used as a prefix for all resources, auto-generated if not specified
 }
 
 # Datastream Parameters

@@ -24,4 +24,13 @@ output "resource_urls" {
     pubsub_subscription                  = "https://console.cloud.google.com/cloudpubsub/subscription/detail/${google_pubsub_subscription.datastream_subscription.name}?project=${var.common_params.project}"
     dataflow_job                         = "https://console.cloud.google.com/dataflow/jobs/${var.common_params.region}/${google_dataflow_flex_template_job.live_migration_job.job_id}?project=${var.common_params.project}"
   }
+  depends_on = [
+    google_datastream_connection_profile.source_mysql,
+    google_datastream_connection_profile.target_gcs,
+    google_datastream_stream.mysql_to_gcs,
+    google_storage_bucket.datastream_bucket,
+    google_pubsub_topic.datastream_topic,
+    google_pubsub_subscription.datastream_subscription,
+    google_dataflow_flex_template_job.live_migration_job
+  ]
 }
