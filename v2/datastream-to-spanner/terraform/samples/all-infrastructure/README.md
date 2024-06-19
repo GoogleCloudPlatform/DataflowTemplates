@@ -4,17 +4,22 @@
 > job for a MySQL source, setting up all the required cloud infrastructure.
 > **Only the source details are needed as input.**
 
+## Terraform permissions
 It takes the following assumptions -
 
-1. `Service account`/`User account` being used to run Terraform
-   has [permissions](https://cloud.google.com/iam/docs/manage-access-service-accounts#multiple-roles-console)
-   to create and destroy -
-    1. Datastream connection profiles
-    2. Datastream streams
-    3. GCS buckets
-    4. Pubsub topics
-    5. Pubsub subscriptions
-    6. Dataflow jobs
+1. In order to create the resources in this sample, the`Service account`/`User account` being used to run Terraform
+   should have the [permissions](https://cloud.google.com/iam/docs/manage-access-service-accounts#multiple-roles-console) associated with the following roles -
+   ```shell
+   roles/dataflow.admin
+   roles/datastream.admin
+   roles/iam.securityAdmin
+   roles/iam.serviceAccountUser
+   roles/pubsub.admin
+   roles/storage.admin
+   roles/viewer
+   ```
+   [This](#adding-roles-to-terraform-service-account) section in the FAQ
+   provides a helper script to add these roles to an existing service account.
 2. MySQL source is accessible via Datastream either via
    [IP Whitelisting guide](https://cloud.google.com/datastream/docs/network-connectivity-options#ipallowlists)
    or [Private connectivity](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration).
@@ -27,6 +32,24 @@ It takes the following assumptions -
 > **_NOTE:_**
 [SMT](https://googlecloudplatform.github.io/spanner-migration-tool/quickstart.html)
 > can be used for converting a MySQL schema to a Spanner compatible schema.
+
+## Description
+
+This sample contains the following files -
+
+1. `main.tf` - This contains the Terraform resources which will be created.
+2. `outputs.tf` - This declares the outputs that will be output as part of
+   running this terraform example.
+3. `variables.tf` - This declares the input variables that are required to
+   configure the resources.
+4. `terraform.tf` - This contains the required providers and APIs/project
+   configurations for this sample.
+5. `terraform.tfvars` - This contains the dummy inputs that need to be populated
+   to run this example.
+6. `terraform_simple.tfvars` - This contains the minimal list of dummy inputs
+   that need to be populated to run this example.
+
+## Resources Created
 
 Given these assumptions, it uses a supplied source database connection
 configuration and creates the following resources -
@@ -58,22 +81,6 @@ configuration and creates the following resources -
 > The key is `migration_id` and the value is auto-generated. The auto-generated
 > value is used as a global identifier for a migration job across resources. The
 > auto-generated value is always pre-fixed with a `smt-`.
-
-## Description
-
-This sample contains the following files -
-
-1. `main.tf` - This contains the Terraform resources which will be created.
-2. `outputs.tf` - This declares the outputs that will be output as part of
-   running this terraform example.
-3. `variables.tf` - This declares the input variables that are required to
-   configure the resources.
-4. `terraform.tf` - This contains the required providers and APIs/project
-   configurations for this sample.
-5. `terraform.tfvars` - This contains the dummy inputs that need to be populated
-   to run this example.
-6. `terraform_simple.tfvars` - This contains the minimal list of dummy inputs
-   that need to be populated to run this example.
 
 ## How to run
 
@@ -137,7 +144,7 @@ collisions.
 Once the jobs have finished running, you can clean up by running -
 
 ```shell
-terraform destroy
+terraform destroy --var-file=terraform_simple.tfvars
 ```
 
 #### Note on GCS buckets
@@ -300,3 +307,77 @@ mysql_databases = [
     },
   ]
 ```
+
+### Adding roles to Terraform service account 
+
+You can run the following shell script to add roles to the service account
+being used to run Terraform. This will have to done by a user which has the 
+authority to grant the specified roles to a service account - 
+
+```shell
+#!/bin/bash
+
+# Service account to be granted roles
+SERVICE_ACCOUNT="<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
+
+# Project ID where roles will be granted
+PROJECT_ID="<YOUR-PROJECT-ID>"
+
+# Array of roles to grant
+ROLES=(
+  "roles/<role1>"
+  "roles/<role2>"
+)
+
+# Loop through each role and grant it to the service account
+for ROLE in "${ROLES[@]}"
+do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${SERVICE_ACCOUNT}" \
+    --role="$ROLE"
+done
+```
+
+### Verifying roles in the Terraform service account
+
+Once the roles are added, run the following command to verify them - 
+
+```shell
+gcloud projects get-iam-policy <YOUR-PROJECT-ID>  \
+--flatten="bindings[].members" \
+--format='table(bindings.role)' \
+--filter="bindings.members:<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
+```
+
+Sample output - 
+
+```shell
+ROLE
+roles/dataflow.admin
+roles/datastream.admin
+roles/iam.securityAdmin
+roles/iam.serviceAccountUser
+roles/pubsub.admin
+roles/storage.admin
+roles/viewer
+```
+
+### Impersonating the Terraform service account
+
+#### Using GCE VM instance (recommended)
+
+A GCE VM created using the service account setup above will automatically
+use the service account for all API requests triggered by Terraform. Running
+terraform from such a GCE VM does not require downloading service keys and is
+the recommended approach.
+
+#### Using key file
+
+1. Activate the service account - 
+   ```shell
+   gcloud auth activate-service-account <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com --key-file=path/to/key_file --project=project_id
+   ```
+2. Impersonate service account while fetching the ADC credentials - 
+   ```shell
+   gcloud auth application-default login --impersonate-service-account <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com
+   ```

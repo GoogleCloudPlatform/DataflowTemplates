@@ -4,6 +4,13 @@ This repository provides samples for common scenarios users might have while try
 
 Pick a sample that is closest to your use-case, and use it as a starting point, tailoring it to your own specific needs.
 
+## Other Sample Repositories
+
+The following sample repositories provide additional examples -
+
+1. [Sample environment setups](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/spanner-common/terraform/samples)
+2. [Bulk migration](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/terraform/samples)
+
 ## List of examples
 
 1. [MySQL source to Spanner end-to-end](all-infrastructure/README.md)
