@@ -10,13 +10,19 @@
 
 It takes the following assumptions -
 
-1. `Service account`/`User account` being used to run Terraform
-   has [permissions](https://cloud.google.com/iam/docs/manage-access-service-accounts#multiple-roles-console)
-   to create and destroy -
-    1. Datastream streams
-    2. Pubsub topics
-    3. Pubsub subscriptions
-    4. Dataflow jobs
+1. In order to create the resources in this sample, the`Service account`/`User account` being used to run Terraform
+   should have the [permissions](https://cloud.google.com/iam/docs/manage-access-service-accounts#multiple-roles-console) associated with the following roles -
+   ```shell
+   roles/dataflow.admin
+   roles/datastream.admin
+   roles/iam.securityAdmin
+   roles/iam.serviceAccountUser
+   roles/pubsub.admin
+   roles/storage.admin
+   roles/viewer
+   ```
+   [This](#adding-roles-to-terraform-service-account) section in the FAQ
+   provides a helper script to add these roles to an existing service account.
 2. A Spanner instance with database containing the data-migration compatible
    schema is created.
 
@@ -24,8 +30,10 @@ It takes the following assumptions -
 [SMT](https://googlecloudplatform.github.io/spanner-migration-tool/quickstart.html)
 > can be used for converting a MySQL schema to a Spanner compatible schema. 
 
+## Resources Created
+
 Given these assumptions, it uses a supplied source database connection
-configuration and creates the following resources -
+profiles and creates the following resources -
 
 1. **Pubsub topic and subscription** - This contains GCS object notifications as
    files are written to GCS for consumption by the Dataflow job.
@@ -221,3 +229,52 @@ mysql_databases = [
     },
   ]
 ```
+
+### Adding roles to Terraform service account
+
+You can run the following shell script to add roles to the service account
+being used to run Terraform. This will have to done by a user which has the
+authority to grant the specified roles to a service account -
+
+```shell
+#!/bin/bash
+
+# Service account to be granted roles
+SERVICE_ACCOUNT="<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
+
+# Project ID where roles will be granted
+PROJECT_ID="<YOUR-PROJECT-ID>"
+
+# Array of roles to grant
+ROLES=(
+  "roles/<role1>"
+  "roles/<role2>"
+)
+
+# Loop through each role and grant it to the service account
+for ROLE in "${ROLES[@]}"
+do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${SERVICE_ACCOUNT}" \
+    --role="$ROLE"
+done
+```
+### Impersonating the Terraform service account
+
+#### Using GCE VM instance (recommended)
+
+A GCE VM created using the service account setup above will automatically
+use the service account for all API requests triggered by Terraform. Running
+terraform from such a GCE VM does not require downloading service keys and is
+the recommended approach.
+
+#### Using key file
+
+1. Activate the service account -
+   ```shell
+   gcloud auth activate-service-account <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com --key-file=path/to/key_file --project=project_id
+   ```
+2. Impersonate service account while fetching the ADC credentials -
+   ```shell
+   gcloud auth application-default login --impersonate-service-account <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com
+   ```
