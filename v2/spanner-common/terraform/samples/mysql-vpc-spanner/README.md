@@ -17,8 +17,7 @@ It takes the following assumptions -
     4. Compute engine instances
    5. Spanner instance and database
 
-> **_NOTE:_** 
-
+## Resources Created
 Given these assumptions, it uses a supplied source database connection
 configuration and creates the following resources -
 
@@ -28,11 +27,6 @@ configuration and creates the following resources -
 4. **GCE VM with MySQL** - Launches a GCE VM with MySQL 5.7 setup on it inside the specified VPC subnet.
 5. **Spanner instance** - A spanner instance with the specified configuration.
 6. **Spanner database** - A spanner database inside the instance created.
-
-> **_NOTE:_** A label is attached to all the resources created via Terraform.
-> The key is `migration_id` and the value is auto-generated. The auto-generated
-> value is used as a global identifier for a migration job across resources. The
-> auto-generated value is always pre-fixed with a `smt-`.
 
 ## Description
 
@@ -84,6 +78,19 @@ This will launch the configured jobs and produce an output like below -
 ```shell
 Outputs:
 
+resource_ids = {
+  "mysql_db_ip" = "<PRIVATE_IP>"
+  "network" = "sample-vpc-network"
+  "spanner_instance" = "sample-spanner-instance"
+  "subnetwork" = "sample-vpc-subnetwork"
+}
+resource_urls = {
+  "mysql_db" = "https://console.cloud.google.com/compute/instancesDetail/zones/us-central1-a/instances/mysql-db?project=<YOUR-PROJECT-ID>"
+  "network" = "https://console.cloud.google.com/networking/networks/details/sample-vpc-network?project=<YOUR-PROJECT-ID>"
+  "spanner_instance" = "https://console.cloud.google.com/spanner/instances/sample-spanner-instance/details/databases?project=<YOUR-PROJECT-ID>"
+  "subnetwork" = "https://console.cloud.google.com/networking/subnetworks/details/us-central1/sample-vpc-subnetwork?project=<YOUR-PROJECT-ID>"
+}
+
 
 ```
 
@@ -95,9 +102,11 @@ collisions.
 Once the jobs have finished running, you can clean up by running -
 
 ```shell
-terraform destroy
+terraform destroy --var-file=terraform_simple.tfvars
 ```
 
 ## FAQ
 
 ### Changing the schema of the MySQL database
+
+Set the `ddl` parameter in the `mysql_params`.
