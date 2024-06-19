@@ -5,28 +5,93 @@
 > **Only the source details are needed as input.**
 
 ## Terraform permissions
+
+In order to create the resources in this sample,
+the`Service account`/`User account` being used to run Terraform
+should have the
+required [permissions](https://cloud.google.com/iam/docs/manage-access-service-accounts#multiple-roles-console).
+There are two ways to add permissions -
+
+1. Adding pre-defined roles to the service account running Terraform.
+2. Creating a custom role with the granular permissions and attaching it to the
+   service account running Terraform.
+
+### Using custom role and granular permissions (recommended)
+
+Following permissions are required - 
+
+```shell
+- compute.globalAddresses.create
+- compute.globalAddresses.createInternal
+- compute.globalAddresses.delete
+- compute.globalAddresses.deleteInternal
+- compute.globalAddresses.get
+- compute.globalOperations.get
+- compute.networks.addPeering
+- compute.networks.get
+- compute.networks.listPeeringRoutes
+- compute.networks.removePeering
+- compute.networks.use
+- compute.routes.get
+- compute.routes.list
+- compute.subnetworks.get
+- compute.subnetworks.list
+- dataflow.jobs.cancel
+- dataflow.jobs.create
+- dataflow.jobs.updateContents
+- datastream.connectionProfiles.create
+- datastream.connectionProfiles.delete
+- datastream.streams.create
+- datastream.streams.delete
+- datastream.streams.update
+- iam.roles.get
+- iam.serviceAccounts.actAs
+- pubsub.subscriptions.create
+- pubsub.subscriptions.delete
+- pubsub.topics.attachSubscription
+- pubsub.topics.create
+- pubsub.topics.delete
+- pubsub.topics.getIamPolicy
+- pubsub.topics.setIamPolicy
+- resourcemanager.projects.setIamPolicy
+- storage.buckets.create
+- storage.buckets.delete
+- storage.buckets.update
+- storage.objects.delete
+```
+
+[This](#adding-access-to-terraform-service-account) section in the FAQ
+provides instructions to add these permissions to an existing service account.
+
+### Using pre-defined roles
+
+Following roles are required -
+
+```shell
+roles/dataflow.admin
+roles/datastream.admin
+roles/iam.securityAdmin
+roles/iam.serviceAccountUser
+roles/pubsub.admin
+roles/storage.admin
+roles/viewer
+roles/compute.networkAdmin
+```
+
+[This](#adding-access-to-terraform-service-account) section in the FAQ
+provides instructions to add these roles to an existing service account.
+
+## Assumptions
+
 It takes the following assumptions -
 
-1. In order to create the resources in this sample, the`Service account`/`User account` being used to run Terraform
-   should have the [permissions](https://cloud.google.com/iam/docs/manage-access-service-accounts#multiple-roles-console) associated with the following roles -
-   ```shell
-   roles/dataflow.admin
-   roles/datastream.admin
-   roles/iam.securityAdmin
-   roles/iam.serviceAccountUser
-   roles/pubsub.admin
-   roles/storage.admin
-   roles/viewer
-   ```
-   [This](#adding-roles-to-terraform-service-account) section in the FAQ
-   provides a helper script to add these roles to an existing service account.
-2. MySQL source is accessible via Datastream either via
+1. MySQL source is accessible via Datastream either via
    [IP Whitelisting guide](https://cloud.google.com/datastream/docs/network-connectivity-options#ipallowlists)
    or [Private connectivity](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration).
-3. If using a VPC, VPC has already been configured to work with Datastream.
-4. MySQL source has been configured to be read by Datastream by following
+2. If using a VPC, VPC has already been configured to work with Datastream.
+3. MySQL source has been configured to be read by Datastream by following
    [configure your source MySQL guide](https://cloud.google.com/datastream/docs/configure-your-source-mysql-database).
-5. A Spanner instance with database containing the data-migration compatible
+4. A Spanner instance with database containing the data-migration compatible
    schema is created.
 
 > **_NOTE:_**
@@ -204,7 +269,8 @@ and configures it in the source profile created for the Datastream stream.
 
 > **ALERT:** Private connectivity resource destruction is currently not
 > supported in Terraform due to the ability to delete nested
-> resources: [#17920](https://github.com/hashicorp/terraform-provider-google/issues/17290),
+>
+resources: [#17920](https://github.com/hashicorp/terraform-provider-google/issues/17290),
 > [#13054](https://github.com/hashicorp/terraform-provider-google/issues/13054).
 > Until this is supported, the private connectivity resource will need to be
 > manually deleted via the console or the gcloud CLI before running
@@ -308,11 +374,43 @@ mysql_databases = [
   ]
 ```
 
-### Adding roles to Terraform service account 
+### Adding access to Terraform service account
+
+#### Using custom role and granular permissions (recommended)
+
+You can run the following gcloud command to create a custom role in your GCP
+project. 
+
+```shell
+gcloud iam roles create live_migrations_role --project=<YOUR-PROJECT-ID> --file=perms.yaml --quiet
+```
+
+The `YAML` file required for the above will be like so - 
+
+```shell
+title: "Live Migrations Custom Role"
+description: "Custom role for Spanner live migrations."
+stage: "GA"
+includedPermissions:
+- iam.roles.get
+- iam.serviceAccounts.actAs
+- datastream.connectionProfiles.create
+....add all permissions from the list defined above.
+```
+
+Then attach the role to the service account - 
+
+```shell
+gcloud iam service-accounts add-iam-policy-binding <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com \
+    --member=<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com --role=live_migrations_role \
+    --condition=CONDITION
+```
+
+#### Using pre-defined roles
 
 You can run the following shell script to add roles to the service account
-being used to run Terraform. This will have to done by a user which has the 
-authority to grant the specified roles to a service account - 
+being used to run Terraform. This will have to done by a user which has the
+authority to grant the specified roles to a service account -
 
 ```shell
 #!/bin/bash
@@ -338,9 +436,11 @@ do
 done
 ```
 
-### Verifying roles in the Terraform service account
+### Verifying access in the Terraform service account
 
-Once the roles are added, run the following command to verify them - 
+#### Using custom role and granular permissions (recommended)
+
+Verify that the custom role is attached to the service account - 
 
 ```shell
 gcloud projects get-iam-policy <YOUR-PROJECT-ID>  \
@@ -349,7 +449,23 @@ gcloud projects get-iam-policy <YOUR-PROJECT-ID>  \
 --filter="bindings.members:<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
 ```
 
-Sample output - 
+Verify that the role has the correct set of permissions
+
+```shell
+gcloud iam roles describe live_migrations_role --project=<YOUR-PROJECT-ID> 
+```
+
+##### Using pre-defined roles
+Once the roles are added, run the following command to verify them -
+
+```shell
+gcloud projects get-iam-policy <YOUR-PROJECT-ID>  \
+--flatten="bindings[].members" \
+--format='table(bindings.role)' \
+--filter="bindings.members:<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
+```
+
+Sample output -
 
 ```shell
 ROLE
@@ -373,11 +489,11 @@ the recommended approach.
 
 #### Using key file
 
-1. Activate the service account - 
+1. Activate the service account -
    ```shell
    gcloud auth activate-service-account <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com --key-file=path/to/key_file --project=project_id
    ```
-2. Impersonate service account while fetching the ADC credentials - 
+2. Impersonate service account while fetching the ADC credentials -
    ```shell
    gcloud auth application-default login --impersonate-service-account <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com
    ```

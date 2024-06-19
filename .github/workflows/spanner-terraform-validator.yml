@@ -71,6 +71,7 @@ jobs:
           required_headings=(
             "Sample Scenario"
             "Terraform permissions"
+            "Assumptions"
             "Description"
             "Resources Created"
             "How to run"
