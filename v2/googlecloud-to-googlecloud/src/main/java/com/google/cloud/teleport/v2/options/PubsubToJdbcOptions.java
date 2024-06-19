@@ -29,8 +29,8 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       groupName = "Source",
       description = "Pub/Sub input subscription",
       helpText =
-          "The Pub/Sub input subscription to read from, in the format of 'projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>'",
-      example = "projects/your-project-id/subscriptions/your-subscription-name")
+          "The Pub/Sub input subscription to read from.",
+      example = "projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>")
   @Validation.Required
   String getInputSubscription();
 

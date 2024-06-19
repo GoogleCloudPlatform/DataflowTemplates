@@ -164,7 +164,7 @@ public final class PubsubProtoToBigQuery {
         description = "Cloud Storage Path to the Proto Schema File",
         helpText =
             "The Cloud Storage location of the self-contained proto schema file. For example,"
-                + " gs://path/to/my/file.pb. You can generate this file with"
+                + " `gs://path/to/my/file.pb`. You can generate this file with"
                 + " the `--descriptor_set_out` flag of the protoc command."
                 + " The `--include_imports` flag guarantees that the file is self-contained.")
     @Required
@@ -190,9 +190,9 @@ public final class PubsubProtoToBigQuery {
         optional = true,
         description = "Preserve Proto Field Names",
         helpText =
-            "To preserve the original proto field name in JSON, set this property to true. "
-                + "To use more standard JSON names, set to false."
-                + " For example, `false` would change `field_name` to `fieldName`. Defaults to: false.")
+            "To preserve the original proto field name in JSON, set this property to `true`. "
+                + "To use more standard JSON names, set to `false`."
+                + " For example, `false` would change `field_name` to `fieldName`. Defaults to: `false`.")
     @Default.Boolean(false)
     Boolean getPreserveProtoFieldNames();
 

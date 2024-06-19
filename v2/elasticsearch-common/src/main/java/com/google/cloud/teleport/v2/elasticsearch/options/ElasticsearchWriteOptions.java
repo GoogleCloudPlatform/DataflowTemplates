@@ -30,7 +30,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       groupName = "Target",
       description = "Elasticsearch URL or CloudID if using Elastic Cloud",
       helpText =
-          "The Elasticsearch URL in the format https://hostname:[port]. If using Elastic Cloud, specify the CloudID.",
+          "The Elasticsearch URL in the format `https://hostname:[port]`. If using Elastic Cloud, specify the CloudID.",
       example = "https://elasticsearch-host:9200")
   @Validation.Required
   String getConnectionUrl();
