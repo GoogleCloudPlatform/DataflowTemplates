@@ -133,7 +133,7 @@ collisions.
 Once the jobs have finished running, you can clean up by running -
 
 ```shell
-terraform destroy
+terraform destroy --var-file=terraform_simple.tfvars
 ```
 
 ## FAQ
