@@ -13,14 +13,5 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.kafka.values;
 
-public class KafkaAuthenticationMethod {
-  // Note: this is not implemented as an Enum, because these constants are used
-  // in @Template.Parameter annotations, and annotations can only have constant attributes.
-
-  public static final String NONE = "NONE";
-  public static final String TLS = "TLS";
-  public static final String SASL_PLAIN = "SASL_PLAIN";
-  public static final String APPLICATION_DEFAULT_CREDENTIALS = "APPLICATION_DEFAULT_CREDENTIALS";
-}
+package com.google.cloud.teleport.v2.kafka.auth;

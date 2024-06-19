@@ -3,9 +3,9 @@
 # It creates two bulk migration jobs with public IPs in the default network.
 
 common_params = {
-  on_delete             = "cancel"  # Or "cancel" if you prefer
+  on_delete             = "cancel" # Or "cancel" if you prefer
   project               = "your-google-cloud-project-id"
-  region                = "us-central1"  # Or your desired region
+  region                = "us-central1" # Or your desired region
   projectId             = "your-google-cloud-project-id"
   service_account_email = "your-project-id-compute@developer.gserviceaccount.com"
 }
