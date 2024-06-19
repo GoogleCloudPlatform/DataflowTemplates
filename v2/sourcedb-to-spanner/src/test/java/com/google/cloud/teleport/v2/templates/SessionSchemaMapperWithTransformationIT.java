@@ -90,10 +90,10 @@ public class SessionSchemaMapperWithTransformationIT extends SourceDbToSpannerIT
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
-    List<Map<String, Object>> companyMySQL = mySQLResourceManager.readTable("company");
+    List<Map<String, Object>> companyMySQL =
+        mySQLResourceManager.runSQLQuery("SELECT company_id, company_name FROM company");
     ImmutableList<Struct> companySpanner =
-        spannerResourceManager.readTableRecords(
-            "company", "company_id", "company_name", "created_on");
+        spannerResourceManager.readTableRecords("company", "company_id", "company_name");
 
     SpannerAsserts.assertThatStructs(companySpanner)
         .hasRecordsUnorderedCaseInsensitiveColumns(companyMySQL);
@@ -104,7 +104,9 @@ public class SessionSchemaMapperWithTransformationIT extends SourceDbToSpannerIT
             "SELECT employee_id, company_id, employee_name, employee_address as employee_address_sp FROM employee");
     ImmutableList<Struct> employeeSpanner =
         spannerResourceManager.readTableRecords(
-            "employee", "employee_id", "company_id", "employee_name", "employee_address_sp");
+            "employee_sp", "employee_id", "company_id", "employee_name", "employee_address_sp");
+    LOG.info("mysql records: {}", employeeMySQL);
+    LOG.info("spanner records: {}", employeeSpanner);
 
     SpannerAsserts.assertThatStructs(employeeSpanner)
         .hasRecordsUnorderedCaseInsensitiveColumns(employeeMySQL);

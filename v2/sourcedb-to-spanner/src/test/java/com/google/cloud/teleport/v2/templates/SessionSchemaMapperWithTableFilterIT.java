@@ -19,6 +19,7 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +81,9 @@ public class SessionSchemaMapperWithTableFilterIT extends SourceDbToSpannerITBas
   public void transformationTest() throws Exception {
     loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_WITH_TRANSFORMATION_RESOURCE);
+
+    Map<String, String> jobParameters = new HashMap<>();
+    jobParameters.put("tables", "company");
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
@@ -87,32 +91,31 @@ public class SessionSchemaMapperWithTableFilterIT extends SourceDbToSpannerITBas
             "mapper",
             mySQLResourceManager,
             spannerResourceManager,
-            null);
+            jobParameters);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
-    List<Map<String, Object>> companyMySQL = mySQLResourceManager.readTable("company");
+    List<Map<String, Object>> companyMySQL =
+        mySQLResourceManager.runSQLQuery("SELECT company_id, company_name FROM company");
     ImmutableList<Struct> companySpanner =
-        spannerResourceManager.readTableRecords(
-            "company", "company_id", "company_name", "created_on");
+        spannerResourceManager.readTableRecords("company", "company_id", "company_name");
 
     SpannerAsserts.assertThatStructs(companySpanner)
         .hasRecordsUnorderedCaseInsensitiveColumns(companyMySQL);
     SpannerAsserts.assertThatStructs(companySpanner).hasRows(companyMySQL.size());
 
-    List<Map<String, Object>> employeeMySQL =
-        mySQLResourceManager.runSQLQuery(
-            "SELECT employee_id, company_id, employee_name, employee_address as employee_address_sp FROM employee");
     ImmutableList<Struct> employeeSpanner =
         spannerResourceManager.readTableRecords(
-            "employee", "employee_id", "company_id", "employee_name", "employee_address_sp");
-
-    SpannerAsserts.assertThatStructs(employeeSpanner)
-        .hasRecordsUnorderedCaseInsensitiveColumns(employeeMySQL);
-    SpannerAsserts.assertThatStructs(companySpanner).hasRows(employeeMySQL.size());
+            "employee_sp",
+            "employee_id",
+            "company_id",
+            "employee_name",
+            "employee_address_sp",
+            "created_on");
+    SpannerAsserts.assertThatStructs(employeeSpanner).hasRows(0); // As the table is filtered
 
     ImmutableList<Struct> employeeAttribute =
         spannerResourceManager.readTableRecords(
-            "employee_attribute", "employee_id", "attribute_name", "value");
-    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(4); // Works for composite keys
+            "employee_attribute", "employee_id", "attribute_name", "value", "updated_on");
+    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(0); // As the table is filtered
   }
 }

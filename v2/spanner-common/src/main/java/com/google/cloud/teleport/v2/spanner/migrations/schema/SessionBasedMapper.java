@@ -76,8 +76,10 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
       if (!schemaColNames.equals(ddlColNames)) {
         throw new InputMismatchException(
             String.format(
-                "List of spanner column names found in session file do not match columns that actually exist on Spanner for table '%s'. Please provide a valid session file.",
-                tableName));
+                "List of spanner column names found in session file do not match columns that "
+                    + "actually exist on Spanner for table '%s'. Please provide a valid session "
+                    + "file. SessionColumnNames: '%s' SpannerColumnNames: '%s'",
+                tableName, schemaColNames, ddlColNames));
       }
     }
   }
@@ -187,7 +189,7 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
             "Found null table for tableId %s, please provide a valid session file.", tableId));
 
     String colId = table.getShardIdColumn();
-    if (!Strings.isNullOrEmpty(colId)) {
+    if (Strings.isNullOrEmpty(colId)) {
       return null;
     }
     Objects.requireNonNull(
