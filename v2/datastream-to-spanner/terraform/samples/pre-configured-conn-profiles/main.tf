@@ -2,9 +2,13 @@ resource "random_pet" "migration_id" {
   prefix = "smt"
 }
 
+locals {
+  migration_id = var.common_params.migration_id != null ? var.common_params.migration_id : random_pet.migration_id.id
+}
+
 # Pub/Sub Topic for Datastream
 resource "google_pubsub_topic" "datastream_topic" {
-  name    = "${random_pet.migration_id.id}-${var.datastream_params.pubsub_topic_name}"
+  name    = "${local.migration_id}-${var.datastream_params.pubsub_topic_name}"
   project = var.common_params.project
   labels = {
     "migration_id" = random_pet.migration_id.id
@@ -54,9 +58,9 @@ resource "google_datastream_stream" "mysql_to_gcs" {
     google_pubsub_subscription.datastream_subscription
   ]
   # Create the stream once the source and target profiles are created along with the subscription.
-  stream_id     = "${random_pet.migration_id.id}-${var.datastream_params.stream_id}"
+  stream_id     = "${local.migration_id}-${var.datastream_params.stream_id}"
   location      = var.common_params.region
-  display_name  = "${random_pet.migration_id.id}-${var.datastream_params.stream_id}"
+  display_name  = "${local.migration_id}-${var.datastream_params.stream_id}"
   desired_state = "RUNNING"
   backfill_all {
   }
@@ -161,7 +165,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
   launcher_machine_type        = var.dataflow_params.runner_params.launcher_machine_type
   machine_type                 = var.dataflow_params.runner_params.machine_type
   max_workers                  = var.dataflow_params.runner_params.max_workers
-  name                         = "${random_pet.migration_id.id}-${var.dataflow_params.runner_params.job_name}"
+  name                         = "${local.migration_id}-${var.dataflow_params.runner_params.job_name}"
   network                      = var.dataflow_params.runner_params.network
   num_workers                  = var.dataflow_params.runner_params.num_workers
   sdk_container_image          = var.dataflow_params.runner_params.sdk_container_image
