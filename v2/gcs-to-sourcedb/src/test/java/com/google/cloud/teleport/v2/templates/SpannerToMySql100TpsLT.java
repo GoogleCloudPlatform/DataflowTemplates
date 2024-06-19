@@ -28,15 +28,11 @@ import java.util.HashMap;
 import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.datagenerator.DataGenerator;
 import org.apache.beam.it.jdbc.CustomMySQLResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.conditions.JDBCRowsCheck;
-import org.checkerframework.checker.initialization.qual.Initialized;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -136,10 +132,10 @@ public class SpannerToMySql100TpsLT extends SpannerToJdbcLTBase {
     // Assert Conditions
     assertThatResult(result).meetsConditions();
 
-    PipelineOperator.Result result1 = pipelineOperator.cancelJobAndFinish(
-        createConfig(readerJobInfo, Duration.ofMinutes(5)));
-    PipelineOperator.Result result2 = pipelineOperator.cancelJobAndFinish(
-        createConfig(writerJobInfo, Duration.ofMinutes(5)));
+    PipelineOperator.Result result1 =
+        pipelineOperator.cancelJobAndFinish(createConfig(readerJobInfo, Duration.ofMinutes(5)));
+    PipelineOperator.Result result2 =
+        pipelineOperator.cancelJobAndFinish(createConfig(writerJobInfo, Duration.ofMinutes(5)));
     assertThatResult(result1).isLaunchFinished();
     assertThatResult(result2).isLaunchFinished();
 
