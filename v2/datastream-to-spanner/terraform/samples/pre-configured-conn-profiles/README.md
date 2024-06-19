@@ -259,6 +259,18 @@ do
     --role="$ROLE"
 done
 ```
+
+### Verifying roles in the Terraform service account
+
+Once the roles are added, run the following command to verify them -
+
+```shell
+gcloud projects get-iam-policy <YOUR-PROJECT-ID>  \
+--flatten="bindings[].members" \
+--format='table(bindings.role)' \
+--filter="bindings.members:<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
+```
+
 ### Impersonating the Terraform service account
 
 #### Using GCE VM instance (recommended)
