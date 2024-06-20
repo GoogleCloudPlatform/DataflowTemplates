@@ -75,6 +75,8 @@ public final class SpannerResourceManager implements ResourceManager {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerResourceManager.class);
   private static final int MAX_BASE_ID_LENGTH = 30;
 
+  private static final String DEFAULT_SPANNER_HOST = "https://batch-spanner.googleapis.com";
+
   // Retry settings for instance creation
   private static final int CREATE_MAX_RETRIES = 5;
   private static final Duration CREATE_BACKOFF_DELAY = Duration.ofSeconds(10);
@@ -89,6 +91,7 @@ public final class SpannerResourceManager implements ResourceManager {
   private final boolean usingStaticInstance;
   private final String databaseId;
   private final String region;
+  private final String spannerHost;
 
   private final Dialect dialect;
 
@@ -102,7 +105,7 @@ public final class SpannerResourceManager implements ResourceManager {
         ((Supplier<Spanner>)
                 () -> {
                   SpannerOptions.Builder optionsBuilder = SpannerOptions.newBuilder();
-                  optionsBuilder.setProjectId(builder.projectId);
+                  optionsBuilder.setProjectId(builder.projectId).setHost(builder.host);
                   if (builder.credentials != null) {
                     optionsBuilder.setCredentials(builder.credentials);
                   }
@@ -136,6 +139,7 @@ public final class SpannerResourceManager implements ResourceManager {
 
     this.region = builder.region;
     this.dialect = builder.dialect;
+    this.spannerHost = builder.host;
     this.spanner = spanner;
     this.instanceAdminClient = spanner.getInstanceAdminClient();
     this.databaseAdminClient = spanner.getDatabaseAdminClient();
@@ -254,6 +258,15 @@ public final class SpannerResourceManager implements ResourceManager {
    */
   public String getDatabaseId() {
     return this.databaseId;
+  }
+
+  /**
+   * Return the Spanner host that is servicing API requests.
+   *
+   * @return Spanner host.
+   */
+  public String getSpannerHost() {
+    return this.spannerHost;
   }
 
   /**
@@ -464,6 +477,7 @@ public final class SpannerResourceManager implements ResourceManager {
     private @Nullable String instanceId;
     private boolean useStaticInstance;
     private Credentials credentials;
+    private String host;
 
     private Builder(String testId, String projectId, String region, Dialect dialect) {
       this.testId = testId;
@@ -472,6 +486,7 @@ public final class SpannerResourceManager implements ResourceManager {
       this.dialect = dialect;
       this.instanceId = null;
       this.useStaticInstance = false;
+      this.host = DEFAULT_SPANNER_HOST;
     }
 
     public Builder setCredentials(Credentials credentials) {
@@ -511,6 +526,19 @@ public final class SpannerResourceManager implements ResourceManager {
      */
     public Builder setInstanceId(String instanceId) {
       this.instanceId = instanceId;
+      return this;
+    }
+
+    /**
+     * Looks at the system properties if there's a Spanner host override, uses it for Spanner API
+     * calls.
+     *
+     * @return this builder with host set.
+     */
+    public Builder maybeUseCustomHost() {
+      if (System.getProperty("spannerHost") != null) {
+        this.host = System.getProperty("spannerHost");
+      }
       return this;
     }
 
