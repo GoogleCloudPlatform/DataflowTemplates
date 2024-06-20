@@ -75,7 +75,7 @@ resource "google_compute_firewall" "allow-mysql" {
     protocol = "tcp"
     ports    = ["3306"]
   }
-  source_ranges = [var.vpc_params.subnetwork_cidr_range]
+  source_ranges = [var.vpc_params.private_conn_cidr_range]
   target_tags   = ["databases"]
 }
 
