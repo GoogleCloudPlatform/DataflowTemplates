@@ -605,15 +605,15 @@ public class ImageSpecParameter {
         break;
       case "KafkaReadTopic":
         TemplateParameter.KafkaReadTopic kafkaReadTopic =
-                (TemplateParameter.KafkaReadTopic) parameterAnnotation;
+            (TemplateParameter.KafkaReadTopic) parameterAnnotation;
         if (!kafkaReadTopic.name().isEmpty()) {
           this.setName(kafkaReadTopic.name());
         }
         processDescriptions(
-                kafkaReadTopic.groupName(),
-                kafkaReadTopic.description(),
-                kafkaReadTopic.helpText(),
-                kafkaReadTopic.example());
+            kafkaReadTopic.groupName(),
+            kafkaReadTopic.description(),
+            kafkaReadTopic.helpText(),
+            kafkaReadTopic.example());
         this.setParentName(kafkaReadTopic.parentName());
         this.setParentTriggerValues(kafkaReadTopic.parentTriggerValues());
         this.setOptional(kafkaReadTopic.optional());
@@ -623,15 +623,15 @@ public class ImageSpecParameter {
 
       case "KafkaWriteTopic":
         TemplateParameter.KafkaWriteTopic kafkaWriteTopic =
-                (TemplateParameter.KafkaWriteTopic) parameterAnnotation;
+            (TemplateParameter.KafkaWriteTopic) parameterAnnotation;
         if (!kafkaWriteTopic.name().isEmpty()) {
           this.setName(kafkaWriteTopic.name());
         }
         processDescriptions(
-                kafkaWriteTopic.groupName(),
-                kafkaWriteTopic.description(),
-                kafkaWriteTopic.helpText(),
-                kafkaWriteTopic.example());
+            kafkaWriteTopic.groupName(),
+            kafkaWriteTopic.description(),
+            kafkaWriteTopic.helpText(),
+            kafkaWriteTopic.example());
         this.setParentName(kafkaWriteTopic.parentName());
         this.setParentTriggerValues(kafkaWriteTopic.parentTriggerValues());
         this.setOptional(kafkaWriteTopic.optional());
