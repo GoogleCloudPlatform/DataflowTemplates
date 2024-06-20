@@ -90,6 +90,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
         }
       }
     } catch (Exception e) {
+      LOG.info("failed to load SQL into database: {}", sql);
       throw new Exception("Failed to load SQL into database", e);
     }
     LOG.info("Successfully loaded sql to jdbc resource manager");
@@ -135,10 +136,11 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       Map<String, String> jobParameters)
       throws IOException {
 
+    String sessionPath = gcsPathPrefix + "/session.json";
     if (sessionFileResourceName != null) {
+      LOG.info("uploading session file to: {}", sessionPath);
       gcsClient.uploadArtifact(
-          gcsPathPrefix + "/session.json",
-          Resources.getResource(sessionFileResourceName).getPath());
+          sessionPath, Resources.getResource(sessionFileResourceName).getPath());
     }
 
     Map<String, String> params =
@@ -154,7 +156,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
           }
         };
     if (sessionFileResourceName != null) {
-      params.put("sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json"));
+      params.put("sessionFilePath", getGcsPath(sessionPath));
     }
 
     // overridden parameters
