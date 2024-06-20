@@ -408,6 +408,27 @@ mysql_databases = [
   ]
 ```
 
+### Specifying schema overrides
+
+Any schema changes between source and Spanner can be specified using the
+`session file`. Upload the session file in a GCS bucket and pass the URL
+of the session file to the `var.dataflow_params.template_params.sessionFilePath`
+variable.
+
+> **_NOTE:_** At the time of generating the session file via SMT, the session
+> file is uploaded to a user-specified (or auto-generated) bucket, so you don't
+> need to upload the session file to GCS manually.
+
+### Cross project writes to Spanner
+
+The dataflow job can write to Spanner in a different project. In order to do so,
+the service account running the Dataflow job needs to have the
+`roles/spanner.databaseAdmin`role (or the corresponding permissions to write
+data to Spanner).
+
+After adding these permissions, configure the
+`var.dataflow_params.template_params.projectId` variable.
+
 ### Adding access to Terraform service account
 
 #### Using custom role and granular permissions (recommended)
