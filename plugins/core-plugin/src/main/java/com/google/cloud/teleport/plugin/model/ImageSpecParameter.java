@@ -586,23 +586,6 @@ public class ImageSpecParameter {
         this.setHiddenUi(durationParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
         break;
-      case "KafkaTopic":
-        TemplateParameter.KafkaTopic kafkaTopic =
-            (TemplateParameter.KafkaTopic) parameterAnnotation;
-        if (!kafkaTopic.name().isEmpty()) {
-          this.setName(kafkaTopic.name());
-        }
-        processDescriptions(
-            kafkaTopic.groupName(),
-            kafkaTopic.description(),
-            kafkaTopic.helpText(),
-            kafkaTopic.example());
-        this.setParentName(kafkaTopic.parentName());
-        this.setParentTriggerValues(kafkaTopic.parentTriggerValues());
-        this.setOptional(kafkaTopic.optional());
-        this.setHiddenUi(kafkaTopic.hiddenUi());
-        this.setParamType(ImageSpecParameterType.KAFKA_TOPIC);
-        break;
       case "KafkaReadTopic":
         TemplateParameter.KafkaReadTopic kafkaReadTopic =
             (TemplateParameter.KafkaReadTopic) parameterAnnotation;

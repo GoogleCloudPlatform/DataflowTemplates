@@ -45,7 +45,6 @@ public final class MetadataUtils {
         TemplateParameter.GcsWriteBucket.class,
         TemplateParameter.Integer.class,
         TemplateParameter.JavascriptUdfFile.class,
-        TemplateParameter.KafkaTopic.class,
         TemplateParameter.KafkaReadTopic.class,
         TemplateParameter.KafkaWriteTopic.class,
         TemplateParameter.KmsEncryptionKey.class,

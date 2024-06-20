@@ -703,49 +703,9 @@ public final class TemplateParameter {
   }
 
   /**
-   * Template parameter containing a Kafka Topic.
+   * Template parameter containing a Kafka Read Topic.
    *
-   * <p>The parameter specifies the fully-qualified name of an Apache Kafka topic. This can be
-   * either a Google Managed Kafka topic or a non-managed Kafka topic.
-   */
-  @Retention(RetentionPolicy.RUNTIME)
-  @Target({ElementType.FIELD, ElementType.METHOD})
-  public @interface KafkaTopic {
-    /** Order of appearance. */
-    int order() default 999;
-
-    /** Name of the parameter. */
-    String name() default "";
-
-    /** Group Name of the parameter. */
-    String groupName() default "";
-
-    /** Parent Name of the parameter. */
-    String parentName() default "";
-
-    /** List of parent trigger values. */
-    String[] parentTriggerValues() default "";
-
-    /** If parameter is optional. */
-    boolean optional() default false;
-
-    /** Description of the parameter. */
-    String description();
-
-    /** Help text of the parameter. */
-    String helpText();
-
-    /** Example of the parameter. */
-    String example() default "";
-
-    /** Parameter visibility in the UI. */
-    boolean hiddenUi() default false;
-  }
-
-  /**
-   * Template parameter containing a Kafka Topic.
-   *
-   * <p>The parameter specifies the fully-qualified name of an Apache Kafka topic. This can be
+   * <p>The parameter specifies the fully-qualified name of an Apache Kafka Read topic. This can be
    * either a Google Managed Kafka topic or a non-managed Kafka topic.
    */
   @Retention(RetentionPolicy.RUNTIME)
@@ -783,7 +743,7 @@ public final class TemplateParameter {
   }
 
   /**
-   * Template parameter containing a Kafka Topic.
+   * Template parameter containing a Kafka Write Topic.
    *
    * <p>The parameter specifies the fully-qualified name of an Apache Kafka topic. This can be
    * either a Google Managed Kafka topic or a non-managed Kafka topic.

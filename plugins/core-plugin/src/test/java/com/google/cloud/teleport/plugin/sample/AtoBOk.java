@@ -107,14 +107,6 @@ public class AtoBOk {
     @Default.Boolean(false)
     Boolean getParamWithParentName();
 
-    @TemplateParameter.KafkaTopic(
-        order = 10,
-        description = "Kafka input topic",
-        helpText = "Kafka topic to read from",
-        example =
-            "projects/project-foo/locations/us-central1/clusters/cluster-bar/topics/topic-baz")
-    String getInputKafkaTopic();
-
     @TemplateParameter.KafkaReadTopic(
         order = 10,
         description = "Kafka input topic",
