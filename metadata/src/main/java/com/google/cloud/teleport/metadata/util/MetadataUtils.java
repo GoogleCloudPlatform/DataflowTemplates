@@ -46,6 +46,8 @@ public final class MetadataUtils {
         TemplateParameter.Integer.class,
         TemplateParameter.JavascriptUdfFile.class,
         TemplateParameter.KafkaTopic.class,
+        TemplateParameter.KafkaReadTopic.class,
+        TemplateParameter.KafkaWriteTopic.class,
         TemplateParameter.KmsEncryptionKey.class,
         TemplateParameter.Long.class,
         TemplateParameter.MachineType.class,

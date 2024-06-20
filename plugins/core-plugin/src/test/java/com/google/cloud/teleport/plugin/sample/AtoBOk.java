@@ -115,6 +115,22 @@ public class AtoBOk {
             "projects/project-foo/locations/us-central1/clusters/cluster-bar/topics/topic-baz")
     String getInputKafkaTopic();
 
+    @TemplateParameter.KafkaReadTopic(
+            order = 10,
+            description = "Kafka input topic",
+            helpText = "Kafka topic to read from",
+            example =
+                    "projects/project-foo/locations/us-central1/clusters/cluster-bar/topics/topic-baz")
+    String getInputKafkaReadTopic();
+
+    @TemplateParameter.KafkaWriteTopic(
+            order = 10,
+            description = "Kafka input topic",
+            helpText = "Kafka topic to read from",
+            example =
+                    "projects/project-foo/locations/us-central1/clusters/cluster-bar/topics/topic-baz")
+    String getInputKafkaWriteTopic();
+
     @TemplateParameter.GcsReadBucket(
         order = 11,
         description = "Cloud Storage Bucket to read from",

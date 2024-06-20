@@ -73,5 +73,11 @@ public enum ImageSpecParameterType {
   NUMBER,
 
   /** Kafka Topic parameter. */
-  KAFKA_TOPIC;
+  KAFKA_TOPIC,
+
+  /** Kafka Write Topic parameter. */
+  KAFKA_WRITE_TOPIC,
+
+  /** Kafka Write Topic parameter. */
+  KAFKA_READ_TOPIC;
 }
