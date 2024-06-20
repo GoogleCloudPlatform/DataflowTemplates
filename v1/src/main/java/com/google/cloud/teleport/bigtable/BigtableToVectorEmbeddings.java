@@ -80,6 +80,7 @@ public class BigtableToVectorEmbeddings {
   public interface Options extends PipelineOptions {
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Source",
         description = "Project ID",
         helpText =
             "The ID for the Google Cloud project that contains the Bigtable instance that you want to read data from.")
@@ -90,6 +91,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
         helpText = "The ID of the Bigtable instance that contains the table.")
@@ -100,6 +102,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
         helpText = "The ID of the Bigtable table to read from.")
@@ -110,6 +113,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
+        groupName = "Target",
         optional = true,
         description = "Cloud Storage directory for storing JSON files",
         helpText = "The Cloud Storage path where the output JSON files are stored.",
@@ -121,6 +125,7 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "JSON file prefix",
         helpText =
             "The prefix of the JSON filename. For example: \"table1-\". If no value is provided, defaults to \"part\".")

@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.options;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.kafka.options.SchemaRegistryOptions;
-import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.Default;
 
@@ -42,23 +41,6 @@ public interface KafkaToBigQueryFlexOptions
   String getReadBootstrapServerAndTopic();
 
   void setReadBootstrapServerAndTopic(String value);
-
-  @TemplateParameter.Enum(
-      name = "kafkaReadAuthenticationMode",
-      order = 2,
-      groupName = "Source",
-      enumOptions = {
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
-      },
-      description = "Kafka Read Authentication Mode",
-      helpText =
-          "The mode of authentication to use with the Kafka cluster. "
-              + "Use NONE for no authentication"
-              + " or SASL_PLAIN for SASL/PLAIN username and password. "
-              + " Apache Kafka for BigQuery only supports the SASL_PLAIN authentication mode.")
-  @Default.String("NONE")
-  String getKafkaReadAuthenticationMode();
 
   @TemplateParameter.Boolean(
       order = 3,
@@ -258,7 +240,7 @@ public interface KafkaToBigQueryFlexOptions
       description = "Write errors to BigQuery",
       helpText =
           "If true, failed messages will be written to BigQuery with extra error information. "
-              + "If the deadletter table exists beforehand, it should be created with no schema.")
+              + "The deadletter table should be created with no schema.")
   @Default.Boolean(false)
   Boolean getUseBigQueryDLQ();
 
@@ -273,8 +255,7 @@ public interface KafkaToBigQueryFlexOptions
       description = "Dead-letter Table",
       helpText =
           "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
-              + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
-              + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
+              + "(e.g., mismatched schema, malformed json) are written to this table.",
       example = "your-project-id:your-dataset.your-table-name")
   String getOutputDeadletterTable();
 

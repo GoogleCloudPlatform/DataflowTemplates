@@ -71,4 +71,11 @@ public interface ISchemaMapper extends Serializable {
    */
   List<String> getSpannerColumns(String namespace, String spannerTable)
       throws NoSuchElementException;
+
+  /**
+   * Retrieves the name of the shard id column for a Spanner table.
+   *
+   * @param namespace is currently not operational.
+   */
+  String getShardIdColumnName(String namespace, String spannerTableName);
 }

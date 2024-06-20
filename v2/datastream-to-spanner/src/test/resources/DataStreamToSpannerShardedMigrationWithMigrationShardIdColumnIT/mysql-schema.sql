@@ -12,3 +12,10 @@ CREATE TABLE `Movie` (
     `actor` int,             -- To: actor INT64
     PRIMARY KEY (`id1`, `id2`)       -- Primary keys are reordered in Spanner. Order - (id2, id1, migration_shard_id)
 );
+
+CREATE TABLE `Customers` (
+    `id` int NOT NULL,              -- To: id INT64
+    `first_name` varchar(200),      -- To: first_name STRING(200)
+    `last_name` varchar(200),       -- To: last_name STRING(200)
+    PRIMARY KEY (`id`)  -- New column full_name added in spanner
+);

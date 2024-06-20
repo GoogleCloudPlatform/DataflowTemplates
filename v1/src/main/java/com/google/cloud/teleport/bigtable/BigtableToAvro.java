@@ -76,6 +76,7 @@ public class BigtableToAvro {
   public interface Options extends PipelineOptions {
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Source",
         description = "Project ID",
         helpText =
             "The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from.")
@@ -86,6 +87,7 @@ public class BigtableToAvro {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
         helpText = "The ID of the Bigtable instance that contains the table.")
@@ -96,6 +98,7 @@ public class BigtableToAvro {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
         helpText = "The ID of the Bigtable table to export.")
@@ -106,6 +109,7 @@ public class BigtableToAvro {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
+        groupName = "Target",
         description = "Output file directory in Cloud Storage",
         helpText = "The Cloud Storage path where data is written.",
         example = "gs://mybucket/somefolder")
@@ -116,6 +120,7 @@ public class BigtableToAvro {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "Avro file prefix",
         helpText = "The prefix of the Avro filename. For example, `output-`.")
     @Default.String("part")

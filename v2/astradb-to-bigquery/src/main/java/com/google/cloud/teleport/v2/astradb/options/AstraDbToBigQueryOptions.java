@@ -31,6 +31,7 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
         description = "BigQuery output table",
+        groupName = "Target",
         optional = true,
         helpText =
             "The BigQuery table location to write the output to. Use the format `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`. The table's schema must match the input objects.")
@@ -57,6 +58,7 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 2,
         description = "Database identifier",
+        groupName = "Source",
         helpText = "The database unique identifier (UUID).",
         example = "cf7af129-d33a-498f-ad06-d97a6ee6eb7")
     @Validation.Required
@@ -69,6 +71,7 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 3,
         description = "Cassandra keyspace",
+        groupName = "Source",
         regexes = {"^[a-zA-Z0-9][a-zA-Z0-9_]{0,47}$"},
         helpText = "The name of the Cassandra keyspace inside of the Astra database.")
     String getAstraKeyspace();
@@ -79,6 +82,7 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 4,
         description = "Cassandra table",
+        groupName = "Source",
         regexes = {"^[a-zA-Z][a-zA-Z0-9_]*$"},
         helpText = "The name of the table inside of the Cassandra database.",
         example = "my_table")
@@ -91,6 +95,7 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 5,
         optional = true,
+        groupName = "Source",
         description = "Cassandra CQL Query",
         helpText = "The query to use to filter rows instead of reading the whole table.")
     @SuppressWarnings("unused")
@@ -102,6 +107,7 @@ public interface AstraDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 6,
         optional = true,
+        groupName = "Source",
         description = "Astra Database Region",
         helpText =
             "If not provided, a default is chosen, which is useful with multi-region databases.")

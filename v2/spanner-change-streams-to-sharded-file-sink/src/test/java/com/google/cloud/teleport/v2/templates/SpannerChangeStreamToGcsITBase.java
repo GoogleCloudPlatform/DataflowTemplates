@@ -90,10 +90,7 @@ public class SpannerChangeStreamToGcsITBase extends TemplateTestBase {
 
   public void createAndUploadJarToGcs(GcsResourceManager gcsResourceManager)
       throws IOException, InterruptedException {
-    String[] commands = {"cd ../spanner-custom-shard", "mvn install"};
-
-    // Join the commands with && to execute them sequentially
-    String[] shellCommand = {"/bin/bash", "-c", String.join(" && ", commands)};
+    String[] shellCommand = {"/bin/bash", "-c", "cd ../spanner-custom-shard"};
 
     Process exec = Runtime.getRuntime().exec(shellCommand);
 

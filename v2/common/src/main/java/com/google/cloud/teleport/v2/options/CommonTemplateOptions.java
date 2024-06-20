@@ -16,9 +16,7 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.SdkHarnessOptions;
 
 /** Provides options that are supported by all templates. */
 public interface CommonTemplateOptions extends PipelineOptions {
@@ -51,23 +49,4 @@ public interface CommonTemplateOptions extends PipelineOptions {
   String getExtraFilesToStage();
 
   void setExtraFilesToStage(String extraFilesToStage);
-
-  @TemplateParameter.Enum(
-      order = 33,
-      optional = true,
-      enumOptions = {
-        @TemplateParameter.TemplateEnumOption("OFF"),
-        @TemplateParameter.TemplateEnumOption("ERROR"),
-        @TemplateParameter.TemplateEnumOption("WARN"),
-        @TemplateParameter.TemplateEnumOption("INFO"),
-        @TemplateParameter.TemplateEnumOption("TRACE"),
-        @TemplateParameter.TemplateEnumOption("DEBUG")
-      },
-      description = "Log level in the workers, defaults to INFO",
-      helpText =
-          "Set Log level in the workers. Supported options are OFF, ERROR, WARN, INFO, DEBUG, TRACE. Defaults to INFO")
-  @Default.Enum("INFO")
-  SdkHarnessOptions.LogLevel getDefaultLogLevel();
-
-  void setDefaultLogLevel(SdkHarnessOptions.LogLevel logLevel);
 }

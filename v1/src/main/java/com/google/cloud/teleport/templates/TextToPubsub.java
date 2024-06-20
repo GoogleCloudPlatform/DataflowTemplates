@@ -62,6 +62,7 @@ public class TextToPubsub {
   public interface Options extends PipelineOptions {
     @TemplateParameter.GcsReadFile(
         order = 1,
+        groupName = "Source",
         description = "Cloud Storage Input File(s)",
         helpText = "The input file pattern to read from.",
         example = "gs://bucket-name/files/*.json")
@@ -72,6 +73,7 @@ public class TextToPubsub {
 
     @TemplateParameter.PubsubTopic(
         order = 2,
+        groupName = "Target",
         description = "Output Pub/Sub topic",
         helpText =
             "The Pub/Sub input topic to write to. The name must be in the format `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.",

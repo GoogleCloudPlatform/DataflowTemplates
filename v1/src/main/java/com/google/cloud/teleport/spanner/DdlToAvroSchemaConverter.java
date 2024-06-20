@@ -315,6 +315,7 @@ public class DdlToAvroSchemaConverter {
         return SchemaBuilder.builder().booleanType();
       case INT64:
       case PG_INT8:
+      case ENUM:
         return SchemaBuilder.builder().longType();
       case FLOAT32:
       case PG_FLOAT4:
@@ -332,6 +333,7 @@ public class DdlToAvroSchemaConverter {
         return SchemaBuilder.builder().stringType();
       case BYTES:
       case PG_BYTEA:
+      case PROTO:
         return SchemaBuilder.builder().bytesType();
       case TIMESTAMP:
       case PG_TIMESTAMPTZ:

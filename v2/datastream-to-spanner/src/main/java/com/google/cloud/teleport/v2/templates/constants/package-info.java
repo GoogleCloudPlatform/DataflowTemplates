@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,15 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
 
-/** Exceptions thrown when Datastream Events are missing required fields. */
-public class InvalidChangeEventException extends Exception {
-  public InvalidChangeEventException(Exception e) {
-    super(e);
-  }
-
-  public InvalidChangeEventException(String msg) {
-    super(msg);
-  }
-}
+/** A set of constants used in the pipeline. */
+package com.google.cloud.teleport.v2.templates.constants;

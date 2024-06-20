@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.BigtableChangeStreamsToVectorSearch",
+  "classPath": "/template/bigtable-changestreams-to-vector-search/*:/template/bigtable-changestreams-to-vector-search/libs/*:/template/bigtable-changestreams-to-vector-search/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"bigtable-changestreams-to-vector-search\"}"
+  }
+}

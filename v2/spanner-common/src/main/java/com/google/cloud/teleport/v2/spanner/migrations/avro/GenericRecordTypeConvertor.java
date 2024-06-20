@@ -51,9 +51,12 @@ public class GenericRecordTypeConvertor {
 
   private final String namespace;
 
-  public GenericRecordTypeConvertor(ISchemaMapper schemaMapper, String namespace) {
+  private final String shardId;
+
+  public GenericRecordTypeConvertor(ISchemaMapper schemaMapper, String namespace, String shardId) {
     this.schemaMapper = schemaMapper;
     this.namespace = namespace;
+    this.shardId = shardId;
   }
 
   /**
@@ -65,12 +68,19 @@ public class GenericRecordTypeConvertor {
     Map<String, Value> result = new HashMap<>();
     String spannerTableName = schemaMapper.getSpannerTableName(namespace, srcTableName);
     List<String> spannerColNames = schemaMapper.getSpannerColumns(namespace, spannerTableName);
+    // This is null/blank for identity/non-sharded cases.
+    String shardIdCol = schemaMapper.getShardIdColumnName(namespace, spannerTableName);
     for (String spannerColName : spannerColNames) {
       /**
-       * TODO: Handle columns that will not exist at source - synth id - shard id - multi-column
+       * TODO: Handle columns that will not exist at source - synth id - multi-column
        * transformations - auto-gen keys - Default columns - generated columns
        */
       try {
+        // If current column is migration shard id, populate value.
+        if (spannerColName.equals(shardIdCol)) {
+          result = populateShardId(result, shardIdCol);
+          continue;
+        }
         String srcColName =
             schemaMapper.getSourceColumnName(namespace, spannerTableName, spannerColName);
         Type spannerColumnType =
@@ -88,20 +98,23 @@ public class GenericRecordTypeConvertor {
                 spannerColumnType);
         result.put(spannerColName, value);
       } catch (NullPointerException e) {
-        LOG.error("Unable to transform change event", e);
         throw e;
       } catch (IllegalArgumentException e) {
-        LOG.error("Unable to transform change event", e);
         throw e;
       } catch (Exception e) {
-        LOG.error(
-            String.format("Unable to convert spanner value for spanner col: %s", spannerColName),
-            e);
         throw new RuntimeException(
             String.format("Unable to convert spanner value for spanner col: %s", spannerColName),
             e);
       }
     }
+    return result;
+  }
+
+  private Map<String, Value> populateShardId(Map<String, Value> result, String shardIdCol) {
+    if (shardId == null || shardId.isBlank()) {
+      return result;
+    }
+    result.put(shardIdCol, Value.string(shardId));
     return result;
   }
 
@@ -158,6 +171,7 @@ public class GenericRecordTypeConvertor {
     public static final String VARCHAR = "varchar";
     public static final String NUMBER = "number";
     public static final String JSON = "json";
+    public static final String UNSUPPORTED = "unsupported";
   }
 
   /** Avro logical types are converted to an equivalent string type. */
@@ -167,9 +181,9 @@ public class GenericRecordTypeConvertor {
       return null;
     }
     if (fieldSchema.getLogicalType() instanceof LogicalTypes.Date) {
-      TimeConversions.DateConversion dataConversion = new TimeConversions.DateConversion();
+      TimeConversions.DateConversion dateConversion = new TimeConversions.DateConversion();
       LocalDate date =
-          dataConversion.fromInt(
+          dateConversion.fromInt(
               Integer.valueOf(recordValue.toString()), fieldSchema, fieldSchema.getLogicalType());
       return date.format(DateTimeFormatter.ISO_LOCAL_DATE);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.Decimal) {
@@ -185,11 +199,12 @@ public class GenericRecordTypeConvertor {
       Long nanoseconds = TimeUnit.MILLISECONDS.toNanos(Long.valueOf(recordValue.toString()));
       return LocalTime.ofNanoOfDay(nanoseconds).format(DateTimeFormatter.ISO_LOCAL_TIME);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMicros) {
-      Long nanoseconds = Long.valueOf(recordValue.toString()) * TimeUnit.MICROSECONDS.toNanos(1);
+      // We cannot convert to nanoseconds directly here since that can overflow for Long.
+      Long micros = Long.valueOf(recordValue.toString());
       Instant timestamp =
           Instant.ofEpochSecond(
-              TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
-              nanoseconds % TimeUnit.SECONDS.toNanos(1));
+              TimeUnit.MICROSECONDS.toSeconds(micros),
+              (micros % TimeUnit.SECONDS.toMicros(1)) * TimeUnit.MICROSECONDS.toNanos(1));
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMillis) {
       Instant timestamp = Instant.ofEpochMilli(Long.valueOf(recordValue.toString()));
@@ -203,6 +218,9 @@ public class GenericRecordTypeConvertor {
     } else if (fieldSchema.getLogicalType() != null
         && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.VARCHAR)) {
       return recordValue.toString();
+    } else if (fieldSchema.getLogicalType() != null
+        && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.UNSUPPORTED)) {
+      return null;
     } else {
       LOG.error("Unknown field type {} for field {} in {}.", fieldSchema, fieldName, recordValue);
       throw new UnsupportedOperationException(

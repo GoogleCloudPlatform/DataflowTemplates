@@ -288,6 +288,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.GcsReadFile(
         order = 1,
+        groupName = "Source",
         description = "Input Cloud Storage File(s)",
         helpText = "The CSV files to read input data records from. Wildcards are also accepted.",
         example = "gs://mybucket/my_csv_filename.csv or gs://mybucket/file-*.csv")
@@ -297,6 +298,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {
           "^projects\\/[^\\n\\r\\/]+(\\/locations\\/[^\\n\\r\\/]+)?\\/deidentifyTemplates\\/[^\\n\\r\\/]+$"
         },
@@ -312,6 +314,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "DLP Configuration",
         optional = true,
         regexes = {
           "^projects\\/[^\\n\\r\\/]+(\\/locations\\/[^\\n\\r\\/]+)?\\/inspectTemplates\\/[^\\n\\r\\/]+$"
@@ -328,6 +331,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Integer(
         order = 4,
+        groupName = "DLP Configuration",
         optional = true,
         description = "Batch size",
         helpText =
@@ -341,6 +345,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         regexes = {"^[^.]*$"},
         description = "BigQuery Dataset",
         helpText =
@@ -351,6 +356,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.ProjectId(
         order = 6,
+        groupName = "DLP Configuration",
         description = "Cloud DLP project ID",
         helpText =
             "The ID for the Google Cloud project that owns the DLP API resource. This project"

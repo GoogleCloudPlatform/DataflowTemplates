@@ -194,6 +194,7 @@ public class KafkaToBigQuery {
      */
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = true,
         regexes = {"[,:a-zA-Z0-9._-]+"},
         description = "Kafka Bootstrap Server list",
@@ -221,6 +222,7 @@ public class KafkaToBigQuery {
     @Deprecated
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         optional = true,
         regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Kafka topic(s) to read the input from",

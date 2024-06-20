@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.spanner;
 
 import com.google.api.gax.longrunning.OperationFuture;
+import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
+import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
@@ -31,7 +33,9 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.base.Verify;
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.protobuf.ByteString;
 import com.google.protobuf.util.JsonFormat;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import java.io.IOException;
@@ -472,6 +476,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           Ddl informationSchemaDdl = c.sideInput(informationSchemaView);
                           Dialect dialect = informationSchemaDdl.dialect();
                           Export manifest = c.sideInput(manifestView);
+                          ByteString protoDescriptors = manifest.getProtoDescriptors();
 
                           if (LOG.isDebugEnabled()) {
                             LOG.debug(informationSchemaDdl.prettyPrint());
@@ -526,6 +531,19 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             Ddl newDdl = builder.build();
                             ddlStatements.addAll(
                                 newDdl.setOptionsStatements(spannerConfig.getDatabaseId().get()));
+                          }
+
+                          // CREATE PROTO BUNDLE statement has to be placed before
+                          // table and view statements, since tables and views
+                          // may use PROTO BUNDLE.
+                          if (!manifest.getProtoBundleList().isEmpty()) {
+                            Ddl.Builder builder = Ddl.builder(dialect);
+                            builder.mergeProtoBundle(
+                                ImmutableSet.copyOf(manifest.getProtoBundleList()));
+                            mergedDdl.mergeProtoBundle(
+                                ImmutableSet.copyOf(manifest.getProtoBundleList()));
+                            Ddl newDdl = builder.build();
+                            ddlStatements.add(newDdl.createProtoBundleStatement());
                           }
 
                           if (!missingNamedSchemas.isEmpty()) {
@@ -625,12 +643,18 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           if (!ddlStatements.isEmpty()) {
                             DatabaseAdminClient databaseAdminClient =
                                 spannerAccessor.getDatabaseAdminClient();
+                            Database.Builder databaseBuilder =
+                                databaseAdminClient.newDatabaseBuilder(
+                                    DatabaseId.of(
+                                        spannerConfig.getProjectId().get(),
+                                        spannerConfig.getInstanceId().get(),
+                                        spannerConfig.getDatabaseId().get()));
+                            if (protoDescriptors != null) {
+                              databaseBuilder.setProtoDescriptors(protoDescriptors.toByteArray());
+                            }
                             OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
                                 databaseAdminClient.updateDatabaseDdl(
-                                    spannerConfig.getInstanceId().get(),
-                                    spannerConfig.getDatabaseId().get(),
-                                    ddlStatements,
-                                    null);
+                                    databaseBuilder.build(), ddlStatements, null);
                             try {
                               op.get(ddlCreationTimeoutInMinutes.get(), TimeUnit.MINUTES);
                             } catch (InterruptedException

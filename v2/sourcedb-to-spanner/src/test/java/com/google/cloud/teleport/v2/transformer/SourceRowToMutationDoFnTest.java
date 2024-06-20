@@ -25,13 +25,10 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.testing.PAssert;
@@ -53,22 +50,14 @@ public class SourceRowToMutationDoFnTest {
   @Test
   public void testSourceRowToMutationDoFn() {
     final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     SourceRow sourceRow =
-        SourceRow.builder(schema, 12412435345L)
+        SourceRow.builder(schemaRef, schema, null, 12412435345L)
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();
     PCollection<SourceRow> sourceRows = pipeline.apply(Create.of(sourceRow));
-    Map<String, SourceTableReference> tableIdMapper =
-        Map.of(
-            schema.tableSchemaUUID(),
-            SourceTableReference.builder()
-                .setSourceSchemaReference(
-                    SourceSchemaReference.builder().setDbName("dbName").build())
-                .setSourceTableName(testTable)
-                .setSourceTableSchemaUUID(schema.tableSchemaUUID())
-                .build());
     ISchemaMapper mockIschemaMapper =
         mock(ISchemaMapper.class, Mockito.withSettings().serializable());
     when(mockIschemaMapper.getDialect()).thenReturn(Dialect.GOOGLE_STANDARD_SQL);
@@ -88,7 +77,7 @@ public class SourceRowToMutationDoFnTest {
         .thenReturn(List.of("spFirstName", "spLastName"));
 
     PCollection<Mutation> mutations =
-        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper));
+        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper));
 
     PAssert.that(mutations)
         .containsInAnyOrder(
@@ -104,26 +93,18 @@ public class SourceRowToMutationDoFnTest {
   @Test
   public void testSourceRowToMutationDoFn_invalidTableUUID() {
     final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     SourceRow sourceRow =
-        SourceRow.builder(schema, 12412435345L)
+        SourceRow.builder(schemaRef, schema, null, 12412435345L)
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();
     PCollection<SourceRow> sourceRows = pipeline.apply(Create.of(sourceRow));
-    Map<String, SourceTableReference> tableIdMapper =
-        Map.of(
-            "wrongUUID",
-            SourceTableReference.builder()
-                .setSourceSchemaReference(
-                    SourceSchemaReference.builder().setDbName("dbName").build())
-                .setSourceTableName(testTable)
-                .setSourceTableSchemaUUID(schema.tableSchemaUUID())
-                .build());
     ISchemaMapper mockIschemaMapper =
         mock(ISchemaMapper.class, Mockito.withSettings().serializable());
     PCollection<Mutation> mutations =
-        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper));
+        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper));
 
     PAssert.that(mutations).empty();
     pipeline.run();
@@ -132,29 +113,21 @@ public class SourceRowToMutationDoFnTest {
   @Test
   public void testSourceRowToMutationDoFn_transformException() {
     final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     SourceRow sourceRow =
-        SourceRow.builder(schema, 12412435345L)
+        SourceRow.builder(schemaRef, schema, null, 12412435345L)
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();
     PCollection<SourceRow> sourceRows = pipeline.apply(Create.of(sourceRow));
-    Map<String, SourceTableReference> tableIdMapper =
-        Map.of(
-            schema.tableSchemaUUID(),
-            SourceTableReference.builder()
-                .setSourceSchemaReference(
-                    SourceSchemaReference.builder().setDbName("dbName").build())
-                .setSourceTableName(testTable)
-                .setSourceTableSchemaUUID(schema.tableSchemaUUID())
-                .build());
     ISchemaMapper mockIschemaMapper =
         mock(ISchemaMapper.class, Mockito.withSettings().serializable());
     when(mockIschemaMapper.getSpannerTableName(anyString(), anyString()))
         .thenThrow(NoSuchElementException.class);
 
     PCollection<Mutation> mutations =
-        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, tableIdMapper));
+        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper));
 
     PAssert.that(mutations).empty();
     pipeline.run();

@@ -69,6 +69,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **directoryWatchDurationInMinutes** : The Duration for which the pipeline should keep polling a directory in GCS. Datastreamoutput files are arranged in a directory structure which depicts the timestamp of the event grouped by minutes. This parameter should be approximately equal tomaximum delay which could occur between event occurring in source database and the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes. Defaults to: 10.
 * **spannerPriority** : The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]. Defaults to HIGH.
 * **dlqGcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored.
+* **transformationJarPath** : Custom jar location in Cloud Storage that contains the custom transformation logic for processing records in forward migration. Defaults to empty.
+* **transformationClassName** : Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
+* **transformationCustomParameters** : String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
+* **filteredEventsDirectory** : This is the file path to store the events filtered via custom transformation. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
 
 
 
@@ -173,6 +177,10 @@ export TRANSFORMATION_CONTEXT_FILE_PATH=<transformationContextFilePath>
 export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
 export SPANNER_PRIORITY=HIGH
 export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
+export TRANSFORMATION_JAR_PATH=""
+export TRANSFORMATION_CLASS_NAME=""
+export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export FILTERED_EVENTS_DIRECTORY=""
 
 gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --project "$PROJECT" \
@@ -201,7 +209,11 @@ gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --parameters "transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH" \
   --parameters "directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES" \
   --parameters "spannerPriority=$SPANNER_PRIORITY" \
-  --parameters "dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION"
+  --parameters "dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION" \
+  --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
+  --parameters "transformationClassName=$TRANSFORMATION_CLASS_NAME" \
+  --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
+  --parameters "filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY"
 ```
 
 For more information about the command, please check:
@@ -246,6 +258,10 @@ export TRANSFORMATION_CONTEXT_FILE_PATH=<transformationContextFilePath>
 export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
 export SPANNER_PRIORITY=HIGH
 export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
+export TRANSFORMATION_JAR_PATH=""
+export TRANSFORMATION_CLASS_NAME=""
+export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export FILTERED_EVENTS_DIRECTORY=""
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -254,7 +270,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-spanner-job" \
 -DtemplateName="Cloud_Datastream_to_Spanner" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY" \
 -f v2/datastream-to-spanner
 ```
 
@@ -323,6 +339,10 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_spanner" {
     # directoryWatchDurationInMinutes = "10"
     # spannerPriority = "HIGH"
     # dlqGcsPubSubSubscription = "<dlqGcsPubSubSubscription>"
+    # transformationJarPath = ""
+    # transformationClassName = ""
+    # transformationCustomParameters = ""
+    # filteredEventsDirectory = ""
   }
 }
 ```

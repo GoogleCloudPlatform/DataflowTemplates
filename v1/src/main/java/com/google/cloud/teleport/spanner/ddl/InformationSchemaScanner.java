@@ -22,6 +22,7 @@ import static com.google.cloud.teleport.spanner.common.NameUtils.getQualifiedNam
 import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
 import static com.google.common.base.Strings.isNullOrEmpty;
 
+import com.google.cloud.ByteArray;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
@@ -33,9 +34,17 @@ import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
+import com.google.protobuf.DescriptorProtos.DescriptorProto;
+import com.google.protobuf.DescriptorProtos.EnumDescriptorProto;
+import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
+import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
+import com.google.protobuf.DescriptorProtos.MessageOptions;
+import com.google.protobuf.InvalidProtocolBufferException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
@@ -63,6 +72,7 @@ public class InformationSchemaScanner {
   public Ddl scan() {
     Ddl.Builder builder = Ddl.builder(dialect);
     listDatabaseOptions(builder);
+    addProtoBundleAndDescriptor(builder);
     listSchemas(builder);
     listTables(builder);
     listViews(builder);
@@ -1268,6 +1278,60 @@ public class InformationSchemaScanner {
           .skipRangeMin(skipRangeMin)
           .skipRangeMax(skipRangeMax)
           .endSequence();
+    }
+  }
+
+  private boolean isUnknownType(DescriptorProto descriptor) {
+    MessageOptions messageOptions = descriptor.getOptions();
+    // 14004 is the extension for placeholder descriptors for unknown types in spanner.
+    return messageOptions.getUnknownFields().hasField(14004);
+  }
+
+  private Set<String> collectBundleTypes(FileDescriptorSet fds) {
+    Set<String> result = new HashSet<>();
+    for (FileDescriptorProto file : fds.getFileList()) {
+      String filePackage = file.hasPackage() ? file.getPackage() + "." : "";
+      for (DescriptorProto descriptor : file.getMessageTypeList()) {
+        if (isUnknownType(descriptor)) {
+          continue;
+        }
+        String descriptorName = filePackage + descriptor.getName();
+        result.add(descriptorName);
+      }
+      for (EnumDescriptorProto enumDescriptor : file.getEnumTypeList()) {
+        String descriptorName = filePackage + enumDescriptor.getName();
+        result.add(descriptorName);
+      }
+    }
+    return result;
+  }
+
+  private void addProtoBundleAndDescriptor(Ddl.Builder builder) {
+    Statement queryStatement;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        queryStatement = Statement.of("SELECT PROTO_BUNDLE FROM information_schema.schemata AS s");
+        break;
+      case POSTGRESQL:
+        return;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+    ResultSet resultSet = context.executeQuery(queryStatement);
+    resultSet.next();
+    // No proto bundle found.
+    if (resultSet.isNull(0)) {
+      return;
+    }
+    ByteArray bytes = resultSet.getBytes(0);
+    byte[] byteArray = bytes.toByteArray();
+    try {
+      FileDescriptorSet protoDescriptors = FileDescriptorSet.parseFrom(byteArray);
+      builder.mergeProtoDescriptors(protoDescriptors);
+      Set<String> bundleTypes = collectBundleTypes(protoDescriptors);
+      builder.mergeProtoBundle(bundleTypes);
+    } catch (InvalidProtocolBufferException e) {
+      throw new IllegalArgumentException("Invalid proto descriptors");
     }
   }
 }

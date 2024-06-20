@@ -171,6 +171,7 @@ public class PubSubToMongoDB {
       extends PythonExternalTextTransformer.PythonExternalTextTransformerOptions, PipelineOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input subscription",
         helpText = "Name of the Pub/Sub subscription.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
@@ -181,6 +182,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         description = "MongoDB Connection URI",
         helpText = "Comma separated list of MongoDB servers.",
         example = "host1:port,host2:port,host3:port")
@@ -191,6 +193,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Target",
         description = "MongoDB Database",
         helpText = "Database in MongoDB to store the collection.",
         example = "my-db")
@@ -201,6 +204,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         description = "MongoDB collection",
         helpText = "Name of the collection in the MongoDB database.",
         example = "my-collection")

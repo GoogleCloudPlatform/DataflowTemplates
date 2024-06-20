@@ -25,7 +25,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       order = 1,
       optional = true,
       regexes = {"^.+$"},
-      groupName = "Source",
       description = "Comma-separated Cloud Storage path(s) of the JDBC driver(s)",
       helpText = "The comma-separated list of driver JAR files.",
       example = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar")
@@ -38,7 +37,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       order = 2,
       optional = true,
       regexes = {"^.+$"},
-      groupName = "Source",
       description = "JDBC driver class name",
       helpText = "The JDBC driver class name.",
       example = "com.mysql.jdbc.Driver")
@@ -63,7 +61,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       order = 4,
       optional = true,
       regexes = {"^.+$"},
-      groupName = "Source",
       description = "JDBC connection username.",
       helpText = "The username to be used for the JDBC connection.")
   @Default.String("")
@@ -74,7 +71,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   @TemplateParameter.Password(
       order = 5,
       optional = true,
-      groupName = "Source",
       description = "JDBC connection password.",
       helpText = "The password to be used for the JDBC connection.")
   @Default.String("")
@@ -85,7 +81,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   @TemplateParameter.Text(
       order = 6,
       optional = true,
-      groupName = "Source Parameters",
       description = "Comma-separated names of the tables in the source database.",
       helpText = "Tables to read from using partitions.")
   @Default.String("")
@@ -97,7 +92,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   @TemplateParameter.Integer(
       order = 7,
       optional = true,
-      groupName = "Source",
       description = "The number of partitions.",
       helpText =
           "The number of partitions. This, along with the lower and upper bound, form partitions"
@@ -110,6 +104,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 8,
+      groupName = "Target",
       description = "Cloud Spanner Instance Id.",
       helpText = "The destination Cloud Spanner instance.")
   String getInstanceId();
@@ -118,6 +113,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 9,
+      groupName = "Target",
       regexes = {"^[a-z]([a-z0-9_-]{0,28})[a-z0-9]$"},
       description = "Cloud Spanner Database Id.",
       helpText = "The destination Cloud Spanner database.")
@@ -127,6 +123,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.ProjectId(
       order = 10,
+      groupName = "Target",
       description = "Cloud Spanner Project Id.",
       helpText = "This is the name of the Cloud Spanner project.")
   String getProjectId();

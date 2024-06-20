@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.kafka.utils;
 
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.kafka.options.KafkaWriteOptions;
+import com.google.cloud.teleport.v2.kafka.options.SchemaRegistryOptions;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import java.util.HashMap;
@@ -30,6 +31,8 @@ import org.apache.kafka.common.config.SslConfigs;
  * producers.
  */
 public class KafkaConfig {
+  private static final String SCHEMA_REGISTRY_PREFIX = "schema.registry.";
+
   public static Map<String, Object> fromReadOptions(KafkaReadOptions options) {
     Map<String, Object> properties =
         from(
@@ -57,6 +60,37 @@ public class KafkaConfig {
         options.getKafkaWriteKeyPasswordSecretId(),
         options.getKafkaWriteUsernameSecretId(),
         options.getKafkaWritePasswordSecretId());
+  }
+
+  public static Map<String, Object> fromSchemaRegistryOptions(SchemaRegistryOptions options) {
+    Map<String, Object> properties = new HashMap<>();
+    if (options.getSchemaRegistryAuthenticationMode() == null
+        || options.getSchemaRegistryAuthenticationMode().equals(KafkaAuthenticationMethod.NONE)) {
+      return properties;
+    }
+
+    if (options.getSchemaRegistryAuthenticationMode().equals(KafkaAuthenticationMethod.TLS)) {
+      properties.put(
+          SCHEMA_REGISTRY_PREFIX + SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG,
+          options.getSchemaRegistryKeystoreLocation());
+      properties.put(
+          SCHEMA_REGISTRY_PREFIX + SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG,
+          options.getSchemaRegistryTruststoreLocation());
+      properties.put(
+          SCHEMA_REGISTRY_PREFIX + SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
+          FileAwareFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getSchemaRegistryTruststorePasswordSecretId());
+      properties.put(
+          SCHEMA_REGISTRY_PREFIX + SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
+          FileAwareFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getSchemaRegistryKeystorePasswordSecretId());
+      properties.put(
+          SCHEMA_REGISTRY_PREFIX + SslConfigs.SSL_KEY_PASSWORD_CONFIG,
+          FileAwareFactoryFn.SECRET_MANAGER_VALUE_PREFIX
+              + options.getSchemaRegistryKeyPasswordSecretId());
+      properties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
+    }
+    return properties;
   }
 
   private static Map<String, Object> from(
@@ -99,6 +133,15 @@ public class KafkaConfig {
               + " password=\'"
               + SecretManagerUtils.getSecret(passwordSecretId)
               + "\';");
+    } else if (authMode.equals(KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS)) {
+      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
+      properties.put(SaslConfigs.SASL_MECHANISM, "OAUTHBEARER");
+      properties.put(
+          SaslConfigs.SASL_LOGIN_CALLBACK_HANDLER_CLASS,
+          "com.google.cloud.teleport.v2.kafka.auth.GcpLoginCallbackHandler");
+      properties.put(
+          SaslConfigs.SASL_JAAS_CONFIG,
+          "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;");
     } else {
       throw new RuntimeException("Authentication method not supported: " + authMode);
     }

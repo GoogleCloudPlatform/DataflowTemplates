@@ -23,7 +23,6 @@ import com.google.cloud.teleport.v2.kafka.options.SchemaRegistryOptions;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaConfig;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
-import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.transforms.WriteTransform;
 import java.util.HashMap;
 import java.util.List;
@@ -48,14 +47,7 @@ import org.apache.beam.sdk.values.PCollection;
     optionsClass = KafkaToGcsFlex.KafkaToGcsOptions.class,
     flexContainerName = "kafka-to-gcs-flex",
     contactInformation = "https://cloud.google.com/support",
-    requirements = {"The output Google Cloud Storage directory must exist."},
-    skipOptions = {
-      "keystoreLocation",
-      "sourceSSL",
-      "sourceTruststorePassword",
-      "sourceKeystorePassword",
-      "sourceKey",
-    })
+    requirements = {"The output Google Cloud Storage directory must exist."})
 public class KafkaToGcsFlex {
   public interface KafkaToGcsOptions
       extends PipelineOptions, DataflowPipelineOptions, KafkaReadOptions, SchemaRegistryOptions {
@@ -71,23 +63,6 @@ public class KafkaToGcsFlex {
     String getReadBootstrapServerAndTopic();
 
     void setReadBootstrapServerAndTopic(String value);
-
-    @TemplateParameter.Enum(
-        name = "kafkaReadAuthenticationMode",
-        order = 19,
-        groupName = "Source",
-        enumOptions = {
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
-          @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
-        },
-        description = "Kafka Read Authentication Mode",
-        helpText =
-            "The mode of authentication to use with the Kafka cluster. "
-                + "Use NONE for no authentication and "
-                + "SASL_PLAIN for SASL/PLAIN username and password. "
-                + " Apache Kafka for BigQuery only supports the SASL_PLAIN authentication mode.")
-    @Default.String("NONE")
-    String getKafkaReadAuthenticationMode();
 
     @TemplateParameter.Duration(
         order = 20,
@@ -142,7 +117,6 @@ public class KafkaToGcsFlex {
   }
 
   public static PipelineResult run(KafkaToGcsOptions options) throws UnsupportedOperationException {
-
     // Create the Pipeline
     Pipeline pipeline = Pipeline.create(options);
     String bootstrapServes;
@@ -168,6 +142,7 @@ public class KafkaToGcsFlex {
         KafkaTransform.readBytesFromKafka(
             bootstrapServes, topicsList, kafkaConfig, options.getEnableCommitOffsets());
     kafkaRecord = pipeline.apply(kafkaTransform);
+
     kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
     return pipeline.run();
   }

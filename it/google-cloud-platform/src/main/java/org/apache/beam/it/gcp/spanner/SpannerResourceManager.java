@@ -48,6 +48,7 @@ import com.google.common.collect.Iterables;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
@@ -264,17 +265,29 @@ public final class SpannerResourceManager implements ResourceManager {
    * @throws IllegalStateException if method is called after resources have been cleaned up.
    */
   public synchronized void executeDdlStatement(String statement) throws IllegalStateException {
+    executeDdlStatements(ImmutableList.of(statement));
+  }
+
+  /**
+   * Executes a list of DDL statements.
+   *
+   * <p>Note: Implementations may do instance creation and database creation here.
+   *
+   * @param statements The DDL statements.
+   * @throws IllegalStateException if method is called after resources have been cleaned up.
+   */
+  public synchronized void executeDdlStatements(List<String> statements)
+      throws IllegalStateException {
     checkIsUsable();
     maybeCreateInstance();
     maybeCreateDatabase();
 
-    LOG.info("Executing DDL statement '{}' on database {}.", statement, databaseId);
+    LOG.info("Executing DDL statements '{}' on database {}.", statements, databaseId);
     try {
       databaseAdminClient
-          .updateDatabaseDdl(
-              instanceId, databaseId, ImmutableList.of(statement), /* operationId= */ null)
+          .updateDatabaseDdl(instanceId, databaseId, statements, /* operationId= */ null)
           .get();
-      LOG.info("Successfully executed DDL statement '{}' on database {}.", statement, databaseId);
+      LOG.info("Successfully executed DDL statements '{}' on database {}.", statements, databaseId);
     } catch (ExecutionException | InterruptedException | SpannerException e) {
       throw new SpannerResourceManagerException("Failed to execute statement.", e);
     }

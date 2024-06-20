@@ -30,6 +30,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.ProjectId(
       order = 1,
+      groupName = "Source",
       optional = true,
       description = "Spanner Project ID",
       helpText =
@@ -42,6 +43,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       description = "Spanner instance ID",
       helpText = "The Spanner instance to read change streams from.")
   @Validation.Required
@@ -51,6 +53,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 3,
+      groupName = "Source",
       description = "Spanner database",
       helpText = "The Spanner database to read change streams from.")
   @Validation.Required
@@ -104,6 +107,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 8,
+      groupName = "Source",
       description = "Spanner change stream",
       helpText = "The name of the Spanner change stream to read from.")
   @Validation.Required
@@ -174,6 +178,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.ProjectId(
       order = 14,
+      groupName = "Target",
       optional = true,
       description = "Pub/Sub Project ID",
       helpText =
@@ -186,6 +191,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 15,
+      groupName = "Target",
       description = "The output Pub/Sub topic",
       helpText = "The Pub/Sub topic for change streams output.")
   @Validation.Required

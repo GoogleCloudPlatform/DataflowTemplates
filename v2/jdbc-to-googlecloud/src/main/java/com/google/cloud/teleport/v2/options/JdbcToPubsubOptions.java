@@ -36,6 +36,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       optional = false,
       regexes = {
         "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
@@ -105,6 +106,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
 
   @TemplateParameter.PubsubTopic(
       order = 8,
+      groupName = "Target",
       description = "Output Pub/Sub topic",
       helpText =
           "The Pub/Sub topic to publish to, in the format projects/<PROJECT_ID>/topics/<TOPIC_NAME>.",
