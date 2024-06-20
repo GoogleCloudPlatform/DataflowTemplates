@@ -1,34 +1,108 @@
 ## Sample Scenario: MySQL to Spanner using pre-configured connection profiles
 
 > **_SCENARIO:_** This Terraform example illustrates launching a live migration
-> job
-> for a MySQL
-> source, **given pre-created Datastream source and target connection profiles
-**.
-> As a
-> result, it does not create any new buckets in the GCP account.
+> job for a MySQL source, **given pre-created Datastream source and
+> target connection profiles**. As a result, it does not create any new buckets
+> in the GCP account.
 
-It takes the following assumptions -
+## Terraform permissions
 
-1. In order to create the resources in this sample, the`Service account`/`User account` being used to run Terraform
-   should have the [permissions](https://cloud.google.com/iam/docs/manage-access-service-accounts#multiple-roles-console) associated with the following roles -
-   ```shell
-   roles/dataflow.admin
-   roles/datastream.admin
-   roles/iam.securityAdmin
-   roles/iam.serviceAccountUser
-   roles/pubsub.admin
-   roles/storage.admin
-   roles/viewer
-   ```
-   [This](#adding-roles-to-terraform-service-account) section in the FAQ
-   provides a helper script to add these roles to an existing service account.
-2. A Spanner instance with database containing the data-migration compatible
+In order to create the resources in this sample,
+the`Service account`/`User account` being used to run Terraform
+should have the
+required [permissions](https://cloud.google.com/iam/docs/manage-access-service-accounts#multiple-roles-console).
+There are two ways to add permissions -
+
+1. Adding pre-defined roles to the service account running Terraform.
+2. Creating a custom role with the granular permissions and attaching it to the
+   service account running Terraform.
+
+### Using custom role and granular permissions (recommended)
+
+Following permissions are required -
+
+```shell
+- dataflow.jobs.cancel
+- dataflow.jobs.create
+- dataflow.jobs.updateContents
+- datastream.streams.create
+- datastream.streams.delete
+- datastream.streams.update
+- iam.roles.get
+- iam.serviceAccounts.actAs
+- pubsub.subscriptions.create
+- pubsub.subscriptions.delete
+- pubsub.topics.attachSubscription
+- pubsub.topics.create
+- pubsub.topics.delete
+- pubsub.topics.getIamPolicy
+- pubsub.topics.setIamPolicy
+- resourcemanager.projects.setIamPolicy
+- storage.buckets.update
+- storage.objects.delete
+```
+
+**Note**: Add the `roles/viewer` role as well to the service account.
+
+> **_Note on IAM:_** For ease of use, this sample automatically adds the
+> required
+> roles to the service account used for running the migration. In order to
+> do this, we need the `resourcemanager.projects.setIamPolicy` permission. If
+> granting
+> this role is unacceptable, please set
+> the `var.common_params.add_policies_to_service_account`
+> to **false**. This will skip adding the roles.
+> They will have to be added manually. Note that if they are not added, **the
+> migration will fail.**
+> Two service accounts will need to be modified manually -
+> 1. Dataflow service account - The list of roles can be found in the `main.tf`
+     file, in the `live_migration_roles` resource.
+> 2. GCS service account - The list of roles can be found in the `main.tf` file,
+     in the `gcs_publisher_role` resource.
+
+
+[This](#adding-access-to-terraform-service-account) section in the FAQ
+provides instructions to add these permissions to an existing service account.
+
+### Using pre-defined roles
+
+Following roles are required -
+
+```shell
+roles/dataflow.admin
+roles/datastream.admin
+roles/iam.securityAdmin
+roles/iam.serviceAccountUser
+roles/pubsub.admin
+roles/viewer
+```
+
+> **_Note on IAM:_** For ease of use, this sample automatically adds the
+> required
+> roles to the service account used for running the migration. In order to
+> do this, we need the `roles/iam.securityAdmin` role. If granting
+> this role is unacceptable, please set
+> the `var.common_params.add_policies_to_service_account`
+> to **false**. This will skip adding the roles.
+> They will have to be added manually. Note that if they are not added, **the
+> migration will fail.**
+> Two service accounts will need to be modified manually -
+> 1. Dataflow service account - The list of roles can be found in the `main.tf`
+     file, in the `live_migration_roles` resource.
+> 2. GCS service account - The list of roles can be found in the `main.tf` file,
+     in the `gcs_publisher_role` resource.
+
+[This](#adding-access-to-terraform-service-account) section in the FAQ
+provides instructions to add these roles to an existing service account.
+
+## Assumptions
+
+1. A Spanner instance with database containing the data-migration compatible
    schema is created.
 
 > **_NOTE:_**
 [SMT](https://googlecloudplatform.github.io/spanner-migration-tool/quickstart.html)
-> can be used for converting a MySQL schema to a Spanner compatible schema. 
+> can be used for converting a MySQL schema to a Spanner compatible schema.
 
 ## Resources Created
 
@@ -142,7 +216,8 @@ terraform destroy --var-file=terraform_simple.tfvars
 
 #### Datastream
 
-This should already be pre-configured in the source connection profile you are using.
+This should already be pre-configured in the source connection profile you are
+using.
 
 #### Dataflow
 
@@ -161,13 +236,13 @@ Note that the VPC should already exist. This template does not create a VPC.
 
 Template parameters can be updated in place. Terraform and Dataflow will take
 care of `UPDATING` a Dataflow job. This works internally by terminating the
-existing job with an `UPDATED` state and creating a new job in its place. All 
+existing job with an `UPDATED` state and creating a new job in its place. All
 of this is done seamlessly by Dataflow and there is no risk to the fidelity of
 an already executing job.
 
 Example update: Changing `round_json_decimals` to `true` from `false`.
 
-Look for the following log during `terraform apply` - 
+Look for the following log during `terraform apply` -
 
 ```shell
   # google_dataflow_flex_template_job.live_migration_job will be updated in-place
@@ -202,9 +277,9 @@ on the bucket.
 ### Configuring Databases and Tables in Datastream
 
 Which databases and tables to replicate can be configured via the following
-variable definition - 
+variable definition -
 
-In `variables.tf`, following definition exists - 
+In `variables.tf`, following definition exists -
 
 ```shell
 mysql_databases = list(object({
@@ -213,7 +288,7 @@ mysql_databases = list(object({
     }))
 ```
 
-To configure, create `*.tfvars` as follows - 
+To configure, create `*.tfvars` as follows -
 
 ```shell
 mysql_databases = [
@@ -230,7 +305,60 @@ mysql_databases = [
   ]
 ```
 
-### Adding roles to Terraform service account
+### Specifying schema overrides
+
+Any schema changes between source and Spanner can be specified using the
+`session file`. Upload the session file in a GCS bucket and pass the URL
+of the session file to the `var.dataflow_params.template_params.sessionFilePath`
+variable.
+
+> **_NOTE:_** At the time of generating the session file via SMT, the session
+> file is uploaded to a user-specified (or auto-generated) bucket, so you don't
+> need to upload the session file to GCS manually.
+
+### Cross project writes to Spanner
+
+The dataflow job can write to Spanner in a different project. In order to do so,
+the service account running the Dataflow job needs to have the
+`roles/spanner.databaseAdmin`role (or the corresponding permissions to write
+data to Spanner).
+
+After adding these permissions, configure the
+`var.dataflow_params.template_params.projectId` variable.
+
+### Adding access to Terraform service account
+
+#### Using custom role and granular permissions (recommended)
+
+You can run the following gcloud command to create a custom role in your GCP
+project.
+
+```shell
+gcloud iam roles create live_migrations_role --project=<YOUR-PROJECT-ID> --file=perms.yaml --quiet
+```
+
+The `YAML` file required for the above will be like so -
+
+```shell
+title: "Live Migrations Custom Role"
+description: "Custom role for Spanner live migrations."
+stage: "GA"
+includedPermissions:
+- iam.roles.get
+- iam.serviceAccounts.actAs
+- datastream.connectionProfiles.create
+....add all permissions from the list defined above.
+```
+
+Then attach the role to the service account -
+
+```shell
+gcloud iam service-accounts add-iam-policy-binding <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com \
+    --member=<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com --role=projects/<YOUR-PROJECT-ID>/roles/live_migrations_role \
+    --condition=CONDITION
+```
+
+#### Using pre-defined roles
 
 You can run the following shell script to add roles to the service account
 being used to run Terraform. This will have to done by a user which has the
@@ -260,7 +388,26 @@ do
 done
 ```
 
-### Verifying roles in the Terraform service account
+### Verifying access in the Terraform service account
+
+#### Using custom role and granular permissions (recommended)
+
+Verify that the custom role is attached to the service account -
+
+```shell
+gcloud projects get-iam-policy <YOUR-PROJECT-ID>  \
+--flatten="bindings[].members" \
+--format='table(bindings.role)' \
+--filter="bindings.members:<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
+```
+
+Verify that the role has the correct set of permissions
+
+```shell
+gcloud iam roles describe live_migrations_role --project=<YOUR-PROJECT-ID> 
+```
+
+##### Using pre-defined roles
 
 Once the roles are added, run the following command to verify them -
 
@@ -269,6 +416,19 @@ gcloud projects get-iam-policy <YOUR-PROJECT-ID>  \
 --flatten="bindings[].members" \
 --format='table(bindings.role)' \
 --filter="bindings.members:<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
+```
+
+Sample output -
+
+```shell
+ROLE
+roles/dataflow.admin
+roles/datastream.admin
+roles/iam.securityAdmin
+roles/iam.serviceAccountUser
+roles/pubsub.admin
+roles/storage.admin
+roles/viewer
 ```
 
 ### Impersonating the Terraform service account

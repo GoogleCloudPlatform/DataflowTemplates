@@ -5,6 +5,7 @@ variable "common_params" {
     region       = string
     migration_id = optional(string)
     # Will be auto-generated if not specified
+    add_policies_to_service_account = optional(bool, true)
   })
 }
 

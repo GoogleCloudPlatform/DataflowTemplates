@@ -17,6 +17,7 @@ resource "google_pubsub_topic" "datastream_topic" {
 
 # Configure permissions to publish Pub/Sub notifications
 resource "google_pubsub_topic_iam_member" "gcs_publisher_role" {
+  count = var.common_params.add_policies_to_service_account ? 1 : 0
   depends_on = [
     google_project_service.enabled_apis,
     google_pubsub_topic.datastream_topic
@@ -104,7 +105,7 @@ resource "google_datastream_stream" "mysql_to_gcs" {
 
 # Add roles to the service account that will run Dataflow for live migration
 resource "google_project_iam_member" "live_migration_roles" {
-  for_each = toset([
+  for_each = var.common_params.add_policies_to_service_account ? toset([
     "roles/viewer",
     "roles/storage.objectAdmin",
     "roles/datastream.viewer",
@@ -115,11 +116,13 @@ resource "google_project_iam_member" "live_migration_roles" {
     "roles/spanner.databaseAdmin",
     "roles/monitoring.metricWriter",
     "roles/cloudprofiler.agent"
-  ])
+  ]) : toset([])
+
   project = data.google_project.project.id
   role    = each.key
   member  = var.dataflow_params.runner_params.service_account_email != null ? "serviceAccount:${var.dataflow_params.runner_params.service_account_email}" : "serviceAccount:${data.google_compute_default_service_account.gce_account.email}"
 }
+
 
 # Dataflow Flex Template Job (for CDC to Spanner)
 resource "google_dataflow_flex_template_job" "live_migration_job" {
