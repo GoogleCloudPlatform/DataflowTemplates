@@ -1,8 +1,9 @@
 # Common Parameters
 common_params = {
-  project      = "<YOUR_PROJECT_ID>"   # Replace with your GCP project ID
-  region       = "<YOUR_GCP_REGION>"   # Replace with your desired GCP region
-  migration_id = "<YOUR_MIGRATION_ID>" #Will be used as a prefix for all resources, auto-generated if not specified
+  project                         = "<YOUR_PROJECT_ID>"   # Replace with your GCP project ID
+  region                          = "<YOUR_GCP_REGION>"   # Replace with your desired GCP region
+  migration_id                    = "<YOUR_MIGRATION_ID>" # Will be used as a prefix for all resources, auto-generated if not specified
+  add_policies_to_service_account = "<TRUE/FALSE>"        # This will decide if roles will be attached to service accounts or not.
 }
 
 # Datastream Parameters
