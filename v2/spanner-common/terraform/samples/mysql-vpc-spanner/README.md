@@ -3,28 +3,88 @@
 > **_SCENARIO:_** This Terraform example illustrates launching a MySQL 5.7
 > in a GCE Compute instance inside a custom VPC subnet. It adds firewall
 > rules to ensure that 1) Datastream can connect to the MySQL via private
-> connectivity and 2) Dataflow VMs can communicate with each other. It also creates a Spanner instance and database to migrate
-> data to. 
+> connectivity and 2) Dataflow VMs can communicate with each other. It also
+> creates a Spanner instance and database to migrate
+> data to.
 
-It takes the following assumptions -
+## Terraform permissions
 
-1. `Service account`/`User account` being used to run Terraform
-   has [permissions](https://cloud.google.com/iam/docs/manage-access-service-accounts#multiple-roles-console)
-   to create and destroy -
-    1. VPC network
-    2. VPC subnetwork
-    3. Firewall rules
-    4. Compute engine instances
-   5. Spanner instance and database
+In order to create the resources in this sample,
+the`Service account` being used to run Terraform
+should have the
+required [permissions](https://cloud.google.com/iam/docs/manage-access-service-accounts#multiple-roles-console).
+There are two ways to add permissions -
+
+1. Adding pre-defined roles to the service account running Terraform.
+2. Creating a custom role with the granular permissions and attaching it to the
+   service account running Terraform.
+
+### Using custom role and granular permissions (recommended)
+
+Following permissions are required -
+
+```shell
+- compute.disks.create
+- compute.disks.setLabels
+- compute.firewalls.create
+- compute.firewalls.delete
+- compute.instances.create
+- compute.instances.delete
+- compute.instances.setMetadata
+- compute.instances.setServiceAccount
+- compute.instances.setTags
+- compute.networks.create
+- compute.networks.delete
+- compute.networks.updatePolicy
+- compute.subnetworks.create
+- compute.subnetworks.delete
+- compute.subnetworks.use
+- compute.subnetworks.useExternalIp
+- iam.roles.get
+- iam.serviceAccounts.actAs
+- spanner.databases.create
+- spanner.databases.drop
+- spanner.databases.updateDdl
+- spanner.instances.create
+- spanner.instances.delete
+```
+
+[This](#adding-access-to-terraform-service-account) section in the FAQ
+provides instructions to add these permissions to an existing service account.
+
+Note: In addition to the above, grant the `roles/viewer` role as well.
+
+### Using pre-defined roles
+
+Following roles are required -
+
+```shell
+roles/spanner.admin
+roles/compute.admin
+roles/iam.serviceAccountUser
+```
+
+[This](#adding-access-to-terraform-service-account) section in the FAQ
+provides instructions to add these permissions to an existing service account.
+
+## Assumptions
+
+1. Service account can used for running Terraform can be granted the above
+   permissions.
+2. MySQL and Spanner schemas are known.
 
 ## Resources Created
+
 Given these assumptions, it uses a supplied source database connection
 configuration and creates the following resources -
 
 1. **VPC network** - A VPC network.
 2. **VPC subnetwork** - A VPC subnetwork within the VPC network created.
-3. **Firewall rules** - Rules to allow Dataflow VMs to communicate with each other and Datastream to connect to the MySQL instance via private connectivity.
-4. **GCE VM with MySQL** - Launches a GCE VM with MySQL 5.7 setup on it inside the specified VPC subnet.
+3. **Firewall rules** - Rules to allow Dataflow VMs to communicate with each
+   other and Datastream to connect to the MySQL instance via private
+   connectivity.
+4. **GCE VM with MySQL** - Launches a GCE VM with MySQL 5.7 setup on it inside
+   the specified VPC subnet.
 5. **Spanner instance** - A spanner instance with the specified configuration.
 6. **Spanner database** - A spanner database inside the instance created.
 
@@ -110,3 +170,128 @@ terraform destroy --var-file=terraform_simple.tfvars
 ### Changing the schema of the MySQL database
 
 Set the `ddl` parameter in the `mysql_params`.
+
+### Adding access to Terraform service account
+
+#### Using custom role and granular permissions (recommended)
+
+You can run the following gcloud command to create a custom role in your GCP
+project.
+
+```shell
+gcloud iam roles create custom_role --project=<YOUR-PROJECT-ID> --file=perms.yaml --quiet
+```
+
+The `YAML` file required for the above will be like so -
+
+```shell
+title: "<ABC> Custom Role"
+description: "Custom role for Spanner migrations."
+stage: "GA"
+includedPermissions:
+- iam.roles.get
+- iam.serviceAccounts.actAs
+- datastream.connectionProfiles.create
+....add all permissions from the list defined above.
+```
+
+Then attach the role to the service account -
+
+```shell
+gcloud iam service-accounts add-iam-policy-binding <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com \
+    --member=<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com --role=projects/<your-project-id>/roles/custom_role \
+    --condition=CONDITION
+```
+
+#### Using pre-defined roles
+
+You can run the following shell script to add roles to the service account
+being used to run Terraform. This will have to done by a user which has the
+authority to grant the specified roles to a service account -
+
+```shell
+#!/bin/bash
+
+# Service account to be granted roles
+SERVICE_ACCOUNT="<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
+
+# Project ID where roles will be granted
+PROJECT_ID="<YOUR-PROJECT-ID>"
+
+# Array of roles to grant
+ROLES=(
+  "roles/<role1>"
+  "roles/<role2>"
+)
+
+# Loop through each role and grant it to the service account
+for ROLE in "${ROLES[@]}"
+do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${SERVICE_ACCOUNT}" \
+    --role="$ROLE"
+done
+```
+
+### Verifying access in the Terraform service account
+
+#### Using custom role and granular permissions (recommended)
+
+Verify that the custom role is attached to the service account -
+
+```shell
+gcloud projects get-iam-policy <YOUR-PROJECT-ID>  \
+--flatten="bindings[].members" \
+--format='table(bindings.role)' \
+--filter="bindings.members:<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
+```
+
+Verify that the role has the correct set of permissions
+
+```shell
+gcloud iam roles describe live_migrations_role --project=<YOUR-PROJECT-ID> 
+```
+
+##### Using pre-defined roles
+
+Once the roles are added, run the following command to verify them -
+
+```shell
+gcloud projects get-iam-policy <YOUR-PROJECT-ID>  \
+--flatten="bindings[].members" \
+--format='table(bindings.role)' \
+--filter="bindings.members:<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
+```
+
+Sample output -
+
+```shell
+ROLE
+roles/dataflow.admin
+roles/datastream.admin
+roles/iam.securityAdmin
+roles/iam.serviceAccountUser
+roles/pubsub.admin
+roles/storage.admin
+roles/viewer
+```
+
+### Impersonating the Terraform service account
+
+#### Using GCE VM instance (recommended)
+
+A GCE VM created using the service account setup above will automatically
+use the service account for all API requests triggered by Terraform. Running
+terraform from such a GCE VM does not require downloading service keys and is
+the recommended approach.
+
+#### Using key file
+
+1. Activate the service account -
+   ```shell
+   gcloud auth activate-service-account <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com --key-file=path/to/key_file --project=project_id
+   ```
+2. Impersonate service account while fetching the ADC credentials -
+   ```shell
+   gcloud auth application-default login --impersonate-service-account <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com
+   ```
