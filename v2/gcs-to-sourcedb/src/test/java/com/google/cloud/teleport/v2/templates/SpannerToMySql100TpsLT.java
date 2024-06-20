@@ -50,28 +50,28 @@ public class SpannerToMySql100TpsLT extends SpannerToJdbcLTBase {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToMySql100TpsLT.class);
 
   private String generatorSchemaPath;
-  private final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
-  private final String SPANNER_DDL_RESOURCE = "SpannerToMySql100TpsLT/spanner-schema.sql";
-  private final String SESSION_FILE_RESOURCE = "SpannerToMySql100TpsLT/session.json";
-  private final String DATA_GENERATOR_SCHEMA_RESOURCE =
+  private final String artifactBucket = TestProperties.artifactBucket();
+  private final String spannerDdlResource = "SpannerToMySql100TpsLT/spanner-schema.sql";
+  private final String sessionFileResource = "SpannerToMySql100TpsLT/session.json";
+  private final String dataGeneratorSchemaResource =
       "SpannerToMySql100TpsLT/datagenerator-schema.json";
-  private final String TABLE = "Person";
-  private final int MAX_WORKERS = 100;
-  private final int NUM_WORKERS = 50;
+  private final String table = "Person";
+  private final int maxWorkers = 100;
+  private final int numWorkers = 50;
   private PipelineLauncher.LaunchInfo writerJobInfo;
   private PipelineLauncher.LaunchInfo readerJobInfo;
 
   @Before
   public void setup() throws IOException {
-    setupResourceManagers(SPANNER_DDL_RESOURCE, SESSION_FILE_RESOURCE, ARTIFACT_BUCKET);
+    setupResourceManagers(spannerDdlResource, sessionFileResource, artifactBucket);
     setupMySQLResourceManager(1);
     generatorSchemaPath =
         getFullGcsPath(
-            ARTIFACT_BUCKET,
+            artifactBucket,
             gcsResourceManager
                 .uploadArtifact(
                     "input/schema.json",
-                    Resources.getResource(DATA_GENERATOR_SCHEMA_RESOURCE).getPath())
+                    Resources.getResource(dataGeneratorSchemaResource).getPath())
                 .name());
 
     createMySQLSchema(jdbcResourceManagers);
@@ -80,16 +80,16 @@ public class SpannerToMySql100TpsLT extends SpannerToJdbcLTBase {
             gcsResourceManager,
             spannerResourceManager,
             spannerMetadataResourceManager,
-            ARTIFACT_BUCKET,
-            NUM_WORKERS,
-            MAX_WORKERS);
+            artifactBucket,
+            numWorkers,
+            maxWorkers);
     writerJobInfo =
         launchWriterDataflowJob(
             gcsResourceManager,
             spannerMetadataResourceManager,
-            ARTIFACT_BUCKET,
-            NUM_WORKERS,
-            MAX_WORKERS);
+            artifactBucket,
+            numWorkers,
+            maxWorkers);
   }
 
   @After
@@ -107,7 +107,7 @@ public class SpannerToMySql100TpsLT extends SpannerToJdbcLTBase {
             .setMessagesLimit(String.valueOf(300000))
             .setSpannerInstanceName(spannerResourceManager.getInstanceId())
             .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
-            .setSpannerTableName(TABLE)
+            .setSpannerTableName(table)
             .setNumWorkers("50")
             .setMaxNumWorkers("100")
             .setSinkType("SPANNER")
@@ -120,7 +120,7 @@ public class SpannerToMySql100TpsLT extends SpannerToJdbcLTBase {
     assertThatPipeline(writerJobInfo).isRunning();
 
     JDBCRowsCheck check =
-        JDBCRowsCheck.builder(jdbcResourceManagers.get(0), TABLE)
+        JDBCRowsCheck.builder(jdbcResourceManagers.get(0), table)
             .setMinRows(300000)
             .setMaxRows(300000)
             .build();
@@ -161,6 +161,6 @@ public class SpannerToMySql100TpsLT extends SpannerToJdbcLTBase {
 
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "ID");
 
-    jdbcResourceManager.createTable(TABLE, schema);
+    jdbcResourceManager.createTable(table, schema);
   }
 }
