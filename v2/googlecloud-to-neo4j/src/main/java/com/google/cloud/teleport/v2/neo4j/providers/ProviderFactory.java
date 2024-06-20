@@ -16,11 +16,11 @@
 package com.google.cloud.teleport.v2.neo4j.providers;
 
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
+import com.google.cloud.teleport.v2.neo4j.model.sources.BigQuerySource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.TextSource;
 import com.google.cloud.teleport.v2.neo4j.providers.bigquery.BigQueryImpl;
 import com.google.cloud.teleport.v2.neo4j.providers.text.TextImpl;
-import org.neo4j.importer.v1.sources.BigQuerySource;
 import org.neo4j.importer.v1.sources.Source;
-import org.neo4j.importer.v1.sources.TextSource;
 
 /**
  * Factory for binding implementation adapters into framework. Currently, supports two providers:
@@ -30,11 +30,10 @@ public class ProviderFactory {
 
   public static Provider of(Source source, TargetSequence targetSequence) {
     switch (source.getType()) {
-      case BIGQUERY:
+      case "bigquery":
         return new BigQueryImpl((BigQuerySource) source, targetSequence);
-      case TEXT:
+      case "text":
         return new TextImpl((TextSource) source, targetSequence);
-      case JDBC:
       default:
         throw new RuntimeException("Unsupported source type: " + source);
     }

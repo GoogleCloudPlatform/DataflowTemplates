@@ -15,10 +15,9 @@
  */
 package com.google.cloud.teleport.v2.neo4j.telemetry;
 
-import org.neo4j.importer.v1.sources.ExternalTextSource;
-import org.neo4j.importer.v1.sources.InlineTextSource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.ExternalTextSource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
 import org.neo4j.importer.v1.sources.Source;
-import org.neo4j.importer.v1.sources.SourceType;
 
 public enum ReportedSourceType {
   BIGQUERY {
@@ -41,11 +40,11 @@ public enum ReportedSourceType {
   };
 
   public static ReportedSourceType reportedSourceTypeOf(Source source) {
-    SourceType sourceType = source.getType();
+    String sourceType = source.getType();
     switch (sourceType) {
-      case BIGQUERY:
+      case "bigquery":
         return ReportedSourceType.BIGQUERY;
-      case TEXT:
+      case "text":
         if (source instanceof InlineTextSource) {
           return TEXT_INLINE;
         }

@@ -148,7 +148,7 @@ public class InputValidatorTest {
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
         result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
-    assertThat(errors).containsExactly("$.server_url: is missing but it is required");
+    assertThat(errors).containsExactly("$: required property 'server_url' not found");
   }
 
   @Test
@@ -161,7 +161,7 @@ public class InputValidatorTest {
     List<String> errors =
         result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
     assertThat(errors)
-        .contains("$.server_url: does not match the uri pattern must be a valid RFC 3986 URI");
+        .contains("$.server_url: does not match the regex pattern ^(neo4j|bolt)(\\+s(sc)?)?://");
   }
 
   @Test
@@ -216,7 +216,7 @@ public class InputValidatorTest {
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
         result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
-    assertThat(errors).containsExactly("$.username: is missing but it is required");
+    assertThat(errors).containsExactly("$: required property 'username' not found");
   }
 
   @Test
@@ -241,7 +241,7 @@ public class InputValidatorTest {
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
         result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
-    assertThat(errors).containsExactly("$.pwd: is missing but it is required");
+    assertThat(errors).containsExactly("$: required property 'pwd' not found");
   }
 
   @Test
@@ -265,7 +265,7 @@ public class InputValidatorTest {
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
         result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
-    assertThat(errors).containsExactly("$.ticket: is missing but it is required");
+    assertThat(errors).containsExactly("$: required property 'ticket' not found");
   }
 
   @Test
@@ -304,7 +304,7 @@ public class InputValidatorTest {
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
         result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
-    assertThat(errors).containsExactly("$.principal: is missing but it is required");
+    assertThat(errors).containsExactly("$: required property 'principal' not found");
   }
 
   @Test
@@ -330,7 +330,7 @@ public class InputValidatorTest {
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
         result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
-    assertThat(errors).containsExactly("$.credentials: is missing but it is required");
+    assertThat(errors).containsExactly("$: required property 'credentials' not found");
   }
 
   @Test
@@ -356,7 +356,7 @@ public class InputValidatorTest {
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
         result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
-    assertThat(errors).containsExactly("$.scheme: is missing but it is required");
+    assertThat(errors).containsExactly("$: required property 'scheme' not found");
   }
 
   @Test

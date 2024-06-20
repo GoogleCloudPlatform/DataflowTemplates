@@ -18,15 +18,15 @@ package com.google.cloud.teleport.v2.neo4j.model.helpers;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.sources.BigQuerySource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.ExternalTextSource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.TextFormat;
 import java.util.List;
 import java.util.Map;
 import org.json.JSONObject;
 import org.junit.Test;
-import org.neo4j.importer.v1.sources.BigQuerySource;
-import org.neo4j.importer.v1.sources.ExternalTextSource;
-import org.neo4j.importer.v1.sources.InlineTextSource;
 import org.neo4j.importer.v1.sources.Source;
-import org.neo4j.importer.v1.sources.TextFormat;
 
 @SuppressWarnings("deprecation")
 public class SourceMapperTest {

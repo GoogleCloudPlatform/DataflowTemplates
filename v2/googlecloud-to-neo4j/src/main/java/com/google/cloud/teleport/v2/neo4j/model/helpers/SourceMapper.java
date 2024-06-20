@@ -19,6 +19,11 @@ import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getSt
 import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getStringOrNull;
 
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.sources.BigQuerySource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.ExternalTextSource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.TextFormat;
+import com.google.cloud.teleport.v2.neo4j.model.sources.TextSource;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import com.google.cloud.teleport.v2.neo4j.utils.TextParserUtils;
 import java.util.ArrayList;
@@ -29,12 +34,7 @@ import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.neo4j.importer.v1.sources.BigQuerySource;
-import org.neo4j.importer.v1.sources.ExternalTextSource;
-import org.neo4j.importer.v1.sources.InlineTextSource;
 import org.neo4j.importer.v1.sources.Source;
-import org.neo4j.importer.v1.sources.TextFormat;
-import org.neo4j.importer.v1.sources.TextSource;
 
 /**
  * Helper class for parsing legacy json into {@link Source} model object.

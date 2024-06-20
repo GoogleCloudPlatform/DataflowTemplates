@@ -16,6 +16,9 @@
 package com.google.cloud.teleport.v2.neo4j.providers.text;
 
 import com.google.cloud.teleport.v2.neo4j.model.helpers.CsvSources;
+import com.google.cloud.teleport.v2.neo4j.model.sources.ExternalTextSource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.TextSource;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.TextIO;
@@ -28,9 +31,6 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.Row;
-import org.neo4j.importer.v1.sources.ExternalTextSource;
-import org.neo4j.importer.v1.sources.InlineTextSource;
-import org.neo4j.importer.v1.sources.TextSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

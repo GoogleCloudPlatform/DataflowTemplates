@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
+import com.google.cloud.teleport.v2.neo4j.model.sources.TextFormat;
 import org.apache.commons.csv.CSVFormat;
-import org.neo4j.importer.v1.sources.TextFormat;
 
 public class CsvSources {
   public static CSVFormat toCsvFormat(TextFormat format) {
