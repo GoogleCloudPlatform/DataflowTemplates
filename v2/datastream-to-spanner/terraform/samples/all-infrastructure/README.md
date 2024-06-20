@@ -62,7 +62,23 @@ Following permissions are required -
 - storage.objects.delete
 ```
 
-**Note**: Add the `roles/viewer` role as well to the service account. 
+**Note**: Add the `roles/viewer` role as well to the service account.
+
+> **_Note on IAM:_** For ease of use, this sample automatically adds the
+> required
+> roles to the service account used for running the migration. In order to
+> do this, we need the `resourcemanager.projects.setIamPolicy` permission. If
+> granting
+> this role is unacceptable, please set
+> the `var.common_params.add_policies_to_service_account`
+> to **false**. This will skip adding the roles.
+> They will have to be added manually. Note that if they are not added, **the
+> migration will fail.**
+> Two service accounts will need to be modified manually -
+> 1. Dataflow service account - The list of roles can be found in the `main.tf`
+     file, in the `live_migration_roles` resource.
+> 2. GCS service account - The list of roles can be found in the `main.tf` file,
+     in the `gcs_publisher_role` resource.
 
 [This](#adding-access-to-terraform-service-account) section in the FAQ
 provides instructions to add these permissions to an existing service account.
@@ -81,6 +97,21 @@ roles/storage.admin
 roles/viewer
 roles/compute.networkAdmin
 ```
+
+> **_Note on IAM:_** For ease of use, this sample automatically adds the
+> required
+> roles to the service account used for running the migration. In order to
+> do this, we need the `roles/iam.securityAdmin` role. If granting
+> this role is unacceptable, please set
+> the `var.common_params.add_policies_to_service_account`
+> to **false**. This will skip adding the roles.
+> They will have to be added manually. Note that if they are not added, **the
+> migration will fail.**
+> Two service accounts will need to be modified manually -
+> 1. Dataflow service account - The list of roles can be found in the `main.tf`
+     file, in the `live_migration_roles` resource.
+> 2. GCS service account - The list of roles can be found in the `main.tf` file,
+     in the `gcs_publisher_role` resource.
 
 [This](#adding-access-to-terraform-service-account) section in the FAQ
 provides instructions to add these roles to an existing service account.
