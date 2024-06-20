@@ -82,7 +82,10 @@ public class KafkaToKafka {
       checkArgument(
           options.getKafkaReadKeyPasswordSecretId().trim().length() > 0,
           "KafkaReadKeyPasswordSecretId version for key password required for SSL authentication");
-    } else if (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.NONE) || (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS))) {
+    } else if (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.NONE)
+        || (options
+            .getKafkaReadAuthenticationMode()
+            .equals(KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS))) {
     } else {
       throw new UnsupportedOperationException(
           "Authentication method not supported: " + options.getKafkaReadAuthenticationMode());
