@@ -57,10 +57,10 @@ public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
   private static final String WRITER_SPEC_PATH =
       MoreObjects.firstNonNull(
           TestProperties.specPath(), "gs://dataflow-templates/latest/flex/GCS_to_Sourcedb");
-  public static SpannerResourceManager spannerResourceManager;
-  public static SpannerResourceManager spannerMetadataResourceManager;
-  public static List<JDBCResourceManager> jdbcResourceManagers;
-  public static GcsResourceManager gcsResourceManager;
+  public SpannerResourceManager spannerResourceManager;
+  public SpannerResourceManager spannerMetadataResourceManager;
+  public List<JDBCResourceManager> jdbcResourceManagers;
+  public GcsResourceManager gcsResourceManager;
 
   public void setupResourceManagers(
       String spannerDdlResource, String sessionFileResource, String artifactBucket)
@@ -84,7 +84,7 @@ public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
     createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManagers);
   }
 
-  public static void cleanupResourceManagers() {
+  public void cleanupResourceManagers() {
     ResourceManagerUtils.cleanResources(
         spannerResourceManager, spannerMetadataResourceManager, gcsResourceManager);
     for (JDBCResourceManager jdbcResourceManager : jdbcResourceManagers) {

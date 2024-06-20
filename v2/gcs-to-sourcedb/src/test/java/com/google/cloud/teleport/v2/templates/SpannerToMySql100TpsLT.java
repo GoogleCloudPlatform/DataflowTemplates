@@ -49,17 +49,17 @@ public class SpannerToMySql100TpsLT extends SpannerToJdbcLTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToMySql100TpsLT.class);
 
-  private static String generatorSchemaPath;
-  private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
-  private static final String SPANNER_DDL_RESOURCE = "SpannerToMySql100TpsLT/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE = "SpannerToMySql100TpsLT/session.json";
-  private static final String DATA_GENERATOR_SCHEMA_RESOURCE =
+  private String generatorSchemaPath;
+  private final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
+  private final String SPANNER_DDL_RESOURCE = "SpannerToMySql100TpsLT/spanner-schema.sql";
+  private final String SESSION_FILE_RESOURCE = "SpannerToMySql100TpsLT/session.json";
+  private final String DATA_GENERATOR_SCHEMA_RESOURCE =
       "SpannerToMySql100TpsLT/datagenerator-schema.json";
-  private static final String TABLE = "Person";
-  private static final int MAX_WORKERS = 100;
-  private static final int NUM_WORKERS = 50;
-  private static PipelineLauncher.LaunchInfo writerJobInfo;
-  private static PipelineLauncher.LaunchInfo readerJobInfo;
+  private final String TABLE = "Person";
+  private final int MAX_WORKERS = 100;
+  private final int NUM_WORKERS = 50;
+  private PipelineLauncher.LaunchInfo writerJobInfo;
+  private PipelineLauncher.LaunchInfo readerJobInfo;
 
   @Before
   public void setup() throws IOException {
