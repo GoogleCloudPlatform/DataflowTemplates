@@ -41,6 +41,8 @@ Following permissions are required -
 - dataflow.jobs.updateContents
 - datastream.connectionProfiles.create
 - datastream.connectionProfiles.delete
+- datastream.privateConnections.create
+- datastream.privateConnections.delete
 - datastream.streams.create
 - datastream.streams.delete
 - datastream.streams.update
@@ -59,6 +61,8 @@ Following permissions are required -
 - storage.buckets.update
 - storage.objects.delete
 ```
+
+**Note**: Add the `roles/viewer` role as well to the service account. 
 
 [This](#adding-access-to-terraform-service-account) section in the FAQ
 provides instructions to add these permissions to an existing service account.
@@ -269,8 +273,7 @@ and configures it in the source profile created for the Datastream stream.
 
 > **ALERT:** Private connectivity resource destruction is currently not
 > supported in Terraform due to the ability to delete nested
->
-resources: [#17920](https://github.com/hashicorp/terraform-provider-google/issues/17290),
+>resources: [#17920](https://github.com/hashicorp/terraform-provider-google/issues/17290),
 > [#13054](https://github.com/hashicorp/terraform-provider-google/issues/13054).
 > Until this is supported, the private connectivity resource will need to be
 > manually deleted via the console or the gcloud CLI before running
