@@ -18,41 +18,17 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
-import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper;
-import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
-import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
-import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
-import com.google.cloud.teleport.v2.transformer.SourceRowToMutationDoFn;
-import com.google.cloud.teleport.v2.writer.DeadLetterQueue;
-import com.google.cloud.teleport.v2.writer.SpannerWriter;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.stream.Collectors;
-import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.SerializableCoder;
-import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.TupleTagList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,50 +100,16 @@ public class SourceDbToSpanner {
     Pipeline pipeline = Pipeline.create(options);
 
     SpannerConfig spannerConfig = createSpannerConfig(options);
-    Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
-    ISchemaMapper schemaMapper = getSchemaMapper(options, ddl);
 
-    List<String> tablesToMigrate = listTablesToMigrate(options, schemaMapper, ddl);
-
-    // Read data from source
-    ReaderImpl reader =
-        ReaderImpl.of(
-            JdbcIoWrapper.of(
-                OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
-                    options, tablesToMigrate)));
-    SourceSchema srcSchema = reader.getSourceSchema();
-
-    ReaderTransform readerTransform = reader.getReaderTransform();
-
-    PCollectionTuple rowsAndTables = pipeline.apply("Read rows", readerTransform.readTransform());
-    PCollection<SourceRow> sourceRows = rowsAndTables.get(readerTransform.sourceRowTag());
-
-    // Transform source data to Spanner Compatible Data
-    SourceRowToMutationDoFn transformDoFn = SourceRowToMutationDoFn.create(schemaMapper);
-    PCollectionTuple transformationResult =
-        sourceRows.apply(
-            "Transform",
-            ParDo.of(transformDoFn)
-                .withOutputTags(
-                    SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS,
-                    TupleTagList.of(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)));
-
-    // Write to Spanner
-    SpannerWriter writer = new SpannerWriter(spannerConfig);
-    PCollection<MutationGroup> failedMutations =
-        writer.writeToSpanner(
-            transformationResult
-                .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS)
-                .setCoder(SerializableCoder.of(RowContext.class)));
-
-    // Dump Failed rows to DLQ
-    DeadLetterQueue dlq = DeadLetterQueue.create(options.getDLQDirectory(), ddl);
-    dlq.failedMutationsToDLQ(failedMutations);
-    dlq.failedTransformsToDLQ(
-        transformationResult
-            .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)
-            .setCoder(SerializableCoder.of(RowContext.class)));
-    return pipeline.run();
+    // Decide type and source of migration
+    if (options.getSourceDbURL().startsWith("gs://")) {
+      List<Shard> shards =
+          new ShardFileReader(new SecretManagerAccessorImpl())
+              .readForwardMigrationShardingConfig(options.getSourceDbURL());
+      return PipelineController.executeShardedMigration(options, pipeline, shards, spannerConfig);
+    } else {
+      return PipelineController.executeSingleInstanceMigration(options, pipeline, spannerConfig);
+    }
   }
 
   @VisibleForTesting
@@ -177,66 +119,5 @@ public class SourceDbToSpanner {
         .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
         .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
         .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
-  }
-
-  @VisibleForTesting
-  static ISchemaMapper getSchemaMapper(SourceDbToSpannerOptions options, Ddl ddl) {
-    ISchemaMapper schemaMapper = new IdentityMapper(ddl);
-    if (options.getSessionFilePath() != null && !options.getSessionFilePath().equals("")) {
-      schemaMapper = new SessionBasedMapper(options.getSessionFilePath(), ddl);
-    }
-    return schemaMapper;
-  }
-
-  /*
-   * Return the available tables to migrate based on the following.
-   * 1. Fetch tables from schema mapper. Override with tables from options if present
-   * 2. Mark for migration if tables have corresponding spanner tables.
-   * Err on the side of being lenient with configuration
-   */
-  static List<String> listTablesToMigrate(
-      SourceDbToSpannerOptions options, ISchemaMapper mapper, Ddl ddl) {
-    List<String> tablesFromOptions =
-        StringUtils.isNotBlank(options.getTables())
-            ? Arrays.stream(options.getTables().split(",")).collect(Collectors.toList())
-            : new ArrayList<String>();
-
-    List<String> sourceTablesConfigured = null;
-    if (tablesFromOptions.isEmpty()) {
-      sourceTablesConfigured = mapper.getSourceTablesToMigrate("");
-      LOG.info("using tables from mapper as no overrides provided: {}", sourceTablesConfigured);
-    } else {
-      LOG.info("table overrides configured: {}", tablesFromOptions);
-      sourceTablesConfigured = tablesFromOptions;
-    }
-
-    List<String> tablesToMigrate = new ArrayList<>();
-    for (String srcTable : sourceTablesConfigured) {
-      String spannerTable = null;
-      try {
-        spannerTable = mapper.getSpannerTableName("", srcTable);
-      } catch (NoSuchElementException e) {
-        LOG.info("could not fetch spanner table from mapper: {}", srcTable);
-        continue;
-      }
-
-      if (spannerTable == null) {
-        LOG.warn("skipping source table as there is no mapped spanner table: {} ", spannerTable);
-      } else if (ddl.table(spannerTable) == null) {
-        LOG.warn(
-            "skipping source table: {} as there is no matching spanner table: {} ",
-            srcTable,
-            spannerTable);
-      } else {
-        // source table has matching spanner table on current spanner instance
-        tablesToMigrate.add(srcTable);
-      }
-    }
-
-    if (tablesToMigrate.isEmpty()) {
-      LOG.error("aborting migration as no tables found to migrate");
-      throw new InvalidOptionsException("no configured tables can be migrated");
-    }
-    return tablesToMigrate;
   }
 }

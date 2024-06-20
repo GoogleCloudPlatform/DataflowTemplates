@@ -45,9 +45,10 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   void setJdbcDriverClassName(String driverClassName);
 
+  // TODO - reset the regex matches here
   @TemplateParameter.Text(
       order = 3,
-      regexes = {"(^jdbc:mysql://[^\\n\\r]+$)"},
+      regexes = {"(^jdbc:mysql://.*|^gs://.*)"},
       groupName = "Source",
       description =
           "Connection URL to connect to the source database host. Must contain the host, port and source db name. Can optionally contain properties like autoReconnect, maxReconnects etc. Format: `jdbc:mysql://{host}:{port}/{dbName}?{parameters}`",
