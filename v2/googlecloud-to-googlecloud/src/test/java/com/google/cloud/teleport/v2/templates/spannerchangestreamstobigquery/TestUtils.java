@@ -63,7 +63,9 @@ class TestUtils {
   static final String FLOAT64_COL = "Float64Col";
   static final String INT64_COL = "Int64Col";
   static final String JSON_COL = "JsonCol";
+  static final String PG_JSON_COL = "PgJsonCol";
   static final String NUMERIC_COL = "NumericCol";
+  static final String PG_NUMERIC_COL = "PgNumericCol";
   static final String STRING_COL = "StringCol";
   static final String TIMESTAMP_COL = "TimestampCol";
 
@@ -165,36 +167,36 @@ class TestUtils {
     // spotless:off
     String createTableDdl =
         "CREATE TABLE "
-        + TEST_SPANNER_TABLE
-        + " ("
-        + "BooleanPkCol BOOL,"
-        + "BytesPkCol BYTES(1024),"
-        + "DatePkCol DATE,"
-        + "Float64PkCol FLOAT64,"
-        + "Int64PkCol INT64,"
-        + "NumericPkCol NUMERIC,"
-        + "StringPkCol STRING(MAX),"
-        + "TimestampPkCol TIMESTAMP OPTIONS (allow_commit_timestamp=true),"
-        + "BooleanArrayCol ARRAY<BOOL>,"
-        + "BytesArrayCol ARRAY<BYTES(1024)>,"
-        + "DateArrayCol ARRAY<DATE>,"
-        + "Float64ArrayCol ARRAY<FLOAT64>,"
-        + "Int64ArrayCol ARRAY<INT64>,"
-        + "JsonArrayCol ARRAY<JSON>,"
-        + "NumericArrayCol ARRAY<NUMERIC>,"
-        + "StringArrayCol ARRAY<STRING(1024)>,"
-        + "TimestampArrayCol ARRAY<TIMESTAMP>,"
-        + "BooleanCol BOOL,"
-        + "BytesCol BYTES(1024),"
-        + "DateCol DATE,"
-        + "Float64Col FLOAT64,"
-        + "Int64Col INT64,"
-        + "JsonCol JSON,"
-        + "NumericCol NUMERIC,"
-        + "StringCol STRING(1024),"
-        + "TimestampCol TIMESTAMP OPTIONS (allow_commit_timestamp=true)"
-        + ") PRIMARY KEY(BooleanPkCol, BytesPkCol, DatePkCol, Float64PkCol, Int64PkCol,"
-        + " NumericPkCol, StringPkCol, TimestampPkCol)";
+            + TEST_SPANNER_TABLE
+            + " ("
+            + "BooleanPkCol BOOL,"
+            + "BytesPkCol BYTES(1024),"
+            + "DatePkCol DATE,"
+            + "Float64PkCol FLOAT64,"
+            + "Int64PkCol INT64,"
+            + "NumericPkCol NUMERIC,"
+            + "StringPkCol STRING(MAX),"
+            + "TimestampPkCol TIMESTAMP OPTIONS (allow_commit_timestamp=true),"
+            + "BooleanArrayCol ARRAY<BOOL>,"
+            + "BytesArrayCol ARRAY<BYTES(1024)>,"
+            + "DateArrayCol ARRAY<DATE>,"
+            + "Float64ArrayCol ARRAY<FLOAT64>,"
+            + "Int64ArrayCol ARRAY<INT64>,"
+            + "JsonArrayCol ARRAY<JSON>,"
+            + "NumericArrayCol ARRAY<NUMERIC>,"
+            + "StringArrayCol ARRAY<STRING(1024)>,"
+            + "TimestampArrayCol ARRAY<TIMESTAMP>,"
+            + "BooleanCol BOOL,"
+            + "BytesCol BYTES(1024),"
+            + "DateCol DATE,"
+            + "Float64Col FLOAT64,"
+            + "Int64Col INT64,"
+            + "JsonCol JSON,"
+            + "NumericCol NUMERIC,"
+            + "StringCol STRING(1024),"
+            + "TimestampCol TIMESTAMP OPTIONS (allow_commit_timestamp=true)"
+            + ") PRIMARY KEY(BooleanPkCol, BytesPkCol, DatePkCol, Float64PkCol, Int64PkCol,"
+            + " NumericPkCol, StringPkCol, TimestampPkCol)";
     // spotless:on
     String createChangeStreamDdl =
         "CREATE CHANGE STREAM " + TEST_SPANNER_CHANGE_STREAM + " FOR " + TEST_SPANNER_TABLE;
