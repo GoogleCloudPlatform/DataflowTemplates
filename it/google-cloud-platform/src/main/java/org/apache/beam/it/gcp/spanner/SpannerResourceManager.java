@@ -98,6 +98,7 @@ public final class SpannerResourceManager implements ResourceManager {
   private final Spanner spanner;
   private final InstanceAdminClient instanceAdminClient;
   private final DatabaseAdminClient databaseAdminClient;
+  private final int nodeCount;
 
   private SpannerResourceManager(Builder builder) {
     this(
@@ -143,6 +144,7 @@ public final class SpannerResourceManager implements ResourceManager {
     this.spanner = spanner;
     this.instanceAdminClient = spanner.getInstanceAdminClient();
     this.databaseAdminClient = spanner.getDatabaseAdminClient();
+    this.nodeCount = builder.nodeCount;
   }
 
   public static Builder builder(String testId, String projectId, String region) {
@@ -172,7 +174,7 @@ public final class SpannerResourceManager implements ResourceManager {
           InstanceInfo.newBuilder(InstanceId.of(projectId, instanceId))
               .setInstanceConfigId(InstanceConfigId.of(projectId, "regional-" + region))
               .setDisplayName(instanceId)
-              .setNodeCount(1)
+              .setNodeCount(nodeCount)
               .build();
 
       // Retry creation if there's a quota error
@@ -478,6 +480,7 @@ public final class SpannerResourceManager implements ResourceManager {
     private boolean useStaticInstance;
     private Credentials credentials;
     private String host;
+    private int nodeCount;
 
     private Builder(String testId, String projectId, String region, Dialect dialect) {
       this.testId = testId;
@@ -487,6 +490,7 @@ public final class SpannerResourceManager implements ResourceManager {
       this.instanceId = null;
       this.useStaticInstance = false;
       this.host = DEFAULT_SPANNER_HOST;
+      this.nodeCount = 1;
     }
 
     public Builder setCredentials(Credentials credentials) {
@@ -539,6 +543,17 @@ public final class SpannerResourceManager implements ResourceManager {
       if (System.getProperty("spannerHost") != null) {
         this.host = System.getProperty("spannerHost");
       }
+      return this;
+    }
+
+    /**
+     * Configures the node count of the spanner instance if creating a new one.
+     *
+     * @param nodeCount
+     * @return
+     */
+    public Builder setNodeCount(int nodeCount) {
+      this.nodeCount = nodeCount;
       return this;
     }
 
