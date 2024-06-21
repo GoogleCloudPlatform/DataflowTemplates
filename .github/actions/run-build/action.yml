@@ -1,0 +1,41 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Cleans up the Java environment. This is mostly intended to help keep the
+# Java cache a bit smaller by removing unnecessary dependencies or stuff that
+# we will always rebuild anyways.
+
+name: 'Run Build'
+description: 'Run build'
+
+inputs:
+  changed-files:
+    description: 'Changed files'
+    type: string
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+
+    - name: Run Build
+      shell: bash
+      run: ./cicd/run-build --changed-files="${{ inputs.changed-files }}"
+
+    - name: Cleanup Java Environment
+      uses: ./.github/actions/cleanup-java-env
+      if: always()
