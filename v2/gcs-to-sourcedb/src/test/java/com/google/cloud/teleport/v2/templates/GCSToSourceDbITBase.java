@@ -22,7 +22,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -36,43 +35,25 @@ import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.CustomMySQLResourceManager;
+import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class GCSToSourceDbITBase extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(GCSToSourceDbITBase.class);
 
-  public static SpannerResourceManager spannerResourceManager;
-  public static SpannerResourceManager spannerMetadataResourceManager;
-  public static List<CustomMySQLResourceManager> jdbcResourceManagers;
-  public static GcsResourceManager gcsResourceManager;
-  public static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
-
-  public void setupResourceManagers(
-      String spannerDdlResource, String sessionFileResource, int numShards) throws IOException {
-    spannerResourceManager = createSpannerDatabase(spannerDdlResource);
-    spannerMetadataResourceManager = createSpannerMetadataDatabase();
-
-    jdbcResourceManagers = new ArrayList<>();
-    for (int i = 0; i < numShards; ++i) {
-      jdbcResourceManagers.add(CustomMySQLResourceManager.builder(testName).build());
-    }
-
-    gcsResourceManager =
-        GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-            .build();
-    createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManagers);
-    gcsResourceManager.uploadArtifact(
-        "input/session.json", Resources.getResource(sessionFileResource).getPath());
-  }
-
-  public static void cleanupResourceManagers() {
+  public static void cleanupResourceManagers(
+      SpannerResourceManager spannerResourceManager,
+      SpannerResourceManager spannerMetadataResourceManager,
+      GcsResourceManager gcsResourceManager,
+      FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager,
+      List<? extends JDBCResourceManager> jdbcResourceManagers) {
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
         spannerMetadataResourceManager,
         gcsResourceManager,
         flexTemplateDataflowJobResourceManager);
-    for (CustomMySQLResourceManager jdbcResourceManager : jdbcResourceManagers) {
+    for (JDBCResourceManager jdbcResourceManager : jdbcResourceManagers) {
       ResourceManagerUtils.cleanResources(jdbcResourceManager);
     }
   }
@@ -120,11 +101,6 @@ public class GCSToSourceDbITBase extends TemplateTestBase {
       shard.setPassword(jdbcResourceManagers.get(i).getPassword());
       shard.setPort(String.valueOf(jdbcResourceManagers.get(i).getPort()));
       shard.setDbName(jdbcResourceManagers.get(i).getDatabaseName());
-      // shard.setUser("root");
-      // shard.setHost("34.133.70.107");
-      // shard.setPassword("root");
-      // shard.setPort("3306");
-      // shard.setDbName("Shard1");
       JsonObject jsObj = (JsonObject) new Gson().toJsonTree(shard).getAsJsonObject();
       jsObj.remove("secretManagerUri"); // remove field secretManagerUri
       ja.add(jsObj);

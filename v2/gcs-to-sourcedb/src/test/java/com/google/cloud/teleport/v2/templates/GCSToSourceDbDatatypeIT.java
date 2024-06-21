@@ -25,6 +25,7 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.common.io.Resources;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -36,6 +37,9 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.CustomMySQLResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.conditions.JDBCRowsCheck;
@@ -63,6 +67,11 @@ public class GCSToSourceDbDatatypeIT extends GCSToSourceDbITBase {
   private static HashSet<GCSToSourceDbDatatypeIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo writerJobInfo;
   private static PipelineLauncher.LaunchInfo readerJobInfo;
+  public static SpannerResourceManager spannerResourceManager;
+  public static SpannerResourceManager spannerMetadataResourceManager;
+  public static List<CustomMySQLResourceManager> jdbcResourceManagers;
+  public static GcsResourceManager gcsResourceManager;
+  public static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -86,6 +95,22 @@ public class GCSToSourceDbDatatypeIT extends GCSToSourceDbITBase {
     }
   }
 
+  public void setupResourceManagers(
+      String spannerDdlResource, String sessionFileResource, int numShards) throws IOException {
+    spannerResourceManager = createSpannerDatabase(spannerDdlResource);
+    spannerMetadataResourceManager = createSpannerMetadataDatabase();
+
+    jdbcResourceManagers = new ArrayList<>();
+    for (int i = 0; i < numShards; ++i) {
+      jdbcResourceManagers.add(CustomMySQLResourceManager.builder(testName).build());
+    }
+
+    gcsResourceManager = createGcsResourceManager();
+    createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManagers);
+    gcsResourceManager.uploadArtifact(
+        "input/session.json", Resources.getResource(sessionFileResource).getPath());
+  }
+
   /**
    * Cleanup dataflow job and all the resources and resource managers.
    *
@@ -96,7 +121,12 @@ public class GCSToSourceDbDatatypeIT extends GCSToSourceDbITBase {
     for (GCSToSourceDbDatatypeIT instance : testInstances) {
       instance.tearDownBase();
     }
-    cleanupResourceManagers();
+    cleanupResourceManagers(
+        spannerResourceManager,
+        spannerMetadataResourceManager,
+        gcsResourceManager,
+        flexTemplateDataflowJobResourceManager,
+        jdbcResourceManagers);
   }
 
   @Test

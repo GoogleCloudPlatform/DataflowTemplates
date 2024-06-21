@@ -20,25 +20,22 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.common.io.Resources;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import java.io.IOException;
+import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
-import org.apache.beam.it.common.utils.PipelineUtils;
+import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.CustomMySQLResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.conditions.JDBCRowsCheck;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,7 +49,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(GCSToSourceDb.class)
 @RunWith(JUnit4.class)
-public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
+public class GCSToSourceDbWithoutReaderIT extends GCSToSourceDbITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSToSourceDbWithoutReaderIT.class);
 
@@ -81,14 +78,12 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
         jdbcResourceManager = CustomMySQLResourceManager.builder(testName).build();
         createMySQLSchema(jdbcResourceManager);
 
-        gcsResourceManager =
-            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                .build();
-        createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
+        gcsResourceManager = createGcsResourceManager();
+        createAndUploadShardConfigToGcs(gcsResourceManager, Arrays.asList(jdbcResourceManager));
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());
 
-        launchWriterDataflowJob();
+        jobInfo = launchWriterDataflowJob(gcsResourceManager, spannerMetadataResourceManager);
       }
     }
   }
@@ -121,26 +116,15 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
 
   private void assertRowInMySQL() throws InterruptedException {
     long rowCount = 0;
-    for (int i = 0; rowCount != 1 && i < 60; ++i) {
-      rowCount = jdbcResourceManager.getRowCount(TABLE);
-      LOG.info("Row count = {}, Waiting for 30s if row count not = 1", rowCount);
-      Thread.sleep(10000);
-    }
-    assertThat(rowCount).isEqualTo(1);
+    JDBCRowsCheck rowsCheck =
+        JDBCRowsCheck.builder(jdbcResourceManager, TABLE).setMinRows(1).setMaxRows(1).build();
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(5)), rowsCheck);
     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE);
     assertThat(rows).hasSize(1);
     assertThat(rows.get(0).get("id")).isEqualTo(1);
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
-  }
-
-  private SpannerResourceManager createSpannerMetadataDatabase() throws IOException {
-    SpannerResourceManager spannerMetadataResourceManager =
-        SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build(); // DB name is appended with prefix to avoid clashes
-    String dummy = "create table t1(id INT64 ) primary key(id)";
-    spannerMetadataResourceManager.executeDdlStatement(dummy);
-    return spannerMetadataResourceManager;
   }
 
   private void createMySQLSchema(CustomMySQLResourceManager jdbcResourceManager) {
@@ -150,46 +134,5 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
 
     jdbcResourceManager.createTable(TABLE, schema);
-  }
-
-  private void launchWriterDataflowJob() throws IOException {
-    Map<String, String> params =
-        new HashMap<>() {
-          {
-            put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
-            put("spannerProjectId", PROJECT);
-            put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
-            put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put("sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager));
-            put("runIdentifier", "run1");
-            put("GCSInputDirectoryPath", getGcsPath("output", gcsResourceManager));
-            put("startTimestamp", "2024-05-13T08:43:10.000Z");
-            put("windowDuration", "10s");
-          }
-        };
-    String jobName = PipelineUtils.createJobName(testName);
-    LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
-    options.setParameters(params);
-    // Run
-    jobInfo = launchTemplate(options, false);
-  }
-
-  private void createAndUploadShardConfigToGcs(
-      GcsResourceManager gcsResourceManager, CustomMySQLResourceManager jdbcResourceManager)
-      throws IOException {
-    Shard shard = new Shard();
-    shard.setLogicalShardId("Shard1");
-    shard.setUser(jdbcResourceManager.getUsername());
-    shard.setHost(jdbcResourceManager.getHost());
-    shard.setPassword(jdbcResourceManager.getPassword());
-    shard.setPort(String.valueOf(jdbcResourceManager.getPort()));
-    shard.setDbName(jdbcResourceManager.getDatabaseName());
-    JsonObject jsObj = (JsonObject) new Gson().toJsonTree(shard).getAsJsonObject();
-    jsObj.remove("secretManagerUri"); // remove field secretManagerUri
-    JsonArray ja = new JsonArray();
-    ja.add(jsObj);
-    String shardFileContents = ja.toString();
-    LOG.info("Shard file contents: {}", shardFileContents);
-    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 }
