@@ -415,6 +415,37 @@ public class MysqlDialectAdapterTest {
     }
   }
 
+  @Test
+  public void testGetReadQuery() {
+    String testTable = "testTable";
+    ImmutableList<String> cols = ImmutableList.of("col_1", "col_2");
+    assertThat(new MysqlDialectAdapter(MySqlVersion.DEFAULT).getReadQuery(testTable, cols))
+        .isEqualTo(
+            "select * from testTable where ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
+  }
+
+  @Test
+  public void testGetCountQuery() {
+    String testTable = "testTable";
+    ImmutableList<String> cols = ImmutableList.of("col_1", "col_2");
+    Long timeoutMillis = 42L;
+    assertThat(
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+                .getCountQuery(testTable, cols, timeoutMillis))
+        .isEqualTo(
+            "select /*+ MAX_EXECUTION_TIME(42) */ COUNT(*) from testTable where ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
+  }
+
+  @Test
+  public void testGetBoundaryQuery() {
+    String testTable = "testTable";
+    ImmutableList<String> cols = ImmutableList.of("col_1", "col_2");
+    assertThat(
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT).getBoundaryQuery(testTable, cols, "col3"))
+        .isEqualTo(
+            "select MIN(col3),MAX(col3) from testTable where ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
+  }
+
   private static ResultSet getMockInfoSchemaRs() throws SQLException {
     return new MockRSBuilder(
             MockInformationSchema.builder()

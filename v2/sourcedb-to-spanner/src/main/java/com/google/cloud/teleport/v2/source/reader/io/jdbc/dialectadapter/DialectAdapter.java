@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.schema.RetriableSchemaDiscovery;
 
 /**
@@ -23,4 +24,4 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.RetriableSchemaDisco
  * <p><b>Note:</b>As a prt of M2 effort, this interface will expose more mehtods than just extending
  * {@link RetriableSchemaDiscovery}.
  */
-public interface DialectAdapter extends RetriableSchemaDiscovery {}
+public interface DialectAdapter extends RetriableSchemaDiscovery, UniformSplitterDBAdapter {}
