@@ -35,7 +35,6 @@
 
   <properties>
     <autovalue.service.version>1.0.2</autovalue.service.version>
-    <extra.enforcer.rules.version>1.8.0</extra.enforcer.rules.version>
     <mock-server-netty.version>5.14.0</mock-server-netty.version>
     <open-census.version>0.24.0</open-census.version>
     <!-- TODO: check if this could be declared on a Beam BOM instead of here -->
@@ -945,19 +944,6 @@
   </build>
 
   <profiles>
-    <profile>
-      <id>missing-artifact-repos</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <repositories>
-        <repository>
-          <!-- Required for io.confluent:kafka-avro-serializer artifact -->
-          <id>confluent</id>
-          <url>https://packages.confluent.io/maven/</url>
-        </repository>
-      </repositories>
-    </profile>
     <profile>
       <id>shade</id>
       <activation>
