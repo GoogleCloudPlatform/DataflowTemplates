@@ -174,4 +174,51 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String getDLQDirectory();
 
   void setDLQDirectory(String value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 15,
+      optional = true,
+      description = "Custom jar location in Cloud Storage",
+      helpText =
+          "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records.")
+  @Default.String("")
+  String getTransformationJarPath();
+
+  void setTransformationJarPath(String value);
+
+  @TemplateParameter.Text(
+      order = 16,
+      optional = true,
+      description = "Custom class name",
+      helpText =
+          "Fully qualified class name having the custom transformation logic. It is a"
+              + " mandatory field in case transformationJarPath is specified")
+  @Default.String("")
+  String getTransformationClassName();
+
+  void setTransformationClassName(String value);
+
+  @TemplateParameter.Text(
+      order = 17,
+      optional = true,
+      description = "Custom parameters for transformation",
+      helpText =
+          "String containing any custom parameters to be passed to the custom transformation class.")
+  @Default.String("")
+  String getTransformationCustomParameters();
+
+  void setTransformationCustomParameters(String value);
+
+  @TemplateParameter.Text(
+      order = 18,
+      optional = true,
+      description = "Filtered events directory",
+      helpText =
+          "This is the file path to store the events filtered via custom transformation. Default is a directory"
+              + " under the Dataflow job's temp location. The default value is enough under most"
+              + " conditions.")
+  @Default.String("")
+  String getFilteredEventsDirectory();
+
+  void setFilteredEventsDirectory(String value);
 }

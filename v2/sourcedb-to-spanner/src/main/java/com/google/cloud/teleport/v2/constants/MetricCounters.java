@@ -21,6 +21,9 @@ public class MetricCounters {
   // Counter for errors in the transformer.
   public static final String TRANSFORMER_ERRORS = "transformer_errors";
 
+  // Counter for events filtered out in the transformer based on custom transformation response.
+  public static final String FILTERED_EVENTS = "filtered_events";
+
   // Counter for errors encountered by the reader when trying to map JDBC ResultSet to a SourceRow.
   public static final String READER_MAPPING_ERRORS = "reader_mapping_errors";
 

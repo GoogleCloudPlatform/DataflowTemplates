@@ -30,6 +30,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.transformer.SourceRowToMutationDoFn;
 import com.google.cloud.teleport.v2.writer.DeadLetterQueue;
 import com.google.cloud.teleport.v2.writer.SpannerWriter;
@@ -105,15 +106,25 @@ public class PipelineController {
         pipeline.apply("Read_rows" + shardIdSuffix, readerTransform.readTransform());
     PCollection<SourceRow> sourceRows = rowsAndTables.get(readerTransform.sourceRowTag());
 
+    CustomTransformation customTransformation =
+        CustomTransformation.builder(
+                options.getTransformationJarPath(), options.getTransformationClassName())
+            .setCustomParameters(options.getTransformationCustomParameters())
+            .build();
+
     // Transform source data to Spanner Compatible Data
-    SourceRowToMutationDoFn transformDoFn = SourceRowToMutationDoFn.create(schemaMapper);
+    SourceRowToMutationDoFn transformDoFn =
+        SourceRowToMutationDoFn.create(schemaMapper, customTransformation);
     PCollectionTuple transformationResult =
         sourceRows.apply(
             "Transform" + shardIdSuffix,
             ParDo.of(transformDoFn)
                 .withOutputTags(
                     SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS,
-                    TupleTagList.of(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)));
+                    TupleTagList.of(
+                        Arrays.asList(
+                            SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR,
+                            SourceDbToSpannerConstants.FILTERED_EVENT_TAG))));
 
     // Write to Spanner
     SpannerWriter writer = new SpannerWriter(spannerConfig);
@@ -123,12 +134,29 @@ public class PipelineController {
                 .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS)
                 .setCoder(SerializableCoder.of(RowContext.class)));
 
+    String outputDirectory = options.getOutputDirectory();
+    if (!outputDirectory.endsWith("/")) {
+      outputDirectory += "/";
+    }
     // Dump Failed rows to DLQ
-    DeadLetterQueue dlq = DeadLetterQueue.create(options.getDLQDirectory(), ddl);
+    String dlqDirectory = outputDirectory + "dlq";
+    LOG.info("DLQ directory: {}", dlqDirectory);
+    DeadLetterQueue dlq = DeadLetterQueue.create(dlqDirectory, ddl);
     dlq.failedMutationsToDLQ(failedMutations);
     dlq.failedTransformsToDLQ(
         transformationResult
             .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)
+            .setCoder(SerializableCoder.of(RowContext.class)));
+
+    /*
+     * Write filtered records to GCS
+     */
+    String filterEventsDirectory = outputDirectory + "filteredEvents";
+    LOG.info("Filtered events directory: {}", filterEventsDirectory);
+    DeadLetterQueue filteredEventsQueue = DeadLetterQueue.create(filterEventsDirectory, ddl);
+    filteredEventsQueue.filteredEventsToDLQ(
+        transformationResult
+            .get(SourceDbToSpannerConstants.FILTERED_EVENT_TAG)
             .setCoder(SerializableCoder.of(RowContext.class)));
   }
 
