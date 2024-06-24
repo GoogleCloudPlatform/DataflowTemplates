@@ -53,7 +53,7 @@ public class YamlDockerfileGenerator {
 
     Map<String, Object> parameters = new HashMap<>();
     parameters.put("baseJavaContainerImage", baseJavaContainerImage);
-    parameters.put("beamVersion", beamVersion);
+    parameters.put("beamVersion", "2.57.0rc1");
     parameters.put("pythonVersion", pythonVersion);
     if (!otherFiles.isEmpty()) {
       parameters.put("copyOtherFiles", String.join(" ", otherFiles));

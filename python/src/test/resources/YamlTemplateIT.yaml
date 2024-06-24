@@ -4,7 +4,7 @@ pipeline:
     - type: ReadFromCsv
       config:
         path: {{ INPUT_PATH_PARAM }}
-    - type: MapToFields
+    - type: MapToFieldsCustom
       name: MapWithErrorHandling
       input: ReadFromCsv
       config:
@@ -24,7 +24,7 @@ pipeline:
         keep: "str[1] >= 'a'"
         error_handling:
           output: errors
-    - type: MapToFields
+    - type: MapToFieldsCustom
       name: TrimErrors
       input: [MapWithErrorHandling.errors, Filter.errors]
       config:
@@ -32,7 +32,7 @@ pipeline:
         fields:
           error:
             callable: "lambda x: x.msg"
-    - type: MapToFields
+    - type: MapToFieldsCustom
       name: Sum
       input: Filter
       config:
@@ -42,13 +42,23 @@ pipeline:
         fields:
           sum:
             expression: num + inverse
-    - type: WriteToJson
+    - type: WriteToJsonCustom
       name: WriteGoodFiles
       input: Sum
       config:
         path: {{ OUTPUT_PATH_PARAM }}/good
-    - type: WriteToJson
+    - type: WriteToJsonCustom
       name: WriteBadFiles
       input: TrimErrors
       config:
         path: {{ OUTPUT_PATH_PARAM }}/bad
+providers:
+  - type: mavenJar
+    config:
+      artifact_id: beam-sdks-java-extensions-schemaio-expansion-service
+      group_id: org.apache.beam
+      version: 2.57.0
+      repository: "https://repository.apache.org/content/repositories/orgapachebeam-1379"
+    transforms:
+      'MapToFieldsCustom': 'beam:schematransform:org.apache.beam:yaml:map_to_fields-java:v1'
+      'WriteToJsonCustom': 'beam:schematransform:org.apache.beam:json_write:v1'

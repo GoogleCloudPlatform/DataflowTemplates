@@ -21,7 +21,7 @@ on:
     branches:
     - 'main'
     paths:
-      # Include spanner path only
+      # Include spanner paths only
       - '.github/workflows/spanner-pr.yml'
       - 'v2/datastream-to-spanner/**'
       - 'v2/spanner-common/**'
