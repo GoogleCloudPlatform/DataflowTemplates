@@ -86,7 +86,7 @@ public class DataConversionIT extends TemplateTestBase {
   // NOTE: BIGNUMERIC, GEOGRAPHY, JSON and INTERVAL BigQuery column types are not supported by Beam
   @SuppressWarnings("unchecked")
   @Test
-  public void supports_big_query_data_types() throws Exception {
+  public void supportsBigQueryDataTypes() throws Exception {
     TableId table =
         bigQueryClient.createTable(
             testName,
@@ -164,7 +164,7 @@ public class DataConversionIT extends TemplateTestBase {
 
   @SuppressWarnings("unchecked")
   @Test
-  public void supports_big_query_maps_for_cypher_target() throws Exception {
+  public void supportsBigQueryMapsForCypherTarget() throws Exception {
     TableId table =
         bigQueryClient.createTable(
             testName,
@@ -212,7 +212,7 @@ public class DataConversionIT extends TemplateTestBase {
 
   @SuppressWarnings("unchecked")
   @Test
-  public void supports_mapped_types_for_inline_csv() throws Exception {
+  public void supportsMappedTypesForInlineCsv() throws Exception {
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/data-conversion/inlinecsv-spec.json"));
     gcsClient.createArtifact(
@@ -255,7 +255,7 @@ public class DataConversionIT extends TemplateTestBase {
 
   @SuppressWarnings("unchecked")
   @Test
-  public void supports_mapped_types_for_external_csv() throws Exception {
+  public void supportsMappedTypesForExternalCsv() throws Exception {
     gcsClient.createArtifact(
         "external.csv", contentOf("/testing-specs/data-conversion/external.csv"));
     gcsClient.createArtifact(

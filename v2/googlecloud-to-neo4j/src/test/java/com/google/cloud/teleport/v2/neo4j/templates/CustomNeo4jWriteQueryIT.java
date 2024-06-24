@@ -59,7 +59,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
   }
 
   @Test
-  public void test_custom_query_import() throws IOException {
+  public void testCustomQueryImport() throws IOException {
     String spec = contentOf("/testing-specs/custom-query/northwind-jobspec.json");
     gcsClient.createArtifact("inline-data-to-neo4j.json", spec);
     gcsClient.createArtifact(
