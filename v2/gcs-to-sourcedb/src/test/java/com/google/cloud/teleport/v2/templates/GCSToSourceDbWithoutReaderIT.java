@@ -37,13 +37,11 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.CustomMySQLResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -108,14 +106,14 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
    *
    * @throws IOException
    */
-  @AfterClass
+  /*@AfterClass
   public static void cleanUp() throws IOException {
     for (GCSToSourceDbWithoutReaderIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
         jdbcResourceManager, spannerMetadataResourceManager, gcsResourceManager);
-  }
+  }*/
 
   @Test
   public void testGCSToSource() throws IOException, InterruptedException {
