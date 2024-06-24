@@ -4,7 +4,7 @@ pipeline:
     - type: ReadFromCsv
       config:
         path: {{ INPUT_PATH_PARAM }}
-    - type: MapToFieldsCustom
+    - type: MapToFields
       name: MapWithErrorHandling
       input: ReadFromCsv
       config:
@@ -24,7 +24,7 @@ pipeline:
         keep: "str[1] >= 'a'"
         error_handling:
           output: errors
-    - type: MapToFieldsCustom
+    - type: MapToFields
       name: TrimErrors
       input: [MapWithErrorHandling.errors, Filter.errors]
       config:
