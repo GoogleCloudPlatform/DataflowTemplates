@@ -45,6 +45,7 @@ public interface YAMLTemplate {
       name = "yaml_pipeline",
       optional = true,
       description = "Input YAML pipeline spec.",
+      hiddenUi = true,
       helpText = "A yaml description of the pipeline to run.")
   String getYamlPipeline();
 
