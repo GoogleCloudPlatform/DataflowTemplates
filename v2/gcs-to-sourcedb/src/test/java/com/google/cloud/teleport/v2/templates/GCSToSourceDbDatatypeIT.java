@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
@@ -145,6 +146,7 @@ public class GCSToSourceDbDatatypeIT extends GCSToSourceDbITBase {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(createConfig(writerJobInfo, Duration.ofMinutes(5)), rowsCheck);
+    assertThatResult(result).meetsConditions();
 
     // Assert events on Mysql
     assertRowInMySQL();
@@ -209,7 +211,7 @@ public class GCSToSourceDbDatatypeIT extends GCSToSourceDbITBase {
             .set("binary_column")
             .to(Value.bytes(ByteArray.copyFrom("binary_column_value1")))
             .set("varbinary_column")
-            .to(Value.bytes(ByteArray.copyFrom("varbinary_value")))
+            .to(Value.bytes(ByteArray.copyFrom("varbinary_val")))
             .set("bit_column")
             .to(Value.bytes(ByteArray.copyFrom("a")))
             .build();
@@ -279,7 +281,7 @@ public class GCSToSourceDbDatatypeIT extends GCSToSourceDbITBase {
                 .isEqualTo("binary_column_value1".getBytes(StandardCharsets.UTF_8)),
         () ->
             assertThat(row.get("varbinary_column"))
-                .isEqualTo("varbinary_value".getBytes(StandardCharsets.UTF_8)),
+                .isEqualTo("varbinary_val".getBytes(StandardCharsets.UTF_8)),
         () -> assertThat(row.get("bit_column")).isEqualTo("a".getBytes(StandardCharsets.UTF_8)));
   }
 

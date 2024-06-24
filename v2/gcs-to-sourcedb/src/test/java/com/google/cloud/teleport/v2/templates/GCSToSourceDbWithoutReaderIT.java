@@ -83,7 +83,16 @@ public class GCSToSourceDbWithoutReaderIT extends GCSToSourceDbITBase {
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());
 
-        jobInfo = launchWriterDataflowJob(gcsResourceManager, spannerMetadataResourceManager);
+        jobInfo =
+            launchWriterDataflowJob(
+                gcsResourceManager,
+                spannerMetadataResourceManager,
+                new HashMap<String, String>() {
+                  {
+                    put("startTimestamp", "2024-05-13T08:43:10.000Z");
+                    put("windowDuration", "10s");
+                  }
+                });
       }
     }
   }
