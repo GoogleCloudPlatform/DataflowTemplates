@@ -44,7 +44,7 @@ public class DatastreamResourceManagerUtils {
   static String generateDatastreamId(String resourceId) {
 
     // Take substring of baseString to account for random suffix
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     int randomSuffixLength = 6;
     resourceId =
         resourceId.substring(
@@ -58,7 +58,7 @@ public class DatastreamResourceManagerUtils {
                     - randomSuffixLength));
 
     // Add random suffix to avoid collision
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     return generateResourceId(
             resourceId,
             ILLEGAL_RESOURCE_ID_CHARS,
