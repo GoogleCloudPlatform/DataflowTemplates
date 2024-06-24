@@ -112,7 +112,7 @@ public class GCSToSourceStreamingHandler {
     return fileProcessedStartInterval;
   }
 
-  private static void writeFilteredEventsToGcs(
+  public static void writeFilteredEventsToGcs(
       ProcessingContext taskContext,
       Storage storage,
       List<TrimmedShardedDataChangeRecord> filteredEvents) {
@@ -135,6 +135,8 @@ public class GCSToSourceStreamingHandler {
     currentIntervalStart = new org.joda.time.Instant(startTs.toSqlTimestamp());
     org.joda.time.Instant currentIntervalEnd =
         currentIntervalStart.plus(taskContext.getWindowDuration());
+    // File name format for filtered events is kept same as the records written to GCS by reader
+    // template
     String gcsFileName =
         path
             + "filteredEvents/"
@@ -147,6 +149,13 @@ public class GCSToSourceStreamingHandler {
     try {
       BlobInfo blobInfo = BlobInfo.newBuilder(bucket, gcsFileName).build();
       storage.create(blobInfo, filteredEvents.toString().getBytes(StandardCharsets.UTF_8));
+      LOG.info(
+          "Filtered events for shard id: "
+              + taskContext.getShard().getLogicalShardId()
+              + "successfully written to gs://"
+              + bucket
+              + "/"
+              + gcsFileName);
     } catch (Exception e) {
       throw new IllegalArgumentException(
           "Unable to ensure write access for the file path: " + gcsFileName);
