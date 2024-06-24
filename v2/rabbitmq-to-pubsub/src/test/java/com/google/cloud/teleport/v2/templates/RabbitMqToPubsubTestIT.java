@@ -72,7 +72,7 @@ public class RabbitMqToPubsubTestIT extends TemplateTestBase {
       // 3. Create Channel
       this.channel = connection.createChannel();
       // 4. Declare the Queue (optional, but good practice)
-      this.channel.queueDeclare("testQueueOne", false, false, false, null);
+      this.channel.queueDeclare("testQueueOne", true, false, false, null);
       // 5. Prepare Message
       String message = "Hello World!";
       // 6. Publish Message
