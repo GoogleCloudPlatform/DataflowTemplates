@@ -85,6 +85,11 @@ public class InputRecordProcessor {
               new MigrationTransformationRequest(tableName, mapRequest, shardId, modType);
           MigrationTransformationResponse migrationTransformationResponse =
               spannerToSourceTransformer.toSourceRow(migrationTransformationRequest);
+          LOG.info(
+              "transformation response"
+                  + migrationTransformationResponse.getResponseRow()
+                  + "is filtered"
+                  + migrationTransformationResponse.isEventFiltered());
           if (migrationTransformationResponse.isEventFiltered()) {
             filteredEvents.add(chrec);
             continue;

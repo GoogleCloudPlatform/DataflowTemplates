@@ -96,7 +96,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
             CustomTransformation.builder(
                     "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
                 .build();
-        launchWriterDataflowJob(customTransformation);
+        launchWriterDataflowJob(null);
       }
     }
   }
