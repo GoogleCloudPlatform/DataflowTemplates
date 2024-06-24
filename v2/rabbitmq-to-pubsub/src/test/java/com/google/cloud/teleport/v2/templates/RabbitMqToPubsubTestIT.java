@@ -130,7 +130,7 @@ public class RabbitMqToPubsubTestIT extends TemplateTestBase {
             .addParameter(
                 "connectionUrl",
                 rabbitMQContainer.getAmqpUrl())
-            .addParameter("queue", inputQueueName)
+            .addParameter("queue", "testQueueOne")
             .addParameter("outputTopic", topicName.toString());
 
     // Act
