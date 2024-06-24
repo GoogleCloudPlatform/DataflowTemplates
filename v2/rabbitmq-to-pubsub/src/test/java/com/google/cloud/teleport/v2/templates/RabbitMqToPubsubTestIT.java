@@ -47,115 +47,119 @@ import org.testcontainers.utility.DockerImageName;
 @RunWith(JUnit4.class)
 public class RabbitMqToPubsubTestIT extends TemplateTestBase {
 
-    private static final Logger LOG = LoggerFactory.getLogger(RabbitMqToPubsubTestIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(RabbitMqToPubsubTestIT.class);
 
-    private RabbitMQContainer rabbitMQContainer;
-    private PubsubResourceManager pubsubClient;
+  private RabbitMQContainer rabbitMQContainer;
+  private PubsubResourceManager pubsubClient;
 
-    private Channel channel;
+  private Channel channel;
 
-    @Before
-    public void setup() throws IOException {
-      rabbitMQContainer =
-          new RabbitMQContainer(DockerImageName.parse("rabbitmq:3.7.25-management-alpine"));
-      pubsubClient = PubsubResourceManager.builder(testName, PROJECT,
-  credentialsProvider).build();
-      rabbitMQContainer.start();
+  @Before
+  public void setup() throws IOException {
+    rabbitMQContainer =
+        new RabbitMQContainer(DockerImageName.parse("rabbitmq:3.7.25-management-alpine"))
+            .withQueue("testQueueOne");
+    pubsubClient = PubsubResourceManager.builder(testName, PROJECT,
+        credentialsProvider).build();
+    rabbitMQContainer.start();
 
+    // 2. Establish Connection
+    try{
       // 1. Create Connection Factory
       ConnectionFactory factory = new ConnectionFactory();
-      factory.setHost("localhost"); // Update with your RabbitMQ host
-
-      // 2. Establish Connection
-      try{
+      factory.setUri(rabbitMQContainer.getAmqpUrl());
       Connection connection = factory.newConnection();
       // 3. Create Channel
-      channel = connection.createChannel();
+      this.channel = connection.createChannel();
       // 4. Declare the Queue (optional, but good practice)
-      channel.queueDeclare("testqueue", false, false, false, null);
+      this.channel.queueDeclare("testQueueOne", false, false, false, null);
       // 5. Prepare Message
       String message = "Hello World!";
       // 6. Publish Message
-      }
-      catch(Exception e)
-      {
-          System.out.println(e);
-      }
+      this.channel.basicPublish(
+          "",
+          "testQueueOne",
+          null,
+          message.getBytes(StandardCharsets.UTF_8));
+    }
+    catch(Exception e)
+    {
+      System.out.println(e);
+    }
+  }
+
+  @After
+  public void tearDownClass() {
+    boolean producedError = false;
+
+    try {
+      pubsubClient.cleanupAll();
+    } catch (Exception e) {
+      LOG.error("Failed to delete PubSub resources.", e);
+      producedError = true;
     }
 
-    @After
-    public void tearDownClass() {
-      boolean producedError = false;
-
-      try {
-        pubsubClient.cleanupAll();
-      } catch (Exception e) {
-        LOG.error("Failed to delete PubSub resources.", e);
-        producedError = true;
-      }
-
-      try {
-        rabbitMQContainer.stop();
-      } catch (Exception e) {
-        LOG.error("Failed to delete MQTT Container resources.", e);
-        producedError = true;
-      }
-
-      if (producedError) {
-        throw new IllegalStateException("Failed to delete resources. Check above for errors.");
-      }
+    try {
+      rabbitMQContainer.stop();
+    } catch (Exception e) {
+      LOG.error("Failed to delete MQTT Container resources.", e);
+      producedError = true;
     }
 
-    @Test
-    public void testMqttToPubSub() throws IOException {
-      // Arrange
-
-      String jobName = testName;
-      String inputQueueName = testName + "queue";
-      String psTopic = testName + "output";
-      TopicName topicName = pubsubClient.createTopic(psTopic);
-      SubscriptionName subscriptionName = pubsubClient.createSubscription(topicName,
-  "subscription");
-      String message = "Hello, world 123";
-      byte[] messageBodyBytes = "Hello, world!".getBytes();
-      channel.basicPublish("", "testeQueue", null, message.getBytes(StandardCharsets.UTF_8));
-      System.out.println(" [x] Sent '" + message + "'");
-
-      PipelineLauncher.LaunchConfig.Builder options =
-          PipelineLauncher.LaunchConfig.builder(jobName, specPath)
-              .addParameter(
-                  "connectionUrl",
-                  rabbitMQContainer.getAmqpUrl())
-              .addParameter("queue", inputQueueName)
-              .addParameter("outputTopic", topicName.toString());
-
-      // Act
-      PipelineLauncher.LaunchInfo info = launchTemplate(options);
-      assertThatPipeline(info).isRunning();
-      PipelineOperator.Result result =
-          pipelineOperator()
-              .waitForConditionAndFinish(
-                  createConfig(info),
-                  () -> {
-                    try
-                    {
-                      channel.basicPublish("", "testeQueue", null, "abracadabra".getBytes(StandardCharsets.UTF_8));
-                    }
-                    catch(Exception e)
-                    {
-                      System.err.println(e);
-                    }
-
-                    return pubsubClient
-                        .pull(subscriptionName, 1)
-                        .getReceivedMessages(0)
-                        .getMessage()
-                        .getData()
-                        .toString(StandardCharsets.UTF_8)
-                        .equalsIgnoreCase("abracadabra");
-                  });
-
-      // Assert
-      assertThatResult(result).meetsConditions();
+    if (producedError) {
+      throw new IllegalStateException("Failed to delete resources. Check above for errors.");
     }
+  }
+
+  @Test
+  public void testMqttToPubSub() throws IOException {
+    // Arrange
+
+    String jobName = testName;
+    String inputQueueName = testName + "queue";
+    String psTopic = testName + "output";
+    TopicName topicName = pubsubClient.createTopic(psTopic);
+    SubscriptionName subscriptionName = pubsubClient.createSubscription(topicName,
+        "subscription");
+    String message = "Hello, world 123";
+    channel.basicPublish("", "testQueueOne", null, message.getBytes(StandardCharsets.UTF_8));
+    System.out.println(" [x] Sent '" + message + "'");
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(jobName, specPath)
+            .addParameter(
+                "connectionUrl",
+                rabbitMQContainer.getAmqpUrl())
+            .addParameter("queue", inputQueueName)
+            .addParameter("outputTopic", topicName.toString());
+
+    // Act
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForConditionAndFinish(
+                createConfig(info),
+                () -> {
+                  try
+                  {
+                    channel.basicPublish("", "testQueueOne", null, "abracadabra".getBytes(StandardCharsets.UTF_8));
+                  }
+                  catch(Exception e)
+                  {
+                    System.err.println(e);
+                  }
+
+                  return pubsubClient
+                      .pull(subscriptionName, 1)
+                      .getReceivedMessages(0)
+                      .getMessage()
+                      .getData()
+                      .toString(StandardCharsets.UTF_8)
+                      .equalsIgnoreCase("abracadabra");
+                });
+
+    // Assert
+    assertThatResult(result).meetsConditions();
+  }
 }
