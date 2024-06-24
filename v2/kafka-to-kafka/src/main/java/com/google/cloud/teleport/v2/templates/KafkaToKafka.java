@@ -118,6 +118,8 @@ public class KafkaToKafka {
         || options
             .getKafkaWriteAuthenticationMethod()
             .equals(KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS)) {
+      // No additional validation is required for these auth mechanisms since they don't depend on
+      // any specific pipeline options.
     } else {
       throw new UnsupportedOperationException(
           "Authentication method not supported: " + options.getKafkaWriteAuthenticationMethod());
