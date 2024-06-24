@@ -146,6 +146,14 @@ public class GCSToSourceDbITBase extends TemplateTestBase {
   public LaunchInfo launchWriterDataflowJob(
       GcsResourceManager gcsResourceManager, SpannerResourceManager spannerMetadataResourceManager)
       throws IOException {
+    return launchWriterDataflowJob(gcsResourceManager, spannerMetadataResourceManager, null);
+  }
+
+  public LaunchInfo launchWriterDataflowJob(
+      GcsResourceManager gcsResourceManager,
+      SpannerResourceManager spannerMetadataResourceManager,
+      Map<String, String> paramOverrides)
+      throws IOException {
     Map<String, String> params =
         new HashMap<>() {
           {
@@ -158,6 +166,10 @@ public class GCSToSourceDbITBase extends TemplateTestBase {
             put("GCSInputDirectoryPath", getGcsPath("output", gcsResourceManager));
           }
         };
+
+    if (paramOverrides != null) {
+      paramOverrides.forEach((key, value) -> params.put(key, value));
+    }
     String jobName = PipelineUtils.createJobName(testName);
     LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
     options.setParameters(params);

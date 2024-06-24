@@ -95,7 +95,15 @@ public class TimezoneIT extends GCSToSourceDbITBase {
         readerJobInfo =
             launchReaderDataflowJob(
                 gcsResourceManager, spannerResourceManager, spannerMetadataResourceManager);
-        writerJobInfo = launchWriterDataflowJob(gcsResourceManager, spannerMetadataResourceManager);
+        writerJobInfo =
+            launchWriterDataflowJob(
+                gcsResourceManager,
+                spannerMetadataResourceManager,
+                new HashMap<String, String>() {
+                  {
+                    put("sourceDbTimezoneOffset", "+10:00");
+                  }
+                });
       }
     }
   }
