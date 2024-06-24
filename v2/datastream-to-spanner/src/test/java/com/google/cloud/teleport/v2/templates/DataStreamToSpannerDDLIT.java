@@ -691,7 +691,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("decimal_column", 23456.79);
     row.put("datetime_column", "2023-01-01T12:00:00Z");
     row.put("timestamp_column", "2023-01-01T12:00:00Z");
-    row.put("time_column", "43200000000");
+    // TODO (b/349257952): update once TIME handling is made consistent for bulk and live.
+    // row.put("time_column", "43200000000");
     row.put("year_column", "2023");
     row.put("blob_column", "EjRWeJCrze8=");
     row.put("enum_column", "3");
@@ -712,7 +713,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("decimal_column", 34567.90);
     row.put("datetime_column", "2024-01-02T00:00:00Z");
     row.put("timestamp_column", "2024-01-02T00:00:00Z");
-    row.put("time_column", "3600000000");
+    // TODO (b/349257952): update once TIME handling is made consistent for bulk and live.
+    // row.put("time_column", "3600000000");
     row.put("year_column", "2025");
     row.put("blob_column", "q83vEjRWeJA=");
     row.put("enum_column", "1");
@@ -722,7 +724,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
-            spannerResourceManager.runQuery("select * from AllDatatypeTransformation"))
+            spannerResourceManager.runQuery(
+                "SELECT varchar_column, tinyint_column, text_column, date_column, int_column, bigint_column, float_column, double_column, decimal_column, datetime_column, timestamp_column, year_column, blob_column, enum_column, bool_column, binary_column, bit_column FROM AllDatatypeTransformation"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 

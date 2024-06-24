@@ -15,10 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.common.collect.ImmutableList;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -38,23 +39,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An integration test for {@link SourceDbToSpanner} Flex template which tests a basic migration on
- * a simple schema.
+ * An integration test for {@link SourceDbToSpanner} Flex template which tests migrations using a
+ * custom transformation jar.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class SessionSchemaMapperIT extends SourceDbToSpannerITBase {
-  private static final Logger LOG = LoggerFactory.getLogger(SessionSchemaMapperIT.class);
-  private static final HashSet<SessionSchemaMapperIT> testInstances = new HashSet<>();
+public class CustomTransformationsNonShardedIT extends SourceDbToSpannerITBase {
+  private static final Logger LOG =
+      LoggerFactory.getLogger(CustomTransformationsNonShardedIT.class);
+  private static final HashSet<IdentitySchemaMapperIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final String SESSION_FILE_RESOURCE = "SchemaMapperIT/company-session.json";
-  private static final String MYSQL_DDL_RESOURCE = "SchemaMapperIT/company-mysql-schema.sql";
-  private static final String SPANNER_DDL_RESOURCE = "SchemaMapperIT/company-spanner-schema.sql";
+  private static final String MYSQL_DDL_RESOURCE =
+      "CustomTransformationsNonShardedIT/mysql-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE =
+      "CustomTransformationsNonShardedIT/spanner-schema.sql";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class. \
@@ -72,42 +75,51 @@ public class SessionSchemaMapperIT extends SourceDbToSpannerITBase {
   }
 
   @Test
-  public void noTransformationTest() throws Exception {
+  public void simpleTest() throws Exception {
     loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+    createAndUploadJarToGcs("CustomTransformationAllTypes");
+    CustomTransformation customTransformation =
+        CustomTransformation.builder(
+                "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
+            .build();
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
-            SESSION_FILE_RESOURCE,
-            "mapper",
+            null,
+            "CustomTransformationAllTypes",
             mySQLResourceManager,
             spannerResourceManager,
             null,
-            null);
+            customTransformation);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
-    List<Map<String, Object>> companyMySQL =
-        mySQLResourceManager.runSQLQuery("SELECT company_id, company_name FROM company");
-    ImmutableList<Struct> companySpanner =
-        spannerResourceManager.readTableRecords("company", "company_id", "company_name");
+    List<Map<String, Object>> events = new ArrayList<>();
+    Map<String, Object> row = new HashMap<>();
+    row.put("varchar_column", "id1");
+    row.put("tinyint_column", 13);
+    row.put("text_column", "This is a text value append");
+    row.put("date_column", "2024-06-22");
+    row.put("int_column", 101);
+    row.put("bigint_column", 134567891);
+    row.put("float_column", 4.14159);
+    row.put("double_column", 3.71828);
+    row.put("decimal_column", 12346.6789);
+    row.put("datetime_column", "2024-06-21T17:10:00Z");
+    row.put("timestamp_column", "2022-12-31T23:59:57Z");
+    // TODO (b/349257952): update once TIME handling is made consistent for bulk and live.
+    // row.put("time_column", "43200000000");
+    row.put("year_column", "2025");
+    row.put("blob_column", "V29ybWQ=");
+    row.put("enum_column", "1");
+    row.put("bool_column", true);
+    row.put("binary_column", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
+    row.put("bit_column", "Ew==");
+    events.add(row);
 
-    SpannerAsserts.assertThatStructs(companySpanner)
-        .hasRecordsUnorderedCaseInsensitiveColumns(companyMySQL);
-
-    List<Map<String, Object>> employeeMySQL =
-        mySQLResourceManager.runSQLQuery(
-            "SELECT employee_id, company_id, employee_name, employee_address FROM employee");
-    ImmutableList<Struct> employeeSpanner =
-        spannerResourceManager.readTableRecords(
-            "employee", "employee_id", "company_id", "employee_name", "employee_address");
-
-    SpannerAsserts.assertThatStructs(employeeSpanner)
-        .hasRecordsUnorderedCaseInsensitiveColumns(employeeMySQL);
-
-    ImmutableList<Struct> employeeAttribute =
-        spannerResourceManager.readTableRecords(
-            "employee_attribute", "employee_id", "attribute_name", "value");
-
-    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(4); // Supports composite keys
+    SpannerAsserts.assertThatStructs(
+            spannerResourceManager.runQuery(
+                "SELECT varchar_column, tinyint_column, text_column, date_column, int_column, bigint_column, float_column, double_column, decimal_column, datetime_column, timestamp_column, year_column, blob_column, enum_column, bool_column, binary_column, bit_column FROM AllDatatypeTransformation"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 }

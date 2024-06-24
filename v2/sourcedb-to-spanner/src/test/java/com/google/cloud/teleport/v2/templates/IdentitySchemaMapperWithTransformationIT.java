@@ -89,7 +89,8 @@ public class IdentitySchemaMapperWithTransformationIT extends SourceDbToSpannerI
             null,
             mySQLResourceManager,
             spannerResourceManager,
-            jobParameters);
+            jobParameters,
+            null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
     List<Map<String, Object>> companyMySQL =

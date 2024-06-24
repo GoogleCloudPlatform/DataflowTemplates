@@ -160,6 +160,7 @@ public class GenericRecordTypeConvertor {
     if (customTransformer == null) {
       return result;
     }
+    LOG.debug("Populating custom transformation for table {}: {}", srcTableName, result);
     String spannerTableName = schemaMapper.getSpannerTableName(namespace, srcTableName);
     // TODO: verify if direct to object (Current) works the same as Object -> JsonNode-> Object
     // (Live).
@@ -171,6 +172,8 @@ public class GenericRecordTypeConvertor {
     }
     Map<String, Object> transformedCols = migrationTransformationResponse.getResponseRow();
     for (Map.Entry<String, Object> entry : transformedCols.entrySet()) {
+      LOG.debug(
+          "Updating record with {} from custom transformations for table {}", entry, srcTableName);
       String spannerColName = entry.getKey();
       Type spannerType =
           schemaMapper.getSpannerColumnType(namespace, spannerTableName, spannerColName);
@@ -179,6 +182,7 @@ public class GenericRecordTypeConvertor {
               entry.getValue(), CUSTOM_TRANSFORMATION_AVRO_SCHEMA, spannerColName, spannerType);
       result.put(spannerColName, val);
     }
+    LOG.debug("Updated record with custom transformations for table {}: {}", srcTableName, result);
     return result;
   }
 
@@ -190,9 +194,32 @@ public class GenericRecordTypeConvertor {
     for (Schema.Field field : schema.getFields()) {
       String fieldName = field.name();
       Object fieldValue = record.get(fieldName);
+      if (fieldValue == null) {
+        map.put(fieldName, null);
+        continue;
+      }
       Schema fieldSchema = filterNullSchema(field.schema());
       // Handle logical/record types.
       fieldValue = handleComplexAvroTypes(fieldValue, fieldSchema, fieldName);
+      // Standardising the types for custom jar input.
+      if (fieldSchema.getLogicalType() != null || fieldSchema.getType() == Schema.Type.RECORD) {
+        map.put(fieldName, fieldValue);
+        continue;
+      }
+      Schema.Type fieldType = fieldSchema.getType();
+      switch (fieldType) {
+        case INT:
+        case LONG:
+        case BOOLEAN:
+          fieldValue = (fieldValue == null) ? null : Long.valueOf(fieldValue.toString());
+          break;
+        case FLOAT:
+        case DOUBLE:
+          fieldValue = (fieldValue == null) ? null : Double.valueOf(fieldValue.toString());
+          break;
+        default:
+          fieldValue = (fieldValue == null) ? null : fieldValue.toString();
+      }
       map.put(fieldName, fieldValue);
     }
     return map;
@@ -206,12 +233,20 @@ public class GenericRecordTypeConvertor {
     org.joda.time.Instant startTimestamp = org.joda.time.Instant.now();
     MigrationTransformationRequest migrationTransformationRequest =
         new MigrationTransformationRequest(tableName, sourceRecord, shardId, "INSERT");
+    LOG.debug(
+        "using migration transformation request {} for table {}",
+        migrationTransformationRequest,
+        tableName);
     MigrationTransformationResponse migrationTransformationResponse =
         customTransformer.toSpannerRow(migrationTransformationRequest);
     org.joda.time.Instant endTimestamp = org.joda.time.Instant.now();
     // Update timer metric.
     applyCustomTransformationResponseTimeMetric.update(
         new Duration(startTimestamp, endTimestamp).getMillis());
+    LOG.debug(
+        "Got migration transformation response {} for table {}",
+        migrationTransformationResponse,
+        tableName);
     return migrationTransformationResponse;
   }
 
