@@ -32,7 +32,7 @@ public interface KafkaToBigQueryFlexOptions
         SchemaRegistryOptions {
   // This is a duplicate option that already exist in KafkaReadOptions but keeping it here
   // so the KafkaTopic appears above the authentication enum on the Templates UI.
-  @TemplateParameter.KafkaTopic(
+  @TemplateParameter.KafkaReadTopic(
       order = 1,
       name = "readBootstrapServerAndTopic",
       groupName = "Source",
