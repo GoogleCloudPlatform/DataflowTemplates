@@ -55,7 +55,7 @@ public class XlangDockerfileGenerator {
     String classesDirectory = targetDirectory.getPath() + "/classes";
     Map<String, Object> parameters = new HashMap<>();
     parameters.put("baseJavaContainerImage", baseJavaContainerImage);
-    parameters.put("beamVersion", beamVersion);
+    parameters.put("beamVersion", "2.57.0rc1");
     parameters.put("pythonVersion", pythonVersion);
     parameters.put("commandSpec", commandSpec);
     parameters.put("containerName", containerName);

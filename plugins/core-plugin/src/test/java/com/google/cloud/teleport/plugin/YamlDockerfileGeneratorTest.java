@@ -48,7 +48,7 @@ public class YamlDockerfileGeneratorTest {
     assertTrue(outputFile.exists());
     String fileContents = Files.toString(outputFile, Charsets.UTF_8);
     assertThat(fileContents).contains("FROM a java container image");
-    assertThat(fileContents).contains("=beam_version");
+    assertThat(fileContents).contains("=2.57.0rc1");
     assertThat(fileContents).contains("=py_version");
     assertThat(fileContents).contains("COPY main.py requirements.txt* /template/");
     assertThat(fileContents)
@@ -71,7 +71,7 @@ public class YamlDockerfileGeneratorTest {
     assertTrue(outputFile.exists());
     String fileContents = Files.toString(outputFile, Charsets.UTF_8);
     assertThat(fileContents).contains("FROM a java container image");
-    assertThat(fileContents).contains("=beam_version");
+    assertThat(fileContents).contains("=2.57.0rc1");
     assertThat(fileContents).contains("=py_version");
     assertThat(fileContents).contains("COPY main.py requirements.txt* /template/");
     assertThat(fileContents).contains("COPY other_file /template/");

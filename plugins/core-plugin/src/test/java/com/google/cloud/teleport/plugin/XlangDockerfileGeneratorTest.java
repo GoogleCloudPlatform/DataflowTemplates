@@ -52,7 +52,7 @@ public class XlangDockerfileGeneratorTest {
     assertTrue(outputFile.exists());
     String fileContents = Files.toString(outputFile, Charsets.UTF_8);
     assertThat(fileContents).contains("FROM a java container image");
-    assertThat(fileContents).contains("=beam_version");
+    assertThat(fileContents).contains("=2.57.0rc1");
     assertThat(fileContents).contains("=py_version");
   }
 }
