@@ -17,6 +17,7 @@
  */
 package com.google.cloud.teleport.it.neo4j;
 
+import static com.google.cloud.teleport.it.neo4j.DatabaseWaitOptions.waitDatabase;
 import static com.google.common.truth.Truth.assertThat;
 
 import java.util.Collections;
@@ -42,8 +43,8 @@ public class Neo4jResourceManagerIT {
   public void setUp() {
     neo4jResourceManager =
         Neo4jResourceManager.builder("placeholder")
-            .setDatabaseName("neo4j", DatabaseWaitOptions.waitDatabase())
             .setAdminPassword("password")
+            .setDatabaseWaitOption(waitDatabase(60))
             .build();
   }
 

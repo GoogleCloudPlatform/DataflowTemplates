@@ -228,26 +228,22 @@ public class Neo4jResourceManager extends TestContainerResourceManager<Neo4jCont
      * @return this builder object with the database name set.
      */
     public Builder setDatabaseName(String databaseName) {
-      return setDatabaseName(databaseName, DatabaseWaitOptions.noWaitDatabase());
+      this.databaseName = databaseName;
+      return this;
     }
 
     /**
-     * Sets the database name to that of a static database instance and sets the wait policy. Use
-     * this method only when attempting to operate on a pre-existing Neo4j database.
+     * Sets the database wait policy.
      *
-     * <p>Note: if a database name is set, and a static Neo4j server is being used
-     * (useStaticContainer() is also called on the builder), then a database will be created on the
-     * static server if it does not exist, and it will not be removed when cleanupAll() is called on
-     * the Neo4jResourceManager.
+     * <p>Note: this policy only applies to the creation and deletion of managed databases. When a
+     * static database name is configured with {@link Builder#setDatabaseName}, the policy is
+     * ignored.
      *
      * <p>{@link DatabaseWaitOptions} exposes all configurable wait options
      *
-     * @param databaseName The database name.
-     * @param waitOption The database wait policy.
-     * @return this builder object with the database name set.
+     * @return this builder object with the database wait policy set.
      */
-    public Builder setDatabaseName(String databaseName, DatabaseWaitOption waitOption) {
-      this.databaseName = databaseName;
+    public Builder setDatabaseWaitOption(DatabaseWaitOption waitOption) {
       this.waitOption = waitOption;
       return this;
     }

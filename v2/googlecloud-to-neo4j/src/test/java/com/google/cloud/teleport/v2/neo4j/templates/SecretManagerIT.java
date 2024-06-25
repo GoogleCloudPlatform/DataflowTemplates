@@ -20,6 +20,7 @@ import static com.google.cloud.teleport.v2.neo4j.templates.Resources.contentOf;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.teleport.it.neo4j.DatabaseWaitOptions;
 import com.google.cloud.teleport.it.neo4j.Neo4jResourceManager;
 import com.google.cloud.teleport.it.neo4j.conditions.Neo4jQueryCheck;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -52,6 +53,7 @@ public class SecretManagerIT extends TemplateTestBase {
   public void setup() throws IOException {
     neo4jClient =
         Neo4jResourceManager.builder(testName)
+            .setDatabaseWaitOption(DatabaseWaitOptions.waitDatabase(60))
             .setAdminPassword("letmein!")
             .setHost(TestProperties.hostIp())
             .build();

@@ -91,13 +91,24 @@ public class Neo4jResourceManagerTest {
   }
 
   @Test
-  public void testDatabaseIsCreatedWithNoWaitOptions() {
+  public void testDatabaseIsCreatedWithNoWaitOptionsRegardlessOfWaitPolicy() {
     Neo4jResourceManager.Builder builder =
         Neo4jResourceManager.builder(TEST_ID)
-            .setDatabaseName(STATIC_DATABASE_NAME, DatabaseWaitOptions.noWaitDatabase());
+            .setDatabaseName(STATIC_DATABASE_NAME)
+            .setDatabaseWaitOption(DatabaseWaitOptions.waitDatabase(42));
     new Neo4jResourceManager(neo4jDriver, container, builder);
 
     verify(session).run(and(startsWith("CREATE DATABASE"), endsWith("NOWAIT")), anyMap());
+  }
+
+  @Test
+  public void testDynamicDatabaseIsCreatedWithConfiguredWaitPolicy() {
+    Neo4jResourceManager.Builder builder =
+        Neo4jResourceManager.builder(TEST_ID)
+            .setDatabaseWaitOption(DatabaseWaitOptions.waitDatabase(42));
+    new Neo4jResourceManager(neo4jDriver, container, builder);
+
+    verify(session).run(and(startsWith("CREATE DATABASE"), endsWith("WAIT 42 SECONDS")), anyMap());
   }
 
   @Test
