@@ -16,17 +16,17 @@
 package com.google.cloud.teleport.v2.utilities;
 
 import org.apache.beam.it.jdbc.AbstractJDBCResourceManager;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Mysql resource manager to be used for sharded migrations.
- * This class has been created as the MySQL resource manager constructor is not public.
+ * Mysql resource manager to be used for sharded migrations. This class has been created as the
+ * MySQL resource manager constructor is not public.
+ *
  * @see org.apache.beam.it.jdbc.MySQLResourceManager
  */
-public class ShardedMySQLResourceManager extends AbstractJDBCResourceManager<MySQLContainer<?>>  {
+public class ShardedMySQLResourceManager extends AbstractJDBCResourceManager<MySQLContainer<?>> {
 
   private static final String DEFAULT_MYSQL_CONTAINER_NAME = "mysql";
 
@@ -44,7 +44,8 @@ public class ShardedMySQLResourceManager extends AbstractJDBCResourceManager<MyS
   }
 
   @VisibleForTesting
-  ShardedMySQLResourceManager(MySQLContainer<?> container, ShardedMySQLResourceManager.Builder builder) {
+  ShardedMySQLResourceManager(
+      MySQLContainer<?> container, ShardedMySQLResourceManager.Builder builder) {
     super(container, builder);
     this.jdbcPort = builder.port;
   }

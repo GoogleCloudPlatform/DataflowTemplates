@@ -29,7 +29,6 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,8 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An integration test for {@link SourceDbToSpanner} Flex template which tests a basic migration on
- * a simple schema.
+ * An integration test for {@link SourceDbToSpanner} Flex template which tests a sharded migration.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
@@ -64,8 +62,8 @@ public class ShardedMigrationIT extends SourceDbToSpannerITBase {
    */
   @Before
   public void setUp() {
-    mysqlShard1 = ShardedMySQLResourceManager.builder(testName+"shard_1",3306).build();
-    mysqlShard2 = ShardedMySQLResourceManager.builder(testName+"shard_2",3307).build();
+    mysqlShard1 = ShardedMySQLResourceManager.builder(testName + "shard_1", 3306).build();
+    mysqlShard2 = ShardedMySQLResourceManager.builder(testName + "shard_2", 3307).build();
     spannerResourceManager = setUpSpannerResourceManager();
   }
 
@@ -88,7 +86,7 @@ public class ShardedMigrationIT extends SourceDbToSpannerITBase {
             getClass().getSimpleName(),
             SESSION_FILE_RESOURCE,
             "mapper",
-            mysqlShard1,//This config is not used in this flow
+            mysqlShard1, // This config is not used in this flow
             spannerResourceManager,
             jobParameters);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
@@ -96,25 +94,30 @@ public class ShardedMigrationIT extends SourceDbToSpannerITBase {
     List<Map<String, Object>> employeeMySQL1 =
         mysqlShard1.runSQLQuery(
             "SELECT employee_id, company_id, employee_name, employee_address FROM employee");
-    for(Map<String, Object> employee: employeeMySQL1) {
+    for (Map<String, Object> employee : employeeMySQL1) {
       employee.put("migration_shard_id", "shard1");
     }
     List<Map<String, Object>> employeeMySQL2 =
         mysqlShard2.runSQLQuery(
             "SELECT employee_id, company_id, employee_name, employee_address FROM employee");
-    for(Map<String, Object> employee: employeeMySQL2) {
+    for (Map<String, Object> employee : employeeMySQL2) {
       employee.put("migration_shard_id", "shard2");
     }
 
     ImmutableList<Struct> employeeSpanner =
         spannerResourceManager.readTableRecords(
-            "employee", "employee_id", "company_id", "employee_name", "employee_address", "migration_shard_id");
+            "employee",
+            "employee_id",
+            "company_id",
+            "employee_name",
+            "employee_address",
+            "migration_shard_id");
 
     SpannerAsserts.assertThatStructs(employeeSpanner)
         .hasRecordsUnorderedCaseInsensitiveColumns(employeeMySQL1);
     SpannerAsserts.assertThatStructs(employeeSpanner)
         .hasRecordsUnorderedCaseInsensitiveColumns(employeeMySQL2);
-    SpannerAsserts.assertThatStructs(employeeSpanner).hasRows(employeeMySQL1.size()
-        + employeeMySQL2.size());
+    SpannerAsserts.assertThatStructs(employeeSpanner)
+        .hasRows(employeeMySQL1.size() + employeeMySQL2.size());
   }
 }
