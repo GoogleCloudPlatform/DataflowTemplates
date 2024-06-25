@@ -128,7 +128,7 @@ public class DeadLetterQueue implements Serializable {
               @Element RowContext rowContext,
               OutputReceiver<FailsafeElement<String, String>> out,
               ProcessContext c) {
-            c.output(rowContextToDlqElement(rowContext, false));
+            c.output(rowContextToDlqElement(rowContext));
           }
         };
     filteredRows
@@ -151,7 +151,7 @@ public class DeadLetterQueue implements Serializable {
               @Element RowContext rowContext,
               OutputReceiver<FailsafeElement<String, String>> out,
               ProcessContext c) {
-            c.output(rowContextToDlqElement(rowContext, true));
+            c.output(rowContextToDlqElement(rowContext));
           }
         };
     failedRows
@@ -164,7 +164,7 @@ public class DeadLetterQueue implements Serializable {
   }
 
   @VisibleForTesting
-  protected FailsafeElement<String, String> rowContextToDlqElement(RowContext r, Boolean isError) {
+  protected FailsafeElement<String, String> rowContextToDlqElement(RowContext r) {
     GenericRecord record = r.row().getPayload();
     JSONObject json = new JSONObject();
 
@@ -174,12 +174,14 @@ public class DeadLetterQueue implements Serializable {
       Object value = record.get(f.name());
       json.put(f.name(), value == null ? null : value.toString());
     }
-    if (isError) {
-      return FailsafeElement.of(json.toString(), json.toString())
-          .setErrorMessage("TransformationFailed: " + r.err() + "\n" + r.getStackTraceString());
-    } else {
-      return FailsafeElement.of(json.toString(), json.toString());
+    FailsafeElement<String, String> dlqElement =
+        FailsafeElement.of(json.toString(), json.toString());
+    if (r.err() != null) {
+      dlqElement =
+          dlqElement.setErrorMessage(
+              "TransformationFailed: " + r.err() + "\n" + r.getStackTraceString());
     }
+    return dlqElement;
   }
 
   public void failedMutationsToDLQ(

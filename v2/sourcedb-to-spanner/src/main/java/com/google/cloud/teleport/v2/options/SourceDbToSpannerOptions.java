@@ -169,11 +169,12 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.GcsReadFile(
       order = 14,
-      description = "Dead letter queue directory",
-      helpText = "This directory is used to dump the failed records in a migration.")
-  String getDLQDirectory();
+      description = "Output directory for failed/skipped/filtered events",
+      helpText =
+          "This directory is used to dump the failed/skipped/filtered records in a migration.")
+  String getOutputDirectory();
 
-  void setDLQDirectory(String value);
+  void setOutputDirectory(String value);
 
   @TemplateParameter.GcsReadFile(
       order = 15,
@@ -208,17 +209,4 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String getTransformationCustomParameters();
 
   void setTransformationCustomParameters(String value);
-
-  @TemplateParameter.Text(
-      order = 18,
-      optional = true,
-      description = "Filtered events directory",
-      helpText =
-          "This is the file path to store the events filtered via custom transformation. Default is a directory"
-              + " under the Dataflow job's temp location. The default value is enough under most"
-              + " conditions.")
-  @Default.String("")
-  String getFilteredEventsDirectory();
-
-  void setFilteredEventsDirectory(String value);
 }

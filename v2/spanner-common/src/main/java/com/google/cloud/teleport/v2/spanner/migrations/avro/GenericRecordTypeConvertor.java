@@ -198,9 +198,9 @@ public class GenericRecordTypeConvertor {
         map.put(fieldName, null);
         continue;
       }
-      Schema fieldSchema = filterNullSchema(field.schema());
+      Schema fieldSchema = filterNullSchema(field.schema(), fieldName, fieldValue);
       // Handle logical/record types.
-      fieldValue = handleComplexAvroTypes(fieldValue, fieldSchema, fieldName);
+      fieldValue = handleNonPrimitiveAvroTypes(fieldValue, fieldSchema, fieldName);
       // Standardising the types for custom jar input.
       if (fieldSchema.getLogicalType() != null || fieldSchema.getType() == Schema.Type.RECORD) {
         map.put(fieldName, fieldValue);
@@ -237,12 +237,15 @@ public class GenericRecordTypeConvertor {
         "using migration transformation request {} for table {}",
         migrationTransformationRequest,
         tableName);
-    MigrationTransformationResponse migrationTransformationResponse =
-        customTransformer.toSpannerRow(migrationTransformationRequest);
-    org.joda.time.Instant endTimestamp = org.joda.time.Instant.now();
-    // Update timer metric.
-    applyCustomTransformationResponseTimeMetric.update(
-        new Duration(startTimestamp, endTimestamp).getMillis());
+    MigrationTransformationResponse migrationTransformationResponse;
+    try {
+      migrationTransformationResponse =
+          customTransformer.toSpannerRow(migrationTransformationRequest);
+    } finally {
+      org.joda.time.Instant endTimestamp = org.joda.time.Instant.now();
+      applyCustomTransformationResponseTimeMetric.update(
+          new Duration(startTimestamp, endTimestamp).getMillis());
+    }
     LOG.debug(
         "Got migration transformation response {} for table {}",
         migrationTransformationResponse,
@@ -268,16 +271,8 @@ public class GenericRecordTypeConvertor {
         recordValue,
         fieldSchema,
         spannerType);
-    try {
-      fieldSchema = filterNullSchema(fieldSchema);
-    } catch (IllegalArgumentException ex) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Unknown schema field type %s for field %s with value %s.",
-              fieldSchema, recordColName, recordValue),
-          ex);
-    }
-    recordValue = handleComplexAvroTypes(recordValue, fieldSchema, recordColName);
+    fieldSchema = filterNullSchema(fieldSchema, recordColName, recordValue);
+    recordValue = handleNonPrimitiveAvroTypes(recordValue, fieldSchema, recordColName);
     return getSpannerValueFromObject(recordValue, fieldSchema, recordColName, spannerType);
   }
 
@@ -288,13 +283,8 @@ public class GenericRecordTypeConvertor {
    * contains two types (one of which is NULL), it returns the non-nullable type. If the schema is
    * not a union, or if it's a union with more than two types or a non-nullable type other than
    * NULL, an IllegalArgumentException is thrown.
-   *
-   * @param fieldSchema The Avro schema of a field.
-   * @return The filtered schema with the nullable option removed if applicable, otherwise the
-   *     original schema.
-   * @throws IllegalArgumentException If the schema is a union type with unsupported combinations.
    */
-  private Schema filterNullSchema(Schema fieldSchema) {
+  private Schema filterNullSchema(Schema fieldSchema, String recordColName, Object recordValue) {
     if (fieldSchema.getType().equals(Schema.Type.UNION)) {
       List<Schema> types = fieldSchema.getTypes();
       LOG.debug("found union type: {}", types);
@@ -302,7 +292,10 @@ public class GenericRecordTypeConvertor {
       if (types.size() == 2 && types.stream().anyMatch(s -> s.getType().equals(Schema.Type.NULL))) {
         return types.stream().filter(s -> !s.getType().equals(Schema.Type.NULL)).findFirst().get();
       } else {
-        throw new IllegalArgumentException("Unsupported schema type");
+        throw new IllegalArgumentException(
+            String.format(
+                "Unknown schema field type %s for field %s with value %s.",
+                fieldSchema, recordColName, recordValue));
       }
     }
     return fieldSchema;
@@ -321,7 +314,7 @@ public class GenericRecordTypeConvertor {
    * @return The processed value of the field, potentially transformed according to its complex
    *     type.
    */
-  private Object handleComplexAvroTypes(
+  private Object handleNonPrimitiveAvroTypes(
       Object recordValue, Schema fieldSchema, String recordColName) {
     if (fieldSchema.getLogicalType() != null) {
       recordValue = handleLogicalFieldType(recordColName, recordValue, fieldSchema);

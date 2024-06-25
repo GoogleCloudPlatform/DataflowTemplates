@@ -175,7 +175,7 @@ public class DeadLetterQueueTest {
                     .build())
             .setErr(new Exception("test exception"))
             .build();
-    FailsafeElement<String, String> dlqElement = dlq.rowContextToDlqElement(r1, true);
+    FailsafeElement<String, String> dlqElement = dlq.rowContextToDlqElement(r1);
     assertNotNull(dlqElement);
     assertTrue(dlqElement.getErrorMessage().contains("test exception"));
     assertTrue(dlqElement.getOriginalPayload().contains("\"_metadata_table\":\"srcTable\""));

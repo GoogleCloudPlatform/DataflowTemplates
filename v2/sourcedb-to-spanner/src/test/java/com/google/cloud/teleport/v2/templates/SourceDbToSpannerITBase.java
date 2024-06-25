@@ -148,7 +148,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             put("sourceDbURL", jdbcResourceManager.getUri());
             put("username", jdbcResourceManager.getUsername());
             put("password", jdbcResourceManager.getPassword());
-            put("DLQDirectory", "gs://" + artifactBucketName + "/dlq");
+            put("outputDirectory", "gs://" + artifactBucketName);
           }
         };
 
