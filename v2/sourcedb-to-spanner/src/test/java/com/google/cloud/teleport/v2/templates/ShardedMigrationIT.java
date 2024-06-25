@@ -19,6 +19,7 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
+import com.google.common.io.Resources;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -85,11 +86,18 @@ public class ShardedMigrationIT extends SourceDbToSpannerITBase {
 
     Map<String, String> jobParameters = new HashMap<>();
     jobParameters.put("tables", "employee");
+
+    String gcsPathPrefix = "mapper";
+    String shardConfigPath = gcsPathPrefix + "/shard-config.json";
+    gcsClient.uploadArtifact(
+        shardConfigPath, Resources.getResource("two-shard-config.json").getPath());
+    jobParameters.put("sourceDbURL", getGcsPath(shardConfigPath));
+
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
             SESSION_FILE_RESOURCE,
-            "mapper",
+            gcsPathPrefix,
             mysqlShard1, // This config is not used in this flow
             spannerResourceManager,
             jobParameters);
