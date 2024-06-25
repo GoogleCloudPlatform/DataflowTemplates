@@ -90,7 +90,7 @@ public class ShardedMigrationIT extends SourceDbToSpannerITBase {
     String gcsPathPrefix = "mapper";
     String shardConfigPath = gcsPathPrefix + "/shard-config.json";
     gcsClient.uploadArtifact(
-        shardConfigPath, Resources.getResource("two-shard-config.json").getPath());
+        shardConfigPath, Resources.getResource("SchemaMapperIT/two-shard-config.json").getPath());
     jobParameters.put("sourceDbURL", getGcsPath(shardConfigPath));
 
     jobInfo =
