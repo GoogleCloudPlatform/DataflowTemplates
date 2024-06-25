@@ -48,8 +48,9 @@ import org.apache.beam.it.gcp.datastream.MySQLSource;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
-import org.apache.beam.it.jdbc.CustomMySQLResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -57,8 +58,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Integration test for {@link DataStreamToSpanner} Flex template. */
@@ -66,8 +65,6 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerIT extends TemplateTestBase {
-
-  private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerIT.class);
 
   private static final Integer NUM_EVENTS = 10;
 
@@ -79,7 +76,7 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
 
   private static final List<String> COLUMNS = List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED);
 
-  private CustomMySQLResourceManager jdbcResourceManager;
+  private MySQLResourceManager jdbcResourceManager;
   private DatastreamResourceManager datastreamResourceManager;
   private SpannerResourceManager spannerResourceManager;
 
@@ -102,7 +99,7 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
   @Test
   public void testDataStreamMySqlToSpanner() throws IOException {
     // Create MySQL Resource manager
-    jdbcResourceManager = CustomMySQLResourceManager.builder(testName).build();
+    jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
     // Arrange MySQL-compatible schema
     HashMap<String, String> columns = new HashMap<>();
@@ -162,7 +159,7 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
   @Test
   public void testDataStreamMySqlToSpannerJson() throws IOException {
     // Create MySQL Resource manager
-    jdbcResourceManager = CustomMySQLResourceManager.builder(testName).build();
+    jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
     // Arrange MySQL-compatible schema
     HashMap<String, String> columns = new HashMap<>();
@@ -308,12 +305,12 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
       String tableName, AtomicReference<List<Map<String, Object>>> cdcEvents) {
     return new ConditionCheck() {
       @Override
-      protected String getDescription() {
+      protected @NonNull String getDescription() {
         return "Send initial JDBC events.";
       }
 
       @Override
-      protected CheckResult check() {
+      protected @NonNull CheckResult check() {
         List<Map<String, Object>> rows = new ArrayList<>();
         for (int i = 0; i < NUM_EVENTS; i++) {
           Map<String, Object> values = new HashMap<>();
@@ -344,12 +341,12 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
       String tableName, AtomicReference<List<Map<String, Object>>> cdcEvents) {
     return new ConditionCheck() {
       @Override
-      protected String getDescription() {
+      protected @NonNull String getDescription() {
         return "Send initial JDBC events.";
       }
 
       @Override
-      protected CheckResult check() {
+      protected @NonNull CheckResult check() {
         List<Map<String, Object>> newCdcEvents = new ArrayList<>();
         for (int i = 0; i < NUM_EVENTS; i++) {
           if (i % 2 == 0) {
