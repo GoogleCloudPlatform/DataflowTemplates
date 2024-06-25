@@ -77,6 +77,17 @@ public class PipelineController {
     return pipeline.run();
   }
 
+  /**
+   * Perform migration for a given reader. This created a separate dag on dataflow per reader.
+   *
+   * @param options
+   * @param pipeline
+   * @param spannerConfig
+   * @param ddl
+   * @param schemaMapper
+   * @param reader
+   * @param shardId
+   */
   private static void migrateForReader(
       SourceDbToSpannerOptions options,
       Pipeline pipeline,

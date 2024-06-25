@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.utilities.ShardedMySQLResourceManager;
 import com.google.common.collect.ImmutableList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,6 +28,7 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -49,8 +49,8 @@ public class ShardedMigrationIT extends SourceDbToSpannerITBase {
   private static final HashSet<ShardedMigrationIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
-  public static ShardedMySQLResourceManager mysqlShard1;
-  public static ShardedMySQLResourceManager mysqlShard2;
+  public static MySQLResourceManager mysqlShard1;
+  public static MySQLResourceManager mysqlShard2;
   public static SpannerResourceManager spannerResourceManager;
 
   private static final String SESSION_FILE_RESOURCE = "SchemaMapperIT/company-session.json";
@@ -62,8 +62,12 @@ public class ShardedMigrationIT extends SourceDbToSpannerITBase {
    */
   @Before
   public void setUp() {
-    mysqlShard1 = ShardedMySQLResourceManager.builder(testName + "shard_1", 3306).build();
+    // mysqlShard1 = ShardedMySQLResourceManager.builder(testName + "shard_1", 3306).build();
+    // TODO Integration tests don't give a clean way to spawn multiple mysql instances.
+    // This needs to be built.
     // mysqlShard2 = ShardedMySQLResourceManager.builder(testName + "shard_2", 3307).build();
+    mysqlShard1 = MySQLResourceManager.builder(testName + "shard1").build();
+    mysqlShard2 = MySQLResourceManager.builder(testName + "shard2").build();
     spannerResourceManager = setUpSpannerResourceManager();
   }
 
@@ -76,7 +80,7 @@ public class ShardedMigrationIT extends SourceDbToSpannerITBase {
   @Test
   public void noTransformationTest() throws Exception {
     loadSQLFileResource(mysqlShard1, MYSQL_DDL_RESOURCE);
-    // loadSQLFileResource(mysqlShard2, MYSQL_DDL_RESOURCE);
+    loadSQLFileResource(mysqlShard2, MYSQL_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
     Map<String, String> jobParameters = new HashMap<>();
@@ -97,12 +101,12 @@ public class ShardedMigrationIT extends SourceDbToSpannerITBase {
     for (Map<String, Object> employee : employeeMySQL1) {
       employee.put("migration_shard_id", "shard1");
     }
-    // List<Map<String, Object>> employeeMySQL2 =
-    //     mysqlShard2.runSQLQuery(
-    //         "SELECT employee_id, company_id, employee_name, employee_address FROM employee");
-    // for (Map<String, Object> employee : employeeMySQL2) {
-    //   employee.put("migration_shard_id", "shard2");
-    // }
+    List<Map<String, Object>> employeeMySQL2 =
+        mysqlShard2.runSQLQuery(
+            "SELECT employee_id, company_id, employee_name, employee_address FROM employee");
+    for (Map<String, Object> employee : employeeMySQL2) {
+      employee.put("migration_shard_id", "shard2");
+    }
 
     ImmutableList<Struct> employeeSpanner =
         spannerResourceManager.readTableRecords(
@@ -115,8 +119,8 @@ public class ShardedMigrationIT extends SourceDbToSpannerITBase {
 
     SpannerAsserts.assertThatStructs(employeeSpanner)
         .hasRecordsUnorderedCaseInsensitiveColumns(employeeMySQL1);
-    // SpannerAsserts.assertThatStructs(employeeSpanner)
-    //     .hasRecordsUnorderedCaseInsensitiveColumns(employeeMySQL2);
+    SpannerAsserts.assertThatStructs(employeeSpanner)
+        .hasRecordsUnorderedCaseInsensitiveColumns(employeeMySQL2);
     // SpannerAsserts.assertThatStructs(employeeSpanner)
     //     .hasRows(employeeMySQL1.size() + employeeMySQL2.size());
   }
