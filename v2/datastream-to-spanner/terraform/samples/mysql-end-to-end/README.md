@@ -1,4 +1,4 @@
-## Sample Scenario: MySQL to Spanner using MySQL source configuration
+## Sample Scenario: MySQL to Spanner production live migration using MySQL source configuration
 
 > **_SCENARIO:_** This Terraform example illustrates launching a live migration
 > job for a MySQL source, setting up all the required cloud infrastructure.
@@ -121,7 +121,7 @@ provides instructions to add these roles to an existing service account.
 It takes the following assumptions -
 
 1. MySQL source is accessible via Datastream either via
-   [IP Whitelisting guide](https://cloud.google.com/datastream/docs/network-connectivity-options#ipallowlists)
+   [IP Allowlisting guide](https://cloud.google.com/datastream/docs/network-connectivity-options#ipallowlists)
    or [Private connectivity](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration).
 2. If using a VPC, VPC has already been configured to work with Datastream.
 3. MySQL source has been configured to be read by Datastream by following
@@ -156,9 +156,9 @@ configuration and creates the following resources -
 
 1. **Datastream private connection** - If configured, a Datastream private
    connection will be deployed for your configured VPC. If not configured, IP
-   whitelisting will be assumed as the mode of Datastream access.
+   allowlisting will be assumed as the mode of Datastream access.
 2. **Source datastream connection profile** - This allows Datastream to connect
-   to the MySQL instance (using IP whitelisting).
+   to the MySQL instance (using IP allowlisting).
 3. **GCS bucket** - A GCS bucket to for Datastream to write the source data to.
 4. **Target datastream connection profile** - The connection profile to
    configure the created bucket in Datastream.
@@ -259,7 +259,7 @@ can exclude it from the state file using `terraform state rm` command.
 
 #### Datastream
 
-> **_NOTE:_** By default, **IP Whitelisting** based connectivity is assumed.
+> **_NOTE:_** By default, **IP Allowlisting** based connectivity is assumed.
 
 There is a variable of the type below in `variables.tf` -
 
@@ -289,8 +289,8 @@ configuration in your `*.tfvars`. For example -
   ...
 ```
 
-Note that `vpc_name` and `range` are mandatory and for the private connectivity
-configuration.
+Note that `vpc_name` and `range` are mandatory and for the [private connectivity
+configuration](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration).
 
 In the `mysql_host` configuration, specify the private IP instead of the
 public IP.
@@ -317,7 +317,7 @@ and configures it in the source profile created for the Datastream stream.
 > You can run `terraform destroy` after deleting the private connection from the
 > UI or the gcloud CLI to clean up the remaining resources.
 
-If this is not specified, configurations are created assuming **IP Whitelisting
+If this is not specified, configurations are created assuming **IP Allowlisting
 **.
 
 #### Dataflow
