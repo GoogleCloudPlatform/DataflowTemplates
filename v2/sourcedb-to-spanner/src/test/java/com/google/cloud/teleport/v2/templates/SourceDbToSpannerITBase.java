@@ -64,7 +64,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
   protected void loadSQLToJdbcResourceManager(JDBCResourceManager jdbcResourceManager, String sql)
       throws Exception {
-    LOG.info("Loading sql to jdbc resource manager");
+    LOG.info("Loading sql to jdbc resource manager with uri: {}", jdbcResourceManager.getUri());
     try {
       Connection connection =
           DriverManager.getConnection(

@@ -127,7 +127,10 @@ public class JdbcSourceRowMapperTest {
     var sourceSchemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     JdbcSourceRowMapper mapper =
         new JdbcSourceRowMapper(
-            new MysqlJdbcValueMappings(), sourceSchemaRef, sourceTableSchemaBuilder.build());
+            new MysqlJdbcValueMappings(),
+            sourceSchemaRef,
+            sourceTableSchemaBuilder.build(),
+            "shard1");
 
     // Read Test Database and verify mapper.
     try (var statement = conn.createStatement()) {
@@ -138,6 +141,7 @@ public class JdbcSourceRowMapperTest {
         var sourceRow = mapper.mapRow(rs);
         assertEquals(sourceSchemaRef, sourceRow.sourceSchemaReference());
         assertEquals(testTable, sourceRow.tableName());
+        assertEquals("shard1", sourceRow.shardId());
         for (int colIdx = 0; colIdx < testCols.size(); colIdx++) {
           if (valueIdx < maxNonNullValues) {
             assertThat(sourceRow.getPayload().get(colIdx))
@@ -152,6 +156,7 @@ public class JdbcSourceRowMapperTest {
     }
   }
 
+  // Add test case for shard id
   @Test
   public void testMapRowException() {
 
@@ -167,7 +172,7 @@ public class JdbcSourceRowMapperTest {
     var sourceSchemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     JdbcSourceRowMapper mapper =
         new JdbcSourceRowMapper(
-            new MysqlJdbcValueMappings(), sourceSchemaRef, sourceTableSchemaBuilder.build());
+            new MysqlJdbcValueMappings(), sourceSchemaRef, sourceTableSchemaBuilder.build(), null);
     ResultSet mockResultSet =
         Mockito.mock(
             ResultSet.class,
@@ -218,7 +223,8 @@ public class JdbcSourceRowMapperTest {
             .build();
     var sourceSchemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     JdbcSourceRowMapper mapper =
-        new JdbcSourceRowMapper(new MysqlJdbcValueMappings(), sourceSchemaRef, sourceTableSchema);
+        new JdbcSourceRowMapper(
+            new MysqlJdbcValueMappings(), sourceSchemaRef, sourceTableSchema, null);
     assertThat(mapper.mapRow(mockResultSet).getPayload().get("unsupported_col")).isNull();
   }
 

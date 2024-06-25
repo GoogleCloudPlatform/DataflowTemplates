@@ -63,7 +63,11 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
     Collections.sort(ddlTableNames);
     if (!schemaTableNames.equals(ddlTableNames)) {
       throw new InputMismatchException(
-          "List of spanner table names found in session file do not match tables that actually exist on Spanner. Please provide a valid session file.");
+          String.format(
+              "List of spanner table names found in session file do not match tables that actually "
+                  + "exist on Spanner. Please provide a valid session file. spanner tables: %s session "
+                  + "tables: %s",
+              ddlTableNames, schemaTableNames));
     }
     for (String tableName : ddlTableNames) {
       List<String> schemaColNames = schema.getSpannerColumnNames(tableName);
