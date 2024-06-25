@@ -211,7 +211,7 @@ public class GCSToSourceDbDatatypeIT extends GCSToSourceDbITBase {
             .set("binary_column")
             .to(Value.bytes(ByteArray.copyFrom("binary_column_value1")))
             .set("varbinary_column")
-            .to(Value.bytes(ByteArray.copyFrom("varbinary_val")))
+            .to(Value.bytes(ByteArray.copyFrom("varbinary")))
             .set("bit_column")
             .to(Value.bytes(ByteArray.copyFrom("a")))
             .build();
@@ -281,7 +281,7 @@ public class GCSToSourceDbDatatypeIT extends GCSToSourceDbITBase {
                 .isEqualTo("binary_column_value1".getBytes(StandardCharsets.UTF_8)),
         () ->
             assertThat(row.get("varbinary_column"))
-                .isEqualTo("varbinary_val".getBytes(StandardCharsets.UTF_8)),
+                .isEqualTo("varbinary".getBytes(StandardCharsets.UTF_8)),
         () -> assertThat(row.get("bit_column")).isEqualTo("a".getBytes(StandardCharsets.UTF_8)));
   }
 

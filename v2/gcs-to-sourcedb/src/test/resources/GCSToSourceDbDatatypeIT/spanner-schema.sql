@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS AllDatatypeColumns (
     bool_column BOOL,
     other_bool_column BOOL,
     binary_column BYTES(MAX),
-    varbinary_column BYTES(MAX),
+    varbinary_column BYTES(20),
     bit_column BYTES(MAX),
 ) PRIMARY KEY(varchar_column);
 
