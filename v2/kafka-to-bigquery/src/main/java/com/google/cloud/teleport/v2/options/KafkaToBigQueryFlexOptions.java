@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.kafka.dlq.BigQueryDeadLetterQueueOptions;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.kafka.options.SchemaRegistryOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -29,10 +30,11 @@ public interface KafkaToBigQueryFlexOptions
     extends DataflowPipelineOptions,
         KafkaReadOptions,
         BigQueryStorageApiStreamingOptions,
-        SchemaRegistryOptions {
+        SchemaRegistryOptions,
+        BigQueryDeadLetterQueueOptions {
   // This is a duplicate option that already exist in KafkaReadOptions but keeping it here
   // so the KafkaTopic appears above the authentication enum on the Templates UI.
-  @TemplateParameter.KafkaTopic(
+  @TemplateParameter.KafkaReadTopic(
       order = 1,
       name = "readBootstrapServerAndTopic",
       groupName = "Source",
@@ -231,33 +233,4 @@ public interface KafkaToBigQueryFlexOptions
   Boolean getUseStorageWriteApiAtLeastOnce();
 
   void setUseStorageWriteApiAtLeastOnce(Boolean value);
-
-  @TemplateParameter.Boolean(
-      order = 14,
-      name = "useBigQueryDLQ",
-      groupName = "Dead Letter Queue",
-      optional = false,
-      description = "Write errors to BigQuery",
-      helpText =
-          "If true, failed messages will be written to BigQuery with extra error information. "
-              + "The deadletter table should be created with no schema.")
-  @Default.Boolean(false)
-  Boolean getUseBigQueryDLQ();
-
-  void setUseBigQueryDLQ(Boolean value);
-
-  @TemplateParameter.BigQueryTable(
-      order = 15,
-      groupName = "Dead Letter Queue",
-      parentName = "useBigQueryDLQ",
-      parentTriggerValues = {"true"},
-      optional = true,
-      description = "Dead-letter Table",
-      helpText =
-          "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
-              + "(e.g., mismatched schema, malformed json) are written to this table.",
-      example = "your-project-id:your-dataset.your-table-name")
-  String getOutputDeadletterTable();
-
-  void setOutputDeadletterTable(String outputDeadletterTable);
 }

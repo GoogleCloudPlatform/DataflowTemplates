@@ -63,8 +63,11 @@ public class TemplateDefinitionsTest {
     ImageSpecParameter to = metadata.getParameter("to").get();
     assertEquals(ImageSpecParameterType.BIGQUERY_TABLE, to.getParamType());
 
-    ImageSpecParameter inputKafkaTopic = metadata.getParameter("inputKafkaTopic").get();
-    assertEquals(ImageSpecParameterType.KAFKA_TOPIC, inputKafkaTopic.getParamType());
+    ImageSpecParameter inputKafkaReadTopic = metadata.getParameter("inputKafkaReadTopic").get();
+    assertEquals(ImageSpecParameterType.KAFKA_READ_TOPIC, inputKafkaReadTopic.getParamType());
+
+    ImageSpecParameter inputKafkaWriteTopic = metadata.getParameter("inputKafkaWriteTopic").get();
+    assertEquals(ImageSpecParameterType.KAFKA_WRITE_TOPIC, inputKafkaWriteTopic.getParamType());
 
     ImageSpecParameter logical = metadata.getParameter("logical").get();
     assertEquals(ImageSpecParameterType.BOOLEAN, logical.getParamType());

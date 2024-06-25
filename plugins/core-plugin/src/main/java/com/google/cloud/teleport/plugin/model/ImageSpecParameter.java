@@ -586,22 +586,40 @@ public class ImageSpecParameter {
         this.setHiddenUi(durationParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
         break;
-      case "KafkaTopic":
-        TemplateParameter.KafkaTopic kafkaTopic =
-            (TemplateParameter.KafkaTopic) parameterAnnotation;
-        if (!kafkaTopic.name().isEmpty()) {
-          this.setName(kafkaTopic.name());
+      case "KafkaReadTopic":
+        TemplateParameter.KafkaReadTopic kafkaReadTopic =
+            (TemplateParameter.KafkaReadTopic) parameterAnnotation;
+        if (!kafkaReadTopic.name().isEmpty()) {
+          this.setName(kafkaReadTopic.name());
         }
         processDescriptions(
-            kafkaTopic.groupName(),
-            kafkaTopic.description(),
-            kafkaTopic.helpText(),
-            kafkaTopic.example());
-        this.setParentName(kafkaTopic.parentName());
-        this.setParentTriggerValues(kafkaTopic.parentTriggerValues());
-        this.setOptional(kafkaTopic.optional());
-        this.setHiddenUi(kafkaTopic.hiddenUi());
-        this.setParamType(ImageSpecParameterType.KAFKA_TOPIC);
+            kafkaReadTopic.groupName(),
+            kafkaReadTopic.description(),
+            kafkaReadTopic.helpText(),
+            kafkaReadTopic.example());
+        this.setParentName(kafkaReadTopic.parentName());
+        this.setParentTriggerValues(kafkaReadTopic.parentTriggerValues());
+        this.setOptional(kafkaReadTopic.optional());
+        this.setHiddenUi(kafkaReadTopic.hiddenUi());
+        this.setParamType(ImageSpecParameterType.KAFKA_READ_TOPIC);
+        break;
+
+      case "KafkaWriteTopic":
+        TemplateParameter.KafkaWriteTopic kafkaWriteTopic =
+            (TemplateParameter.KafkaWriteTopic) parameterAnnotation;
+        if (!kafkaWriteTopic.name().isEmpty()) {
+          this.setName(kafkaWriteTopic.name());
+        }
+        processDescriptions(
+            kafkaWriteTopic.groupName(),
+            kafkaWriteTopic.description(),
+            kafkaWriteTopic.helpText(),
+            kafkaWriteTopic.example());
+        this.setParentName(kafkaWriteTopic.parentName());
+        this.setParentTriggerValues(kafkaWriteTopic.parentTriggerValues());
+        this.setOptional(kafkaWriteTopic.optional());
+        this.setHiddenUi(kafkaWriteTopic.hiddenUi());
+        this.setParamType(ImageSpecParameterType.KAFKA_WRITE_TOPIC);
         break;
       default:
         throw new IllegalArgumentException("Invalid type " + parameterAnnotation);
