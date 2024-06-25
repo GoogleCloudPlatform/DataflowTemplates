@@ -44,6 +44,7 @@ public final class JdbcSourceRowMapper implements JdbcIO.RowMapper<SourceRow> {
 
   private final SourceTableSchema sourceTableSchema;
 
+  @Nullable
   private final String shardId;
 
   private static final Logger logger = LoggerFactory.getLogger(JdbcSourceRowMapper.class);

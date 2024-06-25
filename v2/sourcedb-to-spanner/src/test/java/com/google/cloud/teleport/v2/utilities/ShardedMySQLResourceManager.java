@@ -47,7 +47,7 @@ public class ShardedMySQLResourceManager extends AbstractJDBCResourceManager<MyS
   ShardedMySQLResourceManager(
       MySQLContainer<?> container, ShardedMySQLResourceManager.Builder builder) {
     super(container, builder);
-    this.jdbcPort = builder.port;
+    this.jdbcPort = builder.jdbcPort;
   }
 
   public static ShardedMySQLResourceManager.Builder builder(String testId, int port) {

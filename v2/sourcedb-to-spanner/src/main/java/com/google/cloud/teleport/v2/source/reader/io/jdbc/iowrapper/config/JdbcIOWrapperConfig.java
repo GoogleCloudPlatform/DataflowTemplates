@@ -121,7 +121,6 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setTableVsPartitionColumns(
         ImmutableMap<String, ImmutableList<String>> value);
 
-    @Nullable
     public abstract Builder setShardID(String value);
 
     public abstract Builder setDbAuth(DbAuth value);
