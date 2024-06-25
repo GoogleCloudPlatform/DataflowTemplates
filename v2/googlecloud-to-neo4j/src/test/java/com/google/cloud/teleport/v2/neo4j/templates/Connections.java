@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.neo4j.templates;
 
-import com.google.cloud.teleport.it.neo4j.Neo4jResourceManager;
+import org.apache.beam.it.neo4j.Neo4jResourceManager;
 
 class Connections {
 
