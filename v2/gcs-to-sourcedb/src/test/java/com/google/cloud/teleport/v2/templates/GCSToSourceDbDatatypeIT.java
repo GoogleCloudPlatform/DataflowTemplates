@@ -209,7 +209,7 @@ public class GCSToSourceDbDatatypeIT extends GCSToSourceDbITBase {
             .set("other_bool_column")
             .to(Value.bool(Boolean.TRUE))
             .set("binary_column")
-            .to(Value.bytes(ByteArray.copyFrom("binary_column_value1")))
+            .to(Value.bytes(ByteArray.copyFrom("binary_col")))
             .set("varbinary_column")
             .to(Value.bytes(ByteArray.copyFrom("varbinary")))
             .set("bit_column")

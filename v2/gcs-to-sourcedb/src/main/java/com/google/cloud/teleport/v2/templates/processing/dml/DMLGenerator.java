@@ -165,6 +165,7 @@ public class DMLGenerator {
             + "ON DUPLICATE KEY UPDATE "
             + updateValues;
 
+    LOG.info(returnVal);
     return returnVal;
   }
 
