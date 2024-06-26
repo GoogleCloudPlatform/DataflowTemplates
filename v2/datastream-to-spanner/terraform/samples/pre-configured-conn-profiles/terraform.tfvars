@@ -11,10 +11,10 @@ datastream_params = {
   source_connection_profile_id  = "<YOUR_SOURCE_CONNECTION_PROFILE_ID>"
   target_connection_profile_id  = "<YOUR_TARGET_CONNECTION_PROFILE_ID>"
   target_gcs_bucket_name        = "<YOUR_GCS_BUCKET_NAME>"
-  pubsub_topic_name             = "live-migration" # Or your custom topic name
-  stream_id                     = "mysql-stream"   # Or your custom stream ID
-  max_concurrent_cdc_tasks      = 50               # Adjust as needed
-  max_concurrent_backfill_tasks = 50               # Adjust as needed
+  pubsub_topic_name             = "live-migration"       # Or your custom topic name
+  stream_id                     = "mysql-stream"         # Or your custom stream ID
+  max_concurrent_cdc_tasks      = "<CDC_TASKS_INT>"      # Between 1-50, remove this to use the default (20)
+  max_concurrent_backfill_tasks = "<BACKFILL_TASKS_INT>" # Between 1-50, remove this to use the default (20)
   mysql_databases = [
     {
       database = "<YOUR_DATABASE_NAME>"
@@ -33,7 +33,7 @@ dataflow_params = {
     create_shadow_tables = true # true or false
     rfc_start_date_time  = "<YYYY-MM-DDTHH:MM:SSZ>"
     # e.g., "2023-12-31T12:00:00Z" (optional)
-    file_read_concurrency = 10 # Adjust as needed
+    file_read_concurrency = "<FILE_READ_CONCURRENCY_INT>" # Adjust as needed
     session_file_path     = "<YOUR_SESSION_FILE_PATH>"
     # Path to your session file (optional)
     spanner_instance_id = "<YOUR_SPANNER_INSTANCE_ID>"
@@ -41,9 +41,9 @@ dataflow_params = {
     spanner_host        = "https://<YOUR_REGION>-spanner.googleapis.com"
     # Replace <YOUR_REGION>
     dead_letter_queue_directory = "<YOUR_DLQ_DIRECTORY>"
-    # e.g., "gs://<YOUR_BUCKET>/dlq" (optional)
-    dlq_retry_minutes   = 10 # Adjust as needed
-    dlq_max_retry_count = 3  # Adjust as needed
+    # e.g., "gs://<YOUR_BUCKET>/dlq"
+    dlq_retry_minutes   = 10  # Adjust as needed
+    dlq_max_retry_count = 100 # Adjust as needed
     datastream_root_url = "<YOUR_DATASTREAM_ROOT_URL>"
     # Base URL of your Datastream API (optional)
     datastream_source_type           = "MYSQL"
