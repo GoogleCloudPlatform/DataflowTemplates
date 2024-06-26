@@ -51,13 +51,17 @@ import com.google.cloud.datastream.v1.StreamName;
 import com.google.cloud.datastream.v1.UpdateStreamRequest;
 import com.google.protobuf.Duration;
 import com.google.protobuf.FieldMask;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.beam.it.common.ResourceManager;
+import org.apache.beam.it.common.utils.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,6 +76,13 @@ public final class DatastreamResourceManager implements ResourceManager {
 
   private static final java.time.Duration DEFAULT_BQ_STALENESS_DURATION =
       java.time.Duration.ofMinutes(15);
+
+  // Retry settings for client operations
+  private static final int FAILSAFE_MAX_RETRIES = 2;
+  private static final java.time.Duration FAILSAFE_RETRY_DELAY = java.time.Duration.ofSeconds(10);
+  private static final java.time.Duration FAILSAFE_RETRY_MAX_DELAY =
+      java.time.Duration.ofSeconds(180);
+  private static final double FAILSAFE_RETRY_JITTER = 0.1;
 
   private final String testId;
   private final String projectId;
@@ -445,7 +456,9 @@ public final class DatastreamResourceManager implements ResourceManager {
                       .build())
               .build();
 
-      Stream reference = datastreamClient.createStreamAsync(request).get();
+      Stream reference =
+          Failsafe.with(retryOnCancellationException())
+              .get(() -> datastreamClient.createStreamAsync(request).get());
       createdStreamIds.add(streamId);
 
       LOG.info("Successfully created Stream {} in project {}.", streamId, projectId);
@@ -469,7 +482,9 @@ public final class DatastreamResourceManager implements ResourceManager {
               .setUpdateMask(fieldMaskBuilder)
               .build();
 
-      Stream reference = datastreamClient.updateStreamAsync(request).get();
+      Stream reference =
+          Failsafe.with(retryOnCancellationException())
+              .get(() -> datastreamClient.updateStreamAsync(request).get());
 
       LOG.info(
           "Successfully updated {}'s state to {} in project {}.",
@@ -540,6 +555,15 @@ public final class DatastreamResourceManager implements ResourceManager {
     }
 
     LOG.info("Successfully cleaned up Datastream resource manager.");
+  }
+
+  private static <T> RetryPolicy<T> retryOnCancellationException() {
+    return RetryPolicy.<T>builder()
+        .handleIf(exception -> ExceptionUtils.containsType(exception, CancellationException.class))
+        .withMaxRetries(FAILSAFE_MAX_RETRIES)
+        .withBackoff(FAILSAFE_RETRY_DELAY, FAILSAFE_RETRY_MAX_DELAY)
+        .withJitter(FAILSAFE_RETRY_JITTER)
+        .build();
   }
 
   /** Builder for {@link DatastreamResourceManager}. */

@@ -393,7 +393,7 @@ public abstract class TemplateTestBase {
       "-pl",
       moduleBuild,
       "-am",
-      "-PtemplatesStage,pluginOutputDir,splunkDeps",
+      "-PtemplatesStage,pluginOutputDir,splunkDeps,missing-artifact-repos",
       "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(16),
       // Skip shading for now due to flakiness / slowness in the process.
       "-DskipShade=" + skipShade,
@@ -571,6 +571,11 @@ public abstract class TemplateTestBase {
         artifactBucketName, getClass().getSimpleName(), gcsClient.runId(), artifactId);
   }
 
+  protected String getGcsPath(String artifactId, GcsResourceManager gcsResourceManager) {
+    return ArtifactUtils.getFullGcsPath(
+        artifactBucketName, getClass().getSimpleName(), gcsResourceManager.runId(), artifactId);
+  }
+
   /** Create the default configuration {@link PipelineOperator.Config} for a specific job info. */
   protected PipelineOperator.Config createConfig(LaunchInfo info) {
     return createConfig(info, null);
@@ -625,6 +630,20 @@ public abstract class TemplateTestBase {
         table.getProject() != null ? table.getProject() : PROJECT,
         table.getDataset(),
         table.getTable());
+  }
+
+  protected LaunchConfig.Builder enableRunnerV2(LaunchConfig.Builder config) {
+    return config.addEnvironment(
+        "additionalExperiments", Collections.singletonList("use_runner_v2"));
+  }
+
+  protected LaunchConfig.Builder disableRunnerV2(LaunchConfig.Builder config) {
+    return config.addEnvironment(
+        "additionalExperiments", Collections.singletonList("disable_runner_v2"));
+  }
+
+  protected LaunchConfig.Builder enableStreamingEngine(LaunchConfig.Builder config) {
+    return config.addEnvironment("enableStreamingEngine", true);
   }
 
   /**

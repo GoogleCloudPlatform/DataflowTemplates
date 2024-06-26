@@ -27,10 +27,11 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.ProjectId(
       order = 1,
+      groupName = "Source",
       optional = true,
       description = "Spanner Project ID",
       helpText =
-          "The project where the Spanner instance to read from is located. The default for this parameter is the project "
+          "The ID of the project that the Spanner database resides in. The default value for this parameter is the project "
               + "where the Dataflow pipeline is running.")
   @Default.String("")
   String getSpannerProjectId();
@@ -39,24 +40,27 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       description = "Spanner instance ID",
-      helpText = "The Spanner instance to read from.")
+      helpText = "The instance ID of the Spanner database to read from.")
   String getSpannerInstanceId();
 
   void setSpannerInstanceId(String spannerInstanceId);
 
   @TemplateParameter.Text(
       order = 3,
+      groupName = "Source",
       description = "Spanner database ID",
-      helpText = "The Spanner database to read from.")
+      helpText = "The database ID of the Spanner database to export.")
   String getSpannerDatabaseId();
 
   void setSpannerDatabaseId(String spannerDatabaseId);
 
   @TemplateParameter.Text(
       order = 4,
+      groupName = "Source",
       description = "Spanner table name",
-      helpText = "The Spanner table to read from.")
+      helpText = "The table name of the Spanner database to export.")
   String getSpannerTableId();
 
   void setSpannerTableId(String spannerTableId);
@@ -71,7 +75,7 @@ public interface SpannerToBigQueryOptions
       optional = true,
       description = "Priority for Spanner RPC invocations",
       helpText =
-          "The priority of Spanner job. Must be one of the following: [HIGH, MEDIUM, LOW]. Default is HIGH.")
+          "The request priority (https://cloud.google.com/spanner/docs/reference/rest/v1/RequestOptions) for Spanner calls. Possible values are `HIGH`, `MEDIUM`, and `LOW`. The default value is `HIGH`.")
   RpcPriority getSpannerRpcPriority();
 
   void setSpannerRpcPriority(RpcPriority spannerRpcPriority);
@@ -79,7 +83,7 @@ public interface SpannerToBigQueryOptions
   @TemplateParameter.Text(
       order = 6,
       description = "Spanner query",
-      helpText = "Query used to read Spanner table.")
+      helpText = "The SQL query to use to read data from the Spanner database.")
   String getSqlQuery();
 
   void setSqlQuery(String sqlQuery);
@@ -89,7 +93,7 @@ public interface SpannerToBigQueryOptions
       optional = true,
       description = "Cloud Storage path to BigQuery JSON schema",
       helpText =
-          "The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is not set, or set to CREATE_IF_NEEDED, this parameter must be specified.",
+          "The Cloud Storage path (gs://) to the JSON file that defines your BigQuery schema.",
       example = "gs://your-bucket/your-schema.json")
   String getBigQuerySchemaPath();
 

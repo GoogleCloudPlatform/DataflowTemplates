@@ -19,15 +19,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **bigtableProject** : The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from. Defaults to job project.
-* **bigtableInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableTableId** : The ID of the Cloud Bigtable table to export.
-* **destinationPath** : Cloud Storage path where data should be written. (Example: gs://your-bucket/your-path/).
-* **filenamePrefix** : The prefix for each shard in destinationPath. (Example: output-). Defaults to: part.
+* **bigtableProject** : The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from.
+* **bigtableInstanceId** : The ID of the Bigtable instance that contains the table.
+* **bigtableTableId** : The ID of the Bigtable table to export.
+* **destinationPath** : The Cloud Storage path where data is written. (Example: gs://your-bucket/your-path/).
+* **filenamePrefix** : The prefix of the SequenceFile filename. (Example: output-).
 
 ### Optional parameters
 
-* **bigtableAppProfileId** : The ID of the Cloud Bigtable application profile to be used for the export.
+* **bigtableAppProfileId** : The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.
 * **bigtableStartRow** : The row where to start the export from, defaults to the first row.
 * **bigtableStopRow** : The row where to stop the export, defaults to the last row.
 * **bigtableMaxVersions** : Maximum number of cell versions. Defaults to: 2147483647.
@@ -116,7 +116,7 @@ export BIGTABLE_PROJECT=<bigtableProject>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 export DESTINATION_PATH=<destinationPath>
-export FILENAME_PREFIX=part
+export FILENAME_PREFIX=<filenamePrefix>
 
 ### Optional
 export BIGTABLE_APP_PROFILE_ID=<bigtableAppProfileId>
@@ -161,7 +161,7 @@ export BIGTABLE_PROJECT=<bigtableProject>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 export DESTINATION_PATH=<destinationPath>
-export FILENAME_PREFIX=part
+export FILENAME_PREFIX=<filenamePrefix>
 
 ### Optional
 export BIGTABLE_APP_PROFILE_ID=<bigtableAppProfileId>

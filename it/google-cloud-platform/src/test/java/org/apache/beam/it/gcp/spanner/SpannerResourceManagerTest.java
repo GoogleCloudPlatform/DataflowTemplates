@@ -185,9 +185,9 @@ public final class SpannerResourceManagerTest {
     String actualDatabaseId = databaseIdCaptor.getValue();
     Iterable<String> actualStatement = statementCaptor.getValue();
 
-    assertThat(actualInstanceId).matches(TEST_ID + "-\\d{8}-\\d{6}-\\d{6}");
+    assertThat(actualInstanceId).matches(TEST_ID + "-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}");
 
-    assertThat(actualDatabaseId).matches(TEST_ID + "_\\d{8}_\\d{6}_\\d{6}");
+    assertThat(actualDatabaseId).matches(TEST_ID + "_\\d{8}_\\d{6}_[a-zA-Z0-9]{6}");
     assertThat(actualStatement).containsExactlyElementsIn(ImmutableList.of(statement));
   }
 

@@ -65,6 +65,7 @@ follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/
     - [Synchronizing CDC data to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cdc_To_BigQuery_Template&type=code)
     - [Text Files on Cloud Storage to Pub/Sub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Stream_GCS_Text_to_Cloud_PubSub&type=code)
 - Process Data in Bulk (batch)
+    - [Any SourceDB to Cloud Spanner](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Sourcedb_To_Spanner&type=code)
     - [AstraDB to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20AstraDB_To_BigQuery&type=code)
     - [Avro Files on Cloud Storage to Cloud Bigtable](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_Avro_to_Cloud_Bigtable&type=code)
     - [Avro Files on Cloud Storage to Cloud Spanner](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_Avro_to_Cloud_Spanner&type=code)
@@ -141,4 +142,4 @@ To learn more about this process, or how you can stage your own changes, see [Re
   - [Tour of Beam](https://tour.beam.apache.org/) - an interactive tour with learning topics covering core Beam concepts from simple ones to more advanced ones.
   - [Beam Playground](https://beam.apache.org/get-started/try-beam-playground/) -  an interactive environment to try out Beam transforms and examples without having to install Apache Beam.
   - [Beam College](https://beamcollege.dev/) - hands-on training and practical tips, including video recordings of Apache Beam and Dataflow Templates lessons.
-  - [Getting Started with Apache Beam - Quest](https://www.cloudskillsboost.google/quests/310) - A 5 lab series that provides a Google Cloud certified badge upon completion.
+  - [Getting Started with Apache Beam - Quest](https://www.cloudskillsboost.google/course_templates/724) - A 5 lab series that provides a Google Cloud certified badge upon completion.

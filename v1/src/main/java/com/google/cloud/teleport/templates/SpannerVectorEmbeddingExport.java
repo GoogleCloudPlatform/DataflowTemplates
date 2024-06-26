@@ -87,60 +87,59 @@ public class SpannerVectorEmbeddingExport {
   public interface SpannerToVectorEmbeddingJsonOptions extends PipelineOptions {
     @TemplateParameter.ProjectId(
         order = 10,
+        groupName = "Source",
         description = "Cloud Spanner Project Id",
-        helpText = "The project ID of the Cloud Spanner instance.")
+        helpText = "The project ID of the Spanner instance.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);
 
     @TemplateParameter.Text(
         order = 20,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]*[a-z0-9]"},
         description = "Cloud Spanner instance ID",
-        helpText =
-            "The instance ID of the Cloud Spanner from which you want to export the vector embeddings.")
+        helpText = "The ID of the Spanner instance to export the vector embeddings from.")
     ValueProvider<String> getSpannerInstanceId();
 
     void setSpannerInstanceId(ValueProvider<String> spannerInstanceId);
 
     @TemplateParameter.Text(
         order = 30,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9_\\-]*[a-z0-9]"},
         description = "Cloud Spanner database ID",
-        helpText =
-            "The database ID of the Cloud Spanner from which you want to export the vector embeddings.")
+        helpText = "The ID of the Spanner database to export the vector embeddings from.")
     ValueProvider<String> getSpannerDatabaseId();
 
     void setSpannerDatabaseId(ValueProvider<String> spannerDatabaseId);
 
     @TemplateParameter.Text(
         order = 40,
+        groupName = "Source",
         regexes = {"^.+$"},
         description = "Spanner Table",
-        helpText = "Spanner Table to read from")
+        helpText = "The Spanner table to read from.")
     ValueProvider<String> getSpannerTable();
 
     void setSpannerTable(ValueProvider<String> table);
 
     @TemplateParameter.Text(
         order = 50,
+        groupName = "Source",
         description = "Columns to Export from Spanner Table",
         helpText =
-            "Comma separated list of columns which are required for Vertex AI Vector Search Index."
-                + " The `id` & `embedding` are required columns for Vertex Vector Search."
-                + " If the column names don't precisely align with the Vertex AI Vector Search Index input structure,"
-                + " you can establish column mappings using aliases. If you have the columns that don't match the"
-                + " format expected by Vertex, you can use the notation `from:to`. For example, if the columns are"
-                + " `id` and `my_embedding`, in which `id` matches what Vertex expects but the embedding column is named differently,"
-                + " `id, my_embedding:embedding` should be specified.")
+            "A comma-separated list of required columns for the Vertex AI Vector Search index. The ID and embedding columns are required by Vector Search. If your column names don't match the Vertex AI Vector Search index input structure, create column mappings by using aliases. If the column names don't match the format expected by Vertex AI, use the notation from:to. For example, if you have columns named id and my_embedding, specify id, my_embedding:embedding.")
     ValueProvider<String> getSpannerColumnsToExport();
 
     void setSpannerColumnsToExport(ValueProvider<String> value);
 
     @TemplateParameter.GcsWriteFolder(
         order = 60,
+        groupName = "Target",
         description = "Output files folder in Cloud Storage",
-        helpText = "The Cloud Storage folder for writing output files. Must end with a slash.",
+        helpText =
+            "The Cloud Storage folder to write output files to. The path must end with a slash.",
         example = "gs://your-bucket/folder1/")
     ValueProvider<String> getGcsOutputFolder();
 
@@ -148,6 +147,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 70,
+        groupName = "Target",
         description = "Output files prefix in Cloud Storage",
         helpText = "The filename prefix for writing output files.",
         example = "vector-embeddings")
@@ -157,10 +157,11 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 80,
+        groupName = "Source",
         optional = true,
         description = "Cloud Spanner Endpoint to call",
         helpText =
-            "The Cloud Spanner endpoint to call in the template. The default is set to https://batch-spanner.googleapis.com.",
+            "The Spanner endpoint to call in the template. The default value is https://batch-spanner.googleapis.com.",
         example = "https://batch-spanner.googleapis.com")
     @Default.String("https://batch-spanner.googleapis.com")
     ValueProvider<String> getSpannerHost();
@@ -169,18 +170,14 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Text(
         order = 90,
+        groupName = "Source",
         optional = true,
         regexes = {
           "^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):(([0-9]{2})(\\.[0-9]+)?)Z$"
         },
         description = "Timestamp to read stale data from a version in the past.",
         helpText =
-            "If set, specifies the time when the database version must be taken."
-                + " String is in the RFC 3339 format in UTC time. "
-                + " Timestamp must be in the past and maximum timestamp staleness applies; see "
-                + "<a href=\"https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness\">Maximum Timestamp Staleness</a>."
-                + " If not set, strong bound is used to read the latest data; see "
-                + "<a href=\"https://cloud.google.com/spanner/docs/timestamp-bounds#strong\">Timestamp Strong Bounds</a>.",
+            "If set, specifies the time when the database version must be taken. The value is a string in the RFC-3339 date format in Unix epoch time. For example: 1990-12-31T23:59:60Z. The timestamp must be in the past, and maximum timestamp staleness (https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness) applies. If not set, a strong bound (https://cloud.google.com/spanner/docs/timestamp-bounds#strong) is used to read the latest data. Defaults to empty.",
         example = "1990-12-31T23:59:60Z")
     @Default.String(value = "")
     ValueProvider<String> getSpannerVersionTime();
@@ -189,13 +186,11 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Boolean(
         order = 100,
+        groupName = "Source",
         optional = true,
         description = "Use independent compute resource (Spanner DataBoost).",
         helpText =
-            "Use Spanner on-demand compute so the export job will run on independent compute"
-                + " resources and have no impact to current Spanner workloads. This will incur"
-                + " additional charges in Spanner."
-                + " Refer <a href=\" https://cloud.google.com/spanner/docs/databoost/databoost-overview\">Data Boost Overview</a>.")
+            "When set to true, the template uses Spanner on-demand compute. The export job runs on independent compute resources that don't impact current Spanner workloads. Using this option incurs additional charges in Spanner. For more information, see Spanner Data Boost overview (https://cloud.google.com/spanner/docs/databoost/databoost-overview). Defaults to: false.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getSpannerDataBoostEnabled();
 
@@ -203,6 +198,7 @@ public class SpannerVectorEmbeddingExport {
 
     @TemplateParameter.Enum(
         order = 110,
+        groupName = "Source",
         enumOptions = {
           @TemplateEnumOption("LOW"),
           @TemplateEnumOption("MEDIUM"),
@@ -211,8 +207,7 @@ public class SpannerVectorEmbeddingExport {
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
-            "The request priority for Cloud Spanner calls. The value must be one of:"
-                + " [HIGH,MEDIUM,LOW]. Defaults to: MEDIUM.")
+            "The request priority for Spanner calls. The allowed values are HIGH, MEDIUM, and LOW. The default value is MEDIUM.")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);

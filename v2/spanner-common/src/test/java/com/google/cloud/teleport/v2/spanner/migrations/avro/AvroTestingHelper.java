@@ -15,53 +15,80 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.avro;
 
-import com.google.cloud.teleport.v2.utils.SchemaUtils;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 
 public class AvroTestingHelper {
-  public static final String TIMESTAMPTZ_SCHEMA_JSON =
-      "{\n"
-          + "  \"type\": \"record\",\n"
-          + "  \"name\": \"timestampTz\",\n"
-          + "  \"fields\": [\n"
-          + "    {\"name\": \"timestamp\",\n"
-          + "     \"type\": \"long\",\n"
-          + "     \"logicalType\": \"timestamp-micros\"},\n"
-          + "    {\"name\": \"offset\",\n"
-          + "     \"type\": \"int\",\n"
-          + "     \"logicalType\": \"time-millis\"}\n"
-          + "  ]\n"
-          + "}";
+  public static final Schema TIMESTAMPTZ_SCHEMA =
+      SchemaBuilder.record("timestampTz")
+          .fields()
+          .name("timestamp")
+          .type(LogicalTypes.timestampMicros().addToSchema(Schema.create(Schema.Type.LONG)))
+          .noDefault()
+          .name("offset")
+          .type(LogicalTypes.timeMillis().addToSchema(Schema.create(Schema.Type.INT)))
+          .noDefault()
+          .endRecord();
 
-  public static final String DATETIME_SCHEMA_JSON =
-      "{\n"
-          + "  \"type\": \"record\",\n"
-          + "  \"name\": \"datetime\",\n"
-          + "  \"fields\": [\n"
-          + "    {\"name\": \"date\",\n"
-          + "     \"type\": \"int\",\n"
-          + "     \"logicalType\": \"date\"},\n"
-          + "    {\"name\": \"time\",\n"
-          + "     \"type\": \"long\",\n"
-          + "     \"logicalType\": \"time-micros\"}\n"
-          + "  ]\n"
-          + "}";
+  public static final Schema DATETIME_SCHEMA =
+      SchemaBuilder.record("datetime")
+          .fields()
+          .name("date")
+          .type(LogicalTypes.date().addToSchema(Schema.create(Schema.Type.INT)))
+          .noDefault()
+          .name("time")
+          .type(LogicalTypes.timeMicros().addToSchema(Schema.create(Schema.Type.LONG)))
+          .noDefault()
+          .endRecord();
+
+  public static final Schema INTERVAL_SCHEMA =
+      SchemaBuilder.record("interval")
+          .fields()
+          .name("months")
+          .type()
+          .intType()
+          .noDefault()
+          .name("hours")
+          .type()
+          .intType()
+          .noDefault()
+          .name("micros")
+          .type()
+          .longType()
+          .noDefault()
+          .endRecord();
+
+  public static final Schema UNSUPPORTED_SCHEMA =
+      SchemaBuilder.record("unsupportedName")
+          .fields()
+          .name("abc")
+          .type()
+          .intType()
+          .noDefault()
+          .endRecord();
 
   public static GenericRecord createTimestampTzRecord(Long timestamp, Integer offset) {
-    Schema avroSchema = SchemaUtils.parseAvroSchema(TIMESTAMPTZ_SCHEMA_JSON);
-    GenericRecord genericRecord = new GenericData.Record(avroSchema);
+    GenericRecord genericRecord = new GenericData.Record(TIMESTAMPTZ_SCHEMA);
     genericRecord.put("timestamp", timestamp);
     genericRecord.put("offset", offset);
     return genericRecord;
   }
 
   public static GenericRecord createDatetimeRecord(Integer date, Long time) {
-    Schema avroSchema = SchemaUtils.parseAvroSchema(DATETIME_SCHEMA_JSON);
-    GenericRecord genericRecord = new GenericData.Record(avroSchema);
+    GenericRecord genericRecord = new GenericData.Record(DATETIME_SCHEMA);
     genericRecord.put("date", date);
     genericRecord.put("time", time);
+    return genericRecord;
+  }
+
+  public static GenericRecord createIntervalRecord(Integer months, Integer hours, Long micros) {
+    GenericRecord genericRecord = new GenericData.Record(INTERVAL_SCHEMA);
+    genericRecord.put("months", months);
+    genericRecord.put("hours", hours);
+    genericRecord.put("micros", micros);
     return genericRecord;
   }
 }

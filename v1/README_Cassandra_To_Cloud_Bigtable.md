@@ -23,18 +23,18 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **cassandraHosts** : Comma separated value list of hostnames or ips of the Cassandra nodes.
-* **cassandraKeyspace** : Cassandra Keyspace where the table to be migrated can be located.
-* **cassandraTable** : The name of the Cassandra table to Migrate.
-* **bigtableProjectId** : The Project ID where the target Bigtable Instance is running.
-* **bigtableInstanceId** : The target Bigtable Instance where you want to write the data.
-* **bigtableTableId** : The target Bigtable table where you want to write the data.
+* **cassandraHosts** : The hosts of the Apache Cassandra nodes in a comma-separated list.
+* **cassandraKeyspace** : The Apache Cassandra keyspace where the table is located.
+* **cassandraTable** : The Apache Cassandra table to copy.
+* **bigtableProjectId** : The Google Cloud project ID associated with the Bigtable instance.
+* **bigtableInstanceId** : The ID of the Bigtable instance that the Apache Cassandra table is copied to.
+* **bigtableTableId** : The name of the Bigtable table that the Apache Cassandra table is copied to.
 
 ### Optional parameters
 
-* **cassandraPort** : The port where cassandra can be reached. Defaults to 9042.
-* **defaultColumnFamily** : This specifies the default column family to write data into. If no columnFamilyMapping is specified all Columns will be written into this column family. Default value is "default".
-* **rowKeySeparator** : All primary key fields will be appended to form your Bigtable Row Key. The rowKeySeparator allows you to specify a character separator. Default separator is '#'.
+* **cassandraPort** : The TCP port to use to reach Apache Cassandra on the nodes. The default value is 9042.
+* **defaultColumnFamily** : The name of the column family of the Bigtable table. The default value is default.
+* **rowKeySeparator** : The separator used to build row-keys. The default value is '#'.
 * **splitLargeRows** : The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. .
 
 

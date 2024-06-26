@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.metadata.MultiTemplate;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -24,8 +25,10 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.PubSubToMongoDB.Options;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Strings;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
@@ -51,6 +54,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptors;
@@ -76,27 +80,60 @@ import org.slf4j.LoggerFactory;
  * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/pubsub-to-mongodb/README_Cloud_PubSub_to_MongoDB.md">README</a>
  * for instructions on how to use or modify this template.
  */
-@Template(
-    name = "Cloud_PubSub_to_MongoDB",
-    category = TemplateCategory.STREAMING,
-    displayName = "Pub/Sub to MongoDB",
-    description =
-        "The Pub/Sub to MongoDB template is a streaming pipeline that reads JSON-encoded messages from a Pub/Sub subscription and writes them to MongoDB as documents. "
-            + "If required, this pipeline supports additional transforms that can be included using a JavaScript user-defined function (UDF). "
-            + "Any errors occurred due to schema mismatch, malformed JSON, or while executing transforms are recorded in a BigQuery table for unprocessed messages along with input message. "
-            + "If a table for unprocessed records does not exist prior to execution, the pipeline automatically creates this table.",
-    optionsClass = Options.class,
-    flexContainerName = "pubsub-to-mongodb",
-    documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-mongodb",
-    contactInformation = "https://cloud.google.com/support",
-    preview = true,
-    requirements = {
-      "The Pub/Sub Subscription must exist and the messages must be encoded in a valid JSON format.",
-      "The MongoDB cluster must exist and should be accessible from the Dataflow worker machines."
-    },
-    streaming = true,
-    supportsAtLeastOnce = true)
+@MultiTemplate({
+  @Template(
+      name = "Cloud_PubSub_to_MongoDB",
+      category = TemplateCategory.STREAMING,
+      displayName = "Pub/Sub to MongoDB",
+      description =
+          "The Pub/Sub to MongoDB template is a streaming pipeline that reads JSON-encoded messages from a Pub/Sub subscription and writes them to MongoDB as documents. "
+              + "If required, this pipeline supports additional transforms that can be included using a JavaScript user-defined function (UDF). "
+              + "Any errors occurred due to schema mismatch, malformed JSON, or while executing transforms are recorded in a BigQuery table for unprocessed messages along with input message. "
+              + "If a table for unprocessed records does not exist prior to execution, the pipeline automatically creates this table.",
+      skipOptions = {
+        "pythonExternalTextTransformGcsPath",
+        "pythonExternalTextTransformFunctionName"
+      },
+      optionsClass = Options.class,
+      flexContainerName = "pubsub-to-mongodb",
+      documentation =
+          "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-mongodb",
+      contactInformation = "https://cloud.google.com/support",
+      preview = true,
+      requirements = {
+        "The Pub/Sub Subscription must exist and the messages must be encoded in a valid JSON format.",
+        "The MongoDB cluster must exist and should be accessible from the Dataflow worker machines."
+      },
+      streaming = true,
+      supportsAtLeastOnce = true),
+  @Template(
+      name = "Cloud_PubSub_to_MongoDB_Xlang",
+      category = TemplateCategory.STREAMING,
+      type = Template.TemplateType.XLANG,
+      displayName = "Pub/Sub to MongoDB with Python UDFs",
+      description =
+          "The Pub/Sub to MongoDB template is a streaming pipeline that reads JSON-encoded messages from a Pub/Sub subscription and writes them to MongoDB as documents. "
+              + "If required, this pipeline supports additional transforms that can be included using a Python user-defined function (UDF). "
+              + "Any errors occurred due to schema mismatch, malformed JSON, or while executing transforms are recorded in a BigQuery table for unprocessed messages along with input message. "
+              + "If a table for unprocessed records does not exist prior to execution, the pipeline automatically creates this table.",
+      skipOptions = {
+        "javascriptTextTransformGcsPath",
+        "javascriptTextTransformFunctionName",
+        "javascriptTextTransformReloadIntervalMinutes"
+      },
+      optionsClass = Options.class,
+      flexContainerName = "pubsub-to-mongodb-xlang",
+      documentation =
+          "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-mongodb",
+      contactInformation = "https://cloud.google.com/support",
+      preview = true,
+      requirements = {
+        "The Pub/Sub Subscription must exist and the messages must be encoded in a valid JSON format.",
+        "The MongoDB cluster must exist and should be accessible from the Dataflow worker machines."
+      },
+      streaming = true,
+      supportsAtLeastOnce = true)
+})
 public class PubSubToMongoDB {
   /**
    * Options supported by {@link PubSubToMongoDB}
@@ -128,16 +165,15 @@ public class PubSubToMongoDB {
    * command-line.
    *
    * <p>Inherits standard configuration options, options from {@link
-   * JavascriptTextTransformer.JavascriptTextTransformerOptions}.
+   * PythonExternalTextTransformer.PythonExternalTextTransformerOptions}.
    */
   public interface Options
-      extends JavascriptTextTransformer.JavascriptTextTransformerOptions, PipelineOptions {
+      extends PythonExternalTextTransformer.PythonExternalTextTransformerOptions, PipelineOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input subscription",
-        helpText =
-            "Pub/Sub subscription to read the input from, in the format of"
-                + " 'projects/your-project-id/subscriptions/your-subscription-name'",
+        helpText = "Name of the Pub/Sub subscription.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     @Validation.Required
     String getInputSubscription();
@@ -146,6 +182,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         description = "MongoDB Connection URI",
         helpText = "Comma separated list of MongoDB servers.",
         example = "host1:port,host2:port,host3:port")
@@ -156,6 +193,7 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Target",
         description = "MongoDB Database",
         helpText = "Database in MongoDB to store the collection.",
         example = "my-db")
@@ -166,8 +204,9 @@ public class PubSubToMongoDB {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         description = "MongoDB collection",
-        helpText = "Name of the collection inside MongoDB database to insert the documents.",
+        helpText = "Name of the collection in the MongoDB database.",
         example = "my-collection")
     @Validation.Required
     String getCollection();
@@ -178,9 +217,7 @@ public class PubSubToMongoDB {
         order = 5,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
-                + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
-                + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
+            "The BigQuery table that stores messages caused by failures, such as mismatched schema, malformed JSON, and so on.",
         example = "your-project-id:your-dataset.your-table-name")
     @Validation.Required
     String getDeadletterTable();
@@ -191,7 +228,7 @@ public class PubSubToMongoDB {
         order = 6,
         optional = true,
         description = "Batch Size",
-        helpText = "Batch Size used for batch insertion of documents into MongoDB.")
+        helpText = "Batch size used for batch insertion of documents into MongoDB.")
     @Default.Long(1000)
     Long getBatchSize();
 
@@ -201,7 +238,7 @@ public class PubSubToMongoDB {
         order = 7,
         optional = true,
         description = "Batch Size in Bytes",
-        helpText = "Batch Size in bytes used for batch insertion of documents into MongoDB.")
+        helpText = "Batch size in bytes.")
     @Default.Long(5242880)
     Long getBatchSizeBytes();
 
@@ -221,7 +258,7 @@ public class PubSubToMongoDB {
         order = 9,
         optional = true,
         description = "SSL Enabled",
-        helpText = "Indicates whether connection to MongoDB is ssl enabled.")
+        helpText = "Boolean value indicating whether the connection to MongoDB is SSL enabled.")
     @Default.Boolean(true)
     Boolean getSslEnabled();
 
@@ -231,7 +268,7 @@ public class PubSubToMongoDB {
         order = 10,
         optional = true,
         description = "Ignore SSL Certificate",
-        helpText = "Indicates whether SSL certificate should be ignored.")
+        helpText = "Boolean value indicating whether to ignore the SSL certificate.")
     @Default.Boolean(true)
     Boolean getIgnoreSSLCertificate();
 
@@ -241,7 +278,7 @@ public class PubSubToMongoDB {
         order = 11,
         optional = true,
         description = "withOrdered",
-        helpText = "Enables ordered bulk insertions into MongoDB.")
+        helpText = "Boolean value enabling ordered bulk insertions into MongoDB.")
     @Default.Boolean(true)
     Boolean getWithOrdered();
 
@@ -251,7 +288,8 @@ public class PubSubToMongoDB {
         order = 12,
         optional = true,
         description = "withSSLInvalidHostNameAllowed",
-        helpText = "Indicates whether invalid host name is allowed for ssl connection.")
+        helpText =
+            "Boolean value indicating whether an invalid hostname is allowed for the SSL connection.")
     @Default.Boolean(true)
     Boolean getWithSSLInvalidHostNameAllowed();
 
@@ -299,37 +337,64 @@ public class PubSubToMongoDB {
 
     coderRegistry.registerCoderForType(CODER.getEncodedTypeDescriptor(), CODER);
 
+    boolean usePythonUdf = !Strings.isNullOrEmpty(options.getPythonExternalTextTransformGcsPath());
+    boolean useJavascriptUdf = !Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath());
+
+    if (usePythonUdf && useJavascriptUdf) {
+      throw new IllegalArgumentException(
+          "Either javascript or Python gcs path must be provided, but not both.");
+    }
     /*
      * Steps: 1) Read PubSubMessage with attributes from input PubSub subscription.
-     *        2) Apply Javascript UDF if provided.
+     *        2) Apply Javascript or Python UDF if provided.
      *        3) Write to MongoDB
      *
      */
 
     LOG.info("Reading from subscription: " + options.getInputSubscription());
 
-    PCollectionTuple convertedPubsubMessages =
+    PCollection<PubsubMessage> readMessagesFromPubsub =
         pipeline
             /*
              * Step #1: Read from a PubSub subscription.
              */
             .apply(
-                "Read PubSub Subscription",
-                PubsubIO.readMessagesWithAttributes()
-                    .fromSubscription(options.getInputSubscription()))
-            /*
-             * Step #2: Apply Javascript Transform and transform, if provided and transform
-             *          the PubsubMessages into Json documents.
-             */
-            .apply(
-                "Apply Javascript UDF",
-                PubSubMessageToJsonDocument.newBuilder()
-                    .setJavascriptTextTransformFunctionName(
-                        options.getJavascriptTextTransformFunctionName())
-                    .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
-                    .setJavascriptTextTransformReloadIntervalMinutes(
-                        options.getJavascriptTextTransformReloadIntervalMinutes())
-                    .build());
+            "Read PubSub Subscription",
+            PubsubIO.readMessagesWithAttributes().fromSubscription(options.getInputSubscription()));
+
+    PCollectionTuple convertedPubsubMessages;
+    if (usePythonUdf) {
+      convertedPubsubMessages =
+          readMessagesFromPubsub
+              /*
+               * Step #2: Apply Python Transform and transform, if provided and transform
+               *          the PubsubMessages into Json documents.
+               */
+              .apply(
+              "Apply Python UDF",
+              PubSubMessageToJsonDocument.newBuilder()
+                  .setPythonExternalTextTransformFunctionName(
+                      options.getPythonExternalTextTransformFunctionName())
+                  .setPythonExternalTextTransformGcsPath(
+                      options.getPythonExternalTextTransformGcsPath())
+                  .build());
+    } else {
+      convertedPubsubMessages =
+          readMessagesFromPubsub
+              /*
+               * Step #2: Apply Javascript Transform and transform, if provided and transform
+               *          the PubsubMessages into Json documents.
+               */
+              .apply(
+              "Apply Javascript UDF",
+              PubSubMessageToJsonDocument.newBuilder()
+                  .setJavascriptTextTransformFunctionName(
+                      options.getJavascriptTextTransformFunctionName())
+                  .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
+                  .setJavascriptTextTransformReloadIntervalMinutes(
+                      options.getJavascriptTextTransformReloadIntervalMinutes())
+                  .build());
+    }
 
     /*
      * Step #3a: Write Json documents into MongoDB using {@link MongoDbIO.write}.
@@ -409,11 +474,44 @@ public class PubSubToMongoDB {
     public abstract String javascriptTextTransformFunctionName();
 
     @Nullable
+    public abstract String pythonExternalTextTransformGcsPath();
+
+    @Nullable
+    public abstract String pythonExternalTextTransformFunctionName();
+
+    @Nullable
     public abstract Integer javascriptTextTransformReloadIntervalMinutes();
 
     @Override
     public PCollectionTuple expand(PCollection<PubsubMessage> input) {
 
+      // Check for python UDF first. If the pipeline is not using Python UDF, proceed as normal.
+      if (pythonExternalTextTransformGcsPath() != null) {
+        PCollection<Row> failsafeElements =
+            input
+                // Map the incoming messages into FailsafeElements, so we can recover from failures
+                // across multiple transforms.
+                .apply(
+                    "MapToRecord",
+                    PythonExternalTextTransformer.FailsafeRowPythonExternalUdf
+                        .pubSubMappingFunction())
+                .setRowSchema(
+                    PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.ROW_SCHEMA);
+        return failsafeElements
+            .apply(
+                "InvokeUDF",
+                PythonExternalTextTransformer.FailsafePythonExternalUdf.newBuilder()
+                    .setFileSystemPath(pythonExternalTextTransformGcsPath())
+                    .setFunctionName(pythonExternalTextTransformFunctionName())
+                    .build())
+            .apply(
+                "MapRowsToFailsafeElements",
+                ParDo.of(
+                        new PythonExternalTextTransformer.RowToPubSubFailsafeElementFn(
+                            TRANSFORM_OUT, TRANSFORM_DEADLETTER_OUT))
+                    .withOutputTags(TRANSFORM_OUT, TupleTagList.of(TRANSFORM_DEADLETTER_OUT)));
+      }
+      // If we don't have Python UDF, we proceed as normal checking for Javascript UDF.
       // Map the incoming messages into FailsafeElements so we can recover from failures
       // across multiple transforms.
       PCollection<FailsafeElement<PubsubMessage, String>> failsafeElements =
@@ -446,6 +544,12 @@ public class PubSubToMongoDB {
 
       public abstract Builder setJavascriptTextTransformFunctionName(
           String javascriptTextTransformFunctionName);
+
+      public abstract Builder setPythonExternalTextTransformGcsPath(
+          String pythonExternalTextTransformGcsPath);
+
+      public abstract Builder setPythonExternalTextTransformFunctionName(
+          String pythonExternalTextTransformFunctionName);
 
       public abstract Builder setJavascriptTextTransformReloadIntervalMinutes(
           Integer javascriptTextTransformReloadIntervalMinutes);

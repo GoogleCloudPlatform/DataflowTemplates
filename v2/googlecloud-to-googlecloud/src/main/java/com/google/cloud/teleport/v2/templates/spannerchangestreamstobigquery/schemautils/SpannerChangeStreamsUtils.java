@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.json.JSONObject;
@@ -197,6 +198,14 @@ public class SpannerChangeStreamsUtils {
                 pkOrdinalPosition);
         result.get(tableName).add(spannerColumn);
       }
+    } catch (Exception e) {
+      String errorMessage =
+          String.format(
+              "Caught exception when constructing SpannerColumn for each column tracked by change"
+                  + " stream %s, message: %s, cause: %s",
+              changeStreamName, Optional.ofNullable(e.getMessage()), e.getCause());
+      LOG.error(errorMessage);
+      throw new RuntimeException(errorMessage, e);
     }
 
     return result;
@@ -262,6 +271,14 @@ public class SpannerChangeStreamsUtils {
           result.get(tableName).put(columnName, ordinalPosition);
         }
       }
+    } catch (Exception e) {
+      String errorMessage =
+          String.format(
+              "Caught exception when getting key columns names of tables tracked change stream %s,"
+                  + " message: %s, cause: %s",
+              changeStreamName, Optional.ofNullable(e.getMessage()), e.getCause());
+      LOG.error(errorMessage);
+      throw new RuntimeException(errorMessage, e);
     }
 
     return result;
@@ -308,6 +325,14 @@ public class SpannerChangeStreamsUtils {
       while (resultSet.next()) {
         result.add(resultSet.getString(informationSchemaTableName()));
       }
+    } catch (Exception e) {
+      String errorMessage =
+          String.format(
+              "Caught exception when reading table names tracked by change stream %s,"
+                  + " message: %s, cause: %s",
+              changeStreamName, Optional.ofNullable(e.getMessage()), e.getCause());
+      LOG.error(errorMessage);
+      throw new RuntimeException(errorMessage, e);
     }
 
     return result;
@@ -343,6 +368,14 @@ public class SpannerChangeStreamsUtils {
           result = resultSet.getBoolean(informationSchemaAll());
         }
       }
+    } catch (Exception e) {
+      String errorMessage =
+          String.format(
+              "Caught exception when reading change stream %s is tracking FOR ALL, message: %s,"
+                  + " cause: %s",
+              changeStreamName, Optional.ofNullable(e.getMessage()), e.getCause());
+      LOG.error(errorMessage);
+      throw new RuntimeException(errorMessage, e);
     }
 
     if (result == null) {
@@ -385,6 +418,14 @@ public class SpannerChangeStreamsUtils {
         result.putIfAbsent(tableName, new HashSet<>());
         result.get(tableName).add(columnName);
       }
+    } catch (Exception e) {
+      String errorMessage =
+          String.format(
+              "Caught exception when reading column names tracked by change"
+                  + " stream %s, message: %s, cause: %s",
+              changeStreamName, Optional.ofNullable(e.getMessage()), e.getCause());
+      LOG.error(errorMessage);
+      throw new RuntimeException(errorMessage, e);
     }
 
     return result;

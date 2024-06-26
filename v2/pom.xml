@@ -356,6 +356,13 @@
                     <!-- <compilerArgument>-parameters</compilerArgument> -->
                     <parameters>true</parameters>
                     <testCompilerArgument>-parameters</testCompilerArgument>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.google.auto.value</groupId>
+                            <artifactId>auto-value</artifactId>
+                            <version>${autovalue.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
@@ -701,6 +708,7 @@
         <module>kafka-common</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
+        <module>kafka-to-kafka</module>
         <module>kafka-to-pubsub</module>
         <module>kinesis-to-pubsub</module>
         <module>kudu-to-bigquery</module>
@@ -722,6 +730,6 @@
         <module>spanner-migrations-sdk</module>
         <module>sqlserver-to-googlecloud</module>
         <module>streaming-data-generator</module>
- </modules>
+    </modules>
 
 </project>

@@ -595,6 +595,18 @@ public class DdlToAvroSchemaConverterTest {
             .column("arr_json_field")
             .type(Type.array(Type.json()))
             .endColumn()
+            .column("proto_field")
+            .type(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage"))
+            .endColumn()
+            .column("arr_proto_field")
+            .type(Type.array(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage")))
+            .endColumn()
+            .column("enum_field")
+            .type(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum"))
+            .endColumn()
+            .column("arr_enum_field")
+            .type(Type.array(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum")))
+            .endColumn()
             .primaryKey()
             .asc("bool_field")
             .end()
@@ -613,7 +625,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(18));
+    assertThat(fields, hasSize(22));
 
     assertThat(fields.get(0).name(), equalTo("bool_field"));
     assertThat(fields.get(0).schema(), equalTo(nullableUnion(Schema.Type.BOOLEAN)));
@@ -686,6 +698,30 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(17).name(), equalTo("arr_json_field"));
     assertThat(fields.get(17).schema(), equalTo(nullableArray(Schema.Type.STRING)));
     assertThat(fields.get(17).getProp(SQL_TYPE), equalTo("ARRAY<JSON>"));
+
+    assertThat(fields.get(18).name(), equalTo("proto_field"));
+    assertThat(fields.get(18).schema(), equalTo(nullableUnion(Schema.Type.BYTES)));
+    assertThat(
+        fields.get(18).getProp(SQL_TYPE),
+        equalTo("PROTO<com.google.cloud.teleport.spanner.tests.TestMessage>"));
+
+    assertThat(fields.get(19).name(), equalTo("arr_proto_field"));
+    assertThat(fields.get(19).schema(), equalTo(nullableArray(Schema.Type.BYTES)));
+    assertThat(
+        fields.get(19).getProp(SQL_TYPE),
+        equalTo("ARRAY<PROTO<com.google.cloud.teleport.spanner.tests.TestMessage>>"));
+
+    assertThat(fields.get(20).name(), equalTo("enum_field"));
+    assertThat(fields.get(20).schema(), equalTo(nullableUnion(Schema.Type.LONG)));
+    assertThat(
+        fields.get(20).getProp(SQL_TYPE),
+        equalTo("ENUM<com.google.cloud.teleport.spanner.tests.TestEnum>"));
+
+    assertThat(fields.get(21).name(), equalTo("arr_enum_field"));
+    assertThat(fields.get(21).schema(), equalTo(nullableArray(Schema.Type.LONG)));
+    assertThat(
+        fields.get(21).getProp(SQL_TYPE),
+        equalTo("ARRAY<ENUM<com.google.cloud.teleport.spanner.tests.TestEnum>>"));
 
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("`bool_field` ASC"));
     assertThat(avroSchema.getProp(SPANNER_PARENT), equalTo("ParentTable"));

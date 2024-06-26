@@ -39,12 +39,12 @@ import org.apache.beam.sdk.values.TupleTag;
  */
 @AutoValue
 abstract class AccumulatingTableReader extends PTransform<PBegin, PCollectionTuple> {
-  abstract ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
+  public abstract ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
       tableTransforms();
 
-  abstract TupleTag<SourceRow> sourceRowTag();
+  public abstract TupleTag<SourceRow> sourceRowTag();
 
-  abstract TupleTag<SourceTableReference> sourceTableReferenceTag();
+  public abstract TupleTag<SourceTableReference> sourceTableReferenceTag();
 
   @Override
   public PCollectionTuple expand(PBegin input) {

@@ -18,53 +18,33 @@ package flags
 
 import (
 	"flag"
-	"fmt"
-	"log"
-	"regexp"
 	"strings"
+)
+
+const (
+	ALL     = "ALL"
+	SPANNER = "SPANNER"
 )
 
 // Avoid making these vars public.
 var (
-	changedFiles string
+	modulesToBuild string
+	moduleMap      = map[string]string{ALL: "", SPANNER: "v2/datastream-to-spanner/,v2/spanner-change-streams-to-sharded-file-sink/,v2/gcs-to-sourcedb/,v2/sourcedb-to-spanner/,v2/spanner-custom-shard,plugins/templates-maven-plugin"}
 )
 
 // Registers all common flags. Must be called before flag.Parse().
 func RegisterCommonFlags() {
-	flag.StringVar(&changedFiles, "changed-files", "", "List of changed files as a comma-separated string")
+	flag.StringVar(&modulesToBuild, "modules-to-build", ALL, "List of modules to build/run commands against")
 }
 
-// Returns all changed files with regexes. If no regexes are passed, all files are returned. If even one
-// is passed, then only file paths with a match anywhere in the file will be returned. If multiple are
-// passed, it is equivalent to (regex1|regex2|...|regexN)
-func ChangedFiles(regexes ...string) []string {
-	if len(changedFiles) == 0 {
-		log.Println("WARNING: No changed files were passed. This could indicate an error.")
+// Returns all modules to build.
+func ModulesToBuild() []string {
+	m := modulesToBuild
+	if val, ok := moduleMap[modulesToBuild]; ok {
+		m = val
+	}
+	if len(m) == 0 {
 		return make([]string, 0)
 	}
-
-	files := strings.Split(changedFiles, ",")
-	if len(regexes) == 0 {
-		return files
-	}
-
-	var fullRegex string
-	if len(regexes) == 1 {
-		fullRegex = regexes[0]
-	} else {
-		fullRegex = fmt.Sprintf("(%s)", strings.Join(regexes, "|"))
-	}
-	re := regexp.MustCompile(fullRegex)
-
-	results := make([]string, 0)
-	for _, f := range files {
-		if re.MatchString(f) {
-			results = append(results, f)
-		}
-	}
-
-	if len(results) == 0 {
-		log.Println("INFO: All changed files got filtered out.")
-	}
-	return results
+	return strings.Split(m, ",")
 }

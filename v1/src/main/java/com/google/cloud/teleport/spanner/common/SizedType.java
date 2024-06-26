@@ -49,6 +49,18 @@ public final class SizedType {
   }
 
   public static String typeString(Type type, Integer size) {
+    return typeString(type, size, /* outputAsDdlRepresentation= */ false);
+  }
+
+  /**
+   * @param type spanner type to be written as string
+   * @param size Size of type (Used for string/bytes types)
+   * @param outputAsDdlRepresentation Whether the typeString output should be a type's ddl
+   *     representation or cloud spanner model. (Used for proto/enum types where the model
+   *     representation uses PROTO and ENUM keywords while ddl doesn't.)
+   * @return The string representation of spanner type
+   */
+  public static String typeString(Type type, Integer size, boolean outputAsDdlRepresentation) {
     switch (type.getCode()) {
       case BOOL:
         return "BOOL";
@@ -94,10 +106,22 @@ public final class SizedType {
         return "JSON";
       case PG_JSONB:
         return "jsonb";
+      case PROTO:
+        if (outputAsDdlRepresentation) {
+          return type.getProtoTypeFqn();
+        } else {
+          return "PROTO<" + type.getProtoTypeFqn() + ">";
+        }
+      case ENUM:
+        if (outputAsDdlRepresentation) {
+          return type.getProtoTypeFqn();
+        } else {
+          return "ENUM<" + type.getProtoTypeFqn() + ">";
+        }
       case ARRAY:
         {
           Type arrayType = type.getArrayElementType();
-          return "ARRAY<" + typeString(arrayType, size) + ">";
+          return "ARRAY<" + typeString(arrayType, size, outputAsDdlRepresentation) + ">";
         }
       case STRUCT:
         {
@@ -107,7 +131,7 @@ public final class SizedType {
             sb.append(i > 0 ? ", " : "")
                 .append(field.getName())
                 .append(" ")
-                .append(typeString(field.getType(), -1));
+                .append(typeString(field.getType(), -1, outputAsDdlRepresentation));
           }
           return "STRUCT<" + sb.toString() + ">";
         }
@@ -121,15 +145,21 @@ public final class SizedType {
     throw new IllegalArgumentException("Unknown type " + type);
   }
 
-  public static String typeString(Type type, Integer size, int arrayLength) {
+  public static String typeString(
+      Type type, Integer size, int arrayLength, boolean outputAsDdlRepresentation) {
     switch (type.getCode()) {
       case ARRAY:
         {
-          return typeString(type, size) + "(vector_length=>" + Integer.toString(arrayLength) + ")";
+          return typeString(type, size, outputAsDdlRepresentation)
+              + "(vector_length=>"
+              + Integer.toString(arrayLength)
+              + ")";
         }
       case PG_ARRAY:
         {
-          return typeString(type, size) + " vector length " + Integer.toString(arrayLength);
+          return typeString(type, size, outputAsDdlRepresentation)
+              + " vector length "
+              + Integer.toString(arrayLength);
         }
     }
     throw new IllegalArgumentException("arrayLength not supported for " + type);
@@ -196,6 +226,16 @@ public final class SizedType {
             String spannerArrayType = spannerType.substring(6, spannerType.length() - 1);
             SizedType itemType = parseSpannerType(spannerArrayType, dialect);
             return t(Type.array(itemType.type), itemType.size);
+          }
+          if (spannerType.startsWith("PROTO<")) {
+            // Substring "PROTO<xxx>"
+            String spannerProtoType = spannerType.substring(6, spannerType.length() - 1);
+            return t(Type.proto(spannerProtoType), null);
+          }
+          if (spannerType.startsWith("ENUM<")) {
+            // Substring "ENUM<xxx>"
+            String spannerEnumType = spannerType.substring(5, spannerType.length() - 1);
+            return t(Type.protoEnum(spannerEnumType), null);
           }
           if (spannerType.startsWith("STRUCT<")) {
             // Substring "STRUCT<xxx>"

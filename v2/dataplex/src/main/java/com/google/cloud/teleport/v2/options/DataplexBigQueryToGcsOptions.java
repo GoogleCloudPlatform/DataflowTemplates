@@ -39,6 +39,7 @@ public interface DataplexBigQueryToGcsOptions
   @TemplateParameter.Text(
       order = 1,
       optional = false,
+      groupName = "Source",
       regexes = {
         "^(projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/assets\\/[^\\n\\r\\/]+|projects\\/[^\\n\\r\\/]+\\/datasets\\/[^\\n\\r\\/]+)$"
       },
@@ -54,6 +55,7 @@ public interface DataplexBigQueryToGcsOptions
       order = 2,
       optional = true,
       regexes = {"^[a-zA-Z0-9_-]+(,[a-zA-Z0-9_-]+)*$"},
+      groupName = "Source",
       description = "Source BigQuery tables to tier.",
       helpText =
           "A comma-separated list of BigQuery tables to tier. If none specified, all tables will be tiered. Tables should be specified by their name only (no project/dataset prefix). Case-sensitive!")
@@ -67,6 +69,7 @@ public interface DataplexBigQueryToGcsOptions
       regexes = {
         "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/assets\\/[^\\n\\r\\/]+$"
       },
+      groupName = "Target",
       description = "Dataplex asset name for the destination Cloud Storage bucket.",
       helpText =
           "Dataplex asset name for the Cloud Storage bucket to tier data to. Format: projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset name>.")

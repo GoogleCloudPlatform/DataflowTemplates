@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -36,7 +37,6 @@ import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -50,27 +50,38 @@ public class SpannerToTextIT extends TemplateTestBase {
 
   private static final int MESSAGES_COUNT = 100;
 
-  private SpannerResourceManager googleSqlResourceManager;
-  private SpannerResourceManager postgresResourceManager;
-
-  @Before
-  public void setup() throws IOException {
-    // Set up resource managers
-    googleSqlResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
-    postgresResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
-            .maybeUseStaticInstance()
-            .build();
-  }
+  private SpannerResourceManager spannerResourceManager;
 
   @After
   public void teardown() {
-    ResourceManagerUtils.cleanResources(googleSqlResourceManager, postgresResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager);
   }
 
   @Test
   public void testSpannerToGCSText() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
+            .maybeUseStaticInstance()
+            .build();
+    testSpannerToGCSTextBase(Function.identity());
+  }
+
+  @Test
+  public void testSpannerToGCSTextStaging() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
+            .maybeUseStaticInstance()
+            .maybeUseCustomHost()
+            .build();
+    testSpannerToGCSTextBase(
+        paramAdder ->
+            paramAdder.addParameter("spannerHost", spannerResourceManager.getSpannerHost()));
+  }
+
+  private void testSpannerToGCSTextBase(
+      Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
+          paramsAdder)
+      throws IOException {
     // Arrange
     String createTableStatement =
         String.format(
@@ -80,17 +91,18 @@ public class SpannerToTextIT extends TemplateTestBase {
                 + "  LastName String(1024),\n"
                 + ") PRIMARY KEY(Id)",
             testName);
-    googleSqlResourceManager.executeDdlStatement(createTableStatement);
+    spannerResourceManager.executeDdlStatement(createTableStatement);
     List<Mutation> expectedData = generateTableRows(String.format("%s", testName));
-    googleSqlResourceManager.write(expectedData);
+    spannerResourceManager.write(expectedData);
 
     PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(testName, specPath)
-            .addParameter("spannerProjectId", PROJECT)
-            .addParameter("spannerInstanceId", googleSqlResourceManager.getInstanceId())
-            .addParameter("spannerDatabaseId", googleSqlResourceManager.getDatabaseId())
-            .addParameter("spannerTable", testName)
-            .addParameter("textWritePrefix", getGcsPath("output/" + testName));
+        paramsAdder.apply(
+            PipelineLauncher.LaunchConfig.builder(testName, specPath)
+                .addParameter("spannerProjectId", PROJECT)
+                .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
+                .addParameter("spannerDatabaseId", spannerResourceManager.getDatabaseId())
+                .addParameter("spannerTable", testName)
+                .addParameter("textWritePrefix", getGcsPath("output/" + testName)));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
@@ -130,6 +142,29 @@ public class SpannerToTextIT extends TemplateTestBase {
 
   @Test
   public void testPostgresSpannerToGCSText() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
+            .maybeUseStaticInstance()
+            .build();
+    testPostgresSpannerToGCSTextBase(Function.identity());
+  }
+
+  @Test
+  public void testPostgresSpannerToGCSTextStaging() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
+            .maybeUseStaticInstance()
+            .maybeUseCustomHost()
+            .build();
+    testPostgresSpannerToGCSTextBase(
+        paramAdder ->
+            paramAdder.addParameter("spannerHost", spannerResourceManager.getSpannerHost()));
+  }
+
+  private void testPostgresSpannerToGCSTextBase(
+      Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
+          paramsAdder)
+      throws IOException {
     // Arrange
     String createTableStatement =
         String.format(
@@ -139,17 +174,18 @@ public class SpannerToTextIT extends TemplateTestBase {
                 + "  \"LastName\" character varying(256),\n"
                 + " PRIMARY KEY(\"Id\"))",
             testName);
-    postgresResourceManager.executeDdlStatement(createTableStatement);
+    spannerResourceManager.executeDdlStatement(createTableStatement);
     List<Mutation> expectedData = generateTableRows(String.format("%s", testName));
-    postgresResourceManager.write(expectedData);
+    spannerResourceManager.write(expectedData);
 
     PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(testName, specPath)
-            .addParameter("spannerProjectId", PROJECT)
-            .addParameter("spannerInstanceId", postgresResourceManager.getInstanceId())
-            .addParameter("spannerDatabaseId", postgresResourceManager.getDatabaseId())
-            .addParameter("spannerTable", testName)
-            .addParameter("textWritePrefix", getGcsPath("output/" + testName));
+        paramsAdder.apply(
+            PipelineLauncher.LaunchConfig.builder(testName, specPath)
+                .addParameter("spannerProjectId", PROJECT)
+                .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
+                .addParameter("spannerDatabaseId", spannerResourceManager.getDatabaseId())
+                .addParameter("spannerTable", testName)
+                .addParameter("textWritePrefix", getGcsPath("output/" + testName)));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

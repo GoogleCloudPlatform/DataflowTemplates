@@ -277,9 +277,20 @@ public final class Type implements Serializable {
     return new Type(Code.STRUCT, null, ImmutableList.copyOf(fields));
   }
 
+  /** Returns a descriptor for a {@code PROTO} type. */
+  public static Type proto(String protoTypeFqn) {
+    return new Type(Code.PROTO, null, null, protoTypeFqn);
+  }
+
+  /** Returns a descriptor for a {@code PROTO} type. */
+  public static Type protoEnum(String enumTypeFqn) {
+    return new Type(Code.ENUM, null, null, enumTypeFqn);
+  }
+
   private final Code code;
   private final Type arrayElementType;
   private final ImmutableList<StructField> structFields;
+  private final String protoTypeFqn;
 
   /**
    * Map of field name to field index. Ambiguous names are indexed to {@link #AMBIGUOUS_FIELD}. The
@@ -290,10 +301,19 @@ public final class Type implements Serializable {
   private Type(
       Code code,
       @Nullable Type arrayElementType,
-      @Nullable ImmutableList<StructField> structFields) {
+      @Nullable ImmutableList<StructField> structFields,
+      @Nullable String protoTypeFqn) {
     this.code = code;
     this.arrayElementType = arrayElementType;
     this.structFields = structFields;
+    this.protoTypeFqn = protoTypeFqn;
+  }
+
+  private Type(
+      Code code,
+      @Nullable Type arrayElementType,
+      @Nullable ImmutableList<StructField> structFields) {
+    this(code, arrayElementType, structFields, null);
   }
 
   /** Enumerates the categories of types. */
@@ -310,6 +330,8 @@ public final class Type implements Serializable {
     DATE("DATE", Dialect.GOOGLE_STANDARD_SQL),
     ARRAY("ARRAY", Dialect.GOOGLE_STANDARD_SQL),
     STRUCT("STRUCT", Dialect.GOOGLE_STANDARD_SQL),
+    PROTO("PROTO", Dialect.GOOGLE_STANDARD_SQL),
+    ENUM("ENUM", Dialect.GOOGLE_STANDARD_SQL),
     PG_BOOL("boolean", Dialect.POSTGRESQL),
     PG_INT8("bigint", Dialect.POSTGRESQL),
     PG_FLOAT4("real", Dialect.POSTGRESQL),
@@ -410,6 +432,12 @@ public final class Type implements Serializable {
     return structFields;
   }
 
+  public String getProtoTypeFqn() {
+    Preconditions.checkState(
+        code == Code.PROTO || code == Code.ENUM, "Illegal call for non-PROTO/ENUM type");
+    return protoTypeFqn;
+  }
+
   /**
    * Returns the index of the field named {@code fieldName} in this {@code STRUCT} type.
    *
@@ -466,6 +494,14 @@ public final class Type implements Serializable {
         f.getType().toString(b);
       }
       b.append('>');
+    } else if (code == Code.PROTO) {
+      b.append("PROTO<");
+      b.append(protoTypeFqn);
+      b.append(">");
+    } else if (code == Code.ENUM) {
+      b.append("ENUM<");
+      b.append(protoTypeFqn);
+      b.append(">");
     } else {
       b.append(code.toString());
     }

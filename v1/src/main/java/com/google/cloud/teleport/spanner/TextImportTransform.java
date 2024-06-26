@@ -477,6 +477,10 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         return Code.NUMERIC;
       } else if (columnType.equalsIgnoreCase("JSON") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.JSON;
+      } else if (columnType.startsWith("PROTO") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
+        return Code.PROTO;
+      } else if (columnType.startsWith("ENUM") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
+        return Code.ENUM;
       } else if (columnType.equalsIgnoreCase("bigint") && dialect == Dialect.POSTGRESQL) {
         return Code.PG_INT8;
       } else if (columnType.equalsIgnoreCase("real") && dialect == Dialect.POSTGRESQL) {

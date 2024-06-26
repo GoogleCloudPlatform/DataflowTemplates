@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -28,11 +29,14 @@ import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base class for DataStreamToSpanner integration tests. It provides helper functions related to
@@ -42,6 +46,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
   // Format of avro file path in GCS - {table}/2023/12/20/06/57/{fileName}
   public static final String DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS = "%s/2023/12/20/06/57/%s";
+  private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerITBase.class);
 
   public PubsubResourceManager setUpPubSubResourceManager() throws IOException {
     return PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
@@ -162,7 +167,8 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       String gcsPathPrefix,
       SpannerResourceManager spannerResourceManager,
       PubsubResourceManager pubsubResourceManager,
-      Map<String, String> jobParameters)
+      Map<String, String> jobParameters,
+      CustomTransformation customTransformation)
       throws IOException {
 
     if (sessionFileResourceName != null) {
@@ -217,6 +223,13 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
           getGcsPath(gcsPathPrefix + "/transformationContext.json"));
     }
 
+    if (customTransformation != null) {
+      params.put(
+          "transformationJarPath",
+          getGcsPath(gcsPathPrefix + "/" + customTransformation.jarPath()));
+      params.put("transformationClassName", customTransformation.classPath());
+    }
+
     // overridden parameters
     if (jobParameters != null) {
       for (Entry<String, String> entry : jobParameters.entrySet()) {
@@ -235,5 +248,22 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     assertThatPipeline(jobInfo).isRunning();
 
     return jobInfo;
+  }
+
+  public void createAndUploadJarToGcs(String gcsPathPrefix)
+      throws IOException, InterruptedException {
+    String[] shellCommand = {"/bin/bash", "-c", "cd ../spanner-custom-shard"};
+
+    Process exec = Runtime.getRuntime().exec(shellCommand);
+
+    IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
+    IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
+
+    if (exec.waitFor() != 0) {
+      throw new RuntimeException("Error staging template, check Maven logs.");
+    }
+    gcsClient.uploadArtifact(
+        gcsPathPrefix + "/customTransformation.jar",
+        "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
   }
 }

@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# For running the script, see go/templates-gitactions-script
+# For running the script, see
+# https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/maintainers-guide.md#provision-new-runners
 
 # Defaults
 NAME_SUFFIX="it"
@@ -22,6 +23,10 @@ BASE_NAME="gitactions-runner"
 REPO_NAME="DataflowTemplates"
 REPO_OWNER="GoogleCloudPlatform"
 GH_RUNNER_VERSION="2.299.1"
+
+MACHINE_TYPE="n1-highmem-32"
+BOOT_DISK_SIZE="200GB"
+
 VERBOSE=0
 
 ############################################################
@@ -44,6 +49,8 @@ Help()
    echo "o     (optional) Set the owner of the GitHub repo. Default '$REPO_OWNER'"
    echo "s     (optional) Set the number of runners. Default $SIZE"
    echo "v     (optional) Set the gitactions runner version. Default $GH_RUNNER_VERSION"
+   echo "m     (optional) Set the machine type for the GCE VM runner. $MACHINE_TYPE"
+   echo "b     (optional) Set the boot disk size for the GCE VM runner. $BOOT_DISK_SIZE"
    echo "V     Verbose mode."
    echo "h     Print this Help."
    echo
@@ -79,6 +86,10 @@ while getopts ":h:Vp:a:t:n:S:r:o:s:v:" option; do
          SIZE=$OPTARG;;
       v) # Enter a version
          GH_RUNNER_VERSION=$OPTARG;;
+      m) # Enter a machine type
+         MACHINE_TYPE=$OPTARG;;
+      b) # Enter a boot disk size
+         BOOT_DISK_SIZE=$OPTARG;;
       V) # Verbose
          VERBOSE=1;;
       \?) # Invalid option
@@ -163,8 +174,6 @@ gcloud secrets add-iam-policy-binding $SECRET_NAME \
 IMAGE_FAMILY="ubuntu-2004-lts"
 IMAGE_PROJECT="ubuntu-os-cloud"
 BOOT_DISK_TYPE="pd-balanced"
-BOOT_DISK_SIZE="200GB"
-MACHINE_TYPE="n1-highmem-16"
 SCOPE="cloud-platform"
 if [ $VERBOSE -eq 1 ]; then echo; echo "Creating instance template: $INSTANCE_TEMPLATE_NAME..."; fi
 if [ $VERBOSE -eq 1 ]; then
@@ -181,7 +190,7 @@ gcloud compute instance-templates create $INSTANCE_TEMPLATE_NAME \
   --image-project=$IMAGE_PROJECT \
   --boot-disk-type=$BOOT_DISK_TYPE \
   --boot-disk-size=$BOOT_DISK_SIZE \
-  --machine-type="MACHINE_TYPE" \
+  --machine-type=$MACHINE_TYPE \
   --scopes=$SCOPE \
   --service-account=${SA_EMAIL} \
   --metadata-from-file=startup-script=startup-script-${NAME_SUFFIX}.sh,shutdown-script=shutdown-script-${NAME_SUFFIX}.sh

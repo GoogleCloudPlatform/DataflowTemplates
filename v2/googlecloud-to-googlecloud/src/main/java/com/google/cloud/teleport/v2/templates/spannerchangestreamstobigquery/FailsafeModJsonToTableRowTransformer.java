@@ -167,14 +167,23 @@ public final class FailsafeModJsonToTableRowTransformer {
 
       @Setup
       public void setUp() {
-        Dialect dialect = getDialect(spannerConfig);
-        spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-        spannerTableByName =
-            new SpannerChangeStreamsUtils(
-                    spannerAccessor.getDatabaseClient(), spannerChangeStream, dialect)
-                .getSpannerTableByName();
-        setUpCallContextConfigurator();
         seenException = false;
+        try {
+          Dialect dialect = getDialect(spannerConfig);
+          spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+          spannerTableByName =
+              new SpannerChangeStreamsUtils(
+                      spannerAccessor.getDatabaseClient(), spannerChangeStream, dialect)
+                  .getSpannerTableByName();
+        } catch (RuntimeException e) {
+          LOG.error(
+              String.format(
+                  "Caught exception when setting up FailsafeModJsonToTableRowFn, message: %s,"
+                      + " cause: %s",
+                  Optional.ofNullable(e.getMessage()), e.getCause()));
+          seenException = true;
+        }
+        setUpCallContextConfigurator();
       }
 
       @Teardown
@@ -222,6 +231,7 @@ public final class FailsafeModJsonToTableRowTransformer {
               String.format(
                   "error parsing modJsonString input into %s; %s",
                   ObjectNode.class, deadLetterMessage);
+          LOG.error(errorMessage);
           throw new RuntimeException(errorMessage, e);
         }
         for (String excludeFieldName : BigQueryUtils.getBigQueryIntermediateMetadataFieldNames()) {
@@ -237,11 +247,21 @@ public final class FailsafeModJsonToTableRowTransformer {
           String errorMessage =
               String.format(
                   "error converting %s to %s; %s", ObjectNode.class, Mod.class, deadLetterMessage);
+          LOG.error(errorMessage);
           throw new RuntimeException(errorMessage, e);
         }
         String spannerTableName = mod.getTableName();
-        TrackedSpannerTable spannerTable =
-            checkStateNotNull(spannerTableByName.get(spannerTableName));
+        TrackedSpannerTable spannerTable;
+        try {
+          spannerTable = checkStateNotNull(spannerTableByName.get(spannerTableName));
+
+        } catch (IllegalStateException e) {
+          String errorMessage =
+              String.format(
+                  "Can not find spanner table %s in spannerTableByName", spannerTableName);
+          LOG.error(errorMessage);
+          throw new RuntimeException(errorMessage, e);
+        }
         com.google.cloud.Timestamp spannerCommitTimestamp =
             com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
                 mod.getCommitTimestampSeconds(), mod.getCommitTimestampNanos());
@@ -262,8 +282,13 @@ public final class FailsafeModJsonToTableRowTransformer {
           if (keysJsonObject.has(spannerColumnName)) {
             tableRow.set(spannerColumnName, keysJsonObject.get(spannerColumnName));
           } else {
-            throw new IllegalArgumentException(
-                "Cannot find value for key column " + spannerColumnName);
+            String errorMessage =
+                String.format(
+                    "Caught exception when setting key column of the tableRow: Cannot find value"
+                        + " for key column %s",
+                    spannerColumnName);
+            LOG.error(errorMessage);
+            throw new IllegalArgumentException(errorMessage);
           }
         }
 
@@ -304,8 +329,13 @@ public final class FailsafeModJsonToTableRowTransformer {
           if (keysJsonObject.has(spannerColumnName)) {
             SpannerChangeStreamsUtils.appendToSpannerKey(spannerColumn, keysJsonObject, keyBuilder);
           } else {
-            throw new IllegalArgumentException(
-                "Cannot find value for key column " + spannerColumnName);
+            String errorMessage =
+                String.format(
+                    "Caught exception when snapshot reading key column for UPDATE mod: Cannot find"
+                        + " value for key column %s",
+                    spannerColumnName);
+            LOG.error(errorMessage);
+            throw new IllegalArgumentException(errorMessage);
           }
         }
 

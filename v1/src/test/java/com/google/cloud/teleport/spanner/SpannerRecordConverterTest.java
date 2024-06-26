@@ -947,4 +947,73 @@ public class SpannerRecordConverterTest {
       assertEquals(SpannerRecordConverter.dateToString(date), date.toString());
     }
   }
+
+  @Test
+  public void proto() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("prototable")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("proto")
+            .type(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage"))
+            .endColumn()
+            .column("proto_arr")
+            .type(Type.array(Type.proto("com.google.cloud.teleport.spanner.tests.TestEnum")))
+            .endColumn()
+            .column("enum")
+            .type(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum"))
+            .endColumn()
+            .column("enum_arr")
+            .type(Type.array(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum")))
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+    Schema schema = converter.convert(ddl).iterator().next();
+    SpannerRecordConverter recordConverter = new SpannerRecordConverter(schema);
+    com.google.cloud.teleport.spanner.tests.TestMessage msg1 =
+        com.google.cloud.teleport.spanner.tests.TestMessage.newBuilder().setValue("A").build();
+    com.google.cloud.teleport.spanner.tests.TestMessage msg2 =
+        com.google.cloud.teleport.spanner.tests.TestMessage.newBuilder().setValue("B").build();
+
+    ByteArray[] protoArrValues = {
+      null, ByteArray.copyFrom(msg1.toByteArray()), null, ByteArray.copyFrom(msg2.toByteArray())
+    };
+
+    com.google.cloud.teleport.spanner.tests.TestEnum enum1 =
+        com.google.cloud.teleport.spanner.tests.TestEnum.VALUE1;
+    com.google.cloud.teleport.spanner.tests.TestEnum enum2 =
+        com.google.cloud.teleport.spanner.tests.TestEnum.VALUE2;
+    Struct struct =
+        Struct.newBuilder()
+            .set("id")
+            .to(1L)
+            .set("proto")
+            .to((ByteArray) ByteArray.copyFrom(msg1.toByteArray()))
+            .set("proto_arr")
+            .toBytesArray(Lists.newArrayList(protoArrValues))
+            .set("enum")
+            .to(enum1.getNumber())
+            .set("enum_arr")
+            .toInt64Array(
+                Lists.newArrayList(new Long(enum1.getNumber()), null, new Long(enum2.getNumber())))
+            .build();
+
+    GenericRecord avroRecord = recordConverter.convert(struct);
+    assertThat(avroRecord.get("id"), equalTo(1L));
+    assertEquals(avroRecord.get("proto"), ByteBuffer.wrap(msg1.toByteArray()));
+    assertEquals(ByteBuffer.wrap(msg1.toByteArray()), ((List) avroRecord.get("proto_arr")).get(1));
+    assertEquals(ByteBuffer.wrap(msg2.toByteArray()), ((List) avroRecord.get("proto_arr")).get(3));
+    assertThat(((List) avroRecord.get("proto_arr")).get(0), is((ByteArray) null));
+    assertThat(((List) avroRecord.get("proto_arr")).get(2), is((ByteArray) null));
+    assertThat(avroRecord.get("enum"), equalTo(new Long(enum1.getNumber())));
+    assertThat(
+        avroRecord.get("enum_arr"),
+        equalTo(Arrays.asList(new Long(enum1.getNumber()), null, new Long(enum2.getNumber()))));
+  }
 }

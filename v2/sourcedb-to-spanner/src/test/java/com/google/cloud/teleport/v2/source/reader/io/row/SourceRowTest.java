@@ -30,15 +30,20 @@ public class SourceRowTest extends TestCase {
   @Test
   public void testSourceRowBuilds() {
     final String testTable = "testTable";
+    final String shardId = "id1";
     final long testReadTime = 1712751118L;
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
     SourceRow sourceRow =
-        SourceRow.builder(schema, testReadTime)
+        SourceRow.builder(schemaRef, schema, shardId, testReadTime)
             .setField("firstName", "abc")
             .setField("lastName", "def")
             .build();
 
+    assertThat(sourceRow.sourceSchemaReference()).isEqualTo(schemaRef);
     assertThat(sourceRow.tableSchemaUUID()).isEqualTo(schema.tableSchemaUUID());
+    assertThat(sourceRow.tableName()).isEqualTo(schema.tableName());
+    assertThat(sourceRow.shardId()).isEqualTo(shardId);
     assertThat(sourceRow.getReadTimeMicros()).isEqualTo(testReadTime);
     assertThat(sourceRow.getPayload().get("firstName")).isEqualTo("abc");
     assertThat(sourceRow.getPayload().get("lastName")).isEqualTo("def");
@@ -48,12 +53,13 @@ public class SourceRowTest extends TestCase {
   public void testSourceRowBuildWithInvalidFieldThrowsNPE() {
     final String testTable = "testTable";
     final long testReadTime = 1712751118L;
+    var schemaRef = SchemaTestUtils.generateSchemaReference("", "");
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);
 
     Assert.assertThrows(
         java.lang.NullPointerException.class,
         () ->
-            SourceRow.builder(schema, testReadTime)
+            SourceRow.builder(schemaRef, schema, null, testReadTime)
                 /* Invalid Field */
                 .setField("middleName", "abc")
                 .setField("lastName", "def")

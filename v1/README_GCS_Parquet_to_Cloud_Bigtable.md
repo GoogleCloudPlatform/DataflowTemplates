@@ -18,10 +18,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **bigtableProjectId** : The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to.
+* **bigtableProjectId** : The Google Cloud project ID associated with the Bigtable instance.
 * **bigtableInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableTableId** : The ID of the Cloud Bigtable table to write.
-* **inputFilePattern** : The Cloud Storage location of the files you'd like to process. (Example: gs://your-bucket/your-files/*.parquet).
+* **bigtableTableId** : The ID of the Bigtable table to import.
+* **inputFilePattern** : The Cloud Storage path with the files that contain the data. (Example: gs://your-bucket/your-files/*.parquet).
 
 ### Optional parameters
 

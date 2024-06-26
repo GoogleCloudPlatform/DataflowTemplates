@@ -95,6 +95,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         optional = false,
         description = "Name of the change stream to read from",
         helpText =
@@ -105,6 +106,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Instance Id.",
         helpText =
@@ -115,6 +117,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Database Id.",
         helpText =
@@ -125,6 +128,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.ProjectId(
         order = 4,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Project Id.",
         helpText = "This is the name of the Cloud Spanner project.")
@@ -202,6 +206,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.GcsWriteFolder(
         order = 11,
+        groupName = "Target",
         optional = false,
         description = "Output file directory in Cloud Storage",
         helpText =

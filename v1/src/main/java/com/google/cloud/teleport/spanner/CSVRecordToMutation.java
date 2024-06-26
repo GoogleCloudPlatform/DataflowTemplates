@@ -261,6 +261,19 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
           columnValue =
               isNullValue ? Value.bytes(null) : Value.bytes(ByteArray.fromBase64(cellValue.trim()));
           break;
+        case PROTO:
+          columnValue =
+              isNullValue
+                  ? Value.protoMessage(null, columnType.getProtoTypeFqn())
+                  : Value.protoMessage(
+                      ByteArray.fromBase64(cellValue.trim()), columnType.getProtoTypeFqn());
+          break;
+        case ENUM:
+          columnValue =
+              isNullValue
+                  ? Value.protoEnum(null, columnType.getProtoTypeFqn())
+                  : Value.protoEnum(Long.valueOf(cellValue.trim()), columnType.getProtoTypeFqn());
+          break;
         default:
           throw new IllegalArgumentException(
               "Unrecognized column data type: " + columnType.getCode());

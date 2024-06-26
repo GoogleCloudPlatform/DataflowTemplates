@@ -1,0 +1,19 @@
+{
+    "type": "record",
+    "namespace": "org.example.other.avro",
+    "name": "OtherAvroProductKafkaRecord",
+    "fields": [
+        {
+            "name": "productId",
+            "type": "int"
+        },
+        {
+            "name": "productName",
+            "type": "string"
+        },
+        {
+            "name": "name",
+            "type": "string"
+        }
+    ]
+}

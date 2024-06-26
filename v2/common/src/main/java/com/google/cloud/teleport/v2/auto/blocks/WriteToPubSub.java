@@ -30,6 +30,7 @@ public class WriteToPubSub implements TemplateTransform<WriteToPubSubOptions> {
   public interface WriteToPubSubOptions extends PipelineOptions {
     @TemplateParameter.PubsubTopic(
         order = 8,
+        groupName = "Target",
         description = "Output Pub/Sub topic",
         helpText =
             "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",

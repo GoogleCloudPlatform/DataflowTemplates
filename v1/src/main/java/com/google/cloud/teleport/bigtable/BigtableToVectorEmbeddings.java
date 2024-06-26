@@ -80,10 +80,10 @@ public class BigtableToVectorEmbeddings {
   public interface Options extends PipelineOptions {
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Source",
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to"
-                + " read data from")
+            "The ID for the Google Cloud project that contains the Bigtable instance that you want to read data from.")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
@@ -91,9 +91,10 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
-        helpText = "The ID of the Cloud Bigtable instance that contains the table")
+        helpText = "The ID of the Bigtable instance that contains the table.")
     ValueProvider<String> getBigtableInstanceId();
 
     @SuppressWarnings("unused")
@@ -101,9 +102,10 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
-        helpText = "The ID of the Cloud Bigtable table to read")
+        helpText = "The ID of the Bigtable table to read from.")
     ValueProvider<String> getBigtableTableId();
 
     @SuppressWarnings("unused")
@@ -111,9 +113,10 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
+        groupName = "Target",
         optional = true,
         description = "Cloud Storage directory for storing JSON files",
-        helpText = "The Cloud Storage path where the output JSON files can be stored.",
+        helpText = "The Cloud Storage path where the output JSON files are stored.",
         example = "gs://your-bucket/your-path/")
     ValueProvider<String> getOutputDirectory();
 
@@ -122,8 +125,10 @@ public class BigtableToVectorEmbeddings {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "JSON file prefix",
-        helpText = "The prefix of the JSON file name. For example, \"table1-\"")
+        helpText =
+            "The prefix of the JSON filename. For example: \"table1-\". If no value is provided, defaults to \"part\".")
     @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 
@@ -166,7 +171,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "The byte size of the embeddings array. Can be 4 or 8.",
         helpText =
-            "The byte size of each entry in the embeddings array. Use 4 for Float, and 8 for Double.")
+            "The byte size of each entry in the embeddings array. For float, use the value 4. For double, use the value 8. Defaults to 4.")
     @Default.Integer(4)
     ValueProvider<Integer> getEmbeddingByteSize();
 
@@ -178,7 +183,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Allow restricts mappings",
         helpText =
-            "The comma separated fully qualified column names of the columns that should be used as the `allow` restricts, with their alias. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names for the columns to use as the allow restricts, with their aliases. In the format cf:col->alias.")
     ValueProvider<String> getAllowRestrictsMappings();
 
     @SuppressWarnings("unused")
@@ -189,7 +194,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Deny restricts mappings",
         helpText =
-            "The comma separated fully qualified column names of the columns that should be used as the `deny` restricts, with their alias. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names for the columns to use as the deny restricts, with their aliases. In the format cf:col->alias.")
     ValueProvider<String> getDenyRestrictsMappings();
 
     @SuppressWarnings("unused")
@@ -200,7 +205,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Integer numeric restricts mappings",
         helpText =
-            "The comma separated fully qualified column names of the columns that should be used as integer `numeric_restricts`, with their alias. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names of the columns to use as integer numeric_restricts, with their aliases. In the format cf:col->alias.")
     ValueProvider<String> getIntNumericRestrictsMappings();
 
     @SuppressWarnings("unused")
@@ -211,7 +216,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Float numeric restricts mappings",
         helpText =
-            "The comma separated fully qualified column names of the columns that should be used as float (4 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names of the columns to use as float (4 bytes) numeric_restricts, with their aliases. In the format cf:col->alias.")
     ValueProvider<String> getFloatNumericRestrictsMappings();
 
     @SuppressWarnings("unused")
@@ -222,11 +227,23 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Double numeric restricts mappings",
         helpText =
-            "The comma separated fully qualified column names of the columns that should be used as double (8 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names of the columns to use as double (8 bytes) numeric_restricts, with their aliases. In the format cf:col->alias.")
     ValueProvider<String> getDoubleNumericRestrictsMappings();
 
     @SuppressWarnings("unused")
     void setDoubleNumericRestrictsMappings(ValueProvider<String> value);
+
+    @TemplateParameter.Text(
+        order = 15,
+        regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
+        optional = true,
+        description = "App Profile ID",
+        helpText = "The ID of the Cloud Bigtable app profile to be used for the export")
+    @Default.String("default")
+    ValueProvider<String> getBigtableAppProfileId();
+
+    @SuppressWarnings("unused")
+    void setBigtableAppProfileId(ValueProvider<String> value);
   }
 
   /**
@@ -254,6 +271,7 @@ public class BigtableToVectorEmbeddings {
         BigtableIO.read()
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
+            .withAppProfileId(options.getBigtableAppProfileId())
             .withTableId(options.getBigtableTableId())
             .withRowFilter(RowFilter.newBuilder().setCellsPerColumnLimitFilter(1).build());
 

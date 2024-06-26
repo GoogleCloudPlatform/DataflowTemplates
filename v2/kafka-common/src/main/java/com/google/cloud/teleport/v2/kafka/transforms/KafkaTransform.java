@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.kafka.transforms;
 
-import com.google.cloud.teleport.v2.kafka.utils.SslConsumerFactoryFn;
+import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.List;
@@ -55,7 +55,8 @@ public class KafkaTransform {
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
-      @Nullable Map<String, String> sslConfig) {
+      @Nullable Map<String, Object> sslConfig,
+      Boolean enableCommitOffsets) {
     KafkaIO.Read<String, String> kafkaRecords =
         KafkaIO.<String, String>read()
             .withBootstrapServers(bootstrapServers)
@@ -66,7 +67,10 @@ public class KafkaTransform {
                 StringDeserializer.class, NullableCoder.of(StringUtf8Coder.of()))
             .withConsumerConfigUpdates(config);
     if (sslConfig != null) {
-      kafkaRecords = kafkaRecords.withConsumerFactoryFn(new SslConsumerFactoryFn(sslConfig));
+      kafkaRecords = kafkaRecords.withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
+    }
+    if (enableCommitOffsets) {
+      kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
     }
     return kafkaRecords.withoutMetadata();
   }
@@ -84,7 +88,7 @@ public class KafkaTransform {
       List<String> topicsList,
       Map<String, Object> config,
       String avroSchema,
-      @Nullable Map<String, String> sslConfig) {
+      @Nullable Map<String, Object> sslConfig) {
     KafkaIO.Read<byte[], GenericRecord> kafkaRecords =
         KafkaIO.<byte[], GenericRecord>read()
             .withBootstrapServers(bootstrapServers)
@@ -94,9 +98,39 @@ public class KafkaTransform {
             .withValueDeserializer(new KafkaSchemaDeserializerProvider(avroSchema))
             .withConsumerConfigUpdates(config);
     if (sslConfig != null) {
-      kafkaRecords = kafkaRecords.withConsumerFactoryFn(new SslConsumerFactoryFn(sslConfig));
+      kafkaRecords = kafkaRecords.withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
     }
     return kafkaRecords.withoutMetadata();
+  }
+
+  /**
+   * Configures Kafka consumer that reads bytes.
+   *
+   * @param bootstrapServers Kafka servers to read from
+   * @param topicsList Kafka topics to read from
+   * @param config configuration for the Kafka consumer
+   * @return PCollection of Kafka Key & Value Pair deserialized in string format
+   */
+  public static KafkaIO.Read<byte[], byte[]> readBytesFromKafka(
+      String bootstrapServers,
+      List<String> topicsList,
+      Map<String, Object> config,
+      Boolean enableCommitOffsets) {
+
+    KafkaIO.Read<byte[], byte[]> kafkaRecords =
+        KafkaIO.<byte[], byte[]>read()
+            .withBootstrapServers(bootstrapServers)
+            .withTopics(topicsList)
+            .withKeyDeserializerAndCoder(
+                ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
+            .withValueDeserializerAndCoder(ByteArrayDeserializer.class, ByteArrayCoder.of())
+            .withConsumerConfigUpdates(config)
+            .withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
+
+    if (enableCommitOffsets) {
+      kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
+    }
+    return kafkaRecords;
   }
 
   /**

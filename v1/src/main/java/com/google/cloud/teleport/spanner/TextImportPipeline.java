@@ -107,26 +107,27 @@ public class TextImportPipeline {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Target",
         regexes = {"^[a-z0-9\\-]+$"},
         description = "Cloud Spanner instance ID",
-        helpText = "The instance ID of the Cloud Spanner database that you want to import to.")
+        helpText = "The instance ID of the Spanner database.")
     ValueProvider<String> getInstanceId();
 
     void setInstanceId(ValueProvider<String> value);
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         regexes = {"^[a-z_0-9\\-]+$"},
         description = "Cloud Spanner database ID",
-        helpText =
-            "The database ID of the Cloud Spanner database that you want to import into (must"
-                + " already exist, and with the destination tables created).")
+        helpText = "The database ID of the Spanner database.")
     ValueProvider<String> getDatabaseId();
 
     void setDatabaseId(ValueProvider<String> value);
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Target",
         optional = true,
         description = "Cloud Spanner Endpoint to call",
         helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
@@ -138,10 +139,9 @@ public class TextImportPipeline {
 
     @TemplateParameter.GcsReadFile(
         order = 4,
+        groupName = "Source",
         description = "Text Import Manifest file",
-        helpText =
-            "The Cloud Storage path and filename of the text import manifest file. Text Import"
-                + " Manifest file, storing a json-encoded importManifest object.",
+        helpText = "The path in Cloud Storage to use when importing manifest files.",
         example = "gs://your-bucket/your-folder/your-manifest.json")
     ValueProvider<String> getImportManifest();
 
@@ -149,9 +149,10 @@ public class TextImportPipeline {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Source",
         optional = true,
         description = "Column delimiter of the data files",
-        helpText = "The column delimiter of the input text files. Defaults to ','",
+        helpText = "The column delimiter that the source file uses. The default value is ','.",
         example = ",")
     @Default.Character(',')
     ValueProvider<Character> getColumnDelimiter();
@@ -160,12 +161,12 @@ public class TextImportPipeline {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Source",
         optional = true,
         description = "Field qualifier used by the source file",
         helpText =
-            "The field qualifier used by the source file. This is the character to wrap"
-                + " together text that should be kept as one value. The default value is double"
-                + " quotes.")
+            "The character that must surround any value in the source file that "
+                + "contains the columnDelimiter. The default value is \".")
     @Default.Character('"')
     ValueProvider<Character> getFieldQualifier();
 
@@ -173,13 +174,13 @@ public class TextImportPipeline {
 
     @TemplateParameter.Boolean(
         order = 7,
+        groupName = "Source",
         optional = true,
         description = "If true, the lines has trailing delimiters",
         helpText =
-            "The flag indicating whether or not the input lines have trailing delimiters. The"
-                + " default value is true. If the text file contains trailing delimiter, then set"
-                + " trailingDelimiter parameter to true during pipeline execution to import a Cloud"
-                + " Spanner database from a set of text files, otherwise set it to false.")
+            "Specifies whether the lines in the source files have trailing delimiters, that is, whether the "
+                + "`columnDelimiter` character appears at the end of each line, after the last column value). "
+                + "The default value is `true`.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getTrailingDelimiter();
 
@@ -187,22 +188,24 @@ public class TextImportPipeline {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Source",
         optional = true,
         description = "Escape character",
         helpText =
-            "The escape character. The default value is null i.e. no custom escape character. Note:"
-                + " CSV rows are always default quoted with '\"'. This escape character is an"
-                + " additional escape character.")
+            "The escape character the source file uses. By default, this parameter is not set "
+                + "and the template does not use the escape character.")
     ValueProvider<Character> getEscape();
 
     void setEscape(ValueProvider<Character> value);
 
     @TemplateParameter.Text(
         order = 9,
+        groupName = "Source",
         optional = true,
         description = "Null String",
         helpText =
-            "The string that represents the NULL value. The default value is an empty string.")
+            "The string that represents a `NULL` value. By default, this parameter is not set "
+                + "and the template does not use the null string.")
     @Default.String("")
     ValueProvider<String> getNullString();
 
@@ -210,31 +213,30 @@ public class TextImportPipeline {
 
     @TemplateParameter.Text(
         order = 10,
+        groupName = "Source",
         optional = true,
         description = "Date format",
         helpText =
-            "The format used to parse date columns. By default, the pipeline tries to parse the"
-                + " date columns as \"yyyy-MM-dd[' 00:00:00']\" (e.g., 2019-01-31, or 2019-01-31"
-                + " 00:00:00). If your data format is different, please specify the format using"
-                + " the java.time.format.DateTimeFormatter patterns. For more details, please refer"
-                + " to https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html")
+            "The format used to parse date columns. By default, the pipeline tries to parse the date columns "
+                + "as `yyyy-M-d[' 00:00:00']`, for example, as 2019-01-31 or 2019-1-1 00:00:00. If your date format "
+                + "is different, specify the format using the java.time.format.DateTimeFormatter "
+                + "(https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html) patterns.")
     ValueProvider<String> getDateFormat();
 
     void setDateFormat(ValueProvider<String> value);
 
     @TemplateParameter.Text(
         order = 11,
+        groupName = "Source",
         optional = true,
         description = "Timestamp format",
         helpText =
-            "The format used to parse timestamp columns. If the timestamp is a long integer, then"
-                + " it is treated as Unix epoch (the microsecond since 1970-01-01T00:00:00.000Z."
-                + " Otherwise, it is parsed as a string using the"
-                + " java.time.format.DateTimeFormatter.ISO_INSTANT format. For other cases, please"
-                + " specify you own pattern string, e.g., \"MMM dd yyyy HH:mm:ss.SSSVV\" for"
-                + " timestamp in the form of \"Jan 21 1998 01:02:03.456+08:00\". For more details,"
-                + " please refer to"
-                + " https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html")
+            "The format used to parse timestamp columns. If the timestamp is a long integer, then it is parsed "
+                + "as Unix epoch time. Otherwise, it is parsed as a string using the "
+                + "java.time.format.DateTimeFormatter.ISO_INSTANT "
+                + "(https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html#ISO_INSTANT) format. "
+                + "For other cases, specify your own pattern string, for example, using `MMM dd yyyy HH:mm:ss.SSSVV` "
+                + "for timestamps in the form of `\"Jan 21 1998 01:02:03.456+08:00\"`.")
     ValueProvider<String> getTimestampFormat();
 
     void setTimestampFormat(ValueProvider<String> value);
@@ -248,15 +250,18 @@ public class TextImportPipeline {
 
     @TemplateParameter.ProjectId(
         order = 13,
+        groupName = "Target",
         optional = true,
         description = "Cloud Spanner Project Id",
-        helpText = "The project ID of the Cloud Spanner instance.")
+        helpText =
+            "The ID of the Google Cloud project that contains the Spanner database. If not set, the project ID of the default Google Cloud project is used.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);
 
     @TemplateParameter.Enum(
         order = 14,
+        groupName = "Target",
         enumOptions = {
           @TemplateEnumOption("LOW"),
           @TemplateEnumOption("MEDIUM"),
@@ -265,19 +270,20 @@ public class TextImportPipeline {
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
-            "The request priority for Cloud Spanner calls. The value must be one of:"
-                + " [HIGH,MEDIUM,LOW].")
+            "The request priority for Spanner calls. Possible values "
+                + "are HIGH, MEDIUM, and LOW. The default value is MEDIUM.")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);
 
     @TemplateParameter.Boolean(
         order = 15,
+        groupName = "Source",
         optional = true,
         description = "Handle new line",
         helpText =
-            "If true, run the template in handleNewLine mode, which is slower but handles newline"
-                + " characters inside data.")
+            "If `true`, the input data can contain newline characters. Otherwise, newline characters cause an "
+                + "error. The default value is `false`. Enabling newline handling can reduce performance.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getHandleNewLine();
 
@@ -287,7 +293,7 @@ public class TextImportPipeline {
         order = 16,
         description = "Invalid rows output path",
         optional = true,
-        helpText = "Cloud Storage path where to write rows that cannot be imported.",
+        helpText = "The Cloud Storage path to use when writing rows that cannot be imported.",
         example = "gs://your-bucket/your-path")
     @Default.String("")
     ValueProvider<String> getInvalidOutputPath();

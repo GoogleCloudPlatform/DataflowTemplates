@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.datastream;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 
 /** Factory classes that provides creation methods for ChangeEventContext. */
 public class ChangeEventContextFactory {
@@ -38,12 +39,17 @@ public class ChangeEventContextFactory {
   public static ChangeEventContext createChangeEventContext(
       JsonNode changeEvent, Ddl ddl, String shadowTablePrefix, String sourceType)
       throws ChangeEventConvertorException, InvalidChangeEventException {
-
-    if (!sourceType.equals(getSourceType(changeEvent))) {
+    String sourceTypeFromChangeEvent;
+    try {
+      sourceTypeFromChangeEvent = getSourceType(changeEvent);
+    } catch (Exception e) {
+      throw new InvalidChangeEventException(e);
+    }
+    if (!sourceType.equals(sourceTypeFromChangeEvent)) {
       throw new InvalidChangeEventException(
           "Change event with invalid source. "
               + "Actual("
-              + getSourceType(changeEvent)
+              + sourceTypeFromChangeEvent
               + "), Expected("
               + sourceType
               + ")");

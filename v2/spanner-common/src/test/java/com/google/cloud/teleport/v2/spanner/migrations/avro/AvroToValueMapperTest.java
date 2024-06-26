@@ -51,7 +51,16 @@ public class AvroToValueMapperTest {
     assertEquals("Test int input", false, result);
 
     result = AvroToValueMapper.avroFieldToBoolean(1L, SchemaBuilder.builder().longType());
-    assertEquals("Test long input", false, result);
+    assertEquals("Test long 1 input", true, result);
+
+    result = AvroToValueMapper.avroFieldToBoolean(0L, SchemaBuilder.builder().longType());
+    assertEquals("Test long 0 input", false, result);
+
+    result = AvroToValueMapper.avroFieldToBoolean("1", SchemaBuilder.builder().longType());
+    assertEquals("Test string \"1\" input", true, result);
+
+    result = AvroToValueMapper.avroFieldToBoolean("0", SchemaBuilder.builder().longType());
+    assertEquals("Test string \"0\" input", false, result);
   }
 
   @Test
@@ -159,6 +168,40 @@ public class AvroToValueMapperTest {
   }
 
   @Test
+  public void testAvroFieldToString_valid() {
+    String result =
+        AvroToValueMapper.avroFieldToString("Hello", SchemaBuilder.builder().stringType());
+    assertEquals("Hello", result);
+
+    result = AvroToValueMapper.avroFieldToString("", SchemaBuilder.builder().stringType());
+    assertEquals("", result);
+
+    result = AvroToValueMapper.avroFieldToString(14, SchemaBuilder.builder().intType());
+    assertEquals("14", result);
+
+    result = AvroToValueMapper.avroFieldToString(513148134L, SchemaBuilder.builder().longType());
+    assertEquals("513148134", result);
+
+    result = AvroToValueMapper.avroFieldToString(325.532, SchemaBuilder.builder().doubleType());
+    assertEquals("325.532", result);
+  }
+
+  @Test
+  public void testAvroFieldToString_NullInput() {
+    assertNull(AvroToValueMapper.avroFieldToString(null, SchemaBuilder.builder().nullType()));
+  }
+
+  @Test(expected = AvroTypeConvertorException.class)
+  public void testAvroFieldToString_Exception() {
+    class ThrowObject {
+      public String toString() {
+        throw new RuntimeException("explicit exception");
+      }
+    }
+    AvroToValueMapper.avroFieldToString(new ThrowObject(), SchemaBuilder.builder().nullType());
+  }
+
+  @Test
   public void testAvroFieldToNumericBigDecimal_StringInput() {
     Map<String, String> testCases = new HashMap<>();
     testCases.put("1.2334567890345654542E10", "12334567890.345654542");
@@ -220,6 +263,25 @@ public class AvroToValueMapperTest {
         AvroToValueMapper.avroFieldToNumericBigDecimal(
             inputValue, SchemaBuilder.builder().stringType());
     assertNull(result);
+  }
+
+  @Test
+  public void testAvroFieldToByteArray_LongInput() {
+    Long inputValue = 7L;
+    ByteArray expectedResult = ByteArray.copyFrom(new byte[] {07});
+    ByteArray result =
+        AvroToValueMapper.avroFieldToByteArray(inputValue, SchemaBuilder.builder().longType());
+    assertEquals("Test long input", expectedResult, result);
+
+    inputValue = Long.MAX_VALUE;
+    expectedResult = ByteArray.copyFrom(new byte[] {127, -1, -1, -1, -1, -1, -1, -1});
+    result = AvroToValueMapper.avroFieldToByteArray(inputValue, SchemaBuilder.builder().longType());
+    assertEquals("Test long.MAX  input", expectedResult, result);
+
+    inputValue = 0L;
+    expectedResult = ByteArray.copyFrom(new byte[] {00});
+    result = AvroToValueMapper.avroFieldToByteArray(inputValue, SchemaBuilder.builder().longType());
+    assertEquals("Test 0 input", expectedResult, result);
   }
 
   @Test

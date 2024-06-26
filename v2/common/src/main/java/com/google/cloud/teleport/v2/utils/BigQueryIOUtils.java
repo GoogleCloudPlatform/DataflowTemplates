@@ -44,7 +44,7 @@ public final class BigQueryIOUtils {
     StreamingModeUtils.validateBQOptions(options.as(DataflowPipelineOptions.class));
     if (options.getUseStorageWriteApi()
         && !options.getUseStorageWriteApiAtLeastOnce()
-        && (options.getNumStorageWriteApiStreams() < 1
+        && (options.getNumStorageWriteApiStreams() == null
             || options.getStorageWriteApiTriggeringFrequencySec() == null)) {
       // the number of streams and triggering frequency are only required for exactly-once semantics
       throw new IllegalArgumentException(

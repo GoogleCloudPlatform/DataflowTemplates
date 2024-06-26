@@ -18,6 +18,8 @@
 package org.apache.beam.it.gcp.spanner.utils;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.gcp.spanner.utils.SpannerResourceManagerUtils.MAX_DATABASE_ID_LENGTH;
+import static org.apache.beam.it.gcp.spanner.utils.SpannerResourceManagerUtils.MAX_INSTANCE_ID_LENGTH;
 import static org.apache.beam.it.gcp.spanner.utils.SpannerResourceManagerUtils.generateDatabaseId;
 import static org.apache.beam.it.gcp.spanner.utils.SpannerResourceManagerUtils.generateInstanceId;
 import static org.junit.Assert.assertThrows;
@@ -36,7 +38,17 @@ public final class SpannerResourceManagerUtilsTest {
 
     String actual = generateInstanceId(testBaseString);
 
-    assertThat(actual).matches("[a-z]-test-\\d{8}-\\d{6}-\\d{6}");
+    assertThat(actual).matches("[a-z]-test-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}");
+  }
+
+  @Test
+  public void testGenerateInstanceIdShouldConcatLongId() {
+    String testBaseString = "test-really_long-database-id";
+
+    String actual = generateInstanceId(testBaseString);
+
+    assertThat(actual).matches("test-re-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}");
+    assertThat(actual.length()).isEqualTo(MAX_INSTANCE_ID_LENGTH);
   }
 
   @Test
@@ -45,7 +57,7 @@ public final class SpannerResourceManagerUtilsTest {
 
     String actual = generateDatabaseId(testBaseString);
 
-    assertThat(actual).matches("db_0_\\d{8}_\\d{6}_\\d{6}");
+    assertThat(actual).matches("db_0_\\d{8}_\\d{6}_[a-zA-Z0-9]{6}");
   }
 
   @Test
@@ -54,7 +66,7 @@ public final class SpannerResourceManagerUtilsTest {
 
     String actual = generateDatabaseId(testBaseString);
 
-    assertThat(actual).matches("t_db_\\d{8}_\\d{6}_\\d{6}");
+    assertThat(actual).matches("t_db_\\d{8}_\\d{6}_[a-zA-Z0-9]{6}");
   }
 
   @Test
@@ -63,7 +75,7 @@ public final class SpannerResourceManagerUtilsTest {
 
     String actual = generateDatabaseId(testBaseString);
 
-    assertThat(actual).matches("test_da_\\d{8}_\\d{6}_\\d{6}");
+    assertThat(actual).matches("test_da_\\d{8}_\\d{6}_[a-zA-Z0-9]{6}");
   }
 
   @Test
@@ -72,7 +84,7 @@ public final class SpannerResourceManagerUtilsTest {
 
     String actual = generateDatabaseId(testBaseString);
 
-    assertThat(actual).matches("test_da_\\d{8}_\\d{6}_\\d{6}");
+    assertThat(actual).matches("test_da_\\d{8}_\\d{6}_[a-zA-Z0-9]{6}");
   }
 
   @Test
@@ -81,7 +93,7 @@ public final class SpannerResourceManagerUtilsTest {
 
     String actual = generateDatabaseId(testBaseString);
 
-    assertThat(actual).matches("[a-z]_datab_\\d{8}_\\d{6}_\\d{6}");
+    assertThat(actual).matches("[a-z]_datab_\\d{8}_\\d{6}_[a-zA-Z0-9]{6}");
   }
 
   @Test
@@ -90,7 +102,7 @@ public final class SpannerResourceManagerUtilsTest {
 
     String actual = generateDatabaseId(testBaseString);
 
-    assertThat(actual).matches("tda_\\d{8}_\\d{6}_\\d{6}");
+    assertThat(actual).matches("tda_\\d{8}_\\d{6}_[a-zA-Z0-9]{6}");
   }
 
   @Test
@@ -99,7 +111,7 @@ public final class SpannerResourceManagerUtilsTest {
 
     String actual = generateDatabaseId(testBaseString);
 
-    assertThat(actual).matches("test_da_\\d{8}_\\d{6}_\\d{6}");
+    assertThat(actual).matches("test_da_\\d{8}_\\d{6}_[a-zA-Z0-9]{6}");
   }
 
   @Test
@@ -107,5 +119,15 @@ public final class SpannerResourceManagerUtilsTest {
     String testBaseString = "";
 
     assertThrows(IllegalArgumentException.class, () -> generateDatabaseId(testBaseString));
+  }
+
+  @Test
+  public void testGenerateDatabaseIdShouldConcatLongId() {
+    String testBaseString = "test_really_long_database_id";
+
+    String actual = generateDatabaseId(testBaseString);
+
+    assertThat(actual).matches("test_re_\\d{8}_\\d{6}_[a-zA-Z0-9]{6}");
+    assertThat(actual.length()).isEqualTo(MAX_DATABASE_ID_LENGTH);
   }
 }

@@ -26,9 +26,10 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
 
   @TemplateParameter.PubsubSubscription(
       order = 1,
+      groupName = "Source",
       description = "Pub/Sub input subscription",
       helpText =
-          "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
+          "The Pub/Sub input subscription to read from, in the format of 'projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>'",
       example = "projects/your-project-id/subscriptions/your-subscription-name")
   @Validation.Required
   String getInputSubscription();
@@ -40,7 +41,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       optional = false,
       regexes = {"^.+$"},
       description = "JDBC driver class name.",
-      helpText = "JDBC driver class name to use.",
+      helpText = "The JDBC driver class name.",
       example = "com.mysql.jdbc.Driver")
   String getDriverClassName();
 
@@ -48,14 +49,16 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 3,
+      groupName = "Target",
       optional = false,
       regexes = {
         "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
       },
       description = "JDBC connection URL string.",
       helpText =
-          "Url connection string to connect to the JDBC source. Connection string can "
-              + "be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.",
+          "The JDBC connection URL string. "
+              + "You can pass in this value as a string that's encrypted with a Cloud KMS "
+              + "key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string.",
       example = "jdbc:mysql://some-host:3306/sampledb")
   String getConnectionUrl();
 
@@ -67,8 +70,8 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       regexes = {"^.+$"},
       description = "JDBC connection username.",
       helpText =
-          "User name to be used for the JDBC connection. User name can be passed in as plaintext "
-              + "or as a base64 encoded string encrypted by Google Cloud KMS.")
+          "The username to use for the JDBC connection. "
+              + "You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded.")
   String getUsername();
 
   void setUsername(String username);
@@ -78,8 +81,8 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       optional = true,
       description = "JDBC connection password.",
       helpText =
-          "Password to be used for the JDBC connection. Password can be passed in as plaintext "
-              + "or as a base64 encoded string encrypted by Google Cloud KMS.")
+          "The password to use for the JDBC connection. "
+              + "You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded.")
   String getPassword();
 
   void setPassword(String password);
@@ -89,7 +92,7 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       optional = false,
       regexes = {"^.+$"},
       description = "Cloud Storage paths for JDBC drivers",
-      helpText = "Comma separate Cloud Storage paths for JDBC drivers.",
+      helpText = "Comma separated Cloud Storage paths for JDBC drivers. ",
       example = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar")
   String getDriverJars();
 
@@ -101,7 +104,8 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
       description = "JDBC connection property string.",
       helpText =
-          "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*.",
+          "The properties string to use for the JDBC connection. "
+              + "The string must use the format `[propertyName=property;]*`. ",
       example = "unicode=true;characterEncoding=UTF-8")
   String getConnectionProperties();
 
@@ -113,9 +117,9 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       regexes = {"^.+$"},
       description = "Statement which will be executed against the database.",
       helpText =
-          "SQL statement which will be executed to write to the database. The statement "
-              + "must specify the column names of the table in any order. Only the values of the specified "
-              + "column names will be read from the json and added to the statement.",
+          "The statement to run against the database. The statement must specify the column "
+              + "names of the table in any order. Only the values of the specified column "
+              + "names are read from the JSON and added to the statement. ",
       example = "INSERT INTO tableName (column1, column2) VALUES (?,?)")
   String getStatement();
 
@@ -124,9 +128,8 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
   @TemplateParameter.PubsubTopic(
       order = 9,
       description = "Output deadletter Pub/Sub topic",
-      helpText =
-          "The Pub/Sub topic to publish deadletter records to. The name should be in the "
-              + "format of projects/your-project-id/topics/your-topic-name.")
+      helpText = "The Pub/Sub topic to forward undeliverable messages to. ",
+      example = "projects/<PROJECT_ID>/topics/<TOPIC_NAME>")
   @Validation.Required
   String getOutputDeadletterTopic();
 
@@ -137,7 +140,9 @@ public interface PubsubToJdbcOptions extends CommonTemplateOptions {
       optional = true,
       description = "Google Cloud KMS encryption key",
       helpText =
-          "If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt",
+          "The Cloud KMS Encryption Key to use to decrypt the username, password, and connection string. "
+              + "If a Cloud KMS key is passed in, the username, password, and "
+              + "connection string must all be passed in encrypted.",
       example =
           "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
   String getKMSEncryptionKey();

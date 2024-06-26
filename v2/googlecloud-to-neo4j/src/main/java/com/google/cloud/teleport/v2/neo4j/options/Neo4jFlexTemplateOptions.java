@@ -40,8 +40,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
       order = 2,
       optional = true,
       description = "Path to the Neo4j connection metadata",
-      helpText =
-          "The path to Neo4j connection metadata JSON file. This is an alternative to the secret option.")
+      helpText = "The path to the Neo4j connection metadata JSON file.")
   @Validation.Required(groups = "connection")
   String getNeo4jConnectionUri();
 

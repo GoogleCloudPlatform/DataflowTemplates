@@ -79,7 +79,7 @@ public final class GoogleAdsToBigQuery {
         order = 1,
         optional = true,
         description = "Google Ads manager account ID",
-        helpText = "A Google Ads manager account ID for which to access the account IDs.",
+        helpText = "A Google Ads manager account ID to use to access the account IDs.",
         example = "12345")
     Long getLoginCustomerId();
 
@@ -89,7 +89,7 @@ public final class GoogleAdsToBigQuery {
         order = 2,
         regexes = {"^[0-9]+(,[0-9]+)*$"},
         description = "Google Ads account IDs",
-        helpText = "A list of Google Ads account IDs for which to execute the query.",
+        helpText = "A list of Google Ads account IDs to use to execute the query.",
         example = "12345,67890")
     @Validation.Required
     List<Long> getCustomerIds();
@@ -99,7 +99,8 @@ public final class GoogleAdsToBigQuery {
     @TemplateParameter.Text(
         order = 3,
         description = "Google Ads Query Language query",
-        helpText = "See https://developers.google.com/google-ads/api/docs/query/overview.",
+        helpText =
+            "The query to use to get the data. See Google Ads Query Language. For example: `SELECT campaign.id, campaign.name FROM campaign`.",
         example = "SELECT campaign.id, campaign.name FROM campaign")
     @Validation.Required
     String getQuery();
@@ -110,21 +111,21 @@ public final class GoogleAdsToBigQuery {
         order = 4,
         description = "Required Google Ads request rate per worker",
         helpText =
-            "Indicates rate of query requests per second to be submitted to Google Ads. "
+            "The rate of query requests per second (QPS) to submit to Google Ads.  "
                 + "Divide the desired per pipeline QPS by the maximum number of workers. "
-                + "Avoid exceeding per account or developer token limits. "
-                + "See https://developers.google.com/google-ads/api/docs/best-practices/rate-limits.")
-    double getQpsPerWorker();
+                + "Avoid exceeding per-account or developer token limits. "
+                + "See Rate Limits (https://developers.google.com/google-ads/api/docs/best-practices/rate-limits).")
+    Double getQpsPerWorker();
 
-    void setQpsPerWorker(double qpsPerWorker);
+    void setQpsPerWorker(Double qpsPerWorker);
 
     @TemplateParameter.GcsReadFile(
         order = 5,
         optional = true,
         description = "BigQuery Table Schema Path",
         helpText =
-            "Cloud Storage path to the BigQuery schema JSON file. "
-                + "If this is not set, then the schema is inferred "
+            "The Cloud Storage path to the BigQuery schema JSON file. "
+                + "If this value is not set, then the schema is inferred "
                 + "from the Proto schema.",
         example = "gs://MyBucket/bq_schema.json")
     String getBigQueryTableSchemaPath();
@@ -134,15 +135,18 @@ public final class GoogleAdsToBigQuery {
     @TemplateParameter.Text(
         order = 6,
         description = "OAuth 2.0 Client ID identifying the application",
-        helpText = "See https://developers.google.com/google-ads/api/docs/oauth/overview.")
+        helpText =
+            "The OAuth 2.0 client ID that identifies the application. See Create a client ID and client secret (https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret).")
     String getGoogleAdsClientId();
 
     void setGoogleAdsClientId(String clientId);
 
     @TemplateParameter.Password(
         order = 7,
+        groupName = "Source",
         description = "OAuth 2.0 Client Secret for the specified Client ID",
-        helpText = "See https://developers.google.com/google-ads/api/docs/oauth/overview.")
+        helpText =
+            "The OAuth 2.0 client secret that corresponds to the specified client ID. See Create a client ID and client secret (https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret).")
     String getGoogleAdsClientSecret();
 
     void setGoogleAdsClientSecret(String clientSecret);
@@ -150,7 +154,8 @@ public final class GoogleAdsToBigQuery {
     @TemplateParameter.Password(
         order = 8,
         description = "OAuth 2.0 Refresh Token for the user connecting to the Google Ads API",
-        helpText = "See https://developers.google.com/google-ads/api/docs/oauth/overview.")
+        helpText =
+            "The OAuth 2.0 refresh token to use to connect to the Google Ads API. See 2-Step Verification (https://developers.google.com/google-ads/api/docs/oauth/2sv).")
     String getGoogleAdsRefreshToken();
 
     void setGoogleAdsRefreshToken(String refreshToken);
@@ -158,7 +163,8 @@ public final class GoogleAdsToBigQuery {
     @TemplateParameter.Password(
         order = 9,
         description = "Google Ads developer token for the user connecting to the Google Ads API",
-        helpText = "See https://developers.google.com/google-ads/api/docs/get-started/dev-token.")
+        helpText =
+            "The Google Ads developer token to use to connect to the Google Ads API. See Obtain a developer token (https://developers.google.com/google-ads/api/docs/get-started/dev-token).")
     String getGoogleAdsDeveloperToken();
 
     void setGoogleAdsDeveloperToken(String developerToken);

@@ -22,12 +22,14 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.AvroTypeConvertorException;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -89,9 +91,11 @@ public class AvroToValueMapper {
         Type.float64(),
         (recordValue, fieldSchema) -> Value.float64(avroFieldToDouble(recordValue, fieldSchema)));
     gsqlFunctions.put(
-        Type.string(), (recordValue, fieldSchema) -> Value.string(recordValue.toString()));
+        Type.string(),
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     gsqlFunctions.put(
-        Type.json(), (recordValue, fieldSchema) -> Value.string(recordValue.toString()));
+        Type.json(),
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     gsqlFunctions.put(
         Type.numeric(),
         (recordValue, fieldSchema) ->
@@ -121,11 +125,14 @@ public class AvroToValueMapper {
         Type.pgFloat8(),
         (recordValue, fieldSchema) -> Value.float64(avroFieldToDouble(recordValue, fieldSchema)));
     pgFunctions.put(
-        Type.pgVarchar(), (recordValue, fieldSchema) -> Value.string(recordValue.toString()));
+        Type.pgVarchar(),
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
-        Type.pgText(), (recordValue, fieldSchema) -> Value.string(recordValue.toString()));
+        Type.pgText(),
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
-        Type.pgJsonb(), (recordValue, fieldSchema) -> Value.string(recordValue.toString()));
+        Type.pgJsonb(),
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgNumeric(),
         (recordValue, fieldSchema) ->
@@ -147,12 +154,24 @@ public class AvroToValueMapper {
     return pgFunctions;
   }
 
+  /**
+   * This method tries to map different kinds of source types to a boolean. This could be longs,
+   * string as well as booleans.
+   */
   static Boolean avroFieldToBoolean(Object recordValue, Schema fieldSchema) {
     if (recordValue == null) {
       return null;
     }
-    // BooleanUtils.toBoolean() never throws exception, so we don't need to catch it.
-    return BooleanUtils.toBoolean(recordValue.toString());
+    String val = recordValue.toString();
+    // If the value can be converted to a "0" or a "1", rely on this to map to boolean. This could
+    // be used for strings and long data types.
+    // For ex: BIT(1) -> Unified type long -> Spanner Boolean uses this path.
+    if (Arrays.asList("0", "1").contains(val)) {
+      return val.equals("1");
+    }
+    // Rely on booleanUtils to map the string to a bool if it was not a "0" or "1". This handles
+    // cases like True, true, t, f etc.
+    return BooleanUtils.toBoolean(val);
   }
 
   static Long avroFieldToLong(Object recordValue, Schema fieldSchema) {
@@ -185,6 +204,21 @@ public class AvroToValueMapper {
               + " to double, with value: "
               + recordValue
               + ", Exception: "
+              + e.getMessage());
+    }
+  }
+
+  static String avroFieldToString(Object recordValue, Schema fieldSchema) {
+    try {
+      if (recordValue == null) {
+        return null;
+      }
+      return recordValue.toString();
+    } catch (Exception e) {
+      throw new AvroTypeConvertorException(
+          "Unable to convert "
+              + String.valueOf(fieldSchema.getType())
+              + " to string, Exception: "
               + e.getMessage());
     }
   }
@@ -233,6 +267,12 @@ public class AvroToValueMapper {
       if (recordValue == null) {
         return null;
       }
+      // BIT types are by default mapped to ByteArray by SMT and the unified type is LONG.
+      if (fieldSchema.getType().equals(Schema.Type.LONG)) {
+        BigInteger bigInt = BigInteger.valueOf(Long.valueOf(recordValue.toString()));
+        return ByteArray.copyFrom(bigInt.toByteArray());
+      }
+
       if (fieldSchema.getType().equals(Schema.Type.STRING)) {
         // For string avro type, expect hex encoded string.
         String s = recordValue.toString();

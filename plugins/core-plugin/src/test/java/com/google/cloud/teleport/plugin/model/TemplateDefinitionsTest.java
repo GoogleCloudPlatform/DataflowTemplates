@@ -63,12 +63,39 @@ public class TemplateDefinitionsTest {
     ImageSpecParameter to = metadata.getParameter("to").get();
     assertEquals(ImageSpecParameterType.BIGQUERY_TABLE, to.getParamType());
 
+    ImageSpecParameter inputKafkaReadTopic = metadata.getParameter("inputKafkaReadTopic").get();
+    assertEquals(ImageSpecParameterType.KAFKA_READ_TOPIC, inputKafkaReadTopic.getParamType());
+
+    ImageSpecParameter inputKafkaWriteTopic = metadata.getParameter("inputKafkaWriteTopic").get();
+    assertEquals(ImageSpecParameterType.KAFKA_WRITE_TOPIC, inputKafkaWriteTopic.getParamType());
+
     ImageSpecParameter logical = metadata.getParameter("logical").get();
     assertEquals(ImageSpecParameterType.BOOLEAN, logical.getParamType());
     assertEquals("^(true|false)$", logical.getRegexes().get(0));
 
     ImageSpecParameter json = metadata.getParameter("JSON").get();
     assertEquals(ImageSpecParameterType.BOOLEAN, json.getParamType());
+
+    ImageSpecParameter gcsReadBucket = metadata.getParameter("gcsReadBucket").get();
+    assertEquals(ImageSpecParameterType.GCS_READ_BUCKET, gcsReadBucket.getParamType());
+
+    ImageSpecParameter gcsWriteBucket = metadata.getParameter("gcsWriteBucket").get();
+    assertEquals(ImageSpecParameterType.GCS_WRITE_BUCKET, gcsWriteBucket.getParamType());
+
+    ImageSpecParameter javascriptUdfFile = metadata.getParameter("javascriptUdfFile").get();
+    assertEquals(ImageSpecParameterType.JAVASCRIPT_UDF_FILE, javascriptUdfFile.getParamType());
+
+    ImageSpecParameter machineType = metadata.getParameter("machineType").get();
+    assertEquals(ImageSpecParameterType.MACHINE_TYPE, machineType.getParamType());
+
+    ImageSpecParameter serviceAccount = metadata.getParameter("serviceAccount").get();
+    assertEquals(ImageSpecParameterType.SERVICE_ACCOUNT, serviceAccount.getParamType());
+
+    ImageSpecParameter workerRegion = metadata.getParameter("workerRegion").get();
+    assertEquals(ImageSpecParameterType.WORKER_REGION, workerRegion.getParamType());
+
+    ImageSpecParameter workerZone = metadata.getParameter("workerZone").get();
+    assertEquals(ImageSpecParameterType.WORKER_ZONE, workerZone.getParamType());
   }
 
   @Test

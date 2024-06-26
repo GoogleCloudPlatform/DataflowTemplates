@@ -37,7 +37,7 @@
     <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
     <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
     <maven-dependency-plugin.version>3.6.0</maven-dependency-plugin.version>
-    <maven-enforcer-plugin.version>3.0.0-M1</maven-enforcer-plugin.version>
+    <maven-enforcer-plugin.version>3.4.1</maven-enforcer-plugin.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
     <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
@@ -47,7 +47,7 @@
 
     <!-- Beam and linked versions -->
     <!-- Also update beam version in requirements.txt throughout the repo -->
-    <beam.version>2.55.1</beam.version>
+    <beam.version>2.56.0</beam.version>
     <jackson.version>2.14.1</jackson.version>
 
     <!-- Common dependency versions -->
@@ -91,7 +91,7 @@
     <postgresql.version>42.6.0</postgresql.version>
     <ojdbc8.version>23.2.0.0</ojdbc8.version>
     <mssql-jdbc.version>12.2.0.jre11</mssql-jdbc.version>
-    <neo4j-driver.version>4.4.12</neo4j-driver.version>
+    <neo4j-driver.version>4.4.17</neo4j-driver.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.15.2</postgres-socket-factory.version>
@@ -358,6 +358,11 @@
           <excludes>
             <!-- Excluding auto-generated classes. -->
             <exclude>**/*AutoValue_*</exclude>
+            <exclude>**/*Exception.*</exclude>
+            <exclude>**/constants/**</exclude>
+            <exclude>**/CustomTransformationImplFetcher.*</exclude>
+            <exclude>**/JarFileReader.*</exclude>
+            <exclude>**/CustomTransformationWithShardForIT.*</exclude>
           </excludes>
         </configuration>
         <executions>
@@ -411,6 +416,9 @@
               <includes>
                 <include>**/*IT.java</include>
               </includes>
+              <excludes>
+                <exclude>**/KafkaToKafkaIT.java</exclude>
+              </excludes>
               <excludedGroups>${direct-runner.tests}</excludedGroups>
               <groups>
                 ${integration.tests}

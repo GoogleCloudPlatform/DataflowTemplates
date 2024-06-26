@@ -40,6 +40,7 @@ import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.ResourceUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Strings;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -132,6 +133,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input subscription",
         helpText =
             "Pub/Sub subscription to read the input from, in the format of"
@@ -152,7 +154,7 @@ public class PubSubCdcToBigQuery {
 
     void setAutoMapTables(Boolean value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 3,
         optional = true,
         description = "Cloud Storage file with BigQuery schema fields to be used in DDL",
@@ -166,6 +168,8 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
+        optional = true,
         description = "BigQuery Dataset Name or Template: dataset_name or {column_name}",
         helpText = "The name for the dataset to contain the replica table.")
     @Default.String("{_metadata_dataset}")
@@ -175,6 +179,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "BigQuery Table Name or Template: table_name or {column_name}",
         helpText =
             "The location of the BigQuery table to write the output to. If a table does not "
@@ -186,6 +191,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 6,
+        groupName = "Target",
         optional = true,
         description = "BigQuery output table (Deprecated)",
         helpText =
@@ -215,7 +221,6 @@ public class PubSubCdcToBigQuery {
         description = "Dead Letter Queue Directory",
         helpText =
             "The name of the directory on Cloud Storage you want to write dead letters messages to")
-    @Default.String("")
     String getDeadLetterQueueDirectory();
 
     void setDeadLetterQueueDirectory(String value);
@@ -235,7 +240,7 @@ public class PubSubCdcToBigQuery {
     void setWindowDuration(String value);
 
     // Thread Count
-    @TemplateParameter.Text(
+    @TemplateParameter.Integer(
         order = 10,
         optional = true,
         description = "Thread Number",
@@ -260,6 +265,12 @@ public class PubSubCdcToBigQuery {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
 
+    if (!Strings.isNullOrEmpty(options.getDeadLetterQueueDirectory())
+        && !Strings.isNullOrEmpty(options.getOutputDeadletterTable())) {
+      throw new IllegalArgumentException(
+          "Cannot specify both deadLetterQueueDirectory and outputDeadletterTable");
+    }
+
     run(options);
   }
 
@@ -278,7 +289,7 @@ public class PubSubCdcToBigQuery {
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
     String gcsOutputDateTimeDirectory = null;
 
-    if (options.getDeadLetterQueueDirectory() != null) {
+    if (!Strings.isNullOrEmpty(options.getDeadLetterQueueDirectory())) {
       gcsOutputDateTimeDirectory = dlqManager.getRetryDlqDirectory() + "YYYY/MM/DD/HH/mm/";
     }
 

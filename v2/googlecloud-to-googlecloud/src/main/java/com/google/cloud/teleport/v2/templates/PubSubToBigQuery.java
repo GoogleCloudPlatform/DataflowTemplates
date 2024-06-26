@@ -181,30 +181,33 @@ public class PubSubToBigQuery {
           DataflowPipelineWorkerPoolOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
+        groupName = "Target",
         description = "BigQuery output table",
         helpText =
-            "BigQuery table location to write the output to. The table’s schema must match the "
-                + "input JSON objects.")
+            "The BigQuery table to write to, formatted as `\"PROJECT_ID:DATASET_NAME.TABLE_NAME\"`.")
     String getOutputTableSpec();
 
     void setOutputTableSpec(String value);
 
     @TemplateParameter.PubsubTopic(
         order = 2,
+        groupName = "Source",
         optional = true,
         description = "Input Pub/Sub topic",
-        helpText = "The Pub/Sub topic to read the input from.")
+        helpText =
+            "The Pub/Sub topic to read from, formatted as `\"projects/<PROJECT_ID>/topics/<TOPIC_NAME>\"`.")
     String getInputTopic();
 
     void setInputTopic(String value);
 
     @TemplateParameter.PubsubSubscription(
         order = 3,
+        groupName = "Source",
         optional = true,
         description = "Pub/Sub input subscription",
         helpText =
-            "Pub/Sub subscription to read the input from, in the format of"
-                + " 'projects/your-project-id/subscriptions/your-subscription-name'")
+            "The Pub/Sub subscription to read from, "
+                + "formatted as `\"projects/<PROJECT_ID>/subscriptions/<SUBCRIPTION_NAME>\"`.")
     String getInputSubscription();
 
     void setInputSubscription(String value);
@@ -215,9 +218,11 @@ public class PubSubToBigQuery {
         description =
             "Table for messages failed to reach the output table (i.e., Deadletter table)",
         helpText =
-            "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
-                + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
-                + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.")
+            "The BigQuery table to use for messages that failed to reach the output table, "
+                + "formatted as `\"PROJECT_ID:DATASET_NAME.TABLE_NAME\"`. If the table "
+                + "doesn't exist, it is created when the pipeline runs. "
+                + "If this parameter is not specified, "
+                + "the value `\"OUTPUT_TABLE_SPEC_error_records\"` is used instead.")
     String getOutputDeadletterTable();
 
     void setOutputDeadletterTable(String value);
@@ -225,12 +230,16 @@ public class PubSubToBigQuery {
     @TemplateParameter.Boolean(
         order = 5,
         optional = true,
+        parentName = "useStorageWriteApi",
+        parentTriggerValues = {"true"},
         description = "Use at at-least-once semantics in BigQuery Storage Write API",
         helpText =
-            "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"
-                + " enabled the at-least-once semantics will be used for Storage Write API, otherwise"
-                + " exactly-once semantics will be used.",
-        hiddenUi = true)
+            "When using the Storage Write API, specifies the write semantics. "
+                + "To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics)"
+                + ", set this parameter to true. "
+                + "To use exactly-once semantics, set the parameter to `false`. "
+                + "This parameter applies only when `useStorageWriteApi` is `true`. "
+                + "The default value is `false`.")
     @Default.Boolean(false)
     @Override
     Boolean getUseStorageWriteApiAtLeastOnce();

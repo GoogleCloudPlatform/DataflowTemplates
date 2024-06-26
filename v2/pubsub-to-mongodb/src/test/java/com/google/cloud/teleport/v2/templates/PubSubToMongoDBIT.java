@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
@@ -86,7 +87,43 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
   }
 
   @Test
-  public void testPubsubToMongoDB() throws IOException {
+  @TemplateIntegrationTest(value = PubSubToMongoDB.class, template = "Cloud_PubSub_to_MongoDB")
+  public void testJavascriptPubsubToMongoDB() throws IOException {
+    String udfFileName = "transform.js";
+    gcsClient.createArtifact(
+        "input/" + udfFileName,
+        "function transform(inJson) {\n"
+            + "    var outJson = JSON.parse(inJson);\n"
+            + "    outJson.udf = \"out\";\n"
+            + "    return JSON.stringify(outJson);\n"
+            + "}");
+    baseTestPubsubToMongoDB(
+        b ->
+            b.addParameter("javascriptTextTransformGcsPath", getGcsPath("input/" + udfFileName))
+                .addParameter("javascriptTextTransformFunctionName", "transform"));
+  }
+
+  @Test
+  @TemplateIntegrationTest(
+      value = PubSubToMongoDB.class,
+      template = "Cloud_PubSub_to_MongoDB_Xlang")
+  public void testPythonPubsubToMongoDB() throws IOException {
+    String udfFileName = "transform.py";
+    gcsClient.createArtifact(
+        "input/" + udfFileName,
+        "import json\n"
+            + "def transform(inJson):\n"
+            + "  outJson = json.loads(inJson)\n"
+            + "  outJson['udf'] = \"out\"\n"
+            + "  return json.dumps(outJson)\n");
+    baseTestPubsubToMongoDB(
+        b ->
+            b.addParameter("pythonExternalTextTransformGcsPath", getGcsPath("input/" + udfFileName))
+                .addParameter("pythonExternalTextTransformFunctionName", "transform"));
+  }
+
+  public void baseTestPubsubToMongoDB(
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
     // Arrange
     TopicName tc = pubsubResourceManager.createTopic(testName);
     SubscriptionName subscription = pubsubResourceManager.createSubscription(tc, "sub-" + testName);
@@ -96,29 +133,18 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
 
     mongoResourceManager.createCollection(testName);
 
-    String udfFileName = "transform.js";
-    gcsClient.createArtifact(
-        "input/" + udfFileName,
-        "function transform(inJson) {\n"
-            + "    var outJson = JSON.parse(inJson);\n"
-            + "    outJson.udf = \"out\";\n"
-            + "    return JSON.stringify(outJson);\n"
-            + "}");
-
-    LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, specPath)
-            .addParameter("mongoDBUri", mongoResourceManager.getUri())
-            .addParameter("database", mongoResourceManager.getDatabaseName())
-            .addParameter("collection", testName)
-            .addParameter("inputSubscription", subscription.toString())
-            .addParameter("deadletterTable", toTableSpecLegacy(dlqTableId))
-            .addParameter("batchSize", "1")
-            .addParameter("sslEnabled", "false")
-            .addParameter("javascriptTextTransformGcsPath", getGcsPath("input/" + udfFileName))
-            .addParameter("javascriptTextTransformFunctionName", "transform");
-
     // Act
-    LaunchInfo info = launchTemplate(options);
+    LaunchInfo info =
+        launchTemplate(
+            paramsAdder.apply(
+                LaunchConfig.builder(testName, specPath)
+                    .addParameter("mongoDBUri", mongoResourceManager.getUri())
+                    .addParameter("database", mongoResourceManager.getDatabaseName())
+                    .addParameter("collection", testName)
+                    .addParameter("inputSubscription", subscription.toString())
+                    .addParameter("deadletterTable", toTableSpecLegacy(dlqTableId))
+                    .addParameter("batchSize", "1")
+                    .addParameter("sslEnabled", "false")));
     LOG.info("Triggered template job");
 
     assertThatPipeline(info).isRunning();
@@ -157,6 +183,7 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
   }
 
   @Test
+  @TemplateIntegrationTest(value = PubSubToMongoDB.class, template = "Cloud_PubSub_to_MongoDB")
   public void testPubsubToMongoDBWithReload() throws IOException, InterruptedException {
     // Arrange
     TopicName tc = pubsubResourceManager.createTopic(testName);

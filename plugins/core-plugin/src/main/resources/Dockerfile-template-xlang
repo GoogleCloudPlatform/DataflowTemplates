@@ -1,0 +1,72 @@
+#===================================================================#
+# Create build environment from base Python template launcher image #
+#===================================================================#
+FROM gcr.io/dataflow-templates-base/python311-template-launcher-base:latest as python-base
+
+# Build args
+ARG WORKDIR=/template
+ARG REQUIREMENTS_FILE=requirements.txt
+ARG BEAM_VERSION=${beamVersion}
+ARG BEAM_PACKAGE=apache-beam[dataframe,gcp,test,yaml]==$BEAM_VERSION
+ARG PY_VERSION=${pythonVersion}
+
+# Copy template files to /template
+RUN mkdir -p $WORKDIR
+COPY ${containerName}-generated-metadata.json $REQUIREMENTS_FILE* /template/
+COPY ${containerName}/ /template/${containerName}/
+WORKDIR $WORKDIR
+
+# Create requirements.txt file if not provided
+RUN if ! [ -f requirements.txt ] ; then echo "$BEAM_PACKAGE" > requirements.txt ; fi
+
+# Install dependencies to launch the pipeline and download to reduce startup time
+RUN python -m venv /venv \
+    && /venv/bin/pip install --no-cache-dir --upgrade pip setuptools \
+    && /venv/bin/pip install --no-cache-dir -U -r $REQUIREMENTS_FILE \
+    && /venv/bin/pip download --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE \
+    && rm -rf /usr/local/lib/python$PY_VERSION/site-packages \
+    && cp -r /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/
+    # change to mv once Beam 2.57.0 is released
+
+
+#============================================================#
+# Create Distroless xlang image compatible with YamlTemplate #
+#============================================================#
+FROM ${baseJavaContainerImage}
+
+# Build args
+ARG CHIPSET_ARCH=x86_64-linux-gnu
+ARG PY_VERSION=${pythonVersion}
+
+# Set environment variables
+ENV DATAFLOW_JAVA_COMMAND_SPEC=${commandSpec}
+ENV PIP_NO_DEPS=True
+
+# Copy template, python wheels and python launcher script from python-base
+COPY --from=python-base /template /template
+COPY --from=python-base /tmp/dataflow-requirements-cache /tmp/dataflow-requirements-cache
+COPY --from=python-base /opt/google/dataflow/python_template_launcher /opt/google/dataflow/python_template_launcher
+
+# Copy python and installed packages from python-base
+COPY --from=python-base /usr/local/bin/python$PY_VERSION /usr/local/bin/python
+COPY --from=python-base /usr/local/lib/python$PY_VERSION /usr/local/lib/python$PY_VERSION
+
+# Workaround until Beam 2.57.0 is released
+COPY --from=python-base /venv /root/.apache_beam/cache/venvs/py-$PY_VERSION-beam-${beamVersion}-da39a3ee5e6b4b0d3255bfef95601890afd80709
+
+# Copy required shared libraries from python-base
+COPY --from=python-base /lib/$CHIPSET_ARCH/ld-*so* /lib64/
+COPY --from=python-base /lib/$CHIPSET_ARCH/lib*so* /lib/$CHIPSET_ARCH/
+COPY --from=python-base /usr/lib/$CHIPSET_ARCH/libffi* /usr/lib/$CHIPSET_ARCH/
+COPY --from=python-base /usr/local/lib/libpython$PY_VERSION* /usr/local/lib/
+
+# Copy minimal commands from python-base needed to execute template
+COPY --from=python-base /bin/dash /bin/sh
+COPY --from=python-base /usr/bin/which.debianutils /usr/bin/which
+
+# Copy licenses
+COPY --from=python-base /usr/licenses/ /usr/licenses/
+
+WORKDIR /template
+
+ENTRYPOINT ["/opt/google/dataflow/java_template_launcher"]

@@ -33,8 +33,9 @@ must be maintained across all Templates:
 
 ### Introducing New Templates
 
-If you are interested in introducing a new template, please send an email to the core Dataflow Templates
-team before doing so. Any new templates must be flex templates in the v2 directory
+If you are interested in introducing a new template, please file an issue using the [Google Issue Tracker](https://issuetracker.google.com/issues/new?component=187168&template=0) before doing so. Any new templates must be flex templates in the v2 directory.
+
+For documentation on adding new templates, see the [code contribution guide](./code-contributions.md).
 
 ### Forking Beam Code
 
@@ -57,3 +58,8 @@ This repo's code currently is mirrored in Google's internal source control syste
 
 We are actively working to deprecate this process and use GitHub as the only source of truth.
 If you encounter unresolvable issues with this flow, please reach out to the Dataflow team directly.
+
+## GitHub actions
+
+This repository uses GitHub Actions for all CI/CD needs. Please do not introduce other methods of building/running code without consulting with the core Dataflow team.
+For information on GitHub Actions and CI/CD workflows, see [CI/CD](./cicd.md).

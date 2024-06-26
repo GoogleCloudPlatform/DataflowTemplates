@@ -38,6 +38,7 @@ import org.apache.beam.it.neo4j.Neo4jResourceManager;
 import org.apache.beam.it.neo4j.conditions.Neo4jQueryCheck;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -241,6 +242,7 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
   @Category(TemplateIntegrationTest.class)
   @TemplateIntegrationTest(GoogleCloudToNeo4j.class)
   @RunWith(JUnit4.class)
+  @Ignore("Has known issues to be fixed in Beam 2.57")
   public static class Neo4j5EnterpriseIT extends ConstraintsIndicesIT {
 
     @Override

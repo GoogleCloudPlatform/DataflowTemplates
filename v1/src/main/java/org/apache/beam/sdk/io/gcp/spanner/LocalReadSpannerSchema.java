@@ -55,6 +55,13 @@ class LocalReadSpannerSchema extends DoFn<Void, SpannerSchema> {
     spannerAccessor.close();
   }
 
+  public static String getTableName(String schemaName, String localTableName) {
+    if (schemaName.isEmpty() || schemaName.equals("public")) {
+      return localTableName;
+    }
+    return schemaName + "." + localTableName;
+  }
+
   @ProcessElement
   public void processElement(ProcessContext c) throws Exception {
     Dialect dialect = c.sideInput(dialectView);
@@ -64,19 +71,19 @@ class LocalReadSpannerSchema extends DoFn<Void, SpannerSchema> {
       ResultSet resultSet = readTableInfo(tx, dialect);
 
       while (resultSet.next()) {
-        String tableName = resultSet.getString(0);
-        String columnName = resultSet.getString(1);
-        String type = resultSet.getString(2);
-        long cellsMutated = resultSet.getLong(3);
+        String tableName = getTableName(resultSet.getString(0), resultSet.getString(1));
+        String columnName = resultSet.getString(2);
+        String type = resultSet.getString(3);
+        long cellsMutated = resultSet.getLong(4);
 
         builder.addColumn(tableName, columnName, type, cellsMutated);
       }
 
       resultSet = readPrimaryKeyInfo(tx, dialect);
       while (resultSet.next()) {
-        String tableName = resultSet.getString(0);
-        String columnName = resultSet.getString(1);
-        String ordering = resultSet.getString(2);
+        String tableName = getTableName(resultSet.getString(0), resultSet.getString(1));
+        String columnName = resultSet.getString(2);
+        String ordering = resultSet.getString(3);
 
         builder.addKeyPart(tableName, columnName, "DESC".equalsIgnoreCase(ordering));
       }
@@ -89,48 +96,51 @@ class LocalReadSpannerSchema extends DoFn<Void, SpannerSchema> {
     // number of indexes that cover each column. this will be used to estimate
     // the number of cells (table column plus indexes) mutated in an upsert operation
     // in order to stay below the 20k threshold
-    String statement = "";
+    String statement;
     switch (dialect) {
       case GOOGLE_STANDARD_SQL:
         statement =
             "SELECT"
-                + "    c.table_name"
+                + "    c.table_schema"
+                + "  , c.table_name"
                 + "  , c.column_name"
                 + "  , c.spanner_type"
                 + "  , (1 + COALESCE(t.indices, 0)) AS cells_mutated"
                 + "  FROM ("
-                + "    SELECT c.table_name, c.column_name, c.spanner_type, c.ordinal_position"
+                + "    SELECT c.table_schema, c.table_name, c.column_name, c.spanner_type, c.ordinal_position"
                 + "     FROM information_schema.columns as c"
-                + "     WHERE c.table_catalog = '' AND c.table_schema = '') AS c"
+                + "     WHERE c.table_schema NOT IN"
+                + "     ('INFORMATION_SCHEMA', 'SPANNER_SYS')) AS c"
                 + "  LEFT OUTER JOIN ("
-                + "    SELECT t.table_name, t.column_name, COUNT(*) AS indices"
+                + "    SELECT t.table_schema, t.table_name, t.column_name, COUNT(*) AS indices"
                 + "      FROM information_schema.index_columns AS t "
-                + "      WHERE t.index_name != 'PRIMARY_KEY' AND t.table_catalog = ''"
-                + "      AND t.table_schema = ''"
-                + "      GROUP BY t.table_name, t.column_name) AS t"
-                + "  USING (table_name, column_name)"
+                + "      WHERE t.index_name != 'PRIMARY_KEY'"
+                + "      AND t.table_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                + "      GROUP BY t.table_schema, t.table_name, t.column_name) AS t"
+                + "  USING (table_schema, table_name, column_name)"
                 + "  ORDER BY c.table_name, c.ordinal_position";
         break;
       case POSTGRESQL:
         statement =
             "SELECT"
-                + "    c.table_name"
+                + "    c.table_schema"
+                + "  ,  c.table_name"
                 + "  , c.column_name"
                 + "  , c.spanner_type"
                 + "  , (1 + COALESCE(t.indices, 0)) AS cells_mutated"
                 + "  FROM ("
-                + "    SELECT c.table_name, c.column_name, c.spanner_type, c.ordinal_position"
+                + "    SELECT c.table_schema, c.table_name, c.column_name, c.spanner_type, c.ordinal_position"
                 + "      FROM information_schema.columns as c"
                 + "      WHERE c.table_schema NOT IN"
                 + "      ('information_schema', 'spanner_sys', 'pg_catalog')) AS c"
                 + "  LEFT OUTER JOIN ("
-                + "    SELECT t.table_name, t.column_name, COUNT(*) AS indices"
+                + "    SELECT t.table_schema, t.table_name, t.column_name, COUNT(*) AS indices"
                 + "      FROM information_schema.index_columns AS t "
                 + "      WHERE t.index_name != 'PRIMARY_KEY'"
                 + "      AND t.table_schema NOT IN"
                 + "      ('information_schema', 'spanner_sys', 'pg_catalog')"
-                + "      GROUP BY t.table_name, t.column_name) AS t"
-                + "  USING (table_name, column_name)"
+                + "      GROUP BY t.table_schema, t.table_name, t.column_name) AS t"
+                + "  USING (table_schema, table_name, column_name)"
                 + "  ORDER BY c.table_name, c.ordinal_position";
         break;
       default:
@@ -140,19 +150,19 @@ class LocalReadSpannerSchema extends DoFn<Void, SpannerSchema> {
   }
 
   private ResultSet readPrimaryKeyInfo(ReadOnlyTransaction tx, Dialect dialect) {
-    String statement = "";
+    String statement;
     switch (dialect) {
       case GOOGLE_STANDARD_SQL:
         statement =
-            "SELECT t.table_name, t.column_name, t.column_ordering"
+            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering"
                 + " FROM information_schema.index_columns AS t "
-                + " WHERE t.index_name = 'PRIMARY_KEY' AND t.table_catalog = ''"
-                + " AND t.table_schema = ''"
+                + " WHERE t.index_name = 'PRIMARY_KEY'"
+                + " AND t.table_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
                 + " ORDER BY t.table_name, t.ordinal_position";
         break;
       case POSTGRESQL:
         statement =
-            "SELECT t.table_name, t.column_name, t.column_ordering"
+            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering"
                 + " FROM information_schema.index_columns AS t "
                 + " WHERE t.index_name = 'PRIMARY_KEY'"
                 + " AND t.table_schema NOT IN ('information_schema', 'spanner_sys', 'pg_catalog')"

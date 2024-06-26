@@ -24,12 +24,21 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
     name = "Yaml_Template",
     category = TemplateCategory.GET_STARTED,
     type = Template.TemplateType.YAML,
-    displayName = "YAML Template (Experimental)",
+    displayName = "YAML",
     description =
-        "YAML pipeline. Reads YAML from Cloud Storage and dynamically expands YAML into "
-            + "Beam pipeline graph.",
+        "The YAML Template is used to run Dataflow pipelines written in Beam YAML. "
+            + "The YAML pipeline can be passed to the template directly as a raw string or the location "
+            + "of a Beam YAML pipeline file stored in Google Cloud Storage can optionally be passed."
+            + "\n\n"
+            + "For launching a Beam YAML pipeline directly from the gcloud command line, see "
+            + "https://cloud.google.com/sdk/gcloud/reference/dataflow/yaml"
+            + "\n\n"
+            + "For more information on Beam YAML, see https://beam.apache.org/documentation/sdks/yaml/",
     flexContainerName = "yaml-template",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "A valid Beam YAML pipeline.",
+    })
 public interface YAMLTemplate {
   @TemplateParameter.Text(
       order = 1,
@@ -46,4 +55,13 @@ public interface YAMLTemplate {
       description = "Input YAML pipeline spec file in Cloud Storage.",
       helpText = "A file in Cloud Storage containing a yaml description of the pipeline to run.")
   String getYamlPipelineFile();
+
+  @TemplateParameter.Text(
+      order = 3,
+      name = "jinja_variables",
+      optional = true,
+      description = "Input jinja preprocessing variables.",
+      helpText =
+          "A json dict of variables used when invoking the jinja preprocessor on the provided yaml pipeline.")
+  String getJinjaVariables();
 }

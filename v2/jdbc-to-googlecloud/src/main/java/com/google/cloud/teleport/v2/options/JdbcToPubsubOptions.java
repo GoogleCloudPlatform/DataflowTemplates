@@ -28,7 +28,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
       optional = false,
       regexes = {"^.+$"},
       description = "JDBC driver class name.",
-      helpText = "JDBC driver class name to use.",
+      helpText = "The JDBC driver class name.",
       example = "com.mysql.jdbc.Driver")
   String getDriverClassName();
 
@@ -36,14 +36,14 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       optional = false,
       regexes = {
         "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
       },
       description = "JDBC connection URL string.",
       helpText =
-          "Url connection string to connect to the JDBC source. Connection string can "
-              + "be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.",
+          "The JDBC connection URL string. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string. ",
       example = "jdbc:mysql://some-host:3306/sampledb")
   String getConnectionUrl();
 
@@ -55,8 +55,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
       regexes = {"^.+$"},
       description = "JDBC connection username.",
       helpText =
-          "User name to be used for the JDBC connection. User name can be passed in as plaintext "
-              + "or as a base64 encoded string encrypted by Google Cloud KMS.")
+          "The username to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. For example, `echo -n 'some_username' | glcloud kms encrypt --location=my_location --keyring=mykeyring --key=mykey --plaintext-file=- --ciphertext-file=- | base64`")
   String getUsername();
 
   void setUsername(String username);
@@ -66,8 +65,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
       optional = true,
       description = "JDBC connection password.",
       helpText =
-          "Password to be used for the JDBC connection. Password can be passed in as plaintext "
-              + "or as a base64 encoded string encrypted by Google Cloud KMS.")
+          "The password to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. For example, `echo -n 'some_password' | glcloud kms encrypt --location=my_location --keyring=mykeyring --key=mykey --plaintext-file=- --ciphertext-file=- | base64`")
   String getPassword();
 
   void setPassword(String password);
@@ -77,7 +75,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
       optional = false,
       regexes = {"^.+$"},
       description = "Cloud Storage paths for JDBC drivers",
-      helpText = "Comma separate Cloud Storage paths for JDBC drivers.",
+      helpText = "Comma-separated Cloud Storage paths for JDBC drivers.",
       example = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar")
   String getDriverJars();
 
@@ -89,7 +87,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
       regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
       description = "JDBC connection property string.",
       helpText =
-          "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*.",
+          "The properties string to use for the JDBC connection. The format of the string must be `[propertyName=property;]*`. ",
       example = "unicode=true;characterEncoding=UTF-8")
   String getConnectionProperties();
 
@@ -100,7 +98,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
       optional = false,
       regexes = {"^.+$"},
       description = "JDBC source SQL query.",
-      helpText = "Query to be executed on the source to extract the data.",
+      helpText = "The query to run on the source to extract the data.",
       example = "select * from sampledb.sample_table")
   String getQuery();
 
@@ -108,9 +106,10 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
 
   @TemplateParameter.PubsubTopic(
       order = 8,
+      groupName = "Target",
       description = "Output Pub/Sub topic",
       helpText =
-          "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
+          "The Pub/Sub topic to publish to, in the format projects/<PROJECT_ID>/topics/<TOPIC_NAME>.",
       example = "projects/your-project-id/topics/your-topic-name")
   @Validation.Required
   String getOutputTopic();
@@ -122,7 +121,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
       optional = true,
       description = "Google Cloud KMS key",
       helpText =
-          "If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt",
+          "The Cloud KMS Encryption Key to use to decrypt the username, password, and connection string. If a Cloud KMS key is passed in, the username, password, and connection string must all be passed in encrypted and base64 encoded.",
       example = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
   String getKMSEncryptionKey();
 

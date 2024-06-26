@@ -19,17 +19,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputFilePattern** : The path to the Cloud Storage text to read. (Example: gs://your-bucket/your-file.txt).
-* **JSONPath** : The Cloud Storage path to the JSON file that defines your BigQuery schema. (Example: gs://your-bucket/your-schema.json).
-* **outputTable** : The location of the BigQuery table in which to store your processed data. If you reuse an existing table, it will be overwritten. (Example: your-project:your-dataset.your-table).
-* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-transforms/*.js).
-* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **bigQueryLoadingTemporaryDirectory** : Temporary directory for the BigQuery loading process. (Example: gs://your-bucket/your-files/temp-dir).
+* **inputFilePattern** : The gs:// path to the text in Cloud Storage you'd like to process. (Example: gs://your-bucket/your-file.txt).
+* **JSONPath** : The gs:// path to the JSON file that defines your BigQuery schema, stored in Cloud Storage. (Example: gs://your-bucket/your-schema.json).
+* **outputTable** : The location of the BigQuery table to use to store the processed data. If you reuse an existing table, it is overwritten. (Example: <PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>).
+* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) you want to use. (Example: gs://your-bucket/your-transforms/*.js).
+* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) that you want to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples) (Example: transform_udf1).
+* **bigQueryLoadingTemporaryDirectory** : Temporary directory for BigQuery loading process. (Example: gs://your-bucket/your-files/temp-dir).
 
 ### Optional parameters
 
-* **useStorageWriteApi** : If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
-* **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
+* **useStorageWriteApi** : If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
+* **useStorageWriteApiAtLeastOnce** : When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
 
 
 ## User-Defined functions (UDFs)
@@ -224,7 +224,7 @@ resource "google_dataflow_flex_template_job" "gcs_text_to_bigquery_flex" {
   parameters        = {
     inputFilePattern = "gs://your-bucket/your-file.txt"
     JSONPath = "gs://your-bucket/your-schema.json"
-    outputTable = "your-project:your-dataset.your-table"
+    outputTable = "<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>"
     javascriptTextTransformGcsPath = "gs://your-bucket/your-transforms/*.js"
     javascriptTextTransformFunctionName = "transform_udf1"
     bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp-dir"

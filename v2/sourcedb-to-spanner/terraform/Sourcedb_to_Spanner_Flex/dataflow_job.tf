@@ -35,55 +35,43 @@ variable "region" {
 
 variable "jdbcDriverJars" {
   type        = string
-  description = "The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar)"
+  description = "The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar). Defaults to empty."
   default     = null
 }
 
 variable "jdbcDriverClassName" {
   type        = string
-  description = "The JDBC driver class name. (Example: com.mysql.jdbc.Driver)"
+  description = "The JDBC driver class name. (Example: com.mysql.jdbc.Driver). Defaults to: com.mysql.jdbc.Driver."
   default     = null
 }
 
-variable "sourceConnectionURL" {
+variable "sourceDbURL" {
   type        = string
-  description = "The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. Currently supported sources: MySQL (Example: jdbc:mysql://some-host:3306/sampledb)"
-  default     = null
-}
+  description = "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`."
 
-variable "sourceConnectionProperties" {
-  type        = string
-  description = "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8)"
-  default     = null
 }
 
 variable "username" {
   type        = string
-  description = "The username to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key."
+  description = "The username to be used for the JDBC connection. Defaults to empty."
   default     = null
 }
 
 variable "password" {
   type        = string
-  description = "The password to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key."
-  default     = null
-}
-
-variable "partitionColumns" {
-  type        = string
-  description = "If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported. The partition columns are expected to be the same in number as the tables"
+  description = "The password to be used for the JDBC connection. Defaults to empty."
   default     = null
 }
 
 variable "tables" {
   type        = string
-  description = "Tables to read from using partitions."
+  description = "Tables to read from using partitions. Defaults to empty."
   default     = null
 }
 
 variable "numPartitions" {
   type        = number
-  description = "The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1."
+  description = "The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1. Defaults to: 0."
   default     = null
 }
 
@@ -111,21 +99,39 @@ variable "spannerHost" {
   default     = null
 }
 
-variable "ignoreColumns" {
-  type        = string
-  description = "A comma separated list of (table:column1;column2) to exclude from writing to Spanner (Example: table1:column1;column2,table2:column1)"
+variable "maxConnections" {
+  type        = number
+  description = "Configures the JDBC connection pool on each worker with maximum number of connections. Use a negative number for no limit. (Example: -1). Defaults to: 0."
   default     = null
+}
+
+variable "sessionFilePath" {
+  type        = string
+  description = "Session file path in Cloud Storage that contains mapping information from Spanner Migration Tool. Defaults to empty."
+  default     = null
+}
+
+variable "DLQDirectory" {
+  type        = string
+  description = "This directory is used to dump the failed records in a migration."
+
 }
 
 variable "disabledAlgorithms" {
   type        = string
-  description = "Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, because the algorithms that are disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4)"
+  description = "Comma separated algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4)"
   default     = null
 }
 
 variable "extraFilesToStage" {
   type        = string
-  description = "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id)"
+  description = "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>)"
+  default     = null
+}
+
+variable "defaultLogLevel" {
+  type        = string
+  description = "Set Log level in the workers. Supported options are OFF, ERROR, WARN, INFO, DEBUG, TRACE. Defaults to INFO"
   default     = null
 }
 
@@ -254,22 +260,23 @@ resource "google_dataflow_flex_template_job" "generated" {
   provider                = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Sourcedb_to_Spanner_Flex"
   parameters = {
-    jdbcDriverJars             = var.jdbcDriverJars
-    jdbcDriverClassName        = var.jdbcDriverClassName
-    sourceConnectionURL        = var.sourceConnectionURL
-    sourceConnectionProperties = var.sourceConnectionProperties
-    username                   = var.username
-    password                   = var.password
-    partitionColumns           = var.partitionColumns
-    tables                     = var.tables
-    numPartitions              = tostring(var.numPartitions)
-    instanceId                 = var.instanceId
-    databaseId                 = var.databaseId
-    projectId                  = var.projectId
-    spannerHost                = var.spannerHost
-    ignoreColumns              = var.ignoreColumns
-    disabledAlgorithms         = var.disabledAlgorithms
-    extraFilesToStage          = var.extraFilesToStage
+    jdbcDriverJars      = var.jdbcDriverJars
+    jdbcDriverClassName = var.jdbcDriverClassName
+    sourceDbURL         = var.sourceDbURL
+    username            = var.username
+    password            = var.password
+    tables              = var.tables
+    numPartitions       = tostring(var.numPartitions)
+    instanceId          = var.instanceId
+    databaseId          = var.databaseId
+    projectId           = var.projectId
+    spannerHost         = var.spannerHost
+    maxConnections      = tostring(var.maxConnections)
+    sessionFilePath     = var.sessionFilePath
+    DLQDirectory        = var.DLQDirectory
+    disabledAlgorithms  = var.disabledAlgorithms
+    extraFilesToStage   = var.extraFilesToStage
+    defaultLogLevel     = var.defaultLogLevel
   }
 
   additional_experiments       = var.additional_experiments

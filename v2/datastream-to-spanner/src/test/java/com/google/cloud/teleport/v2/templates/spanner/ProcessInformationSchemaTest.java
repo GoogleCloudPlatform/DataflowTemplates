@@ -17,15 +17,28 @@ package com.google.cloud.teleport.v2.templates.spanner;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.google.api.gax.longrunning.OperationFuture;
+import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.junit.Test;
 
 /** Unit tests for ProcessInformationSchema class. */
@@ -373,5 +386,55 @@ public class ProcessInformationSchemaTest {
     List<String> dataTablesWithNoShadowTables =
         processInformationSchema.getDataTablesWithNoShadowTables(getTestDdlWithGSqlDialect());
     assertThat(dataTablesWithNoShadowTables, is(Arrays.asList("Users_interleaved")));
+  }
+
+  @Test
+  public void canCreateShadowTablesInSpanner() throws Exception {
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    DatabaseAdminClient databaseAdminClient = mock(DatabaseAdminClient.class);
+    OperationFuture<Void, UpdateDatabaseDdlMetadata> operationFuture = mock(OperationFuture.class);
+
+    ProcessInformationSchema.ProcessInformationSchemaFn processInformationSchema =
+        new ProcessInformationSchema.ProcessInformationSchemaFn(
+            spannerConfig, /* shouldCreateShadowTables= */ true, "shadow_", "mysql");
+    processInformationSchema.setDialect(Dialect.GOOGLE_STANDARD_SQL);
+    processInformationSchema.setSpannerAccessor(spannerAccessor);
+
+    // Mock method calls
+    when(databaseAdminClient.updateDatabaseDdl(anyString(), anyString(), any(), any()))
+        .thenReturn(operationFuture);
+    when(spannerAccessor.getDatabaseAdminClient()).thenReturn(databaseAdminClient);
+    when(operationFuture.get(anyLong(), any())).thenReturn(null);
+    ValueProvider<String> sampleValueProvider =
+        ValueProvider.StaticValueProvider.of("sample-value");
+    when(spannerConfig.getInstanceId()).thenReturn(sampleValueProvider);
+    when(spannerConfig.getDatabaseId()).thenReturn(sampleValueProvider);
+
+    processInformationSchema.createShadowTablesInSpanner(getTestDdlWithGSqlDialect());
+
+    List<String> createShadowTableStatements =
+        Collections.singletonList(
+            "CREATE TABLE `shadow_Users_interleaved` (\n"
+                + "\t`first_name`                            STRING(MAX),\n"
+                + "\t`last_name`                             STRING(5),\n"
+                + "\t`age`                                   INT64,\n"
+                + "\t`bool_field`                            BOOL,\n"
+                + "\t`int64_field`                           INT64,\n"
+                + "\t`float64_field`                         FLOAT64,\n"
+                + "\t`string_field`                          STRING(MAX),\n"
+                + "\t`bytes_field`                           BYTES(MAX),\n"
+                + "\t`timestamp_field`                       TIMESTAMP,\n"
+                + "\t`date_field`                            DATE,\n"
+                + "\t`id`                                    INT64,\n"
+                + "\t`timestamp`                             INT64,\n"
+                + "\t`log_file`                              STRING(MAX),\n"
+                + "\t`log_position`                          INT64,\n"
+                + ") PRIMARY KEY (`first_name` ASC, `last_name` DESC, `age` ASC, `bool_field` ASC, `int64_field` ASC, `float64_field` ASC, `string_field` ASC, `bytes_field` ASC, `timestamp_field` ASC, `date_field` ASC, `id` ASC)");
+    // Verify method calls
+    verify(databaseAdminClient, times(1))
+        .updateDatabaseDdl(
+            eq("sample-value"), eq("sample-value"), eq(createShadowTableStatements), eq(null));
+    verify(operationFuture, times(1)).get(anyLong(), any());
   }
 }

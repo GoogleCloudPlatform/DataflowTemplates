@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
+import com.google.cloud.teleport.metadata.MultiTemplate;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -28,7 +29,7 @@ import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.CsvConverters.LineToFailsafeJson;
 import com.google.cloud.teleport.v2.transforms.CsvConverters.ReadCsv;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.LogErrors;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.PythonExternalTextTransformerOptions;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters.FailsafeStringToSplunkEvent;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters.SplunkOptions;
@@ -37,6 +38,7 @@ import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.cloud.teleport.v2.values.SplunkTokenSource;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.EnumUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -70,21 +72,47 @@ import org.slf4j.LoggerFactory;
  * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-splunk/README_GCS_To_Splunk.md">README</a>
  * for instructions on how to use or modify this template.
  */
-@Template(
-    name = "GCS_To_Splunk",
-    category = TemplateCategory.BATCH,
-    displayName = "Cloud Storage To Splunk",
-    description = {
-      "A pipeline that reads a set of Text (CSV) files in Cloud Storage and writes to Splunk's"
-          + " HTTP Event Collector (HEC).",
-      "The template creates the Splunk payload as a JSON element using either CSV headers (default), JSON schema or JavaScript UDF. "
-          + "If a Javascript UDF and JSON schema are both inputted as parameters, only the Javascript UDF will be executed."
-    },
-    optionsClass = GCSToSplunkOptions.class,
-    skipOptions = {"javascriptTextTransformReloadIntervalMinutes"},
-    flexContainerName = "gcs-to-splunk",
-    contactInformation = "https://cloud.google.com/support",
-    hidden = true)
+@MultiTemplate({
+  @Template(
+      name = "GCS_To_Splunk",
+      category = TemplateCategory.BATCH,
+      displayName = "Cloud Storage To Splunk",
+      description = {
+        "A pipeline that reads a set of Text (CSV) files in Cloud Storage and writes to Splunk's"
+            + " HTTP Event Collector (HEC).",
+        "The template creates the Splunk payload as a JSON element using either CSV headers (default), JSON schema or JavaScript UDF. "
+            + "If a Javascript UDF and JSON schema are both inputted as parameters, only the Javascript UDF will be executed."
+      },
+      optionsClass = GCSToSplunkOptions.class,
+      skipOptions = {
+        "javascriptTextTransformReloadIntervalMinutes",
+        "pythonExternalTextTransformGcsPath",
+        "pythonExternalTextTransformFunctionName"
+      },
+      flexContainerName = "gcs-to-splunk",
+      contactInformation = "https://cloud.google.com/support",
+      hidden = true),
+  @Template(
+      name = "GCS_To_Splunk_Xlang",
+      category = TemplateCategory.BATCH,
+      displayName = "Cloud Storage To Splunk with Python UDFs",
+      type = Template.TemplateType.XLANG,
+      description = {
+        "A pipeline that reads a set of Text (CSV) files in Cloud Storage and writes to Splunk's"
+            + " HTTP Event Collector (HEC).",
+        "The template creates the Splunk payload as a JSON element using either CSV headers (default), JSON schema or Python UDF. "
+            + "If a Python UDF and JSON schema are both inputted as parameters, only the Python UDF will be executed."
+      },
+      optionsClass = GCSToSplunkOptions.class,
+      skipOptions = {
+        "javascriptTextTransformGcsPath",
+        "javascriptTextTransformFunctionName",
+        "javascriptTextTransformReloadIntervalMinutes"
+      },
+      flexContainerName = "gcs-to-splunk-xlang",
+      contactInformation = "https://cloud.google.com/support",
+      hidden = true)
+})
 public final class GCSToSplunk {
 
   /** String/String Coder for FailsafeElement. */
@@ -127,7 +155,9 @@ public final class GCSToSplunk {
    * executor at the command-line.
    */
   public interface GCSToSplunkOptions
-      extends CsvConverters.CsvPipelineOptions, SplunkOptions, JavascriptTextTransformerOptions {
+      extends CsvConverters.CsvPipelineOptions,
+          SplunkOptions,
+          PythonExternalTextTransformerOptions {
 
     @TemplateParameter.GcsWriteFolder(
         order = 1,
@@ -208,16 +238,32 @@ public final class GCSToSplunk {
   }
 
   static LineToFailsafeJson convertToFailsafeAndMaybeApplyUdf(GCSToSplunkOptions options) {
-    return CsvConverters.LineToFailsafeJson.newBuilder()
-        .setDelimiter(options.getDelimiter())
-        .setJavascriptUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
-        .setJavascriptUdfFunctionName(options.getJavascriptTextTransformFunctionName())
-        .setJsonSchemaPath(options.getJsonSchemaPath())
-        .setHeaderTag(CSV_HEADERS)
-        .setLineTag(CSV_LINES)
-        .setUdfOutputTag(UDF_OUT)
-        .setUdfDeadletterTag(UDF_ERROR_OUT)
-        .build();
+
+    boolean usePythonUdf = !Strings.isNullOrEmpty(options.getPythonExternalTextTransformGcsPath());
+    boolean useJavascriptUdf = !Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath());
+
+    if (usePythonUdf && useJavascriptUdf) {
+      throw new IllegalArgumentException(
+          "Either javascript or Python gcs path must be provided, but not both.");
+    }
+    CsvConverters.LineToFailsafeJson.Builder lineToFailsafeJsonBuilder =
+        CsvConverters.LineToFailsafeJson.newBuilder()
+            .setDelimiter(options.getDelimiter())
+            .setJsonSchemaPath(options.getJsonSchemaPath())
+            .setHeaderTag(CSV_HEADERS)
+            .setLineTag(CSV_LINES)
+            .setUdfOutputTag(UDF_OUT)
+            .setUdfDeadletterTag(UDF_ERROR_OUT);
+    if (usePythonUdf) {
+      lineToFailsafeJsonBuilder
+          .setPythonUdfFileSystemPath(options.getPythonExternalTextTransformGcsPath())
+          .setPythonUdfFunctionName(options.getPythonExternalTextTransformFunctionName());
+    } else {
+      lineToFailsafeJsonBuilder
+          .setJavascriptUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+          .setJavascriptUdfFunctionName(options.getJavascriptTextTransformFunctionName());
+    }
+    return lineToFailsafeJsonBuilder.build();
   }
 
   static FailsafeStringToSplunkEvent convertToSplunkEvent() {

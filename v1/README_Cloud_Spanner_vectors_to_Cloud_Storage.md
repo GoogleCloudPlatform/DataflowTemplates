@@ -25,20 +25,20 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **spannerProjectId** : The project ID of the Cloud Spanner instance.
-* **spannerInstanceId** : The instance ID of the Cloud Spanner from which you want to export the vector embeddings.
-* **spannerDatabaseId** : The database ID of the Cloud Spanner from which you want to export the vector embeddings.
-* **spannerTable** : Spanner Table to read from.
-* **spannerColumnsToExport** : Comma separated list of columns which are required for Vertex AI Vector Search Index. The `id` & `embedding` are required columns for Vertex Vector Search. If the column names don't precisely align with the Vertex AI Vector Search Index input structure, you can establish column mappings using aliases. If you have the columns that don't match the format expected by Vertex, you can use the notation `from:to`. For example, if the columns are `id` and `my_embedding`, in which `id` matches what Vertex expects but the embedding column is named differently, `id, my_embedding:embedding` should be specified.
-* **gcsOutputFolder** : The Cloud Storage folder for writing output files. Must end with a slash. (Example: gs://your-bucket/folder1/).
+* **spannerProjectId** : The project ID of the Spanner instance.
+* **spannerInstanceId** : The ID of the Spanner instance to export the vector embeddings from.
+* **spannerDatabaseId** : The ID of the Spanner database to export the vector embeddings from.
+* **spannerTable** : The Spanner table to read from.
+* **spannerColumnsToExport** : A comma-separated list of required columns for the Vertex AI Vector Search index. The ID and embedding columns are required by Vector Search. If your column names don't match the Vertex AI Vector Search index input structure, create column mappings by using aliases. If the column names don't match the format expected by Vertex AI, use the notation from:to. For example, if you have columns named id and my_embedding, specify id, my_embedding:embedding.
+* **gcsOutputFolder** : The Cloud Storage folder to write output files to. The path must end with a slash. (Example: gs://your-bucket/folder1/).
 * **gcsOutputFilePrefix** : The filename prefix for writing output files. (Example: vector-embeddings).
 
 ### Optional parameters
 
-* **spannerHost** : The Cloud Spanner endpoint to call in the template. The default is set to https://batch-spanner.googleapis.com. (Example: https://batch-spanner.googleapis.com).
-* **spannerVersionTime** : If set, specifies the time when the database version must be taken. String is in the RFC 3339 format in UTC time.  Timestamp must be in the past and maximum timestamp staleness applies; see <a href="https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness">Maximum Timestamp Staleness</a>. If not set, strong bound is used to read the latest data; see <a href="https://cloud.google.com/spanner/docs/timestamp-bounds#strong">Timestamp Strong Bounds</a>. (Example: 1990-12-31T23:59:60Z). Defaults to empty.
-* **spannerDataBoostEnabled** : Use Spanner on-demand compute so the export job will run on independent compute resources and have no impact to current Spanner workloads. This will incur additional charges in Spanner. Refer <a href=" https://cloud.google.com/spanner/docs/databoost/databoost-overview">Data Boost Overview</a>. Defaults to: false.
-* **spannerPriority** : The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]. Defaults to: MEDIUM.
+* **spannerHost** : The Spanner endpoint to call in the template. The default value is https://batch-spanner.googleapis.com. (Example: https://batch-spanner.googleapis.com).
+* **spannerVersionTime** : If set, specifies the time when the database version must be taken. The value is a string in the RFC-3339 date format in Unix epoch time. For example: 1990-12-31T23:59:60Z. The timestamp must be in the past, and maximum timestamp staleness (https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness) applies. If not set, a strong bound (https://cloud.google.com/spanner/docs/timestamp-bounds#strong) is used to read the latest data. Defaults to empty. (Example: 1990-12-31T23:59:60Z).
+* **spannerDataBoostEnabled** : When set to true, the template uses Spanner on-demand compute. The export job runs on independent compute resources that don't impact current Spanner workloads. Using this option incurs additional charges in Spanner. For more information, see Spanner Data Boost overview (https://cloud.google.com/spanner/docs/databoost/databoost-overview). Defaults to: false.
+* **spannerPriority** : The request priority for Spanner calls. The allowed values are HIGH, MEDIUM, and LOW. The default value is MEDIUM.
 
 
 

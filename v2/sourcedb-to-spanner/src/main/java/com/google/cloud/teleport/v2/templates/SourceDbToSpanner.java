@@ -15,27 +15,22 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.source.DataSourceProvider;
-import com.google.cloud.teleport.v2.spanner.ResultSetToMutation;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.List;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO.Write;
-import org.apache.beam.sdk.io.jdbc.JdbcIO;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.options.ValueProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -75,6 +70,8 @@ import org.apache.beam.sdk.values.PCollection;
     })
 public class SourceDbToSpanner {
 
+  private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpanner.class);
+
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
    * blocking execution is required, use the {@link SourceDbToSpanner#run} method to start the
@@ -88,7 +85,6 @@ public class SourceDbToSpanner {
     // Parse the user options passed from the command-line
     SourceDbToSpannerOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(SourceDbToSpannerOptions.class);
-
     run(options);
   }
 
@@ -100,70 +96,28 @@ public class SourceDbToSpanner {
    */
   @VisibleForTesting
   static PipelineResult run(SourceDbToSpannerOptions options) {
+    // TODO - Validate if options are as expected
     Pipeline pipeline = Pipeline.create(options);
-    Map<String, Set<String>> columnsToIgnore = getColumnsToIgnore(options);
-    Map<String, String> tableVsPartitionMap = getTablesVsPartitionColumn(options);
-    for (String table : getTablesVsPartitionColumn(options).keySet()) {
-      PCollection<Mutation> rows =
-          pipeline.apply(
-              "ReadPartitions_" + table,
-              getJdbcReader(
-                  table, tableVsPartitionMap.get(table), columnsToIgnore.get(table), options));
-      rows.apply("Write_" + table, getSpannerWrite(options));
+
+    SpannerConfig spannerConfig = createSpannerConfig(options);
+
+    // Decide type and source of migration
+    if (options.getSourceDbURL().startsWith("gs://")) {
+      List<Shard> shards =
+          new ShardFileReader(new SecretManagerAccessorImpl())
+              .readForwardMigrationShardingConfig(options.getSourceDbURL());
+      return PipelineController.executeShardedMigration(options, pipeline, shards, spannerConfig);
+    } else {
+      return PipelineController.executeSingleInstanceMigration(options, pipeline, spannerConfig);
     }
-    return pipeline.run();
   }
 
-  private static Map<String, String> getTablesVsPartitionColumn(SourceDbToSpannerOptions options) {
-    String[] tables = options.getTables().split(",");
-    String[] partitionColumns = options.getPartitionColumns().split(",");
-    if (tables.length != partitionColumns.length) {
-      throw new RuntimeException(
-          "invalid configuration. Partition column count does not match " + "tables count.");
-    }
-    Map<String, String> tableVsPartitionColumn = new HashMap();
-    for (int i = 0; i < tables.length; i++) {
-      tableVsPartitionColumn.put(tables[i], partitionColumns[i]);
-    }
-    return tableVsPartitionColumn;
-  }
-
-  private static Map<String, Set<String>> getColumnsToIgnore(SourceDbToSpannerOptions options) {
-    String ignoreStr = options.getIgnoreColumns();
-    if (ignoreStr == null || ignoreStr.isEmpty()) {
-      return Collections.emptyMap();
-    }
-    Map<String, Set<String>> ignore = new HashMap<>();
-    for (String tableColumns : ignoreStr.split(",")) {
-      int tableNameIndex = tableColumns.indexOf(':');
-      if (tableNameIndex == -1) {
-        continue;
-      }
-      String table = tableColumns.substring(0, tableNameIndex);
-      String columnStr = tableColumns.substring(tableNameIndex + 1);
-      Set<String> columns = new HashSet<>(Arrays.asList(columnStr.split(";")));
-      ignore.put(table, columns);
-    }
-    return ignore;
-  }
-
-  private static JdbcIO.ReadWithPartitions<Mutation, Long> getJdbcReader(
-      String table,
-      String partitionColumn,
-      Set<String> columnsToIgnore,
-      SourceDbToSpannerOptions options) {
-    return JdbcIO.<Mutation>readWithPartitions()
-        .withDataSourceProviderFn(new DataSourceProvider(options))
-        .withTable(table)
-        .withPartitionColumn(partitionColumn)
-        .withRowMapper(ResultSetToMutation.create(table, columnsToIgnore))
-        .withNumPartitions(options.getNumPartitions());
-  }
-
-  private static Write getSpannerWrite(SourceDbToSpannerOptions options) {
-    return SpannerIO.write()
-        .withProjectId(options.getProjectId())
-        .withInstanceId(options.getInstanceId())
-        .withDatabaseId(options.getDatabaseId());
+  @VisibleForTesting
+  static SpannerConfig createSpannerConfig(SourceDbToSpannerOptions options) {
+    return SpannerConfig.create()
+        .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
+        .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+        .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
+        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
   }
 }

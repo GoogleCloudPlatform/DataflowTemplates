@@ -22,17 +22,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **readQuery** : SQL query in standard SQL to pull data from BigQuery.
-* **outputDirectory** : Cloud Storage directory to store output TFRecord files. (Example: gs://your-bucket/your-path).
+* **readQuery** : A BigQuery SQL query that extracts data from the source. For example, select * from dataset1.sample_table.
+* **outputDirectory** : The top-level Cloud Storage path prefix to use when writing the training, testing, and validation TFRecord files. Subdirectories for resulting training, testing, and validation TFRecord files are automatically generated from `outputDirectory`. For example, `gs://mybucket/output/train` (Example: gs://mybucket/output).
 
 ### Optional parameters
 
 * **readIdColumn** : Name of the BigQuery column storing the unique identifier of the row.
 * **invalidOutputPath** : Cloud Storage path where to write BigQuery rows that cannot be converted to target entities. (Example: gs://your-bucket/your-path).
-* **outputSuffix** : File suffix to append to TFRecord files. Defaults to .tfrecord.
-* **trainingPercentage** : Defaults to 1 or 100%. Should be decimal between 0 and 1 inclusive.
-* **testingPercentage** : Defaults to 0 or 0%. Should be decimal between 0 and 1 inclusive.
-* **validationPercentage** : Defaults to 0 or 0%. Should be decimal between 0 and 1 inclusive.
+* **outputSuffix** : The file suffix for the training, testing, and validation TFRecord files that are written. The default value is `.tfrecord`.
+* **trainingPercentage** : The percentage of query data allocated to training TFRecord files. The default value is 1, or 100%.
+* **testingPercentage** : The percentage of query data allocated to testing TFRecord files. The default value is 0, or 0%.
+* **validationPercentage** : The percentage of query data allocated to validation TFRecord files. The default value is 0, or 0%.
 
 
 
@@ -219,7 +219,7 @@ resource "google_dataflow_job" "cloud_bigquery_to_gcs_tensorflow_records" {
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
     readQuery = "<readQuery>"
-    outputDirectory = "gs://your-bucket/your-path"
+    outputDirectory = "gs://mybucket/output"
     # readIdColumn = "<readIdColumn>"
     # invalidOutputPath = "gs://your-bucket/your-path"
     # outputSuffix = ".tfrecord"

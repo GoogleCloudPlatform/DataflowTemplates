@@ -23,10 +23,10 @@ import javax.annotation.Nullable;
 @AutoValue
 public abstract class SourceSchemaReference implements Serializable {
 
-  abstract String dbName();
+  public abstract String dbName();
 
   @Nullable
-  abstract String namespace();
+  public abstract String namespace();
 
   public static Builder builder() {
     return new AutoValue_SourceSchemaReference.Builder().setNamespace(null);

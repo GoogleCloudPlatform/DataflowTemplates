@@ -32,6 +32,7 @@ public class ReadFromPubSub implements TemplateTransform<ReadFromPubSubOptions> 
     @TemplateParameter.PubsubSubscription(
         order = 1,
         description = "Pub/Sub input subscription",
+        groupName = "Source",
         helpText =
             "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'")
     String getInputSubscription();

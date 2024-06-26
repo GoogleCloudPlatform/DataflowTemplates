@@ -40,7 +40,7 @@ runs:
   using: 'composite'
   steps:
     - name: Setup Java
-      uses: actions/setup-java@a12e082d834968c1847f782019214fadd20719f6
+      uses: actions/setup-java@5896cecc08fd8a1fbdfaf517e29b571164b031f7 # v4.2.0
       with:
         distribution: 'temurin'
         java-version: ${{ inputs.java-version }}
@@ -57,7 +57,7 @@ runs:
           echo "YESTERDAY=$KEY" >> $GITHUB_ENV
         fi
     - name: Setup Cache
-      uses: actions/cache@72d1e4fdff0ff7b1b6e86b415f2d4f5941e5c006
+      uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
       id: setup-cache
       with:
         path: |

@@ -66,16 +66,22 @@ public abstract class SourceTableSchema implements Serializable {
    */
 
   public static Builder builder() {
-    var builder = new AutoValue_SourceTableSchema.Builder();
+    return builder(MapperType.MYSQL);
+  }
+
+  public static Builder builder(MapperType mapperType) {
+    var builder = new AutoValue_SourceTableSchema.Builder().initialize(mapperType);
     builder.setTableSchemaUUID(UUID.randomUUID().toString());
     return builder;
   }
 
   @AutoValue.Builder
   public abstract static class Builder {
-    protected abstract Builder setTableSchemaUUID(String value);
+    public abstract Builder setTableSchemaUUID(String value);
 
     public abstract Builder setTableName(String value);
+
+    private UnifiedTypeMapper.MapperType mapperType;
 
     abstract ImmutableMap.Builder<String, SourceColumnType>
         sourceColumnNameToSourceColumnTypeBuilder();
@@ -88,7 +94,7 @@ public abstract class SourceTableSchema implements Serializable {
       this.payloadFieldAssembler =
           this.payloadFieldAssembler
               .name(sourceColumnName)
-              .type(new UnifiedTypeMapper(MapperType.MYSQL).getSchema(sourceColumnType))
+              .type(new UnifiedTypeMapper(this.mapperType).getSchema(sourceColumnType))
               .noDefault();
       return this;
     }
@@ -118,6 +124,11 @@ public abstract class SourceTableSchema implements Serializable {
     abstract Builder setAvroSchema(Schema value);
 
     abstract SourceTableSchema autoBuild();
+
+    public Builder initialize(UnifiedTypeMapper.MapperType mapperType) {
+      this.mapperType = mapperType;
+      return this;
+    }
 
     public SourceTableSchema build() {
       this.setAvroSchema(this.payloadFieldAssembler.endRecord().noDefault().endRecord());

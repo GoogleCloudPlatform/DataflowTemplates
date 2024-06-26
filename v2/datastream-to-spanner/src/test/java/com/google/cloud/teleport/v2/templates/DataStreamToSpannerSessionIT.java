@@ -17,8 +17,10 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -35,6 +37,7 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -50,7 +53,8 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
 
-  private static final String TABLE = "Category";
+  private static final String TABLE1 = "Category";
+  private static final String TABLE2 = "Books";
   private static PipelineLauncher.LaunchInfo jobInfo;
   private static HashSet<DataStreamToSpannerSessionIT> testInstances = new HashSet<>();
   public static PubsubResourceManager pubsubResourceManager;
@@ -85,9 +89,10 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
                 pubsubResourceManager,
                 new HashMap<>() {
                   {
-                    put("inputFileFormat", "json");
+                    put("inputFileFormat", "avro");
                   }
-                });
+                },
+                null);
       }
     }
   }
@@ -115,10 +120,10 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
                 List.of(
                     uploadDataStreamFile(
                         jobInfo,
-                        TABLE,
-                        "backfill.jsonl",
-                        "DataStreamToSpannerSessionIT/mysql-backfill-Category.jsonl"),
-                    SpannerRowsCheck.builder(spannerResourceManager, TABLE)
+                        TABLE1,
+                        "backfill_category.avro",
+                        "DataStreamToSpannerSessionIT/mysql-backfill-Category.avro"),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(2)
                         .setMaxRows(2)
                         .build()))
@@ -139,10 +144,10 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
                 List.of(
                     uploadDataStreamFile(
                         jobInfo,
-                        TABLE,
-                        "cdc1.jsonl",
-                        "DataStreamToSpannerSessionIT/mysql-cdc-Category.jsonl"),
-                    SpannerRowsCheck.builder(spannerResourceManager, TABLE)
+                        TABLE1,
+                        "cdc_category.avro",
+                        "DataStreamToSpannerSessionIT/mysql-cdc-Category.avro"),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(3)
                         .setMaxRows(3)
                         .build()))
@@ -156,6 +161,35 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
     assertThatResult(result).meetsConditions();
 
     assertCategoryTableCdcContents();
+  }
+
+  @Test
+  public void migrationTestWithSyntheticPK() {
+    // Construct a ChainedConditionCheck with 2 stages.
+    // 1. Send initial wave of events
+    // 2. Wait on Spanner to have events
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    uploadDataStreamFile(
+                        jobInfo,
+                        TABLE2,
+                        "synth-id.avro",
+                        "DataStreamToSpannerSessionIT/Books.avro"),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE2)
+                        .setMinRows(3)
+                        .setMaxRows(3)
+                        .build()))
+            .build();
+
+    // Wait for conditions
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+    assertBooksBackfillContents();
   }
 
   private void assertCategoryTableBackfillContents() {
@@ -196,6 +230,35 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
     events.add(row3);
 
     SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Category"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
+  }
+
+  private void assertBooksBackfillContents() {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    Map<String, Object> row = new HashMap<>();
+    row.put("id", 1);
+    row.put("title", "The Lord of the Rings");
+    row.put("author_id", 1);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 2);
+    row.put("title", "Pride and Prejudice");
+    row.put("author_id", 2);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 3);
+    row.put("title", "The Hitchhikers Guide to the Galaxy");
+    row.put("author_id", 3);
+    events.add(row);
+
+    ImmutableList<Struct> synthIds = spannerResourceManager.runQuery("select synth_id from Books");
+
+    Assert.assertEquals(3, synthIds.size());
+    SpannerAsserts.assertThatStructs(
+            spannerResourceManager.runQuery("select id, title, author_id from Books"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 }

@@ -288,21 +288,23 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.GcsReadFile(
         order = 1,
+        groupName = "Source",
         description = "Input Cloud Storage File(s)",
-        helpText = "The Cloud Storage location of the files you'd like to process.",
-        example = "gs://your-bucket/your-files/*.csv")
+        helpText = "The CSV files to read input data records from. Wildcards are also accepted.",
+        example = "gs://mybucket/my_csv_filename.csv or gs://mybucket/file-*.csv")
     ValueProvider<String> getInputFilePattern();
 
     void setInputFilePattern(ValueProvider<String> value);
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {
           "^projects\\/[^\\n\\r\\/]+(\\/locations\\/[^\\n\\r\\/]+)?\\/deidentifyTemplates\\/[^\\n\\r\\/]+$"
         },
         description = "Cloud DLP deidentify template name",
         helpText =
-            "Cloud DLP template to deidentify contents. Must be created here: https://console.cloud.google.com/security/dlp/create/template.",
+            "The Sensitive Data Protection de-identification template to use for API requests, specified with the pattern projects/<PROJECT_ID>/deidentifyTemplates/<TEMPLATE_ID>.",
         example =
             "projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id")
     @Required
@@ -312,12 +314,15 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "DLP Configuration",
         optional = true,
         regexes = {
           "^projects\\/[^\\n\\r\\/]+(\\/locations\\/[^\\n\\r\\/]+)?\\/inspectTemplates\\/[^\\n\\r\\/]+$"
         },
         description = "Cloud DLP inspect template name",
-        helpText = "Cloud DLP template to inspect contents.",
+        helpText =
+            "The Sensitive Data Protection inspection template to use for API requests, specified"
+                + " with the pattern projects/<PROJECT_ID>/identifyTemplates/<TEMPLATE_ID>.",
         example =
             "projects/your-project-id/locations/global/inspectTemplates/generated_template_id")
     ValueProvider<String> getInspectTemplateName();
@@ -326,12 +331,13 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Integer(
         order = 4,
+        groupName = "DLP Configuration",
         optional = true,
         description = "Batch size",
         helpText =
-            "Batch size contents (number of rows) to optimize DLP API call. Total size of the "
-                + "rows must not exceed 512 KB and total cell count must not exceed 50,000. Default batch "
-                + "size is set to 100. Ex. 1000")
+            "The chunking or batch size to use for sending data to inspect and detokenize. For a CSV file, the value of `batchSize` is the number of rows in a batch."
+                + " Determine the batch size based on the size of the records and the sizing of the file."
+                + " The DLP API has a payload size limit of 524 KB per API call.")
     @Required
     ValueProvider<Integer> getBatchSize();
 
@@ -339,19 +345,23 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         regexes = {"^[^.]*$"},
         description = "BigQuery Dataset",
         helpText =
-            "BigQuery Dataset to be used. Dataset must exist prior to execution. Ex. pii_dataset")
+            "The BigQuery dataset to use when sending tokenized results. The dataset must exist prior to execution.")
     ValueProvider<String> getDatasetName();
 
     void setDatasetName(ValueProvider<String> value);
 
     @TemplateParameter.ProjectId(
         order = 6,
+        groupName = "DLP Configuration",
         description = "Cloud DLP project ID",
         helpText =
-            "Cloud DLP project ID to be used for data masking/tokenization. Ex. your-dlp-project")
+            "The ID for the Google Cloud project that owns the DLP API resource. This project"
+                + " can be the same project that owns the Sensitive Data Protection templates, or it"
+                + " can be a separate project.")
     ValueProvider<String> getDlpProjectId();
 
     void setDlpProjectId(ValueProvider<String> value);

@@ -78,9 +78,10 @@ public final class AvroToBigtable {
   public interface Options extends PipelineOptions {
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Target",
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to")
+            "The ID of the Google Cloud project that contains the Bigtable instance that you want to write data to.")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
@@ -88,9 +89,10 @@ public final class AvroToBigtable {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
-        helpText = "The ID of the Cloud Bigtable instance that contains the table")
+        helpText = "The ID of the Bigtable instance that contains the table.")
     ValueProvider<String> getBigtableInstanceId();
 
     @SuppressWarnings("unused")
@@ -98,9 +100,10 @@ public final class AvroToBigtable {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
-        helpText = "The ID of the Cloud Bigtable table to write")
+        helpText = "The ID of the Bigtable table to import.")
     ValueProvider<String> getBigtableTableId();
 
     @SuppressWarnings("unused")
@@ -108,9 +111,10 @@ public final class AvroToBigtable {
 
     @TemplateParameter.GcsReadFile(
         order = 5,
+        groupName = "Source",
         description = "Input Cloud Storage File(s)",
-        helpText = "The Cloud Storage location of the files you'd like to process.",
-        example = "gs://your-bucket/your-files/*.avro")
+        helpText = "The Cloud Storage path pattern where data is located.",
+        example = "gs://<BUCKET>/<FOLDER>/<PREFIX>*")
     ValueProvider<String> getInputFilePattern();
 
     @SuppressWarnings("unused")

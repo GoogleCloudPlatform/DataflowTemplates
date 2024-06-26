@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.kafka.utils;
 
+import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
@@ -25,6 +26,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.security.scram.internals.ScramMechanism;
@@ -161,5 +163,23 @@ public class KafkaCommonUtils {
               props.get(USERNAME), props.get(PASSWORD)));
     }
     return config;
+  }
+
+  public static Map<String, Object> configureKafkaOffsetCommit(KafkaReadOptions options) {
+    Map<String, Object> kafkaConfig = new HashMap<>();
+    if (options.getEnableCommitOffsets()
+        && (options.getConsumerGroupId() == null || options.getConsumerGroupId().isBlank())) {
+      throw new IllegalArgumentException(
+          "Committing offsets is enabled in the template but a consumer group ID is not provided."
+              + "Offset management requires a consumer group ID.");
+    }
+
+    kafkaConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, options.getKafkaReadOffset());
+
+    // Set the Kafka Consumer Group ID
+    if (!options.getConsumerGroupId().isBlank()) {
+      kafkaConfig.put(ConsumerConfig.GROUP_ID_CONFIG, options.getConsumerGroupId());
+    }
+    return kafkaConfig;
   }
 }

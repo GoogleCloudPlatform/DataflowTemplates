@@ -160,9 +160,7 @@ public class TemplateDefinitions {
                         block.name(), Arrays.asList(block.content())))
             .collect(Collectors.toList()));
 
-    if (templateAnnotation.type().equals(TemplateType.YAML)) {
-      metadata.setMainClass("");
-    } else if (templateAnnotation.placeholderClass() != null
+    if (templateAnnotation.placeholderClass() != null
         && templateAnnotation.placeholderClass() != void.class) {
       metadata.setMainClass(templateAnnotation.placeholderClass().getName());
     } else {

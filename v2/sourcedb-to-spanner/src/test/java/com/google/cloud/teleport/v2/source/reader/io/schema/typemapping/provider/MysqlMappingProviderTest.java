@@ -59,7 +59,7 @@ public class MysqlMappingProviderTest {
         .put("CHAR", "\"string\"")
         .put("DATE", "{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}")
         .put(
-            "DateTime",
+            "DATETIME",
             "{\"type\":\"record\","
                 + "\"name\":\"datetime\","
                 + "\"fields\": ["
@@ -72,6 +72,7 @@ public class MysqlMappingProviderTest {
         .put("ENUM", "\"string\"")
         .put("FLOAT", "\"float\"")
         .put("INTEGER", "\"int\"")
+        .put("INTEGER UNSIGNED", "\"long\"")
         .put("JSON", "{\"type\":\"string\",\"logicalType\":\"json\"}")
         .put("LONGBLOB", "\"string\"")
         .put("LONGTEXT", "\"string\"")

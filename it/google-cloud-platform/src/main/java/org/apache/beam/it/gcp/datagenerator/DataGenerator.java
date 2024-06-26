@@ -259,6 +259,11 @@ public class DataGenerator {
       return this;
     }
 
+    public Builder setBatchSizeBytes(String value) {
+      parameters.put("batchSizeBytes", value);
+      return this;
+    }
+
     public DataGenerator build() {
       return new DataGenerator(this);
     }

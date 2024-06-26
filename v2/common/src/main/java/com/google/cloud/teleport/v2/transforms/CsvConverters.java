@@ -183,7 +183,8 @@ public class CsvConverters {
     @TemplateParameter.GcsReadFile(
         order = 1,
         description = "The input filepattern to read from.",
-        helpText = "Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv")
+        helpText =
+            "The Cloud Storage file pattern to search for CSV files. Example: gs://mybucket/test-*.csv.")
     String getInputFileSpec();
 
     void setInputFileSpec(String inputFileSpec);
@@ -237,7 +238,7 @@ public class CsvConverters {
         order = 6,
         optional = true,
         description = "Path to JSON schema",
-        helpText = "Path to JSON schema. Default: null.",
+        helpText = "The path to the JSON schema. Defaults to: null.",
         example = "gs://path/to/schema")
     String getJsonSchemaPath();
 
@@ -247,7 +248,8 @@ public class CsvConverters {
         order = 7,
         optional = true,
         description = "Set to true if number of files is in the tens of thousands",
-        helpText = "Set to true if number of files is in the tens of thousands.")
+        helpText =
+            "Set to true if number of files is in the tens of thousands. Defaults to: false.")
     @Default.Boolean(false)
     Boolean getLargeNumFiles();
 
@@ -259,8 +261,7 @@ public class CsvConverters {
         regexes = {"^(US-ASCII|ISO-8859-1|UTF-8|UTF-16)$"},
         description = "CSV file encoding",
         helpText =
-            "CSV file character encoding format. Allowed Values are US-ASCII"
-                + ", ISO-8859-1, UTF-8, UTF-16")
+            "The CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, and UTF-16.")
     @Default.String("UTF-8")
     String getCsvFileEncoding();
 

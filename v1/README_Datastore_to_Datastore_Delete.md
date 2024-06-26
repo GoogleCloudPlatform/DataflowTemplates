@@ -18,15 +18,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **datastoreReadGqlQuery** : Specifies which Datastore entities to read. Ex: ‘SELECT * FROM MyKind’.
-* **datastoreReadProjectId** : The Google Cloud project ID of the Datastore instance to read from.
+* **datastoreReadGqlQuery** : A GQL (https://cloud.google.com/datastore/docs/reference/gql_reference) query that specifies which entities to grab. For example, `SELECT * FROM MyKind`.
+* **datastoreReadProjectId** : The ID of the Google Cloud project that contains the Datastore instance that you want to read data from.
 * **datastoreDeleteProjectId** : Google Cloud Project Id of where to delete the datastore entities.
 
 ### Optional parameters
 
-* **datastoreReadNamespace** : Namespace of requested Datastore entities. Leave blank to use default namespace.
-* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
-* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
+* **datastoreReadNamespace** : The namespace of the requested entities. To use the default namespace, leave this parameter blank.
+* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
 * **datastoreHintNumWorkers** : Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to: 500.
 
 
@@ -225,7 +225,7 @@ resource "google_dataflow_job" "datastore_to_datastore_delete" {
     datastoreDeleteProjectId = "<datastoreDeleteProjectId>"
     # datastoreReadNamespace = "<datastoreReadNamespace>"
     # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
-    # javascriptTextTransformFunctionName = "transform_udf1"
+    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # datastoreHintNumWorkers = "500"
   }
 }

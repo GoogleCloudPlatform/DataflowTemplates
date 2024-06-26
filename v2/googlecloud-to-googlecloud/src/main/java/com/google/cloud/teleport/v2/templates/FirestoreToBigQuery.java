@@ -95,6 +95,7 @@ public class FirestoreToBigQuery {
           BigQueryCommonOptions.WriteOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
+        groupName = "Target",
         description = "BigQuery output table",
         helpText =
             "BigQuery table location to write the output to. The name should be in the format "

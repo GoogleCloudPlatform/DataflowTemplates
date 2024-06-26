@@ -76,10 +76,10 @@ public class BigtableToAvro {
   public interface Options extends PipelineOptions {
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Source",
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to"
-                + " read data from")
+            "The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from.")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
@@ -87,9 +87,10 @@ public class BigtableToAvro {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
-        helpText = "The ID of the Cloud Bigtable instance that contains the table")
+        helpText = "The ID of the Bigtable instance that contains the table.")
     ValueProvider<String> getBigtableInstanceId();
 
     @SuppressWarnings("unused")
@@ -97,9 +98,10 @@ public class BigtableToAvro {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
-        helpText = "The ID of the Cloud Bigtable table to read")
+        helpText = "The ID of the Bigtable table to export.")
     ValueProvider<String> getBigtableTableId();
 
     @SuppressWarnings("unused")
@@ -107,11 +109,10 @@ public class BigtableToAvro {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
+        groupName = "Target",
         description = "Output file directory in Cloud Storage",
-        helpText =
-            "The path and filename prefix for writing output files. Must end with a slash. DateTime"
-                + " formatting is used to parse directory path for date & time formatters.",
-        example = "gs://your-bucket/your-path")
+        helpText = "The Cloud Storage path where data is written.",
+        example = "gs://mybucket/somefolder")
     ValueProvider<String> getOutputDirectory();
 
     @SuppressWarnings("unused")
@@ -119,8 +120,9 @@ public class BigtableToAvro {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "Avro file prefix",
-        helpText = "The prefix of the Avro file name. For example, \"table1-\"")
+        helpText = "The prefix of the Avro filename. For example, `output-`.")
     @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 

@@ -18,13 +18,21 @@ package com.google.cloud.teleport.v2.transformer;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.constants.MetricCounters;
+import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
+import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
+import com.google.cloud.teleport.v2.templates.RowContext;
 import java.io.Serializable;
 import java.util.Map;
+import javax.annotation.Nullable;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,54 +42,84 @@ import org.slf4j.LoggerFactory;
  * com.google.cloud.spanner.Mutation}.
  */
 @AutoValue
-public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, Mutation>
+public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext>
     implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceRowToMutationDoFn.class);
 
+  private ISpannerMigrationTransformer sourceDbToSpannerTransformer;
+
+  public void setSourceDbToSpannerTransformer(
+      ISpannerMigrationTransformer sourceDbToSpannerTransformer) {
+    this.sourceDbToSpannerTransformer = sourceDbToSpannerTransformer;
+  }
+
+  private final Counter transformerErrors =
+      Metrics.counter(SourceRowToMutationDoFn.class, MetricCounters.TRANSFORMER_ERRORS);
+
+  private final Counter filteredEvents =
+      Metrics.counter(SourceRowToMutationDoFn.class, MetricCounters.FILTERED_EVENTS);
+
   public abstract ISchemaMapper iSchemaMapper();
 
-  public abstract Map<String, SourceTableReference> tableIdMapper();
+  @Nullable
+  public abstract CustomTransformation customTransformation();
 
   public static SourceRowToMutationDoFn create(
-      ISchemaMapper iSchemaMapper, Map<String, SourceTableReference> tableIdMapper) {
-    return new AutoValue_SourceRowToMutationDoFn(iSchemaMapper, tableIdMapper);
+      ISchemaMapper iSchemaMapper, CustomTransformation customTransformation) {
+    return new AutoValue_SourceRowToMutationDoFn(iSchemaMapper, customTransformation);
+  }
+
+  /** Setup function to load custom transformation jars. */
+  @Setup
+  public void setup() {
+    sourceDbToSpannerTransformer =
+        CustomTransformationImplFetcher.getCustomTransformationLogicImpl(customTransformation());
   }
 
   @ProcessElement
-  public void processElement(ProcessContext c) {
+  public void processElement(ProcessContext c, MultiOutputReceiver output) {
     SourceRow sourceRow = c.element();
-    if (!tableIdMapper().containsKey(sourceRow.tableSchemaUUID())) {
-      // TODO: Remove LOG statements from processElement once counters and DLQ is supported.
-      LOG.error(
-          "cannot find valid sourceTable for tableId: {} in tableIdMapper",
-          sourceRow.tableSchemaUUID());
-      return;
-    }
+    LOG.debug("Starting transformation for Source Row {}", sourceRow);
+
     try {
       // TODO: update namespace in constructor when Spanner namespace support is added.
       GenericRecord record = sourceRow.getPayload();
-      String srcTableName = tableIdMapper().get(sourceRow.tableSchemaUUID()).sourceTableName();
+      String srcTableName = sourceRow.tableName();
       GenericRecordTypeConvertor genericRecordTypeConvertor =
-          new GenericRecordTypeConvertor(iSchemaMapper(), "");
+          new GenericRecordTypeConvertor(
+              iSchemaMapper(), "", sourceRow.shardId(), sourceDbToSpannerTransformer);
       Map<String, Value> values =
           genericRecordTypeConvertor.transformChangeEvent(record, srcTableName);
+      if (values == null) {
+        filteredEvents.inc();
+        output
+            .get(SourceDbToSpannerConstants.FILTERED_EVENT_TAG)
+            .output(RowContext.builder().setRow(sourceRow).build());
+        return;
+      }
+
       String spannerTableName = iSchemaMapper().getSpannerTableName("", srcTableName);
+      // TODO: Move the mutation generation to writer. Create generic record here instead
       Mutation mutation = mutationFromMap(spannerTableName, values);
-      c.output(mutation);
+      output
+          .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS)
+          .output(RowContext.builder().setRow(sourceRow).setMutation(mutation).build());
     } catch (Exception e) {
-      // TODO: Add DLQ integration once supported.
-      LOG.error(
-          "Unable to transform source row to spanner mutation: {} {}",
-          e.getMessage(),
-          e.fillInStackTrace());
+      transformerErrors.inc();
+      output
+          .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)
+          .output(RowContext.builder().setRow(sourceRow).setErr(e).build());
     }
   }
 
-  private static Mutation mutationFromMap(String spannerTableName, Map<String, Value> values) {
+  private Mutation mutationFromMap(String spannerTableName, Map<String, Value> values) {
     Mutation.WriteBuilder builder = Mutation.newInsertOrUpdateBuilder(spannerTableName);
     for (String spannerColName : values.keySet()) {
-      builder.set(spannerColName).to(values.get(spannerColName));
+      Value value = values.get(spannerColName);
+      if (value != null) {
+        builder.set(spannerColName).to(value);
+      }
     }
     return builder.build();
   }

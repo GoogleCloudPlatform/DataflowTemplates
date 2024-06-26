@@ -30,8 +30,9 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 1,
+      groupName = "Target",
       description = "BigQuery dataset",
-      helpText = "The BigQuery dataset for change streams output.")
+      helpText = "The dataset name of the destination BigQuery table.")
   @Validation.Required
   String getBigQueryDataset();
 
@@ -42,8 +43,8 @@ public interface BigtableChangeStreamToBigQueryOptions
       optional = true,
       description = "Write rowkeys as BigQuery BYTES",
       helpText =
-          "When set true rowkeys are written to BYTES column, otherwise to STRING column. "
-              + "Defaults to false.")
+          "Whether to write rowkeys as BigQuery `BYTES`. When set to `true`, row keys are written to the `BYTES` "
+              + "column. Otherwise, rowkeys are written to the `STRING` column. Defaults to `false`.")
   @Default.Boolean(false)
   Boolean getWriteRowkeyAsBytes();
 
@@ -66,10 +67,10 @@ public interface BigtableChangeStreamToBigQueryOptions
       optional = true,
       description = "Write Bigtable timestamp as BigQuery INT",
       helpText =
-          "When set true values are written to INT column, otherwise to TIMESTAMP column. "
-              + "Columns affected: `timestamp`, `timestamp_from`, `timestamp_to`. "
-              + "Defaults to false. When set to true the value is a number of microseconds "
-              + "since midnight of 01-JAN-1970")
+          "Whether to write the Bigtable timestamp as BigQuery `INT64`. When set to true, values are written to the `INT64` column."
+              + " Otherwise, values are written to the `TIMESTAMP` column. Columns affected: `timestamp`, `timestamp_from`, "
+              + "and `timestamp_to`. Defaults to `false`. When set to `true`, the time is measured in microseconds "
+              + "since the Unix epoch (January 1, 1970 at UTC).")
   @Default.Boolean(false)
   Boolean getWriteNumericTimestamps();
 
@@ -77,9 +78,10 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   @TemplateParameter.ProjectId(
       order = 5,
+      groupName = "Target",
       optional = true,
       description = "BigQuery project ID",
-      helpText = "The BigQuery Project. Default is the project for the Dataflow job.")
+      helpText = "The BigQuery dataset project ID. The default is the project for the Dataflow job")
   @Default.String("")
   String getBigQueryProjectId();
 
@@ -90,8 +92,8 @@ public interface BigtableChangeStreamToBigQueryOptions
       optional = true,
       description = "BigQuery changelog table name",
       helpText =
-          "The BigQuery table name that contains the changelog records."
-              + " Default: {bigtableTableId}_changelog")
+          "Destination BigQuery table name. If not specified, "
+              + "the value `bigtableReadTableId + \"_changelog\"` is used")
   @Default.String("")
   String getBigQueryChangelogTableName();
 
@@ -102,8 +104,9 @@ public interface BigtableChangeStreamToBigQueryOptions
       optional = true,
       description = "Changelog table will be partitioned at specified granularity",
       helpText =
-          "When set, table partitioning will be in effect. Accepted values: `HOUR`, "
-              + "`DAY`, `MONTH`, `YEAR`. Default is no partitioning.")
+          "Specifies a granularity for partitioning the changelog table. When set, the table is partitioned. "
+              + "Use one of the following supported values: `HOUR`, `DAY`, `MONTH`, or `YEAR`. "
+              + "By default, the table isn't partitioned.")
   @Default.String("")
   String getBigQueryChangelogTablePartitionGranularity();
 
@@ -114,8 +117,9 @@ public interface BigtableChangeStreamToBigQueryOptions
       optional = true,
       description = "Sets partition expiration time in milliseconds",
       helpText =
-          "When set true partitions older than specified number of milliseconds will be "
-              + "deleted. Default is no expiration.")
+          "Sets the changelog table partition expiration time, in milliseconds. When set to true, "
+              + "partitions older than the specified number of milliseconds are deleted. "
+              + "By default, no expiration is set.")
   Long getBigQueryChangelogTablePartitionExpirationMs();
 
   void setBigQueryChangelogTablePartitionExpirationMs(Long value);
@@ -125,10 +129,10 @@ public interface BigtableChangeStreamToBigQueryOptions
       optional = true,
       description = "Optional changelog table columns to be disabled",
       helpText =
-          "A comma-separated list of the changelog columns which will not be created and "
-              + "populated if specified. Supported values should be from the following list: `is_gc`, "
-              + "`source_instance`, `source_cluster`, `source_table`, `tiebreaker`, "
-              + "`big_query_commit_timestamp`. Defaults to all columns to be populated")
+          "A comma-separated list of the changelog columns that, when specified, aren't "
+              + "created and populated. Use one of the following supported values: `is_gc`, "
+              + "`source_instance`, `source_cluster`, `source_table`, `tiebreaker`, or `big_query_commit_timestamp`. "
+              + "By default, all columns are populated.")
   String getBigQueryChangelogTableFieldsToIgnore();
 
   void setBigQueryChangelogTableFieldsToIgnore(String value);
@@ -138,7 +142,9 @@ public interface BigtableChangeStreamToBigQueryOptions
       optional = true,
       description = "Dead letter queue directory",
       helpText =
-          "The file path to store any unprocessed records with the reason they failed to be processed. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.")
+          "The directory to use for the dead-letter queue. Records that fail to be processed are stored in this directory. "
+              + "The default is a directory under the Dataflow job's temp location. "
+              + "In most cases, you can use the default path.")
   @Default.String("")
   String getDlqDirectory();
 

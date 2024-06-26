@@ -196,7 +196,7 @@ public class DLPTextToBigQueryStreaming {
     /*
      * Steps:
      *   1) Read from the text source continuously based on default interval e.g. 30 seconds
-     *       - Setup a window for 30 secs to capture the list of files emited.
+     *       - Setup a window for 30 secs to capture the list of files emitted.
      *       - Group by file name as key and ReadableFile as a value.
      *   2) Output each readable file for content processing.
      *   3) Split file contents based on batch size for parallel processing.
@@ -209,7 +209,7 @@ public class DLPTextToBigQueryStreaming {
         p
             /*
              * 1) Read from the text source continuously based on default interval e.g. 300 seconds
-             *     - Setup a window for 30 secs to capture the list of files emited.
+             *     - Setup a window for 30 secs to capture the list of files emitted.
              *     - Group by file name as key and ReadableFile as a value.
              */
             .apply(
@@ -292,6 +292,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.GcsReadFile(
         order = 1,
+        groupName = "Source",
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage location of the files you'd like to process.",
         example = "gs://your-bucket/your-files/*.csv")
@@ -357,6 +358,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         regexes = {"^[^.]*$"},
         description = "BigQuery Dataset",
         helpText =
@@ -367,6 +369,7 @@ public class DLPTextToBigQueryStreaming {
 
     @TemplateParameter.ProjectId(
         order = 6,
+        groupName = "Source",
         description = "Cloud DLP project ID",
         helpText =
             "Cloud DLP project ID to be used for data masking/tokenization. Ex. your-dlp-project")
@@ -487,7 +490,7 @@ public class DLPTextToBigQueryStreaming {
     }
 
     /**
-     * SDF needs to define a @SplitRestriction method that can split the intital restricton to a
+     * SDF needs to define a @SplitRestriction method that can split the intital restriction to a
      * number of smaller restrictions. For example: a intital rewstriction of (x, N) as input and
      * produces pairs (x, 0), (x, 1), …, (x, N-1) as output.
      */

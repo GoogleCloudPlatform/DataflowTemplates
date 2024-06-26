@@ -262,6 +262,7 @@ public class BigtableToVectorEmbeddingsIT extends TemplateTestBase {
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
             .addParameter("bigtableProjectId", PROJECT)
             .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
+            .addParameter("bigtableAppProfileId", "default")
             .addParameter("bigtableTableId", tableId)
             .addParameter("outputDirectory", getGcsPath("output/"))
             .addParameter("filenamePrefix", "bigtable-to-json-output-")

@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
@@ -76,12 +78,7 @@ public abstract class IndexColumn implements Serializable {
   }
 
   public void prettyPrint(Appendable appendable) throws IOException {
-    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
-    appendable
-        .append(identifierQuote)
-        .append(name())
-        .append(identifierQuote + " ")
-        .append(order().title);
+    appendable.append(quoteIdentifier(name(), dialect())).append(" ").append(order().title);
     if (nullsOrder() != null) {
       appendable.append(" NULLS ").append(nullsOrder().title);
     }

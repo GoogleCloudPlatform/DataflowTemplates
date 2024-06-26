@@ -150,6 +150,77 @@ public final class CSVRecordToMutationTest {
   }
 
   @Test
+  public void parseRowToMutationProtoEnum() throws Exception {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(testTableName)
+            .column("int_col")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("proto_col")
+            .type(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage"))
+            .endColumn()
+            .column("enum_col")
+            .type(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum"))
+            .endColumn()
+            .primaryKey()
+            .asc("int_col")
+            .end()
+            .endTable()
+            .build();
+    PCollectionView<Ddl> ddlView = pipeline.apply("ddl", Create.of(ddl)).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    CSVRecord csvRecord =
+        CSVParser.parse("123,CgFB,3", csvFormat.withQuote('`').withTrailingDelimiter(true))
+            .getRecords()
+            .get(0);
+    PCollection<KV<String, CSVRecord>> input =
+        pipeline.apply(
+            "input",
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new CSVRecordToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        dateFormat,
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
+                .withSideInputs(ddlView, tableColumnsMapView));
+
+    PAssert.that(mutations)
+        .containsInAnyOrder(
+            Mutation.newInsertOrUpdateBuilder(testTableName)
+                .set("int_col")
+                .to(123)
+                .set("proto_col")
+                .to(
+                    Value.protoMessage(
+                        ByteArray.fromBase64("CgFB"),
+                        "com.google.cloud.teleport.spanner.tests.TestMessage"))
+                .set("enum_col")
+                .to(Value.protoEnum(3, "com.google.cloud.teleport.spanner.tests.TestEnum"))
+                .build());
+
+    pipeline.run();
+  }
+
+  @Test
   public void parseRowToMutationNewlineInData() throws Exception {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());

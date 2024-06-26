@@ -495,6 +495,17 @@ public abstract class LoadTestBase {
         .build();
   }
 
+  public static PipelineOperator.Config createConfig(
+      LaunchInfo info, Duration timeout, Duration checkInterval) {
+    return PipelineOperator.Config.builder()
+        .setJobId(info.jobId())
+        .setProject(project)
+        .setRegion(region)
+        .setTimeoutAfter(timeout)
+        .setCheckAfter(checkInterval)
+        .build();
+  }
+
   /** Utils for the metrics. */
   @AutoValue
   public abstract static class MetricsConfiguration {

@@ -113,6 +113,7 @@ public class BulkCompressor {
   public interface Options extends PipelineOptions {
     @TemplateParameter.GcsReadFile(
         order = 1,
+        groupName = "Source",
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage location of the files you'd like to process.",
         example = "gs://your-bucket/your-files/*.txt")
@@ -123,6 +124,7 @@ public class BulkCompressor {
 
     @TemplateParameter.GcsWriteFolder(
         order = 2,
+        groupName = "Target",
         description = "Output file directory in Cloud Storage",
         helpText =
             "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.",
@@ -134,6 +136,7 @@ public class BulkCompressor {
 
     @TemplateParameter.GcsWriteFile(
         order = 3,
+        groupName = "Target",
         description = "Output failure file",
         helpText =
             "The error log output file to use for write failures that occur during compression. The contents will be one line for "
@@ -162,6 +165,7 @@ public class BulkCompressor {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         optional = true,
         regexes = {"^[A-Za-z_0-9.]*"},
         description = "Output filename suffix",

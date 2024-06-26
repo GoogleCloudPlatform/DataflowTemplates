@@ -1,8 +1,16 @@
 
-YAML Template (Experimental) template
+YAML template
 ---
-YAML pipeline. Reads YAML from Cloud Storage and dynamically expands YAML into
-Beam pipeline graph.
+The YAML Template is used to run Dataflow pipelines written in Beam YAML. The
+YAML pipeline can be passed to the template directly as a raw string or the
+location of a Beam YAML pipeline file stored in Google Cloud Storage can
+optionally be passed.
+
+For launching a Beam YAML pipeline directly from the gcloud command line, see
+https://cloud.google.com/sdk/gcloud/reference/dataflow/yaml.
+
+For more information on Beam YAML, see
+https://beam.apache.org/documentation/sdks/yaml/.
 
 
 
@@ -19,6 +27,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **yaml_pipeline** : A yaml description of the pipeline to run.
 * **yaml_pipeline_file** : A file in Cloud Storage containing a yaml description of the pipeline to run.
+* **jinja_variables** : A json dict of variables used when invoking the jinja preprocessor on the provided yaml pipeline.
 
 
 
@@ -101,13 +110,15 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Yaml_Template"
 ### Optional
 export YAML_PIPELINE=<yaml_pipeline>
 export YAML_PIPELINE_FILE=<yaml_pipeline_file>
+export JINJA_VARIABLES=<jinja_variables>
 
 gcloud dataflow flex-template run "yaml-template-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "yaml_pipeline=$YAML_PIPELINE" \
-  --parameters "yaml_pipeline_file=$YAML_PIPELINE_FILE"
+  --parameters "yaml_pipeline_file=$YAML_PIPELINE_FILE" \
+  --parameters "jinja_variables=$JINJA_VARIABLES"
 ```
 
 For more information about the command, please check:
@@ -130,6 +141,7 @@ export REGION=us-central1
 ### Optional
 export YAML_PIPELINE=<yaml_pipeline>
 export YAML_PIPELINE_FILE=<yaml_pipeline_file>
+export JINJA_VARIABLES=<jinja_variables>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -138,7 +150,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="yaml-template-job" \
 -DtemplateName="Yaml_Template" \
--Dparameters="yaml_pipeline=$YAML_PIPELINE,yaml_pipeline_file=$YAML_PIPELINE_FILE" \
+-Dparameters="yaml_pipeline=$YAML_PIPELINE,yaml_pipeline_file=$YAML_PIPELINE_FILE,jinja_variables=$JINJA_VARIABLES" \
 -f python
 ```
 
@@ -185,6 +197,7 @@ resource "google_dataflow_flex_template_job" "yaml_template" {
   parameters        = {
     # yaml_pipeline = "<yaml_pipeline>"
     # yaml_pipeline_file = "<yaml_pipeline_file>"
+    # jinja_variables = "<jinja_variables>"
   }
 }
 ```

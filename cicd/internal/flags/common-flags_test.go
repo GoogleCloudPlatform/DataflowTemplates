@@ -21,79 +21,34 @@ import (
 	"testing"
 )
 
-func TestChangedFilesNoRegex(t *testing.T) {
+func TestModulesToBuild(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected []string
 	}{
 		{
-			input:    "file1,file2",
-			expected: []string{"file1", "file2"},
+			input:    "m1,m2",
+			expected: []string{"m1", "m2"},
 		},
 		{
-			input:    "file1",
-			expected: []string{"file1"},
+			input:    "m1",
+			expected: []string{"m1"},
+		},
+		{
+			input:    "ALL",
+			expected: []string{},
+		},
+		{
+			input:    "SPANNER",
+			expected: []string{"v2/datastream-to-spanner/", "v2/spanner-change-streams-to-sharded-file-sink/", "v2/gcs-to-sourcedb/", "v2/sourcedb-to-spanner/", "v2/spanner-custom-shard", "plugins/templates-maven-plugin"},
 		},
 	}
 
 	for _, test := range tests {
-		changedFiles = test.input
-		actual := ChangedFiles()
+		modulesToBuild = test.input
+		actual := ModulesToBuild()
 		if !reflect.DeepEqual(actual, test.expected) {
-			t.Errorf("Returned files are not equal. Expected %v. Got %v.", test.expected, actual)
+			t.Errorf("Returned modules are not equal. Expected %v. Got %v.", test.expected, actual)
 		}
-	}
-}
-
-func TestChangedFilesNoRegexEmpty(t *testing.T) {
-	changedFiles = ""
-	actual := ChangedFiles()
-	if len(actual) != 0 {
-		t.Errorf("Expected empty slice, but got %v of len %v", actual, len(actual))
-	}
-}
-
-func TestChangedFilesRegexes(t *testing.T) {
-	tests := []struct {
-		files    string
-		regexes  []string
-		expected []string
-	}{
-		{
-			files:    "file1,file2,file3",
-			regexes:  []string{"file[1|3]"},
-			expected: []string{"file1", "file3"},
-		},
-		{
-			files:    "file1,file2,file3",
-			regexes:  []string{"f.+1", "fi.+3"},
-			expected: []string{"file1", "file3"},
-		},
-		{
-			files:    "file1,file2,fileN",
-			regexes:  []string{"\\d"},
-			expected: []string{"file1", "file2"},
-		},
-		{
-			files:    "foo.c,bar.cc",
-			regexes:  []string{"\\.c$"},
-			expected: []string{"foo.c"},
-		},
-	}
-
-	for _, test := range tests {
-		changedFiles = test.files
-		actual := ChangedFiles(test.regexes...)
-		if !reflect.DeepEqual(actual, test.expected) {
-			t.Errorf("Returned files are not equal. Expected %v. Got %v.", test.expected, actual)
-		}
-	}
-}
-
-func TestChangedFilesRegexesNoMatch(t *testing.T) {
-	changedFiles = "foo,bar"
-	actual := ChangedFiles("file")
-	if len(actual) != 0 {
-		t.Errorf("Expected empty slice but got %v", actual)
 	}
 }

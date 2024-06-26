@@ -98,10 +98,7 @@ public final class YAMLTemplateIT extends TemplateTestBase {
   }
 
   private String createSimpleYamlMessage() throws IOException {
-    String yamlMessage =
-        Files.readString(Paths.get(Resources.getResource("YamlTemplateIT.yaml").getPath()));
-    yamlMessage = yamlMessage.replaceAll("INPUT_PATH", getGcsBasePath() + "/input/test.csv");
-    return yamlMessage.replaceAll("OUTPUT_PATH", getGcsBasePath() + "/output");
+    return Files.readString(Paths.get(Resources.getResource("YamlTemplateIT.yaml").getPath()));
   }
 
   private void runYamlTemplateTest(
@@ -109,8 +106,16 @@ public final class YAMLTemplateIT extends TemplateTestBase {
           paramsAdder)
       throws IOException {
     // Arrange
+    String inputPath = getGcsBasePath() + "/input/test.csv";
+    String outputPath = getGcsBasePath() + "/output";
     PipelineLauncher.LaunchConfig.Builder options =
-        paramsAdder.apply(PipelineLauncher.LaunchConfig.builder(testName, specPath));
+        paramsAdder.apply(
+            PipelineLauncher.LaunchConfig.builder(testName, specPath)
+                .addParameter(
+                    "jinja_variables",
+                    String.format(
+                        "{\"INPUT_PATH_PARAM\": \"%s\", \"OUTPUT_PATH_PARAM\": \"%s\"}",
+                        inputPath, outputPath)));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

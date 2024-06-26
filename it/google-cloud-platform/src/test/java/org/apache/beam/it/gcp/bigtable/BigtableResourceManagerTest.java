@@ -95,7 +95,7 @@ public class BigtableResourceManagerTest {
             BigtableResourceManager.builder(TEST_ID, PROJECT_ID, null),
             bigtableResourceManagerClientFactory);
 
-    assertThat(rm.getInstanceId()).matches(TEST_ID + "-\\d{8}-\\d{6}-\\d{6}");
+    assertThat(rm.getInstanceId()).matches(TEST_ID + "-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}");
     assertThat(rm.getProjectId()).matches(PROJECT_ID);
   }
 

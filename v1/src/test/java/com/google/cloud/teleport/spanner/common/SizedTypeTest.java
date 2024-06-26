@@ -80,7 +80,7 @@ public class SizedTypeTest {
     assertEquals(embeddingVector.type, Type.array(Type.float64()));
     assertEquals(embeddingVector.arrayLength, Integer.valueOf(128));
     assertEquals(
-        SizedType.typeString(embeddingVector.type, null, 128),
+        SizedType.typeString(embeddingVector.type, null, 128, false),
         "ARRAY<FLOAT64>(vector_length=>128)");
   }
 
@@ -92,7 +92,34 @@ public class SizedTypeTest {
     assertEquals(embeddingVectorPg.type, Type.pgArray(Type.pgFloat8()));
     assertEquals(embeddingVectorPg.arrayLength, Integer.valueOf(4));
     assertEquals(
-        SizedType.typeString(embeddingVectorPg.type, null, 4),
+        SizedType.typeString(embeddingVectorPg.type, null, 4, false),
         "double precision[] vector length 4");
+  }
+
+  @Test
+  public void testProtoEnum() {
+    SizedType proto = SizedType.parseSpannerType("PROTO<a.b.proto>", Dialect.GOOGLE_STANDARD_SQL);
+    SizedType protoArray =
+        SizedType.parseSpannerType("ARRAY<PROTO<a.b.proto>>", Dialect.GOOGLE_STANDARD_SQL);
+    SizedType enumType = SizedType.parseSpannerType("ENUM<a.b.enum>", Dialect.GOOGLE_STANDARD_SQL);
+    SizedType enumArray =
+        SizedType.parseSpannerType("ARRAY<ENUM<a.b.enum>>", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertEquals(proto.type, Type.proto("a.b.proto"));
+    assertEquals(
+        SizedType.typeString(proto.type, null, /* outputAsDdlRepresentation= */ true), "a.b.proto");
+
+    assertEquals(protoArray.type, Type.array(Type.proto("a.b.proto")));
+    assertEquals(
+        SizedType.typeString(protoArray.type, null, /* outputAsDdlRepresentation= */ true),
+        "ARRAY<a.b.proto>");
+    assertEquals(enumType.type, Type.protoEnum("a.b.enum"));
+    assertEquals(
+        SizedType.typeString(enumType.type, null, /* outputAsDdlRepresentation= */ true),
+        "a.b.enum");
+    assertEquals(enumArray.type, Type.array(Type.protoEnum("a.b.enum")));
+    assertEquals(
+        SizedType.typeString(enumArray.type, null, /* outputAsDdlRepresentation= */ true),
+        "ARRAY<a.b.enum>");
   }
 }

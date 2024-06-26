@@ -74,10 +74,10 @@ public class BigtableToJson {
   public interface Options extends PipelineOptions {
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Source",
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to"
-                + " read data from")
+            "The ID for the Google Cloud project that contains the Bigtable instance that you want to read data from.")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
@@ -85,9 +85,10 @@ public class BigtableToJson {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
-        helpText = "The ID of the Cloud Bigtable instance that contains the table")
+        helpText = "The ID of the Bigtable instance that contains the table.")
     ValueProvider<String> getBigtableInstanceId();
 
     @SuppressWarnings("unused")
@@ -95,9 +96,10 @@ public class BigtableToJson {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
-        helpText = "The ID of the Cloud Bigtable table to read")
+        helpText = "The ID of the Bigtable table to read from.")
     ValueProvider<String> getBigtableTableId();
 
     @SuppressWarnings("unused")
@@ -105,9 +107,10 @@ public class BigtableToJson {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
+        groupName = "Target",
         optional = true,
         description = "Cloud Storage directory for storing JSON files",
-        helpText = "The Cloud Storage path where the output JSON files can be stored.",
+        helpText = "The Cloud Storage path where the output JSON files are stored.",
         example = "gs://your-bucket/your-path/")
     ValueProvider<String> getOutputDirectory();
 
@@ -116,8 +119,10 @@ public class BigtableToJson {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "JSON file prefix",
-        helpText = "The prefix of the JSON file name. For example, \"table1-\"")
+        helpText =
+            "The prefix of the JSON file name. For example, \"table1-\". If no value is provided, defaults to `part`.")
     @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 
@@ -126,11 +131,12 @@ public class BigtableToJson {
 
     @TemplateParameter.Enum(
         order = 6,
+        groupName = "Target",
         optional = true,
         enumOptions = {@TemplateEnumOption("FLATTEN"), @TemplateEnumOption("NONE")},
         description = "User option",
         helpText =
-            "User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the row to the single level. `NONE` stores the whole row as a JSON string.")
+            "Possible values are `FLATTEN` or `NONE`. `FLATTEN` flattens the row to the single level. `NONE` stores the whole row as a JSON string. Defaults to `NONE`.")
     @Default.String("NONE")
     String getUserOption();
 
@@ -139,15 +145,17 @@ public class BigtableToJson {
 
     @TemplateParameter.Text(
         order = 7,
+        groupName = "Target",
         optional = true,
+        parentName = "userOption",
+        parentTriggerValues = {"FLATTEN"},
         description = "Columns aliases",
         helpText =
-            "Comma separated list of columns which are required for Vertex AI Vector Search Index."
-                + " The `id` & `embedding` are required columns for Vertex Vector Search."
-                + " You can use the notation `fromfamily:fromcolumn;to`. For example, if the columns are"
-                + " `rowkey` and `cf:my_embedding`, in which `rowkey` and the embedding column is named differently,"
-                + " `cf:my_embedding;embedding` and `rowkey;id` should be specified."
-                + " Only used when FLATTEN user option is specified.")
+            "A comma-separated list of columns that are required for the Vertex AI Vector Search index. The"
+                + " columns `id` and `embedding` are required for Vertex AI Vector Search. You can use the notation"
+                + " `fromfamily:fromcolumn;to`. For example, if the columns are `rowkey` and `cf:my_embedding`, where"
+                + " `rowkey` has a different name than the embedding column, specify `cf:my_embedding;embedding` and,"
+                + " `rowkey;id`. Only use this option when the value for `userOption` is `FLATTEN`.")
     ValueProvider<String> getColumnsAliases();
 
     @SuppressWarnings("unused")

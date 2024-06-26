@@ -37,6 +37,7 @@ import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.common.base.Optional;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -99,7 +100,10 @@ public class DdlTest {
         .asc("id")
         .asc("gen_id")
         .end()
-        .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
+        .indexes(
+            ImmutableList.of(
+                "CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)",
+                "CREATE INDEX `UsersByIdAndFirstName` ON `Users` (`id`,`gen_id`,`first_name`), INTERLEAVE IN `Users`"))
         .foreignKeys(
             ImmutableList.of(
                 "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
@@ -132,12 +136,13 @@ public class DdlTest {
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
                 + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
+                + " CREATE INDEX `UsersByIdAndFirstName` ON `Users` (`id`,`gen_id`,`first_name`), INTERLEAVE IN `Users`"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
                 + " REFERENCES `AllowedNames` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`)"
                 + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE"));
     List<String> statements = ddl.statements();
-    assertEquals(5, statements.size());
+    assertEquals(6, statements.size());
     assertThat(
         statements.get(0),
         equalToCompressingWhiteSpace(
@@ -155,15 +160,19 @@ public class DdlTest {
     assertThat(
         statements.get(2),
         equalToCompressingWhiteSpace(
+            " CREATE INDEX `UsersByIdAndFirstName` ON `Users` (`id`,`gen_id`,`first_name`), INTERLEAVE IN `Users`"));
+    assertThat(
+        statements.get(3),
+        equalToCompressingWhiteSpace(
             "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`) REFERENCES"
                 + " `AllowedNames` (`first_name`)"));
     assertThat(
-        statements.get(3),
+        statements.get(4),
         equalToCompressingWhiteSpace(
             "ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`) REFERENCES"
                 + " `AllowedNames` (`last_name`) ON DELETE CASCADE"));
     assertThat(
-        statements.get(4),
+        statements.get(5),
         equalToCompressingWhiteSpace(
             "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = \"4d\" )"));
     assertNotNull(ddl.hashCode());
@@ -865,6 +874,27 @@ public class DdlTest {
   }
 
   @Test
+  public void protobundle() {
+    Ddl.Builder builder = Ddl.builder();
+    builder.mergeProtoBundle(
+        ImmutableSet.of(
+            "com.google.cloud.teleport.spanner.tests.TestMessage",
+            "com.google.cloud.teleport.spanner.tests.TestEnum"));
+    Ddl ddl = builder.build();
+    String expectedProtoBundle =
+        "CREATE PROTO BUNDLE ("
+            + " com.google.cloud.teleport.spanner.tests.TestMessage,"
+            + " com.google.cloud.teleport.spanner.tests.TestEnum,"
+            + ")";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedProtoBundle));
+
+    List<String> statements = ddl.statements();
+    assertEquals(1, statements.size());
+    assertThat(statements.get(0), equalToCompressingWhiteSpace(expectedProtoBundle));
+    assertNotNull(ddl.hashCode());
+  }
+
+  @Test
   public void testDdlEquals() {
     Ddl ddl1 = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL).build();
     Ddl ddl2 = Ddl.builder(Dialect.POSTGRESQL).build();
@@ -1061,5 +1091,20 @@ public class DdlTest {
     assertFalse(checkConstraint.equals(Boolean.TRUE));
     CheckConstraint checkConstraint1 = checkConstraintBuilder.name("ck").expression("1<2").build();
     assertTrue(checkConstraint.equals(checkConstraint1));
+  }
+
+  @Test
+  public void testNamedSchemaBuilder() {
+    NamedSchema.Builder namedSchemaBuilder = NamedSchema.builder();
+    namedSchemaBuilder.name("schema").dialect(Dialect.POSTGRESQL);
+    NamedSchema namedSchema = namedSchemaBuilder.build();
+    assertEquals("schema", namedSchema.name());
+    assertEquals("CREATE SCHEMA \"schema\"", namedSchema.prettyPrint());
+
+    NamedSchema.Builder namedSchemaBuilderG = NamedSchema.builder();
+    namedSchemaBuilderG.name("schema").dialect(Dialect.GOOGLE_STANDARD_SQL);
+    namedSchema = namedSchemaBuilderG.build();
+    assertEquals("schema", namedSchema.name());
+    assertEquals("CREATE SCHEMA `schema`", namedSchema.prettyPrint());
   }
 }

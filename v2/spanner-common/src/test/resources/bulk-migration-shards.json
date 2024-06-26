@@ -1,0 +1,55 @@
+{
+  "configType": "dataflow",
+  "shardConfigurationBulk": {
+    "schemaSource": {
+      "dataShardId": "",
+      "host": "",
+      "user": "",
+      "password": "",
+      "port": "",
+      "dbName": ""
+    },
+    "dataShards": [
+      {
+        "dataShardId": "1-1-1-1",
+        "host": "1.1.1.1",
+        "user": "test1",
+        "password": "pass1",
+        "port": "3306",
+        "dbName": "",
+        "databases": [
+          {
+            "dbName": "person1",
+            "databaseId": "1-1-1-1-person",
+            "refDataShardId": "1-1-1-1"
+          },
+          {
+            "dbName": "person2",
+            "databaseId": "1-1-1-1-person2",
+            "refDataShardId": "1-1-1-1"
+          }
+        ]
+      },
+      {
+        "dataShardId": "2-2-2-2",
+        "host": "1.1.1.2",
+        "user": "test1",
+        "password": "pass1",
+        "port": "3306",
+        "dbName": "",
+        "databases": [
+          {
+            "dbName": "person1",
+            "databaseId": "1-1-1-2-person",
+            "refDataShardId": "1-1-1-2"
+          },
+          {
+            "dbName": "person20",
+            "databaseId": "1-1-1-2-person2",
+            "refDataShardId": "1-1-1-2"
+          }
+        ]
+      }
+    ]
+  }
+}
