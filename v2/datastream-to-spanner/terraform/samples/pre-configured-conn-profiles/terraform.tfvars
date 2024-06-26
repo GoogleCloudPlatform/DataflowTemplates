@@ -11,10 +11,10 @@ datastream_params = {
   source_connection_profile_id  = "<YOUR_SOURCE_CONNECTION_PROFILE_ID>"
   target_connection_profile_id  = "<YOUR_TARGET_CONNECTION_PROFILE_ID>"
   target_gcs_bucket_name        = "<YOUR_GCS_BUCKET_NAME>"
-  pubsub_topic_name             = "live-migration"       # Or your custom topic name
-  stream_id                     = "mysql-stream"         # Or your custom stream ID
-  max_concurrent_cdc_tasks      = "<CDC_TASKS_INT>"      # Between 1-50, remove this to use the default (20)
-  max_concurrent_backfill_tasks = "<BACKFILL_TASKS_INT>" # Between 1-50, remove this to use the default (20)
+  pubsub_topic_name             = "live-migration" # Or your custom topic name
+  stream_id                     = "mysql-stream"   # Or your custom stream ID
+  max_concurrent_cdc_tasks      = 5                # Between 1-50, remove this to use the default (5)
+  max_concurrent_backfill_tasks = 15               # Between 1-50, remove this to use the default (15)
   mysql_databases = [
     {
       database = "<YOUR_DATABASE_NAME>"
