@@ -173,7 +173,7 @@ terraform destroy --var-file=terraform_simple.tfvars
 
 ### How to connect to the instance?
 
-We use OsLogin method to ssh into GCE VM. OSLogin is already
+OsLogin is the preferred method to ssh into GCE VM. OSLogin is already
 configred on these instances. So you only need to add public key and able to
 ssh.
 
