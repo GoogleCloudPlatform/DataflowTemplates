@@ -94,6 +94,43 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
         throw new InvalidTransformationException(e);
       }
 
+      // These types are currently only used bulk ITs for custom jars.
+      if (row.containsKey("varbinary_column")) {
+        row.put("varbinary_column", "0102030405060708090A0B0C0D0E0F1011121314");
+      }
+      if (row.containsKey("char_col")) {
+        row.put("char_col", "newchar");
+      }
+      if (row.containsKey("longblob_col")) {
+        row.put("longblob_col", "576f726d64");
+      }
+      if (row.containsKey("longtext_col")) {
+        row.put("longtext_col", row.get("longtext_col") + " append");
+      }
+      if (row.containsKey("mediumblob_col")) {
+        row.put("mediumblob_col", "576f726d64");
+      }
+      if (row.containsKey("mediumint_col")) {
+        row.put("mediumint_col", (Long) row.get("mediumint_col") + 1);
+      }
+      if (row.containsKey("mediumtext_col")) {
+        row.put("mediumtext_col", row.get("mediumtext_col") + " append");
+      }
+      if (row.containsKey("set_col")) {
+        row.put("set_col", "v3");
+      }
+      if (row.containsKey("smallint_col")) {
+        row.put("smallint_col", (Long) row.get("smallint_col") + 1);
+      }
+      if (row.containsKey("tinyblob_col")) {
+        row.put("tinyblob_col", "576f726d64");
+      }
+      if (row.containsKey("tinytext_col")) {
+        row.put("tinytext_col", row.get("tinytext_col") + " append");
+      }
+      if (row.containsKey("json_col")) {
+        row.put("json_col", "{\"k1\": \"v1\", \"k2\": \"v2\"}");
+      }
       MigrationTransformationResponse response = new MigrationTransformationResponse(row, false);
       return response;
     }

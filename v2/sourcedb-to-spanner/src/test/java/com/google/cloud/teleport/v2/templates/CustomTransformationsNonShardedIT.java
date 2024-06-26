@@ -113,8 +113,21 @@ public class CustomTransformationsNonShardedIT extends SourceDbToSpannerITBase {
     row.put("blob_column", "V29ybWQ=");
     row.put("enum_column", "1");
     row.put("bool_column", true);
-    row.put("binary_column", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
+    row.put("varbinary_column", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
     row.put("bit_column", "Ew==");
+    row.put("binary_col", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
+    row.put("char_col", "newchar");
+    row.put("longblob_col", "V29ybWQ=");
+    row.put("longtext_col", "This is longtext append");
+    row.put("mediumblob_col", "V29ybWQ=");
+    row.put("mediumint_col", 2001);
+    row.put("mediumtext_col", "This is mediumtext append");
+    row.put("set_col", "v3");
+    row.put("smallint_col", 11);
+    row.put("tinyblob_col", "V29ybWQ=");
+    row.put("tinytext_col", "This is tinytext append");
+    row.put("json_col", "{\"k1\": \"v1\", \"k2\": \"v2\"}");
+
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
