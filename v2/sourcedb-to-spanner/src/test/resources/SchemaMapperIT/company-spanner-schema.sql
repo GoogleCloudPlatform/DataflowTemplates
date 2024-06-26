@@ -26,3 +26,5 @@ CREATE TABLE
     updated_on     DATE,
 ) PRIMARY KEY
   (employee_id, attribute_name);
+
+CREATE VIEW company_view SQL SECURITY DEFINER AS SELECT company.company_id FROM  company;

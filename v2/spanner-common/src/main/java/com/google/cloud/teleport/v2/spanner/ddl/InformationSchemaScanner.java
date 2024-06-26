@@ -110,12 +110,13 @@ public class InformationSchemaScanner {
             Statement.of(
                 "SELECT t.table_name, t.parent_table_name, t.on_delete_action"
                     + " FROM information_schema.tables AS t"
-                    + " WHERE t.table_catalog = '' AND t.table_schema = ''");
+                    + " WHERE t.table_catalog = '' AND t.table_schema = ''"
+                    + " AND t.table_type='BASE TABLE'");
         break;
       case POSTGRESQL:
         query =
             Statement.of(
-                "SELECT t.table_name, t.parent_table_name, t.on_delete_action FROM"
+                "SELECT t.table_name, t.parent_table_name, t.on_delete_action, t.table_type FROM"
                     + " information_schema.tables AS t"
                     + " WHERE t.table_schema NOT IN "
                     + "('information_schema', 'spanner_sys', 'pg_catalog')");
