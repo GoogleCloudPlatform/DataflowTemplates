@@ -219,8 +219,12 @@ public class Ddl implements Serializable {
       this.dialect = dialect;
     }
 
+    public Table getTable(String name) {
+      return tables.get(name.toLowerCase());
+    }
+
     public Table.Builder createTable(String name) {
-      Table table = tables.get(name.toLowerCase());
+      Table table = getTable(name);
       if (table == null) {
         return Table.builder(dialect).name(name).ddlBuilder(this);
       }

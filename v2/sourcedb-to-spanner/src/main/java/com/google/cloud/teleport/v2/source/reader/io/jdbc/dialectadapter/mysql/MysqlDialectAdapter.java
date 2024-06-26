@@ -70,8 +70,10 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
     logger.info(String.format("Discovering tables for DataSource: %s", dataSource));
     final String tableDiscoveryQuery =
-        String.format("SELECT TABLE_NAME FROM information_schema.TABLES WHERE "
-            + "TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = '%s' ", sourceSchemaReference.dbName());
+        String.format(
+            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE "
+                + "TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = '%s' ",
+            sourceSchemaReference.dbName());
     ImmutableList.Builder<String> tablesBuilder = ImmutableList.builder();
     try (Statement stmt = dataSource.getConnection().createStatement()) {
       ResultSet rs = stmt.executeQuery(tableDiscoveryQuery);
