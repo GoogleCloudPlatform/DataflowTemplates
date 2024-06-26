@@ -40,6 +40,11 @@ public class CustomTransformationImplFetcher {
 
   public static ISpannerMigrationTransformer getApplyTransformationImpl(
       CustomTransformation customTransformation) {
+    if (customTransformation == null
+        || customTransformation.jarPath() == null
+        || customTransformation.classPath() == null) {
+      return null;
+    }
     if (!customTransformation.jarPath().isEmpty() && !customTransformation.classPath().isEmpty()) {
       LOG.info(
           "Getting spanner migration transformer : "
@@ -62,7 +67,7 @@ public class CustomTransformationImplFetcher {
 
         // Create a new instance from the loaded class
         Constructor<?> constructor = customTransformationClass.getConstructor();
-        ISpannerMigrationTransformer datastreamToSpannerTransformation =
+        ISpannerMigrationTransformer spannerMigrationTransformation =
             (ISpannerMigrationTransformer) constructor.newInstance();
         // Get the end time of loading the custom class
         Instant endTime = Instant.now();
@@ -75,8 +80,8 @@ public class CustomTransformationImplFetcher {
         LOG.info(
             "Invoking init of the custom class with input as {}",
             customTransformation.customParameters());
-        datastreamToSpannerTransformation.init(customTransformation.customParameters());
-        return datastreamToSpannerTransformation;
+        spannerMigrationTransformation.init(customTransformation.customParameters());
+        return spannerMigrationTransformation;
       } catch (Exception e) {
         throw new RuntimeException("Error loading custom class : " + e.getMessage());
       }
