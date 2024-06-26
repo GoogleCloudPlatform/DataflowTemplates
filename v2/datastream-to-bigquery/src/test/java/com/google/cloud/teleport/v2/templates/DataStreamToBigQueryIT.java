@@ -22,195 +22,485 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
 import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.conditions.ChainedConditionCheck;
+import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.bigquery.conditions.BigQueryRowsCheck;
+import org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts;
+import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
+import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
+import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
-import org.apache.beam.it.gcp.datastream.DatastreamResourceManager.Builder;
+import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.datastream.MySQLSource;
+import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToBigQuery.class)
 @RunWith(JUnit4.class)
 public class DataStreamToBigQueryIT extends TemplateTestBase {
-  private MySQLResourceManager jdbcResourceManager;
+
+  enum JDBCType {
+    MYSQL,
+    ORACLE
+  }
+
+  private static final int NUM_EVENTS = 10;
+
+  private static final String ROW_ID = "row_id";
+  private static final String NAME = "name";
+  private static final String AGE = "age";
+  private static final String MEMBER = "member";
+  private static final String ENTRY_ADDED = "entry_added";
+  private static final List<String> COLUMNS = List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED);
+
+  private String gcsPrefix;
+  private String dlqGcsPrefix;
+
+  private CloudSqlResourceManager cloudSqlResourceManager;
   private PubsubResourceManager pubsubResourceManager;
   private DatastreamResourceManager datastreamResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
 
-  private static final int ROW_COUNT = 10;
-
-  private static final String ID = "id";
-  private static final String JOB = "job";
-  private static final String NAME = "name";
-
   @Before
   public void setUp() throws IOException {
-    pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
+    datastreamResourceManager =
+        DatastreamResourceManager.builder(testName, PROJECT, REGION)
+            .setCredentialsProvider(credentialsProvider)
+            .setPrivateConnectivity("datastream-private-connect-us-central1")
+            .build();
+
     bigQueryResourceManager =
         BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
-    Builder datastreamResourceManagerBuilder =
-        DatastreamResourceManager.builder(testName, PROJECT, REGION)
-            .setCredentialsProvider(credentialsProvider);
-    String privateConnectivity = System.getProperty("privateConnectivity");
-    if (privateConnectivity != null) {
-      datastreamResourceManagerBuilder.setPrivateConnectivity(privateConnectivity);
-    } else {
-      datastreamResourceManagerBuilder.setPrivateConnectivity(
-          "datastream-private-connect-us-central1");
-    }
-    datastreamResourceManager = datastreamResourceManagerBuilder.build();
-    jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+
+    gcsClient.createArtifact(
+        "udf.js",
+        "function uppercaseName(value) {\n"
+            + "  const data = JSON.parse(value);\n"
+            + "  if (data['_metadata_retry_count'] === undefined) {\n"
+            + "    throw 'You shall not pass!';\n"
+            + "  }\n"
+            + "  data['name'] = data['name'].toUpperCase();\n"
+            + "  return JSON.stringify(data);\n"
+            + "}");
+
+    gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
+    dlqGcsPrefix = getGcsPath(testName + "/dlq/").replace("gs://" + artifactBucketName, "");
   }
 
   @After
   public void cleanUp() {
     ResourceManagerUtils.cleanResources(
-        jdbcResourceManager,
+        cloudSqlResourceManager,
         pubsubResourceManager,
         datastreamResourceManager,
         bigQueryResourceManager);
   }
 
-  @Ignore("Flaky test")
   @Test
-  public void testDataStreamToBigQuery() throws IOException {
-    baseDataStreamToBigQuery(Function.identity());
+  public void testDataStreamMySqlToBigQuery() throws IOException {
+    // Run a simple IT
+    simpleJdbcToBigQueryTest(
+        JDBCType.MYSQL,
+        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
+        config ->
+            config
+                .addParameter("inputFileFormat", "avro")
+                .addParameter("gcsPubSubSubscription", ""));
   }
 
-  @Ignore("Flaky test")
   @Test
-  public void testDataStreamToBigQueryUsingAtleastOnceMode() throws IOException {
+  public void testDataStreamOracleToBigQuery() throws IOException {
+    // Run a simple IT
+    simpleJdbcToBigQueryTest(
+        JDBCType.ORACLE,
+        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
+        config ->
+            config
+                .addParameter("inputFileFormat", "avro")
+                .addParameter("gcsPubSubSubscription", ""));
+  }
+
+  @Test
+  public void testDataStreamMySqlToBigQueryJson() throws IOException {
+    // Run a simple IT
+    simpleJdbcToBigQueryTest(
+        JDBCType.MYSQL,
+        DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT,
+        config ->
+            config
+                .addParameter("inputFileFormat", "json")
+                .addParameter("gcsPubSubSubscription", ""));
+  }
+
+  @Test
+  public void testDataStreamOracleToBigQueryJson() throws IOException {
+    // Run a simple IT
+    simpleJdbcToBigQueryTest(
+        JDBCType.ORACLE,
+        DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT,
+        config ->
+            config
+                .addParameter("inputFileFormat", "json")
+                .addParameter("gcsPubSubSubscription", ""));
+  }
+
+  @Test
+  public void testDataStreamMySqlToSpannerGCSNotifications() throws IOException {
+    // Set up pubsub notifications
+    SubscriptionName subscriptionName = createGcsNotifications();
+
+    // Run a simple IT
+    simpleJdbcToBigQueryTest(
+        JDBCType.MYSQL,
+        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
+        config ->
+            config
+                .addParameter("inputFileFormat", "avro")
+                .addParameter("gcsPubSubSubscription", subscriptionName.toString()));
+  }
+
+  @Test
+  public void testDataStreamToBigQueryUsingAtLeastOnceMode() throws IOException {
+    // Set up pubsub notifications
+    SubscriptionName subscriptionName = createGcsNotifications();
+
     ArrayList<String> experiments = new ArrayList<>();
     experiments.add("streaming_mode_at_least_once");
-    baseDataStreamToBigQuery(
-        b ->
-            b.addEnvironment("additionalExperiments", experiments)
+    simpleJdbcToBigQueryTest(
+        JDBCType.MYSQL,
+        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
+        config ->
+            config
+                .addParameter("inputFileFormat", "avro")
+                .addParameter("gcsPubSubSubscription", subscriptionName.toString())
+                .addEnvironment("additionalExperiments", experiments)
                 .addEnvironment("enableStreamingEngine", true));
   }
 
-  private void baseDataStreamToBigQuery(
-      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
-    // Arrange
+  private void simpleJdbcToBigQueryTest(
+      JDBCType jdbcType,
+      DatastreamResourceManager.DestinationOutputFormat fileFormat,
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException {
+
+    // Create JDBC Resource manager
+    cloudSqlResourceManager =
+        jdbcType.equals(JDBCType.MYSQL)
+            ? CloudMySQLResourceManager.builder(testName).build()
+            : CloudOracleResourceManager.builder(testName).build();
+
+    // Create JDBC tables
+    String tableName = "JdbcToBigQuery_" + RandomStringUtils.randomAlphanumeric(5);
+    cloudSqlResourceManager.createTable(
+        tableName, createJdbcSchema(jdbcType.equals(JDBCType.ORACLE)));
+
+    JDBCSource jdbcSource;
+    if (jdbcType.equals(JDBCType.MYSQL)) {
+      jdbcSource =
+          MySQLSource.builder(
+                  cloudSqlResourceManager.getHost(),
+                  cloudSqlResourceManager.getUsername(),
+                  cloudSqlResourceManager.getPassword(),
+                  cloudSqlResourceManager.getPort())
+              .build();
+    } else {
+      jdbcSource =
+          OracleSource.builder(
+                  cloudSqlResourceManager.getHost(),
+                  cloudSqlResourceManager.getUsername(),
+                  cloudSqlResourceManager.getPassword(),
+                  cloudSqlResourceManager.getPort(),
+                  cloudSqlResourceManager.getDatabaseName())
+              .build();
+    }
+
     // Create a BigQuery table
     List<Field> bqSchemaFields =
         Arrays.asList(
-            Field.of(ID, StandardSQLTypeName.INT64),
-            Field.of(JOB, StandardSQLTypeName.STRING),
-            Field.of(NAME, StandardSQLTypeName.STRING));
+            Field.of(ROW_ID, StandardSQLTypeName.BIGNUMERIC),
+            Field.of(NAME, StandardSQLTypeName.STRING),
+            Field.of(AGE, StandardSQLTypeName.BIGNUMERIC),
+            Field.of(MEMBER, StandardSQLTypeName.STRING),
+            Field.of(ENTRY_ADDED, StandardSQLTypeName.STRING));
     Schema bqSchema = Schema.of(bqSchemaFields);
     bigQueryResourceManager.createDataset(REGION);
-    TableId bqTable = bigQueryResourceManager.createTable(testName, bqSchema);
-
-    // Create a Pub/Sub subscription
-    String nameSuffix = RandomStringUtils.randomAlphanumeric(8);
-    TopicName topic = pubsubResourceManager.createTopic("input-" + nameSuffix);
-    SubscriptionName subscription =
-        pubsubResourceManager.createSubscription(topic, "sub-1-" + nameSuffix);
-
-    // Create a JDBC table
-    HashMap<String, String> columns = new HashMap<>();
-    columns.put(ID, "NUMERIC NOT NULL");
-    columns.put(JOB, "VARCHAR(200)");
-    columns.put(NAME, "VARCHAR(200)");
-    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ID);
-    String tableName = testName;
-    jdbcResourceManager.createTable(tableName, schema);
-
-    // Setup Pub/Sub notifications on the GCS bucket
-    String gcsPrefix = getGcsPath(testName).replace("gs://" + artifactBucketName, "") + "/cdc/";
-    gcsClient.createNotification(topic.toString(), gcsPrefix);
+    TableId bqTable = bigQueryResourceManager.createTable(tableName, bqSchema);
 
     // Create Datastream JDBC Source Connection profile and config
-    MySQLSource jdbcSource =
-        MySQLSource.builder(
-                jdbcResourceManager.getHost(),
-                jdbcResourceManager.getUsername(),
-                jdbcResourceManager.getPassword(),
-                jdbcResourceManager.getPort())
-            .build();
     SourceConfig sourceConfig =
-        datastreamResourceManager.buildJDBCSourceConfig("mysql-profile", jdbcSource);
+        datastreamResourceManager.buildJDBCSourceConfig("jdbc-profile", jdbcSource);
 
     // Create Datastream GCS Destination Connection profile and config
     DestinationConfig destinationConfig =
         datastreamResourceManager.buildGCSDestinationConfig(
-            "gcs-profile",
-            artifactBucketName,
-            gcsPrefix,
-            DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT);
+            "gcs-profile", artifactBucketName, gcsPrefix, fileFormat);
 
     // Create and start Datastream stream
     Stream stream =
         datastreamResourceManager.createStream("stream1", sourceConfig, destinationConfig);
     datastreamResourceManager.startStream(stream);
 
-    // Construct the template
+    // Construct template
     String jobName = PipelineUtils.createJobName(testName);
     PipelineLauncher.LaunchConfig.Builder options =
-        paramsAdder.apply(
-            PipelineLauncher.LaunchConfig.builder(jobName, specPath)
-                .addParameter("inputFilePattern", getGcsPath(testName) + "/cdc/")
-                .addParameter("inputFileFormat", "avro")
-                .addParameter("gcsPubSubSubscription", subscription.toString())
-                .addParameter("streamName", stream.getName())
-                .addParameter(
-                    "outputStagingDatasetTemplate", bigQueryResourceManager.getDatasetId())
-                .addParameter("outputDatasetTemplate", bigQueryResourceManager.getDatasetId())
-                .addParameter("outputTableNameTemplate", bqTable.getTable())
-                .addParameter("deadLetterQueueDirectory", getGcsPath(testName) + "/dlq/"));
+        paramsAdder
+            .apply(
+                PipelineLauncher.LaunchConfig.builder(jobName, specPath)
+                    .addParameter("inputFilePattern", getGcsPath(testName) + "/cdc/")
+                    .addParameter(
+                        "outputStagingDatasetTemplate", bigQueryResourceManager.getDatasetId()))
+            .addParameter("outputStagingTableNameTemplate", "{_metadata_table}_staging")
+            .addParameter("outputDatasetTemplate", bigQueryResourceManager.getDatasetId())
+            .addParameter("outputTableNameTemplate", "{_metadata_table}")
+            .addParameter("streamName", stream.getName())
+            .addParameter("deadLetterQueueDirectory", getGcsPath(testName) + "/dlq/")
+            .addParameter("mergeFrequencyMinutes", "2")
+            .addParameter("dlqRetryMinutes", "1")
+            .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
+            .addParameter("javascriptTextTransformFunctionName", "uppercaseName");
+
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
-    // Write records to the JDBC table
-    List<Map<String, Object>> rows = new ArrayList<>();
-    for (int i = 1; i <= ROW_COUNT; i++) {
-      Map<String, Object> values = new HashMap<>();
-      values.put(ID, i);
-      values.put(JOB, jobName);
-      values.put(NAME, RandomStringUtils.randomAlphabetic(10));
-      rows.add(values);
-    }
-    jdbcResourceManager.write(tableName, rows);
+    // Construct a ChainedConditionCheck with 4 stages.
+    // 1. Send initial wave of events to JDBC
+    // 2. Wait on BigQuery to merge events from staging to destination
+    // 3. Send wave of mutations to JDBC
+    // 4. Wait on BigQuery to merge second wave of events
+    Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    writeJdbcData(tableName, cdcEvents, jdbcType.equals(JDBCType.ORACLE)),
+                    BigQueryRowsCheck.builder(bigQueryResourceManager, bqTable)
+                        .setMinRows(NUM_EVENTS)
+                        .build(),
+                    changeJdbcData(tableName, cdcEvents, jdbcType.equals(JDBCType.ORACLE)),
+                    checkDestinationRows(tableName, cdcEvents)))
+            .build();
 
+    // Job needs to be cancelled as draining will time out
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForConditionsAndFinish(
-                createConfig(info),
-                BigQueryRowsCheck.builder(bigQueryResourceManager, bqTable)
-                    .setMinRows(ROW_COUNT)
-                    .build());
+            .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(20)), conditionCheck);
 
     // Assert
+    checkBigQueryTable(tableName, cdcEvents);
     assertThatResult(result).meetsConditions();
+  }
+
+  private JDBCResourceManager.JDBCSchema createJdbcSchema(boolean isOracle) {
+    // Arrange MySQL-compatible schema
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put(ROW_ID, (isOracle ? "NUMBER" : "NUMERIC") + " NOT NULL");
+    columns.put(NAME, "VARCHAR(200)");
+    columns.put(AGE, isOracle ? "NUMBER" : "NUMERIC");
+    columns.put(MEMBER, "VARCHAR(200)");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    return new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+  }
+
+  /**
+   * Helper function for constructing a ConditionCheck whose check() method constructs the initial
+   * rows of data in the JDBC database according to the common schema for the IT's in this class.
+   *
+   * @return A ConditionCheck containing the JDBC write operation.
+   */
+  private ConditionCheck writeJdbcData(
+      String tableName, Map<String, List<Map<String, Object>>> cdcEvents, boolean isOracle) {
+    return new ConditionCheck() {
+      @Override
+      protected @NonNull String getDescription() {
+        return "Send initial JDBC events.";
+      }
+
+      @Override
+      protected @NonNull CheckResult check() {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (int i = 0; i < NUM_EVENTS; i++) {
+          Map<String, Object> values = new HashMap<>();
+          values.put(COLUMNS.get(0), i);
+          values.put(COLUMNS.get(1), RandomStringUtils.randomAlphabetic(10).toLowerCase());
+          values.put(COLUMNS.get(2), new Random().nextInt(100));
+          values.put(COLUMNS.get(3), new Random().nextInt() % 2 == 0 ? "Y" : "N");
+          values.put(COLUMNS.get(4), Instant.now().toString());
+          rows.add(values);
+        }
+
+        boolean success = cloudSqlResourceManager.write(tableName, rows);
+
+        // Force log file archive - needed so Datastream can see changes which are read from
+        // archived log files.
+        if (isOracle) {
+          cloudSqlResourceManager.runSQLUpdate("ALTER SYSTEM SWITCH LOGFILE");
+        }
+
+        cdcEvents.put(tableName, rows);
+        return new CheckResult(
+            success, String.format("Sent %d rows to %s.", rows.size(), tableName));
+      }
+    };
+  }
+
+  /**
+   * Helper function for constructing a ConditionCheck whose check() method changes rows of data in
+   * the JDBC database according to the common schema for the IT's in this class. Half the rows are
+   * mutated and half are removed completely.
+   *
+   * @return A ConditionCheck containing the JDBC mutate operation.
+   */
+  private ConditionCheck changeJdbcData(
+      String tableName, Map<String, List<Map<String, Object>>> cdcEvents, boolean isOracle) {
+    return new ConditionCheck() {
+      @Override
+      protected @NonNull String getDescription() {
+        return "Send JDBC changes.";
+      }
+
+      @Override
+      protected @NonNull CheckResult check() {
+        List<Map<String, Object>> newCdcEvents = new ArrayList<>();
+        for (int i = 0; i < NUM_EVENTS; i++) {
+          if (i % 2 == 0) {
+            Map<String, Object> values = cdcEvents.get(tableName).get(i);
+            values.put(COLUMNS.get(1), values.get(COLUMNS.get(1)).toString().toUpperCase());
+            values.put(COLUMNS.get(2), new Random().nextInt(100));
+            values.put(
+                COLUMNS.get(3),
+                (Objects.equals(values.get(COLUMNS.get(3)).toString(), "Y") ? "N" : "Y"));
+
+            String updateSql =
+                "UPDATE "
+                    + tableName
+                    + " SET "
+                    + COLUMNS.get(2)
+                    + " = "
+                    + values.get(COLUMNS.get(2))
+                    + ","
+                    + COLUMNS.get(3)
+                    + " = '"
+                    + values.get(COLUMNS.get(3))
+                    + "'"
+                    + " WHERE "
+                    + COLUMNS.get(0)
+                    + " = "
+                    + i;
+            cloudSqlResourceManager.runSQLUpdate(updateSql);
+            newCdcEvents.add(values);
+          } else {
+            cloudSqlResourceManager.runSQLUpdate(
+                "DELETE FROM " + tableName + " WHERE " + COLUMNS.get(0) + "=" + i);
+          }
+        }
+
+        // Force log file archive - needed so Datastream can see changes which are read from
+        // archived log files.
+        if (isOracle) {
+          cloudSqlResourceManager.runSQLUpdate("ALTER SYSTEM SWITCH LOGFILE");
+        }
+
+        cdcEvents.put(tableName, newCdcEvents);
+        return new CheckResult(
+            true, String.format("Sent %d changes to %s.", newCdcEvents.size(), tableName));
+      }
+    };
+  }
+
+  /**
+   * Helper function for constructing a ConditionCheck whose check() method checks the rows in the
+   * destination BigQuery database for specific rows.
+   *
+   * @return A ConditionCheck containing the check operation.
+   */
+  private ConditionCheck checkDestinationRows(
+      String tableName, Map<String, List<Map<String, Object>>> cdcEvents) {
+    return new ConditionCheck() {
+      @Override
+      protected @NonNull String getDescription() {
+        return "Check BigQuery rows.";
+      }
+
+      @Override
+      protected @NonNull CheckResult check() {
+        // First, check that correct number of rows were deleted.
+        long totalRows = bigQueryResourceManager.getRowCount(tableName);
+        long maxRows = cdcEvents.get(tableName).size();
+        if (totalRows > maxRows) {
+          return new CheckResult(
+              false, String.format("Expected up to %d rows but found %d", maxRows, totalRows));
+        }
+
+        // Next, make sure in-place mutations were applied.
+        try {
+          checkBigQueryTable(tableName, cdcEvents);
+          return new CheckResult(true, "BigQuery table contains expected rows.");
+        } catch (AssertionError error) {
+          return new CheckResult(false, "BigQuery table does not contain expected rows.");
+        }
+      }
+    };
+  }
+
+  /** Helper function for checking the rows of the destination Spanner tables. */
+  private void checkBigQueryTable(
+      String tableName, Map<String, List<Map<String, Object>>> cdcEvents) {
+
+    TableResult rows = bigQueryResourceManager.readTable(tableName);
+    for (Map<String, Object> event : cdcEvents.get(tableName)) {
+      BigQueryAsserts.assertThatBigQueryRecords(rows).hasRecordSubset(event);
+    }
+  }
+
+  private SubscriptionName createGcsNotifications() throws IOException {
+    // Instantiate pubsub resource manager for notifications
+    pubsubResourceManager =
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
+
+    // Create pubsub notifications
+    TopicName topic = pubsubResourceManager.createTopic("it");
+    TopicName dlqTopic = pubsubResourceManager.createTopic("dlq");
+    SubscriptionName subscription = pubsubResourceManager.createSubscription(topic, "it-sub");
+
+    gcsClient.createNotification(topic.toString(), gcsPrefix.substring(1));
+    gcsClient.createNotification(dlqTopic.toString(), dlqGcsPrefix.substring(1));
+
+    return subscription;
   }
 }

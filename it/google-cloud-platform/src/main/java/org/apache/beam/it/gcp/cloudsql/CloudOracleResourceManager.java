@@ -36,11 +36,16 @@ public class CloudOracleResourceManager extends CloudSqlResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(CloudOracleResourceManager.class);
 
+  private static final String DEFAULT_SYSTEM_IDENTIFIER = "xe";
+
   private static final int DEFAULT_ORACLE_PORT = 1521;
+
+  private String systemIdentifier;
 
   private CloudOracleResourceManager(Builder builder) {
     super(builder);
 
+    this.systemIdentifier = builder.systemIdentifier;
     System.setProperty("oracle.jdbc.timezoneAsRegion", "false");
   }
 
@@ -65,13 +70,20 @@ public class CloudOracleResourceManager extends CloudSqlResourceManager {
     return "SELECT * FROM " + tableName + " WHERE ROWNUM <= 1";
   }
 
+  public String getSystemIdentifier() {
+    return this.systemIdentifier;
+  }
+
   /** Builder for {@link CloudOracleResourceManager}. */
   public static final class Builder extends CloudSqlResourceManager.Builder {
+
+    private String systemIdentifier;
 
     public Builder(String testId) {
       super(testId);
 
-      this.setDatabaseName("xe");
+      this.setSystemIdentifier(DEFAULT_SYSTEM_IDENTIFIER);
+      this.setDatabaseName(this.systemIdentifier);
       this.setPort(DEFAULT_ORACLE_PORT);
 
       // Currently only supports static Oracle instance on GCE
@@ -86,6 +98,11 @@ public class CloudOracleResourceManager extends CloudSqlResourceManager {
       }
       this.useStaticContainer();
 
+      return this;
+    }
+
+    public Builder setSystemIdentifier(String systemIdentifier) {
+      this.systemIdentifier = systemIdentifier;
       return this;
     }
 
