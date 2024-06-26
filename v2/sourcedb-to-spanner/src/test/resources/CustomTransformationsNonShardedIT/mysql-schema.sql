@@ -15,20 +15,20 @@ CREATE TABLE AllDatatypeTransformation (
     blob_column BLOB,
     enum_column ENUM('1', '2', '3'),
     bool_column BOOLEAN,
-    binary_col BINARY(255),
+    binary_column BINARY(255),
     bit_column BIT(10),
     varbinary_column VARBINARY(100),
-    char_col CHAR(255),
-    longblob_col LONGBLOB,
-    longtext_col LONGTEXT,
-    mediumblob_col MEDIUMBLOB,
-    mediumint_col MEDIUMINT,
-    mediumtext_col MEDIUMTEXT,
-    set_col SET('v1', 'v2', 'v3'),
-    smallint_col SMALLINT,
-    tinyblob_col TINYBLOB,
-    tinytext_col TINYTEXT,
-    json_col JSON,
+    char_column CHAR(255),
+    longblob_column LONGBLOB,
+    longtext_column LONGTEXT,
+    mediumblob_column MEDIUMBLOB,
+    mediumint_column MEDIUMINT,
+    mediumtext_column MEDIUMTEXT,
+    set_column SET('v1', 'v2', 'v3'),
+    smallint_column SMALLINT,
+    tinyblob_column TINYBLOB,
+    tinytext_column TINYTEXT,
+    json_column JSON,
     PRIMARY KEY (int_column)
 );
 
@@ -38,9 +38,9 @@ INSERT INTO AllDatatypeTransformation (
     varchar_column, tinyint_column, text_column, date_column, int_column,
     bigint_column, float_column, double_column, decimal_column, datetime_column,
     timestamp_column, time_column, year_column, blob_column, enum_column,
-    bool_column, varbinary_column, bit_column, binary_col, char_col, longblob_col,
-    longtext_col, mediumblob_col, mediumint_col, mediumtext_col, set_col, smallint_col,
-    tinyblob_col, tinytext_col, json_col
+    bool_column, varbinary_column, bit_column, binary_column, char_column, longblob_column,
+    longtext_column, mediumblob_column, mediumint_column, mediumtext_column, set_column, smallint_column,
+    tinyblob_column, tinytext_column, json_column
 )
 VALUES (
     'id1', 12, 'This is a text value', '2024-06-21', 100,

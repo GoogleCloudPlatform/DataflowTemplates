@@ -68,6 +68,12 @@ CREATE TABLE int_table (
   int_col INT64,
 ) PRIMARY KEY(id);
 
+CREATE TABLE json_table (
+  id INT64 NOT NULL,
+  json_col JSON,
+) PRIMARY KEY(id);
+
+
 CREATE TABLE longblob_table (
   id INT64 NOT NULL,
   longblob_col BYTES(MAX),
