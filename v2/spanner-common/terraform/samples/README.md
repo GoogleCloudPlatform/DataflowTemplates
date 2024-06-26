@@ -6,10 +6,10 @@ resembles
 a customers' environment, in order to run various Spanner migration tooling such
 as -
 
-1. [SMT](https://github.com/GoogleCloudPlatform/spanner-migration-tool)
+1. [SMT](https://googlecloudplatform.github.io/spanner-migration-tool/)
 2. [Live migration](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md)
 3. [Bulk migration](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/README_Sourcedb_to_Spanner_Flex.md)
-4. [Reverse replication](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/spanner-change-streams-to-sharded-file-sink/README_Spanner_Change_Streams_to_Sharded_File_Sink.md)
+4. [Reverse replication](TODO: Add appropriate link)
 
 Pick a sample that is closest to your use-case, and use it as a starting point,
 tailoring it to your own specific needs.

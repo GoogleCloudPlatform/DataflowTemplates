@@ -171,6 +171,25 @@ terraform destroy --var-file=terraform_simple.tfvars
 
 ## FAQ
 
+### How to connect to the instance?
+
+We use OsLogin method to ssh into GCE VM. OSLogin is already
+configred on these instances. So you only need to add public key and able to
+ssh.
+
+It might be good idea to validate that ssh-agent is running and keys are added
+to it.
+
+Below is quick way to get it to work.
+
+```bash
+# Add your ssh public key. Ensure ssh-add -L | grep publickey gives output.
+gcloud compute os-login ssh-keys add --key="$(ssh-add -L | grep publickey)" --project=<project-name>
+
+# SSH into the instance
+ssh ${USER}_google_com@nic0.mysql-db.<zone>.c.<project-name>.internal.gcpnode.com
+```
+
 ### Changing the schema of the MySQL database
 
 Set the `ddl` parameter in the `mysql_params`.
