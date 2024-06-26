@@ -40,19 +40,13 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 public class GCSToSourceStreamingHandlerTest {
   private static final String VALID_GCS_PATH = "gs://my-bucket/my-path/";
-  private static final String INVALID_GCS_PATH = "invalid-gcs-path";
-
-  @Mock private Storage mockStorage;
 
   @Captor private ArgumentCaptor<BlobInfo> blobInfoCaptor;
 
-  @InjectMocks private ProcessingContext taskContext;
   @Rule public ExpectedException expectedException = ExpectedException.none();
 
   @Before
@@ -62,11 +56,12 @@ public class GCSToSourceStreamingHandlerTest {
 
   @Test
   public void testWriteFilteredEventsToGcs_Success() {
-    taskContext = mock(ProcessingContext.class);
+    ProcessingContext taskContext = mock(ProcessingContext.class);
+    Storage mockStorage = mock(Storage.class);
+    Shard shard = mock(Shard.class);
     when(taskContext.getGCSPath()).thenReturn(VALID_GCS_PATH);
     when(taskContext.getStartTimestamp()).thenReturn("2023-06-23T10:15:30Z");
     when(taskContext.getWindowDuration()).thenReturn(org.joda.time.Duration.standardMinutes(10));
-    Shard shard = mock(Shard.class);
     when(shard.getLogicalShardId()).thenReturn("shard-123");
     when(taskContext.getShard()).thenReturn(shard);
     List<Mod> mods = new ArrayList<>();
@@ -100,23 +95,11 @@ public class GCSToSourceStreamingHandlerTest {
   }
 
   @Test
-  public void testWriteFilteredEventsToGcs_InvalidGcsPath() {
-    expectedException.expect(IllegalArgumentException.class);
-    expectedException.expectMessage(
-        "--gcsInputDirectoryPath is expected in a format matching the following regular expression: gs://(.*?)/(.*)");
-    taskContext = mock(ProcessingContext.class);
-    when(taskContext.getGCSPath()).thenReturn(INVALID_GCS_PATH);
-
-    List<TrimmedShardedDataChangeRecord> filteredEvents = new ArrayList<>();
-
-    GCSToSourceStreamingHandler.writeFilteredEventsToGcs(taskContext, mockStorage, filteredEvents);
-  }
-
-  @Test
   public void testWriteFilteredEventsToGcs_StorageException() {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("Unable to ensure write access for the file path:");
-    taskContext = mock(ProcessingContext.class);
+    ProcessingContext taskContext = mock(ProcessingContext.class);
+    Storage mockStorage = mock(Storage.class);
     when(taskContext.getGCSPath()).thenReturn(VALID_GCS_PATH);
     when(taskContext.getStartTimestamp()).thenReturn("2023-06-23T10:15:30Z");
     when(taskContext.getWindowDuration()).thenReturn(org.joda.time.Duration.standardMinutes(10));

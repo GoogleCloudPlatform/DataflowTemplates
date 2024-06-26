@@ -31,8 +31,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,16 +114,8 @@ public class GCSToSourceStreamingHandler {
       ProcessingContext taskContext,
       Storage storage,
       List<TrimmedShardedDataChangeRecord> filteredEvents) {
-    Matcher matcher = Pattern.compile(GCS_INPUT_DIRECTORY_REGEX).matcher(taskContext.getGCSPath());
-
-    if (!matcher.matches()) {
-      throw new IllegalArgumentException(
-          "--gcsInputDirectoryPath is expected in a format matching "
-              + "the following regular expression: "
-              + GCS_INPUT_DIRECTORY_REGEX);
-    }
-    String bucket = matcher.group(1);
-    String path = matcher.group(2);
+    String bucket = taskContext.getGCSPath().substring(5, taskContext.getGCSPath().indexOf("/", 5));
+    String path = taskContext.getGCSPath().substring(taskContext.getGCSPath().indexOf("/", 5) + 1);
     if (!path.endsWith("/")) {
       path += "/";
     }

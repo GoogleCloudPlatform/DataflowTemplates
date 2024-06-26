@@ -89,8 +89,13 @@ public class InputRecordProcessor {
               ChangeEventToMapConvertor.combineJsonObjects(keysJson, newValuesJson);
           MigrationTransformationRequest migrationTransformationRequest =
               new MigrationTransformationRequest(tableName, mapRequest, shardId, modType);
-          MigrationTransformationResponse migrationTransformationResponse =
-              spannerToSourceTransformer.toSourceRow(migrationTransformationRequest);
+          MigrationTransformationResponse migrationTransformationResponse = null;
+          try {
+            migrationTransformationResponse =
+                spannerToSourceTransformer.toSourceRow(migrationTransformationRequest);
+          } catch (Exception e) {
+            throw new InvalidTransformationException(e);
+          }
           org.joda.time.Instant endTimestamp = org.joda.time.Instant.now();
           applyCustomTransformationResponseTimeMetric.update(
               new Duration(startTimestamp, endTimestamp).getMillis());
@@ -138,10 +143,9 @@ public class InputRecordProcessor {
       lagMetric.update(replicationLag); // update the lag metric
 
     } catch (InvalidTransformationException e) {
-      Metrics.counter(InputRecordProcessor.class, "custom_transformation_exception_" + shardId)
-          .inc();
+      Metrics.counter(InputRecordProcessor.class, "custom_transformation_exception").inc();
       LOG.error(
-          "The exception while processing shardId: {} is {} ",
+          "Invalid transformation exception occurred while processing shardId: {} is {} ",
           shardId,
           ExceptionUtils.getStackTrace(e));
       throw new RuntimeException("Failed to process records: ", e);
