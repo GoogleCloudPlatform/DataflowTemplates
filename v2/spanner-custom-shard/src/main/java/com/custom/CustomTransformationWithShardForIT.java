@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationExce
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
+import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -119,12 +120,14 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
       Long bigIntColumn = Long.parseLong((String) row.get("bigint_column")) + 1;
       Long timeColumn = Long.parseLong((String) row.get("time_column")) + 1000;
       Long yearColumn = Long.parseLong((String) row.get("year_column")) + 1;
+      BigDecimal floatColumn = (BigDecimal) row.get("float_column");
+      BigDecimal doubleColumn = (BigDecimal) row.get("double_column");
       row.put("tinyint_column", tinyIntColumn.toString());
       row.put("text_column", row.get("text_column") + " append");
       row.put("int_column", intColumn.toString());
       row.put("bigint_column", bigIntColumn.toString());
-      row.put("float_column", (double) row.get("float_column") + 1);
-      row.put("double_column", (double) row.get("double_column") + 1);
+      row.put("float_column", floatColumn.add(BigDecimal.ONE));
+      row.put("double_column", doubleColumn.add(BigDecimal.ONE));
       Double value = Double.parseDouble((String) row.get("decimal_column"));
       row.put("decimal_column", String.valueOf(value - 1));
       row.put("time_column", timeColumn.toString());
