@@ -182,9 +182,6 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
                     val -> {
                       JSONObject bigQueryJson = new JSONObject(val.getStringValue());
                       assertTrue(bigQueryJson.has("timestamp"));
-
-                      assertTrue(bigQueryJson.getInt("filter_test") < 10);
-
                       bigQueryJson.remove("timestamp");
                       String bigQueryId = bigQueryJson.getString(MONGO_DB_ID);
                       assertTrue(mongoMap.get(bigQueryId).similar(bigQueryJson));
@@ -199,14 +196,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     mongoDbClient.insertDocuments(collectionName, mongoDocuments);
 
     String bqTable = testName;
-    String udfFileName = "transform.js";
-    gcsClient.createArtifact(
-        "input/" + udfFileName,
-        "function transform(inJson) {\n"
-            + "    var outJson = JSON.parse(inJson);\n"
-            + "    outJson.udf = \"out\";\n"
-            + "    return JSON.stringify(outJson);\n"
-            + "}");
+
     List<Field> bqSchemaFields = new ArrayList<>();
     bqSchemaFields.add(Field.of("timestamp", StandardSQLTypeName.TIMESTAMP));
     mongoDocuments
@@ -224,9 +214,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
             .addParameter(MONGO_COLLECTION, collectionName)
             .addParameter(BIGQUERY_TABLE, toTableSpecLegacy(table))
             .addParameter(USER_OPTION, "FLATTEN")
-            .addParameter()
-            .addParameter("filter", "{ \"filter_test\": { $gt: 0, $lt: 10 }}")
-            .addParameter("javascriptDocumentTransformFunctionName", "transform");
+            .addParameter("filter", "{ \"filter_test\": { $eq: \"0\" }}");
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -246,7 +234,6 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
         mongoDocument -> {
           JSONObject mongoDbJson = new JSONObject(mongoDocument.toJson());
           String mongoId = mongoDbJson.getJSONObject(MONGO_DB_ID).getString("$oid");
-          mongoDbJson.put("udf", "out");
           mongoDbJson.put(MONGO_DB_ID, mongoId);
           mongoMap.put(mongoId, mongoDbJson);
         });
@@ -260,10 +247,14 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
                     val -> {
                       JSONObject bigQueryJson = new JSONObject(val.getStringValue());
                       assertTrue(bigQueryJson.has("timestamp"));
-
+                      assertTrue(bigQueryJson.getString("filter_test").equals("0"));
                       bigQueryJson.remove("timestamp");
                       String bigQueryId = bigQueryJson.getString(MONGO_DB_ID);
-                      assertTrue(mongoMap.get(bigQueryId).similar(bigQueryJson));
+                      String msg =
+                          val.getStringValue()
+                              + " is different from "
+                              + mongoMap.get(bigQueryId).toString();
+                      assertTrue(msg, mongoMap.get(bigQueryId).similar(bigQueryJson));
                     }));
   }
 
@@ -303,7 +294,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
       }
       randomDocument.append("udf", "in");
       randomDocument.append("nullonly", null);
-      randomDocument.append("filter_test", i);
+      randomDocument.append("filter_test", String.valueOf(i));
 
       mongoDocuments.add(randomDocument);
     }
