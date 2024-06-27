@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
+import org.apache.beam.sdk.util.RowJsonUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.threeten.bp.Instant;
 
@@ -145,6 +146,7 @@ public final class Mod implements Serializable {
   }
 
   public static Mod fromJson(String json) throws IOException {
+    RowJsonUtils.increaseDefaultStreamReadConstraints(100 * 1024 * 1024);
     return new ObjectMapper().readValue(json, Mod.class);
   }
 

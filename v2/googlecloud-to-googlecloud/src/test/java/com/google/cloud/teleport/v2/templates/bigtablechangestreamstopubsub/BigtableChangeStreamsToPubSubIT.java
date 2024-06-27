@@ -70,6 +70,7 @@ import org.apache.beam.it.gcp.bigtable.BigtableResourceManagerCluster;
 import org.apache.beam.it.gcp.bigtable.BigtableTableSpec;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
+import org.apache.beam.sdk.util.RowJsonUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
@@ -233,9 +234,10 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                 createConfig(launchInfo),
                 () -> {
                   List<Artifact> artifacts = gcsClient.listArtifacts("dlq", Pattern.compile(".*"));
+                  RowJsonUtils.increaseDefaultStreamReadConstraints(100 * 1024 * 1024);
+                  ObjectMapper om = new ObjectMapper();
                   for (Artifact artifact : artifacts) {
                     try {
-                      ObjectMapper om = new ObjectMapper();
                       JsonNode severeError = om.readTree(artifact.contents());
                       assertNotNull(severeError);
                       JsonNode errorMessageNode = severeError.get("error_message");
@@ -728,6 +730,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   private void validateJsonMessageData(ChangelogEntryText expected, String jsonString)
       throws IOException {
+    RowJsonUtils.increaseDefaultStreamReadConstraints(100 * 1024 * 1024);
     ObjectMapper mapper = new ObjectMapper();
     JsonNode jsonTree = mapper.readTree(jsonString);
 
