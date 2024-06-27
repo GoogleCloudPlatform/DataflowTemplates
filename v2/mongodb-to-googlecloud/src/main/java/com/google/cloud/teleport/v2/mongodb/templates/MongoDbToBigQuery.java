@@ -33,12 +33,15 @@ import java.io.IOException;
 import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
+import org.apache.beam.sdk.io.mongodb.FindQuery;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.bson.BsonDocument;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 
 /**
  * The {@link MongoDbToBigQuery} pipeline is a batch pipeline which ingests data from MongoDB and
@@ -106,6 +109,9 @@ public class MongoDbToBigQuery {
     // Get MongoDbUri plain text or base64 encrypted with a specific KMS encryption key
     String mongoDbUri = maybeDecrypt(options.getMongoDbUri(), options.getKMSEncryptionKey()).get();
 
+    String filterJson = options.getFilter();
+    Bson filter = BsonDocument.parse(filterJson);
+
     if (options.getJavascriptDocumentTransformFunctionName() != null
         && options.getJavascriptDocumentTransformGcsPath() != null) {
       bigquerySchema =
@@ -128,6 +134,7 @@ public class MongoDbToBigQuery {
             MongoDbIO.read()
                 .withUri(mongoDbUri)
                 .withDatabase(options.getDatabase())
+                .withQueryFn(FindQuery.create().withFilters(filter))
                 .withCollection(options.getCollection()))
         .apply(
             "UDF",
