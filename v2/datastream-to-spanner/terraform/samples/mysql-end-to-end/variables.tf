@@ -17,6 +17,7 @@ variable "datastream_params" {
       vpc_name                = string
       range                   = string
     }))
+    private_connectivity_id       = optional(string)
     source_connection_profile_id  = optional(string, "source-mysql")
     mysql_host                    = string
     mysql_username                = string
@@ -35,6 +36,13 @@ variable "datastream_params" {
       tables   = optional(list(string))
     }))
   })
+  validation {
+    condition = (
+      (var.datastream_params.private_connectivity_id == null && var.datastream_params.private_connectivity != null) ||
+      (var.datastream_params.private_connectivity_id != null && var.datastream_params.private_connectivity == null)
+    )
+    error_message = "Exactly one of 'private_connectivity_id' or the 'private_connectivity' block must be provided, not both."
+  }
 }
 
 variable "dataflow_params" {

@@ -19,6 +19,11 @@ datastream_params = {
       # Optionally list specific tables, or remove "tables" all together for all tables
     }
   ]
+  private_connectivity_id = "<YOUR_PRIVATE_CONNECTIVITY_ID>"
+  # Only one of `private_connectivity_id` or `private_connectivity` block
+  # may exist. Use `private_connectivity_id` to specify an existing
+  # private connectivity configuration, and the `private_connectivity` to
+  # create a new one via Terraform.
   private_connectivity = {
     private_connectivity_id = "<YOUR_PRIVATE_CONNECTIVITY_ID>"
     # ID of the private connection you want to create in Datastream.

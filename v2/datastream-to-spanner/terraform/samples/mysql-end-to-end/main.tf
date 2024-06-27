@@ -39,11 +39,21 @@ resource "google_datastream_connection_profile" "source_mysql" {
   }
 
   # Dynamically add private_connectivity block based on private connectivity
-  # resource creation. If resource does not exist, IP whitelisting is assumed.
+  # resource creation.
   dynamic "private_connectivity" {
     for_each = google_datastream_private_connection.datastream_private_connection.*.id
     content {
       private_connection = private_connectivity.value
+    }
+  }
+
+  # If an existing private connectivity configuration is provided, use that.
+  # If nothing is specified on private connectivity, IP whitelisting is
+  # assumed.
+  dynamic "private_connectivity" {
+    for_each = var.datastream_params.private_connectivity_id != null ? [1] : []
+    content {
+      private_connection = "projects/${var.common_params.project}/locations/${var.common_params.region}/privateConnections/${var.datastream_params.private_connectivity_id}"
     }
   }
 

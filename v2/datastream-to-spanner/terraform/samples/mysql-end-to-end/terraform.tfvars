@@ -22,6 +22,19 @@ datastream_params = {
     }
     # Add more database objects if needed
   ]
+  private_connectivity_id = "<YOUR_PRIVATE_CONNECTIVITY_ID>"
+  # Only one of `private_connectivity_id` or `private_connectivity` block
+  # may exist. Use `private_connectivity_id` to specify an existing
+  # private connectivity configuration, and the `private_connectivity` to
+  # create a new one via Terraform.
+  private_connectivity = {
+    private_connectivity_id = "<YOUR_PRIVATE_CONNECTIVITY_ID>"
+    # ID of the private connection you want to create in Datastream.
+    vpc_name = "<YOUR_VPC_NAME>"
+    # The pre-existing VPC which will be peered to Datastream.
+    range = "<YOUR_RESERVED_RANGE>"
+    # The IP range to be reserved for Datastream.
+  }
 }
 
 # Dataflow Parameters

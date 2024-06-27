@@ -50,7 +50,7 @@ resource "google_compute_instance" "mysql_database_instance" {
     enable-oslogin = "TRUE"
   }
 
-  metadata_startup_script = templatefile("mysql8.4-setup.sh", {
+  metadata_startup_script = templatefile("mysql5.7-setup.sh", {
     root_password        = var.mysql_params.root_password
     custom_user          = var.mysql_params.custom_user
     custom_user_password = var.mysql_params.custom_user_password
