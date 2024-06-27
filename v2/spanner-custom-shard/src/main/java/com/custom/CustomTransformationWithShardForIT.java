@@ -25,6 +25,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,7 +111,7 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
         return new MigrationTransformationResponse(request.getRequestRow(), true);
       }
       // In case of update events, return request as response without any transformation
-      if (request.getEventType().equals("UPDATE")) {
+      if (request.getEventType().equals("UPDATE") || request.getEventType().equals("DELETE")) {
         return new MigrationTransformationResponse(request.getRequestRow(), false);
       }
       // In case of backfill update the values for all the columns in all the rows except the
@@ -134,12 +135,13 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
       row.put("bool_column", false);
       row.put("enum_column", "3");
       row.put("blob_column", "576f726d64");
-      row.put("binary_column", "0102030405060708090A0B0C0D0E0F1011121314");
+      row.put("binary_column", "01020304");
       row.put("bit_column", "576f726d64");
       row.put("year_column", yearColumn.toString());
       try {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-        SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
+        SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
+        dateTimeFormat.setTimeZone(TimeZone.getTimeZone("UTC")); // Ensure it handles UTC correctly
         Date date = dateFormat.parse((String) row.get("date_column"));
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
