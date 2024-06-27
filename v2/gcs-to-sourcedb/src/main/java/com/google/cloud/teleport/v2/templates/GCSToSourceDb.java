@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.templates.GCSToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -248,6 +249,52 @@ public class GCSToSourceDb {
     String getRunIdentifier();
 
     void setRunIdentifier(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 15,
+        optional = true,
+        description = "Custom transformation jar location in Cloud Storage",
+        helpText =
+            "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records"
+                + " in reverse replication.")
+    @Default.String("")
+    String getTransformationJarPath();
+
+    void setTransformationJarPath(String value);
+
+    @TemplateParameter.Text(
+        order = 16,
+        optional = true,
+        description = "Custom class name for transformation",
+        helpText =
+            "Fully qualified class name having the custom transformation logic.  It is a"
+                + " mandatory field in case transformationJarPath is specified")
+    @Default.String("")
+    String getTransformationClassName();
+
+    void setTransformationClassName(String value);
+
+    @TemplateParameter.Text(
+        order = 17,
+        optional = true,
+        description = "Custom parameters for transformation",
+        helpText =
+            "String containing any custom parameters to be passed to the custom transformation class.")
+    @Default.String("")
+    String getTransformationCustomParameters();
+
+    void setTransformationCustomParameters(String value);
+
+    @TemplateParameter.Boolean(
+        order = 18,
+        optional = true,
+        description = "Write filtered events to GCS",
+        helpText =
+            "This is a flag which if set to true will write filtered events from custom transformation to GCS.")
+    @Default.Boolean(false)
+    Boolean getWriteFilteredEventsToGcs();
+
+    void setWriteFilteredEventsToGcs(Boolean value);
   }
 
   /**
@@ -302,6 +349,12 @@ public class GCSToSourceDb {
                 .getDialect();
 
     Map<String, ProcessingContext> processingContextMap = null;
+    CustomTransformation customTransformation =
+        CustomTransformation.builder(
+                options.getTransformationJarPath(), options.getTransformationClassName())
+            .setCustomParameters(options.getTransformationCustomParameters())
+            .build();
+
     processingContextMap =
         ProcessingContextGenerator.getProcessingContextForGCS(
             options.getSourceShardsFilePath(),
@@ -335,7 +388,10 @@ public class GCSToSourceDb {
                     options.getTimerIntervalInMilliSec(),
                     spannerMetadataConfig,
                     tableSuffix,
-                    isMetadataDbPostgres)));
+                    isMetadataDbPostgres,
+                    customTransformation,
+                    options.getWriteFilteredEventsToGcs(),
+                    options.getSpannerProjectId())));
 
     return pipeline.run();
   }
