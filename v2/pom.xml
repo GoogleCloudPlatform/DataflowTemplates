@@ -454,7 +454,7 @@
                     <dependency>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>extra-enforcer-rules</artifactId>
-                        <version>1.3</version>
+                        <version>${extra.enforcer.rules.version}</version>
                     </dependency>
                 </dependencies>
             </plugin>
@@ -462,19 +462,6 @@
     </build>
 
     <profiles>
-        <profile>
-            <id>missing-artifact-repos</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <repositories>
-                <repository>
-                    <!-- Required for io.confluent:kafka-avro-serializer artifact -->
-                    <id>confluent</id>
-                    <url>https://packages.confluent.io/maven/</url>
-                </repository>
-            </repositories>
-        </profile>
         <profile>
             <id>shade</id>
             <activation>
