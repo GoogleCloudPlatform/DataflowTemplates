@@ -46,8 +46,8 @@
     <jacoco.version>0.8.8</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.56.0</beam.version>
-    <beam-python.version>2.56.0</beam-python.version>
+    <beam.version>2.57.0</beam.version>
+    <beam-python.version>2.57.0</beam-python.version>
     <beam-maven-repo></beam-maven-repo>
 
     <!-- Common dependency versions -->
