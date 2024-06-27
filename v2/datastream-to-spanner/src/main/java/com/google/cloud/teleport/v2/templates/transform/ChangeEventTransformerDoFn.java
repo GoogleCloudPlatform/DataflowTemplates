@@ -151,6 +151,8 @@ public abstract class ChangeEventTransformerDoFn
     try {
 
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
+      Map<String, Object> sourceRecord =
+          ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
 
       if (!schema().isEmpty()) {
         schema().verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
@@ -163,8 +165,13 @@ public abstract class ChangeEventTransformerDoFn
 
       // If custom jar is specified apply custom transformation to the change event
       if (datastreamToSpannerTransformer != null) {
-        MigrationTransformationResponse migrationTransformationResponse =
-            getCustomTransformationResponse(changeEvent);
+        MigrationTransformationResponse migrationTransformationResponse = null;
+        try {
+          migrationTransformationResponse =
+              getCustomTransformationResponse(changeEvent, sourceRecord);
+        } catch (Exception e) {
+          throw new InvalidTransformationException(e);
+        }
         if (migrationTransformationResponse.isEventFiltered()) {
           filteredEvents.inc();
           c.output(DatastreamToSpannerConstants.FILTERED_EVENT_TAG, msg.getPayload());
@@ -198,10 +205,10 @@ public abstract class ChangeEventTransformerDoFn
     }
   }
 
-  MigrationTransformationResponse getCustomTransformationResponse(JsonNode changeEvent)
-      throws InvalidTransformationException, InvalidChangeEventException {
-    Map<String, Object> sourceRecord =
-        ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
+  MigrationTransformationResponse getCustomTransformationResponse(
+      JsonNode changeEvent, Map<String, Object> sourceRecord)
+      throws InvalidTransformationException {
+
     String shardId = "";
     String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
 
