@@ -183,7 +183,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
                       JSONObject bigQueryJson = new JSONObject(val.getStringValue());
                       assertTrue(bigQueryJson.has("timestamp"));
 
-                      assertTrue(bigQueryJson.getInt("filter_test")<10);
+                      assertTrue(bigQueryJson.getInt("filter_test") < 10);
 
                       bigQueryJson.remove("timestamp");
                       String bigQueryId = bigQueryJson.getString(MONGO_DB_ID);
