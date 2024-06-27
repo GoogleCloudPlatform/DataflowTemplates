@@ -484,7 +484,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String dockerfileContainer = outputClassesDirectory.getPath() + "/" + containerName;
       String dockerfilePath = dockerfileContainer + "/Dockerfile";
       String xlangCommandSpec = "/template/" + containerName + "/resources/" + commandSpecFileName;
-      String beamVersion = project.getProperties().getProperty("beam.version");
+      String beamVersion = project.getProperties().getProperty("beam-python.version");
       File dockerfile = new File(dockerfilePath);
       if (!dockerfile.exists()) {
         XlangDockerfileGenerator.generateDockerfile(
@@ -579,7 +579,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     // extract image properties for Dockerfile
     String yamlTemplateName = yamlTemplateFile.replace(".yaml", "");
-    String beamVersion = project.getProperties().getProperty("beam.version");
+    String beamVersion = project.getProperties().getProperty("beam-python.version");
     List<String> otherFiles = new ArrayList<>();
     String filesToCopy = definition.getTemplateAnnotation().filesToCopy();
     if (!Strings.isNullOrEmpty(filesToCopy)) {
