@@ -15,7 +15,7 @@ resource "google_datastream_private_connection" "datastream_private_connection" 
   private_connection_id = "${local.migration_id}-${var.datastream_params.private_connectivity.vpc_name}"
 
   labels = {
-    "migration_id" = random_pet.migration_id.id
+    "migration_id" = local.migration_id
   }
 
   vpc_peering_config {
@@ -58,7 +58,7 @@ resource "google_datastream_connection_profile" "source_mysql" {
   }
 
   labels = {
-    "migration_id" = random_pet.migration_id.id
+    "migration_id" = local.migration_id
   }
 }
 
@@ -70,38 +70,44 @@ resource "google_storage_bucket" "datastream_bucket" {
   uniform_bucket_level_access = true
   force_destroy               = true
   labels = {
-    "migration_id" = random_pet.migration_id.id
+    "migration_id" = local.migration_id
   }
+}
+
+# upload local session file to the created GCS bucket
+resource "google_storage_bucket_object" "session_file_object" {
+  count        = var.dataflow_params.template_params.local_session_file_path != null ? 1 : 0
+  depends_on   = [google_project_service.enabled_apis]
+  name         = "session.json"
+  source       = var.dataflow_params.template_params.local_session_file_path
+  content_type = "application/json"
+  bucket       = google_storage_bucket.datastream_bucket.id
 }
 
 # Pub/Sub Topic for Datastream
 resource "google_pubsub_topic" "datastream_topic" {
-  name    = "${local.migration_id}-${var.datastream_params.pubsub_topic_name}"
-  project = var.common_params.project
+  depends_on = [google_project_service.enabled_apis]
+  name       = "${local.migration_id}-${var.datastream_params.pubsub_topic_name}"
+  project    = var.common_params.project
   labels = {
-    "migration_id" = random_pet.migration_id.id
+    "migration_id" = local.migration_id
   }
 }
 
 # Configure permissions to publish Pub/Sub notifications
 resource "google_pubsub_topic_iam_member" "gcs_publisher_role" {
-  count = var.common_params.add_policies_to_service_account ? 1 : 0
-  depends_on = [
-    google_project_service.enabled_apis,
-    google_storage_bucket.datastream_bucket,
-    google_pubsub_topic.datastream_topic
-  ]
-  topic  = google_pubsub_topic.datastream_topic.name
-  role   = "roles/pubsub.publisher"
-  member = "serviceAccount:${data.google_storage_project_service_account.gcs_account.email_address}"
+  count      = var.common_params.add_policies_to_service_account ? 1 : 0
+  depends_on = [google_project_service.enabled_apis]
+  topic      = google_pubsub_topic.datastream_topic.name
+  role       = "roles/pubsub.publisher"
+  member     = "serviceAccount:${data.google_storage_project_service_account.gcs_account.email_address}"
 }
 
 # Pub/Sub Notification on GCS Bucket
 resource "google_storage_notification" "bucket_notification" {
   depends_on = [
     google_project_service.enabled_apis,
-    google_storage_bucket.datastream_bucket,
-    google_pubsub_topic.datastream_topic, google_pubsub_topic_iam_member.gcs_publisher_role
+    google_pubsub_topic_iam_member.gcs_publisher_role
   ] # Create a bucket notification using the created pubsub topic.
   bucket             = google_storage_bucket.datastream_bucket.name
   object_name_prefix = var.datastream_params.stream_prefix_path
@@ -119,7 +125,7 @@ resource "google_pubsub_subscription" "datastream_subscription" {
   name  = "${google_pubsub_topic.datastream_topic.name}-sub"
   topic = google_pubsub_topic.datastream_topic.id
   labels = {
-    "migration_id" = random_pet.migration_id.id
+    "migration_id" = local.migration_id
   }
 }
 
@@ -127,7 +133,6 @@ resource "google_pubsub_subscription" "datastream_subscription" {
 resource "google_datastream_connection_profile" "target_gcs" {
   depends_on = [
     google_project_service.enabled_apis,
-    google_storage_bucket.datastream_bucket,
     google_storage_notification.bucket_notification
   ] # Create the target profile once the bucket and its notification is created.
   display_name          = "${local.migration_id}-${var.datastream_params.target_connection_profile_id}"
@@ -139,7 +144,7 @@ resource "google_datastream_connection_profile" "target_gcs" {
     root_path = var.datastream_params.gcs_root_path
   }
   labels = {
-    "migration_id" = random_pet.migration_id.id
+    "migration_id" = local.migration_id
   }
 }
 
@@ -147,8 +152,6 @@ resource "google_datastream_connection_profile" "target_gcs" {
 resource "google_datastream_stream" "mysql_to_gcs" {
   depends_on = [
     google_project_service.enabled_apis,
-    google_datastream_connection_profile.source_mysql,
-    google_datastream_connection_profile.target_gcs,
     google_pubsub_subscription.datastream_subscription
   ]
   # Create the stream once the source and target profiles are created along with the subscription.
@@ -192,7 +195,7 @@ resource "google_datastream_stream" "mysql_to_gcs" {
     }
   }
   labels = {
-    "migration_id" = random_pet.migration_id.id
+    "migration_id" = local.migration_id
   }
 }
 
@@ -217,7 +220,7 @@ resource "google_project_iam_member" "live_migration_roles" {
 # Dataflow Flex Template Job (for CDC to Spanner)
 resource "google_dataflow_flex_template_job" "live_migration_job" {
   depends_on = [
-    google_project_service.enabled_apis, google_datastream_stream.mysql_to_gcs, google_project_iam_member.live_migration_roles
+    google_project_service.enabled_apis, google_project_iam_member.live_migration_roles
   ] # Launch the template once the stream is created.
   provider                = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Cloud_Datastream_to_Spanner"
@@ -226,7 +229,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
   parameters = {
     inputFileFormat                 = "avro"
     inputFilePattern                = "gs://replaced-by-pubsub-notification"
-    sessionFilePath                 = var.dataflow_params.template_params.session_file_path
+    sessionFilePath                 = var.dataflow_params.template_params.local_session_file_path != null ? "gs://${google_storage_bucket_object.session_file_object[0].bucket}/${google_storage_bucket_object.session_file_object[0].name}" : null
     instanceId                      = var.dataflow_params.template_params.spanner_instance_id
     databaseId                      = var.dataflow_params.template_params.spanner_database_id
     projectId                       = var.dataflow_params.template_params.spanner_project_id ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
@@ -244,7 +247,6 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     datastreamSourceType            = var.dataflow_params.template_params.datastream_source_type
     roundJsonDecimals               = tostring(var.dataflow_params.template_params.round_json_decimals)
     runMode                         = var.dataflow_params.template_params.run_mode
-    transformationContextFilePath   = var.dataflow_params.template_params.transformation_context_file_path
     directoryWatchDurationInMinutes = tostring(var.dataflow_params.template_params.directory_watch_duration_in_minutes)
     spannerPriority                 = var.dataflow_params.template_params.spanner_priority
     dlqGcsPubSubSubscription        = var.dataflow_params.template_params.dlq_gcs_pub_sub_subscription
@@ -271,7 +273,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
   region                       = var.common_params.region
   ip_configuration             = var.dataflow_params.runner_params.ip_configuration
   labels = {
-    "migration_id" = random_pet.migration_id.id
+    "migration_id" = local.migration_id
   }
 }
 
