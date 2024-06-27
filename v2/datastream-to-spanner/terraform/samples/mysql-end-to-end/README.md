@@ -439,7 +439,7 @@ the service account running the Dataflow job needs to have the
 data to Spanner).
 
 After adding these permissions, configure the
-`var.dataflow_params.template_params.projectId` variable.
+`var.dataflow_params.template_params.spanner_project_id` variable.
 
 ### Adding access to Terraform service account
 

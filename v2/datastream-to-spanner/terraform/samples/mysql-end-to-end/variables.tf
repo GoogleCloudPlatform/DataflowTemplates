@@ -54,6 +54,7 @@ variable "dataflow_params" {
       rfc_start_date_time                 = optional(string)
       file_read_concurrency               = optional(number)
       session_file_path                   = optional(string)
+      spanner_project_id                  = optional(string)
       spanner_instance_id                 = string
       spanner_database_id                 = string
       spanner_host                        = optional(string)
