@@ -41,7 +41,9 @@ public class SpannerServerResource extends ExternalResource {
   protected void before() {
     SpannerOptions spannerOptions =
         SpannerOptions.newBuilder().setProjectId(projectId).setHost(host).build();
+
     client = spannerOptions.getService();
+
     databaseAdminClient = client.getDatabaseAdminClient();
   }
 

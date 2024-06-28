@@ -113,9 +113,10 @@ jobs:
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4.0.1
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
         slug: GoogleCloudPlatform/DataflowTemplates
         files: 'target/site/jacoco-aggregate/jacoco.xml'
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_integration_smoke_tests_templates:
