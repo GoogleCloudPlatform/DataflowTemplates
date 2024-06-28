@@ -44,7 +44,7 @@ func TestModulesToBuild(t *testing.T) {
 		},
 		{
 			input: "KAFKA",
-			expected: []string{"v2/kafka-to-bigquery/", "v2/kafka-to-gcs/"," v2/kafka-to-kafka/", "v2/kafka-common/"},
+			expected: []string{"v2/kafka-to-bigquery/", "v2/kafka-to-gcs/","v2/kafka-to-kafka/", "v2/kafka-common/"},
 		},
 	}
 
