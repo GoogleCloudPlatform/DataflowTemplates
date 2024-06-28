@@ -48,7 +48,7 @@ resource "google_datastream_connection_profile" "source_mysql" {
   }
 
   # If an existing private connectivity configuration is provided, use that.
-  # If nothing is specified on private connectivity, IP whitelisting is
+  # If nothing is specified on private connectivity, IP allowlisting is
   # assumed.
   dynamic "private_connectivity" {
     for_each = var.datastream_params.private_connectivity_id != null ? [1] : []

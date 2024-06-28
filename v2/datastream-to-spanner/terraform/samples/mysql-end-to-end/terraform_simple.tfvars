@@ -7,7 +7,7 @@ common_params = {
 # Datastream Parameters
 datastream_params = {
   mysql_host = "<YOUR_MYSQL_HOST_IP_ADDRESS>"
-  # Use the Public IP if using IP whitelisting and Private IP if using
+  # Use the Public IP if using IP allowlisting and Private IP if using
   # private connectivity.
   mysql_username = "<YOUR_MYSQL_USERNAME>"
   mysql_password = "<YOUR_MYSQL_PASSWORD>"
@@ -32,8 +32,8 @@ datastream_params = {
     range = "<YOUR_RESERVED_RANGE>"
     # The IP range to be reserved for Datastream.
   }
-  # If the private_connectivity block is not specified, IP whitelisting will be
-  # assumed.
+  # If the private_connectivity block or private_connectivity_id is not specified,
+  # IP allowlisting will be assumed.
 }
 
 # Dataflow Parameters
