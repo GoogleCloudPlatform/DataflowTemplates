@@ -20,6 +20,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.kafka.dlq.BigQueryDeadLetterQueue;
 import com.google.cloud.teleport.v2.kafka.transforms.AvroDynamicTransform;
 import com.google.cloud.teleport.v2.kafka.transforms.AvroTransform;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
@@ -60,6 +61,9 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecordRouter;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
@@ -124,6 +128,9 @@ public class KafkaToBigQueryFlex {
       FailsafeElementCoder.of(
           NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
 
+  private static ErrorHandler<BadRecord, ?> errorHandler = new ErrorHandler.DefaultErrorHandler<>();
+  private static BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
+
   /**
    * The main entry-point for pipeline execution. This method will start the pipeline but will not
    * wait for its execution to finish. If blocking execution is required, use the {@link
@@ -132,13 +139,17 @@ public class KafkaToBigQueryFlex {
    *
    * @param args The command-line args passed by the executor.
    */
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     UncaughtExceptionLogger.register();
 
     KafkaToBigQueryFlexOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToBigQueryFlexOptions.class);
 
     run(options);
+  }
+
+  public static Boolean useErrorHandler(KafkaToBigQueryFlexOptions options) {
+    return options.getUseBigQueryDLQ();
   }
 
   public static WriteResult processKafkaRecords(
@@ -202,7 +213,7 @@ public class KafkaToBigQueryFlex {
    * @param options The execution options.
    * @return The pipeline result.
    */
-  public static PipelineResult run(KafkaToBigQueryFlexOptions options) {
+  public static PipelineResult run(KafkaToBigQueryFlexOptions options) throws Exception {
 
     // Enable Streaming Engine
     options.setEnableStreamingEngine(true);
@@ -238,6 +249,22 @@ public class KafkaToBigQueryFlex {
           "Please provide a valid bootstrap server which matches `[,:a-zA-Z0-9._-]+` and a topic which matches `[,a-zA-Z0-9._-]+`");
     }
 
+    // Configure error handler for Dead letter queue
+    if (options.getUseBigQueryDLQ()) {
+      if (options.getOutputDeadletterTable() == null
+          || options.getOutputDeadletterTable().isBlank()) {
+        throw new IllegalArgumentException(
+            "Please provide a valid BigQuery full qualified table name when using BigQuery"
+                + "Dead letter queue");
+      }
+      badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
+      errorHandler =
+          pipeline.registerBadRecordErrorHandler(
+              BigQueryDeadLetterQueue.newBuilder()
+                  .setTableName(options.getOutputDeadletterTable())
+                  .build());
+    }
+
     // Get the Kafka config
     Map<String, Object> kafkaConfig = KafkaConfig.fromReadOptions(options);
 
@@ -254,33 +281,62 @@ public class KafkaToBigQueryFlex {
     if (options.getMessageFormat() == null
         || options.getMessageFormat().equals(MessageFormatConstants.JSON)) {
 
-      return runJsonPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
+      pipeline = runJsonPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
 
     } else if (options.getMessageFormat().equals(MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
         || options.getMessageFormat().equals(MessageFormatConstants.AVRO_BINARY_ENCODING)) {
-      return runAvroPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
+      pipeline = runAvroPipeline(pipeline, options, topicsList, bootstrapServers, kafkaConfig);
 
     } else {
       throw new IllegalArgumentException("Invalid format specified: " + options.getMessageFormat());
     }
+    if (useErrorHandler(options)) {
+      errorHandler.close();
+    }
+    return pipeline.run();
   }
 
   private static WriteResult handleAvroBinaryEncoding(
       PCollection<KafkaRecord<byte[], byte[]>> kafkaRecords, KafkaToBigQueryFlexOptions options) {
     WriteResult writeResult;
+    BigQueryWriteUtils.BigQueryWrite bigQueryWrite;
+    if (useErrorHandler(options)) {
+      // BigQueryIO sets the BadRecordRouter to RecordingRouter even when the errorHandler is
+      // DefaultErrorHandler(which is a no op). In this case, when the BadRecordRouter is
+      // ThrowingRouter,
+      // don't pass errorHandler to BigQueryIO.
+      bigQueryWrite =
+          BigQueryWriteUtils.BigQueryWrite.of(
+              SchemaUtils.getAvroSchema(options.getBinaryAvroSchemaPath()),
+              options.getOutputTableSpec(),
+              options.getWriteDisposition(),
+              options.getCreateDisposition(),
+              options.getNumStorageWriteApiStreams(),
+              options.getStorageWriteApiTriggeringFrequencySec(),
+              options.getPersistKafkaKey(),
+              options.getUseAutoSharding(),
+              errorHandler);
+    } else {
+      bigQueryWrite =
+          BigQueryWriteUtils.BigQueryWrite.of(
+              SchemaUtils.getAvroSchema(options.getBinaryAvroSchemaPath()),
+              options.getOutputTableSpec(),
+              options.getWriteDisposition(),
+              options.getCreateDisposition(),
+              options.getNumStorageWriteApiStreams(),
+              options.getStorageWriteApiTriggeringFrequencySec(),
+              options.getPersistKafkaKey(),
+              options.getUseAutoSharding());
+    }
     writeResult =
         kafkaRecords
-            .apply(AvroTransform.of(options.getMessageFormat(), options.getBinaryAvroSchemaPath()))
             .apply(
-                BigQueryWriteUtils.BigQueryWrite.of(
-                    SchemaUtils.getAvroSchema(options.getBinaryAvroSchemaPath()),
-                    options.getOutputTableSpec(),
-                    options.getWriteDisposition(),
-                    options.getCreateDisposition(),
-                    options.getNumStorageWriteApiStreams(),
-                    options.getStorageWriteApiTriggeringFrequencySec(),
-                    options.getPersistKafkaKey(),
-                    options.getUseAutoSharding()));
+                AvroTransform.of(
+                    options.getMessageFormat(),
+                    options.getBinaryAvroSchemaPath(),
+                    errorHandler,
+                    badRecordRouter))
+            .apply(bigQueryWrite);
     return writeResult;
   }
 
@@ -303,55 +359,96 @@ public class KafkaToBigQueryFlex {
       throw new RuntimeException("");
     }
     WriteResult writeResult;
+    BigQueryWriteUtils.BigQueryWrite bigQueryWrite;
+    if (useErrorHandler(options)) {
+      bigQueryWrite =
+          BigQueryWriteUtils.BigQueryWrite.of(
+              SchemaUtils.getAvroSchema(options.getConfluentAvroSchemaPath()),
+              options.getOutputTableSpec(),
+              options.getWriteDisposition(),
+              options.getCreateDisposition(),
+              options.getNumStorageWriteApiStreams(),
+              options.getStorageWriteApiTriggeringFrequencySec(),
+              options.getPersistKafkaKey(),
+              options.getUseAutoSharding(),
+              errorHandler);
+    } else {
+      bigQueryWrite =
+          BigQueryWriteUtils.BigQueryWrite.of(
+              SchemaUtils.getAvroSchema(options.getConfluentAvroSchemaPath()),
+              options.getOutputTableSpec(),
+              options.getWriteDisposition(),
+              options.getCreateDisposition(),
+              options.getNumStorageWriteApiStreams(),
+              options.getStorageWriteApiTriggeringFrequencySec(),
+              options.getPersistKafkaKey(),
+              options.getUseAutoSharding());
+    }
     writeResult =
         kafkaRecords
             .apply(
-                AvroTransform.of(options.getMessageFormat(), options.getConfluentAvroSchemaPath()))
-            .apply(
-                BigQueryWriteUtils.BigQueryWrite.of(
-                    SchemaUtils.getAvroSchema(options.getConfluentAvroSchemaPath()),
-                    options.getOutputTableSpec(),
-                    options.getWriteDisposition(),
-                    options.getCreateDisposition(),
-                    options.getNumStorageWriteApiStreams(),
-                    options.getStorageWriteApiTriggeringFrequencySec(),
-                    options.getPersistKafkaKey(),
-                    options.getUseAutoSharding()));
+                AvroTransform.of(
+                    options.getMessageFormat(),
+                    options.getConfluentAvroSchemaPath(),
+                    errorHandler,
+                    badRecordRouter))
+            .apply(bigQueryWrite);
     return writeResult;
   }
 
   private static WriteResult handleSchemaRegistryFormat(
       PCollection<KafkaRecord<byte[], byte[]>> kafkaRecords, KafkaToBigQueryFlexOptions options) {
     if (!(options.getSchemaRegistryConnectionUrl() != null && options.getOutputDataset() != null)) {
-      throw new RuntimeException("");
+      throw new RuntimeException(
+          "Missing required parameters: Schema Registry URL and/or Output Dataset");
     }
     WriteResult writeResult;
+    BigQueryWriteUtils.BigQueryDynamicWrite bigQueryWrite;
+    if (useErrorHandler(options)) {
+      bigQueryWrite =
+          BigQueryWriteUtils.BigQueryDynamicWrite.of(
+              options.getOutputProject(),
+              options.getOutputDataset(),
+              options.getBqTableNamePrefix(),
+              options.getWriteDisposition(),
+              options.getCreateDisposition(),
+              options.getNumStorageWriteApiStreams(),
+              options.getStorageWriteApiTriggeringFrequencySec(),
+              options.getPersistKafkaKey(),
+              options.getUseAutoSharding(),
+              errorHandler);
+    } else {
+      bigQueryWrite =
+          BigQueryWriteUtils.BigQueryDynamicWrite.of(
+              options.getOutputProject(),
+              options.getOutputDataset(),
+              options.getBqTableNamePrefix(),
+              options.getWriteDisposition(),
+              options.getCreateDisposition(),
+              options.getNumStorageWriteApiStreams(),
+              options.getStorageWriteApiTriggeringFrequencySec(),
+              options.getPersistKafkaKey(),
+              options.getUseAutoSharding());
+    }
     writeResult =
         kafkaRecords
             .apply(
                 AvroDynamicTransform.of(
                     options.getSchemaRegistryConnectionUrl(),
-                    KafkaConfig.fromSchemaRegistryOptions(options)))
-            .apply(
-                BigQueryWriteUtils.BigQueryDynamicWrite.of(
-                    options.getOutputProject(),
-                    options.getOutputDataset(),
-                    options.getBqTableNamePrefix(),
-                    options.getWriteDisposition(),
-                    options.getCreateDisposition(),
-                    options.getNumStorageWriteApiStreams(),
-                    options.getStorageWriteApiTriggeringFrequencySec(),
-                    options.getPersistKafkaKey(),
-                    options.getUseAutoSharding()));
+                    KafkaConfig.fromSchemaRegistryOptions(options),
+                    errorHandler,
+                    badRecordRouter))
+            .apply(bigQueryWrite);
     return writeResult;
   }
 
-  public static PipelineResult runAvroPipeline(
+  public static Pipeline runAvroPipeline(
       Pipeline pipeline,
       KafkaToBigQueryFlexOptions options,
       List<String> topicsList,
       String bootstrapServers,
-      Map<String, Object> kafkaConfig) {
+      Map<String, Object> kafkaConfig)
+      throws Exception {
 
     if (options.getMessageFormat().equals(MessageFormatConstants.AVRO_BINARY_ENCODING)
         && options.getBinaryAvroSchemaPath() == null) {
@@ -381,37 +478,10 @@ public class KafkaToBigQueryFlex {
 
     WriteResult writeResult = null;
     writeResult = processKafkaRecords(kafkaRecords, options);
-
-    /*
-     * Step #2: Elements that failed inserts into BigQuery
-     * are extracted and converted to FailsafeElement.
-     */
-    PCollection<FailsafeElement<String, String>> failedInserts =
-        BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)
-            .apply(
-                "WrapInsertionErrors",
-                MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-                    .via(KafkaToBigQueryFlex::wrapBigQueryInsertError))
-            .setCoder(FAILSAFE_ELEMENT_CODER);
-
-    if (options.getUseBigQueryDLQ() && options.getOutputDeadletterTable() != null) {
-      /*
-       * Step #3: Insert records that failed BigQuery inserts into a dead-letter table.
-       */
-      failedInserts.apply(
-          "WriteInsertionFailedRecords",
-          ErrorConverters.WriteStringMessageErrors.newBuilder()
-              .setErrorRecordsTable(ObjectUtils.firstNonNull(options.getOutputDeadletterTable()))
-              .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
-              .build());
-    } else {
-      failedInserts.apply("PrintInsertionFailedRecords", ParDo.of(new ThrowErrorFn()));
-    }
-
-    return pipeline.run();
+    return pipeline;
   }
 
-  public static PipelineResult runJsonPipeline(
+  public static Pipeline runJsonPipeline(
       Pipeline pipeline,
       KafkaToBigQueryFlexOptions options,
       List<String> topicsList,
@@ -491,9 +561,7 @@ public class KafkaToBigQueryFlex {
     } else {
       PCollectionList.of(convertedTableRows.get(TRANSFORM_DEADLETTER_OUT))
           .apply("Flatten", Flatten.pCollections())
-          .apply(
-              "PrintInsertionFailedRecords",
-              ParDo.of(new ThrowErrorFn<KV<String, String>, String>()));
+          .apply("PrintInsertionFailedRecords", ParDo.of(new ThrowErrorFn<>()));
     }
 
     if (options.getOutputDeadletterTable() != null) {
@@ -511,7 +579,7 @@ public class KafkaToBigQueryFlex {
           "PrintInsertionFailedRecords", ParDo.of(new ThrowErrorFn<String, String>()));
     }
 
-    return pipeline.run();
+    return pipeline;
   }
 
   /**
