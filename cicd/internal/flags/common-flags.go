@@ -25,7 +25,7 @@ const (
 	ALL     = "ALL"
 	SPANNER = "SPANNER"
 
-	KAFKA  = "KAFKA"
+	KAFKA = "KAFKA"
 )
 
 // Avoid making these vars public.

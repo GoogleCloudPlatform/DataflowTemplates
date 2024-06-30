@@ -43,8 +43,8 @@ func TestModulesToBuild(t *testing.T) {
 			expected: []string{"v2/datastream-to-spanner/", "v2/spanner-change-streams-to-sharded-file-sink/", "v2/gcs-to-sourcedb/", "v2/sourcedb-to-spanner/", "v2/spanner-custom-shard", "plugins/templates-maven-plugin"},
 		},
 		{
-			input: "KAFKA",
-			expected: []string{"v2/kafka-to-bigquery/", "v2/kafka-to-gcs/","v2/kafka-to-kafka/", "v2/kafka-common/"},
+			input:    "KAFKA",
+			expected: []string{"v2/kafka-to-bigquery/", "v2/kafka-to-gcs/", "v2/kafka-to-kafka/", "v2/kafka-common/"},
 		},
 	}
 
