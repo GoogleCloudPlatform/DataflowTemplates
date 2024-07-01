@@ -23,6 +23,8 @@ import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.teleport.it.neo4j.DatabaseWaitOptions;
+import com.google.cloud.teleport.it.neo4j.Neo4jResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -48,7 +50,6 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
-import org.apache.beam.it.neo4j.Neo4jResourceManager;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
@@ -73,6 +74,7 @@ public class DataConversionIT extends TemplateTestBase {
     bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
     neo4jClient =
         Neo4jResourceManager.builder(testName)
+            .setDatabaseWaitOption(DatabaseWaitOptions.waitDatabase(60))
             .setAdminPassword("letmein!")
             .setHost(TestProperties.hostIp())
             .build();
