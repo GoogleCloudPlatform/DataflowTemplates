@@ -45,9 +45,10 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   void setJdbcDriverClassName(String driverClassName);
 
+  // TODO - reset the regex matches here
   @TemplateParameter.Text(
       order = 3,
-      regexes = {"(^jdbc:mysql://[^\\n\\r]+$)"},
+      regexes = {"(^jdbc:mysql://.*|^gs://.*)"},
       groupName = "Source",
       description =
           "Connection URL to connect to the source database host. Must contain the host, port and source db name. Can optionally contain properties like autoReconnect, maxReconnects etc. Format: `jdbc:mysql://{host}:{port}/{dbName}?{parameters}`",
@@ -168,9 +169,44 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.GcsReadFile(
       order = 14,
-      description = "Dead letter queue directory",
-      helpText = "This directory is used to dump the failed records in a migration.")
-  String getDLQDirectory();
+      description = "Output directory for failed/skipped/filtered events",
+      helpText =
+          "This directory is used to dump the failed/skipped/filtered records in a migration.")
+  String getOutputDirectory();
 
-  void setDLQDirectory(String value);
+  void setOutputDirectory(String value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 15,
+      optional = true,
+      description = "Custom jar location in Cloud Storage",
+      helpText =
+          "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records.")
+  @Default.String("")
+  String getTransformationJarPath();
+
+  void setTransformationJarPath(String value);
+
+  @TemplateParameter.Text(
+      order = 16,
+      optional = true,
+      description = "Custom class name",
+      helpText =
+          "Fully qualified class name having the custom transformation logic. It is a"
+              + " mandatory field in case transformationJarPath is specified")
+  @Default.String("")
+  String getTransformationClassName();
+
+  void setTransformationClassName(String value);
+
+  @TemplateParameter.Text(
+      order = 17,
+      optional = true,
+      description = "Custom parameters for transformation",
+      helpText =
+          "String containing any custom parameters to be passed to the custom transformation class.")
+  @Default.String("")
+  String getTransformationCustomParameters();
+
+  void setTransformationCustomParameters(String value);
 }

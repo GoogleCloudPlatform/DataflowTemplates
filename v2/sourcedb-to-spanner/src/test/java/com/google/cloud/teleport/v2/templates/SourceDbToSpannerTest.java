@@ -91,7 +91,7 @@ public class SourceDbToSpannerTest {
   @Test
   public void createIdentitySchemaMapper() {
     SourceDbToSpannerOptions mockOptions = createOptionsHelper("", "");
-    ISchemaMapper schemaMapper = SourceDbToSpanner.getSchemaMapper(mockOptions, spannerDdl);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
     assertTrue(schemaMapper instanceof IdentityMapper);
   }
 
@@ -102,14 +102,14 @@ public class SourceDbToSpannerTest {
             Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
                 .toString(),
             null);
-    ISchemaMapper schemaMapper = SourceDbToSpanner.getSchemaMapper(mockOptions, spannerDdl);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
     assertTrue(schemaMapper instanceof SessionBasedMapper);
   }
 
   @Test(expected = Exception.class)
   public void createInvalidSchemaMapper_withException() {
     SourceDbToSpannerOptions mockOptions = createOptionsHelper("invalid-file", "");
-    SourceDbToSpanner.getSchemaMapper(mockOptions, spannerDdl);
+    PipelineController.getSchemaMapper(mockOptions, spannerDdl);
   }
 
   private SourceDbToSpannerOptions createOptionsHelper(String sessionFile, String tables) {
@@ -123,9 +123,8 @@ public class SourceDbToSpannerTest {
   @Test
   public void listTablesToMigrateIdentity() {
     SourceDbToSpannerOptions mockOptions = createOptionsHelper("", "");
-    ISchemaMapper schemaMapper = SourceDbToSpanner.getSchemaMapper(mockOptions, spannerDdl);
-    List<String> tables =
-        SourceDbToSpanner.listTablesToMigrate(mockOptions, schemaMapper, spannerDdl);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
+    List<String> tables = PipelineController.listTablesToMigrate("", schemaMapper, spannerDdl);
     List<String> ddlTables =
         spannerDdl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
     assertEquals(2, tables.size());
@@ -135,9 +134,9 @@ public class SourceDbToSpannerTest {
   @Test
   public void listTablesToMigrateIdentityOverride() {
     SourceDbToSpannerOptions mockOptions = createOptionsHelper("", "new_cart");
-    ISchemaMapper schemaMapper = SourceDbToSpanner.getSchemaMapper(mockOptions, spannerDdl);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
     List<String> tables =
-        SourceDbToSpanner.listTablesToMigrate(mockOptions, schemaMapper, spannerDdl);
+        PipelineController.listTablesToMigrate(mockOptions.getTables(), schemaMapper, spannerDdl);
     List<String> ddlTables =
         spannerDdl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
     assertEquals(1, tables.size());
@@ -151,9 +150,9 @@ public class SourceDbToSpannerTest {
             Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
                 .toString(),
             "");
-    ISchemaMapper schemaMapper = SourceDbToSpanner.getSchemaMapper(mockOptions, spannerDdl);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
     List<String> tables =
-        SourceDbToSpanner.listTablesToMigrate(mockOptions, schemaMapper, spannerDdl);
+        PipelineController.listTablesToMigrate(mockOptions.getTables(), schemaMapper, spannerDdl);
 
     assertEquals(2, tables.size());
     assertTrue(tables.contains("cart"));
@@ -167,9 +166,9 @@ public class SourceDbToSpannerTest {
             Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
                 .toString(),
             "cart");
-    ISchemaMapper schemaMapper = SourceDbToSpanner.getSchemaMapper(mockOptions, spannerDdl);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
     List<String> tables =
-        SourceDbToSpanner.listTablesToMigrate(mockOptions, schemaMapper, spannerDdl);
+        PipelineController.listTablesToMigrate(mockOptions.getTables(), schemaMapper, spannerDdl);
 
     assertEquals(1, tables.size());
     assertTrue(tables.contains("cart"));
@@ -182,8 +181,8 @@ public class SourceDbToSpannerTest {
             Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
                 .toString(),
             "asd");
-    ISchemaMapper schemaMapper = SourceDbToSpanner.getSchemaMapper(mockOptions, spannerDdl);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
     List<String> tables =
-        SourceDbToSpanner.listTablesToMigrate(mockOptions, schemaMapper, spannerDdl);
+        PipelineController.listTablesToMigrate(mockOptions.getTables(), schemaMapper, spannerDdl);
   }
 }

@@ -47,6 +47,7 @@ public abstract class JdbcIOWrapperConfig {
   public abstract ImmutableMap<String, ImmutableList<String>> tableVsPartitionColumns();
 
   /** Shard ID. */
+  @Nullable
   public abstract String shardID();
 
   /** DB credentials. */

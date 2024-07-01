@@ -24,6 +24,7 @@ import com.google.common.collect.ImmutableList;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,44 +33,85 @@ public final class OptionsToConfigBuilder {
 
   public static final class MySql {
 
-    private static String extractDbFromURL(String url) {
+    private static String extractDbFromURL(String sourceDbUrl) {
       URI uri;
       try {
-        uri = new URI(url);
+        // Strip off the prefix 'jdbc:' which the library cannot handle.
+        uri = new URI(sourceDbUrl.substring(5));
       } catch (URISyntaxException e) {
-        throw new RuntimeException(String.format("Unable to parse url: %s", url), e);
+        throw new RuntimeException(String.format("Unable to parse url: %s", sourceDbUrl), e);
       }
       // Remove '/' before returning.
       return uri.getPath().substring(1);
     }
 
     public static JdbcIOWrapperConfig configWithMySqlDefaultsFromOptions(
-        SourceDbToSpannerOptions options, List<String> tables) {
-      JdbcIOWrapperConfig.Builder builder = builderWithMySqlDefaults();
-      builder =
-          builder
-              .setSourceDbURL(options.getSourceDbURL())
-              .setSourceSchemaReference(
-                  SourceSchemaReference.builder()
-                      .setDbName(
-                          // Strip off the prefix 'jdbc:' which the library cannot handle.
-                          extractDbFromURL(options.getSourceDbURL().substring(5)))
-                      .build())
-              .setDbAuth(
-                  LocalCredentialsProvider.builder()
-                      .setUserName(options.getUsername())
-                      .setPassword(options.getPassword())
-                      .build())
-              .setJdbcDriverClassName(options.getJdbcDriverClassName())
-              .setJdbcDriverJars(options.getJdbcDriverJars())
-              .setShardID("Unsupported"); /*TODO: Support Sharded Migration */
-      if (options.getMaxConnections() != 0) {
-        builder.setMaxConnections((long) options.getMaxConnections());
-      }
-      builder.setMaxPartitions(options.getNumPartitions());
-      builder = builder.setTables(ImmutableList.copyOf(tables));
-      return builder.build();
+        SourceDbToSpannerOptions options, List<String> tables, String shardId) {
+      String sourceDbURL = options.getSourceDbURL();
+      String dbName = extractDbFromURL(sourceDbURL);
+      String username = options.getUsername();
+      String password = options.getPassword();
+
+      String jdbcDriverClassName = options.getJdbcDriverClassName();
+      String jdbcDriverJars = options.getJdbcDriverJars();
+      long maxConnections =
+          options.getMaxConnections() > 0 ? (long) (options.getMaxConnections()) : 0;
+      Integer numPartitions = options.getNumPartitions();
+
+      return getJdbcIOWrapperConfig(
+          tables,
+          sourceDbURL,
+          null,
+          0,
+          username,
+          password,
+          dbName,
+          shardId,
+          jdbcDriverClassName,
+          jdbcDriverJars,
+          maxConnections,
+          numPartitions);
     }
+  }
+
+  public static JdbcIOWrapperConfig getJdbcIOWrapperConfig(
+      List<String> tables,
+      String sourceDbURL,
+      String host,
+      int port,
+      String username,
+      String password,
+      String dbName,
+      String shardId,
+      String jdbcDriverClassName,
+      String jdbcDriverJars,
+      long maxConnections,
+      Integer numPartitions) {
+    JdbcIOWrapperConfig.Builder builder = builderWithMySqlDefaults();
+    builder =
+        builder
+            .setSourceSchemaReference(SourceSchemaReference.builder().setDbName(dbName).build())
+            .setDbAuth(
+                LocalCredentialsProvider.builder()
+                    .setUserName(username)
+                    .setPassword(password)
+                    .build())
+            .setJdbcDriverClassName(jdbcDriverClassName)
+            .setJdbcDriverJars(jdbcDriverJars);
+
+    if (sourceDbURL != null) {
+      builder.setSourceDbURL(sourceDbURL);
+    } else {
+      // TODO - add mysql specific method in mysql class.
+      builder.setSourceDbURL("jdbc:mysql://" + host + ":" + port + "/" + dbName);
+    }
+    if (!StringUtils.isEmpty(shardId)) {
+      builder.setShardID(shardId);
+    }
+
+    builder.setMaxPartitions(numPartitions);
+    builder = builder.setTables(ImmutableList.copyOf(tables));
+    return builder.build();
   }
 
   private OptionsToConfigBuilder() {}

@@ -254,15 +254,15 @@ public final class DMLGeneratorTest {
         + " sample_table(id,mediumint_column,tinyblob_column,datetime_column,enum_column,longtext_column,mediumblob_column,text_column,tinyint_column,timestamp_column,float_column,varbinary_column,binary_column,bigint_column,time_column,tinytext_column,set_column,longblob_column,mediumtext_column,year_column,blob_column,decimal_column,bool_column,char_column,date_column,double_column,smallint_column,varchar_column)"
         + " VALUES (12,333,FROM_BASE64('YWJj'),"
         + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),'1','<longtext_column>',FROM_BASE64('YWJjbGFyZ2U='),'aaaaaddd',1,"
-        + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),4.2,HEX(FROM_BASE64('YWJjbGFyZ2U=')),HEX(FROM_BASE64('YWJjbGFyZ2U=')),4444,'10:10:10','<tinytext_column>','1,2',FROM_BASE64('YWJsb25nYmxvYmM='),'<mediumtext_column>','2023',FROM_BASE64('YWJiaWdj'),444.222,false,'<char_c','2023-05-18',42.42,22,'abc')"
+        + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),4.2,BINARY(FROM_BASE64('YWJjbGFyZ2U=')),BINARY(FROM_BASE64('YWJjbGFyZ2U=')),4444,'10:10:10','<tinytext_column>','1,2',FROM_BASE64('YWJsb25nYmxvYmM='),'<mediumtext_column>','2023',FROM_BASE64('YWJiaWdj'),444.222,false,'<char_c','2023-05-18',42.42,22,'abc')"
         + " ON DUPLICATE KEY UPDATE  mediumint_column = 333, tinyblob_column ="
         + " FROM_BASE64('YWJj'), datetime_column = "
         + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'), enum_column = '1',"
         + " longtext_column = '<longtext_column>', mediumblob_column ="
         + " FROM_BASE64('YWJjbGFyZ2U='), text_column = 'aaaaaddd', tinyint_column = 1,"
         + " timestamp_column =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),"
-        + " float_column = 4.2, varbinary_column = HEX(FROM_BASE64('YWJjbGFyZ2U=')),"
-        + " binary_column = HEX(FROM_BASE64('YWJjbGFyZ2U=')), bigint_column = 4444, time_column"
+        + " float_column = 4.2, varbinary_column = BINARY(FROM_BASE64('YWJjbGFyZ2U=')),"
+        + " binary_column = BINARY(FROM_BASE64('YWJjbGFyZ2U=')), bigint_column = 4444, time_column"
         + " = '10:10:10', tinytext_column = '<tinytext_column>', set_column = '1,2',"
         + " longblob_column = FROM_BASE64('YWJsb25nYmxvYmM='), mediumtext_column ="
         + " '<mediumtext_column>', year_column = '2023', blob_column = FROM_BASE64('YWJiaWdj'),"
@@ -299,8 +299,8 @@ public final class DMLGeneratorTest {
     sql.contains(
         "timestamp_column = CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')"));*/
     assertTrue(sql.contains("float_column = 4.2"));
-    assertTrue(sql.contains("varbinary_column = HEX(FROM_BASE64('YWJjbGFyZ2U='))"));
-    assertTrue(sql.contains("binary_column = HEX(FROM_BASE64('YWJjbGFyZ2U='))"));
+    assertTrue(sql.contains("varbinary_column = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
+    assertTrue(sql.contains("binary_column = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
     assertTrue(sql.contains("bigint_column = 4444"));
     assertTrue(sql.contains("time_column = '10:10:10'"));
     assertTrue(sql.contains("tinytext_column = '<tinytext_column>'"));
@@ -667,12 +667,12 @@ public final class DMLGeneratorTest {
 
     /*The expected sql is:
     "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES"
-        + " (999,'kk',HEX(FROM_BASE64('YmlsX2NvbA=='))) ON DUPLICATE KEY UPDATE  FirstName ="
-        + " 'kk', LastName = HEX(FROM_BASE64('YmlsX2NvbA=='))"; */
+        + " (999,'kk',BINARY(FROM_BASE64('YmlsX2NvbA=='))) ON DUPLICATE KEY UPDATE  FirstName ="
+        + " 'kk', LastName = BINARY(FROM_BASE64('YmlsX2NvbA=='))"; */
     String sql =
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
-    assertTrue(sql.contains("LastName = HEX(FROM_BASE64('YmlsX2NvbA=='))"));
+    assertTrue(sql.contains("LastName = BINARY(FROM_BASE64('YmlsX2NvbA=='))"));
   }
 }

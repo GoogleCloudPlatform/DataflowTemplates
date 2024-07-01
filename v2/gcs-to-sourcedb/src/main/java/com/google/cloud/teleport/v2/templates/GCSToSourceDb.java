@@ -253,7 +253,7 @@ public class GCSToSourceDb {
     @TemplateParameter.GcsReadFile(
         order = 15,
         optional = true,
-        description = "Custom jar location in Cloud Storage",
+        description = "Custom transformation jar location in Cloud Storage",
         helpText =
             "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records"
                 + " in reverse replication.")
@@ -265,7 +265,7 @@ public class GCSToSourceDb {
     @TemplateParameter.Text(
         order = 16,
         optional = true,
-        description = "Custom class name",
+        description = "Custom class name for transformation",
         helpText =
             "Fully qualified class name having the custom transformation logic.  It is a"
                 + " mandatory field in case transformationJarPath is specified")

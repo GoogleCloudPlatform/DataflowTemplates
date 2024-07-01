@@ -27,7 +27,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.commons.io.IOUtils;
@@ -142,5 +144,68 @@ public class ShardFileReader {
               + " well-formed JSON string.",
           e);
     }
+  }
+
+  /**
+   * Read the sharded migration config and return a list of physical shards.
+   *
+   * @param sourceShardsFilePath
+   * @return
+   */
+  public List<Shard> readForwardMigrationShardingConfig(String sourceShardsFilePath) {
+    String jsonString = null;
+    try {
+      InputStream stream =
+          Channels.newInputStream(
+              FileSystems.open(FileSystems.matchNewResource(sourceShardsFilePath, false)));
+
+      jsonString = IOUtils.toString(stream, StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      LOG.error(
+          "Failed to read shard input file. Make sure it is ASCII or UTF-8 encoded and contains a"
+              + " well-formed JSON string.",
+          e);
+      throw new RuntimeException(
+          "Failed to read shard input file. Make sure it is ASCII or UTF-8 encoded and contains a"
+              + " well-formed JSON string.",
+          e);
+    }
+
+    // TODO - add secret manager integration
+    // TODO - create a structure for the shard config and map directly to the object
+    Type shardConfiguration = new TypeToken<Map>() {}.getType();
+    Map shardConfigMap =
+        new GsonBuilder()
+            .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
+            .create()
+            .fromJson(jsonString, shardConfiguration);
+
+    List<Shard> shardList = new ArrayList<>();
+    List<Map> dataShards =
+        (List)
+            (((Map) shardConfigMap.getOrDefault("shardConfigurationBulk", new HashMap<>()))
+                .getOrDefault("dataShards", new ArrayList<>()));
+
+    for (Map dataShard : dataShards) {
+      List<Map> databases = (List) (dataShard.getOrDefault("databases", new ArrayList<>()));
+
+      Shard shard =
+          new Shard(
+              "",
+              (String) (dataShard.get("host")),
+              dataShard.getOrDefault("port", 0).toString(),
+              (String) (dataShard.get("user")),
+              (String) (dataShard.get("password")),
+              "",
+              (String) (dataShard.get("secretManagerUri")));
+
+      for (Map database : databases) {
+        shard
+            .getDbNameToLogicalShardIdMap()
+            .put((String) (database.get("dbName")), (String) (database.get("databaseId")));
+      }
+      shardList.add(shard);
+    }
+    return shardList;
   }
 }

@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -131,7 +132,8 @@ public class DatadogConverters {
         optional = true,
         description = "Include full Pub/Sub message in the payload.",
         helpText =
-            "Whether to include the full Pub/Sub message in the payload. The default is `false` (only the data element is included in the payload).")
+            "Whether to include the full Pub/Sub message in the payload. The default is `true` (all elements, including the data element, are included in the payload).")
+    @Default.Boolean(true)
     ValueProvider<Boolean> getIncludePubsubMessage();
 
     void setIncludePubsubMessage(ValueProvider<Boolean> includePubsubMessage);
