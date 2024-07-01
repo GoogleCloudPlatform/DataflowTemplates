@@ -39,11 +39,21 @@ resource "google_datastream_connection_profile" "source_mysql" {
   }
 
   # Dynamically add private_connectivity block based on private connectivity
-  # resource creation. If resource does not exist, IP whitelisting is assumed.
+  # resource creation.
   dynamic "private_connectivity" {
     for_each = google_datastream_private_connection.datastream_private_connection.*.id
     content {
       private_connection = private_connectivity.value
+    }
+  }
+
+  # If an existing private connectivity configuration is provided, use that.
+  # If nothing is specified on private connectivity, IP allowlisting is
+  # assumed.
+  dynamic "private_connectivity" {
+    for_each = var.datastream_params.private_connectivity_id != null ? [1] : []
+    content {
+      private_connection = "projects/${var.common_params.project}/locations/${var.common_params.region}/privateConnections/${var.datastream_params.private_connectivity_id}"
     }
   }
 
@@ -219,7 +229,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     sessionFilePath                 = var.dataflow_params.template_params.session_file_path
     instanceId                      = var.dataflow_params.template_params.spanner_instance_id
     databaseId                      = var.dataflow_params.template_params.spanner_database_id
-    projectId                       = var.common_params.project
+    projectId                       = var.dataflow_params.template_params.spanner_project_id ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
     spannerHost                     = var.dataflow_params.template_params.spanner_host
     gcsPubSubSubscription           = google_pubsub_subscription.datastream_subscription.id
     streamName                      = google_datastream_stream.mysql_to_gcs.id

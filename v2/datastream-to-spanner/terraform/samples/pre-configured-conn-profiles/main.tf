@@ -139,7 +139,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     sessionFilePath                 = var.dataflow_params.template_params.session_file_path
     instanceId                      = var.dataflow_params.template_params.spanner_instance_id
     databaseId                      = var.dataflow_params.template_params.spanner_database_id
-    projectId                       = var.common_params.project
+    projectId                       = var.dataflow_params.template_params.spanner_project_id ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
     spannerHost                     = var.dataflow_params.template_params.spanner_host
     gcsPubSubSubscription           = google_pubsub_subscription.datastream_subscription.id
     streamName                      = google_datastream_stream.mysql_to_gcs.id

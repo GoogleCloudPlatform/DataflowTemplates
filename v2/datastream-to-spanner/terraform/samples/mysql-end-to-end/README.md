@@ -261,7 +261,7 @@ can exclude it from the state file using `terraform state rm` command.
 
 > **_NOTE:_** By default, **IP Allowlisting** based connectivity is assumed.
 
-There is a variable of the type below in `variables.tf` -
+There are two variables of the type below in `variables.tf` -
 
 ```shell
 private_connectivity = optional(object({
@@ -271,7 +271,19 @@ private_connectivity = optional(object({
     }))
 ```
 
-To enable private connectivity based access for Datastream, specify this
+and 
+
+```shell
+private_connectivity_id = optional(string)
+```
+
+You have the option of either specifying the `id` of an existing private
+connectivity configuration or letting Terraform create one for you.
+
+To re-use an existing private connectivity configuration, specify the `id` in
+the `private_connectivity_id` variable.
+
+Alternatively, to create a private connectivity configuration via Terraform for Datastream, specify this
 configuration in your `*.tfvars`. For example -
 
 ```shell
@@ -427,7 +439,7 @@ the service account running the Dataflow job needs to have the
 data to Spanner).
 
 After adding these permissions, configure the
-`var.dataflow_params.template_params.projectId` variable.
+`var.dataflow_params.template_params.spanner_project_id` variable.
 
 ### Adding access to Terraform service account
 
