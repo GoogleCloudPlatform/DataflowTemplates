@@ -64,7 +64,11 @@ func main() {
 		flags.PrivateConnectivity(),
 		flags.ExportProject(),
 		flags.ExportDataset(),
-		flags.ExportTable())
+		flags.ExportTable(),
+		flags.StaticOracleInstance(),
+		flags.CloudProxyHost(),
+		flags.CloudProxyPort(),
+		flags.CloudProxyPassword())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}

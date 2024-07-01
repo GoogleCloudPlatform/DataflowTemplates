@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.JDBCBaseIT;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -64,7 +66,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
   protected void loadSQLToJdbcResourceManager(JDBCResourceManager jdbcResourceManager, String sql)
       throws Exception {
-    LOG.info("Loading sql to jdbc resource manager");
+    LOG.info("Loading sql to jdbc resource manager with uri: {}", jdbcResourceManager.getUri());
     try {
       Connection connection =
           DriverManager.getConnection(
@@ -90,6 +92,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
         }
       }
     } catch (Exception e) {
+      LOG.info("failed to load SQL into database: {}", sql);
       throw new Exception("Failed to load SQL into database", e);
     }
     LOG.info("Successfully loaded sql to jdbc resource manager");
@@ -132,14 +135,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       String gcsPathPrefix,
       JDBCResourceManager jdbcResourceManager,
       SpannerResourceManager spannerResourceManager,
-      Map<String, String> jobParameters)
+      Map<String, String> jobParameters,
+      CustomTransformation customTransformation)
       throws IOException {
-
-    if (sessionFileResourceName != null) {
-      gcsClient.uploadArtifact(
-          gcsPathPrefix + "/session.json",
-          Resources.getResource(sessionFileResourceName).getPath());
-    }
 
     Map<String, String> params =
         new HashMap<>() {
@@ -150,11 +148,23 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             put("sourceDbURL", jdbcResourceManager.getUri());
             put("username", jdbcResourceManager.getUsername());
             put("password", jdbcResourceManager.getPassword());
-            put("DLQDirectory", "gs://" + artifactBucketName + "/dlq");
+            put("outputDirectory", "gs://" + artifactBucketName);
           }
         };
+
     if (sessionFileResourceName != null) {
-      params.put("sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json"));
+      String sessionPath = gcsPathPrefix + "/session.json";
+      LOG.info("uploading session file to: {}", sessionPath);
+      gcsClient.uploadArtifact(
+          sessionPath, Resources.getResource(sessionFileResourceName).getPath());
+      params.put("sessionFilePath", getGcsPath(sessionPath));
+    }
+
+    if (customTransformation != null) {
+      params.put(
+          "transformationJarPath",
+          getGcsPath(gcsPathPrefix + "/" + customTransformation.jarPath()));
+      params.put("transformationClassName", customTransformation.classPath());
     }
 
     // overridden parameters
@@ -177,5 +187,22 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     assertThatPipeline(jobInfo).isRunning();
 
     return jobInfo;
+  }
+
+  public void createAndUploadJarToGcs(String gcsPathPrefix)
+      throws IOException, InterruptedException {
+    String[] shellCommand = {"/bin/bash", "-c", "cd ../spanner-custom-shard"};
+
+    Process exec = Runtime.getRuntime().exec(shellCommand);
+
+    IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
+    IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
+
+    if (exec.waitFor() != 0) {
+      throw new RuntimeException("Error staging template, check Maven logs.");
+    }
+    gcsClient.uploadArtifact(
+        gcsPathPrefix + "/customTransformation.jar",
+        "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
   }
 }

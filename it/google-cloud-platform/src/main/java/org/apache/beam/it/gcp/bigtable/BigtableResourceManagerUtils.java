@@ -58,7 +58,7 @@ public final class BigtableResourceManagerUtils {
       String baseString, String zone, int numNodes, StorageType storageType) {
 
     // Take substring of baseString to account for random suffix
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     int randomSuffixLength = 6;
     baseString =
         baseString
@@ -82,7 +82,7 @@ public final class BigtableResourceManagerUtils {
             DateTimeFormatter.ofPattern(TIME_FORMAT));
 
     // Add random suffix to avoid collision
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     clusterId =
         clusterId + REPLACE_CLUSTER_CHAR + RandomStringUtils.randomAlphanumeric(6).toLowerCase();
 
@@ -101,7 +101,7 @@ public final class BigtableResourceManagerUtils {
   static String generateInstanceId(String baseString) {
 
     // Take substring of baseString to account for random suffix
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     int randomSuffixLength = 6;
     baseString =
         baseString.substring(
@@ -115,7 +115,7 @@ public final class BigtableResourceManagerUtils {
                     - randomSuffixLength));
 
     // Add random suffix to avoid collision
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     return generateResourceId(
             baseString.toLowerCase(),
             ILLEGAL_INSTANCE_ID_CHARS,
@@ -135,7 +135,7 @@ public final class BigtableResourceManagerUtils {
   public static String generateTableId(String baseString) {
 
     // Take substring of baseString to account for random suffix
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     int randomSuffixLength = 6;
     baseString =
         baseString.substring(
@@ -149,7 +149,7 @@ public final class BigtableResourceManagerUtils {
                     - randomSuffixLength));
 
     // Add random suffix to avoid collision
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     return generateResourceId(
             baseString.toLowerCase(),
             ILLEGAL_TABLE_CHARS,

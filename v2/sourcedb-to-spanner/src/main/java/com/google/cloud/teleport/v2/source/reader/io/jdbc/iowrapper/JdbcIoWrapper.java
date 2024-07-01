@@ -267,7 +267,10 @@ public final class JdbcIoWrapper implements IoWrapper {
             .withDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
             .withRowMapper(
                 new JdbcSourceRowMapper(
-                    config.valueMappingsProvider(), sourceSchemaReference, sourceTableSchema));
+                    config.valueMappingsProvider(),
+                    sourceSchemaReference,
+                    sourceTableSchema,
+                    config.shardID()));
     if (tableConfig.maxPartitions() != null) {
       jdbcIO = jdbcIO.withNumPartitions(tableConfig.maxPartitions());
     }

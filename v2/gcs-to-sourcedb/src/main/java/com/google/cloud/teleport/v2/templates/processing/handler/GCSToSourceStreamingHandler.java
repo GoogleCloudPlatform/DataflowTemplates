@@ -32,8 +32,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,20 +115,12 @@ public class GCSToSourceStreamingHandler {
     return fileProcessedStartInterval;
   }
 
-  private static void writeFilteredEventsToGcs(
+  public static void writeFilteredEventsToGcs(
       ProcessingContext taskContext,
       Storage storage,
       List<TrimmedShardedDataChangeRecord> filteredEvents) {
-    Matcher matcher = Pattern.compile(GCS_INPUT_DIRECTORY_REGEX).matcher(taskContext.getGCSPath());
-
-    if (!matcher.matches()) {
-      throw new IllegalArgumentException(
-          "--gcsInputDirectoryPath is expected in a format matching "
-              + "the following regular expression: "
-              + GCS_INPUT_DIRECTORY_REGEX);
-    }
-    String bucket = matcher.group(1);
-    String path = matcher.group(2);
+    String bucket = taskContext.getGCSPath().substring(5, taskContext.getGCSPath().indexOf("/", 5));
+    String path = taskContext.getGCSPath().substring(taskContext.getGCSPath().indexOf("/", 5) + 1);
     if (!path.endsWith("/")) {
       path += "/";
     }
@@ -140,6 +130,8 @@ public class GCSToSourceStreamingHandler {
     currentIntervalStart = new org.joda.time.Instant(startTs.toSqlTimestamp());
     org.joda.time.Instant currentIntervalEnd =
         currentIntervalStart.plus(taskContext.getWindowDuration());
+    // File name format for filtered events is kept same as the records written to GCS by reader
+    // template
     String gcsFileName =
         path
             + "filteredEvents/"
@@ -152,6 +144,13 @@ public class GCSToSourceStreamingHandler {
     try {
       BlobInfo blobInfo = BlobInfo.newBuilder(bucket, gcsFileName).build();
       storage.create(blobInfo, filteredEvents.toString().getBytes(StandardCharsets.UTF_8));
+      LOG.info(
+          "Filtered events for shard id: "
+              + taskContext.getShard().getLogicalShardId()
+              + "successfully written to gs://"
+              + bucket
+              + "/"
+              + gcsFileName);
     } catch (Exception e) {
       throw new IllegalArgumentException(
           "Unable to ensure write access for the file path: " + gcsFileName);

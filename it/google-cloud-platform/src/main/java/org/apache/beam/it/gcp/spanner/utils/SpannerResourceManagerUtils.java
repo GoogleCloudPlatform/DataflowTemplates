@@ -50,7 +50,7 @@ public final class SpannerResourceManagerUtils {
     checkArgument(baseString.length() != 0, "baseString cannot be empty!");
 
     // Take substring of baseString to account for random suffix
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     int randomSuffixLength = 6;
     baseString =
         baseString.substring(
@@ -86,7 +86,7 @@ public final class SpannerResourceManagerUtils {
     }
 
     // Add random suffix to avoid collision
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     trimmed =
         trimmed
             + REPLACE_DATABASE_CHAR
@@ -104,7 +104,7 @@ public final class SpannerResourceManagerUtils {
   public static String generateInstanceId(String baseString) {
 
     // Take substring of baseString to account for random suffix
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     int randomSuffixLength = 6;
     baseString =
         baseString.substring(
@@ -133,7 +133,7 @@ public final class SpannerResourceManagerUtils {
     }
 
     // Add random suffix to avoid collision
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     instanceId =
         instanceId + REPLACE_INSTANCE_CHAR + RandomStringUtils.randomAlphanumeric(6).toLowerCase();
 

@@ -63,3 +63,62 @@ If you encounter unresolvable issues with this flow, please reach out to the Dat
 
 This repository uses GitHub Actions for all CI/CD needs. Please do not introduce other methods of building/running code without consulting with the core Dataflow team.
 For information on GitHub Actions and CI/CD workflows, see [CI/CD](./cicd.md).
+
+## Validating and upgrading Beam versions
+
+With each new release of [Apache Beam](https://github.com/apache/beam), the Beam version for the repo needs to be 
+upgraded to match. This way, our templates can take advantage of the greatest and latest features of the Beam SDK.
+
+To get ahead of possible failures with each Beam release, we validate the templates by running all the tests against
+the Beam release candidate before it is released.
+
+The Beam SDK version(s) are defined in the root [pom.xml](../pom.xml) file. Locate the lines below
+```
+<beam.version>X.XX.X</beam.version>
+<beam-python.version>X.XX.X</beam-python.version>
+<beam-maven-repo></beam-maven-repo>
+```
+
+### Validating the release candidate
+
+When _validating_ the templates, all 3 of these values need to be updated. 
+- `<beam.version>` will just take the form of the expected release version
+- `<beam-python.version>` will append `rcX` where `X` is the version of the latest release candidate (rc0, rc1, etc.)
+- `<beam-maven-repo>` will take the form `https://repository.apache.org/content/repositories/orgapachebeam-XXXX` where 
+`XXXX` can be found in the release vote email sent by the release manager for Apache Beam
+
+The `-PvalidateCandidate` profile also needs to be passed to the validation command, or set the `activeByDefault` value
+to `true`.
+https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/pom.xml#L592
+
+For example, when validating 2.57.0:
+```
+<beam.version>2.57.0</beam.version>
+<beam-python.version>2.57.0rc0</beam-python.version>
+<beam-maven-repo>https://repository.apache.org/content/repositories/orgapachebeam-1379</beam-maven-repo>
+```
+and
+```
+<profile>
+  <id>validateCandidate</id>
+    <activation>
+      <activeByDefault>true</activeByDefault>
+    </activation>
+    ...
+</profile>
+```
+
+Once all the tests have been validated against the release candidate, make sure to send a +1 to the release manager for
+Beam to let them know that the latest version works against this repo.
+
+### Upgrading the repo's Beam version
+
+Once a new candidate is released, make sure to edit the `<beam.version>` _only_. The other 2 properties mentioned 
+above are for validation _only_.
+
+For example, when upgrading from 2.56.0 to 2.57.0:
+```
+<beam.version>2.57.0</beam.version>
+<beam-python.version>2.57.0</beam-python.version>
+<beam-maven-repo></beam-maven-repo>
+```

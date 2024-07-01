@@ -25,7 +25,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
  * executor at the command-line.
  */
 public interface KafkaWriteOptions extends PipelineOptions {
-  @TemplateParameter.KafkaTopic(
+  @TemplateParameter.KafkaWriteTopic(
       groupName = "Destination",
       order = 3,
       description = "Destination Kafka Topic",
@@ -40,15 +40,17 @@ public interface KafkaWriteOptions extends PipelineOptions {
       name = "kafkaWriteAuthenticationMethod",
       description = "Kafka Destination Authentication Method",
       enumOptions = {
+        @TemplateParameter.TemplateEnumOption(
+            KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.TLS),
-        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE)
+        @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
       },
       helpText =
           "The mode of authentication to use with the Kafka cluster. "
               + "Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, and"
               + " TLS for certificate-based authentication.")
-  @Default.String(KafkaAuthenticationMethod.NONE)
+  @Default.String(KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS)
   String getKafkaWriteAuthenticationMethod();
 
   void setKafkaWriteAuthenticationMethod(String destinationAuthenticationMethod);
