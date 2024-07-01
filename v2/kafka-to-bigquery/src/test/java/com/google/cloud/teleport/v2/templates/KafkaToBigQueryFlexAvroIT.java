@@ -213,7 +213,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
   @Test
   public void testKafkaToBigQueryAvroWithExistingDLQ() throws IOException, RestClientException {
     tableId = bigQueryClient.createTable(testName, bqSchema);
-    deadletterTableId = bigQueryClient.createTable(testName + "_dlq", getDeadletterSchema());
+    deadletterTableId = TableId.of(bigQueryClient.getDatasetId(), testName + "_dlq");
 
     baseKafkaToBigQueryAvro(
         b ->

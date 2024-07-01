@@ -82,7 +82,10 @@ public class KafkaToKafka {
       checkArgument(
           options.getKafkaReadKeyPasswordSecretId().trim().length() > 0,
           "KafkaReadKeyPasswordSecretId version for key password required for SSL authentication");
-    } else if (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.NONE)) {
+    } else if (options.getKafkaReadAuthenticationMode().equals(KafkaAuthenticationMethod.NONE)
+        || (options
+            .getKafkaReadAuthenticationMode()
+            .equals(KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS))) {
     } else {
       throw new UnsupportedOperationException(
           "Authentication method not supported: " + options.getKafkaReadAuthenticationMode());
@@ -111,7 +114,12 @@ public class KafkaToKafka {
       checkArgument(
           options.getKafkaWriteKeyPasswordSecretId().trim().length() > 0,
           "KafkaWriteKeyPasswordSecretId for source key password secret id version required for SSL authentication");
-    } else if (options.getKafkaWriteAuthenticationMethod().equals(KafkaAuthenticationMethod.NONE)) {
+    } else if (options.getKafkaWriteAuthenticationMethod().equals(KafkaAuthenticationMethod.NONE)
+        || options
+            .getKafkaWriteAuthenticationMethod()
+            .equals(KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS)) {
+      // No additional validation is required for these auth mechanisms since they don't depend on
+      // any specific pipeline options.
     } else {
       throw new UnsupportedOperationException(
           "Authentication method not supported: " + options.getKafkaWriteAuthenticationMethod());

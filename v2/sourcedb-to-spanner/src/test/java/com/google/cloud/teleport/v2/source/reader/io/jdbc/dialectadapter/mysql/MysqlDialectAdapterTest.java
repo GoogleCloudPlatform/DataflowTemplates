@@ -200,7 +200,10 @@ public class MysqlDialectAdapterTest {
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.createStatement()).thenReturn(mockStatement);
-    when(mockStatement.executeQuery("SHOW TABLES in testDB")).thenReturn(mockResultSet);
+    when(mockStatement.executeQuery(
+            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE "
+                + "TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = 'testDB' "))
+        .thenReturn(mockResultSet);
     OngoingStubbing stubGetString = when(mockResultSet.getString(1));
     for (String tbl : testTables) {
       stubGetString = stubGetString.thenReturn(tbl);
@@ -250,7 +253,10 @@ public class MysqlDialectAdapterTest {
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.createStatement()).thenReturn(mockStatement);
-    when(mockStatement.executeQuery("SHOW TABLES in testDB")).thenReturn(mockResultSet);
+    when(mockStatement.executeQuery(
+            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE "
+                + "TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = 'testDB' "))
+        .thenReturn(mockResultSet);
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getString(1)).thenThrow(new SQLException("test"));
 

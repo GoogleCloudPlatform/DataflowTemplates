@@ -146,7 +146,8 @@ public class InformationSchemaScannerTest {
         Statement.of(
             "SELECT t.table_name, t.parent_table_name, t.on_delete_action"
                 + " FROM information_schema.tables AS t"
-                + " WHERE t.table_catalog = '' AND t.table_schema = ''");
+                + " WHERE t.table_catalog = '' AND t.table_schema = ''"
+                + " AND t.table_type='BASE TABLE'");
     ResultSet listTablesResultSet = mock(ResultSet.class);
     when(context.executeQuery(listTables)).thenReturn(listTablesResultSet);
     when(listTablesResultSet.next()).thenReturn(true, true, false);
@@ -302,7 +303,8 @@ public class InformationSchemaScannerTest {
             "SELECT t.table_name, t.parent_table_name, t.on_delete_action FROM"
                 + " information_schema.tables AS t"
                 + " WHERE t.table_schema NOT IN "
-                + "('information_schema', 'spanner_sys', 'pg_catalog')");
+                + "('information_schema', 'spanner_sys', 'pg_catalog')"
+                + " AND t.table_type='BASE TABLE'");
     ResultSet listTablesResultSet = mock(ResultSet.class);
     when(context.executeQuery(listTables)).thenReturn(listTablesResultSet);
     when(listTablesResultSet.next()).thenReturn(true, true, false);

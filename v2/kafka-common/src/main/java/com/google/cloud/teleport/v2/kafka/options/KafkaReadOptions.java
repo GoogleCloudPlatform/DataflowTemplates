@@ -31,7 +31,7 @@ public interface KafkaReadOptions extends PipelineOptions {
     public static final String EARLIEST = "earliest";
   }
 
-  @TemplateParameter.KafkaTopic(
+  @TemplateParameter.KafkaReadTopic(
       order = 1,
       name = "readBootstrapServerAndTopic",
       groupName = "Source",

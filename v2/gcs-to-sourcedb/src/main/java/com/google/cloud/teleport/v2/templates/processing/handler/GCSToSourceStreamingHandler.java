@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates.processing.handler;
 
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.common.ShardProgress;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
@@ -24,6 +27,7 @@ import com.google.cloud.teleport.v2.templates.dao.MySqlDao;
 import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
 import com.google.cloud.teleport.v2.templates.utils.GCSReader;
 import com.google.cloud.teleport.v2.templates.utils.ShardProgressTracker;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -35,12 +39,19 @@ import org.slf4j.LoggerFactory;
 public class GCSToSourceStreamingHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSToSourceStreamingHandler.class);
+  private static final String GCS_INPUT_DIRECTORY_REGEX = "gs://(.*?)/(.*)";
 
-  public static String process(ProcessingContext taskContext, SpannerDao spannerDao) {
+  private static org.joda.time.Instant currentIntervalStart;
+
+  public static String process(
+      ProcessingContext taskContext,
+      SpannerDao spannerDao,
+      ISpannerMigrationTransformer spannerToSourceTransformer,
+      boolean writeFilteredEventsToGcs,
+      Storage storage) {
     String shardId = taskContext.getShard().getLogicalShardId();
     GCSReader inputFileReader = new GCSReader(taskContext, spannerDao);
     String fileProcessedStartInterval = taskContext.getStartTimestamp();
-
     try {
       Instant readStartTime = Instant.now();
       List<TrimmedShardedDataChangeRecord> records = inputFileReader.getRecords();
@@ -76,7 +87,17 @@ public class GCSToSourceStreamingHandler {
               .getMySqlDao(shardId);
 
       InputRecordProcessor.processRecords(
-          records, taskContext.getSchema(), dao, shardId, taskContext.getSourceDbTimezoneOffset());
+          records,
+          taskContext.getSchema(),
+          dao,
+          shardId,
+          taskContext.getSourceDbTimezoneOffset(),
+          spannerToSourceTransformer);
+      List<TrimmedShardedDataChangeRecord> filteredEvents =
+          InputRecordProcessor.getFilteredEvents();
+      if (writeFilteredEventsToGcs && !filteredEvents.isEmpty()) {
+        writeFilteredEventsToGcs(taskContext, storage, filteredEvents);
+      }
       markShardSuccess(taskContext, spannerDao, fileProcessedStartInterval);
       dao.cleanup();
       LOG.info(
@@ -87,6 +108,48 @@ public class GCSToSourceStreamingHandler {
       throw new RuntimeException("Failure when processing records", e);
     }
     return fileProcessedStartInterval;
+  }
+
+  public static void writeFilteredEventsToGcs(
+      ProcessingContext taskContext,
+      Storage storage,
+      List<TrimmedShardedDataChangeRecord> filteredEvents) {
+    String bucket = taskContext.getGCSPath().substring(5, taskContext.getGCSPath().indexOf("/", 5));
+    String path = taskContext.getGCSPath().substring(taskContext.getGCSPath().indexOf("/", 5) + 1);
+    if (!path.endsWith("/")) {
+      path += "/";
+    }
+
+    String fileStartTime = taskContext.getStartTimestamp();
+    com.google.cloud.Timestamp startTs = com.google.cloud.Timestamp.parseTimestamp(fileStartTime);
+    currentIntervalStart = new org.joda.time.Instant(startTs.toSqlTimestamp());
+    org.joda.time.Instant currentIntervalEnd =
+        currentIntervalStart.plus(taskContext.getWindowDuration());
+    // File name format for filtered events is kept same as the records written to GCS by reader
+    // template
+    String gcsFileName =
+        path
+            + "filteredEvents/"
+            + taskContext.getShard().getLogicalShardId()
+            + "/"
+            + currentIntervalStart
+            + "-"
+            + currentIntervalEnd
+            + "-pane-0-last-0-of-1.txt";
+    try {
+      BlobInfo blobInfo = BlobInfo.newBuilder(bucket, gcsFileName).build();
+      storage.create(blobInfo, filteredEvents.toString().getBytes(StandardCharsets.UTF_8));
+      LOG.info(
+          "Filtered events for shard id: "
+              + taskContext.getShard().getLogicalShardId()
+              + "successfully written to gs://"
+              + bucket
+              + "/"
+              + gcsFileName);
+    } catch (Exception e) {
+      throw new IllegalArgumentException(
+          "Unable to ensure write access for the file path: " + gcsFileName);
+    }
   }
 
   private static void markShardSuccess(

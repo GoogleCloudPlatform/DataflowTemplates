@@ -62,4 +62,18 @@ public class MigrationTransformationRequest {
     this.shardId = shardId;
     this.eventType = eventType;
   }
+
+  @Override
+  public String toString() {
+    return "MigrationTransformationRequest{"
+        + "tableName="
+        + tableName
+        + ", requestRow="
+        + requestRow
+        + ", shardId="
+        + shardId
+        + ", eventType="
+        + eventType
+        + '}';
+  }
 }

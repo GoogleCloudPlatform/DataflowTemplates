@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.avro.generic.GenericRecord;
@@ -46,7 +47,6 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -65,13 +65,6 @@ public class SpannerChangeStreamsToGcsIT extends TemplateTestBase {
 
   private SpannerResourceManager spannerResourceManager;
 
-  @Before
-  public void setup() throws IOException {
-    // Set up resource managers
-    spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
-  }
-
   @After
   public void teardown() {
     ResourceManagerUtils.cleanResources(spannerResourceManager);
@@ -79,6 +72,27 @@ public class SpannerChangeStreamsToGcsIT extends TemplateTestBase {
 
   @Test
   public void testSpannerChangeStreamsToGcs() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
+    testSpannerChangeStreamsToGcsBase(Function.identity());
+  }
+
+  @Test
+  public void testSpannerChangeStreamsToGcsStaging() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .maybeUseCustomHost()
+            .build();
+    testSpannerChangeStreamsToGcsBase(
+        paramAdder ->
+            paramAdder.addParameter("spannerHost", spannerResourceManager.getSpannerHost()));
+  }
+
+  private void testSpannerChangeStreamsToGcsBase(
+      Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
+          paramsAdder)
+      throws IOException {
     // Arrange
     String createTableStatement =
         String.format(
@@ -96,19 +110,20 @@ public class SpannerChangeStreamsToGcsIT extends TemplateTestBase {
 
     // Act
     PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(testName, specPath)
-            .addParameter("spannerProjectId", PROJECT)
-            .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
-            .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
-            .addParameter("spannerMetadataInstanceId", spannerResourceManager.getInstanceId())
-            .addParameter("spannerMetadataDatabase", spannerResourceManager.getDatabaseId())
-            .addParameter("spannerChangeStreamName", testName + "_stream")
-            .addParameter("gcsOutputDirectory", getGcsPath("output/"))
-            .addParameter("outputFilenamePrefix", "result-")
-            .addParameter("outputFileFormat", "TEXT")
-            .addParameter("numShards", "1")
-            .addParameter("windowDuration", "1m")
-            .addParameter("rpcPriority", "HIGH");
+        paramsAdder.apply(
+            PipelineLauncher.LaunchConfig.builder(testName, specPath)
+                .addParameter("spannerProjectId", PROJECT)
+                .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
+                .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
+                .addParameter("spannerMetadataInstanceId", spannerResourceManager.getInstanceId())
+                .addParameter("spannerMetadataDatabase", spannerResourceManager.getDatabaseId())
+                .addParameter("spannerChangeStreamName", testName + "_stream")
+                .addParameter("gcsOutputDirectory", getGcsPath("output/"))
+                .addParameter("outputFilenamePrefix", "result-")
+                .addParameter("outputFileFormat", "TEXT")
+                .addParameter("numShards", "1")
+                .addParameter("windowDuration", "1m")
+                .addParameter("rpcPriority", "HIGH"));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
@@ -181,6 +196,27 @@ public class SpannerChangeStreamsToGcsIT extends TemplateTestBase {
 
   @Test
   public void testSpannerChangeStreamsToGcsAvro() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
+    testSpannerChangeStreamsToGcsAvroBase(Function.identity());
+  }
+
+  @Test
+  public void testSpannerChangeStreamsToGcsAvroStaging() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .maybeUseCustomHost()
+            .build();
+    testSpannerChangeStreamsToGcsAvroBase(
+        paramAdder ->
+            paramAdder.addParameter("spannerHost", spannerResourceManager.getSpannerHost()));
+  }
+
+  private void testSpannerChangeStreamsToGcsAvroBase(
+      Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
+          paramsAdder)
+      throws IOException {
     // Arrange
     String createTableStatement =
         String.format(
@@ -198,19 +234,20 @@ public class SpannerChangeStreamsToGcsIT extends TemplateTestBase {
 
     // Act
     PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(testName, specPath)
-            .addParameter("spannerProjectId", PROJECT)
-            .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
-            .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
-            .addParameter("spannerMetadataInstanceId", spannerResourceManager.getInstanceId())
-            .addParameter("spannerMetadataDatabase", spannerResourceManager.getDatabaseId())
-            .addParameter("spannerChangeStreamName", testName + "_stream")
-            .addParameter("gcsOutputDirectory", getGcsPath("output/"))
-            .addParameter("outputFilenamePrefix", "result-")
-            .addParameter("outputFileFormat", "AVRO")
-            .addParameter("numShards", "1")
-            .addParameter("windowDuration", "1m")
-            .addParameter("rpcPriority", "HIGH");
+        paramsAdder.apply(
+            PipelineLauncher.LaunchConfig.builder(testName, specPath)
+                .addParameter("spannerProjectId", PROJECT)
+                .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
+                .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
+                .addParameter("spannerMetadataInstanceId", spannerResourceManager.getInstanceId())
+                .addParameter("spannerMetadataDatabase", spannerResourceManager.getDatabaseId())
+                .addParameter("spannerChangeStreamName", testName + "_stream")
+                .addParameter("gcsOutputDirectory", getGcsPath("output/"))
+                .addParameter("outputFilenamePrefix", "result-")
+                .addParameter("outputFileFormat", "AVRO")
+                .addParameter("numShards", "1")
+                .addParameter("windowDuration", "1m")
+                .addParameter("rpcPriority", "HIGH"));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

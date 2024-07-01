@@ -390,7 +390,7 @@ public class DMLGenerator {
       case "binary":
       case "varbinary":
       case "bit":
-        response = getHexString(colValue, spannerColType);
+        response = getBinaryString(colValue, spannerColType);
         break;
       default:
         response = colValue;
@@ -414,8 +414,8 @@ public class DMLGenerator {
     return response;
   }
 
-  private static String getHexString(String input, String spannerColType) {
-    String response = "HEX(" + getQuotedEscapedString(input, spannerColType) + ")";
+  private static String getBinaryString(String input, String spannerColType) {
+    String response = "BINARY(" + getQuotedEscapedString(input, spannerColType) + ")";
     return response;
   }
 }
