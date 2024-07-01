@@ -214,8 +214,7 @@ public class CsvConverters {
         order = 4,
         optional = true,
         description = "Column delimiter of the data files.",
-        helpText =
-            "The column delimiter of the input text files. Default: `,`",
+        helpText = "The column delimiter of the input text files. Default: `,`",
         example = ",")
     @Default.InstanceFactory(DelimiterFactory.class)
     String getDelimiter();

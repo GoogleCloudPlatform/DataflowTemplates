@@ -97,8 +97,7 @@ public class PubsubToAvro {
         order = 1,
         groupName = "Source",
         description = "Pub/Sub input subscription",
-        helpText =
-            "Pub/Sub subscription to read the input from.",
+        helpText = "Pub/Sub subscription to read the input from.",
         example = "projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>")
     ValueProvider<String> getInputSubscription();
 

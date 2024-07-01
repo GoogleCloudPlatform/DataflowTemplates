@@ -135,8 +135,7 @@ public class PubSubToRedis {
         order = 1,
         groupName = "Source",
         description = "Pub/Sub input subscription",
-        helpText =
-            "The Pub/Sub subscription to read the input from.",
+        helpText = "The Pub/Sub subscription to read the input from.",
         example = "projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_ID>")
     String getInputSubscription();
 

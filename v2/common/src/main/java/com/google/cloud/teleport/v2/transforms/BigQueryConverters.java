@@ -179,7 +179,7 @@ public class BigQueryConverters {
 
     @TemplateParameter.BigQueryTable(
         order = 2,
-        optional = true,  
+        optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
             "The BigQuery table for messages that failed to reach the output table."

@@ -38,8 +38,7 @@ public interface PubSubToElasticsearchOptions
       order = 1,
       groupName = "Source",
       description = "Pub/Sub input subscription",
-      helpText =
-          "Pub/Sub subscription to consume the input from.",
+      helpText = "Pub/Sub subscription to consume the input from.",
       example = "projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>")
   @Validation.Required
   String getInputSubscription();

@@ -99,8 +99,7 @@ public final class GoogleAdsToBigQuery {
     @TemplateParameter.Text(
         order = 3,
         description = "Google Ads Query Language query",
-        helpText =
-            "The query to use to get the data. See Google Ads Query Language.",
+        helpText = "The query to use to get the data. See Google Ads Query Language.",
         example = "SELECT campaign.id, campaign.name FROM campaign")
     @Validation.Required
     String getQuery();

@@ -108,8 +108,7 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
       order = 8,
       groupName = "Target",
       description = "Output Pub/Sub topic",
-      helpText =
-          "The Pub/Sub topic to publish to.",
+      helpText = "The Pub/Sub topic to publish to.",
       example = "projects/<PROJECT_ID>/topics/<TOPIC_NAME>")
   @Validation.Required
   String getOutputTopic();

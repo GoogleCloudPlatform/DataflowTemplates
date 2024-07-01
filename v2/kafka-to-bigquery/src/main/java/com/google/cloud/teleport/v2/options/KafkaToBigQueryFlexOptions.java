@@ -202,7 +202,8 @@ public interface KafkaToBigQueryFlexOptions
       groupName = "Destination",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
-      helpText = "Specifies the number of write streams, this parameter must be set. Default is `0`.")
+      helpText =
+          "Specifies the number of write streams, this parameter must be set. Default is `0`.")
   @Override
   @Default.Integer(0)
   Integer getNumStorageWriteApiStreams();

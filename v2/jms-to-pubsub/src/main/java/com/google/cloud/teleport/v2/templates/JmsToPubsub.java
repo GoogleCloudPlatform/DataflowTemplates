@@ -178,8 +178,7 @@ public class JmsToPubsub {
         order = 4,
         groupName = "Target",
         description = "Output Pub/Sub topic",
-        helpText =
-            "The name of the Pub/Sub topic to publish data to.",
+        helpText = "The name of the Pub/Sub topic to publish data to.",
         example = "projects/<PROJECT_ID>/topics/<TOPIC_NAME>")
     @Validation.Required
     String getOutputTopic();
