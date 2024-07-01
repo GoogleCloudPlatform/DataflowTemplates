@@ -92,7 +92,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());
 
-        createAndUploadJarToGcs("shard1");
+        createAndUploadJarToGcs(gcsResourceManager);
         CustomTransformation customTransformation =
             CustomTransformation.builder(
                     "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
@@ -287,7 +287,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 
-  public void createAndUploadJarToGcs(String gcsPathPrefix)
+  public void createAndUploadJarToGcs(GcsResourceManager gcsResourceManager)
       throws IOException, InterruptedException {
     String[] shellCommand = {"/bin/bash", "-c", "cd ../spanner-custom-shard"};
 
@@ -300,7 +300,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
       throw new RuntimeException("Error staging template, check Maven logs.");
     }
     gcsResourceManager.uploadArtifact(
-        gcsPathPrefix + "/customTransformation.jar",
+        "input/customTransformation.jar",
         "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
   }
 }
