@@ -27,6 +27,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -96,7 +97,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
             CustomTransformation.builder(
                     "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
                 .build();
-        launchWriterDataflowJob(null);
+        launchWriterDataflowJob(customTransformation);
       }
     }
   }
@@ -155,9 +156,11 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
             .collect(Collectors.toList());
     assertThat(sortedRows.get(1).get("varchar_column")).isEqualTo("example2");
     assertThat(sortedRows.get(1).get("bigint_column")).isEqualTo("1000");
-    assertThat(sortedRows.get(1).get("binary_column")).isEqualTo("ZXhhbXBsZWJpbmFyeTE\\u003d");
-    assertThat(sortedRows.get(1).get("bit_column")).isEqualTo("ZXhhbXBsZWJpdDE\\u003d");
-    assertThat(sortedRows.get(1).get("blob_column")).isEqualTo("ZXhhbXBsZWJsb2Ix");
+    assertThat(sortedRows.get(1).get("binary_column"))
+        .isEqualTo("bin_column".getBytes(StandardCharsets.UTF_8));
+    assertThat(sortedRows.get(1).get("bit_column")).isEqualTo("1".getBytes(StandardCharsets.UTF_8));
+    assertThat(sortedRows.get(1).get("blob_column"))
+        .isEqualTo("blob_column".getBytes(StandardCharsets.UTF_8));
     assertThat(sortedRows.get(1).get("bool_column")).isEqualTo(true);
     assertThat(sortedRows.get(1).get("date_column")).isEqualTo("2024-01-01");
     assertThat(sortedRows.get(1).get("datetime_column")).isEqualTo("2024-01-01T12:34:56Z");
@@ -175,9 +178,10 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     assertThat(sortedRows.get(0).get("varchar_column")).isEqualTo("example");
     assertThat(sortedRows.get(1).get("bigint_column")).isEqualTo("12346");
     assertThat(sortedRows.get(1).get("binary_column"))
-        .isEqualTo("0102030405060708090A0B0C0D0E0F1011121314");
-    assertThat(sortedRows.get(1).get("bit_column")).isEqualTo("576f726d64");
-    assertThat(sortedRows.get(1).get("blob_column")).isEqualTo("576f726d64");
+        .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
+    assertThat(sortedRows.get(1).get("bit_column")).isEqualTo("5".getBytes(StandardCharsets.UTF_8));
+    assertThat(sortedRows.get(1).get("blob_column"))
+        .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
     assertThat(sortedRows.get(1).get("bool_column")).isEqualTo(false);
     assertThat(sortedRows.get(1).get("date_column")).isEqualTo("2024-01-02");
     assertThat(sortedRows.get(1).get("datetime_column")).isEqualTo("2024-01-01T12:34:55Z");
@@ -228,8 +232,8 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     columns.put("blob_column", "BLOB");
     columns.put("enum_column", "ENUM('1','2','3')");
     columns.put("bool_column", "TINYINT(1)");
-    columns.put("binary_column", "BINARY(20)");
-    columns.put("bit_column", "BIT(7)");
+    columns.put("binary_column", "BINARY(150)");
+    columns.put("bit_column", "BIT(20)");
     schema = new JDBCResourceManager.JDBCSchema(columns, "varchar_column");
     jdbcResourceManager.createTable(TABLE2, schema);
   }
