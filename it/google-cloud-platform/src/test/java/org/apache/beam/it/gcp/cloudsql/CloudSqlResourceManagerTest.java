@@ -88,6 +88,11 @@ public class CloudSqlResourceManagerTest {
           public @NonNull CloudSqlResourceManager build() {
             return new MockCloudSqlResourceManager(this);
           }
+
+          @Override
+          protected void configurePort() {
+            this.setPort(1234);
+          }
         };
 
     if (useCustomDb) {
