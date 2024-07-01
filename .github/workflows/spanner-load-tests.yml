@@ -45,7 +45,11 @@ jobs:
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1"
+        --it-private-connectivity="datastream-private-connect-us-central1" \
+        --lt-export-project="cloud-teleport-testing" \
+        --lt-export-dataset="performance_tests" \
+        --lt-export-table="template_performance_metrics" \
+
     - name: Upload Load Tests Report
       uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
       if: always() # always run even if the previous step fails

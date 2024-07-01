@@ -57,6 +57,8 @@ func main() {
 		mvnFlags.SkipShade(),
 		mvnFlags.FailAtTheEnd(),
 		mvnFlags.RunLoadTests(),
+		mvnFlags.ThreadCount(4),
+		flags.Region(),
 		flags.Project(),
 		flags.ArtifactBucket(),
 		flags.StageBucket(),
