@@ -256,7 +256,9 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
         };
 
     if (customTransformation != null) {
-      params.put("transformationJarPath", getGcsPath("input/" + customTransformation.jarPath()));
+      params.put(
+          "transformationJarPath",
+          getGcsPath("input/" + customTransformation.jarPath(), gcsResourceManager));
       params.put("transformationClassName", customTransformation.classPath());
     }
     String jobName = PipelineUtils.createJobName(testName);

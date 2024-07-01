@@ -711,7 +711,7 @@
           "Type": {
             "Name": "binary",
             "Mods": [
-              20
+              150
             ],
             "ArrayBounds": null
           },
@@ -731,7 +731,7 @@
           "Type": {
             "Name": "bit",
             "Mods": [
-              7
+              20
             ],
             "ArrayBounds": null
           },
