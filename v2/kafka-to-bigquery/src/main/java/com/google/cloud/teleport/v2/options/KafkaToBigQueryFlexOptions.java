@@ -69,7 +69,7 @@ public interface KafkaToBigQueryFlexOptions
       helpText =
           "Write records to one table or multiple tables (based on schema)."
               + " The `DYNAMIC_TABLE_NAMES` mode is supported only for `AVRO_CONFLUENT_WIRE_FORMAT` Source Message Format"
-              + " and `SCHEMA_REGISTRY` Schema Source. The target table name will be auto-generated based on the Avro"
+              + " and `SCHEMA_REGISTRY` Schema Source. The target table name is auto-generated based on the Avro"
               + " schema name of each message, it could either be a single schema (creating a single table) or"
               + " multiple schemas (creating multiple tables). The `SINGLE_TABLE_NAME` mode writes to a single"
               + " table (single schema) specified by the user. Defaults to `SINGLE_TABLE_NAME`.")

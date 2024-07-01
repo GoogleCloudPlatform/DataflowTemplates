@@ -57,8 +57,8 @@ public interface KafkaToPubsubOptions
       order = 3,
       groupName = "Target",
       description = "Output Pub/Sub topic",
-      helpText = "The name of the topic to which data should published.",
-      example = "projects/<>/topics/<TOPIC_NAME>")
+      helpText = "The name of the topic to publish data to.",
+      example = "projects/<PROJECT_ID>/topics/<TOPIC_NAME>")
   @Validation.Required
   String getOutputTopic();
 

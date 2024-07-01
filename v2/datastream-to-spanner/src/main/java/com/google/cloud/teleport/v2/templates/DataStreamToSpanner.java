@@ -155,7 +155,7 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Datastream output file format (avro/json).",
         helpText =
-            "The format of the output file produced by Datastream. For example `avro,json`. Defaults to : `avro`.")
+            "The format of the output file produced by Datastream. For example `avro,json`. Defaults to: `avro`.")
     @Default.String("avro")
     String getInputFileFormat();
 
@@ -217,8 +217,8 @@ public class DataStreamToSpanner {
         optional = true,
         description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
         helpText =
-            "The Pub/Sub subscription being used in a Cloud Storage notification policy. The name"
-                + " should be in the format of `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.")
+            "The Pub/Sub subscription being used in a Cloud Storage notification policy. For the name,"
+                + " use the format of `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.")
     String getGcsPubSubSubscription();
 
     void setGcsPubSubSubscription(String value);
@@ -411,8 +411,8 @@ public class DataStreamToSpanner {
                 + " retry directory when running in regular mode.",
         helpText =
             "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ"
-                + " retry directory when running in regular mode. The name should be in the format"
-                + " of `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`. When set, the"
+                + " retry directory when running in regular mode. For the name, use the format"
+                + " `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`. When set, the"
                 + " deadLetterQueueDirectory and dlqRetryMinutes are ignored.")
     String getDlqGcsPubSubSubscription();
 

@@ -54,7 +54,7 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       optional = true,
       helpText =
           "The Kafka schema format. Can be provided as `SINGLE_SCHEMA_FILE` or `SCHEMA_REGISTRY`. "
-              + "If `SINGLE_SCHEMA_FILE` is specified, all messages should have the schema mentioned in the avro schema file. "
+              + "If `SINGLE_SCHEMA_FILE` is specified, use the schema mentioned in the avro schema file for all messages. "
               + "If `SCHEMA_REGISTRY` is specified, the messages can have either a single schema or multiple schemas.")
   @Default.String(SchemaFormat.SINGLE_SCHEMA_FILE)
   String getSchemaFormat();

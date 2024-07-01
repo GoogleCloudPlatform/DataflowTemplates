@@ -171,7 +171,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "The byte size of the embeddings array. Can be 4 or 8.",
         helpText =
-            "The byte size of each entry in the embeddings array. For float, use the value 4. For double, use the value 8. Defaults to `4`.")
+            "The byte size of each entry in the embeddings array. For float, use the value `4`. For double, use the value `8`. Defaults to `4`.")
     @Default.Integer(4)
     ValueProvider<Integer> getEmbeddingByteSize();
 
