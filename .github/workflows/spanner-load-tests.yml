@@ -36,8 +36,8 @@ jobs:
       with:
         fetch-depth: 0
     - name: Setup Environment
-      id: setup-java-env
-      uses: ./.github/actions/setup-java-env
+      id: setup-env
+      uses: ./.github/actions/setup-env
     - name: Run Load Tests
       run: |
         ./cicd/run-load-tests \
