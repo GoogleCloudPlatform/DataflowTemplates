@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,38 +14,25 @@
 
 # Checks that are intended to run on PRs containing Java code.
 
-name: Java PR
+name: Kafka PR
 
 on:
   pull_request:
     branches:
       - 'main'
     paths:
-      - '**.java'
-      - '**.xml'
-      # Include relevant GitHub Action files for running these checks.
-      # This will make it easier to verify action changes don't break anything.
-      - '.github/actions/setup-env/*'
-      - '.github/workflows/java-pr.yml'
-      # Exclude spanner paths from global run (covered in https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/spanner-pr.yml)
-      - '!v2/datastream-to-spanner/**'
-      - '!v2/spanner-common/**'
-      - '!v2/spanner-change-streams-to-sharded-file-sink/**'
-      - '!v2/gcs-to-sourcedb/**'
-      - '!v2/spanner-migrations-sdk/**'
-      - '!v2/spanner-custom-shard/**'
-      - '!v2/sourcedb-to-spanner/**'
-      # Exclude Kafka paths from global run (covered in https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/kafka-pr.yml)
-      - '!v2/kafka-to-bigquery/**'
-      - '!v2/kafka-to-gcs/**'
-      - '!v2/kafka-to-kafka/**'
-      - '!v2/kafka-common/**'
+      # Include Kafka paths only
+      - '.github/workflows/kafka-pr.yml'
+      - 'v2/kafka-to-bigquery/**'
+      - 'v2/kafka-to-gcs/**'
+      - 'v2/kafka-to-kafka/**'
+      - 'v2/kafka-common/**'
   schedule:
     - cron: "0 */12 * * *"
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: java-pr-${{ github.event.issue.number || github.run_id }}
   cancel-in-progress: true
 
 env:
@@ -65,7 +52,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Spotless
-        run: ./cicd/run-spotless
+        run: |
+          ./cicd/run-spotless \
+          --modules-to-build="KAFKA"
   checkstyle_check:
     name: Checkstyle
     timeout-minutes: 10
@@ -77,7 +66,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Checkstyle
-        run: ./cicd/run-checkstyle
+        run: |
+          ./cicd/run-checkstyle \
+          --modules-to-build="KAFKA"
   java_build:
     name: Build
     timeout-minutes: 60
@@ -89,7 +80,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Build
-        run: ./cicd/run-build
+        run: |
+          ./cicd/run-build \
+          --modules-to-build="KAFKA"
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
   java_unit_tests:
@@ -104,7 +97,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Unit Tests
-        run: ./cicd/run-unit-tests
+        run: |
+          ./cicd/run-unit-tests \
+          --modules-to-build="KAFKA"
       - name: Upload Unit Tests Report
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails
@@ -133,8 +128,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Smoke Tests
-        run: | 
+        run: |
           ./cicd/run-it-smoke-tests \
+          --modules-to-build="KAFKA" \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
@@ -151,7 +147,7 @@ jobs:
   java_integration_tests_templates:
     name: Dataflow Templates Integration Tests
     needs: [java_integration_smoke_tests_templates]
-    timeout-minutes: 240
+    timeout-minutes: 180
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, it]
     steps:
@@ -161,8 +157,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Tests
-        run: | 
+        run: |
           ./cicd/run-it-tests \
+          --modules-to-build="KAFKA" \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
@@ -184,17 +181,18 @@ jobs:
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, perf]
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-    - name: Setup Environment
-      id: setup-env
-      uses: ./.github/actions/setup-env
-    - name: Run Load Tests
-      run: |
-        ./cicd/run-load-tests \
-        --it-region="us-central1" \
-        --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1"
-    - name: Cleanup Java Environment
-      uses: ./.github/actions/cleanup-java-env
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Load Tests
+        run: |
+          ./cicd/run-load-tests \
+          --modules-to-build="KAFKA" \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1"
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env

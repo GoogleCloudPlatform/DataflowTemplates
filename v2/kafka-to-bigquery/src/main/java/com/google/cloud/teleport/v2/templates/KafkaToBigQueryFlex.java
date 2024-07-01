@@ -347,6 +347,7 @@ public class KafkaToBigQueryFlex {
     } else if (options.getSchemaFormat().equals(SchemaFormat.SCHEMA_REGISTRY)) {
       return handleSchemaRegistryFormat(kafkaRecords, options);
     } else {
+      // throw error
       throw new IllegalArgumentException(
           "Message format " + options.getSchemaFormat() + " is unsupported.");
     }

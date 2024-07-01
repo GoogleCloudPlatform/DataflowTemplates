@@ -24,12 +24,14 @@ import (
 const (
 	ALL     = "ALL"
 	SPANNER = "SPANNER"
+
+	KAFKA = "KAFKA"
 )
 
 // Avoid making these vars public.
 var (
 	modulesToBuild string
-	moduleMap      = map[string]string{ALL: "", SPANNER: "v2/datastream-to-spanner/,v2/spanner-change-streams-to-sharded-file-sink/,v2/gcs-to-sourcedb/,v2/sourcedb-to-spanner/,v2/spanner-custom-shard,plugins/templates-maven-plugin"}
+	moduleMap      = map[string]string{ALL: "", SPANNER: "v2/datastream-to-spanner/,v2/spanner-change-streams-to-sharded-file-sink/,v2/gcs-to-sourcedb/,v2/sourcedb-to-spanner/,v2/spanner-custom-shard,plugins/templates-maven-plugin", KAFKA: "v2/kafka-to-bigquery/,v2/kafka-to-gcs/,v2/kafka-to-kafka/,v2/kafka-common/"}
 )
 
 // Registers all common flags. Must be called before flag.Parse().
