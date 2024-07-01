@@ -22,10 +22,12 @@ import org.apache.beam.sdk.options.PipelineOptions;
 public interface BigQueryDeadLetterQueueOptions extends PipelineOptions {
   String GROUP_NAME = "Dead Letter Queue";
 
+  // Make this non-optional. Otherwise, the UI will show this as Optional Dead Letter Queue
+  // Parameters
+  // instead of Dead Letter Queue.
   @TemplateParameter.Boolean(
       name = "useBigQueryDLQ",
       groupName = GROUP_NAME,
-      optional = false,
       description = "Write errors to BigQuery",
       helpText =
           "If true, failed messages will be written to BigQuery with extra error information.")
