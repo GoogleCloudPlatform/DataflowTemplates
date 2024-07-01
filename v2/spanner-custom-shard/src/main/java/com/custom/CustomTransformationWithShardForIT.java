@@ -20,7 +20,9 @@ import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -134,9 +136,10 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
       row.put("time_column", timeColumn.toString());
       row.put("bool_column", false);
       row.put("enum_column", "3");
-      row.put("blob_column", "576f726d64");
-      row.put("binary_column", "01020304");
-      row.put("bit_column", "576f726d64");
+      row.put("blob_column", Base64.getEncoder().encodeToString("blob_column_appended".getBytes(StandardCharsets.UTF_8)));
+      row.put(
+          "binary_column", Base64.getEncoder().encodeToString("binary_column_appended".getBytes(StandardCharsets.UTF_8)));
+      row.put("bit_column", Base64.getEncoder().encodeToString("5".getBytes(StandardCharsets.UTF_8)));
       row.put("year_column", yearColumn.toString());
       try {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
