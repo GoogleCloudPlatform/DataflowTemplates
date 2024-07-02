@@ -15,88 +15,113 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.Action;
-import com.google.cloud.teleport.v2.neo4j.model.job.Config;
-import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
-import com.google.cloud.teleport.v2.neo4j.model.job.Source;
-import com.google.cloud.teleport.v2.neo4j.model.job.Target;
+import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import com.google.cloud.teleport.v2.neo4j.utils.FileSystemUtils;
-import org.apache.commons.lang3.StringUtils;
+import java.io.StringReader;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.neo4j.importer.v1.ImportSpecification;
+import org.neo4j.importer.v1.ImportSpecificationDeserializer;
+import org.neo4j.importer.v1.sources.Source;
+import org.neo4j.importer.v1.validation.SpecificationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Helper class for parsing JobSpec json files, accepts file URI as entry point. */
+/**
+ * Helper class for parsing import specification files, accepts file URI as entry point. Delegates
+ * to {@link ImportSpecificationDeserializer} for non-legacy spec payloads.
+ */
 public class JobSpecMapper {
-
   private static final Logger LOG = LoggerFactory.getLogger(JobSpecMapper.class);
-  private static final String DEFAULT_SOURCE_NAME = "";
 
-  public static JobSpec fromUri(String jobSpecUri) {
-
-    JobSpec jobSpecRequest = new JobSpec();
-
-    String jobSpecJsonStr = "{}";
+  public static ImportSpecification parse(String jobSpecUri, OptionsParams options) {
+    var json = fetchContent(jobSpecUri);
+    var spec = new JSONObject(json);
+    if (!spec.has("version")) {
+      return parseLegacyJobSpec(options, spec);
+    }
     try {
-      jobSpecJsonStr = FileSystemUtils.getPathContents(jobSpecUri);
+      // TODO: interpolate runtime tokens into new spec elements
+      return ImportSpecificationDeserializer.deserialize(new StringReader(json));
+    } catch (SpecificationException e) {
+      throw validationFailure(e);
+    }
+  }
+
+  private static String fetchContent(String jobSpecUri) {
+    try {
+      return FileSystemUtils.getPathContents(jobSpecUri);
     } catch (Exception e) {
-      LOG.error("Unable to read {} neo4j job specification: ", jobSpecUri, e);
+      LOG.error("Unable to fetch Neo4j job specification from URI {}: ", jobSpecUri, e);
       throw new RuntimeException(e);
     }
+  }
 
+  @Deprecated
+  private static ImportSpecification parseLegacyJobSpec(OptionsParams options, JSONObject spec) {
+    LOG.info("Converting legacy JSON job spec to new import specification format");
+    var configuration = parseConfig(spec);
+    var targets = extractTargets(spec);
+    var actions = extractActions(spec);
+    var index = indexLegacyJobSpec(targets, actions);
+    var specification =
+        new ImportSpecification(
+            "0.legacy",
+            configuration,
+            parseSources(spec, options),
+            TargetMapper.parse(
+                targets,
+                options,
+                index,
+                (boolean) configuration.getOrDefault("index_all_properties", false)),
+            ActionMapper.parse(actions, options));
     try {
-      JSONObject jobSpecObj = new JSONObject(jobSpecJsonStr);
-
-      if (jobSpecObj.has("config")) {
-        jobSpecRequest.setConfig(new Config(jobSpecObj.getJSONObject("config")));
-      }
-
-      if (jobSpecObj.has("source")) {
-        Source source = SourceMapper.fromJson(jobSpecObj.getJSONObject("source"));
-        if (StringUtils.isNotEmpty(source.getName())) {
-          jobSpecRequest.getSources().put(source.getName(), source);
-        } else {
-          jobSpecRequest.getSources().put(DEFAULT_SOURCE_NAME, source);
-        }
-      } else if (jobSpecObj.has("sources")) {
-
-        JSONArray sourceArray = jobSpecObj.getJSONArray("sources");
-        for (int i = 0; i < sourceArray.length(); i++) {
-          Source source = SourceMapper.fromJson(sourceArray.getJSONObject(i));
-          if (StringUtils.isNotEmpty(source.getName())) {
-            jobSpecRequest.getSources().put(source.getName(), source);
-          } else {
-            jobSpecRequest.getSources().put(DEFAULT_SOURCE_NAME, source);
-          }
-        }
-      } else {
-        // there is no source defined this could be used in a big query job...
-        // this would lead to a validation error (elsewhere)
-      }
-
-      if (jobSpecObj.has("targets")) {
-        JSONArray targetObjArray = jobSpecObj.getJSONArray("targets");
-        for (int i = 0; i < targetObjArray.length(); i++) {
-          Target target = TargetMapper.fromJson(targetObjArray.getJSONObject(i));
-          jobSpecRequest.getTargets().add(target);
-        }
-      }
-
-      if (jobSpecObj.has("actions")) {
-        JSONArray optionsArray = jobSpecObj.getJSONArray("actions");
-        for (int i = 0; i < optionsArray.length(); i++) {
-          JSONObject jsonObject = optionsArray.getJSONObject(i);
-          Action action = ActionMapper.fromJson(jsonObject);
-          jobSpecRequest.getActions().add(action);
-        }
-      }
-
-    } catch (Exception e) {
-      LOG.error("Unable to parse beam configuration from {}: ", jobSpecUri, e);
-      throw new RuntimeException(e);
+      ImportSpecificationDeserializer.validate(specification);
+    } catch (SpecificationException e) {
+      throw validationFailure(e);
     }
+    return specification;
+  }
 
-    return jobSpecRequest;
+  private static JobSpecIndex indexLegacyJobSpec(JSONArray targets, JSONArray actions) {
+    var index = new JobSpecIndex();
+    TargetMapper.index(targets, index);
+    ActionMapper.index(actions, index);
+    return index;
+  }
+
+  private static RuntimeException validationFailure(SpecificationException e) {
+    return new RuntimeException("Unable to process Neo4j job specification", e);
+  }
+
+  private static Map<String, Object> parseConfig(JSONObject json) {
+    return json.has("config") ? json.getJSONObject("config").toMap() : Collections.emptyMap();
+  }
+
+  private static List<Source> parseSources(JSONObject json, OptionsParams options) {
+    if (json.has("source")) {
+      return List.of(SourceMapper.parse(json.getJSONObject("source"), options));
+    }
+    if (json.has("sources")) {
+      return SourceMapper.parse(json.getJSONArray("sources"), options);
+    }
+    return List.of();
+  }
+
+  private static JSONArray extractTargets(JSONObject spec) {
+    if (!spec.has("targets")) {
+      throw new IllegalArgumentException("could not find any targets");
+    }
+    return spec.getJSONArray("targets");
+  }
+
+  private static JSONArray extractActions(JSONObject spec) {
+    if (!spec.has("actions")) {
+      return new JSONArray(0);
+    }
+    return spec.getJSONArray("actions");
   }
 }

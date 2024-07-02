@@ -18,35 +18,29 @@ package com.google.cloud.teleport.v2.neo4j.actions;
 import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadAction;
 import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadBigQueryAction;
 import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadCypherAction;
-import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadHttpGetAction;
-import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadHttpPostAction;
-import com.google.cloud.teleport.v2.neo4j.model.enums.ActionType;
-import com.google.cloud.teleport.v2.neo4j.model.job.Action;
+import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadHttpAction;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
+import org.neo4j.importer.v1.actions.Action;
 
 /** Factory providing indirection to action handler. */
 public class ActionPreloadFactory {
 
   public static PreloadAction of(Action action, ActionContext context) {
-    ActionType actionType = action.type;
-    if (actionType == ActionType.bigquery) {
-      PreloadBigQueryAction impl = new PreloadBigQueryAction();
-      impl.configure(action, context);
-      return impl;
-    } else if (actionType == ActionType.cypher) {
-      PreloadCypherAction impl = new PreloadCypherAction();
-      impl.configure(action, context);
-      return impl;
-    } else if (actionType == ActionType.http_post) {
-      PreloadHttpPostAction impl = new PreloadHttpPostAction();
-      impl.configure(action, context);
-      return impl;
-    } else if (actionType == ActionType.http_get) {
-      PreloadHttpGetAction impl = new PreloadHttpGetAction();
-      impl.configure(action, context);
-      return impl;
-    } else {
-      throw new RuntimeException("Unhandled action type: " + actionType);
+    var actionType = action.getType();
+    switch (actionType) {
+      case CYPHER:
+        PreloadCypherAction cypher = new PreloadCypherAction();
+        cypher.configure(action, context);
+        return cypher;
+      case HTTP:
+        PreloadHttpAction http = new PreloadHttpAction();
+        http.configure(action, context);
+        return http;
+      case BIGQUERY:
+        PreloadBigQueryAction bigQuery = new PreloadBigQueryAction();
+        bigQuery.configure(action, context);
+        return bigQuery;
     }
+    throw new RuntimeException("Unsupported preload action type: " + actionType);
   }
 }

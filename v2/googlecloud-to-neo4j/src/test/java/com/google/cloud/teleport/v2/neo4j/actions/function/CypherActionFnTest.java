@@ -15,36 +15,74 @@
  */
 package com.google.cloud.teleport.v2.neo4j.actions.function;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
-import com.google.cloud.teleport.v2.neo4j.model.job.Action;
+import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.junit.Test;
 import org.neo4j.driver.TransactionConfig;
+import org.neo4j.importer.v1.actions.ActionStage;
+import org.neo4j.importer.v1.actions.CypherAction;
+import org.neo4j.importer.v1.actions.CypherExecutionMode;
 
 public class CypherActionFnTest {
+  private final Neo4jConnection connection = mock(Neo4jConnection.class);
 
   @Test
-  public void sendsTransactionMetadata() {
-    Neo4jConnection connection = mock(Neo4jConnection.class);
-    ActionContext context = new ActionContext();
-    Action action = new Action();
-    action.options.put("cypher", "RETURN 42");
-    context.action = action;
+  public void sends_transaction_metadata_for_autocommit_Cypher_action() {
+    var context =
+        new ActionContext(
+            new CypherAction(
+                true,
+                "the-answer",
+                ActionStage.POST_NODES,
+                "RETURN 42",
+                CypherExecutionMode.AUTOCOMMIT),
+            mock(ConnectionParams.class),
+            "a-version");
     CypherActionFn actionFn = new CypherActionFn(context, () -> connection);
     actionFn.setup();
 
     actionFn.processElement(mock(ProcessContext.class));
 
-    Map<String, String> expectedTxMetadata = Map.of("sink", "neo4j", "step", "cypher-action");
+    Map<String, String> expectedTxMetadata =
+        Map.of("sink", "neo4j", "step", "cypher-action", "execution", "autocommit");
     TransactionConfig expectedTransactionConfig =
         TransactionConfig.builder()
             .withMetadata(Map.of("app", "dataflow", "metadata", expectedTxMetadata))
             .build();
-    verify(connection).executeCypher("RETURN 42", expectedTransactionConfig);
+    verify(connection).runAutocommit("RETURN 42", expectedTransactionConfig);
+  }
+
+  @Test
+  public void sends_transaction_metadata_for_transactional_Cypher_action() {
+    var context =
+        new ActionContext(
+            new CypherAction(
+                true,
+                "the-answer",
+                ActionStage.POST_NODES,
+                "RETURN 42",
+                CypherExecutionMode.TRANSACTION),
+            mock(ConnectionParams.class),
+            "a-version");
+    CypherActionFn actionFn = new CypherActionFn(context, () -> connection);
+    actionFn.setup();
+
+    actionFn.processElement(mock(ProcessContext.class));
+
+    Map<String, String> expectedTxMetadata =
+        Map.of("sink", "neo4j", "step", "cypher-action", "execution", "transaction");
+    TransactionConfig expectedTransactionConfig =
+        TransactionConfig.builder()
+            .withMetadata(Map.of("app", "dataflow", "metadata", expectedTxMetadata))
+            .build();
+    verify(connection).writeTransaction(any(), eq(expectedTransactionConfig));
   }
 }

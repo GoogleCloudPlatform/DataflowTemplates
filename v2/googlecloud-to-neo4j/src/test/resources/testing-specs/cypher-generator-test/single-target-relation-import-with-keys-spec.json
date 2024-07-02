@@ -1,7 +1,5 @@
 {
   "config": {
-    "reset_db": false,
-    "index_all_properties": false,
     "node_write_batch_size": 5000,
     "edge_write_batch_size": 1000
   },
@@ -40,8 +38,8 @@
           },
           "properties": {
             "keys": [
-              {"rel_id_1": "rel_id1"},
-              {"rel_id_2": "rel_id2"}
+              {"rel_id_1": "id1"},
+              {"rel_id_2": "id2"}
             ],
             "indexed": [
               {

@@ -125,7 +125,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
           "Executing CREATE OR REPLACE DATABASE Cypher query: {} against database {}",
           cypher,
           database);
-      executeCypher(
+      runAutocommit(
           cypher, Map.of("db", database), databaseResetMetadata("create-replace-database"));
     } catch (Exception ex) {
       deleteData();
@@ -136,7 +136,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
   private void deleteData() {
     String ddeCypher = "MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS";
     LOG.info("Executing delete Cypher query: {}", ddeCypher);
-    executeCypher(ddeCypher, databaseResetMetadata("cit-detach-delete"));
+    runAutocommit(ddeCypher, databaseResetMetadata("cit-detach-delete"));
   }
 
   private void dropSchema(Neo4jCapabilities capabilities) {
@@ -153,7 +153,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
         for (var constraint : constraints) {
           LOG.info("Dropping constraint {}", constraint);
 
-          executeCypher(
+          runAutocommit(
               String.format("DROP CONSTRAINT `%s`", constraint),
               Map.of(),
               databaseResetMetadata("drop-constraint"));
@@ -171,7 +171,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
       for (var index : indexes) {
         LOG.info("Dropping index {}", index);
 
-        executeCypher(
+        runAutocommit(
             String.format("DROP INDEX `%s`", index), Map.of(), databaseResetMetadata("drop-index"));
       }
     }
@@ -182,8 +182,8 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
    *
    * @param cypher statement
    */
-  public void executeCypher(String cypher, TransactionConfig transactionConfig) {
-    executeCypher(cypher, Collections.emptyMap(), transactionConfig);
+  public void runAutocommit(String cypher, TransactionConfig transactionConfig) {
+    runAutocommit(cypher, Collections.emptyMap(), transactionConfig);
   }
 
   /**
@@ -191,7 +191,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
    *
    * @param cypher statement
    */
-  public void executeCypher(
+  public void runAutocommit(
       String cypher, Map<String, Object> parameters, TransactionConfig transactionConfig) {
     try (Session session = getSession()) {
       session.run(cypher, parameters, transactionConfig).consume();

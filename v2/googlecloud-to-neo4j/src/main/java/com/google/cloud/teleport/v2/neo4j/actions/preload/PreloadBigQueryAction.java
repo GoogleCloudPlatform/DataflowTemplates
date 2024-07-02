@@ -19,28 +19,29 @@ import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableResult;
-import com.google.cloud.teleport.v2.neo4j.model.job.Action;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
+import org.neo4j.importer.v1.actions.Action;
+import org.neo4j.importer.v1.actions.BigQueryAction;
 
 /** Query action handler. */
 public class PreloadBigQueryAction implements PreloadAction {
 
-  private Action action;
+  private BigQueryAction action;
 
   @Override
   public void configure(Action action, ActionContext context) {
-    this.action = action;
+    this.action = (BigQueryAction) action;
   }
 
   @Override
   public List<String> execute() {
     List<String> msgs = new ArrayList<>();
-    String sql = action.options.get("sql");
+    String sql = action.getSql();
     if (StringUtils.isEmpty(sql)) {
-      throw new RuntimeException("Options 'sql' not provided for preload query action.");
+      throw new RuntimeException("SQL Query not provided for preload query action.");
     }
 
     try {
