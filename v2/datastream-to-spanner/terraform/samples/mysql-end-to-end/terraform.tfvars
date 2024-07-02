@@ -48,7 +48,6 @@ dataflow_params = {
     spanner_instance_id                 = "<YOUR_SPANNER_INSTANCE_ID>"
     spanner_database_id                 = "<YOUR_SPANNER_DATABASE_ID>"
     spanner_host                        = "https://<YOUR_REGION>-spanner.googleapis.com" # Replace <YOUR_REGION>
-    dead_letter_queue_directory         = "<YOUR_DLQ_DIRECTORY>"                         # e.g., "gs://<YOUR_BUCKET>/dlq" (optional)
     dlq_retry_minutes                   = 10                                             # Adjust as needed
     dlq_max_retry_count                 = 3                                              # Adjust as needed
     datastream_root_url                 = "<YOUR_DATASTREAM_ROOT_URL>"                   # Base URL of your Datastream API (optional)
