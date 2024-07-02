@@ -87,12 +87,18 @@ public class InputRecordProcessor {
           org.joda.time.Instant startTimestamp = org.joda.time.Instant.now();
           Map<String, Object> mapRequest =
               ChangeEventToMapConvertor.combineJsonObjects(keysJson, newValuesJson);
+          LOG.info("transformation request" + mapRequest);
           MigrationTransformationRequest migrationTransformationRequest =
               new MigrationTransformationRequest(tableName, mapRequest, shardId, modType);
           MigrationTransformationResponse migrationTransformationResponse = null;
           try {
             migrationTransformationResponse =
                 spannerToSourceTransformer.toSourceRow(migrationTransformationRequest);
+            LOG.info(
+                "transformation response"
+                    + migrationTransformationResponse.getResponseRow()
+                    + "is filtered"
+                    + migrationTransformationResponse.isEventFiltered());
           } catch (Exception e) {
             throw new InvalidTransformationException(e);
           }
@@ -110,6 +116,7 @@ public class InputRecordProcessor {
         String dmlStatement =
             DMLGenerator.getDMLStatement(
                 modType, tableName, schema, newValuesJson, keysJson, sourceDbTimezoneOffset);
+        LOG.info("DML statement" + dmlStatement);
         if (!dmlStatement.isEmpty()) {
           dmlBatch.add(dmlStatement);
         }
