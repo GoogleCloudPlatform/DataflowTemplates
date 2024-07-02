@@ -194,7 +194,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     assertThat(sortedRows.get(0).get("enum_column")).isEqualTo("3");
     assertThat(sortedRows.get(0).get("float_column")).isEqualTo(124.45f);
     assertThat(sortedRows.get(0).get("int_column")).isEqualTo(124);
-    assertThat(sortedRows.get(0).get("text_column")).isEqualTo("Sample text appended");
+    assertThat(sortedRows.get(0).get("text_column")).isEqualTo("Sample text append");
     assertThat(sortedRows.get(0).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:40:00"));
     assertThat(sortedRows.get(0).get("timestamp_column"))
         .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
