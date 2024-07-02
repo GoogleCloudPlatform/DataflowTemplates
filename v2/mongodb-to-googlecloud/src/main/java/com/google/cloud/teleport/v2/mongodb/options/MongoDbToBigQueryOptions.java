@@ -81,6 +81,17 @@ public class MongoDbToBigQueryOptions {
     String getKMSEncryptionKey();
 
     void setKMSEncryptionKey(String keyName);
+
+    @TemplateParameter.Text(
+        order = 6,
+        groupName = "Source",
+        description = "Bson filter",
+        optional = true,
+        helpText = "Bson filter in json format.",
+        example = "{ \"val\": { $gt: 0, $lt: 9 }}")
+    String getFilter();
+
+    void setFilter(String jsonFilter);
   }
 
   /** Options for reading from PubSub. */

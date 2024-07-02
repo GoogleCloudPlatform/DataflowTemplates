@@ -29,15 +29,18 @@ import com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQuery.Options;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiBatchOptions;
 import com.google.cloud.teleport.v2.transforms.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
+import com.google.common.base.Strings;
 import java.io.IOException;
 import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
+import org.apache.beam.sdk.io.mongodb.FindQuery;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.bson.BsonDocument;
 import org.bson.Document;
 
 /**
@@ -122,13 +125,21 @@ public class MongoDbToBigQuery {
               mongoDbUri, options.getDatabase(), options.getCollection(), options.getUserOption());
     }
 
+    MongoDbIO.Read readDocuments =
+        MongoDbIO.read()
+            .withUri(mongoDbUri)
+            .withDatabase(options.getDatabase())
+            .withCollection(options.getCollection());
+
+    String filterJson = options.getFilter();
+    BsonDocument filter;
+    if (!Strings.isNullOrEmpty(filterJson)
+        && !(filter = BsonDocument.parse(filterJson)).isEmpty()) {
+      readDocuments = readDocuments.withQueryFn(FindQuery.create().withFilters(filter));
+    }
+
     pipeline
-        .apply(
-            "Read Documents",
-            MongoDbIO.read()
-                .withUri(mongoDbUri)
-                .withDatabase(options.getDatabase())
-                .withCollection(options.getCollection()))
+        .apply("Read Documents", readDocuments)
         .apply(
             "UDF",
             TransformDocumentViaJavascript.newBuilder()
