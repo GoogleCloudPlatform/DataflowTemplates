@@ -31,6 +31,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **useStorageWriteApiAtLeastOnce** : When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
 * **javascriptDocumentTransformGcsPath** : The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://your-bucket/your-transforms/*.js).
 * **javascriptDocumentTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is myTransform. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples). (Example: transform).
+* **bigQuerySchemaPath** : The Cloud Storage path for the BigQuery JSON schema.  (Example: gs://your-bucket/your-schema.json).
+
 
 
 
@@ -121,6 +123,7 @@ export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH=<javascriptDocumentTransformGcsPath>
 export JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME=<javascriptDocumentTransformFunctionName>
+export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 
 gcloud dataflow flex-template run "mongodb-to-bigquery-job" \
   --project "$PROJECT" \
@@ -134,6 +137,7 @@ gcloud dataflow flex-template run "mongodb-to-bigquery-job" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
   --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
   --parameters "outputTableSpec=$OUTPUT_TABLE_SPEC" \
+  --parameters "bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH" \
   --parameters "javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME"
 ```
@@ -229,6 +233,7 @@ resource "google_dataflow_flex_template_job" "mongodb_to_bigquery" {
     # useStorageWriteApiAtLeastOnce = "false"
     # javascriptDocumentTransformGcsPath = "gs://your-bucket/your-transforms/*.js"
     # javascriptDocumentTransformFunctionName = "transform"
+    # bigQuerySchemaPath = "gs://your-bucket/your-schema.json"
   }
 }
 ```
