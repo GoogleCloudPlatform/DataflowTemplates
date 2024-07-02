@@ -91,14 +91,14 @@ public class InputRecordProcessor {
           MigrationTransformationRequest migrationTransformationRequest =
               new MigrationTransformationRequest(tableName, mapRequest, shardId, modType);
           MigrationTransformationResponse migrationTransformationResponse = null;
-          LOG.info(
-              "transformation response"
-                  + migrationTransformationResponse.getResponseRow()
-                  + "is filtered"
-                  + migrationTransformationResponse.isEventFiltered());
           try {
             migrationTransformationResponse =
                 spannerToSourceTransformer.toSourceRow(migrationTransformationRequest);
+            LOG.info(
+                "transformation response"
+                    + migrationTransformationResponse.getResponseRow()
+                    + "is filtered"
+                    + migrationTransformationResponse.isEventFiltered());
           } catch (Exception e) {
             throw new InvalidTransformationException(e);
           }
