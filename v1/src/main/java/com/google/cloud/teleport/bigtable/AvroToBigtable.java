@@ -114,7 +114,7 @@ public final class AvroToBigtable {
         groupName = "Source",
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage path pattern where data is located.",
-        example = "gs://BUCKET/FOLDER/PREFIX*")
+        example = "gs://<BUCKET>/FOLDER/PREFIX*")
     ValueProvider<String> getInputFilePattern();
 
     @SuppressWarnings("unused")
