@@ -89,7 +89,6 @@ public class MongoDbToBigQueryOptions {
         optional = true,
         helpText = "Bson filter in json format.",
         example = "{ \"val\": { $gt: 0, $lt: 9 }}")
-    @Default.String("{}")
     String getFilter();
 
     void setFilter(String jsonFilter);

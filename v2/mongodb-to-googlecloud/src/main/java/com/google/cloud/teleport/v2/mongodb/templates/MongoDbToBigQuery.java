@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQuery.Options;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiBatchOptions;
 import com.google.cloud.teleport.v2.transforms.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
+import com.google.common.base.Strings;
 import java.io.IOException;
 import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
@@ -41,7 +42,6 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.bson.BsonDocument;
 import org.bson.Document;
-import org.bson.conversions.Bson;
 
 /**
  * The {@link MongoDbToBigQuery} pipeline is a batch pipeline which ingests data from MongoDB and
@@ -109,9 +109,6 @@ public class MongoDbToBigQuery {
     // Get MongoDbUri plain text or base64 encrypted with a specific KMS encryption key
     String mongoDbUri = maybeDecrypt(options.getMongoDbUri(), options.getKMSEncryptionKey()).get();
 
-    String filterJson = options.getFilter();
-    Bson filter = BsonDocument.parse(filterJson);
-
     if (options.getJavascriptDocumentTransformFunctionName() != null
         && options.getJavascriptDocumentTransformGcsPath() != null) {
       bigquerySchema =
@@ -128,14 +125,21 @@ public class MongoDbToBigQuery {
               mongoDbUri, options.getDatabase(), options.getCollection(), options.getUserOption());
     }
 
+    MongoDbIO.Read readDocuments =
+        MongoDbIO.read()
+            .withUri(mongoDbUri)
+            .withDatabase(options.getDatabase())
+            .withCollection(options.getCollection());
+
+    String filterJson = options.getFilter();
+    BsonDocument filter;
+    if (!Strings.isNullOrEmpty(filterJson)
+        && !(filter = BsonDocument.parse(filterJson)).isEmpty()) {
+      readDocuments = readDocuments.withQueryFn(FindQuery.create().withFilters(filter));
+    }
+
     pipeline
-        .apply(
-            "Read Documents",
-            MongoDbIO.read()
-                .withUri(mongoDbUri)
-                .withDatabase(options.getDatabase())
-                .withQueryFn(FindQuery.create().withFilters(filter))
-                .withCollection(options.getCollection()))
+        .apply("Read Documents", readDocuments)
         .apply(
             "UDF",
             TransformDocumentViaJavascript.newBuilder()
