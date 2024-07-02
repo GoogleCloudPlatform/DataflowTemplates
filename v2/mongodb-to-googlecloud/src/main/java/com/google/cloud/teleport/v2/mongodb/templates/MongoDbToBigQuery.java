@@ -31,6 +31,7 @@ import com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQuery.Options;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiBatchOptions;
 import com.google.cloud.teleport.v2.transforms.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
+import com.google.common.base.Strings;
 import java.io.IOException;
 import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
@@ -109,7 +110,7 @@ public class MongoDbToBigQuery {
     // Get MongoDbUri plain text or base64 encrypted with a specific KMS encryption key
     String mongoDbUri = maybeDecrypt(options.getMongoDbUri(), options.getKMSEncryptionKey()).get();
 
-    if (options.getBigQuerySchemaPath() != null) {
+    if (!Strings.isNullOrEmpty(options.getBigQuerySchemaPath())) {
       // initialize FileSystem to read from GCS
       FileSystems.setDefaultPipelineOptions(options);
       String jsonSchema = getGcsFileAsString(options.getBigQuerySchemaPath());
