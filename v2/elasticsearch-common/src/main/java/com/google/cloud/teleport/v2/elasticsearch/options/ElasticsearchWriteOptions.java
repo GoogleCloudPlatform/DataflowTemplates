@@ -315,4 +315,14 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   String getApiKeySource();
 
   void setApiKeySource(String apiKeySource);
+
+  @TemplateParameter.Integer(
+      order = 27,
+      optional = true,
+      description = "Socket timeout.",
+      helpText =
+          "If set, overwrites the default max retry timeout and default socket timeout (30000ms) in the Elastic RestClient")
+  Integer getSocketTimeout();
+
+  void setSocketTimeout(Integer socketTimeout);
 }

@@ -162,6 +162,32 @@ public class WriteToElasticsearchTest {
 
   /**
    * Tests that {@link WriteToElasticsearch} throws an exception if {@link
+   * org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO.ConnectionConfiguration} is invalid.
+   */
+  @Test
+  public void testElasticsearchWriteOptionsSocketTimeout() {
+
+    exceptionRule.expect(IllegalArgumentException.class);
+
+    ElasticsearchWriteOptions options =
+        PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
+
+    options.setConnectionUrl("https://host.domain");
+    options.setApiKey("key");
+    options.setSocketTimeout(null);
+
+    TestPipeline pipeline = TestPipeline.create();
+    pipeline
+        .apply("CreateInput", Create.of("test"))
+        .apply(
+            "TestWriteToElasticsearchBadSocketTimeout",
+            WriteToElasticsearch.newBuilder().setOptions(options).build());
+
+    pipeline.run();
+  }
+
+  /**
+   * Tests that {@link WriteToElasticsearch} throws an exception if {@link
    * ElasticsearchIO.ConnectionConfiguration} is invalid.
    */
   @Test
@@ -202,6 +228,7 @@ public class WriteToElasticsearchTest {
     options.setIndex("test-index");
     options.setMaxRetryAttempts(3);
     options.setMaxRetryDuration(10L);
+    options.setSocketTimeout(1);
 
     // Create some dummy input data for testing
     PCollection<String> input = testPipeline.apply(Create.of("json string 1", "json string 2"));
