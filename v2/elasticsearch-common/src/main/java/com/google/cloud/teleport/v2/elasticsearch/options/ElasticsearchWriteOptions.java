@@ -91,7 +91,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 7,
       optional = true,
       description = "Batch Size in Bytes",
-      helpText = "The batch size in number of bytes. Defaults to: `5242880 (5mb)`.")
+      helpText = "The batch size in number of bytes. Defaults to: `5242880` (5mb).")
   @Default.Long(5242880)
   Long getBatchSizeBytes();
 
@@ -245,7 +245,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Trust self-signed certificate",
       helpText =
-          "Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate, Enable this to True to by-pass the validation on SSL certificate. (default is `False`)")
+          "Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate, Enable this to true to by-pass the validation on SSL certificate. (Defaults to: `false`)")
   @Default.Boolean(false)
   Boolean getTrustSelfSignedCerts();
 
@@ -273,8 +273,8 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
           "The Cloud KMS key to decrypt the API key. This parameter must be "
               + "provided if the apiKeySource is set to KMS. If this parameter is provided, apiKey "
               + "string should be passed in encrypted. Encrypt parameters using the KMS API encrypt "
-              + "endpoint. The Key should be in the format "
-              + "`projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}`. "
+              + "endpoint. For the key, use the format "
+              + "`projects/<PROJECT_ID>/locations/<KEY_REGION>/keyRings/<KEY_RING>/cryptoKeys/<KMS_KEY_NAME>`. "
               + "See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt ",
       example =
           "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name")
@@ -290,7 +290,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       regexes = {"^projects\\/[^\\n\\r\\/]+\\/secrets\\/[^\\n\\r\\/]+\\/versions\\/[^\\n\\r\\/]+$"},
       description = "Google Cloud Secret Manager ID.",
       helpText =
-          "Secret Manager secret ID for the apiKey. This parameter should be provided if the `apiKeySource` is set to `SECRET_MANAGER`. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}.",
+          "Secret Manager secret ID for the apiKey. If the `apiKeySource` is set to `SECRET_MANAGER`, provide this parameter. Use the format `projects/<PROJECT_ID>/secrets/<SECRET>/versions/<SECRET_VERSION>.",
       example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
   String getApiKeySecretId();
 
