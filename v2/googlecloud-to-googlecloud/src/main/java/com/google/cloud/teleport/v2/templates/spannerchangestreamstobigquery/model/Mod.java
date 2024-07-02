@@ -20,6 +20,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.Timestamp;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.coders.DefaultCoder;
@@ -46,10 +50,12 @@ public final class Mod implements Serializable {
   private boolean isLastRecordInTransactionInPartition;
   private String recordSequence;
   private String tableName;
+  private List<ModColumnType> rowType;
   private ModType modType;
   private ValueCaptureType valueCaptureType;
   private long numberOfRecordsInTransaction;
   private long numberOfPartitionsInTransaction;
+  private Map<String, ModColumnType> rowTypeAsMap;
 
   /** Default constructor for serialization only. */
   private Mod() {}
@@ -68,6 +74,7 @@ public final class Mod implements Serializable {
    *     Spanner transaction. The value is unique and monotonically increasing in the context of a
    *     particular serverTransactionId
    * @param tableName the name of the table in which the modifications occurred
+   * @param rowType the type information of primary keys and modified columns
    * @param modType the operation that caused the modification to occur, can only be one of INSERT,
    *     UPDATE and DELETE
    * @param valueCaptureType the value capture type of the change stream
@@ -89,6 +96,7 @@ public final class Mod implements Serializable {
       boolean isLastRecordInTransactionInPartition,
       String recordSequence,
       String tableName,
+      List<ModColumnType> rowType,
       ModType modType,
       ValueCaptureType valueCaptureType,
       long numberOfRecordsInTransaction,
@@ -101,10 +109,15 @@ public final class Mod implements Serializable {
     this.isLastRecordInTransactionInPartition = isLastRecordInTransactionInPartition;
     this.recordSequence = recordSequence;
     this.tableName = tableName;
+    this.rowType = rowType;
     this.modType = modType;
     this.valueCaptureType = valueCaptureType;
     this.numberOfRecordsInTransaction = numberOfRecordsInTransaction;
     this.numberOfPartitionsInTransaction = numberOfPartitionsInTransaction;
+    this.rowTypeAsMap = rowType == null ? Collections.emptyMap() : new HashMap<>();
+    for (ModColumnType modColumnType : rowType) {
+      this.rowTypeAsMap.put(modColumnType.getName(), modColumnType);
+    }
   }
 
   public static Mod fromJson(String json) throws IOException {
@@ -176,6 +189,16 @@ public final class Mod implements Serializable {
     return tableName;
   }
 
+  /** The type information of primary keys and modified columns. */
+  public List<ModColumnType> getRowType() {
+    return rowType;
+  }
+
+  /** The map containing ColumnType information for columns included in the mod. */
+  public Map<String, ModColumnType> getRowTypeAsMap() {
+    return rowTypeAsMap;
+  }
+
   /** The type of operation that caused the modifications within this record. */
   public ModType getModType() {
     return modType;
@@ -214,6 +237,7 @@ public final class Mod implements Serializable {
         && Objects.equals(serverTransactionId, that.serverTransactionId)
         && Objects.equals(recordSequence, that.recordSequence)
         && Objects.equals(tableName, that.tableName)
+        && Objects.equals(rowType, that.rowType)
         && modType == that.modType
         && valueCaptureType == that.valueCaptureType;
   }
@@ -228,6 +252,7 @@ public final class Mod implements Serializable {
         isLastRecordInTransactionInPartition,
         recordSequence,
         tableName,
+        rowType,
         modType,
         valueCaptureType,
         numberOfRecordsInTransaction,
@@ -255,6 +280,8 @@ public final class Mod implements Serializable {
         + ", tableName='"
         + tableName
         + '\''
+        + ", rowType="
+        + rowType
         + ", modType="
         + modType
         + ", valueCaptureType="
