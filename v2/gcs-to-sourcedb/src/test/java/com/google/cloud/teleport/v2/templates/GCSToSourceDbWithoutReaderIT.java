@@ -238,7 +238,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     columns.put("enum_column", "ENUM('1','2','3')");
     columns.put("bool_column", "TINYINT(1)");
     columns.put("binary_column", "VARBINARY(150)");
-    columns.put("bit_column", "BIT(20)");
+    columns.put("bit_column", "BIT(8)");
     schema = new JDBCResourceManager.JDBCSchema(columns, "varchar_column");
     jdbcResourceManager.createTable(TABLE2, schema);
   }
