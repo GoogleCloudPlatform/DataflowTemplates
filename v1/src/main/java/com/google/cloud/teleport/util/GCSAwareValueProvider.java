@@ -30,8 +30,15 @@ public class GCSAwareValueProvider implements ValueProvider<String>, Serializabl
 
   private final ValueProvider<String> originalProvider;
 
+  private final ValueProcessor valueProcessor;
+
   public GCSAwareValueProvider(ValueProvider<String> provider) {
+    this(provider, null);
+  }
+
+  public GCSAwareValueProvider(ValueProvider<String> provider, ValueProcessor valueProcessor) {
     this.originalProvider = provider;
+    this.valueProcessor = valueProcessor;
   }
 
   @Override
@@ -51,17 +58,19 @@ public class GCSAwareValueProvider implements ValueProvider<String>, Serializabl
 
   protected String resolve() {
 
-    String originalValue = this.originalProvider.get();
+    String returnValue = this.originalProvider.get();
 
-    if (originalValue != null && originalValue.startsWith("gs://")) {
+    if (returnValue != null && returnValue.startsWith("gs://")) {
       try {
-        return new String(GCSUtils.getGcsFileAsBytes(originalValue), StandardCharsets.UTF_8);
+        returnValue = new String(GCSUtils.getGcsFileAsBytes(returnValue), StandardCharsets.UTF_8);
       } catch (IOException e) {
         throw new RuntimeException(
-            "Error resolving ValueProvider from Cloud Storage path " + originalValue, e);
+            "Error resolving ValueProvider from Cloud Storage path " + returnValue, e);
       }
     }
-
-    return originalValue;
+    if (returnValue != null && valueProcessor != null) {
+      returnValue = this.valueProcessor.process(returnValue);
+    }
+    return returnValue;
   }
 }
