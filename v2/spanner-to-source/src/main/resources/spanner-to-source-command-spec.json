@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.SpannerToSource",
+  "classPath": "/template/spanner-to-source/spanner-to-source-conscrypt.jar:/template/spanner-to-source/*:/template/spanner-to-source/libs/*:/template/spanner-to-source/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"spanner_to_source\"}"
+  }
+}
