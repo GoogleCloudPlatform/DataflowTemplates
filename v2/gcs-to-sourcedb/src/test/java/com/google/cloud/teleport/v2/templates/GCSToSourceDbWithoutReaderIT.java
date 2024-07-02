@@ -179,27 +179,27 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     assertThat(sortedRows.get(1).get("year_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
 
     assertThat(sortedRows.get(0).get("varchar_column")).isEqualTo("example");
-    assertThat(sortedRows.get(1).get("bigint_column")).isEqualTo(12346);
-    assertThat(sortedRows.get(1).get("binary_column"))
+    assertThat(sortedRows.get(0).get("bigint_column")).isEqualTo(12346);
+    assertThat(sortedRows.get(0).get("binary_column"))
         .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
-    assertThat(sortedRows.get(1).get("bit_column")).isEqualTo("5".getBytes(StandardCharsets.UTF_8));
-    assertThat(sortedRows.get(1).get("blob_column"))
+    assertThat(sortedRows.get(0).get("bit_column")).isEqualTo("5".getBytes(StandardCharsets.UTF_8));
+    assertThat(sortedRows.get(0).get("blob_column"))
         .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
-    assertThat(sortedRows.get(1).get("bool_column")).isEqualTo(false);
-    assertThat(sortedRows.get(1).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-02"));
-    assertThat(sortedRows.get(1).get("datetime_column"))
+    assertThat(sortedRows.get(0).get("bool_column")).isEqualTo(false);
+    assertThat(sortedRows.get(0).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-02"));
+    assertThat(sortedRows.get(0).get("datetime_column"))
         .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55));
-    assertThat(sortedRows.get(1).get("decimal_column")).isEqualTo(new BigDecimal("12344.67"));
-    assertThat(sortedRows.get(1).get("double_column")).isEqualTo(124.456);
-    assertThat(sortedRows.get(1).get("enum_column")).isEqualTo("3");
-    assertThat(sortedRows.get(1).get("float_column")).isEqualTo(124.45f);
-    assertThat(sortedRows.get(1).get("int_column")).isEqualTo(124);
-    assertThat(sortedRows.get(1).get("text_column")).isEqualTo("Sample text appended");
-    assertThat(sortedRows.get(1).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:40:00"));
-    assertThat(sortedRows.get(1).get("timestamp_column"))
+    assertThat(sortedRows.get(0).get("decimal_column")).isEqualTo(new BigDecimal("12344.67"));
+    assertThat(sortedRows.get(0).get("double_column")).isEqualTo(124.456);
+    assertThat(sortedRows.get(0).get("enum_column")).isEqualTo("3");
+    assertThat(sortedRows.get(0).get("float_column")).isEqualTo(124.45f);
+    assertThat(sortedRows.get(0).get("int_column")).isEqualTo(124);
+    assertThat(sortedRows.get(0).get("text_column")).isEqualTo("Sample text appended");
+    assertThat(sortedRows.get(0).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:40:00"));
+    assertThat(sortedRows.get(0).get("timestamp_column"))
         .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
-    assertThat(sortedRows.get(1).get("tinyint_column")).isEqualTo(3);
-    assertThat(sortedRows.get(1).get("year_column")).isEqualTo(java.sql.Date.valueOf("2025-01-01"));
+    assertThat(sortedRows.get(0).get("tinyint_column")).isEqualTo(3);
+    assertThat(sortedRows.get(0).get("year_column")).isEqualTo(java.sql.Date.valueOf("2025-01-01"));
   }
 
   private SpannerResourceManager createSpannerMetadataDatabase() throws IOException {
