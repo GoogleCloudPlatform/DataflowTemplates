@@ -26,7 +26,7 @@ public interface CommonTemplateOptions extends PipelineOptions {
       optional = true,
       description = "Disabled algorithms to override jdk.tls.disabledAlgorithms",
       helpText =
-          "Comma separated algorithms to disable. If this value is set to none, no algorithm is "
+          "Comma separated algorithms to disable. If this value is set to `none`, no algorithm is "
               + "disabled. Use this parameter with caution, because the algorithms disabled "
               + "by default might have vulnerabilities or performance issues.",
       example = "SSLv3, RC4")

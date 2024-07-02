@@ -100,7 +100,7 @@ public final class GoogleAdsToBigQuery {
         order = 3,
         description = "Google Ads Query Language query",
         helpText =
-            "The query to use to get the data. See Google Ads Query Language. For example: `SELECT campaign.id, campaign.name FROM campaign`.",
+            "The query to use to get the data. See Google Ads Query Language (https://developers.google.com/google-ads/api/docs/query/overview).",
         example = "SELECT campaign.id, campaign.name FROM campaign")
     @Validation.Required
     String getQuery();

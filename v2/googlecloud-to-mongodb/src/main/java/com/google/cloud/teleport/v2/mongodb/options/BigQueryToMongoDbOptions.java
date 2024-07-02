@@ -31,7 +31,7 @@ public class BigQueryToMongoDbOptions {
         order = 1,
         groupName = "Target",
         description = "MongoDB Connection URI",
-        helpText = "The MongoDB connection URI in the format mongodb+srv://:@.")
+        helpText = "The MongoDB connection URI in the format `mongodb+srv://:@`.")
     String getMongoDbUri();
 
     void setMongoDbUri(String getMongoDbUri);

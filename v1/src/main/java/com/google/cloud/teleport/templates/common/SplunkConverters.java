@@ -117,7 +117,7 @@ public class SplunkConverters {
         optional = true,
         description = "Batch size for sending multiple events to Splunk HEC.",
         helpText =
-            "The batch size for sending multiple events to Splunk. Defaults to 1 (no batching).")
+            "The batch size for sending multiple events to Splunk. Defaults to `1` (no batching).")
     ValueProvider<Integer> getBatchCount();
 
     void setBatchCount(ValueProvider<Integer> batchCount);
@@ -127,7 +127,7 @@ public class SplunkConverters {
         optional = true,
         description = "Disable SSL certificate validation.",
         helpText =
-            "Disable SSL certificate validation. Default false (validation enabled). If true, the certificates are not validated (all certificates are trusted) and `rootCaCertificatePath` parameter is ignored.")
+            "Disable SSL certificate validation. Default `false` (validation enabled). If `true`, the certificates are not validated (all certificates are trusted) and `rootCaCertificatePath` parameter is ignored.")
     ValueProvider<Boolean> getDisableCertificateValidation();
 
     void setDisableCertificateValidation(ValueProvider<Boolean> disableCertificateValidation);
@@ -136,7 +136,7 @@ public class SplunkConverters {
         order = 5,
         optional = true,
         description = "Maximum number of parallel requests.",
-        helpText = "The maximum number of parallel requests. Defaults to 1 (no parallelism).")
+        helpText = "The maximum number of parallel requests. Defaults to `1` (no parallelism).")
     ValueProvider<Integer> getParallelism();
 
     void setParallelism(ValueProvider<Integer> parallelism);
@@ -146,7 +146,7 @@ public class SplunkConverters {
         optional = true,
         description = "Include full Pub/Sub message in the payload.",
         helpText =
-            "Include the full Pub/Sub message in the payload. Default false (only the data element is included in the payload).")
+            "Include the full Pub/Sub message in the payload. Default `false` (only the data element is included in the payload).")
     ValueProvider<Boolean> getIncludePubsubMessage();
 
     void setIncludePubsubMessage(ValueProvider<Boolean> includePubsubMessage);
@@ -156,7 +156,7 @@ public class SplunkConverters {
         optional = true,
         description = "Google Cloud KMS encryption key for the token",
         helpText =
-            "The Cloud KMS key to use to decrypt the HEC token string. This parameter must be provided when tokenSource is set to KMS. If the Cloud KMS key is provided, the HEC token string `must` be passed in encrypted.",
+            "The Cloud KMS key to use to decrypt the HEC token string. This parameter must be provided when tokenSource is set to KMS. If the Cloud KMS key is provided, the HEC token string must be passed in encrypted.",
         example =
             "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name")
     ValueProvider<String> getTokenKMSEncryptionKey();
@@ -171,7 +171,7 @@ public class SplunkConverters {
         },
         description = "Google Cloud Secret Manager ID.",
         helpText =
-            "The Secret Manager secret ID for the token. This parameter must provided when the tokenSource is set to SECRET_MANAGER.",
+            "The Secret Manager secret ID for the token. This parameter must provided when the tokenSource is set to `SECRET_MANAGER`.",
         example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
     ValueProvider<String> getTokenSecretId();
 

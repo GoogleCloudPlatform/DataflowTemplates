@@ -135,10 +135,8 @@ public class PubSubToRedis {
         order = 1,
         groupName = "Source",
         description = "Pub/Sub input subscription",
-        helpText =
-            "The Pub/Sub subscription to read the input from, in the format"
-                + " projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_ID>.",
-        example = "projects/your-project-id/subscriptions/your-subscription-name")
+        helpText = "The Pub/Sub subscription to read the input from.",
+        example = "projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_ID>")
     String getInputSubscription();
 
     void setInputSubscription(String value);
@@ -171,7 +169,7 @@ public class PubSubToRedis {
         order = 4,
         groupName = "Target",
         description = "Redis DB Password",
-        helpText = "The Redis database password. Defaults to empty.")
+        helpText = "The Redis database password. Defaults to `empty`.")
     @Default.String("")
     @Validation.Required
     String getRedisPassword();

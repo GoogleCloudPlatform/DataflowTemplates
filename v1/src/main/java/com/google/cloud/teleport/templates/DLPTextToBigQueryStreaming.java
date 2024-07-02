@@ -304,7 +304,7 @@ public class DLPTextToBigQueryStreaming {
         },
         description = "Cloud DLP deidentify template name",
         helpText =
-            "The Sensitive Data Protection de-identification template to use for API requests, specified with the pattern projects/<PROJECT_ID>/deidentifyTemplates/<TEMPLATE_ID>.",
+            "The Sensitive Data Protection de-identification template to use for API requests, specified with the pattern `projects/<PROJECT_ID>/deidentifyTemplates/<TEMPLATE_ID>`.",
         example =
             "projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id")
     @Required
@@ -322,7 +322,7 @@ public class DLPTextToBigQueryStreaming {
         description = "Cloud DLP inspect template name",
         helpText =
             "The Sensitive Data Protection inspection template to use for API requests, specified"
-                + " with the pattern projects/<PROJECT_ID>/identifyTemplates/<TEMPLATE_ID>.",
+                + " with the pattern `projects/<PROJECT_ID>/identifyTemplates/<TEMPLATE_ID>`.",
         example =
             "projects/your-project-id/locations/global/inspectTemplates/generated_template_id")
     ValueProvider<String> getInspectTemplateName();

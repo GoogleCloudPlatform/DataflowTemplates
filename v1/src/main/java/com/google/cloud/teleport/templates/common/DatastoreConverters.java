@@ -268,7 +268,7 @@ public class DatastoreConverters {
         description = "Expected number of workers",
         helpText =
             "Hint for the expected number of workers in the Firestore ramp-up throttling step."
-                + " Default is 500.")
+                + " Default is `500`.")
     // @Default can not be used here as it will make it use Firestore on a Datastore template.
     ValueProvider<Integer> getFirestoreHintNumWorkers();
 

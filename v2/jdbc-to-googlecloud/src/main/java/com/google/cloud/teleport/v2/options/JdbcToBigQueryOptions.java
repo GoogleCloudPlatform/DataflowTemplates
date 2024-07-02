@@ -103,9 +103,8 @@ public interface JdbcToBigQueryOptions
       description = "JDBC source SQL query",
       helpText =
           "The query to run on the source to extract the data. Note that some JDBC SQL and BigQuery types, although sharing the same name, have some differences. "
-              + "Some important SQL -> BigQuery type mappings to keep in mind are:\n"
-              + "DATETIME --> TIMESTAMP\n"
-              + "\nType casting may be required if your schemas do not match.",
+              + "Some important SQL -> BigQuery type mappings to keep in mind are `DATETIME --> TIMESTAMP`."
+              + " Type casting may be required if your schemas do not match.",
       example = "select * from sampledb.sample_table")
   String getQuery();
 
@@ -249,7 +248,7 @@ public interface JdbcToBigQueryOptions
       optional = true,
       description = "Cloud Storage path to BigQuery JSON schema",
       helpText =
-          "The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is set to CREATE_IF_NEEDED, this parameter must be specified.",
+          "The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is set to `CREATE_IF_NEEDED`, this parameter must be specified.",
       example = "gs://your-bucket/your-schema.json")
   String getBigQuerySchemaPath();
 
