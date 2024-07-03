@@ -116,6 +116,8 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: GoogleCloudPlatform/DataflowTemplates
         files: 'target/site/jacoco-aggregate/jacoco.xml'
+        # Temp fix for https://github.com/codecov/codecov-action/issues/1487
+        version: v0.6.0
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_integration_smoke_tests_templates:
