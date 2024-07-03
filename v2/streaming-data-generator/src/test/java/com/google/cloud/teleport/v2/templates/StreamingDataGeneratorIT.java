@@ -115,6 +115,11 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
     testFakeMessagesToGcsBase(this::enableRunnerV2);
   }
 
+  @Test
+  public void testFakeMessagesToGcsStreamingEngine() throws IOException {
+    testFakeMessagesToGcsBase(this::enableStreamingEngine);
+  }
+
   private void testFakeMessagesToGcsBase(
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
     // Arrange

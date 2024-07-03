@@ -26,6 +26,7 @@ import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -63,6 +64,16 @@ public class PubSubToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testSubscriptionToTopic() throws IOException {
+    testSubscriptionToTopicBase(Function.identity());
+  }
+
+  @Test
+  public void testSubscriptionToTopicStreamingEngine() throws IOException {
+    testSubscriptionToTopicBase(this::enableStreamingEngine);
+  }
+
+  private void testSubscriptionToTopicBase(
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
     // Arrange
     TopicName inputTopic = pubsubResourceManager.createTopic("input-topic");
     TopicName outputTopic = pubsubResourceManager.createTopic("output-topic");
@@ -79,9 +90,10 @@ public class PubSubToPubSubIT extends TemplateTestBase {
             "message4-" + testName + "-long-" + RandomStringUtils.randomAlphabetic(1000, 2000));
     publishMessages(inputTopic, expectedMessages);
     LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, specPath)
-            .addParameter("inputSubscription", inputSubscription.toString())
-            .addParameter("outputTopic", outputTopic.toString());
+        paramsAdder.apply(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("inputSubscription", inputSubscription.toString())
+                .addParameter("outputTopic", outputTopic.toString()));
 
     // Act
     LaunchInfo info = launchTemplate(options);
