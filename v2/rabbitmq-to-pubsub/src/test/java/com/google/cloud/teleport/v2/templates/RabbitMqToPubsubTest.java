@@ -38,14 +38,6 @@ public class RabbitMqToPubsubTest {
   @Rule public ExpectedException exception = ExpectedException.none();
   static final String[] RESULT = new String[] {"hi there"};
 
-  // @Test
-  // public void testPipelineTransform() {
-  //   PCollection<byte[]> input = p.apply(Create.of(WORDS));
-  //   PCollection<String> output =
-  //       input.apply("transform", ParDo.of(new RabbitMqToPubsub.ByteToStringTransform()));
-  //   PAssert.that(output).containsInAnyOrder(RESULT);
-  //   p.run();
-  // }
 
   @Test
   public void testValidationFail() {
