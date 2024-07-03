@@ -119,6 +119,16 @@ public class MongoDbToBigQueryOptions {
     String getOutputTableSpec();
 
     void setOutputTableSpec(String outputTableSpec);
+
+    @TemplateParameter.GcsReadFile(
+        order = 2,
+        optional = true,
+        description = "Cloud Storage path to BigQuery JSON schema",
+        helpText = "The Cloud Storage path for the BigQuery JSON schema.",
+        example = "gs://your-bucket/your-schema.json")
+    String getBigQuerySchemaPath();
+
+    void setBigQuerySchemaPath(String path);
   }
 
   /** UDF options. */
