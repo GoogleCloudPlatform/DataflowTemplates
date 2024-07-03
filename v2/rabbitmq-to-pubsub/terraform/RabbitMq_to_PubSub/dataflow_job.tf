@@ -39,9 +39,9 @@ variable "brokerServer" {
   default     = null
 }
 
-variable "inputTopic" {
+variable "connectionUrl" {
   type        = string
-  description = "MQTT topic(s) to read the input from. (Example: topic)"
+  description = "RabbitMQ Topic"
 
 }
 
@@ -51,17 +51,12 @@ variable "outputTopic" {
 
 }
 
-variable "username" {
+variable "rabbitQueue" {
   type        = string
-  description = "MQTT username for authentication with MQTT server (Example: sampleusername)"
+  description = "RabbitMQ Queue name"
 
 }
 
-variable "password" {
-  type        = string
-  description = "Password for username provided for authentication with MQTT server (Example: samplepassword)"
-
-}
 
 
 provider "google" {
@@ -188,11 +183,9 @@ resource "google_dataflow_flex_template_job" "generated" {
   provider                = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/RabbitMq_to_PubSub"
   parameters = {
-    brokerServer = var.brokerServer
-    inputTopic   = var.inputTopic
+    connectionUrl = var.connectionUrl
+    queue   = var.rabbitQueue
     outputTopic  = var.outputTopic
-    username     = var.username
-    password     = var.password
   }
 
   additional_experiments       = var.additional_experiments

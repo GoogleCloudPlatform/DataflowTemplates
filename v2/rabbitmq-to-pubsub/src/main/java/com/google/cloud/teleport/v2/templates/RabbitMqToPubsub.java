@@ -41,7 +41,7 @@ import org.apache.beam.sdk.transforms.ParDo;
 @Template(
     name = "RabbitMq_to_PubSub",
     category = TemplateCategory.STREAMING,
-    displayName = "RabbitMQ to Pubsub",
+    displayName = "RabbitMQ to PubSub",
     description =
         "The RabbitMQ to Pub/Sub template is a streaming pipeline that reads messages from an RabbitMQ queue and writes them to Pub/Sub.",
     optionsClass = RabbitMqToPubsubOptions.class,

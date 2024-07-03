@@ -1,6 +1,6 @@
-# Dataflow Flex Template to ingest data from MQTT Server to Pub/Sub
+# Dataflow Flex Template to ingest data from RabbitMQ to Pub/Sub
 
-A Dataflow pipeline to stream records from MQTT topic to Pub/Sub topic.
+A Dataflow pipeline to stream records from RabbitMQ queue to Pub/Sub topic.
 
 ## Requirements
 
@@ -82,7 +82,7 @@ contains most of the content for this file. To build image spec file on GCS, use
 ```shell
 export BUCKET_NAME=demo-bucket  #bucket where inage spec file will be stored
 export METADATA_FILEPATH=v2/mqtt-to-pubsub/src/main/resources/rabbitmq-to-pubsub-metadata.json
-export TEMPLATE_SPEC_GCSPATH="gs://${BUCKET_NAME}/templates/specs/mqtt-to-pubsub"
+export TEMPLATE_SPEC_GCSPATH="gs://${BUCKET_NAME}/templates/specs/rabbitmq-to-pubsub"
 
 gcloud dataflow flex-template build "${TEMPLATE_SPEC_GCSPATH}" \
     --image "${TARGET_GCR_IMAGE}" \
@@ -94,14 +94,12 @@ gcloud dataflow flex-template build "${TEMPLATE_SPEC_GCSPATH}" \
 
 The template requires the following parameters:
 
-* brokerServer: MQTT Server IP. For example-
-  tcp://<MQTT-Host-IP>:<PORT>
-* inputTopic: Input MQTT topic to read from. For
-  example- testtopic.
-* outputTopic: Pub/Sub topic to output records. For example-
+* connectionUrl: RabbitMQ connection URL to read from such as 
+(amqp://username:password@ampq_server:5671) or
+secret resource ID (projects/{project}/secrets/{secret}/versions/{secret_version})
+* queue: RabbitMQ queue name to read messages from
+* outputTopic: Pub/Sub topic to output records. For example: 
   projects/<project-id>/topics/<topic-name>.
-
-
 
 Template can be executed using the `gcloud` sdk:
 

@@ -1,6 +1,6 @@
 {
   "name": "RabbitMq to Pub/Sub",
-  "description": "Streaming pipeline. Ingests UTF8-encoded messages from MQTT to a Pub/Sub topic",
+  "description": "Streaming pipeline. Ingests RabbitMQ Queue Messages to a Pub/Sub topic",
   "parameters": [
     {
       "name": "connectionUrl",
