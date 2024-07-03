@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -21,25 +21,16 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.bigquery.BigQueryException;
-import com.google.cloud.bigquery.Field;
-import com.google.cloud.bigquery.FieldList;
 import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.LegacySQLTypeName;
-import com.google.cloud.bigquery.Schema;
-import com.google.cloud.bigquery.StandardTableDefinition;
-import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
-import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -116,7 +107,6 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     bigQueryResourceManager.createDataset(REGION);
 
     Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
-    ;
 
     launchInfo =
         launchTemplate(
@@ -151,19 +141,20 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
       assertTrue(validateChangeLogTableRow(row, colValPairs));
     }
   }
+
   boolean validateChangeLogTableRow(FieldValueList row, List<Pair> pairs) {
     for (Pair pair : pairs) {
       try {
-          if (!row.get(pair.col).getStringValue().equals(pair.val)) {
-            LOG.info(
-                "Changelog table value for col "
-                    + pair.col
-                    + " is: "
-                    + row.get(pair.col).getStringValue()
-                    + ", which is different from spanner table's value: "
-                    + pair.val);
-            return false;
-          }
+        if (!row.get(pair.col).getStringValue().equals(pair.val)) {
+          LOG.info(
+              "Changelog table value for col "
+                  + pair.col
+                  + " is: "
+                  + row.get(pair.col).getStringValue()
+                  + ", which is different from spanner table's value: "
+                  + pair.val);
+          return false;
+        }
       } catch (BigQueryException e) {
         LOG.info("Error when trying to read the value for column " + pair.col + ": " + e);
         return false;
@@ -203,6 +194,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
         + "`"
         + String.format(" WHERE Id = %d", key);
   }
+
   @NotNull
   private Supplier<Boolean> dataShownUp(String query, int minRows) {
     return () -> {
@@ -218,13 +210,13 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     };
   }
 
-  private void waitForQueryToReturnRows(
-      String query, int resultsRequired, boolean cancelOnceDone) throws IOException {
+  private void waitForQueryToReturnRows(String query, int resultsRequired, boolean cancelOnceDone)
+      throws IOException {
     Config config = createConfig(launchInfo);
     Result result =
         cancelOnceDone
             ? pipelineOperator()
-            .waitForConditionAndCancel(config, dataShownUp(query, resultsRequired))
+                .waitForConditionAndCancel(config, dataShownUp(query, resultsRequired))
             : pipelineOperator().waitForCondition(config, dataShownUp(query, resultsRequired));
     assertThatResult(result).meetsConditions();
   }
