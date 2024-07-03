@@ -212,7 +212,8 @@ resource "google_datastream_stream" "mysql_to_gcs" {
   destination_config {
     destination_connection_profile = google_datastream_connection_profile.target_gcs[count.index].id
     gcs_destination_config {
-      path = var.common_params.datastream_params.stream_prefix_path
+      path             = var.common_params.datastream_params.stream_prefix_path
+      file_rotation_mb = 5
       avro_file_format {
       }
     }
