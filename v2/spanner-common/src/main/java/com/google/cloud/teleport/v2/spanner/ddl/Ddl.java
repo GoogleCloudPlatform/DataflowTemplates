@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -90,7 +91,7 @@ public class Ddl implements Serializable {
    * @return
    */
   public List<String> tablesReferenced(String tableName) {
-    List<String> tablesReferenced = new ArrayList<>();
+    Set<String> tablesReferenced = new HashSet<>();
     Table table = tables.get(tableName.toLowerCase());
     if (table.interleaveInParent() != null) {
       tablesReferenced.add(table.interleaveInParent());
@@ -98,7 +99,7 @@ public class Ddl implements Serializable {
     Set<String> fkReferencedTables =
         table.foreignKeys().stream().map(f -> f.referencedTable()).collect(Collectors.toSet());
     tablesReferenced.addAll(fkReferencedTables);
-    return tablesReferenced;
+    return new ArrayList<>(tablesReferenced);
   }
 
   private NavigableSet<String> childTableNames(String table) {
