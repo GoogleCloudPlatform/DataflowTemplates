@@ -29,11 +29,13 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
 /** Allows to build and introspect Cloud Spanner DDL with Java code. */
@@ -79,6 +81,25 @@ public class Ddl implements Serializable {
             return table(input);
           }
         });
+  }
+
+  /**
+   * Return list of all the tables that this table refers to or depends on. This method only
+   * provides the immediate references, not the whole tree.
+   *
+   * @param tableName
+   * @return
+   */
+  public List<String> tablesReferenced(String tableName) {
+    Set<String> tablesReferenced = new HashSet<>();
+    Table table = tables.get(tableName.toLowerCase());
+    if (table.interleaveInParent() != null) {
+      tablesReferenced.add(table.interleaveInParent());
+    }
+    Set<String> fkReferencedTables =
+        table.foreignKeys().stream().map(f -> f.referencedTable()).collect(Collectors.toSet());
+    tablesReferenced.addAll(fkReferencedTables);
+    return new ArrayList<>(tablesReferenced);
   }
 
   private NavigableSet<String> childTableNames(String table) {
@@ -166,7 +187,8 @@ public class Ddl implements Serializable {
   public List<String> addForeignKeyStatements() {
     List<String> result = new ArrayList<>();
     for (Table table : allTables()) {
-      result.addAll(table.foreignKeys());
+      result.addAll(
+          table.foreignKeys().stream().map(f -> f.prettyPrint()).collect(Collectors.toList()));
     }
     return result;
   }

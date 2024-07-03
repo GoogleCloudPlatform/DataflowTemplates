@@ -58,7 +58,13 @@ public class DdlTest {
 
   @Test
   public void testDdlGSQL() {
+    ForeignKey.Builder usersForeignKeyBuilder =
+        ForeignKey.builder().name("fk").table("Users").referencedTable("AllowedNames");
+    usersForeignKeyBuilder.columnsBuilder().add("first_name");
+    usersForeignKeyBuilder.referencedColumnsBuilder().add("first_name");
+
     Ddl.Builder builder = Ddl.builder();
+
     builder
         .createTable("Users")
         .column("id")
@@ -83,10 +89,7 @@ public class DdlTest {
         .asc("id")
         .end()
         .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
-        .foreignKeys(
-            ImmutableList.of(
-                "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
-                    + " REFERENCES `AllowedNames` (`first_name`)"))
+        .foreignKeys(ImmutableList.of(usersForeignKeyBuilder.build()))
         .checkConstraints(ImmutableList.of("CONSTRAINT `ck` CHECK (`first_name` != `last_name`)"))
         .endTable();
     Ddl ddl = builder.build();
@@ -124,10 +127,19 @@ public class DdlTest {
             "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`) REFERENCES"
                 + " `AllowedNames` (`first_name`)"));
     assertNotNull(ddl.hashCode());
+    assertTrue(ddl.tablesReferenced("Users").contains("AllowedNames"));
+    assertTrue(ddl.tablesReferenced("Users").size() == 1);
   }
 
   @Test
   public void testDdlPG() {
+    ForeignKey.Builder usersForeignKeyBuilder =
+        ForeignKey.builder(Dialect.POSTGRESQL)
+            .name("fk")
+            .table("Users")
+            .referencedTable("AllowedNames");
+    usersForeignKeyBuilder.columnsBuilder().add("first_name");
+    usersForeignKeyBuilder.referencedColumnsBuilder().add("first_name");
     Ddl.Builder builder = Ddl.builder(Dialect.POSTGRESQL);
     builder
         .createTable("Users")
@@ -154,10 +166,7 @@ public class DdlTest {
         .end()
         .indexes(
             ImmutableList.of("CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"))
-        .foreignKeys(
-            ImmutableList.of(
-                "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
-                    + " REFERENCES \"AllowedNames\" (\"first_name\")"))
+        .foreignKeys(ImmutableList.of(usersForeignKeyBuilder.build()))
         .checkConstraints(
             ImmutableList.of("CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\")"))
         .endTable();
@@ -178,6 +187,8 @@ public class DdlTest {
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
                 + " REFERENCES \"AllowedNames\" (\"first_name\")"));
     assertNotNull(ddl.hashCode());
+    assertTrue(ddl.tablesReferenced("Users").contains("AllowedNames"));
+    assertTrue(ddl.tablesReferenced("Users").size() == 1);
   }
 
   @Test
@@ -245,6 +256,10 @@ public class DdlTest {
     assertTrue(perLevelView.containsKey(1));
     assertEquals("account", perLevelView.get(1).iterator().next());
     assertNotNull(ddl.hashCode());
+
+    List<String> tablesReferenced = ddl.tablesReferenced("Account");
+    assertTrue(tablesReferenced.contains("Users"));
+    assertTrue(tablesReferenced.size() == 1);
   }
 
   @Test
@@ -305,6 +320,75 @@ public class DdlTest {
                 + " ) "
                 + " INTERLEAVE IN PARENT \"Users\" ON DELETE CASCADE"));
     assertNotNull(ddl.hashCode());
+  }
+
+  @Test
+  public void testReferencedTables() {
+    ForeignKey.Builder accountsForeignKeyBuilder =
+        ForeignKey.builder(Dialect.POSTGRESQL)
+            .name("fk")
+            .table("Account")
+            .referencedTable("BalanceNames");
+    accountsForeignKeyBuilder.columnsBuilder().add("name");
+    accountsForeignKeyBuilder.referencedColumnsBuilder().add("first_name");
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .column("last_name")
+            .type(Type.string())
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Account")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("name")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("balanceId")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("balance")
+            .float64()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .foreignKeys(ImmutableList.of(accountsForeignKeyBuilder.build()))
+            .interleaveInParent("Users")
+            .onDeleteCascade()
+            .endTable()
+            .createTable("BalanceNames")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .endTable()
+            .build();
+
+    List<String> accountTablesReferenced = ddl.tablesReferenced("Account");
+    assertTrue(accountTablesReferenced.containsAll(List.of("Users", "BalanceNames")));
+    assertTrue(accountTablesReferenced.size() == 2);
   }
 
   @Test
