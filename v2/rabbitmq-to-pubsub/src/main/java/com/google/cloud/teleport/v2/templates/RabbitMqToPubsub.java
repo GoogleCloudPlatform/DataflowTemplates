@@ -72,7 +72,7 @@ public class RabbitMqToPubsub {
 
   public static void validate(RabbitMqToPubsubOptions options) {
     if (options != null) {
-      if ((options.getConnectionUrl() != null && !options.getConnectionUrl().isEmpty())
+      if ((options.getConnectionUrl() == null || options.getConnectionUrl().isEmpty())
           || (options.getOutputTopic() == null || options.getOutputTopic().isBlank())
           || (options.getQueue() == null || options.getQueue().isBlank())) {
         throw new IllegalArgumentException(
