@@ -464,11 +464,12 @@ By default, the Dataflow job performs a like-like mapping between
 source and Spanner. Any schema changes between source and Spanner can be
 specified using the `session file`. To specify a session file -
 
-1. Copy the
-   contents of the SMT generated `session file` to the `session.json` file.
+1. Copy the SMT generated `session file` to the Terraform working directory. 
+   Name this file `session.json`.
 2. Set
    the `var.common_params.dataflow_params.template_params.local_session_file_path`
-   variable to `"session.json"`.
+   variable to `"session.json"` (or the relative path to the name of the
+   session file).
 
 This will automatically upload the GCS bucket and configure it in the Dataflow
 job.

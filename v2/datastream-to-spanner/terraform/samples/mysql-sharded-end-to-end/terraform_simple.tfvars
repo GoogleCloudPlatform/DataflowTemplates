@@ -31,7 +31,7 @@ common_params = {
 # Shards
 shard_list = [
   {
-    dataflow_params = {
+    datastream_params = {
       mysql_host     = "<YOUR_MYSQL_HOST>"     # MySQL host address
       mysql_username = "<YOUR_MYSQL_USERNAME>" # MySQL username
       mysql_password = "<YOUR_MYSQL_PASSWORD>" # MySQL password
