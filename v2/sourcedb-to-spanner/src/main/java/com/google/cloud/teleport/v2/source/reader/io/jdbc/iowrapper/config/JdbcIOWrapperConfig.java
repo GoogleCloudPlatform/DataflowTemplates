@@ -20,12 +20,16 @@ import com.google.cloud.teleport.v2.source.reader.auth.dbauth.DbAuth;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import javax.annotation.Nullable;
+import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.util.FluentBackoff;
+import org.apache.beam.sdk.values.PCollection;
 
 /**
  * Configuration for {@link
@@ -95,6 +99,29 @@ public abstract class JdbcIOWrapperConfig {
   /** Sequence of Sql Init statements for the connection. */
   public abstract ImmutableList<String> sqlInitSeq();
 
+  /**
+   * Temporary, internal feature flag for reader to enable or disable {@link
+   * ReadWithUniformPartitions}. Defaults to true.
+   */
+  public abstract Boolean readWithUniformPartitionsFeatureEnabled();
+
+  /**
+   * PCollections to wait on before doing the read of configured tables. Ignored if {@link
+   * JdbcIOWrapperConfig#readWithUniformPartitionsFeatureEnabled()} is false. Defaults to null.
+   */
+  @Nullable
+  public abstract ImmutableList<PCollection<?>> waitOnSignals();
+
+  /**
+   * A transform that can be injected to make use of the discovered splits for additional use case
+   * like creating split points on spanner before the actual read. Ignored if {@link
+   * JdbcIOWrapperConfig#readWithUniformPartitionsFeatureEnabled()} is false. Defaults to null.
+   */
+  @Nullable
+  public abstract PTransform<PCollection<ImmutableList<Range>>, ?> rangesPeek();
+
+  public abstract Builder toBuilder();
+
   public static Builder builderWithMySqlDefaults() {
     return new AutoValue_JdbcIOWrapperConfig.Builder()
         .setSchemaMapperType(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_MAPPER_TYPE)
@@ -106,7 +133,8 @@ public abstract class JdbcIOWrapperConfig {
         .setTables(ImmutableList.of())
         .setTableVsPartitionColumns(ImmutableMap.of())
         .setMaxPartitions(null)
-        .setMaxFetchSize(null);
+        .setMaxFetchSize(null)
+        .setReadWithUniformPartitionsFeatureEnabled(true);
   }
 
   @AutoValue.Builder
@@ -142,6 +170,13 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setMaxFetchSize(Integer value);
 
     public abstract Builder setSqlInitSeq(ImmutableList<String> value);
+
+    public abstract Builder setReadWithUniformPartitionsFeatureEnabled(Boolean value);
+
+    public abstract Builder setWaitOnSignals(@Nullable ImmutableList<PCollection<?>> value);
+
+    public abstract Builder setRangesPeek(
+        @Nullable PTransform<PCollection<ImmutableList<Range>>, ?> value);
 
     public abstract Builder setMaxConnections(Long value);
 

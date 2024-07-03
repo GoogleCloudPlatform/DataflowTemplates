@@ -123,21 +123,27 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
                     .build())
             .build();
 
-    String boundaryQuery =
+    String boundaryQueryCol1 =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
-            .getBoundaryQuery("test_table_column_boundary", partitionCols);
-    PreparedStatement boundaryStmt = connection.prepareStatement(boundaryQuery);
+            .getBoundaryQuery("test_table_column_boundary", partitionCols, "col1");
+    PreparedStatement boundaryStmtCol1 = connection.prepareStatement(boundaryQueryCol1);
+
+    String boundaryQueryCol2 =
+        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+            .getBoundaryQuery("test_table_column_boundary", partitionCols, "col2");
+    PreparedStatement boundaryStmtCol2 = connection.prepareStatement(boundaryQueryCol2);
 
     /* Min, Max for first column of primary key on entire table */
-    columnForBoundaryQueryPreparedStatementSetter.setParameters(initialColumn, boundaryStmt);
-    ResultSet fullBoundaryResultSet = boundaryStmt.executeQuery();
+    columnForBoundaryQueryPreparedStatementSetter.setParameters(initialColumn, boundaryStmtCol1);
+    ResultSet fullBoundaryResultSet = boundaryStmtCol1.executeQuery();
     fullBoundaryResultSet.next();
     Pair<Integer, Integer> initialBoundary =
         Pair.of(fullBoundaryResultSet.getInt(1), fullBoundaryResultSet.getInt(2));
 
     /* Min, Max for second column within the range of first column */
-    columnForBoundaryQueryPreparedStatementSetter.setParameters(columnWithinRange, boundaryStmt);
-    ResultSet columnWithinRangeResultSet = boundaryStmt.executeQuery();
+    columnForBoundaryQueryPreparedStatementSetter.setParameters(
+        columnWithinRange, boundaryStmtCol2);
+    ResultSet columnWithinRangeResultSet = boundaryStmtCol2.executeQuery();
     columnWithinRangeResultSet.next();
     Pair<Integer, Integer> columnWithinRangeBoundary =
         Pair.of(columnWithinRangeResultSet.getInt(1), columnWithinRangeResultSet.getInt(2));

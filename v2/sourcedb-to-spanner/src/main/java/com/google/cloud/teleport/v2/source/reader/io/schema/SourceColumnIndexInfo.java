@@ -24,7 +24,7 @@ import com.google.common.base.Preconditions;
  * a list of {@llink SourceColumnIndexInfo} is discovered, a composite index will have multiple
  * columns associated with the same indexName with unique ordinal positions.
  */
-public abstract class SourceColumnIndexInfo {
+public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIndexInfo> {
 
   /**
    * @return name of the column.
@@ -75,6 +75,21 @@ public abstract class SourceColumnIndexInfo {
    */
   public static Builder builder() {
     return new AutoValue_SourceColumnIndexInfo.Builder();
+  }
+
+  @Override
+  public int compareTo(SourceColumnIndexInfo other) {
+    if (this.equals(other)) {
+      return 0;
+    }
+    int nameCompare = this.indexName().compareTo(other.indexName());
+    if (nameCompare != 0) {
+      return nameCompare;
+    }
+    // Within the same index, check the ordinal position comparison.
+    int ordinalCompare =
+        new Long(this.ordinalPosition()).compareTo(new Long(other.ordinalPosition()));
+    return ordinalCompare;
   }
 
   @AutoValue.Builder
