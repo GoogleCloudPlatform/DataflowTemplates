@@ -29,8 +29,8 @@ variable "datastream_params" {
     stream_prefix_path            = optional(string, "data")
     pubsub_topic_name             = optional(string, "live-migration")
     stream_id                     = optional(string, "mysql-stream")
-    max_concurrent_cdc_tasks      = optional(number, 50)
-    max_concurrent_backfill_tasks = optional(number, 50)
+    max_concurrent_cdc_tasks      = optional(number, 5)
+    max_concurrent_backfill_tasks = optional(number, 15)
     mysql_database = object({
       database = string
       tables   = optional(list(string))

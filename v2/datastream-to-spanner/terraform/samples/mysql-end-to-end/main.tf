@@ -155,7 +155,7 @@ resource "google_datastream_stream" "mysql_to_gcs" {
     google_pubsub_subscription.datastream_subscription
   ]
   # Create the stream once the source and target profiles are created along with the subscription.
-  stream_id     = "-${local.migration_id}-${var.datastream_params.stream_id}"
+  stream_id     = "${local.migration_id}-${var.datastream_params.stream_id}"
   location      = var.common_params.region
   display_name  = "${local.migration_id}-${var.datastream_params.stream_id}"
   desired_state = "RUNNING"
