@@ -81,6 +81,7 @@ public class IdentitySchemaMapperIT extends SourceDbToSpannerITBase {
             null,
             mySQLResourceManager,
             spannerResourceManager,
+            null,
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 

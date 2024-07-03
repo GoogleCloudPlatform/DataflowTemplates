@@ -114,6 +114,7 @@ public class KafkaToGcsAvroBinaryIT extends TemplateTestBase {
                 .addParameter("kafkaReadOffset", "earliest")
                 .addParameter("outputDirectory", getGcsBasePath())
                 .addParameter("outputFilenamePrefix", prefix)
+                .addParameter("useBigQueryDLQ", "false")
                 .addParameter("numShards", "2")
                 .addParameter("kafkaReadAuthenticationMode", "NONE"));
 

@@ -58,6 +58,7 @@ public class InformationSchemaScanner {
   public Ddl scan() {
     Ddl.Builder builder = Ddl.builder(dialect);
     listTables(builder);
+
     listColumns(builder);
     listColumnOptions(builder);
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
@@ -66,6 +67,10 @@ public class InformationSchemaScanner {
 
     for (Map.Entry<String, NavigableMap<String, Index.Builder>> tableEntry : indexes.entrySet()) {
       String tableName = tableEntry.getKey();
+      if (builder.getTable(tableName) == null) {
+        continue; // Skipping as table does not exist
+      }
+
       ImmutableList.Builder<String> tableIndexes = ImmutableList.builder();
       for (Map.Entry<String, Index.Builder> entry : tableEntry.getValue().entrySet()) {
         Index.Builder indexBuilder = entry.getValue();
@@ -80,10 +85,14 @@ public class InformationSchemaScanner {
     for (Map.Entry<String, NavigableMap<String, ForeignKey.Builder>> tableEntry :
         foreignKeys.entrySet()) {
       String tableName = tableEntry.getKey();
-      ImmutableList.Builder<String> tableForeignKeys = ImmutableList.builder();
+      if (builder.getTable(tableName) == null) {
+        continue; // Skipping as table does not exist
+      }
+
+      ImmutableList.Builder<ForeignKey> tableForeignKeys = ImmutableList.builder();
       for (Map.Entry<String, ForeignKey.Builder> entry : tableEntry.getValue().entrySet()) {
         ForeignKey.Builder foreignKeyBuilder = entry.getValue();
-        tableForeignKeys.add(foreignKeyBuilder.build().prettyPrint());
+        tableForeignKeys.add(foreignKeyBuilder.build());
       }
       builder.createTable(tableName).foreignKeys(tableForeignKeys.build()).endTable();
     }
@@ -92,6 +101,10 @@ public class InformationSchemaScanner {
     for (Map.Entry<String, NavigableMap<String, CheckConstraint>> tableEntry :
         checkConstraints.entrySet()) {
       String tableName = tableEntry.getKey();
+      if (builder.getTable(tableName) == null) {
+        continue; // Skipping as table does not exist
+      }
+
       ImmutableList.Builder<String> constraints = ImmutableList.builder();
       for (Map.Entry<String, CheckConstraint> entry : tableEntry.getValue().entrySet()) {
         constraints.add(entry.getValue().prettyPrint());
@@ -99,7 +112,9 @@ public class InformationSchemaScanner {
       builder.createTable(tableName).checkConstraints(constraints.build()).endTable();
     }
 
-    return builder.build();
+    Ddl ddl = builder.build();
+    LOG.info("spanner ddl: {}", ddl.prettyPrint());
+    return ddl;
   }
 
   private void listTables(Ddl.Builder builder) {
@@ -110,7 +125,8 @@ public class InformationSchemaScanner {
             Statement.of(
                 "SELECT t.table_name, t.parent_table_name, t.on_delete_action"
                     + " FROM information_schema.tables AS t"
-                    + " WHERE t.table_catalog = '' AND t.table_schema = ''");
+                    + " WHERE t.table_catalog = '' AND t.table_schema = ''"
+                    + " AND t.table_type='BASE TABLE'");
         break;
       case POSTGRESQL:
         query =
@@ -118,7 +134,8 @@ public class InformationSchemaScanner {
                 "SELECT t.table_name, t.parent_table_name, t.on_delete_action FROM"
                     + " information_schema.tables AS t"
                     + " WHERE t.table_schema NOT IN "
-                    + "('information_schema', 'spanner_sys', 'pg_catalog')");
+                    + "('information_schema', 'spanner_sys', 'pg_catalog')"
+                    + " AND t.table_type='BASE TABLE'");
         break;
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
@@ -169,6 +186,9 @@ public class InformationSchemaScanner {
       String generationExpression = resultSet.isNull(6) ? "" : resultSet.getString(6);
       boolean isStored =
           resultSet.isNull(7) ? false : resultSet.getString(7).equalsIgnoreCase("YES");
+      if (builder.getTable(tableName) == null) {
+        continue; // Skipping as table does not exist
+      }
       builder
           .createTable(tableName)
           .column(columnName)
@@ -220,6 +240,7 @@ public class InformationSchemaScanner {
       if (Strings.isNullOrEmpty(parent)) {
         parent = null;
       }
+
       boolean unique =
           (dialect == Dialect.GOOGLE_STANDARD_SQL)
               ? resultSet.getBoolean(3)
@@ -282,6 +303,10 @@ public class InformationSchemaScanner {
       String ordering = resultSet.isNull(2) ? null : resultSet.getString(2);
       String indexName = resultSet.getString(3);
 
+      if (builder.getTable(tableName) == null) {
+        continue; // Skipping as table does not exist
+      }
+
       if (indexName.equals("PRIMARY_KEY")) {
         IndexColumn.IndexColumnsBuilder<Table.Builder> pkBuilder =
             builder.createTable(tableName).primaryKey();
@@ -343,6 +368,10 @@ public class InformationSchemaScanner {
       String optionName = resultSet.getString(2);
       String optionType = resultSet.getString(3);
       String optionValue = resultSet.getString(4);
+
+      if (builder.getTable(tableName) == null) {
+        continue; // Skipping as table does not exist
+      }
 
       KV<String, String> kv = KV.of(tableName, columnName);
       ImmutableList.Builder<String> options =

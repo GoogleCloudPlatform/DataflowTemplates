@@ -91,7 +91,8 @@ public class SessionSchemaMapperWithTableFilterIT extends SourceDbToSpannerITBas
             "mapper",
             mySQLResourceManager,
             spannerResourceManager,
-            jobParameters);
+            jobParameters,
+            null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
     List<Map<String, Object>> companyMySQL =

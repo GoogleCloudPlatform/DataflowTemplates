@@ -16,6 +16,11 @@
 package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
+import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
 import com.google.cloud.teleport.v2.templates.processing.handler.GCSToSourceStreamingHandler;
@@ -52,6 +57,14 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
   private String tableSuffix;
   private final SpannerConfig spannerConfig;
   private boolean isMetadataDbPostgres;
+  private CustomTransformation customTransformation;
+  private ISpannerMigrationTransformer spannerToSourceTransformer;
+
+  private boolean writeFilteredEventsToGcs;
+
+  private String projectId;
+
+  private transient Storage storage;
 
   private static final Counter num_shards =
       Metrics.counter(GcsToSourceStreamer.class, "num_shards");
@@ -60,11 +73,17 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
       int incrementIntervalInMilliSeconds,
       SpannerConfig spannerConfig,
       String tableSuffix,
-      boolean isMetadataDbPostgres) {
+      boolean isMetadataDbPostgres,
+      CustomTransformation customTransformation,
+      boolean writeFilteredEventsToGcs,
+      String projectId) {
     this.incrementIntervalInMilliSeconds = incrementIntervalInMilliSeconds;
     this.spannerConfig = spannerConfig;
     this.tableSuffix = tableSuffix;
     this.isMetadataDbPostgres = isMetadataDbPostgres;
+    this.customTransformation = customTransformation;
+    this.writeFilteredEventsToGcs = writeFilteredEventsToGcs;
+    this.projectId = projectId;
   }
 
   /** Setup function connects to Cloud Spanner. */
@@ -74,9 +93,12 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
     while (retry) {
       try {
         spannerDao = new SpannerDao(spannerConfig, tableSuffix, isMetadataDbPostgres);
+        if (writeFilteredEventsToGcs) {
+          storage = StorageOptions.newBuilder().setProjectId(projectId).build().getService();
+        }
         retry = false;
       } catch (SpannerException e) {
-        LOG.info("Exception in setup of AssignShardIdFn {}", e.getMessage());
+        LOG.info("Exception in setup of GcsToSourceStreamer {}", e.getMessage());
         if (e.getMessage().contains("RESOURCE_EXHAUSTED")) {
           try {
             Thread.sleep(10000);
@@ -88,6 +110,8 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
         throw e;
       }
     }
+    spannerToSourceTransformer =
+        CustomTransformationImplFetcher.getCustomTransformationLogicImpl(customTransformation);
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
@@ -169,7 +193,13 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
       try {
         taskContext.setStartTimestamp(startString.read());
 
-        String processedStartTs = GCSToSourceStreamingHandler.process(taskContext, spannerDao);
+        String processedStartTs =
+            GCSToSourceStreamingHandler.process(
+                taskContext,
+                spannerDao,
+                spannerToSourceTransformer,
+                writeFilteredEventsToGcs,
+                storage);
         Instant nextTimer = Instant.now().plus(Duration.millis(incrementIntervalInMilliSeconds));
         com.google.cloud.Timestamp startTs =
             com.google.cloud.Timestamp.parseTimestamp(processedStartTs);

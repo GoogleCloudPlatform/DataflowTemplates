@@ -37,7 +37,8 @@
     <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
     <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
     <maven-dependency-plugin.version>3.6.0</maven-dependency-plugin.version>
-    <maven-enforcer-plugin.version>3.4.1</maven-enforcer-plugin.version>
+    <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
+    <extra.enforcer.rules.version>1.8.0</extra.enforcer.rules.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
     <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
@@ -46,9 +47,9 @@
     <jacoco.version>0.8.8</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <!-- Also update beam version in requirements.txt throughout the repo -->
-    <beam.version>2.56.0</beam.version>
-    <jackson.version>2.14.1</jackson.version>
+    <beam.version>2.57.0</beam.version>
+    <beam-python.version>2.57.0</beam-python.version>
+    <beam-maven-repo></beam-maven-repo>
 
     <!-- Common dependency versions -->
     <autovalue.version>1.10.4</autovalue.version>
@@ -67,6 +68,7 @@
     <hbase.client.version>2.5.3-hadoop3</hbase.client.version>
     <mockito.version>4.11.0</mockito.version>
     <log4j-2.version>2.17.2</log4j-2.version>
+    <jackson.version>2.14.1</jackson.version>
     <jettison.version>1.5.4</jettison.version>
     <json.version>20231013</json.version>
     <junit.version>4.13.2</junit.version>
@@ -413,6 +415,20 @@
             <artifactId>maven-surefire-plugin</artifactId>
             <version>${surefire.version}</version>
             <configuration combine.self="override">
+              <systemProperties>
+                <property>
+                  <name>beamPythonVersion</name>
+                  <value>${beam-python.version}</value>
+                </property>
+                <property>
+                  <name>beamJavaVersion</name>
+                  <value>${beam.version}</value>
+                </property>
+                <property>
+                  <name>beamMavenRepo</name>
+                  <value>${beam-maven-repo}</value>
+                </property>
+              </systemProperties>
               <includes>
                 <include>**/*IT.java</include>
               </includes>
@@ -568,6 +584,18 @@
         <repository>
           <id>apache.snapshots</id>
           <url>https://repository.apache.org/content/repositories/snapshots</url>
+        </repository>
+      </repositories>
+    </profile>
+    <profile>
+      <id>validateCandidate</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <repositories>
+        <repository>
+          <id>apache.candidate</id>
+          <url>${beam-maven-repo}</url>
         </repository>
       </repositories>
     </profile>

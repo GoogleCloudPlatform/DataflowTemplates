@@ -39,6 +39,8 @@ import org.apache.beam.sdk.io.kafka.KafkaRecordCoder;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
@@ -69,6 +71,9 @@ public class BigQueryWriteUtils {
     private Boolean useAutoSharding;
     private Schema avroSchema;
 
+    // Dead letter queue params
+    private ErrorHandler<BadRecord, ?> errorHandler;
+
     public BigQueryWrite(
         Schema avroSchema,
         String outputTableSpec,
@@ -86,6 +91,29 @@ public class BigQueryWriteUtils {
       this.storageWriteApiTriggeringFrequencySec = storageWriteApiTriggeringFrequencySec;
       this.persistKafkaKey = persistKafkaKey;
       this.useAutoSharding = useAutoSharding;
+      this.errorHandler = new ErrorHandler.DefaultErrorHandler<>();
+    }
+
+    // Constructor with ErrorHandler and BadRecordRouter
+    public BigQueryWrite(
+        Schema avroSchema,
+        String outputTableSpec,
+        String writeDisposition,
+        String createDisposition,
+        Integer numStorageWriteApiStreams,
+        Integer storageWriteApiTriggeringFrequencySec,
+        Boolean persistKafkaKey,
+        Boolean useAutoSharding,
+        ErrorHandler<BadRecord, ?> errorHandler) {
+      this.avroSchema = avroSchema;
+      this.outputTableSpec = outputTableSpec;
+      this.writeDisposition = writeDisposition;
+      this.createDisposition = createDisposition;
+      this.numStorageWriteApiStreams = numStorageWriteApiStreams;
+      this.storageWriteApiTriggeringFrequencySec = storageWriteApiTriggeringFrequencySec;
+      this.persistKafkaKey = persistKafkaKey;
+      this.useAutoSharding = useAutoSharding;
+      this.errorHandler = errorHandler;
     }
 
     public static BigQueryWriteUtils.BigQueryWrite of(
@@ -106,6 +134,28 @@ public class BigQueryWriteUtils {
           storageWriteApiTriggeringFrequencySec,
           persistKafkaKey,
           useAutoSharding);
+    }
+
+    public static BigQueryWriteUtils.BigQueryWrite of(
+        Schema avroSchema,
+        String outputTableSpec,
+        String writeDisposition,
+        String createDisposition,
+        Integer numStorageWriteApiStreams,
+        Integer storageWriteApiTriggeringFrequencySec,
+        Boolean persistKafkaKey,
+        Boolean useAutoSharding,
+        ErrorHandler<BadRecord, ?> errorHandler) {
+      return new BigQueryWriteUtils.BigQueryWrite(
+          avroSchema,
+          outputTableSpec,
+          writeDisposition,
+          createDisposition,
+          numStorageWriteApiStreams,
+          storageWriteApiTriggeringFrequencySec,
+          persistKafkaKey,
+          useAutoSharding,
+          errorHandler);
     }
 
     private static class GenericRecordToTableRowFn
@@ -163,6 +213,10 @@ public class BigQueryWriteUtils {
               .withTriggeringFrequency(
                   Duration.standardSeconds(this.storageWriteApiTriggeringFrequencySec.longValue()));
 
+      if (!(errorHandler instanceof ErrorHandler.DefaultErrorHandler)) {
+        writeToBigQuery = writeToBigQuery.withErrorHandler(errorHandler);
+      }
+
       if (this.useAutoSharding) {
         writeToBigQuery = writeToBigQuery.withAutoSharding();
       }
@@ -210,6 +264,8 @@ public class BigQueryWriteUtils {
 
     private Boolean useAutoSharding;
 
+    private ErrorHandler<BadRecord, ?> errorHandler;
+
     public BigQueryDynamicWrite(
         String outputProject,
         String outputDataset,
@@ -229,6 +285,30 @@ public class BigQueryWriteUtils {
       this.storageWriteApiTriggeringFrequencySec = storageWriteApiTriggeringFrequencySec;
       this.persistKafkaKey = persistKafkaKey;
       this.useAutoSharding = useAutoSharding;
+      this.errorHandler = new ErrorHandler.DefaultErrorHandler<>();
+    }
+
+    public BigQueryDynamicWrite(
+        String outputProject,
+        String outputDataset,
+        String outputTableNamePrefix,
+        String writeDisposition,
+        String createDisposition,
+        Integer numStorageWriteApiStreams,
+        Integer storageWriteApiTriggeringFrequencySec,
+        Boolean persistKafkaKey,
+        Boolean useAutoSharding,
+        ErrorHandler<BadRecord, ?> errorHandler) {
+      this.outputProject = outputProject;
+      this.outputDataset = outputDataset;
+      this.outputTableNamePrefix = outputTableNamePrefix;
+      this.writeDisposition = writeDisposition;
+      this.createDisposition = createDisposition;
+      this.numStorageWriteApiStreams = numStorageWriteApiStreams;
+      this.storageWriteApiTriggeringFrequencySec = storageWriteApiTriggeringFrequencySec;
+      this.persistKafkaKey = persistKafkaKey;
+      this.useAutoSharding = useAutoSharding;
+      this.errorHandler = errorHandler;
     }
 
     public static BigQueryDynamicWrite of(
@@ -253,6 +333,30 @@ public class BigQueryWriteUtils {
           useAutoSharding);
     }
 
+    public static BigQueryDynamicWrite of(
+        String outputProject,
+        String outputDataset,
+        String outputTableNamePrefix,
+        String writeDisposition,
+        String createDisposition,
+        Integer numStorageWriteApiStreams,
+        Integer storageWriteApiTriggeringFrequencySec,
+        Boolean persistKafkaKey,
+        Boolean useAutoSharding,
+        ErrorHandler<BadRecord, ?> errorHandler) {
+      return new BigQueryDynamicWrite(
+          outputProject,
+          outputDataset,
+          outputTableNamePrefix,
+          writeDisposition,
+          createDisposition,
+          numStorageWriteApiStreams,
+          storageWriteApiTriggeringFrequencySec,
+          persistKafkaKey,
+          useAutoSharding,
+          errorHandler);
+    }
+
     public WriteResult expand(
         PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> input) {
       WriteResult writeResult;
@@ -275,6 +379,10 @@ public class BigQueryWriteUtils {
               .withNumStorageWriteApiStreams(this.numStorageWriteApiStreams)
               .withTriggeringFrequency(
                   Duration.standardSeconds(this.storageWriteApiTriggeringFrequencySec.longValue()));
+
+      if (!(errorHandler instanceof ErrorHandler.DefaultErrorHandler)) {
+        writeToBigQuery = writeToBigQuery.withErrorHandler(errorHandler);
+      }
 
       if (this.useAutoSharding) {
         writeToBigQuery = writeToBigQuery.withAutoSharding();

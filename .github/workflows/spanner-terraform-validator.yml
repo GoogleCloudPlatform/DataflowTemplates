@@ -2,6 +2,7 @@ name: Spanner Terraform Validator
 
 #  1. Adds a Terraform Validator for Terraform samples being added to the repo. It verifies the sample structure and the plan generated for it via terraform validate.
 #  2. Checks the formatting of the samples for correctness. Samples need to be formatted with terraform fmt.
+#  3. Verifies that the README.md follows a standard convention with a minimum set of headers always present.
 
 on:
   pull_request:
@@ -19,7 +20,8 @@ jobs:
     strategy:
       matrix:
         terraform_paths:
-        - v2/sourcedb-to-spanner/terraform/samples
+        - v2/datastream-to-spanner/terraform/samples
+        - v2/spanner-common/terraform/samples
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
@@ -65,11 +67,40 @@ jobs:
             FAILED_SAMPLES+=("$SAMPLE") # Add the sample to failed list
             echo "----------------------"
           else
-            echo "Verified sample successfully: $SAMPLE"
-            echo "----------------------"
+            echo "Verified file structure of sample successfully: $SAMPLE"
+          fi
+          # Array of required headings (prefix matching)
+          required_headings=(
+            "Sample Scenario"
+            "Terraform permissions"
+            "Assumptions"
+            "Description"
+            "Resources Created"
+            "How to run"
+            "FAQ"
+          )
+          
+          filename="$SAMPLE/README.md"
+          
+          # Extract headings from the README
+          headings_found=$(grep -E "^## |^### " "$filename" | sed 's/^## \|^### //')
+          # Check if all required headings are found (prefix matching)
+          missing_headings=()
+          for heading_prefix in "${required_headings[@]}"; do
+            if ! echo "$headings_found" | grep -q -E "${heading_prefix}"; then  # Corrected regex
+              missing_headings+=("$heading_prefix")
+            fi
+          done
+          if [ ${#missing_headings[@]} -eq 0 ]; then
+            echo "README.md contains all required headings: $SAMPLE" 
+          else
+            echo "README.md is missing headings with the following prefixes:"
+            printf "  * %s\n" "${missing_headings[@]}"
+            FAILED_SAMPLES+=("$SAMPLE") # Add the sample to failed list
           fi
         done  
-        echo "Verification completed!"
+        echo "Verification completed: $SAMPLE"
+        echo "----------------------"
         if [[ ${#FAILED_SAMPLES[@]} -gt 0 ]]; then
           echo "The following samples failed validation:"
           for SAMPLE in "${FAILED_SAMPLES[@]}"; do

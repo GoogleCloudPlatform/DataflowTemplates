@@ -65,7 +65,8 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
       row.put("double_column", (double) row.get("double_column") + 1);
       Double value = Double.parseDouble((String) row.get("decimal_column"));
       row.put("decimal_column", String.valueOf(value + 1));
-      row.put("time_column", (Long) row.get("time_column") + 1000);
+      // TODO (b/349257952): update once TIME handling is made consistent for bulk and live.
+      // row.put("time_column", (Long) row.get("time_column") + 1000);
       row.put("bool_column", 1);
       row.put("enum_column", "1");
       row.put("blob_column", "576f726d64");
@@ -93,6 +94,43 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
         throw new InvalidTransformationException(e);
       }
 
+      // These types are currently only used bulk ITs for custom jars.
+      if (row.containsKey("varbinary_column")) {
+        row.put("varbinary_column", "0102030405060708090A0B0C0D0E0F1011121314");
+      }
+      if (row.containsKey("char_column")) {
+        row.put("char_column", "newchar");
+      }
+      if (row.containsKey("longblob_column")) {
+        row.put("longblob_column", "576f726d64");
+      }
+      if (row.containsKey("longtext_column")) {
+        row.put("longtext_column", row.get("longtext_column") + " append");
+      }
+      if (row.containsKey("mediumblob_column")) {
+        row.put("mediumblob_column", "576f726d64");
+      }
+      if (row.containsKey("mediumint_column")) {
+        row.put("mediumint_column", (Long) row.get("mediumint_column") + 1);
+      }
+      if (row.containsKey("mediumtext_column")) {
+        row.put("mediumtext_column", row.get("mediumtext_column") + " append");
+      }
+      if (row.containsKey("set_column")) {
+        row.put("set_column", "v3");
+      }
+      if (row.containsKey("smallint_column")) {
+        row.put("smallint_column", (Long) row.get("smallint_column") + 1);
+      }
+      if (row.containsKey("tinyblob_column")) {
+        row.put("tinyblob_column", "576f726d64");
+      }
+      if (row.containsKey("tinytext_column")) {
+        row.put("tinytext_column", row.get("tinytext_column") + " append");
+      }
+      if (row.containsKey("json_column")) {
+        row.put("json_column", "{\"k1\": \"v1\", \"k2\": \"v2\"}");
+      }
       MigrationTransformationResponse response = new MigrationTransformationResponse(row, false);
       return response;
     }

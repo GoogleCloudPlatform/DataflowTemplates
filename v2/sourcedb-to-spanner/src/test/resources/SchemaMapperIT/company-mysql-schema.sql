@@ -41,3 +41,5 @@ CREATE TABLE `mysql_extra` (
                            `test_id` int(11) PRIMARY KEY NOT NULL,
                            `test_name` varchar(100) DEFAULT NULL
 );
+
+CREATE VIEW company_view AS  SELECT company_id FROM company;

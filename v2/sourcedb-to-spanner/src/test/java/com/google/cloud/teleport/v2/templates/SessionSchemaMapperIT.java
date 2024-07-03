@@ -82,6 +82,7 @@ public class SessionSchemaMapperIT extends SourceDbToSpannerITBase {
             "mapper",
             mySQLResourceManager,
             spannerResourceManager,
+            null,
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 

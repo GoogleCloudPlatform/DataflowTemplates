@@ -41,4 +41,14 @@ public class MigrationTransformationResponse {
     this.responseRow = responseRow;
     this.isEventFiltered = isEventFiltered;
   }
+
+  @Override
+  public String toString() {
+    return "MigrationTransformationResponse{"
+        + "responseRow="
+        + responseRow
+        + ", isEventFiltered="
+        + isEventFiltered
+        + '}';
+  }
 }

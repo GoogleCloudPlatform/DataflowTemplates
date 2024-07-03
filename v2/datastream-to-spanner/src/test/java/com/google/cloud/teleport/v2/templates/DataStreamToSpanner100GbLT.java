@@ -50,13 +50,13 @@ import org.junit.runners.JUnit4;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerLT100Gb extends DataStreamToSpannerLTBase {
+public class DataStreamToSpanner100GbLT extends DataStreamToSpannerLTBase {
 
   private static final String SPEC_PATH =
       "gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner";
   private final String artifactBucket = TestProperties.artifactBucket();
-  private final String testRootDir = DataStreamToSpannerLT100Gb.class.getSimpleName();
-  private final String spannerDdlResource = "DataStreamToSpannerLT100Gb/spanner-schema.sql";
+  private final String testRootDir = DataStreamToSpanner100GbLT.class.getSimpleName();
+  private final String spannerDdlResource = "DataStreamToSpanner100GbLT/spanner-schema.sql";
   private final String table = "person";
   private final int maxWorkers = 100;
   private final int numWorkers = 50;

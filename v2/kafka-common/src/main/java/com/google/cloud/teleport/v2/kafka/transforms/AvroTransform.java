@@ -27,7 +27,13 @@ import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.io.kafka.KafkaRecordCoder;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecordRouter;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 
 /**
  * The {@link AvroTransform} class is a {@link PTransform} which transforms incoming Kafka Message
@@ -38,33 +44,70 @@ public class AvroTransform
         PCollection<KafkaRecord<byte[], byte[]>>,
         PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>> {
   private String messageFormat;
-
   private String schemaPath;
+
+  // DLQ related parameters.
+  private ErrorHandler<BadRecord, ?> errorHandler;
+  private BadRecordRouter badRecordRouter;
+  private static final TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
+      SUCCESS_GENERIC_RECORDS = new TupleTag<>();
 
   private AvroTransform(String messageFormat, String schemaPath) {
     this.messageFormat = messageFormat;
     this.schemaPath = schemaPath;
+    this.errorHandler = new ErrorHandler.DefaultErrorHandler<>();
+    this.badRecordRouter = BadRecordRouter.THROWING_ROUTER;
+  }
+
+  private AvroTransform(
+      String messageFormat,
+      String schemaPath,
+      ErrorHandler<BadRecord, ?> errorHandler,
+      BadRecordRouter badRecordRouter) {
+    this.messageFormat = messageFormat;
+    this.schemaPath = schemaPath;
+    this.errorHandler = errorHandler;
+    this.badRecordRouter = badRecordRouter;
   }
 
   public static AvroTransform of(String messageFormat, String schemaPath) {
     return new AvroTransform(messageFormat, schemaPath);
   }
 
+  public static AvroTransform of(
+      String messageFormat,
+      String schemaPath,
+      ErrorHandler<BadRecord, ?> errorHandler,
+      BadRecordRouter badRecordRouter) {
+    return new AvroTransform(messageFormat, schemaPath, errorHandler, badRecordRouter);
+  }
+
   public PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> expand(
       PCollection<KafkaRecord<byte[], byte[]>> kafkaRecords) {
     Schema schema = SchemaUtils.getAvroSchema(schemaPath);
-    PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> genericRecords;
-
+    PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> successGenericRecords;
+    PCollectionTuple genericRecords;
     genericRecords =
-        kafkaRecords
-            .apply(
-                "ConvertKafkaRecordsToGenericRecordsWrappedinFailsafeElement",
-                ParDo.of(
-                    new KafkaRecordToGenericRecordFailsafeElementFn(schema, this.messageFormat)))
+        kafkaRecords.apply(
+            "ConvertKafkaRecordsToGenericRecordsWrappedinFailsafeElement",
+            ParDo.of(
+                    new KafkaRecordToGenericRecordFailsafeElementFn(
+                        schema, this.messageFormat, this.badRecordRouter, SUCCESS_GENERIC_RECORDS))
+                .withOutputTags(
+                    SUCCESS_GENERIC_RECORDS, TupleTagList.of(BadRecordRouter.BAD_RECORD_TAG)));
+    successGenericRecords =
+        genericRecords
+            .get(SUCCESS_GENERIC_RECORDS)
             .setCoder(
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
                     GenericRecordCoder.of()));
-    return genericRecords;
+
+    // Get the failed elements and add them to the errorHandler collection.
+    PCollection<BadRecord> failedGenericRecords =
+        genericRecords.get(BadRecordRouter.BAD_RECORD_TAG);
+    errorHandler.addErrorCollection(
+        failedGenericRecords.setCoder(BadRecord.getCoder(genericRecords.getPipeline())));
+    return successGenericRecords;
   }
 }

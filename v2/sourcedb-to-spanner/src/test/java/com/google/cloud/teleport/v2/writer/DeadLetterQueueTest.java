@@ -105,6 +105,33 @@ public class DeadLetterQueueTest {
   }
 
   @Test
+  public void testFilteredRowsToLog() {
+    DeadLetterQueue dlq = DeadLetterQueue.create("LOG", spannerDdl);
+    final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
+    RowContext r1 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
+                    .setField("firstName", "abc")
+                    .setField("lastName", "def")
+                    .build())
+            .setMutation(
+                Mutation.newInsertOrUpdateBuilder(testTable)
+                    .set("firstName")
+                    .to("abc")
+                    .set("lastName")
+                    .to("def")
+                    .build())
+            .build();
+
+    PCollection<RowContext> filteredRows = pipeline.apply(Create.of(r1));
+    dlq.filteredEventsToDLQ(filteredRows);
+    pipeline.run();
+  }
+
+  @Test
   public void testFailedRowsToLog() {
     DeadLetterQueue dlq = DeadLetterQueue.create("LOG", spannerDdl);
     final String testTable = "srcTable";

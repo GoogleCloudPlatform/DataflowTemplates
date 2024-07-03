@@ -93,6 +93,11 @@ CREATE TABLE `mediumtext_table` (
     `mediumtext_col` MEDIUMTEXT CHARACTER SET utf8 DEFAULT NULL
 );
 
+CREATE TABLE `json_table` (
+    `id` INT PRIMARY KEY,
+    `json_col` JSON DEFAULT NULL
+);
+
 CREATE TABLE `longblob_table` (
     `id` INT PRIMARY KEY,
     `longblob_col` LONGBLOB DEFAULT NULL
@@ -162,6 +167,7 @@ ALTER TABLE `double_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `enum_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `float_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `int_table` MODIFY `id` INT AUTO_INCREMENT;
+ALTER TABLE `json_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `longblob_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `longtext_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `mediumblob_table` MODIFY `id` INT AUTO_INCREMENT;
@@ -212,6 +218,7 @@ INSERT INTO `float_table` (`float_col`) VALUES (-3.4E38);
 INSERT INTO `int_table` (`int_col`) VALUES (30);
 INSERT INTO `int_table` (`int_col`) VALUES (2147483647);
 INSERT INTO `int_table` (`int_col`) VALUES (-2147483648);
+INSERT INTO `json_table` (`json_col`) VALUES ('{"k1": "v1"}');
 INSERT INTO `longblob_table` (`longblob_col`) VALUES (X'7835383030');
 INSERT INTO `longblob_table` (`longblob_col`) VALUES (REPEAT(X'FF', 65535));
 INSERT INTO `longtext_table` (`longtext_col`) VALUES ('longtext');
@@ -260,6 +267,7 @@ INSERT INTO `double_table` (`double_col`) VALUES (NULL);
 INSERT INTO `enum_table` (`enum_col`) VALUES (NULL);
 INSERT INTO `float_table` (`float_col`) VALUES (NULL);
 INSERT INTO `int_table` (`int_col`) VALUES (NULL);
+INSERT INTO `json_table` (`json_col`) VALUES (NULL);
 INSERT INTO `longblob_table` (`longblob_col`) VALUES (NULL);
 INSERT INTO `longtext_table` (`longtext_col`) VALUES (NULL);
 INSERT INTO `mediumblob_table` (`mediumblob_col`) VALUES (NULL);

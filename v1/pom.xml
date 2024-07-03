@@ -35,7 +35,6 @@
 
   <properties>
     <autovalue.service.version>1.0.2</autovalue.service.version>
-    <extra.enforcer.rules.version>1.8.0</extra.enforcer.rules.version>
     <mock-server-netty.version>5.14.0</mock-server-netty.version>
     <open-census.version>0.24.0</open-census.version>
     <!-- TODO: check if this could be declared on a Beam BOM instead of here -->
