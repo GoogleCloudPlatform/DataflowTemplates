@@ -94,11 +94,11 @@ gcloud dataflow flex-template build "${TEMPLATE_SPEC_GCSPATH}" \
 
 The template requires the following parameters:
 
-* connectionUrl: RabbitMQ connection URL to read from such as 
+* connectionUrl: RabbitMQ connection URL to read from such as
 (amqp://username:password@ampq_server:5671) or
 secret resource ID (projects/{project}/secrets/{secret}/versions/{secret_version})
 * queue: RabbitMQ queue name to read messages from
-* outputTopic: Pub/Sub topic to output records. For example: 
+* outputTopic: Pub/Sub topic to output records. For example:
   projects/<project-id>/topics/<topic-name>.
 
 Template can be executed using the `gcloud` sdk:
@@ -112,7 +112,7 @@ gcloud dataflow flex-template run "$JOB_NAME-$(date +'%Y%m%d%H%M%S')" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters connectionUrl="amqp://user:password@rabbitmqserver:672" \
   --parameters queue="rabbitqueue"  \
-  --parameters outputTopic="projects/exampleproject/topics/exampletopic" \  
+  --parameters outputTopic="projects/exampleproject/topics/exampletopic" \
 ```
 The template can also be launched from the portal by selecting "Custom Template"
 from the list of templates.

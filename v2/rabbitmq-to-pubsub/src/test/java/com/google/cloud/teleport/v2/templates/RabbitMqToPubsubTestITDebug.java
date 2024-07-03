@@ -59,12 +59,11 @@ public class RabbitMqToPubsubTestIT extends TemplateTestBase {
     rabbitMQContainer =
         new RabbitMQContainer(DockerImageName.parse("rabbitmq:3.7.25-management-alpine"))
             .withQueue("testQueueOne");
-    pubsubClient = PubsubResourceManager.builder(testName, PROJECT,
-        credentialsProvider).build();
+    pubsubClient = PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
     rabbitMQContainer.start();
 
     // 2. Establish Connection
-    try{
+    try {
       // 1. Create Connection Factory
       ConnectionFactory factory = new ConnectionFactory();
       factory.setUri(rabbitMQContainer.getAmqpUrl());
@@ -76,14 +75,8 @@ public class RabbitMqToPubsubTestIT extends TemplateTestBase {
       // 5. Prepare Message
       String message = "Hello World!";
       // 6. Publish Message
-      this.channel.basicPublish(
-          "",
-          "testQueueOne",
-          null,
-          message.getBytes(StandardCharsets.UTF_8));
-    }
-    catch(Exception e)
-    {
+      this.channel.basicPublish("", "testQueueOne", null, message.getBytes(StandardCharsets.UTF_8));
+    } catch (Exception e) {
       System.out.println(e);
     }
   }
@@ -119,17 +112,14 @@ public class RabbitMqToPubsubTestIT extends TemplateTestBase {
     String inputQueueName = testName + "queue";
     String psTopic = testName + "output";
     TopicName topicName = pubsubClient.createTopic(psTopic);
-    SubscriptionName subscriptionName = pubsubClient.createSubscription(topicName,
-        "subscription");
+    SubscriptionName subscriptionName = pubsubClient.createSubscription(topicName, "subscription");
     String message = "Hello, world 123";
     channel.basicPublish("", "testQueueOne", null, message.getBytes(StandardCharsets.UTF_8));
     System.out.println(" [x] Sent '" + message + "'");
 
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath)
-            .addParameter(
-                "connectionUrl",
-                rabbitMQContainer.getAmqpUrl())
+            .addParameter("connectionUrl", rabbitMQContainer.getAmqpUrl())
             .addParameter("queue", "testQueueOne")
             .addParameter("outputTopic", topicName.toString());
 
@@ -141,12 +131,10 @@ public class RabbitMqToPubsubTestIT extends TemplateTestBase {
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
-                  try
-                  {
-                    channel.basicPublish("", "testQueueOne", null, "abracadabra".getBytes(StandardCharsets.UTF_8));
-                  }
-                  catch(Exception e)
-                  {
+                  try {
+                    channel.basicPublish(
+                        "", "testQueueOne", null, "abracadabra".getBytes(StandardCharsets.UTF_8));
+                  } catch (Exception e) {
                     System.err.println(e);
                   }
 
