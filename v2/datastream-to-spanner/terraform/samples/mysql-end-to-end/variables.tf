@@ -31,15 +31,16 @@ variable "datastream_params" {
     stream_id                     = optional(string, "mysql-stream")
     max_concurrent_cdc_tasks      = optional(number, 50)
     max_concurrent_backfill_tasks = optional(number, 50)
-    mysql_databases = list(object({
+    mysql_database = object({
       database = string
       tables   = optional(list(string))
-    }))
+    })
   })
   validation {
     condition = (
       (var.datastream_params.private_connectivity_id == null && var.datastream_params.private_connectivity != null) ||
-      (var.datastream_params.private_connectivity_id != null && var.datastream_params.private_connectivity == null)
+      (var.datastream_params.private_connectivity_id != null && var.datastream_params.private_connectivity == null) ||
+      (var.datastream_params.private_connectivity_id == null && var.datastream_params.private_connectivity == null)
     )
     error_message = "Exactly one of 'private_connectivity_id' or the 'private_connectivity' block must be provided, not both."
   }
@@ -53,19 +54,17 @@ variable "dataflow_params" {
       create_shadow_tables                = optional(bool)
       rfc_start_date_time                 = optional(string)
       file_read_concurrency               = optional(number)
-      session_file_path                   = optional(string)
+      local_session_file_path             = optional(string)
       spanner_project_id                  = optional(string)
       spanner_instance_id                 = string
       spanner_database_id                 = string
       spanner_host                        = optional(string)
-      dead_letter_queue_directory         = optional(string)
       dlq_retry_minutes                   = optional(number)
       dlq_max_retry_count                 = optional(number)
       datastream_root_url                 = optional(string)
       datastream_source_type              = optional(string)
       round_json_decimals                 = optional(bool)
       run_mode                            = optional(string)
-      transformation_context_file_path    = optional(string)
       directory_watch_duration_in_minutes = optional(string)
       spanner_priority                    = optional(string)
       dlq_gcs_pub_sub_subscription        = optional(string)
