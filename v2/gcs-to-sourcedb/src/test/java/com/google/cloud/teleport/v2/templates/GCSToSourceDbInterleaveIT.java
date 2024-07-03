@@ -47,8 +47,8 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.it.jdbc.CustomMySQLResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -75,7 +75,7 @@ public class GCSToSourceDbInterleaveIT extends TemplateTestBase {
   private static PipelineLauncher.LaunchInfo readerJobInfo;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
-  private static CustomMySQLResourceManager jdbcResourceManager;
+  private static MySQLResourceManager jdbcResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
 
@@ -93,7 +93,7 @@ public class GCSToSourceDbInterleaveIT extends TemplateTestBase {
         spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = CustomMySQLResourceManager.builder(testName).build();
+        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
         createMySQLSchema(jdbcResourceManager);
 
         gcsResourceManager =
@@ -342,8 +342,7 @@ public class GCSToSourceDbInterleaveIT extends TemplateTestBase {
     return spannerMetadataResourceManager;
   }
 
-  private void createMySQLSchema(CustomMySQLResourceManager jdbcResourceManager)
-      throws IOException {
+  private void createMySQLSchema(MySQLResourceManager jdbcResourceManager) throws IOException {
     HashMap<String, String> columns = new HashMap<>();
     columns.put("id", "INT NOT NULL");
     columns.put("name", "VARCHAR(25)");
@@ -409,7 +408,7 @@ public class GCSToSourceDbInterleaveIT extends TemplateTestBase {
   }
 
   private void createAndUploadShardConfigToGcs(
-      GcsResourceManager gcsResourceManager, CustomMySQLResourceManager jdbcResourceManager)
+      GcsResourceManager gcsResourceManager, MySQLResourceManager jdbcResourceManager)
       throws IOException {
     Shard shard = new Shard();
     shard.setLogicalShardId("Shard1");
