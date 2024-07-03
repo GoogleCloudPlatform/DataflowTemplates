@@ -96,7 +96,8 @@ resource "google_datastream_stream" "mysql_to_gcs" {
   destination_config {
     destination_connection_profile = "projects/${var.common_params.project}/locations/${var.common_params.region}/connectionProfiles/${var.datastream_params.target_connection_profile_id}"
     gcs_destination_config {
-      path = var.datastream_params.stream_prefix_path
+      path             = var.datastream_params.stream_prefix_path
+      file_rotation_mb = 5
       avro_file_format {
       }
     }
