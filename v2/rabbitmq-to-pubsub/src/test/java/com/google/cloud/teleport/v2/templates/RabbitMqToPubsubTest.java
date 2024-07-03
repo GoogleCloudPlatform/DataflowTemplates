@@ -38,7 +38,6 @@ public class RabbitMqToPubsubTest {
   @Rule public ExpectedException exception = ExpectedException.none();
   static final String[] RESULT = new String[] {"hi there"};
 
-
   @Test
   public void testValidationFail() {
     RabbitMqToPubsubOptions options =
