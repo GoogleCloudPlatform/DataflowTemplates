@@ -9,7 +9,7 @@ variable "common_params" {
     datastream_params = object({
       stream_prefix_path            = optional(string, "data")
       max_concurrent_cdc_tasks      = optional(number, 5)
-      max_concurrent_backfill_tasks = optional(number, 15)
+      max_concurrent_backfill_tasks = optional(number, 50)
       private_connectivity_id       = optional(string)
       private_connectivity = optional(object({
         private_connectivity_id = optional(string, "priv-conn")
