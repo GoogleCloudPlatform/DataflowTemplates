@@ -13,8 +13,9 @@ The following sample repositories provide additional examples -
 
 ## List of examples
 
-1. [MySQL source to Spanner end-to-end](all-infrastructure/README.md)
+1. [MySQL source to Spanner end-to-end](mysql-end-to-end/README.md)
 2. [Pre-configured Datastream connection profiles](pre-configured-conn-profiles/README.md)
+3. [MySQL sharded source to Spanner end-to-end](mysql-sharded-end-to-end/README.md)
 
 ## Sample structure
 
