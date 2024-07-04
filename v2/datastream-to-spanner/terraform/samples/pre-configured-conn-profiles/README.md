@@ -282,39 +282,36 @@ variable definition -
 In `variables.tf`, following definition exists -
 
 ```shell
-mysql_databases = list(object({
+mysql_database = object({
       database = string
       tables   = optional(list(string))
-    }))
+    })
 ```
 
 To configure, create `*.tfvars` as follows -
 
 ```shell
-mysql_databases = [
-    {
+mysql_database = {
       database = "<YOUR_DATABASE_NAME>"
       tables   = ["TABLE_1", "TABLE_2"]
       # Optionally list specific tables, or remove "tables" all together for all tables
-    },
-    {
-      database = "<YOUR_DATABASE_NAME>"
-      tables   = ["TABLE_1", "TABLE_2"]
-      # Optionally list specific tables, or remove "tables" all together for all tables
-    },
-  ]
+    }
 ```
 
 ### Specifying schema overrides
 
-Any schema changes between source and Spanner can be specified using the
-`session file`. Upload the session file in a GCS bucket and pass the URL
-of the session file to the `var.dataflow_params.template_params.sessionFilePath`
-variable.
+By default, the Dataflow job performs a like-like mapping between
+source and Spanner. Any schema changes between source and Spanner can be
+specified using the `session file`. To specify a session file -
 
-> **_NOTE:_** At the time of generating the session file via SMT, the session
-> file is uploaded to a user-specified (or auto-generated) bucket, so you don't
-> need to upload the session file to GCS manually.
+1. Copy the
+   contents of the SMT generated `session file` to the `session.json` file.
+2. Set
+   the `var.dataflow_params.template_params.local_session_file_path`
+   variable to `"session.json"`.
+
+This will automatically upload the GCS bucket and configure it in the Dataflow
+job.
 
 ### Cross project writes to Spanner
 

@@ -22,12 +22,12 @@ variable "datastream_params" {
     pubsub_topic_name             = optional(string, "live-migration")
     stream_id                     = optional(string, "mysql-stream")
     stream_prefix_path            = optional(string, "data")
-    max_concurrent_cdc_tasks      = optional(number, 50)
-    max_concurrent_backfill_tasks = optional(number, 50)
-    mysql_databases = list(object({
+    max_concurrent_cdc_tasks      = optional(number, 5)
+    max_concurrent_backfill_tasks = optional(number, 15)
+    mysql_database = object({
       database = string
       tables   = optional(list(string))
-    }))
+    })
   })
 }
 
@@ -39,7 +39,7 @@ variable "dataflow_params" {
       create_shadow_tables                = optional(bool)
       rfc_start_date_time                 = optional(string)
       file_read_concurrency               = optional(number)
-      session_file_path                   = optional(string)
+      local_session_file_path             = optional(string)
       spanner_project_id                  = optional(string)
       spanner_instance_id                 = string
       spanner_database_id                 = string
@@ -51,7 +51,6 @@ variable "dataflow_params" {
       datastream_source_type              = optional(string)
       round_json_decimals                 = optional(bool)
       run_mode                            = optional(string)
-      transformation_context_file_path    = optional(string)
       directory_watch_duration_in_minutes = optional(string)
       spanner_priority                    = optional(string)
       dlq_gcs_pub_sub_subscription        = optional(string)
