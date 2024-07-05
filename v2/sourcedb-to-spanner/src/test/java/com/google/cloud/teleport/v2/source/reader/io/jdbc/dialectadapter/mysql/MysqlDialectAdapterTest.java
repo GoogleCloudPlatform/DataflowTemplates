@@ -421,7 +421,7 @@ public class MysqlDialectAdapterTest {
     ImmutableList<String> cols = ImmutableList.of("col_1", "col_2");
     assertThat(new MysqlDialectAdapter(MySqlVersion.DEFAULT).getReadQuery(testTable, cols))
         .isEqualTo(
-            "select * from testTable where ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
+            "select * from testTable WHERE ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
   }
 
   @Test
@@ -433,7 +433,7 @@ public class MysqlDialectAdapterTest {
             new MysqlDialectAdapter(MySqlVersion.DEFAULT)
                 .getCountQuery(testTable, cols, timeoutMillis))
         .isEqualTo(
-            "select /*+ MAX_EXECUTION_TIME(42) */ COUNT(*) from testTable where ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
+            "select /*+ MAX_EXECUTION_TIME(42) */ COUNT(*) from testTable WHERE ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
   }
 
   @Test
@@ -443,7 +443,7 @@ public class MysqlDialectAdapterTest {
     assertThat(
             new MysqlDialectAdapter(MySqlVersion.DEFAULT).getBoundaryQuery(testTable, cols, "col3"))
         .isEqualTo(
-            "select MIN(col3),MAX(col3) from testTable where ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
+            "select MIN(col3),MAX(col3) from testTable WHERE ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
   }
 
   private static ResultSet getMockInfoSchemaRs() throws SQLException {

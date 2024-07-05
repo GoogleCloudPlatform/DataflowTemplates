@@ -32,7 +32,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetter
     implements PreparedStatementSetter<ColumnForBoundaryQuery> {
 
   /** List of partition columns. */
-  ImmutableList<String> partitionCols;
+  private ImmutableList<String> partitionCols;
 
   /**
    * Construct {@link ColumnForBoundaryQuery}.

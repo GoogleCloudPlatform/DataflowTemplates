@@ -67,7 +67,7 @@ public abstract class MergeRangesDoFn extends DoFn<ImmutableList<Range>, Immutab
 
   private ImmutableList<Range> mergeRanges(ImmutableList<Range> input, ProcessContext c) {
 
-    long totoalCount = approxTotalRowCount();
+    long totalCount = approxTotalRowCount();
 
     long mean = 0;
 
@@ -85,14 +85,14 @@ public abstract class MergeRangesDoFn extends DoFn<ImmutableList<Range>, Immutab
       accumulatedCount = range.accumulateCount(accumulatedCount);
     }
     if (accumulatedCount != Range.INDETERMINATE_COUNT) {
-      totoalCount = accumulatedCount;
+      totalCount = accumulatedCount;
     }
 
     long maxPartitions = maxPartitionHint();
     if (autoAdjustMaxPartitions()) {
-      maxPartitions = ReadWithUniformPartitions.inferMaxPartitions(totoalCount);
+      maxPartitions = ReadWithUniformPartitions.inferMaxPartitions(totalCount);
     }
-    mean = Math.max(1, totoalCount / maxPartitions);
+    mean = Math.max(1, totalCount / maxPartitions);
 
     ImmutableList.Builder<Range> mergedRanges = ImmutableList.builder();
     Range lastMergedRange = null; // Store the last merged range
@@ -115,10 +115,12 @@ public abstract class MergeRangesDoFn extends DoFn<ImmutableList<Range>, Immutab
 
     ImmutableList<Range> output = mergedRanges.build();
 
+    // Note Searching for "RWUPT -" for ReadWithUniformPartition gives the most import logs for the
+    // splitting process.
     logger.info(
-        "RWUPT - Completed split process (merging) split-ranges for table {} initial split range {}, final range count as {}",
+        "RWUPT - Completed split process (merging) split-ranges for table {} initial split range count {}, final range count as {}",
         tableName(),
-        input,
+        input.size(),
         output.size());
 
     return output;

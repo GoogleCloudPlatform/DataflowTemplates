@@ -53,9 +53,10 @@ public abstract class InitialSplitRangeDoFn extends DoFn<Range, ImmutableList<Ra
   @ProcessElement
   public void processElement(
       @Element Range input, OutputReceiver<ImmutableList<Range>> out, ProcessContext c) {
-
+    // Note Searching for "RWUPT -" for ReadWithUniformPartition gives the most import logs for the
+    // splitting process.
     logger.info(
-        "RWUPT - Began split process for table {} with initia range as {}", tableName(), input);
+        "RWUPT - Began split process for table {} with initial range as {}", tableName(), input);
 
     ArrayList<Range> ranges = new ArrayList<Range>();
     ranges.add(input);

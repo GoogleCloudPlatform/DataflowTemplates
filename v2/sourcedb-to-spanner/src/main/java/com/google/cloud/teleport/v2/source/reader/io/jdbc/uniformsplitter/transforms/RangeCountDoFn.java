@@ -78,7 +78,7 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
   }
 
   /**
-   * Count a Range with timeout. Incase of timeout, the count of range is set as {@link
+   * Count a Range with timeout. In case of timeout, the count of range is set as {@link
    * Range#INDETERMINATE_COUNT}.
    *
    * @param input range.

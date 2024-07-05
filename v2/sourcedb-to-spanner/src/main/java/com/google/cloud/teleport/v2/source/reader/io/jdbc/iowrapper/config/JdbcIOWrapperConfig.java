@@ -118,7 +118,7 @@ public abstract class JdbcIOWrapperConfig {
    * JdbcIOWrapperConfig#readWithUniformPartitionsFeatureEnabled()} is false. Defaults to null.
    */
   @Nullable
-  public abstract PTransform<PCollection<ImmutableList<Range>>, ?> rangesPeek();
+  public abstract PTransform<PCollection<ImmutableList<Range>>, ?> additionalOperationsOnRanges();
 
   public abstract Builder toBuilder();
 
@@ -175,7 +175,7 @@ public abstract class JdbcIOWrapperConfig {
 
     public abstract Builder setWaitOnSignals(@Nullable ImmutableList<PCollection<?>> value);
 
-    public abstract Builder setRangesPeek(
+    public abstract Builder setAdditionalOperationsOnRanges(
         @Nullable PTransform<PCollection<ImmutableList<Range>>, ?> value);
 
     public abstract Builder setMaxConnections(Long value);

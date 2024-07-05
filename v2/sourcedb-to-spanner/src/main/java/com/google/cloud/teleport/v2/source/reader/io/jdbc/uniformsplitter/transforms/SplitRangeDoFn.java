@@ -19,7 +19,10 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.commons.lang3.tuple.Pair;
 
-/** Split a given range into 2 halves, typically after adding a new column. */
+/**
+ * Split a given range into 2 halves, typically after adding a new column to an existing
+ * unsplittable range.
+ */
 public class SplitRangeDoFn extends DoFn<Range, Range> {
   @ProcessElement
   public void processElement(@Element Range range, OutputReceiver<Range> out, ProcessContext c) {

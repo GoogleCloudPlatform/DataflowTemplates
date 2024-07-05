@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.columnboundary;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
 import java.io.Serializable;
@@ -34,6 +35,17 @@ public abstract class ColumnForBoundaryQuery implements Serializable {
   public abstract PartitionColumn partitionColumn();
 
   /**
+   * Parent range. There are two kinds of boundary queries that the splitting logic needs to make:
+   *
+   * <ol>
+   *   <li>{@code SELECT MIN(firstCol), MAX(firstCol) from table} for the first column.
+   *   <li>{@code SELECT MIN(col), MAX(col) from table WHERE ...} for subsequent columns.
+   * </ol>
+   *
+   * <p>For the first column, set the parentRange as null. For subsequent columns setting the parent
+   * range helps the {@link UniformSplitterDBAdapter} and {@link
+   * ColumnForBoundaryQueryPreparedStatementSetter} generate a correct query and parameters.
+   *
    * @return Parent Range. Null indicates first column for splitting. Defaults to Null.
    */
   @Nullable

@@ -361,10 +361,12 @@ public final class JdbcIoWrapper implements IoWrapper {
                     sourceTableSchema,
                     config.shardID()))
             .setWaitOnSignals(config.waitOnSignals())
-            // TODO(vardhanvthigle): if index is not of the type of a single auto incrementing key,
-            // don't set this.
+            /* The following setting limits number of stages provisioned for the split process.
+             * Currently we mostly deal with auto incrementing keys, so capping it to 4 stages irrespective of table size.
+             * TODO(vardhanvthigle): if index is not of the type of a single auto incrementing key, don't set this.
+             */
             .setSplitStageCountHint(4L)
-            .setRangesPeek(config.rangesPeek());
+            .setAdditionalOperationsOnRanges(config.additionalOperationsOnRanges());
 
     if (tableConfig.maxPartitions() != null) {
       readWithUniformPartitionsBuilder =

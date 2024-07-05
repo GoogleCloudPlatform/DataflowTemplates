@@ -130,7 +130,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
    * even ease of unit testing.
    */
   @Nullable
-  abstract PTransform<PCollection<ImmutableList<Range>>, ?> rangesPeek();
+  abstract PTransform<PCollection<ImmutableList<Range>>, ?> additionalOperationsOnRanges();
 
   /**
    * Wait for completion of dependencies as per the requirements of the pipeline. This wait is
@@ -329,10 +329,11 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
 
   private PCollection<ImmutableList<Range>> peekRanges(
       PCollection<ImmutableList<Range>> mergedRanges) {
-    if (rangesPeek() == null) {
+    if (additionalOperationsOnRanges() == null) {
       return mergedRanges;
     } else {
-      return mergedRanges.apply(Wait.on((PCollection<?>) mergedRanges.apply(rangesPeek())));
+      return mergedRanges.apply(
+          Wait.on((PCollection<?>) mergedRanges.apply(additionalOperationsOnRanges())));
     }
   }
 
@@ -374,7 +375,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
 
     public abstract Builder<T> setRowMapper(JdbcIO.RowMapper<T> value);
 
-    public abstract Builder<T> setRangesPeek(
+    public abstract Builder<T> setAdditionalOperationsOnRanges(
         @Nullable PTransform<PCollection<ImmutableList<Range>>, ?> value);
 
     public abstract Builder<T> setWaitOnSignals(@Nullable ImmutableList<PCollection<?>> value);

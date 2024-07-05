@@ -419,7 +419,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         queryBuilder.append(" AND ");
       } else {
         // add `where` only for first iteration.
-        queryBuilder.append(" where ");
+        queryBuilder.append(" WHERE ");
       }
 
       // Include the column?
