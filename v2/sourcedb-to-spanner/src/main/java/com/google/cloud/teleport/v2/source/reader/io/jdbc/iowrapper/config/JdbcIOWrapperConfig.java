@@ -28,6 +28,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.Wait.OnSignal;
 import org.apache.beam.sdk.util.FluentBackoff;
 import org.apache.beam.sdk.values.PCollection;
 
@@ -110,7 +111,7 @@ public abstract class JdbcIOWrapperConfig {
    * JdbcIOWrapperConfig#readWithUniformPartitionsFeatureEnabled()} is false. Defaults to null.
    */
   @Nullable
-  public abstract ImmutableList<PCollection<?>> waitOnSignals();
+  public abstract OnSignal<?> waitOn();
 
   /**
    * A transform that can be injected to make use of the discovered splits for additional use case
@@ -133,6 +134,7 @@ public abstract class JdbcIOWrapperConfig {
         .setTables(ImmutableList.of())
         .setTableVsPartitionColumns(ImmutableMap.of())
         .setMaxPartitions(null)
+        .setWaitOn(null)
         .setMaxFetchSize(null)
         .setReadWithUniformPartitionsFeatureEnabled(true);
   }
@@ -173,7 +175,7 @@ public abstract class JdbcIOWrapperConfig {
 
     public abstract Builder setReadWithUniformPartitionsFeatureEnabled(Boolean value);
 
-    public abstract Builder setWaitOnSignals(@Nullable ImmutableList<PCollection<?>> value);
+    public abstract Builder setWaitOn(@Nullable OnSignal<?> value);
 
     public abstract Builder setAdditionalOperationsOnRanges(
         @Nullable PTransform<PCollection<ImmutableList<Range>>, ?> value);

@@ -52,6 +52,7 @@ import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.Wait;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.checkerframework.checker.initialization.qual.Initialized;
@@ -183,7 +184,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
 
     ReadWithUniformPartitions readWithUniformPartitionsSecond =
         getReadWithUniformPartitionsForTest(
-            6L, 2L, null, secondRead, ImmutableList.of(firstReadRows));
+            6L, 2L, null, secondRead, Wait.on(ImmutableList.of(firstReadRows)));
     PCollection<String> secondReadRows =
         (PCollection<String>) testPipeline.apply("secondRead", readWithUniformPartitionsSecond);
 
@@ -271,7 +272,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
       @Nullable Long maxPartitionHint,
       @Nullable TestRangesPeek testRangesPeek,
       @Nullable Range initialRange,
-      @Nullable ImmutableList<PCollection<?>> waitOnSignals) {
+      Wait.OnSignal<?> waitOnSignal) {
 
     ReadWithUniformPartitions.Builder<String> readWithPartitionBuilder =
         ReadWithUniformPartitions.<String>builder()
@@ -307,8 +308,8 @@ public class ReadWithUniformPartitionsTest implements Serializable {
               .setMaxPartitionsHint(maxPartitionHint)
               .setAutoAdjustMaxPartitions(false);
     }
-    if (waitOnSignals != null) {
-      readWithPartitionBuilder = readWithPartitionBuilder.setWaitOnSignals(waitOnSignals);
+    if (waitOnSignal != null) {
+      readWithPartitionBuilder = readWithPartitionBuilder.setWaitOn(waitOnSignal);
     }
     return readWithPartitionBuilder.build();
   }

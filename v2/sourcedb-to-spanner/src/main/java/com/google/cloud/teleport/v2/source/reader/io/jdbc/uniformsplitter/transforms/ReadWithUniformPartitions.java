@@ -37,6 +37,7 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.Wait;
+import org.apache.beam.sdk.transforms.Wait.OnSignal;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
@@ -137,7 +138,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
    * applied before the first query is made to the database to detect split points.
    */
   @Nullable
-  abstract ImmutableList<PCollection<?>> waitOnSignals();
+  abstract OnSignal<?> waitOn();
 
   /**
    * An optional, initial range to start with. This can help anywhere from unit testing, to micro
@@ -320,10 +321,10 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
   }
 
   private <V extends PCollection> V wait(V input) {
-    if (waitOnSignals() == null) {
+    if (waitOn() == null) {
       return input;
     } else {
-      return (V) input.apply(Wait.on(waitOnSignals()));
+      return (V) input.apply(waitOn());
     }
   }
 
@@ -378,7 +379,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
     public abstract Builder<T> setAdditionalOperationsOnRanges(
         @Nullable PTransform<PCollection<ImmutableList<Range>>, ?> value);
 
-    public abstract Builder<T> setWaitOnSignals(@Nullable ImmutableList<PCollection<?>> value);
+    public abstract Builder<T> setWaitOn(@Nullable OnSignal<?> value);
 
     public abstract Builder<T> setInitialRange(Range value);
 
