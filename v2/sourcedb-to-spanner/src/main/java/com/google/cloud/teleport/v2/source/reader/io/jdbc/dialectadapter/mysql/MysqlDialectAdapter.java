@@ -406,6 +406,79 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return mySQlTypeAliases.getOrDefault(normalizedType, normalizedType);
   }
 
+  private String addWhereClause(String query, ImmutableList<String> partitionColumns) {
+
+    // Implementation detail, using StringBuilder since we are generating the query in a loop.
+    StringBuilder queryBuilder = new StringBuilder(query);
+
+    boolean firstDone = false;
+    for (String partitionColumn : partitionColumns) {
+
+      if (firstDone) {
+        // Add AND for iteration after first.
+        queryBuilder.append(" AND ");
+      } else {
+        // add `where` only for first iteration.
+        queryBuilder.append(" WHERE ");
+      }
+
+      // Include the column?
+      queryBuilder.append("((? = FALSE) OR ");
+      // range to define the where clause. `col >= range.start() AND (col < range.end() OR
+      // (range.isLast() = TRUE AND col = range.end()))`
+      queryBuilder.append(
+          String.format("(%1$s >= ? AND (%1$s < ? OR (? = TRUE AND %1$s = ?)))", partitionColumn));
+      queryBuilder.append(")");
+      firstDone = true;
+    }
+    return queryBuilder.toString();
+  }
+
+  /**
+   * Get query for the prepared statement to read columns within a range.
+   *
+   * @param tableName name of the table to read
+   * @param partitionColumns partition columns.
+   * @return Query Statement.
+   */
+  @Override
+  public String getReadQuery(String tableName, ImmutableList<String> partitionColumns) {
+    return addWhereClause("select * from " + tableName, partitionColumns);
+  }
+
+  /**
+   * Get query for the prepared statement to count a given range.
+   *
+   * @param tableName name of the table to read.
+   * @param partitionColumns partition columns.
+   * @param timeoutMillis timeout of the count query in milliseconds. Set to 0 to disable timeout.
+   * @return Query Statement.
+   */
+  @Override
+  public String getCountQuery(
+      String tableName, ImmutableList<String> partitionColumns, long timeoutMillis) {
+    return addWhereClause(
+        String.format(
+            "select /*+ MAX_EXECUTION_TIME(%s) */ COUNT(*) from %s", timeoutMillis, tableName),
+        partitionColumns);
+  }
+
+  /**
+   * Get query for the prepared statement to get min and max of a given column, optionally in the
+   * context of a parent range.
+   *
+   * @param tableName name of the table to read.
+   * @param partitionColumns if not-empty, partition columns. Set empty for first column of
+   *     partitioning.
+   */
+  @Override
+  public String getBoundaryQuery(
+      String tableName, ImmutableList<String> partitionColumns, String colName) {
+    return addWhereClause(
+        String.format("select MIN(%s),MAX(%s) from %s", colName, colName, tableName),
+        partitionColumns);
+  }
+
   /**
    * Version of MySql. As of now the code does not need to distinguish between versions of Mysql.
    * Having the type allows the implementation do finer distinctions if needed in the future.

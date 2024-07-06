@@ -13,15 +13,18 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter;
+package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms;
 
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
-import com.google.cloud.teleport.v2.source.reader.io.schema.RetriableSchemaDiscovery;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.common.collect.ImmutableList;
+import java.io.Serializable;
+import org.apache.beam.sdk.transforms.DoFn;
 
-/**
- * Interface to support various dialects of JDBC databases.
- *
- * <p><b>Note:</b>As a prt of M2 effort, this interface will expose more mehtods than just extending
- * {@link RetriableSchemaDiscovery}.
- */
-public interface DialectAdapter extends RetriableSchemaDiscovery, UniformSplitterDBAdapter {}
+/** Emit ranges from a collection. */
+public class UnflattenRangesDoFn extends DoFn<ImmutableList<Range>, Range> implements Serializable {
+
+  @ProcessElement
+  public void processElement(@Element ImmutableList<Range> input, OutputReceiver<Range> out) {
+    input.forEach(out::output);
+  }
+}
