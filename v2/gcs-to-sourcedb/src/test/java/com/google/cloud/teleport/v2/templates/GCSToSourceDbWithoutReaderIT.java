@@ -35,7 +35,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.utils.IORedirectUtil;
@@ -98,9 +97,9 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
 
         createAndUploadJarToGcs(gcsResourceManager);
         CustomTransformation customTransformation =
-                CustomTransformation.builder(
-                                "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
-                        .build();
+            CustomTransformation.builder(
+                    "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
+                .build();
         launchWriterDataflowJob(customTransformation);
       }
     }
@@ -155,20 +154,20 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     assertThat(rows).hasSize(2);
     String sortColumn = "varchar_column";
     List<Map<String, Object>> sortedRows =
-            rows.stream()
-                    .sorted(Comparator.comparing(row -> (String) row.get(sortColumn)))
-                    .collect(Collectors.toList());
+        rows.stream()
+            .sorted(Comparator.comparing(row -> (String) row.get(sortColumn)))
+            .collect(Collectors.toList());
     assertThat(sortedRows.get(1).get("varchar_column")).isEqualTo("example2");
     assertThat(sortedRows.get(1).get("bigint_column")).isEqualTo(1000);
     assertThat(sortedRows.get(1).get("binary_column"))
-            .isEqualTo("bin_column".getBytes(StandardCharsets.UTF_8));
+        .isEqualTo("bin_column".getBytes(StandardCharsets.UTF_8));
     assertThat(sortedRows.get(1).get("bit_column")).isEqualTo("1".getBytes(StandardCharsets.UTF_8));
     assertThat(sortedRows.get(1).get("blob_column"))
-            .isEqualTo("blob_column".getBytes(StandardCharsets.UTF_8));
+        .isEqualTo("blob_column".getBytes(StandardCharsets.UTF_8));
     assertThat(sortedRows.get(1).get("bool_column")).isEqualTo(true);
     assertThat(sortedRows.get(1).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
     assertThat(sortedRows.get(1).get("datetime_column"))
-            .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 56));
+        .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 56));
     assertThat(sortedRows.get(1).get("decimal_column")).isEqualTo(new BigDecimal("99999.99"));
     assertThat(sortedRows.get(1).get("double_column")).isEqualTo(123456.123);
     assertThat(sortedRows.get(1).get("enum_column")).isEqualTo("1");
@@ -177,21 +176,21 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     assertThat(sortedRows.get(1).get("text_column")).isEqualTo("Sample text for entry 2");
     assertThat(sortedRows.get(1).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:30:00"));
     assertThat(sortedRows.get(1).get("timestamp_column"))
-            .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"));
+        .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"));
     assertThat(sortedRows.get(1).get("tinyint_column")).isEqualTo(2);
     assertThat(sortedRows.get(1).get("year_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
 
     assertThat(sortedRows.get(0).get("varchar_column")).isEqualTo("example");
     assertThat(sortedRows.get(0).get("bigint_column")).isEqualTo(12346);
     assertThat(sortedRows.get(0).get("binary_column"))
-            .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
+        .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
     assertThat(sortedRows.get(0).get("bit_column")).isEqualTo("5".getBytes(StandardCharsets.UTF_8));
     assertThat(sortedRows.get(0).get("blob_column"))
-            .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
+        .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
     assertThat(sortedRows.get(0).get("bool_column")).isEqualTo(false);
     assertThat(sortedRows.get(0).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-02"));
     assertThat(sortedRows.get(0).get("datetime_column"))
-            .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55));
+        .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55));
     assertThat(sortedRows.get(0).get("decimal_column")).isEqualTo(new BigDecimal("12344.67"));
     assertThat(sortedRows.get(0).get("double_column")).isEqualTo(124.456);
     assertThat(sortedRows.get(0).get("enum_column")).isEqualTo("3");
@@ -200,7 +199,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     assertThat(sortedRows.get(0).get("text_column")).isEqualTo("Sample text append");
     assertThat(sortedRows.get(0).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:40:00"));
     assertThat(sortedRows.get(0).get("timestamp_column"))
-            .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
+        .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
     assertThat(sortedRows.get(0).get("tinyint_column")).isEqualTo(2);
     assertThat(sortedRows.get(0).get("year_column")).isEqualTo(java.sql.Date.valueOf("2025-01-01"));
   }
@@ -246,7 +245,8 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     jdbcResourceManager.createTable(TABLE2, schema);
   }
 
-  private void launchWriterDataflowJob(CustomTransformation customTransformation) throws IOException {
+  private void launchWriterDataflowJob(CustomTransformation customTransformation)
+      throws IOException {
     Map<String, String> params =
         new HashMap<>() {
           {
@@ -264,8 +264,8 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
 
     if (customTransformation != null) {
       params.put(
-              "transformationJarPath",
-              getGcsPath("input/" + customTransformation.jarPath(), gcsResourceManager));
+          "transformationJarPath",
+          getGcsPath("input/" + customTransformation.jarPath(), gcsResourceManager));
       params.put("transformationClassName", customTransformation.classPath());
     }
     String jobName = PipelineUtils.createJobName(testName);
@@ -294,7 +294,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
   }
 
   public void createAndUploadJarToGcs(GcsResourceManager gcsResourceManager)
-          throws IOException, InterruptedException {
+      throws IOException, InterruptedException {
     String[] shellCommand = {"/bin/bash", "-c", "cd ../spanner-custom-shard"};
 
     Process exec = Runtime.getRuntime().exec(shellCommand);
@@ -306,7 +306,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
       throw new RuntimeException("Error staging template, check Maven logs.");
     }
     gcsResourceManager.uploadArtifact(
-            "input/customTransformation.jar",
-            "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
+        "input/customTransformation.jar",
+        "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
   }
 }
