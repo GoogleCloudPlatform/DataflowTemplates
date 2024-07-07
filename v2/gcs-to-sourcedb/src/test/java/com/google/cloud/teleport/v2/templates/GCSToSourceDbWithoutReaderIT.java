@@ -21,17 +21,24 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
@@ -59,6 +66,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
   private static final String SESSION_FILE_RESOURCE = "GCSToSourceDbWithoutReaderIT/session.json";
 
   private static final String TABLE = "Users";
+  private static final String TABLE2 = "AllDatatypeTransformation";
   private static final HashSet<GCSToSourceDbWithoutReaderIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   private static SpannerResourceManager spannerMetadataResourceManager;
@@ -71,7 +79,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
    * @throws IOException
    */
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
     synchronized (GCSToSourceDbWithoutReaderIT.class) {
       testInstances.add(this);
@@ -88,7 +96,12 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
 
-        launchWriterDataflowJob();
+        createAndUploadJarToGcs(gcsResourceManager);
+        CustomTransformation customTransformation =
+                CustomTransformation.builder(
+                                "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
+                        .build();
+        launchWriterDataflowJob(customTransformation);
       }
     }
   }
@@ -123,7 +136,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     long rowCount = 0;
     for (int i = 0; rowCount != 1 && i < 60; ++i) {
       rowCount = jdbcResourceManager.getRowCount(TABLE);
-      LOG.info("Row count = {}, Waiting for 30s if row count not = 1", rowCount);
+      LOG.info("Row count = {}, Waiting for 10s if row count not = 1", rowCount);
       Thread.sleep(10000);
     }
     assertThat(rowCount).isEqualTo(1);
@@ -131,6 +144,65 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     assertThat(rows).hasSize(1);
     assertThat(rows.get(0).get("id")).isEqualTo(1);
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
+
+    for (int i = 0; rowCount != 2 && i < 10; ++i) {
+      rowCount = jdbcResourceManager.getRowCount(TABLE2);
+      LOG.info("Row count = {}, Waiting for 10s if row count not = 2", rowCount);
+      Thread.sleep(10000);
+    }
+    assertThat(rowCount).isEqualTo(2);
+    rows = jdbcResourceManager.readTable(TABLE2);
+    assertThat(rows).hasSize(2);
+    String sortColumn = "varchar_column";
+    List<Map<String, Object>> sortedRows =
+            rows.stream()
+                    .sorted(Comparator.comparing(row -> (String) row.get(sortColumn)))
+                    .collect(Collectors.toList());
+    assertThat(sortedRows.get(1).get("varchar_column")).isEqualTo("example2");
+    assertThat(sortedRows.get(1).get("bigint_column")).isEqualTo(1000);
+    assertThat(sortedRows.get(1).get("binary_column"))
+            .isEqualTo("bin_column".getBytes(StandardCharsets.UTF_8));
+    assertThat(sortedRows.get(1).get("bit_column")).isEqualTo("1".getBytes(StandardCharsets.UTF_8));
+    assertThat(sortedRows.get(1).get("blob_column"))
+            .isEqualTo("blob_column".getBytes(StandardCharsets.UTF_8));
+    assertThat(sortedRows.get(1).get("bool_column")).isEqualTo(true);
+    assertThat(sortedRows.get(1).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
+    assertThat(sortedRows.get(1).get("datetime_column"))
+            .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 56));
+    assertThat(sortedRows.get(1).get("decimal_column")).isEqualTo(new BigDecimal("99999.99"));
+    assertThat(sortedRows.get(1).get("double_column")).isEqualTo(123456.123);
+    assertThat(sortedRows.get(1).get("enum_column")).isEqualTo("1");
+    assertThat(sortedRows.get(1).get("float_column")).isEqualTo(12345.67f);
+    assertThat(sortedRows.get(1).get("int_column")).isEqualTo(100);
+    assertThat(sortedRows.get(1).get("text_column")).isEqualTo("Sample text for entry 2");
+    assertThat(sortedRows.get(1).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:30:00"));
+    assertThat(sortedRows.get(1).get("timestamp_column"))
+            .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"));
+    assertThat(sortedRows.get(1).get("tinyint_column")).isEqualTo(2);
+    assertThat(sortedRows.get(1).get("year_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
+
+    assertThat(sortedRows.get(0).get("varchar_column")).isEqualTo("example");
+    assertThat(sortedRows.get(0).get("bigint_column")).isEqualTo(12346);
+    assertThat(sortedRows.get(0).get("binary_column"))
+            .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
+    assertThat(sortedRows.get(0).get("bit_column")).isEqualTo("5".getBytes(StandardCharsets.UTF_8));
+    assertThat(sortedRows.get(0).get("blob_column"))
+            .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
+    assertThat(sortedRows.get(0).get("bool_column")).isEqualTo(false);
+    assertThat(sortedRows.get(0).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-02"));
+    assertThat(sortedRows.get(0).get("datetime_column"))
+            .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55));
+    assertThat(sortedRows.get(0).get("decimal_column")).isEqualTo(new BigDecimal("12344.67"));
+    assertThat(sortedRows.get(0).get("double_column")).isEqualTo(124.456);
+    assertThat(sortedRows.get(0).get("enum_column")).isEqualTo("3");
+    assertThat(sortedRows.get(0).get("float_column")).isEqualTo(124.45f);
+    assertThat(sortedRows.get(0).get("int_column")).isEqualTo(124);
+    assertThat(sortedRows.get(0).get("text_column")).isEqualTo("Sample text append");
+    assertThat(sortedRows.get(0).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:40:00"));
+    assertThat(sortedRows.get(0).get("timestamp_column"))
+            .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
+    assertThat(sortedRows.get(0).get("tinyint_column")).isEqualTo(2);
+    assertThat(sortedRows.get(0).get("year_column")).isEqualTo(java.sql.Date.valueOf("2025-01-01"));
   }
 
   private SpannerResourceManager createSpannerMetadataDatabase() {
@@ -150,9 +222,31 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
 
     jdbcResourceManager.createTable(TABLE, schema);
+
+    columns.clear();
+    columns.put("varchar_column", "VARCHAR(20) NOT NULL");
+    columns.put("tinyint_column", "TINYINT");
+    columns.put("text_column", "TEXT");
+    columns.put("date_column", "DATE");
+    columns.put("int_column", "INT");
+    columns.put("bigint_column", "BIGINT");
+    columns.put("float_column", "FLOAT(10,2)");
+    columns.put("double_column", "DOUBLE");
+    columns.put("decimal_column", "DECIMAL(10,2)");
+    columns.put("datetime_column", "DATETIME");
+    columns.put("timestamp_column", "TIMESTAMP");
+    columns.put("time_column", "TIME");
+    columns.put("year_column", "YEAR");
+    columns.put("blob_column", "BLOB");
+    columns.put("enum_column", "ENUM('1','2','3')");
+    columns.put("bool_column", "TINYINT(1)");
+    columns.put("binary_column", "VARBINARY(150)");
+    columns.put("bit_column", "BIT(8)");
+    schema = new JDBCResourceManager.JDBCSchema(columns, "varchar_column");
+    jdbcResourceManager.createTable(TABLE2, schema);
   }
 
-  private void launchWriterDataflowJob() throws IOException {
+  private void launchWriterDataflowJob(CustomTransformation customTransformation) throws IOException {
     Map<String, String> params =
         new HashMap<>() {
           {
@@ -167,6 +261,13 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
             put("windowDuration", "10s");
           }
         };
+
+    if (customTransformation != null) {
+      params.put(
+              "transformationJarPath",
+              getGcsPath("input/" + customTransformation.jarPath(), gcsResourceManager));
+      params.put("transformationClassName", customTransformation.classPath());
+    }
     String jobName = PipelineUtils.createJobName(testName);
     LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
     options.setParameters(params);
@@ -190,5 +291,22 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     String shardFileContents = ja.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+  }
+
+  public void createAndUploadJarToGcs(GcsResourceManager gcsResourceManager)
+          throws IOException, InterruptedException {
+    String[] shellCommand = {"/bin/bash", "-c", "cd ../spanner-custom-shard"};
+
+    Process exec = Runtime.getRuntime().exec(shellCommand);
+
+    IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
+    IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
+
+    if (exec.waitFor() != 0) {
+      throw new RuntimeException("Error staging template, check Maven logs.");
+    }
+    gcsResourceManager.uploadArtifact(
+            "input/customTransformation.jar",
+            "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
   }
 }
