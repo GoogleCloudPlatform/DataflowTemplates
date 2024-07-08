@@ -94,7 +94,7 @@ variable "shard_list" {
       runner_params = object({
         max_workers  = optional(number)
         num_workers  = optional(number)
-        machine_type = optional(string, "n2-standard-2")
+        machine_type = optional(string)
       })
     })
   }))
