@@ -47,7 +47,7 @@ public class OptionsToConfigBuilderTest {
     sourceDbToSpannerOptions.setTables("table1,table2");
     JdbcIOWrapperConfig config =
         OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
-            sourceDbToSpannerOptions, List.of("table1", "table2"), null);
+            sourceDbToSpannerOptions, List.of("table1", "table2"), null, null);
     assertThat(config.jdbcDriverClassName()).isEqualTo(testdriverClassName);
     assertThat(config.sourceDbURL()).isEqualTo(testUrl);
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
@@ -65,6 +65,6 @@ public class OptionsToConfigBuilderTest {
         RuntimeException.class,
         () ->
             OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
-                sourceDbToSpannerOptions, new ArrayList<>(), null));
+                sourceDbToSpannerOptions, new ArrayList<>(), null, null));
   }
 }

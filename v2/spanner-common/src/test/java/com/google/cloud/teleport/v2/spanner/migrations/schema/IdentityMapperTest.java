@@ -76,6 +76,13 @@ public class IdentityMapperTest {
   }
 
   @Test
+  public void testGetSourceTableName() {
+    String srcTableName = "Users";
+    String result = mapper.getSourceTableName("", srcTableName);
+    assertEquals(srcTableName, result);
+  }
+
+  @Test
   public void testGetSpannerTableName() {
     String srcTableName = "Users";
     String result = mapper.getSpannerTableName("", srcTableName);

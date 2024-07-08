@@ -24,6 +24,7 @@ import com.google.common.collect.ImmutableList;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import org.apache.beam.sdk.transforms.Wait;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +47,10 @@ public final class OptionsToConfigBuilder {
     }
 
     public static JdbcIOWrapperConfig configWithMySqlDefaultsFromOptions(
-        SourceDbToSpannerOptions options, List<String> tables, String shardId) {
+        SourceDbToSpannerOptions options,
+        List<String> tables,
+        String shardId,
+        Wait.OnSignal<?> waitOn) {
       String sourceDbURL = options.getSourceDbURL();
       String dbName = extractDbFromURL(sourceDbURL);
       String username = options.getUsername();
@@ -70,7 +74,8 @@ public final class OptionsToConfigBuilder {
           jdbcDriverClassName,
           jdbcDriverJars,
           maxConnections,
-          numPartitions);
+          numPartitions,
+          waitOn);
     }
   }
 
@@ -86,7 +91,8 @@ public final class OptionsToConfigBuilder {
       String jdbcDriverClassName,
       String jdbcDriverJars,
       long maxConnections,
-      Integer numPartitions) {
+      Integer numPartitions,
+      Wait.OnSignal<?> waitOn) {
     JdbcIOWrapperConfig.Builder builder = builderWithMySqlDefaults();
     builder =
         builder
@@ -107,6 +113,10 @@ public final class OptionsToConfigBuilder {
     }
     if (!StringUtils.isEmpty(shardId)) {
       builder.setShardID(shardId);
+    }
+
+    if (waitOn != null) {
+      builder.setWaitOn(waitOn);
     }
 
     builder.setMaxPartitions(numPartitions);

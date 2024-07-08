@@ -125,6 +125,21 @@ public class SessionBasedMapperTest {
   }
 
   @Test
+  public void testGetSourceTableName() {
+    String srcTableName = "new_cart";
+    String result = mapper.getSourceTableName("", srcTableName);
+    String expectedTableName = "cart";
+    assertEquals(expectedTableName, result);
+
+    srcTableName = "new_people";
+    result = mapper.getSourceTableName("", srcTableName);
+    expectedTableName = "people";
+    assertEquals(expectedTableName, result);
+
+    assertThrows(NoSuchElementException.class, () -> mapper.getSourceTableName("", "xyz"));
+  }
+
+  @Test
   public void testGetSpannerTableName() {
     String srcTableName = "cart";
     String result = mapper.getSpannerTableName("", srcTableName);

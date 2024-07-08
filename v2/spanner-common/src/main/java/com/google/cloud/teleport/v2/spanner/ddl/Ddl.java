@@ -102,6 +102,38 @@ public class Ddl implements Serializable {
     return new ArrayList<>(tablesReferenced);
   }
 
+  private void getTablesOrderedByReferenceUtil(
+      Set<String> visited,
+      Set<String> processingTables,
+      String tableName,
+      List<String> orderedTables) {
+    if (visited.contains(tableName.toLowerCase())) {
+      return;
+    }
+    if (processingTables.contains(tableName.toLowerCase())) {
+      throw new IllegalStateException(
+          "Cyclic dependency detected! Involved tables: " + processingTables);
+    }
+
+    processingTables.add(tableName.toLowerCase());
+    for (String parent : tablesReferenced(tableName)) {
+      getTablesOrderedByReferenceUtil(visited, processingTables, parent, orderedTables);
+    }
+    orderedTables.add(tableName);
+    visited.add(tableName.toLowerCase());
+    processingTables.remove(tableName.toLowerCase());
+  }
+
+  public List<String> getTablesOrderedByReference() {
+    List<String> orderedTables = new ArrayList<>();
+    Set<String> visited = new HashSet<>();
+    Set<String> processingTables = new HashSet<>();
+    for (Table table : allTables()) {
+      getTablesOrderedByReferenceUtil(visited, processingTables, table.name(), orderedTables);
+    }
+    return orderedTables;
+  }
+
   private NavigableSet<String> childTableNames(String table) {
     return parents.get(table.toLowerCase());
   }

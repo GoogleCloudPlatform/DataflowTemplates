@@ -102,6 +102,16 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
   }
 
   @Override
+  public String getSourceTableName(String namespace, String spTable) throws NoSuchElementException {
+    Map<String, NameAndCols> toSource = schema.getToSource();
+    if (!toSource.containsKey(spTable)) {
+      throw new NoSuchElementException(
+          String.format("Spanner table '%s' equivalent not found in source", spTable));
+    }
+    return toSource.get(spTable).getName();
+  }
+
+  @Override
   public String getSpannerTableName(String namespace, String srcTable)
       throws NoSuchElementException {
     Map<String, NameAndCols> toSpanner = schema.getToSpanner();
