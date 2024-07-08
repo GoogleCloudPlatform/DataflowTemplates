@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter;
 
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
+import java.sql.SQLException;
 
 /** Helper Interface to help uniform splitter adapt to the source database. */
 public interface UniformSplitterDBAdapter extends Serializable {
@@ -49,4 +50,16 @@ public interface UniformSplitterDBAdapter extends Serializable {
    * @param partitionColumns partition columns.
    */
   String getBoundaryQuery(String tableName, ImmutableList<String> partitionColumns, String colName);
+
+  /**
+   * Check if a given {@link SQLException} is a timeout. The implementation needs to check for
+   * dialect specific {@link SQLException#getSQLState() SqlState} and {@link
+   * SQLException#getErrorCode() ErrorCode} to check if the exception indicates a server side
+   * timeout. The client side timeout would be already checked for by handling {@link
+   * java.sql.SQLTimeoutException}, so the implementation does not need to check for the same.
+   *
+   * @param exception
+   * @return
+   */
+  boolean checkForTimeout(SQLException exception);
 }

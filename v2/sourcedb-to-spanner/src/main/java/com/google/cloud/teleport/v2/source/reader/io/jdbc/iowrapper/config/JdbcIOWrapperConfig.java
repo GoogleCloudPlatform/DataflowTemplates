@@ -114,6 +114,38 @@ public abstract class JdbcIOWrapperConfig {
   public abstract OnSignal<?> waitOn();
 
   /**
+   * If not null, maximum number of parallel queries issued to the DB during split process. Ignored
+   * if {@link JdbcIOWrapperConfig#readWithUniformPartitionsFeatureEnabled()} is false. It's best to
+   * set this to a number close to number of cores available on mySql server. Defaults to {@link
+   * JdbcIOWrapperConfig#DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS}.
+   *
+   * <p><b>Performance</b>
+   *
+   * <ul>
+   *   <li>Ensure that <a
+   *       href=https://dev.mysql.com/doc/refman/8.4/en/innodb-performance-multiple_io_threads.html>innodb_read_io_threads</a>
+   *       is set to the default value as recommended by Mysql or higher. If the partitioning is
+   *       slow due to too many queries timing out in each stage, and if the {@code SHOW ENGINE
+   *       INNODB STATUS} shows pending queries close to innodb_read_io_threads, it's an indication
+   *       to increase this setting.
+   *   <li>Ensure that <a
+   *       href=https://dev.mysql.com/doc/refman/8.4/en/innodb-parameters.html#sysvar_innodb_buffer_pool_size>sysvar_innodb_buffer_pool_size</a>
+   *       is set to the default value as recommended by Mysql or higher.
+   * </ul>
+   */
+  @Nullable
+  public abstract Integer dbParallelizationForSplitProcess();
+
+  private static final int DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS = 100;
+
+  /**
+   * If not null, maximum number of parallel queries issued to the DB for reads. Ignored if {@link
+   * JdbcIOWrapperConfig#readWithUniformPartitionsFeatureEnabled()} is false. Defaults to null.
+   */
+  @Nullable
+  public abstract Integer dbParallelizationForReads();
+
+  /**
    * A transform that can be injected to make use of the discovered splits for additional use case
    * like creating split points on spanner before the actual read. Ignored if {@link
    * JdbcIOWrapperConfig#readWithUniformPartitionsFeatureEnabled()} is false. Defaults to null.
@@ -136,6 +168,8 @@ public abstract class JdbcIOWrapperConfig {
         .setMaxPartitions(null)
         .setWaitOn(null)
         .setMaxFetchSize(null)
+        .setDbParallelizationForReads(null)
+        .setDbParallelizationForSplitProcess(DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
         .setReadWithUniformPartitionsFeatureEnabled(true);
   }
 
@@ -176,6 +210,10 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setReadWithUniformPartitionsFeatureEnabled(Boolean value);
 
     public abstract Builder setWaitOn(@Nullable OnSignal<?> value);
+
+    public abstract Builder setDbParallelizationForSplitProcess(@Nullable Integer value);
+
+    public abstract Builder setDbParallelizationForReads(@Nullable Integer value);
 
     public abstract Builder setAdditionalOperationsOnRanges(
         @Nullable PTransform<PCollection<ImmutableList<Range>>, ?> value);

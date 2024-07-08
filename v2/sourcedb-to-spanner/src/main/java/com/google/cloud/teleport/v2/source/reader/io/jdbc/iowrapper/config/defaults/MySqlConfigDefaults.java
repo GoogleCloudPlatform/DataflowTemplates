@@ -72,8 +72,10 @@ public class MySqlConfigDefaults {
    *       we are also setting the session timezone to UTC.
    * </ol>
    */
+  // TODO: make the innodb_parallel_read_threads as a config option, no need to set if defaults are
+  // correct.
   public static final ImmutableList<String> DEFAULT_MYSQL_INIT_SEQ =
-      ImmutableList.of("SET TIME_ZONE = 'UTC'");
+      ImmutableList.of("SET TIME_ZONE = 'UTC'", "SET SESSION innodb_parallel_read_threads=32");
 
   private MySqlConfigDefaults() {}
 }

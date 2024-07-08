@@ -18,8 +18,10 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.trans
 import static org.apache.beam.sdk.util.Preconditions.checkStateNotNull;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.RangePreparedStatementSetter;
+import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -50,6 +52,8 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
   private final SerializableFunction<Void, DataSource> dataSourceProviderFn;
   private final long timeoutMillis;
 
+  private final UniformSplitterDBAdapter dbAdapter;
+
   private final String countQuery;
 
   private final long numColumns;
@@ -59,12 +63,14 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
   RangeCountDoFn(
       SerializableFunction<Void, DataSource> dataSourceProviderFn,
       long timeoutMillis,
-      String countQuery,
-      long numColumns) {
+      UniformSplitterDBAdapter dbAdapter,
+      String tableNme,
+      ImmutableList<String> partitionColumns) {
     this.dataSourceProviderFn = dataSourceProviderFn;
     this.timeoutMillis = timeoutMillis;
-    this.countQuery = countQuery;
-    this.numColumns = numColumns;
+    this.dbAdapter = dbAdapter;
+    this.countQuery = dbAdapter.getCountQuery(tableNme, partitionColumns, timeoutMillis);
+    this.numColumns = partitionColumns.size();
     this.dataSource = null;
   }
 
@@ -90,50 +96,54 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
   public void processElement(@Element Range input, OutputReceiver<Range> out, ProcessContext c)
       throws SQLException {
 
-    long count;
+    long count = Range.INDETERMINATE_COUNT;
     try (Connection conn = acquireConnection()) {
       PreparedStatement stmt =
           conn.prepareStatement(
               this.countQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
       stmt.setQueryTimeout((int) ((this.timeoutMillis + TIMEOUT_GRACE_MILLIS) / 1000));
       new RangePreparedStatementSetter(numColumns).setParameters(input, stmt);
-      try {
-        ResultSet rs = stmt.executeQuery();
-        if (rs.next()) {
-          count = rs.getLong(1);
-          if (rs.wasNull()) {
-            logger.error(
-                "Got null for count resultSet. Range = {}, Query = {}, DataSource = {}",
-                input,
-                countQuery,
-                dataSource);
-            count = Range.INDETERMINATE_COUNT;
-          }
-        } else {
+      ResultSet rs = stmt.executeQuery();
+      if (rs.next()) {
+        count = rs.getLong(1);
+        if (rs.wasNull()) {
           logger.error(
-              "Got empty count resultSet. Range = {}, Query = {}, DataSource = {}",
+              "Got null for count resultSet. Range = {}, Query = {}, DataSource = {}",
               input,
               countQuery,
               dataSource);
           count = Range.INDETERMINATE_COUNT;
         }
-      } catch (SQLTimeoutException e) {
+      } else {
+        logger.error(
+            "Got empty count resultSet. Range = {}, Query = {}, DataSource = {}",
+            input,
+            countQuery,
+            dataSource);
+      }
+    } catch (SQLException e) {
+      if (checkTimeout(e)) {
         logger.warn(
-            "Handled timeout while counting Range = {}, Query = {}, DataSource = {}, timeoutMillis = {}",
+            "Handled timeout while counting Range = {}, Query = {}, DataSource = {}, timeoutMillis = {}, Exception {}, sqlState {}, errorCode {}",
             input,
             countQuery,
             dataSource,
-            timeoutMillis);
-        count = Range.INDETERMINATE_COUNT;
+            timeoutMillis,
+            e,
+            e.getSQLState(),
+            e.getErrorCode());
+      } else {
+        logger.error(
+            "Non-timeout SQL Exception while counting Range = {}, Query = {}, DataSource = {}, timeoutMillis = {}, exception {}, sqlState {}, errorCode {}",
+            input,
+            countQuery,
+            dataSource,
+            timeoutMillis,
+            e,
+            e.getSQLState(),
+            e.getErrorCode());
+        throw e;
       }
-    } catch (SQLException e) {
-      logger.warn(
-          "SQL Exception = {} while counting Range = {}, Query = {}, DataSource = {}. This will be retried by Beam Runner.",
-          e,
-          input,
-          countQuery,
-          dataSource);
-      throw e;
     } catch (Exception e) {
       // This exception is triggered from nullness checks of checker framework for the input to
       // statement preparator and hence should
@@ -152,5 +162,12 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
     logger.debug(
         "Counting Range = {}, Query = {}, DataSource = {}", output, countQuery, dataSource);
     out.output(output); // Output the counted Range.
+  }
+
+  private boolean checkTimeout(SQLException e) {
+    if (e instanceof SQLTimeoutException) {
+      return true;
+    }
+    return dbAdapter.checkForTimeout(e);
   }
 }

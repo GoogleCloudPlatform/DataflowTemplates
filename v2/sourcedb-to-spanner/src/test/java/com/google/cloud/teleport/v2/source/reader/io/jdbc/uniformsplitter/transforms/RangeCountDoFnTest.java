@@ -81,9 +81,9 @@ public class RangeCountDoFnTest {
         new RangeCountDoFn(
             mockDataSourceProviderFn,
             2000L,
-            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
-                .getCountQuery("testTalbe", ImmutableList.of("col1"), 2000L),
-            1);
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT),
+            "testTable",
+            ImmutableList.of("col1"));
     Range input =
         Range.<Integer>builder()
             .setColName("col1")
@@ -112,14 +112,18 @@ public class RangeCountDoFnTest {
         .thenThrow(new SQLTimeoutException("test"))
         .thenReturn(mockResultSet);
     when(mockResultSet.next()).thenReturn(true);
-    when(mockResultSet.getLong(1)).thenThrow(new SQLTimeoutException());
+    when(mockResultSet.getLong(1))
+        .thenThrow(new SQLTimeoutException())
+        .thenThrow(
+            new SQLException(
+                "Query execution was interrupted, maximum statement execution time exceeded"));
     RangeCountDoFn rangeCountDoFn =
         new RangeCountDoFn(
             mockDataSourceProviderFn,
             2000L,
-            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
-                .getCountQuery("testTalbe", ImmutableList.of("col1"), 2000L),
-            1);
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT),
+            "testTable",
+            ImmutableList.of("col1"));
     Range input =
         Range.<Integer>builder()
             .setColName("col1")
@@ -154,9 +158,9 @@ public class RangeCountDoFnTest {
         new RangeCountDoFn(
             mockDataSourceProviderFn,
             2000L,
-            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
-                .getCountQuery("testTalbe", ImmutableList.of("col1"), 2000L),
-            1);
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT),
+            "testTable",
+            ImmutableList.of("col1"));
     Range input =
         Range.<Integer>builder()
             .setColName("col1")
@@ -188,9 +192,9 @@ public class RangeCountDoFnTest {
         new RangeCountDoFn(
             mockDataSourceProviderFn,
             2000L,
-            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
-                .getCountQuery("testTalbe", ImmutableList.of("col1"), 2000L),
-            1);
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT),
+            "testTable",
+            ImmutableList.of("col1"));
     Range input =
         Range.<Integer>builder()
             .setColName("col1")
