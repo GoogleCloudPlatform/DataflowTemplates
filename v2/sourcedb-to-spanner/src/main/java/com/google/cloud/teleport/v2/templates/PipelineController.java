@@ -277,7 +277,7 @@ public class PipelineController {
               ReaderImpl.of(
                   JdbcIoWrapper.of(
                       OptionsToConfigBuilder.getJdbcIOWrapperConfig(
-                          tablesToMigrate,
+                          List.of(srcTable),
                           null,
                           shard.getHost(),
                           Integer.parseInt(shard.getPort()),

@@ -22,6 +22,11 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcI
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.Wait;
+import org.apache.beam.sdk.values.PCollection;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -29,6 +34,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 /** Test class for {@link OptionsToConfigBuilder}. */
 @RunWith(MockitoJUnitRunner.class)
 public class OptionsToConfigBuilderTest {
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   @Test
   public void testConfigWithMySqlDefaultsFromOptions() {
@@ -45,14 +51,17 @@ public class OptionsToConfigBuilderTest {
     sourceDbToSpannerOptions.setUsername(testuser);
     sourceDbToSpannerOptions.setPassword(testpassword);
     sourceDbToSpannerOptions.setTables("table1,table2");
+    PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
     JdbcIOWrapperConfig config =
         OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
-            sourceDbToSpannerOptions, List.of("table1", "table2"), null, null);
+            sourceDbToSpannerOptions, List.of("table1", "table2"), null, Wait.on(dummyPCollection));
     assertThat(config.jdbcDriverClassName()).isEqualTo(testdriverClassName);
     assertThat(config.sourceDbURL()).isEqualTo(testUrl);
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testuser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testpassword);
+    assertThat(config.waitOn()).isNotNull();
   }
 
   @Test
