@@ -230,7 +230,11 @@ using.
 2. Set the `ip_configuration` to `WORKER_IP_PRIVATE` to disable public IP
    addresses for the worker VMs.
 
-Note that the VPC should already exist. This template does not create a VPC.
+> **_NOTE:_** The VPC should already exist. This template does not create a VPC.
+
+If you are facing issue with VPC connectivity, check the following Dataflow
+[guide](https://cloud.google.com/dataflow/docs/guides/troubleshoot-networking)
+to debug common networking issues.
 
 ### Updating template parameters for an existing job
 

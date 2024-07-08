@@ -23,7 +23,7 @@ variable "datastream_params" {
     stream_id                     = optional(string, "mysql-stream")
     stream_prefix_path            = optional(string, "data")
     max_concurrent_cdc_tasks      = optional(number, 5)
-    max_concurrent_backfill_tasks = optional(number, 15)
+    max_concurrent_backfill_tasks = optional(number, 20)
     mysql_database = object({
       database = string
       tables   = optional(list(string))
