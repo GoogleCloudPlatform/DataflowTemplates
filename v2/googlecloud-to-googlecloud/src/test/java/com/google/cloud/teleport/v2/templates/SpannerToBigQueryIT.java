@@ -26,6 +26,7 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Type;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -53,6 +54,7 @@ import org.junit.runners.JUnit4;
 public class SpannerToBigQueryIT extends TemplateTestBase {
 
   private static final int MESSAGES_COUNT = 20;
+  private static final String DEFAULT_STRING_VALUE_IF_NULL = "empty-string";
 
   private SpannerResourceManager spannerClient;
   private BigQueryResourceManager bigQueryClient;
@@ -104,7 +106,7 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
             testName);
     spannerClient.executeDdlStatement(createTableStatement);
 
-    List<Mutation> expectedData = generateTableRows(testName);
+    List<Mutation> expectedData = generateTableRows(testName, false);
     spannerClient.write(expectedData);
 
     String dataset = bigQueryClient.createDataset(REGION);
@@ -157,15 +159,17 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
     // Arrange
     String createTableStatement =
         String.format(
+            // spotless:off
             "CREATE TABLE `%s` (\n"
                 + "  Id INT64 NOT NULL,\n"
                 + "  FirstName String(1024),\n"
-                + "  LastName String(1024),\n"
+                + "  LastName String(1024) DEFAULT '" + DEFAULT_STRING_VALUE_IF_NULL + "',\n"
                 + ") PRIMARY KEY(Id)",
+            // spotless:on
             testName);
     spannerClient.executeDdlStatement(createTableStatement);
 
-    List<Mutation> expectedData = generateTableRows(testName);
+    List<Mutation> expectedData = generateTableRows(testName, true);
     spannerClient.write(expectedData);
 
     List<Field> bqSchemaFields =
@@ -206,26 +210,37 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
               mutation.asMap().entrySet().stream()
                   .collect(
                       Collectors.toMap(
-                          e -> e.getKey(),
+                          Map.Entry::getKey,
                           // Only checking for int64 and string here. If adding another type, this
                           // will need to be fixed.
-                          e ->
-                              e.getValue().getType() == Type.int64()
-                                  ? e.getValue().getInt64()
-                                  : e.getValue().getString()));
+                          e -> {
+                            Value v = e.getValue();
+                            switch (v.getType().getCode()) {
+                              case INT64:
+                                return v.getInt64();
+                              case STRING:
+                                return v.isNull() ? DEFAULT_STRING_VALUE_IF_NULL : v.getString();
+                              default:
+                                throw new UnsupportedOperationException(
+                                    "Unsupported type: " + v.getType());
+                            }
+                          }));
           expectedRecords.add(expectedRecord);
         });
 
     assertThatBigQueryRecords(records).hasRecordsUnordered(expectedRecords);
   }
 
-  private static List<Mutation> generateTableRows(String tableId) {
+  private static List<Mutation> generateTableRows(String tableId, boolean nullLastNames) {
     List<Mutation> mutations = new ArrayList<>();
     for (int i = 0; i < MESSAGES_COUNT; i++) {
       Mutation.WriteBuilder mutation = Mutation.newInsertBuilder(tableId);
       mutation.set("Id").to(i);
       mutation.set("FirstName").to(RandomStringUtils.randomAlphanumeric(1, 20));
-      mutation.set("LastName").to(RandomStringUtils.randomAlphanumeric(1, 20));
+      // Make the first record to have a null LastName, to test the null field case:
+      mutation
+          .set("LastName")
+          .to(nullLastNames && i == 0 ? null : RandomStringUtils.randomAlphanumeric(1, 20));
       mutations.add(mutation.build());
     }
 
