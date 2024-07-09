@@ -29,14 +29,12 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
-import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -146,16 +144,16 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
    *
    * @throws IOException
    */
-  @AfterClass
+  /*@AfterClass
   public static void cleanUp() throws IOException {
     for (DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
-  }
+  }*/
 
   @Test
-  public void multiShardMigration() {
+  public void multiShardMigration() throws InterruptedException {
     // Two dataflow jobs are running corresponding to two physical shards containing two logical
     // shards each. Migrates Users table from 4 logical shards. Asserts data from all the shards are
     // going to Spanner. Checks whether migration shard id column is populated properly based on the
@@ -242,7 +240,8 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
             .build();
     result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo1, Duration.ofMinutes(10)), rowsConditionCheck);
+            .waitForCondition(createConfig(jobInfo2, Duration.ofMinutes(10)), rowsConditionCheck);
+    Thread.sleep(1000 * 60 * 3);
     assertThatResult(result).meetsConditions();
 
     // Assert specific rows

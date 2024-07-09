@@ -49,11 +49,11 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
       Map<String, Object> row = new HashMap<>(request.getRequestRow());
       // Filter event in case "varchar_column" = "example1"
       if (row.get("varchar_column").equals("example1")) {
-        return new MigrationTransformationResponse(request.getRequestRow(), true);
+        return new MigrationTransformationResponse(null, true);
       }
       // In case of update events, return request as response without any transformation
       if (request.getEventType().equals("UPDATE-INSERT")) {
-        return new MigrationTransformationResponse(request.getRequestRow(), false);
+        return new MigrationTransformationResponse(null, false);
       }
       // In case of backfill update the values for all the columns in all the rows except the
       // filtered row.
@@ -134,7 +134,7 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
       MigrationTransformationResponse response = new MigrationTransformationResponse(row, false);
       return response;
     }
-    return new MigrationTransformationResponse(request.getRequestRow(), false);
+    return new MigrationTransformationResponse(null, false);
   }
 
   @Override
