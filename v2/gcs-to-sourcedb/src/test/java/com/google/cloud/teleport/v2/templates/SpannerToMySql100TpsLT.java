@@ -133,9 +133,9 @@ public class SpannerToMySql100TpsLT extends SpannerToJdbcLTBase {
     assertThatResult(result).meetsConditions();
 
     PipelineOperator.Result result1 =
-        pipelineOperator.cancelJobAndFinish(createConfig(readerJobInfo, Duration.ofMinutes(5)));
+        pipelineOperator.cancelJobAndFinish(createConfig(readerJobInfo, Duration.ofMinutes(20)));
     PipelineOperator.Result result2 =
-        pipelineOperator.cancelJobAndFinish(createConfig(writerJobInfo, Duration.ofMinutes(5)));
+        pipelineOperator.cancelJobAndFinish(createConfig(writerJobInfo, Duration.ofMinutes(20)));
     assertThatResult(result1).isLaunchFinished();
     assertThatResult(result2).isLaunchFinished();
 
