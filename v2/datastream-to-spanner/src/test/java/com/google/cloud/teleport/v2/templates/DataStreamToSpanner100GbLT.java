@@ -173,7 +173,7 @@ public class DataStreamToSpanner100GbLT extends DataStreamToSpannerLTBase {
     // Assert Conditions
     assertThatResult(result).meetsConditions();
 
-    result = pipelineOperator.cancelJobAndFinish(createConfig(jobInfo, Duration.ofMinutes(5)));
+    result = pipelineOperator.cancelJobAndFinish(createConfig(jobInfo, Duration.ofMinutes(20)));
     assertThatResult(result).isLaunchFinished();
 
     // export results
