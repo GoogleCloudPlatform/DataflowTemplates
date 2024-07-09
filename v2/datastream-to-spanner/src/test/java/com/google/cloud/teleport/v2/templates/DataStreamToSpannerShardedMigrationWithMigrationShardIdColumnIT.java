@@ -29,12 +29,14 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -144,13 +146,13 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
    *
    * @throws IOException
    */
-  /*@AfterClass
+  @AfterClass
   public static void cleanUp() throws IOException {
     for (DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
-  }*/
+  }
 
   @Test
   public void multiShardMigration() throws InterruptedException {
