@@ -219,12 +219,12 @@ public class AssignShardIdFnTest {
     verify(processContext).output(eq(record));
   }
 
-  /*@Test(expected = RuntimeException.class)
+  @Test(expected = RuntimeException.class)
   public void testGetShardIdFetcherImplWithIncorrectCustomJarPath() throws Exception {
     TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
     when(processContext.element()).thenReturn(record);
     String customJarPath = "src/test/resources/custom-shard-fetcher.jar";
-    String shardingCustomClassName = "com.custom.CustomShardIdFetcher";
+    String shardingCustomClassName = "com.test.CustomShardIdFetcher";
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
@@ -239,7 +239,7 @@ public class AssignShardIdFnTest {
     assignShardIdFn.setShardIdFetcher(
         ShardingLogicImplFetcher.getShardingLogicImpl(
             customJarPath, shardingCustomClassName, "", getSchemaObject(), "skip"));
-  }*/
+  }
 
   public TrimmedShardedDataChangeRecord getInsertTrimmedDataChangeRecord(String shardId) {
     return new TrimmedShardedDataChangeRecord(
