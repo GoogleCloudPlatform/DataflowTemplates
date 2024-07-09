@@ -52,6 +52,11 @@ public class IdentityMapper implements ISchemaMapper, Serializable {
   }
 
   @Override
+  public String getSourceTableName(String namespace, String spTable) throws NoSuchElementException {
+    return spTable;
+  }
+
+  @Override
   public String getSpannerTableName(String namespace, String srcTable)
       throws NoSuchElementException {
     if (ddl.table(srcTable) == null) {

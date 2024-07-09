@@ -34,6 +34,13 @@ public interface ISchemaMapper extends Serializable {
   List<String> getSourceTablesToMigrate(String namespace);
 
   /**
+   * Retrieves the corresponding Source table name given a spanner table name.
+   *
+   * @param namespace is currently not operational.
+   */
+  String getSourceTableName(String namespace, String spTable) throws NoSuchElementException;
+
+  /**
    * Retrieves the corresponding Spanner table name given a source table name.
    *
    * @param namespace is currently not operational.
