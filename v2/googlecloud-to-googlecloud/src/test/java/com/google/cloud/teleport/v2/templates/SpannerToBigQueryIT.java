@@ -159,13 +159,11 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
     // Arrange
     String createTableStatement =
         String.format(
-            // spotless:off
             "CREATE TABLE `%s` (\n"
                 + "  Id INT64 NOT NULL,\n"
                 + "  FirstName String(1024),\n"
-                + "  LastName String(1024) DEFAULT '" + DEFAULT_STRING_VALUE_IF_NULL + "',\n"
+                + "  LastName String(1024),\n"
                 + ") PRIMARY KEY(Id)",
-            // spotless:on
             testName);
     spannerClient.executeDdlStatement(createTableStatement);
 
@@ -176,7 +174,9 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
         Arrays.asList(
             Field.of("Id", StandardSQLTypeName.INT64),
             Field.of("FirstName", StandardSQLTypeName.STRING),
-            Field.of("LastName", StandardSQLTypeName.STRING));
+            Field.of("LastName", StandardSQLTypeName.STRING).toBuilder()
+                .setDefaultValueExpression("'" + DEFAULT_STRING_VALUE_IF_NULL + "'")
+                .build());
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     TableId table = bigQueryClient.createTable("test-table", bqSchema);
