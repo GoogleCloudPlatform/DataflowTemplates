@@ -155,7 +155,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
   }
 
   @Test
-  public void multiShardMigration() throws InterruptedException {
+  public void multiShardMigration() {
     // Two dataflow jobs are running corresponding to two physical shards containing two logical
     // shards each. Migrates Users table from 4 logical shards. Asserts data from all the shards are
     // going to Spanner. Checks whether migration shard id column is populated properly based on the
@@ -243,7 +243,6 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     result =
         pipelineOperator()
             .waitForCondition(createConfig(jobInfo2, Duration.ofMinutes(10)), rowsConditionCheck);
-    Thread.sleep(1000 * 60 * 3);
     assertThatResult(result).meetsConditions();
 
     // Assert specific rows
