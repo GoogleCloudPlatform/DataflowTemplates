@@ -2,6 +2,8 @@
 common_params = {
   project = "<YOUR_PROJECT_ID>"
   # Replace with your GCP project ID
+  host_project = "<YOUR_HOST_PROJECT_ID>"
+  # If you are using a shared VPC
   region = "<YOUR_REGION>"
   # Replace with your desired GCP region
 }
@@ -36,7 +38,7 @@ dataflow_params = {
     num_workers = 4        # Adjust based on your requirements
     on_delete   = "cancel" # Or "drain"
     network     = "<YOUR_VPC_NETWORK>"
-    subnetwork  = "regions/<YOUR_REGION>/subnetworks/<YOUR_SUBNETWORK_NAME>"
+    subnetwork  = "<YOUR_SUBNETWORK_NAME>"
     # subnetwork is passed "as-is". This is intentionally kept like so to
     # allow for shared VPC configurations. Learn more about subnetwork
     # configuration at: https://cloud.google.com/dataflow/docs/guides/specifying-networks#subnetwork_parameter
