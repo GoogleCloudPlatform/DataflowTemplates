@@ -68,6 +68,11 @@ public class ChangeEventSpannerConvertor {
           columnValue =
               Value.float64(ChangeEventTypeConvertor.toDouble(changeEvent, colName, requiredField));
           break;
+        case FLOAT32:
+        case PG_FLOAT4:
+          columnValue =
+              Value.float32(ChangeEventTypeConvertor.toFloat(changeEvent, colName, requiredField));
+          break;
         case STRING:
         case PG_VARCHAR:
         case PG_TEXT:
