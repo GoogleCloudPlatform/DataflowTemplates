@@ -19,13 +19,14 @@ resource "google_compute_subnetwork" "vpc_subnetwork" {
 }
 
 
-# Create compute engine
-resource "google_compute_instance" "mysql_database_instance" {
+# Create multiple compute engine instances based on mysql_params list
+resource "google_compute_instance" "mysql_database_instances" {
+  count                     = length(var.mysql_params)
   depends_on                = [google_compute_subnetwork.vpc_subnetwork]
   project                   = var.common_params.project
-  name                      = var.mysql_params.vm_name
-  machine_type              = var.mysql_params.machine_type
-  zone                      = var.mysql_params.zone
+  name                      = var.mysql_params[count.index].vm_name
+  machine_type              = var.mysql_params[count.index].machine_type
+  zone                      = var.mysql_params[count.index].zone
   tags                      = ["databases"]
   allow_stopping_for_update = true
 
@@ -51,10 +52,10 @@ resource "google_compute_instance" "mysql_database_instance" {
   }
 
   metadata_startup_script = templatefile("mysql5.7-setup.sh", {
-    root_password        = var.mysql_params.root_password
-    custom_user          = var.mysql_params.custom_user
-    custom_user_password = var.mysql_params.custom_user_password
-    ddl                  = var.mysql_params.ddl
+    root_password        = var.mysql_params[count.index].root_password
+    custom_user          = var.mysql_params[count.index].custom_user
+    custom_user_password = var.mysql_params[count.index].custom_user_password
+    ddl                  = var.mysql_params[count.index].ddl
   })
 
   service_account {

@@ -1,11 +1,9 @@
 ## Sample Scenario: MySQL in a VPC with Spanner
 
-> **_SCENARIO:_** This Terraform example illustrates launching multiple MySQL
-> databases in GCE Compute instances inside a custom VPC subnet. It adds firewall
-> rules to ensure that 1) Datastream can connect to the MySQL via private
-> connectivity and 2) Dataflow VMs can communicate with each other. It also
-> creates a Spanner instance and database to migrate
-> data to.
+> **_SCENARIO:_** This Terraform example illustrates configuring
+> a VPC to be a shared VPC with a service project. It also
+> adds required roles to service accounts from the service project
+> for migration jobs to work correctly.
 
 ## Terraform permissions
 
@@ -46,11 +44,7 @@ Following permissions are required -
 - compute.subnetworks.useExternalIp
 - iam.roles.get
 - iam.serviceAccounts.actAs
-- spanner.databases.create
-- spanner.databases.drop
-- spanner.databases.updateDdl
-- spanner.instances.create
-- spanner.instances.delete
+- resourcemanager.projects.setIamPolicy
 ```
 
 [This](#adding-access-to-terraform-service-account) section in the FAQ
@@ -63,9 +57,9 @@ Note: In addition to the above, grant the `roles/viewer` role as well.
 Following roles are required -
 
 ```shell
-roles/spanner.admin
-roles/compute.admin
+roles/iam.securityAdmin
 roles/iam.serviceAccountUser
+roles/compute.admin
 ```
 
 [This](#adding-access-to-terraform-service-account) section in the FAQ
@@ -82,15 +76,10 @@ provides instructions to add these permissions to an existing service account.
 Given these assumptions, it uses a supplied source database connection
 configuration and creates the following resources -
 
-1. **VPC network** - A VPC network.
-2. **VPC subnetwork** - A VPC subnetwork within the VPC network created.
-3. **Firewall rules** - Rules to allow Dataflow VMs to communicate with each
-   other and Datastream to connect to the MySQL instance via private
-   connectivity.
-4. **GCE VMs with MySQL shards** - Launches GCE VMs with MySQL setup on it inside
-   the specified VPC subnet.
-5. **Spanner instance** - A spanner instance with the specified configuration.
-6. **Spanner database** - A spanner database inside the instance created.
+1. **Host Project** - Configures the specified project to be a host project.
+2. **Shared Project** - Configures the specified project to be a shared project.
+3. **IAM Roles** - Adds the required roles to the service project service
+   accounts. 
 
 ## Description
 
@@ -143,31 +132,10 @@ This will launch the configured jobs and produce an output like below -
 Outputs:
 
 resource_ids = {
-  "mysql_db_ips" = [
-    "10.128.0.3",
-    "10.128.0.4",
-    "10.128.0.2",
-  ]
-  "network" = "sample-vpc-network"
-  "spanner_instance" = "sample-spanner-instance"
-  "subnetwork" = "sample-vpc-subnetwork"
+  "host_project" = "<host_project>"
+  "service_project" = "<service_project>"
 }
-resource_urls = {
-  "mysql_instances" = {
-    "mysql-shard1" = "https://console.cloud.google.com/compute/instancesDetail/zones/us-central1-a/instances/mysql-shard1?project=<YOUR-PROJECT-ID>"
-    "mysql-shard2" = "https://console.cloud.google.com/compute/instancesDetail/zones/us-central1-a/instances/mysql-shard2?project=<YOUR-PROJECT-ID>"
-    "mysql-shard3" = "https://console.cloud.google.com/compute/instancesDetail/zones/us-central1-a/instances/mysql-shard3?project=<YOUR-PROJECT-ID>"
-  }
-  "network" = "https://console.cloud.google.com/networking/networks/details/sample-vpc-network?project=<YOUR-PROJECT-ID>"
-  "spanner_instance" = "https://console.cloud.google.com/spanner/instances/sample-spanner-instance/details/databases?project=<YOUR-PROJECT-ID>"
-  "subnetwork" = "https://console.cloud.google.com/networking/subnetworks/details/us-central1/sample-vpc-subnetwork?project=<YOUR-PROJECT-ID>"
-}
-
-
 ```
-
-**Note:** Each of the jobs will have a random suffix added to it to prevent name
-collisions.
 
 ### Cleanup
 
@@ -178,29 +146,6 @@ terraform destroy --var-file=terraform_simple.tfvars
 ```
 
 ## FAQ
-
-### How to connect to the instance?
-
-OsLogin is the preferred method to ssh into GCE VM. OSLogin is already
-configred on these instances. So you only need to add public key and able to
-ssh.
-
-It might be good idea to validate that ssh-agent is running and keys are added
-to it.
-
-Below is quick way to get it to work.
-
-```bash
-# Add your ssh public key. Ensure ssh-add -L | grep publickey gives output.
-gcloud compute os-login ssh-keys add --key="$(ssh-add -L | grep publickey)" --project=<project-name>
-
-# SSH into the instance
-ssh ${USER}_google_com@nic0.mysql-db.<zone>.c.<project-name>.internal.gcpnode.com
-```
-
-### Changing the schema of the MySQL database
-
-Set the `ddl` parameter in the `mysql_params`.
 
 ### Adding access to Terraform service account
 
@@ -298,9 +243,9 @@ Sample output -
 
 ```shell
 ROLE
-roles/spanner.admin
-roles/compute.admin
+roles/iam.securityAdmin
 roles/iam.serviceAccountUser
+roles/compute.admin
 ```
 
 ### Impersonating the Terraform service account
