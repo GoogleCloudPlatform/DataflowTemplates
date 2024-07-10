@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -29,14 +30,14 @@ import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.util.Comparator;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -131,77 +132,81 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     assertRowInMySQL();
   }
 
-  private void assertRowInMySQL() throws InterruptedException {
-    long rowCount = 0;
-    for (int i = 0; rowCount != 1 && i < 60; ++i) {
-      rowCount = jdbcResourceManager.getRowCount(TABLE);
-      LOG.info("Row count = {}, Waiting for 10s if row count not = 1", rowCount);
-      Thread.sleep(10000);
-    }
-    assertThat(rowCount).isEqualTo(1);
+  private void assertRowInMySQL() {
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                () -> jdbcResourceManager.getRowCount(TABLE) == 1);
+    assertThatResult(result).meetsConditions();
+
+    result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(1)),
+                () -> jdbcResourceManager.getRowCount(TABLE2) == 2);
+    assertThatResult(result).meetsConditions();
+
     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE);
     assertThat(rows).hasSize(1);
     assertThat(rows.get(0).get("id")).isEqualTo(1);
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
 
-    for (int i = 0; rowCount != 2 && i < 10; ++i) {
-      rowCount = jdbcResourceManager.getRowCount(TABLE2);
-      LOG.info("Row count = {}, Waiting for 10s if row count not = 2", rowCount);
-      Thread.sleep(10000);
-    }
-    assertThat(rowCount).isEqualTo(2);
-    rows = jdbcResourceManager.readTable(TABLE2);
+    rows =
+        jdbcResourceManager.runSQLQuery(
+            String.format("select * from %s order by %s", TABLE2, "varchar_column"));
     assertThat(rows).hasSize(2);
-    String sortColumn = "varchar_column";
-    List<Map<String, Object>> sortedRows =
-        rows.stream()
-            .sorted(Comparator.comparing(row -> (String) row.get(sortColumn)))
-            .collect(Collectors.toList());
-    assertThat(sortedRows.get(1).get("varchar_column")).isEqualTo("example2");
-    assertThat(sortedRows.get(1).get("bigint_column")).isEqualTo(1000);
-    assertThat(sortedRows.get(1).get("binary_column"))
+    assertThat(rows.get(1).get("varchar_column")).isEqualTo("example2");
+    assertThat(rows.get(1).get("bigint_column")).isEqualTo(1000);
+    assertThat(rows.get(1).get("binary_column"))
         .isEqualTo("bin_column".getBytes(StandardCharsets.UTF_8));
-    assertThat(sortedRows.get(1).get("bit_column")).isEqualTo("1".getBytes(StandardCharsets.UTF_8));
-    assertThat(sortedRows.get(1).get("blob_column"))
+    assertThat(rows.get(1).get("bit_column")).isEqualTo("1".getBytes(StandardCharsets.UTF_8));
+    assertThat(rows.get(1).get("blob_column"))
         .isEqualTo("blob_column".getBytes(StandardCharsets.UTF_8));
-    assertThat(sortedRows.get(1).get("bool_column")).isEqualTo(true);
-    assertThat(sortedRows.get(1).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
-    assertThat(sortedRows.get(1).get("datetime_column"))
+    assertThat(rows.get(1).get("bool_column")).isEqualTo(true);
+    assertThat(rows.get(1).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
+    assertThat(rows.get(1).get("datetime_column"))
         .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 56));
-    assertThat(sortedRows.get(1).get("decimal_column")).isEqualTo(new BigDecimal("99999.99"));
-    assertThat(sortedRows.get(1).get("double_column")).isEqualTo(123456.123);
-    assertThat(sortedRows.get(1).get("enum_column")).isEqualTo("1");
-    assertThat(sortedRows.get(1).get("float_column")).isEqualTo(12345.67f);
-    assertThat(sortedRows.get(1).get("int_column")).isEqualTo(100);
-    assertThat(sortedRows.get(1).get("text_column")).isEqualTo("Sample text for entry 2");
-    assertThat(sortedRows.get(1).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:30:00"));
-    assertThat(sortedRows.get(1).get("timestamp_column"))
+    assertThat(rows.get(1).get("decimal_column")).isEqualTo(new BigDecimal("99999.99"));
+    assertThat(rows.get(1).get("double_column")).isEqualTo(123456.123);
+    assertThat(rows.get(1).get("enum_column")).isEqualTo("1");
+    assertThat(rows.get(1).get("float_column")).isEqualTo(12345.67f);
+    assertThat(rows.get(1).get("int_column")).isEqualTo(100);
+    assertThat(rows.get(1).get("text_column")).isEqualTo("Sample text for entry 2");
+    assertThat(rows.get(1).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:30:00"));
+    assertThat(rows.get(1).get("timestamp_column"))
         .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"));
-    assertThat(sortedRows.get(1).get("tinyint_column")).isEqualTo(2);
-    assertThat(sortedRows.get(1).get("year_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
+    assertThat(rows.get(1).get("tinyint_column")).isEqualTo(2);
+    assertThat(rows.get(1).get("year_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
 
-    assertThat(sortedRows.get(0).get("varchar_column")).isEqualTo("example");
-    assertThat(sortedRows.get(0).get("bigint_column")).isEqualTo(12346);
-    assertThat(sortedRows.get(0).get("binary_column"))
+    assertThat(rows.get(0).get("varchar_column")).isEqualTo("example");
+    assertThat(rows.get(0).get("bigint_column")).isEqualTo(12346);
+    assertThat(rows.get(0).get("binary_column"))
         .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
-    assertThat(sortedRows.get(0).get("bit_column")).isEqualTo("5".getBytes(StandardCharsets.UTF_8));
-    assertThat(sortedRows.get(0).get("blob_column"))
+    assertThat(rows.get(0).get("bit_column")).isEqualTo("5".getBytes(StandardCharsets.UTF_8));
+    assertThat(rows.get(0).get("blob_column"))
         .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
-    assertThat(sortedRows.get(0).get("bool_column")).isEqualTo(false);
-    assertThat(sortedRows.get(0).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-02"));
-    assertThat(sortedRows.get(0).get("datetime_column"))
+    assertThat(rows.get(0).get("bool_column")).isEqualTo(false);
+    assertThat(rows.get(0).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-02"));
+    assertThat(rows.get(0).get("datetime_column"))
         .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55));
-    assertThat(sortedRows.get(0).get("decimal_column")).isEqualTo(new BigDecimal("12344.67"));
-    assertThat(sortedRows.get(0).get("double_column")).isEqualTo(124.456);
-    assertThat(sortedRows.get(0).get("enum_column")).isEqualTo("3");
-    assertThat(sortedRows.get(0).get("float_column")).isEqualTo(124.45f);
-    assertThat(sortedRows.get(0).get("int_column")).isEqualTo(124);
-    assertThat(sortedRows.get(0).get("text_column")).isEqualTo("Sample text append");
-    assertThat(sortedRows.get(0).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:40:00"));
-    assertThat(sortedRows.get(0).get("timestamp_column"))
+    assertThat(rows.get(0).get("decimal_column")).isEqualTo(new BigDecimal("12344.67"));
+    assertThat(rows.get(0).get("double_column")).isEqualTo(124.456);
+    assertThat(rows.get(0).get("enum_column")).isEqualTo("3");
+    assertThat(rows.get(0).get("float_column")).isEqualTo(124.45f);
+    assertThat(rows.get(0).get("int_column")).isEqualTo(124);
+    assertThat(rows.get(0).get("text_column")).isEqualTo("Sample text append");
+    assertThat(rows.get(0).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:40:00"));
+    assertThat(rows.get(0).get("timestamp_column"))
         .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
-    assertThat(sortedRows.get(0).get("tinyint_column")).isEqualTo(2);
-    assertThat(sortedRows.get(0).get("year_column")).isEqualTo(java.sql.Date.valueOf("2025-01-01"));
+    assertThat(rows.get(0).get("tinyint_column")).isEqualTo(2);
+    assertThat(rows.get(0).get("year_column")).isEqualTo(java.sql.Date.valueOf("2025-01-01"));
+
+    rows =
+        jdbcResourceManager.runSQLQuery(
+            String.format(
+                "select * from %s where %s like '%s'", TABLE2, "varchar_column", "example1"));
+    assertThat(rows).hasSize(0);
   }
 
   private SpannerResourceManager createSpannerMetadataDatabase() {
