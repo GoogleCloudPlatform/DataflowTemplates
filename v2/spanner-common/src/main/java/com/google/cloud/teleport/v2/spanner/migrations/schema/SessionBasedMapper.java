@@ -63,7 +63,11 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
     Collections.sort(ddlTableNames);
     if (!schemaTableNames.equals(ddlTableNames)) {
       throw new InputMismatchException(
-          "List of spanner table names found in session file do not match tables that actually exist on Spanner. Please provide a valid session file.");
+          String.format(
+              "List of spanner table names found in session file do not match tables that actually "
+                  + "exist on Spanner. Please provide a valid session file. spanner tables: %s session "
+                  + "tables: %s",
+              ddlTableNames, schemaTableNames));
     }
     for (String tableName : ddlTableNames) {
       List<String> schemaColNames = schema.getSpannerColumnNames(tableName);
@@ -76,8 +80,10 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
       if (!schemaColNames.equals(ddlColNames)) {
         throw new InputMismatchException(
             String.format(
-                "List of spanner column names found in session file do not match columns that actually exist on Spanner for table '%s'. Please provide a valid session file.",
-                tableName));
+                "List of spanner column names found in session file do not match columns that "
+                    + "actually exist on Spanner for table '%s'. Please provide a valid session "
+                    + "file. SessionColumnNames: '%s' SpannerColumnNames: '%s'",
+                tableName, schemaColNames, ddlColNames));
       }
     }
   }
@@ -93,6 +99,16 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
           "can not resolve namespace and namespace support " + "is not added yet: " + namespace);
     }
     return ImmutableList.copyOf(schema.getToSpanner().keySet());
+  }
+
+  @Override
+  public String getSourceTableName(String namespace, String spTable) throws NoSuchElementException {
+    Map<String, NameAndCols> toSource = schema.getToSource();
+    if (!toSource.containsKey(spTable)) {
+      throw new NoSuchElementException(
+          String.format("Spanner table '%s' equivalent not found in source", spTable));
+    }
+    return toSource.get(spTable).getName();
   }
 
   @Override
@@ -185,12 +201,11 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
         table,
         String.format(
             "Found null table for tableId %s, please provide a valid session file.", tableId));
-    String colId =
-        Objects.requireNonNull(
-            table.getShardIdColumn(),
-            String.format(
-                "Found null shard id column for table %s, please provide a valid session file.",
-                spannerTableName));
+
+    String colId = table.getShardIdColumn();
+    if (Strings.isNullOrEmpty(colId)) {
+      return null;
+    }
     Objects.requireNonNull(
         table.getColDefs(),
         String.format(

@@ -93,7 +93,9 @@ public class KafkaToGcsFlexJsonIT extends TemplateTestBase {
                 .addParameter("outputDirectory", getGcsPath(testName))
                 .addParameter("outputFilenamePrefix", testName + "-")
                 .addParameter("numShards", "2")
-                .addParameter("kafkaReadAuthenticationMode", "NONE"));
+                .addParameter("kafkaReadAuthenticationMode", "NONE")
+                .addParameter("useBigQueryDLQ", "false"));
+
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();

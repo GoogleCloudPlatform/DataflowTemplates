@@ -27,17 +27,18 @@ import java.io.Serializable;
 import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.sdk.coders.ByteArrayCoder;
+import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
+import org.apache.beam.sdk.io.kafka.KafkaRecordCoder;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecordRouter;
+import org.apache.beam.sdk.values.TupleTag;
 
 public class KafkaRecordToGenericRecordFailsafeElementFn
     extends DoFn<
         KafkaRecord<byte[], byte[]>, FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
     implements Serializable {
-  private static final Logger LOG =
-      LoggerFactory.getLogger(KafkaRecordToGenericRecordFailsafeElementFn.class);
 
   private transient KafkaAvroDeserializer kafkaDeserializer;
   private transient BinaryAvroDeserializer binaryDeserializer;
@@ -45,23 +46,38 @@ public class KafkaRecordToGenericRecordFailsafeElementFn
 
   // Flexible options for schema and encoding configuration
   private Schema schema;
-  private String topicName = "fake_topic";
+  private final String topicName = "fake_topic";
   private String schemaRegistryConnectionUrl;
   private Map<String, Object> schemaRegistrySslConfig;
   private String messageFormat; // "AVRO_BINARY_ENCODING" or "AVRO_CONFLUENT_WIRE_FORMAT"
   private static final int DEFAULT_CACHE_CAPACITY = 1000;
+  private BadRecordRouter badRecordRouter;
+  private TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
+      successGenericRecordTag;
 
   // Constructors for different configurations
   public KafkaRecordToGenericRecordFailsafeElementFn(
-      String schemaRegistryConnectionUrl, Map<String, Object> schemaRegistrySslConfig) {
+      String schemaRegistryConnectionUrl,
+      Map<String, Object> schemaRegistrySslConfig,
+      BadRecordRouter badRecordRouter,
+      TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
+          successGenericRecordTag) {
     this.schemaRegistryConnectionUrl = schemaRegistryConnectionUrl;
     this.schemaRegistrySslConfig = schemaRegistrySslConfig;
+    this.badRecordRouter = badRecordRouter;
+    this.successGenericRecordTag = successGenericRecordTag;
   }
 
-  public KafkaRecordToGenericRecordFailsafeElementFn(Schema schema, String messageFormat) {
+  public KafkaRecordToGenericRecordFailsafeElementFn(
+      Schema schema,
+      String messageFormat,
+      BadRecordRouter badRecordRouter,
+      TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
+          successGenericRecordTag) {
     this.schema = schema;
-    // TODO: Replace topic name with a fake name.
     this.messageFormat = messageFormat;
+    this.badRecordRouter = badRecordRouter;
+    this.successGenericRecordTag = successGenericRecordTag;
   }
 
   @Setup
@@ -88,7 +104,7 @@ public class KafkaRecordToGenericRecordFailsafeElementFn
   }
 
   @ProcessElement
-  public void processElement(ProcessContext context) {
+  public void processElement(ProcessContext context, MultiOutputReceiver o) throws Exception {
     KafkaRecord<byte[], byte[]> element = context.element();
     GenericRecord result = null;
     try {
@@ -102,10 +118,14 @@ public class KafkaRecordToGenericRecordFailsafeElementFn
             (GenericRecord)
                 kafkaDeserializer.deserialize(
                     element.getTopic(), element.getHeaders(), element.getKV().getValue());
+        // Output the failsafe element with the successful tag.
       }
+      o.get(successGenericRecordTag).output(FailsafeElement.of(element, result));
     } catch (Exception e) {
-      LOG.error("Failed during deserialization: " + e.toString());
+      KafkaRecordCoder<byte[], byte[]> coder =
+          KafkaRecordCoder.of(
+              NullableCoder.of(ByteArrayCoder.of()), NullableCoder.of(ByteArrayCoder.of()));
+      badRecordRouter.route(o, element, coder, e, e.toString());
     }
-    context.output(FailsafeElement.of(element, result));
   }
 }

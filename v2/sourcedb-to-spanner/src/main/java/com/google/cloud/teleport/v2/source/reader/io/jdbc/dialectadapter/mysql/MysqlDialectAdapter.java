@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql;
 
+import static org.apache.curator.shaded.com.google.common.collect.Sets.newHashSet;
+
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
@@ -31,8 +33,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
+import java.util.HashSet;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -44,6 +48,36 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   private final MySqlVersion mySqlVersion;
 
   private static final Logger logger = LoggerFactory.getLogger(MysqlDialectAdapter.class);
+
+  /**
+   * Ref: <a
+   * href=https://dev.mysql.com/doc/mysql-errors/8.4/en/server-error-reference.html#error_er_query_interrupted>error_er_query_interrupted</a>.
+   */
+  private static final String SQL_STATE_ER_QUERY_INTERRUPTED = "70100";
+
+  private static final HashSet<String> TIMEOUT_SQL_STATES =
+      newHashSet(SQL_STATE_ER_QUERY_INTERRUPTED);
+
+  /**
+   * Ref: <a
+   * href=https://dev.mysql.com/doc/mysql-errors/8.4/en/server-error-reference.html#error_er_query_interrupted>error_er_query_interrupted</a>.
+   */
+  private static final Integer ER_QUERY_INTERRUPTED = 1317;
+
+  /** Ref <a href=>https://bugs.mysql.com/bug.php?id=96537>bug/96537</a>. */
+  private static final Integer ER_FILSORT_ABORT = 1028;
+
+  /** Ref <a href=>https://bugs.mysql.com/bug.php?id=96537>bug/96537</a>. */
+  private static final Integer ER_FILSORT_TERMINATED = 10930;
+
+  /**
+   * Ref: <a
+   * href=https://dev.mysql.com/doc/mysql-errors/8.4/en/server-error-reference.html#error_er_query_timeout>error_er_query_timeout</a>.
+   */
+  private static final Integer ER_QUERY_TIMEOUT = 3024;
+
+  private static final HashSet<Integer> TIMEOUT_SQL_ERROR_CODES =
+      newHashSet(ER_QUERY_INTERRUPTED, ER_FILSORT_ABORT, ER_FILSORT_TERMINATED, ER_QUERY_TIMEOUT);
 
   private final Counter schemaDiscoveryErrors =
       Metrics.counter(JdbcSourceRowMapper.class, MetricCounters.READER_SCHEMA_DISCOVERY_ERRORS);
@@ -70,7 +104,10 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
     logger.info(String.format("Discovering tables for DataSource: %s", dataSource));
     final String tableDiscoveryQuery =
-        String.format("SHOW TABLES in %s", sourceSchemaReference.dbName());
+        String.format(
+            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE "
+                + "TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = '%s' ",
+            sourceSchemaReference.dbName());
     ImmutableList.Builder<String> tablesBuilder = ImmutableList.builder();
     try (Statement stmt = dataSource.getConnection().createStatement()) {
       ResultSet rs = stmt.executeQuery(tableDiscoveryQuery);
@@ -401,6 +438,99 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
     // Some types are aliased, for example `int` and `integer` are aliased.
     return mySQlTypeAliases.getOrDefault(normalizedType, normalizedType);
+  }
+
+  private String addWhereClause(String query, ImmutableList<String> partitionColumns) {
+
+    // Implementation detail, using StringBuilder since we are generating the query in a loop.
+    StringBuilder queryBuilder = new StringBuilder(query);
+
+    boolean firstDone = false;
+    for (String partitionColumn : partitionColumns) {
+
+      if (firstDone) {
+        // Add AND for iteration after first.
+        queryBuilder.append(" AND ");
+      } else {
+        // add `where` only for first iteration.
+        queryBuilder.append(" WHERE ");
+      }
+
+      // Include the column?
+      queryBuilder.append("((? = FALSE) OR ");
+      // range to define the where clause. `col >= range.start() AND (col < range.end() OR
+      // (range.isLast() = TRUE AND col = range.end()))`
+      queryBuilder.append(
+          String.format("(%1$s >= ? AND (%1$s < ? OR (? = TRUE AND %1$s = ?)))", partitionColumn));
+      queryBuilder.append(")");
+      firstDone = true;
+    }
+    return queryBuilder.toString();
+  }
+
+  /**
+   * Get query for the prepared statement to read columns within a range.
+   *
+   * @param tableName name of the table to read
+   * @param partitionColumns partition columns.
+   * @return Query Statement.
+   */
+  @Override
+  public String getReadQuery(String tableName, ImmutableList<String> partitionColumns) {
+    return addWhereClause("select * from " + tableName, partitionColumns);
+  }
+
+  /**
+   * Get query for the prepared statement to count a given range.
+   *
+   * @param tableName name of the table to read.
+   * @param partitionColumns partition columns.
+   * @param timeoutMillis timeout of the count query in milliseconds. Set to 0 to disable timeout.
+   * @return Query Statement.
+   */
+  @Override
+  public String getCountQuery(
+      String tableName, ImmutableList<String> partitionColumns, long timeoutMillis) {
+    return addWhereClause(
+        String.format(
+            "select /*+ MAX_EXECUTION_TIME(%s) */ COUNT(*) from %s", timeoutMillis, tableName),
+        partitionColumns);
+  }
+
+  /**
+   * Get query for the prepared statement to get min and max of a given column, optionally in the
+   * context of a parent range.
+   *
+   * @param tableName name of the table to read.
+   * @param partitionColumns if not-empty, partition columns. Set empty for first column of
+   *     partitioning.
+   */
+  @Override
+  public String getBoundaryQuery(
+      String tableName, ImmutableList<String> partitionColumns, String colName) {
+    return addWhereClause(
+        String.format("select MIN(%s),MAX(%s) from %s", colName, colName, tableName),
+        partitionColumns);
+  }
+
+  /**
+   * Check if a given {@link SQLException} is a timeout. The implementation needs to check for
+   * dialect specific {@link SQLException#getSQLState() SqlState} and {@link
+   * SQLException#getErrorCode() ErrorCode} to check if the exception indicates a server side
+   * timeout. The client side timeout would be already checked for by handling {@link
+   * SQLTimeoutException}, so the implementation does not need to check for the same.
+   */
+  @Override
+  public boolean checkForTimeout(SQLException exception) {
+    if (exception.getSQLState() != null) {
+      if (TIMEOUT_SQL_STATES.contains(exception.getSQLState().toLowerCase())) {
+        return true;
+      }
+    }
+    if (TIMEOUT_SQL_ERROR_CODES.contains(exception.getErrorCode())) {
+      return true;
+    }
+    return false;
   }
 
   /**

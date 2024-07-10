@@ -40,6 +40,7 @@ import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.ResourceUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Strings;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -168,6 +169,7 @@ public class PubSubCdcToBigQuery {
     @TemplateParameter.Text(
         order = 4,
         groupName = "Target",
+        optional = true,
         description = "BigQuery Dataset Name or Template: dataset_name or {column_name}",
         helpText = "The name for the dataset to contain the replica table.")
     @Default.String("{_metadata_dataset}")
@@ -219,7 +221,6 @@ public class PubSubCdcToBigQuery {
         description = "Dead Letter Queue Directory",
         helpText =
             "The name of the directory on Cloud Storage you want to write dead letters messages to")
-    @Default.String("")
     String getDeadLetterQueueDirectory();
 
     void setDeadLetterQueueDirectory(String value);
@@ -264,6 +265,12 @@ public class PubSubCdcToBigQuery {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
 
+    if (!Strings.isNullOrEmpty(options.getDeadLetterQueueDirectory())
+        && !Strings.isNullOrEmpty(options.getOutputDeadletterTable())) {
+      throw new IllegalArgumentException(
+          "Cannot specify both deadLetterQueueDirectory and outputDeadletterTable");
+    }
+
     run(options);
   }
 
@@ -282,7 +289,7 @@ public class PubSubCdcToBigQuery {
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
     String gcsOutputDateTimeDirectory = null;
 
-    if (options.getDeadLetterQueueDirectory() != null) {
+    if (!Strings.isNullOrEmpty(options.getDeadLetterQueueDirectory())) {
       gcsOutputDateTimeDirectory = dlqManager.getRetryDlqDirectory() + "YYYY/MM/DD/HH/mm/";
     }
 

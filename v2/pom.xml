@@ -356,6 +356,13 @@
                     <!-- <compilerArgument>-parameters</compilerArgument> -->
                     <parameters>true</parameters>
                     <testCompilerArgument>-parameters</testCompilerArgument>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.google.auto.value</groupId>
+                            <artifactId>auto-value</artifactId>
+                            <version>${autovalue.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
@@ -447,7 +454,7 @@
                     <dependency>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>extra-enforcer-rules</artifactId>
-                        <version>1.3</version>
+                        <version>${extra.enforcer.rules.version}</version>
                     </dependency>
                 </dependencies>
             </plugin>

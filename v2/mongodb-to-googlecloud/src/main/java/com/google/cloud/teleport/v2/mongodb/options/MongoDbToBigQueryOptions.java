@@ -81,6 +81,17 @@ public class MongoDbToBigQueryOptions {
     String getKMSEncryptionKey();
 
     void setKMSEncryptionKey(String keyName);
+
+    @TemplateParameter.Text(
+        order = 6,
+        groupName = "Source",
+        description = "Bson filter",
+        optional = true,
+        helpText = "Bson filter in json format.",
+        example = "{ \"val\": { $gt: 0, $lt: 9 }}")
+    String getFilter();
+
+    void setFilter(String jsonFilter);
   }
 
   /** Options for reading from PubSub. */
@@ -108,6 +119,16 @@ public class MongoDbToBigQueryOptions {
     String getOutputTableSpec();
 
     void setOutputTableSpec(String outputTableSpec);
+
+    @TemplateParameter.GcsReadFile(
+        order = 2,
+        optional = true,
+        description = "Cloud Storage path to BigQuery JSON schema",
+        helpText = "The Cloud Storage path for the BigQuery JSON schema.",
+        example = "gs://your-bucket/your-schema.json")
+    String getBigQuerySchemaPath();
+
+    void setBigQuerySchemaPath(String path);
   }
 
   /** UDF options. */

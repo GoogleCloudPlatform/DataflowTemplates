@@ -25,9 +25,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.commons.codec.DecoderException;
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -336,31 +333,19 @@ public class DMLGenerator {
           valuesJson.getJSONArray(colName).toList().stream()
               .map(String::valueOf)
               .collect(Collectors.joining(","));
-    } else if ("STRING".equals(colType)
-        && ("binary".equals(sourceColDef.getType().getName())
-            || "varbinary".equals(sourceColDef.getType().getName()))) {
-
-      // Spanner has the hex string in this case
-      try {
-        colInputValue = new String(Hex.decodeHex(valuesJson.getString(colName)));
-      } catch (DecoderException e) {
-        // return the same string value
-        colInputValue = valuesJson.getString(colName);
-      }
-
     } else if ("BYTES".equals(colType)) {
-      colInputValue = new String(Base64.decodeBase64(valuesJson.getString(colName).getBytes()));
+      colInputValue = "FROM_BASE64('" + valuesJson.getString(colName) + "')";
     } else {
       colInputValue = valuesJson.getString(colName);
     }
     String response =
         getColumnValueByType(
-            sourceColDef.getType().getName(), colInputValue, sourceDbTimezoneOffset);
+            sourceColDef.getType().getName(), colInputValue, sourceDbTimezoneOffset, colType);
     return response;
   }
 
   private static String getColumnValueByType(
-      String columnType, String colValue, String sourceDbTimezoneOffset) {
+      String columnType, String colValue, String sourceDbTimezoneOffset, String spannerColType) {
     String response = "";
     String cleanedNullBytes = "";
     String decodedString = "";
@@ -389,14 +374,14 @@ public class DMLGenerator {
       case "mediumblob":
       case "blob":
       case "longblob":
-        response = getQuotedEscapedString(colValue);
+        response = getQuotedEscapedString(colValue, spannerColType);
         break;
       case "timestamp":
       case "datetime":
         colValue = colValue.substring(0, colValue.length() - 1); // trim the Z for mysql
         response =
             " CONVERT_TZ("
-                + getQuotedEscapedString(colValue)
+                + getQuotedEscapedString(colValue, spannerColType)
                 + ",'+00:00','"
                 + sourceDbTimezoneOffset
                 + "')";
@@ -405,7 +390,7 @@ public class DMLGenerator {
       case "binary":
       case "varbinary":
       case "bit":
-        response = getHexString(colValue);
+        response = getBinaryString(colValue, spannerColType);
         break;
       default:
         response = colValue;
@@ -420,16 +405,17 @@ public class DMLGenerator {
     return cleanedNullBytes;
   }
 
-  private static String getQuotedEscapedString(String input) {
+  private static String getQuotedEscapedString(String input, String spannerColType) {
+    if ("BYTES".equals(spannerColType)) {
+      return input;
+    }
     String cleanedString = escapeString(input);
     String response = "\'" + cleanedString + "\'";
     return response;
   }
 
-  private static String getHexString(String input) {
-    String cleanedString = escapeString(input);
-    String hexString = Hex.encodeHexString(cleanedString.getBytes());
-    String response = "X\'" + hexString + "\'";
+  private static String getBinaryString(String input, String spannerColType) {
+    String response = "BINARY(" + getQuotedEscapedString(input, spannerColType) + ")";
     return response;
   }
 }

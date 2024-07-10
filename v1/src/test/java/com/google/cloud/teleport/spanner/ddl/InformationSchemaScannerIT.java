@@ -72,6 +72,7 @@ public class InformationSchemaScannerIT {
     BatchClient batchClient = spannerServer.getBatchClient(dbId);
     BatchReadOnlyTransaction batchTx =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
+
     InformationSchemaScanner scanner = new InformationSchemaScanner(batchTx);
     return scanner.scan();
   }

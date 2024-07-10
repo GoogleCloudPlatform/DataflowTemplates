@@ -118,6 +118,28 @@ public class DeadLetterQueue implements Serializable {
     }
   }
 
+  public void filteredEventsToDLQ(
+      PCollection<@UnknownKeyFor @NonNull @Initialized RowContext> filteredRows) {
+    LOG.warn("added filtered transformation output to pipeline");
+    DoFn<RowContext, FailsafeElement<String, String>> rowContextToString =
+        new DoFn<RowContext, FailsafeElement<String, String>>() {
+          @ProcessElement
+          public void processElement(
+              @Element RowContext rowContext,
+              OutputReceiver<FailsafeElement<String, String>> out,
+              ProcessContext c) {
+            c.output(rowContextToDlqElement(rowContext));
+          }
+        };
+    filteredRows
+        .apply("filteredRowTransformString", ParDo.of(rowContextToString))
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+        .apply("SanitizeTransformWriteDLQ", MapElements.via(new StringDeadLetterQueueSanitizer()))
+        .setCoder(StringUtf8Coder.of())
+        .apply("FilteredRowsDLQ", dlqTransform);
+    LOG.info("added filtering dlq stage after transformer");
+  }
+
   public void failedTransformsToDLQ(
       PCollection<@UnknownKeyFor @NonNull @Initialized RowContext> failedRows) {
     // TODO - add the exception message
@@ -152,8 +174,14 @@ public class DeadLetterQueue implements Serializable {
       Object value = record.get(f.name());
       json.put(f.name(), value == null ? null : value.toString());
     }
-    return FailsafeElement.of(json.toString(), json.toString())
-        .setErrorMessage("TransformationFailed: " + r.err() + "\n" + r.getStackTraceString());
+    FailsafeElement<String, String> dlqElement =
+        FailsafeElement.of(json.toString(), json.toString());
+    if (r.err() != null) {
+      dlqElement =
+          dlqElement.setErrorMessage(
+              "TransformationFailed: " + r.err() + "\n" + r.getStackTraceString());
+    }
+    return dlqElement;
   }
 
   public void failedMutationsToDLQ(

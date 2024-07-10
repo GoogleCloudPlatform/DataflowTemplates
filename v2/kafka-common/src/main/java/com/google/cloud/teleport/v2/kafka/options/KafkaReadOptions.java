@@ -31,12 +31,13 @@ public interface KafkaReadOptions extends PipelineOptions {
     public static final String EARLIEST = "earliest";
   }
 
-  @TemplateParameter.KafkaTopic(
+  @TemplateParameter.KafkaReadTopic(
       order = 1,
       name = "readBootstrapServerAndTopic",
       groupName = "Source",
-      description = "Source Kafka Topic",
-      helpText = "Kafka Topic to read the input from.")
+      description = "Source Kafka Bootstrap server and topic",
+      helpText = "Kafka Bootstrap server and topic to read the input from.",
+      example = "localhost:9092;topic1,topic2")
   String getReadBootstrapServerAndTopic();
 
   void setReadBootstrapServerAndTopic(String value);
@@ -93,17 +94,26 @@ public interface KafkaReadOptions extends PipelineOptions {
       name = "kafkaReadAuthenticationMode",
       groupName = "Source",
       enumOptions = {
+        @TemplateParameter.TemplateEnumOption(
+            KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.SASL_PLAIN),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.TLS),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
       },
       description = "Kafka Source Authentication Mode",
       helpText =
-          "The mode of authentication to use with the Kafka cluster. "
-              + "Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, "
-              + "and TLS for certificate-based authentication. "
-              + "Apache Kafka for BigQuery only supports the SASL_PLAIN authentication mode.")
-  @Default.String(KafkaAuthenticationMethod.SASL_PLAIN)
+          ("The mode of authentication to use with the Kafka cluster. "
+              + "Use "
+              + KafkaAuthenticationMethod.NONE
+              + " for no authentication, "
+              + KafkaAuthenticationMethod.SASL_PLAIN
+              + " for SASL/PLAIN username and password, "
+              + KafkaAuthenticationMethod.TLS
+              + "for certificate-based authentication. "
+              + KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS
+              + " should be used only for Google Cloud Apache Kafka for BigQuery cluster since "
+              + "This allow you to authenticate with Google Cloud Apache Kafka for BigQuery using application default credentials"))
+  @Default.String(KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS)
   String getKafkaReadAuthenticationMode();
 
   void setKafkaReadAuthenticationMode(String value);

@@ -21,6 +21,9 @@ import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters.Message
 import com.google.cloud.teleport.v2.templates.KafkaToGcsFlex;
 import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecordRouter;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.POutput;
 
@@ -34,12 +37,17 @@ public abstract class WriteTransform
 
   public abstract KafkaToGcsFlex.KafkaToGcsOptions options();
 
+  public abstract ErrorHandler<BadRecord, ?> badRecordErrorHandler();
+
+  public abstract BadRecordRouter badRecordRouter();
+
   @Override
   public POutput expand(PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord) {
     POutput pOutput = null;
     String outputFileFormat = options().getMessageFormat();
 
     if (outputFileFormat.equals(MessageFormatConstants.JSON)) {
+      // TODO: Add support for adding DLQ for JSON deserializers.
       pOutput =
           kafkaRecord.apply(
               JsonWriteTransform.newBuilder()
@@ -64,6 +72,8 @@ public abstract class WriteTransform
                   .setBinaryAvroSchemaPath(options().getBinaryAvroSchemaPath())
                   .setSchemaFormat(options().getSchemaFormat())
                   .setWindowDuration(options().getWindowDuration())
+                  .setErrorHandler(badRecordErrorHandler())
+                  .setBadRecordRouter(badRecordRouter())
                   .build());
     } else {
       throw new UnsupportedOperationException(
@@ -76,9 +86,12 @@ public abstract class WriteTransform
   public abstract static class WriteTransformBuilder {
     public abstract WriteTransformBuilder setOptions(KafkaToGcsFlex.KafkaToGcsOptions options);
 
-    abstract KafkaToGcsFlex.KafkaToGcsOptions options();
+    public abstract WriteTransformBuilder setBadRecordErrorHandler(
+        ErrorHandler<BadRecord, ?> value);
 
-    abstract WriteTransform autoBuild();
+    public abstract WriteTransformBuilder setBadRecordRouter(BadRecordRouter value);
+
+    public abstract WriteTransform autoBuild();
 
     public WriteTransform build() {
       return autoBuild();

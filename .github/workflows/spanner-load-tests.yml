@@ -1,0 +1,61 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Checks that are intended to run on PRs containing Java code.
+
+name: Spanner Load Tests
+
+on:
+  schedule:
+  # at 02:00 every Day.
+  - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  load_tests:
+    name: Spanner Dataflow Templates Load tests
+    timeout-minutes: 1440 # 1 day
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [ self-hosted, perf ]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      with:
+        fetch-depth: 0
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Run Load Tests
+      run: |
+        ./cicd/run-load-tests \
+        --modules-to-build="SPANNER" \
+        --it-region="us-central1" \
+        --it-project="cloud-teleport-testing" \
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+        --it-private-connectivity="datastream-private-connect-us-central1" \
+        --lt-export-project="cloud-teleport-testing" \
+        --lt-export-dataset="performance_tests" \
+        --lt-export-table="template_performance_metrics" \
+
+    - name: Upload Load Tests Report
+      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      if: always() # always run even if the previous step fails
+      with:
+        name: surefire-test-results
+        path: '**/surefire-reports/TEST-*.xml'
+        retention-days: 1
+    - name: Cleanup Java Environment
+      uses: ./.github/actions/cleanup-java-env

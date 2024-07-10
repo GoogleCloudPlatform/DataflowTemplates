@@ -20,12 +20,17 @@ import com.google.cloud.teleport.v2.source.reader.auth.dbauth.DbAuth;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import javax.annotation.Nullable;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.Wait.OnSignal;
 import org.apache.beam.sdk.util.FluentBackoff;
+import org.apache.beam.sdk.values.PCollection;
 
 /**
  * Configuration for {@link
@@ -47,6 +52,7 @@ public abstract class JdbcIOWrapperConfig {
   public abstract ImmutableMap<String, ImmutableList<String>> tableVsPartitionColumns();
 
   /** Shard ID. */
+  @Nullable
   public abstract String shardID();
 
   /** DB credentials. */
@@ -94,6 +100,61 @@ public abstract class JdbcIOWrapperConfig {
   /** Sequence of Sql Init statements for the connection. */
   public abstract ImmutableList<String> sqlInitSeq();
 
+  /**
+   * Temporary, internal feature flag for reader to enable or disable {@link
+   * ReadWithUniformPartitions}. Defaults to true.
+   */
+  public abstract Boolean readWithUniformPartitionsFeatureEnabled();
+
+  /**
+   * PCollections to wait on before doing the read of configured tables. Ignored if {@link
+   * JdbcIOWrapperConfig#readWithUniformPartitionsFeatureEnabled()} is false. Defaults to null.
+   */
+  @Nullable
+  public abstract OnSignal<?> waitOn();
+
+  /**
+   * If not null, maximum number of parallel queries issued to the DB during split process. Ignored
+   * if {@link JdbcIOWrapperConfig#readWithUniformPartitionsFeatureEnabled()} is false. It's best to
+   * set this to a number close to number of cores available on mySql server. Defaults to {@link
+   * JdbcIOWrapperConfig#DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS}.
+   *
+   * <p><b>Performance</b>
+   *
+   * <ul>
+   *   <li>Ensure that <a
+   *       href=https://dev.mysql.com/doc/refman/8.4/en/innodb-performance-multiple_io_threads.html>innodb_read_io_threads</a>
+   *       is set to the default value as recommended by Mysql or higher. If the partitioning is
+   *       slow due to too many queries timing out in each stage, and if the {@code SHOW ENGINE
+   *       INNODB STATUS} shows pending queries close to innodb_read_io_threads, it's an indication
+   *       to increase this setting.
+   *   <li>Ensure that <a
+   *       href=https://dev.mysql.com/doc/refman/8.4/en/innodb-parameters.html#sysvar_innodb_buffer_pool_size>sysvar_innodb_buffer_pool_size</a>
+   *       is set to the default value as recommended by Mysql or higher.
+   * </ul>
+   */
+  @Nullable
+  public abstract Integer dbParallelizationForSplitProcess();
+
+  private static final int DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS = 100;
+
+  /**
+   * If not null, maximum number of parallel queries issued to the DB for reads. Ignored if {@link
+   * JdbcIOWrapperConfig#readWithUniformPartitionsFeatureEnabled()} is false. Defaults to null.
+   */
+  @Nullable
+  public abstract Integer dbParallelizationForReads();
+
+  /**
+   * A transform that can be injected to make use of the discovered splits for additional use case
+   * like creating split points on spanner before the actual read. Ignored if {@link
+   * JdbcIOWrapperConfig#readWithUniformPartitionsFeatureEnabled()} is false. Defaults to null.
+   */
+  @Nullable
+  public abstract PTransform<PCollection<ImmutableList<Range>>, ?> additionalOperationsOnRanges();
+
+  public abstract Builder toBuilder();
+
   public static Builder builderWithMySqlDefaults() {
     return new AutoValue_JdbcIOWrapperConfig.Builder()
         .setSchemaMapperType(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_MAPPER_TYPE)
@@ -105,7 +166,11 @@ public abstract class JdbcIOWrapperConfig {
         .setTables(ImmutableList.of())
         .setTableVsPartitionColumns(ImmutableMap.of())
         .setMaxPartitions(null)
-        .setMaxFetchSize(null);
+        .setWaitOn(null)
+        .setMaxFetchSize(null)
+        .setDbParallelizationForReads(null)
+        .setDbParallelizationForSplitProcess(DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
+        .setReadWithUniformPartitionsFeatureEnabled(true);
   }
 
   @AutoValue.Builder
@@ -141,6 +206,17 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setMaxFetchSize(Integer value);
 
     public abstract Builder setSqlInitSeq(ImmutableList<String> value);
+
+    public abstract Builder setReadWithUniformPartitionsFeatureEnabled(Boolean value);
+
+    public abstract Builder setWaitOn(@Nullable OnSignal<?> value);
+
+    public abstract Builder setDbParallelizationForSplitProcess(@Nullable Integer value);
+
+    public abstract Builder setDbParallelizationForReads(@Nullable Integer value);
+
+    public abstract Builder setAdditionalOperationsOnRanges(
+        @Nullable PTransform<PCollection<ImmutableList<Range>>, ?> value);
 
     public abstract Builder setMaxConnections(Long value);
 

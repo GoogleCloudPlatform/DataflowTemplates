@@ -137,4 +137,49 @@ public class ChangeEventToMapConvertorTest {
     JsonNode result =
         ChangeEventToMapConvertor.transformChangeEventViaCustomTransformation(ce, spannerRecord);
   }
+
+  @Test
+  public void testCombineJsonObjects() {
+    JSONObject keysJson = new JSONObject();
+    keysJson.put("key1", "value1");
+
+    JSONObject newValuesJson = new JSONObject();
+    newValuesJson.put("key2", "value2");
+    newValuesJson.put("key3", "value3");
+
+    Map<String, Object> combinedMap =
+        ChangeEventToMapConvertor.combineJsonObjects(keysJson, newValuesJson);
+
+    assertEquals(3, combinedMap.size());
+    assertEquals("value1", combinedMap.get("key1"));
+    assertEquals("value2", combinedMap.get("key2"));
+    assertEquals("value3", combinedMap.get("key3"));
+  }
+
+  @Test
+  public void testUpdateJsonWithMap() {
+    JSONObject keysJson = new JSONObject();
+    keysJson.put("key1", "oldValue1");
+    keysJson.put("key2", "oldValue2");
+    keysJson.put("key4", "oldValue4");
+
+    JSONObject newValuesJson = new JSONObject();
+    newValuesJson.put("key2", "oldValue2");
+    newValuesJson.put("key3", "oldValue3");
+
+    Map<String, Object> map =
+        Map.of(
+            "key1", "newValue1",
+            "key2", "newValue2",
+            "key3", "newValue3");
+
+    ChangeEventToMapConvertor.updateJsonWithMap(map, keysJson, newValuesJson);
+
+    assertEquals("newValue1", keysJson.getString("key1"));
+    assertEquals("newValue2", keysJson.getString("key2"));
+    assertEquals("oldValue4", keysJson.getString("key4"));
+
+    assertEquals("newValue2", newValuesJson.getString("key2"));
+    assertEquals("newValue3", newValuesJson.getString("key3"));
+  }
 }

@@ -22,4 +22,5 @@ public class KafkaAuthenticationMethod {
   public static final String NONE = "NONE";
   public static final String TLS = "TLS";
   public static final String SASL_PLAIN = "SASL_PLAIN";
+  public static final String APPLICATION_DEFAULT_CREDENTIALS = "APPLICATION_DEFAULT_CREDENTIALS";
 }

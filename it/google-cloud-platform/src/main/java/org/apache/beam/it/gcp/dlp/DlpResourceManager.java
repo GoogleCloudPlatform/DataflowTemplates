@@ -21,10 +21,11 @@ import com.google.api.gax.core.CredentialsProvider;
 import com.google.cloud.dlp.v2.DlpServiceClient;
 import com.google.cloud.dlp.v2.DlpServiceSettings;
 import com.google.privacy.dlp.v2.DeidentifyTemplate;
+import com.google.privacy.dlp.v2.InspectTemplate;
 import com.google.privacy.dlp.v2.ProjectName;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.beam.it.common.ResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,11 @@ import org.slf4j.LoggerFactory;
 public class DlpResourceManager implements ResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(DlpResourceManager.class);
+
+  private enum DlpTemplate {
+    DEIDENTIFY,
+    INSPECT
+  }
 
   private final String project;
   private final CredentialsProvider credentialsProvider;
@@ -48,7 +54,7 @@ public class DlpResourceManager implements ResourceManager {
     this.credentialsProvider = credentialsProvider;
   }
 
-  private final List<String> createdTemplates = new ArrayList<>();
+  private final Map<DlpTemplate, String> createdTemplates = new HashMap<>();
 
   /**
    * Retrieves a DlpServiceClient with the configured settings.
@@ -77,7 +83,7 @@ public class DlpResourceManager implements ResourceManager {
       DeidentifyTemplate deidentifyTemplate =
           client.createDeidentifyTemplate(ProjectName.of(this.project), template);
 
-      createdTemplates.add(deidentifyTemplate.getName());
+      createdTemplates.put(DlpTemplate.DEIDENTIFY, deidentifyTemplate.getName());
 
       return deidentifyTemplate;
     }
@@ -95,15 +101,50 @@ public class DlpResourceManager implements ResourceManager {
     }
   }
 
+  /**
+   * Creates an inspect template in the specified project.
+   *
+   * @param template the inspect template to create
+   * @return the created InspectTemplate
+   * @throws IOException if an error occurs during template creation
+   */
+  public InspectTemplate createInspectTemplate(InspectTemplate template) throws IOException {
+    try (DlpServiceClient client = getDlpClient()) {
+      InspectTemplate inspectTemplate =
+          client.createInspectTemplate(ProjectName.of(this.project), template);
+
+      createdTemplates.put(DlpTemplate.INSPECT, inspectTemplate.getName());
+
+      return inspectTemplate;
+    }
+  }
+
+  /**
+   * Removes an inspect template by its name.
+   *
+   * @param templateName the name of the template to remove
+   * @throws IOException if an error occurs during template deletion
+   */
+  public void removeInspectTemplate(String templateName) throws IOException {
+    try (DlpServiceClient client = getDlpClient()) {
+      client.deleteInspectTemplate(templateName);
+    }
+  }
+
   @Override
   public void cleanupAll() {
-    for (String templateName : createdTemplates) {
-      try {
-        removeDeidentifyTemplate(templateName);
-      } catch (Exception e) {
-        LOG.error("Error deleting managed template: {}", templateName, e);
-      }
-    }
+    createdTemplates.forEach(
+        (dlpTemplateType, templateName) -> {
+          try {
+            if (dlpTemplateType.equals(DlpTemplate.DEIDENTIFY)) {
+              removeDeidentifyTemplate(templateName);
+            } else {
+              removeInspectTemplate(templateName);
+            }
+          } catch (Exception e) {
+            LOG.error("Error deleting managed template: {}", templateName, e);
+          }
+        });
     createdTemplates.clear();
   }
 

@@ -200,7 +200,10 @@ public class MysqlDialectAdapterTest {
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.createStatement()).thenReturn(mockStatement);
-    when(mockStatement.executeQuery("SHOW TABLES in testDB")).thenReturn(mockResultSet);
+    when(mockStatement.executeQuery(
+            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE "
+                + "TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = 'testDB' "))
+        .thenReturn(mockResultSet);
     OngoingStubbing stubGetString = when(mockResultSet.getString(1));
     for (String tbl : testTables) {
       stubGetString = stubGetString.thenReturn(tbl);
@@ -250,7 +253,10 @@ public class MysqlDialectAdapterTest {
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.createStatement()).thenReturn(mockStatement);
-    when(mockStatement.executeQuery("SHOW TABLES in testDB")).thenReturn(mockResultSet);
+    when(mockStatement.executeQuery(
+            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE "
+                + "TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = 'testDB' "))
+        .thenReturn(mockResultSet);
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getString(1)).thenThrow(new SQLException("test"));
 
@@ -407,6 +413,61 @@ public class MysqlDialectAdapterTest {
               new MysqlDialectAdapter(MySqlVersion.DEFAULT)
                   .discoverTableIndexes(mockDataSource, sourceSchemaReference, testTables));
     }
+  }
+
+  @Test
+  public void testGetReadQuery() {
+    String testTable = "testTable";
+    ImmutableList<String> cols = ImmutableList.of("col_1", "col_2");
+    assertThat(new MysqlDialectAdapter(MySqlVersion.DEFAULT).getReadQuery(testTable, cols))
+        .isEqualTo(
+            "select * from testTable WHERE ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
+  }
+
+  @Test
+  public void testGetCountQuery() {
+    String testTable = "testTable";
+    ImmutableList<String> cols = ImmutableList.of("col_1", "col_2");
+    Long timeoutMillis = 42L;
+    assertThat(
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+                .getCountQuery(testTable, cols, timeoutMillis))
+        .isEqualTo(
+            "select /*+ MAX_EXECUTION_TIME(42) */ COUNT(*) from testTable WHERE ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
+  }
+
+  @Test
+  public void testGetBoundaryQuery() {
+    String testTable = "testTable";
+    ImmutableList<String> cols = ImmutableList.of("col_1", "col_2");
+    assertThat(
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT).getBoundaryQuery(testTable, cols, "col3"))
+        .isEqualTo(
+            "select MIN(col3),MAX(col3) from testTable WHERE ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
+  }
+
+  @Test
+  public void testCheckTimeoutException() {
+    MysqlDialectAdapter mysqlDialectAdapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
+    //  ER_QUERY_INTERRUPTED;
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "70100")))
+        .isTrue();
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "dummy", 1317)))
+        .isTrue();
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "HY000", 3024)))
+        .isTrue();
+    //  https://bugs.mysql.com/bug.php?id=96537
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "dummy", 1028)))
+        .isTrue();
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "dummy", 10930)))
+        .isTrue();
+    // Non-Timeout errors
+    // ER_SYNTAX_ERROR.
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "42000", 1149)))
+        .isFalse();
+    // Null Check.
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", null, 1149)))
+        .isFalse();
   }
 
   private static ResultSet getMockInfoSchemaRs() throws SQLException {

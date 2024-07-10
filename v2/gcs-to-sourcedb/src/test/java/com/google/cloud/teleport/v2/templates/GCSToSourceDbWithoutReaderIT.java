@@ -37,8 +37,8 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.it.jdbc.CustomMySQLResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -56,13 +56,13 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSToSourceDbWithoutReaderIT.class);
 
-  private static final String SESSION_FILE_RESOURSE = "GCSToSourceDbWithoutReaderIT/session.json";
+  private static final String SESSION_FILE_RESOURCE = "GCSToSourceDbWithoutReaderIT/session.json";
 
   private static final String TABLE = "Users";
-  private static HashSet<GCSToSourceDbWithoutReaderIT> testInstances = new HashSet<>();
+  private static final HashSet<GCSToSourceDbWithoutReaderIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   private static SpannerResourceManager spannerMetadataResourceManager;
-  private static CustomMySQLResourceManager jdbcResourceManager;
+  private static MySQLResourceManager jdbcResourceManager;
   private static GcsResourceManager gcsResourceManager;
 
   /**
@@ -78,7 +78,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
       if (jobInfo == null) {
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = CustomMySQLResourceManager.builder(testName).build();
+        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
         createMySQLSchema(jdbcResourceManager);
 
         gcsResourceManager =
@@ -86,7 +86,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
                 .build();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
         gcsResourceManager.uploadArtifact(
-            "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());
+            "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
 
         launchWriterDataflowJob();
       }
@@ -133,7 +133,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
   }
 
-  private SpannerResourceManager createSpannerMetadataDatabase() throws IOException {
+  private SpannerResourceManager createSpannerMetadataDatabase() {
     SpannerResourceManager spannerMetadataResourceManager =
         SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION)
             .maybeUseStaticInstance()
@@ -143,7 +143,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     return spannerMetadataResourceManager;
   }
 
-  private void createMySQLSchema(CustomMySQLResourceManager jdbcResourceManager) {
+  private void createMySQLSchema(MySQLResourceManager jdbcResourceManager) {
     HashMap<String, String> columns = new HashMap<>();
     columns.put("id", "INT NOT NULL");
     columns.put("name", "VARCHAR(25)");
@@ -175,8 +175,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
   }
 
   private void createAndUploadShardConfigToGcs(
-      GcsResourceManager gcsResourceManager, CustomMySQLResourceManager jdbcResourceManager)
-      throws IOException {
+      GcsResourceManager gcsResourceManager, MySQLResourceManager jdbcResourceManager) {
     Shard shard = new Shard();
     shard.setLogicalShardId("Shard1");
     shard.setUser(jdbcResourceManager.getUsername());
@@ -184,7 +183,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     shard.setPassword(jdbcResourceManager.getPassword());
     shard.setPort(String.valueOf(jdbcResourceManager.getPort()));
     shard.setDbName(jdbcResourceManager.getDatabaseName());
-    JsonObject jsObj = (JsonObject) new Gson().toJsonTree(shard).getAsJsonObject();
+    JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
     jsObj.remove("secretManagerUri"); // remove field secretManagerUri
     JsonArray ja = new JsonArray();
     ja.add(jsObj);

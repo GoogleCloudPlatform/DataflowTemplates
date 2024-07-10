@@ -27,15 +27,15 @@ import java.util.stream.Collectors;
 public abstract class ForeignKey implements Serializable {
   private static final long serialVersionUID = 286089905L;
 
-  abstract String name();
+  public abstract String name();
 
   abstract String table();
 
-  abstract String referencedTable();
+  public abstract String referencedTable();
 
-  abstract ImmutableList<String> columns();
+  public abstract ImmutableList<String> columns();
 
-  abstract ImmutableList<String> referencedColumns();
+  public abstract ImmutableList<String> referencedColumns();
 
   abstract Dialect dialect();
 

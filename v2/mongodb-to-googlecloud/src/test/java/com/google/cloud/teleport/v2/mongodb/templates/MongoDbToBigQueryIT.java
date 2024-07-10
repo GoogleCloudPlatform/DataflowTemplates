@@ -182,10 +182,79 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
                     val -> {
                       JSONObject bigQueryJson = new JSONObject(val.getStringValue());
                       assertTrue(bigQueryJson.has("timestamp"));
-
                       bigQueryJson.remove("timestamp");
                       String bigQueryId = bigQueryJson.getString(MONGO_DB_ID);
                       assertTrue(mongoMap.get(bigQueryId).similar(bigQueryJson));
+                    }));
+  }
+
+  @Test
+  public void testMongoDbToBigQueryWithFilters() throws IOException {
+    // Arrange
+    String collectionName = testName;
+    List<Document> mongoDocuments = generateDocuments();
+    mongoDbClient.insertDocuments(collectionName, mongoDocuments);
+
+    String bqTable = testName;
+
+    List<Field> bqSchemaFields = new ArrayList<>();
+    bqSchemaFields.add(Field.of("timestamp", StandardSQLTypeName.TIMESTAMP));
+    mongoDocuments
+        .get(0)
+        .forEach((key, val) -> bqSchemaFields.add(Field.of(key, StandardSQLTypeName.STRING)));
+    Schema bqSchema = Schema.of(bqSchemaFields);
+
+    bigQueryClient.createDataset(REGION);
+    TableId table = bigQueryClient.createTable(bqTable, bqSchema);
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter(MONGO_URI, mongoDbClient.getUri())
+            .addParameter(MONGO_DB, mongoDbClient.getDatabaseName())
+            .addParameter(MONGO_COLLECTION, collectionName)
+            .addParameter(BIGQUERY_TABLE, toTableSpecLegacy(table))
+            .addParameter(USER_OPTION, "FLATTEN")
+            .addParameter("filter", "{ \"filter_test\": { $eq: \"0\" }}");
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(info),
+                BigQueryRowsCheck.builder(bigQueryClient, table).setMinRows(1).build());
+
+    // Assert
+    assertThatResult(result).meetsConditions();
+
+    Map<String, JSONObject> mongoMap = new HashMap<>();
+    mongoDocuments.forEach(
+        mongoDocument -> {
+          JSONObject mongoDbJson = new JSONObject(mongoDocument.toJson());
+          String mongoId = mongoDbJson.getJSONObject(MONGO_DB_ID).getString("$oid");
+          mongoDbJson.put(MONGO_DB_ID, mongoId);
+          mongoMap.put(mongoId, mongoDbJson);
+        });
+
+    TableResult tableRows = bigQueryClient.readTable(bqTable);
+    tableRows
+        .getValues()
+        .forEach(
+            row ->
+                row.forEach(
+                    val -> {
+                      JSONObject bigQueryJson = new JSONObject(val.getStringValue());
+                      assertTrue(bigQueryJson.has("timestamp"));
+                      assertTrue(bigQueryJson.getString("filter_test").equals("0"));
+                      bigQueryJson.remove("timestamp");
+                      String bigQueryId = bigQueryJson.getString(MONGO_DB_ID);
+                      String msg =
+                          val.getStringValue()
+                              + " is different from "
+                              + mongoMap.get(bigQueryId).toString();
+                      assertTrue(msg, mongoMap.get(bigQueryId).similar(bigQueryJson));
                     }));
   }
 
@@ -225,6 +294,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
       }
       randomDocument.append("udf", "in");
       randomDocument.append("nullonly", null);
+      randomDocument.append("filter_test", String.valueOf(i));
 
       mongoDocuments.add(randomDocument);
     }

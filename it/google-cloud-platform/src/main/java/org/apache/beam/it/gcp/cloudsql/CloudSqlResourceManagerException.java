@@ -15,6 +15,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.beam.it.gcp.cloudsql;
 
-/** Package for working with test artifacts. */
-package org.apache.beam.it.jdbc;
+/** Custom exception for {@link TestContainerResourceManager} implementations. */
+public class CloudSqlResourceManagerException extends RuntimeException {
+
+  public CloudSqlResourceManagerException(String errorMessage) {
+    super(errorMessage);
+  }
+
+  public CloudSqlResourceManagerException(String errorMessage, Exception cause) {
+    super(errorMessage, cause);
+  }
+}

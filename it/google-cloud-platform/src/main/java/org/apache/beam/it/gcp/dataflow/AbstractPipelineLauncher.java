@@ -23,6 +23,7 @@ import static org.apache.beam.it.common.PipelineLauncher.JobState.PENDING_STATES
 import static org.apache.beam.it.common.logging.LogStrings.formatForLogging;
 import static org.apache.beam.it.common.utils.RetryUtil.clientRetryPolicy;
 
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.util.ArrayMap;
 import com.google.api.services.dataflow.Dataflow;
 import com.google.api.services.dataflow.model.Environment;
@@ -33,7 +34,9 @@ import com.google.api.services.dataflow.model.MetricUpdate;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -64,6 +67,10 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
   public static final String PARAM_JOB_TYPE = "jobType";
   public static final String PARAM_JOB_ID = "jobId";
 
+  public static final int DEFAULT_BACKOFF_START_DELAY_SECONDS = 10;
+  public static final int DEFAULT_BACKOFF_MAX_DELAY_SECONDS = 60;
+  public static final int DEFAULT_MAX_RETRIES = 3;
+
   protected final List<String> launchedJobs = new ArrayList<>();
 
   protected final Dataflow client;
@@ -79,7 +86,7 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
 
   @Override
   public Job getJob(String project, String region, String jobId, String view) {
-    return Failsafe.with(clientRetryPolicy())
+    return Failsafe.with(clientRetryPolicy(), dataflowRetryPolicy())
         .get(
             () ->
                 client
@@ -101,7 +108,7 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
       String project, String region, String jobId, String minimumImportance) {
     LOG.info("Listing messages of {} under {}", jobId, project);
     ListJobMessagesResponse response =
-        Failsafe.with(clientRetryPolicy())
+        Failsafe.with(clientRetryPolicy(), dataflowRetryPolicy())
             .get(
                 () ->
                     client
@@ -122,7 +129,7 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
     LOG.info("Cancelling {} under {}", jobId, project);
     Job job = new Job().setRequestedState(JobState.CANCELLED.toString());
     LOG.info("Sending job to update {}:\n{}", jobId, formatForLogging(job));
-    return Failsafe.with(clientRetryPolicy())
+    return Failsafe.with(clientRetryPolicy(), dataflowRetryPolicy())
         .get(
             () ->
                 client.projects().locations().jobs().update(project, region, jobId, job).execute());
@@ -133,7 +140,7 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
     LOG.info("Draining {} under {}", jobId, project);
     Job job = new Job().setRequestedState(JobState.DRAINED.toString());
     LOG.info("Sending job to update {}:\n{}", jobId, formatForLogging(job));
-    return Failsafe.with(clientRetryPolicy())
+    return Failsafe.with(clientRetryPolicy(), dataflowRetryPolicy())
         .get(
             () ->
                 client.projects().locations().jobs().update(project, region, jobId, job).execute());
@@ -328,5 +335,19 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
       }
     }
     LOG.info("Dataflow jobs successfully cleaned up.");
+  }
+
+  public static <T> RetryPolicy<T> dataflowRetryPolicy() {
+    return RetryPolicy.<T>builder()
+        .handle(GoogleJsonResponseException.class)
+        .handleIf(
+            throwable ->
+                throwable.getMessage() != null
+                    && throwable.getMessage().contains("Too Many Requests"))
+        .withBackoff(
+            Duration.ofSeconds(DEFAULT_BACKOFF_START_DELAY_SECONDS),
+            Duration.ofSeconds(DEFAULT_BACKOFF_MAX_DELAY_SECONDS))
+        .withMaxRetries(DEFAULT_MAX_RETRIES)
+        .build();
   }
 }

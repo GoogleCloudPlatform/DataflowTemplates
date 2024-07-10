@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDi
 import com.google.cloud.teleport.v2.source.reader.io.exception.SuitableIndexNotFoundException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
@@ -38,6 +39,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.sql.SQLException;
+import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -250,5 +252,61 @@ public class JdbcIoWrapperTest {
     assertTrue(tablesToMigrate3.contains("p"));
     assertTrue(tablesToMigrate3.contains("q"));
     assertTrue(tablesToMigrate3.contains("r"));
+  }
+
+  @Test
+  public void testReadWithUniformPartitionFeatureFlag() throws RetriableSchemaDiscoveryException {
+
+    String testCol = "ID";
+    SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
+    when(mockDialectAdapter.discoverTables(any(), any())).thenReturn(ImmutableList.of("testTable"));
+    when(mockDialectAdapter.discoverTableIndexes(any(), any(), any()))
+        .thenReturn(
+            ImmutableMap.of(
+                "testTable",
+                ImmutableList.of(
+                    SourceColumnIndexInfo.builder()
+                        .setIndexType(IndexType.NUMERIC)
+                        .setIndexName("PRIMARY")
+                        .setIsPrimary(true)
+                        .setCardinality(42L)
+                        .setColumnName(testCol)
+                        .setIsUnique(true)
+                        .setOrdinalPosition(1)
+                        .build())));
+    when(mockDialectAdapter.discoverTableSchema(any(), any(), any()))
+        .thenReturn(ImmutableMap.of("testTable", ImmutableMap.of(testCol, testColType)));
+
+    SourceSchemaReference testSourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
+
+    JdbcIOWrapperConfig configWithFeatureEnabled =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+            .setSourceSchemaReference(testSourceSchemaReference)
+            .setShardID("test")
+            .setTableVsPartitionColumns(ImmutableMap.of("testTable", ImmutableList.of("ID")))
+            .setReadWithUniformPartitionsFeatureEnabled(true)
+            .setDbAuth(
+                LocalCredentialsProvider.builder()
+                    .setUserName("testUser")
+                    .setPassword("testPassword")
+                    .build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+            .setDialectAdapter(mockDialectAdapter)
+            .build();
+    JdbcIOWrapperConfig configWithFeatureDisabled =
+        configWithFeatureEnabled.toBuilder()
+            .setReadWithUniformPartitionsFeatureEnabled(false)
+            .build();
+    JdbcIoWrapper jdbcIOWrapperWithFeatureEnabled = JdbcIoWrapper.of(configWithFeatureEnabled);
+    JdbcIoWrapper jdbcIOWrapperWithFeatureDisabled = JdbcIoWrapper.of(configWithFeatureDisabled);
+    assertThat(
+            jdbcIOWrapperWithFeatureDisabled.getTableReaders().values().stream().findFirst().get())
+        .isInstanceOf(JdbcIO.ReadWithPartitions.class);
+    assertThat(
+            jdbcIOWrapperWithFeatureEnabled.getTableReaders().values().stream().findFirst().get())
+        .isInstanceOf(ReadWithUniformPartitions.class);
   }
 }

@@ -35,11 +35,10 @@
 
   <properties>
     <autovalue.service.version>1.0.2</autovalue.service.version>
-    <extra.enforcer.rules.version>1.8.0</extra.enforcer.rules.version>
     <mock-server-netty.version>5.14.0</mock-server-netty.version>
     <open-census.version>0.24.0</open-census.version>
     <!-- TODO: check if this could be declared on a Beam BOM instead of here -->
-    <bigtable-beam-import.version>2.14.0</bigtable-beam-import.version>
+    <bigtable-beam-import.version>2.14.2</bigtable-beam-import.version>
     <protobuf.version>3.21.7</protobuf.version>
     <nashorn.version>15.4</nashorn.version>
     <junit.jupiter.version>5.5.2</junit.jupiter.version>
@@ -736,6 +735,13 @@
           <target>${java.version}</target>
           <parameters>true</parameters>
           <testCompilerArgument>-parameters</testCompilerArgument>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>com.google.auto.value</groupId>
+              <artifactId>auto-value</artifactId>
+              <version>${autovalue.version}</version>
+            </path>
+          </annotationProcessorPaths>
         </configuration>
       </plugin>
 

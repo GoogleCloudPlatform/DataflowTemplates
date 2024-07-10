@@ -49,7 +49,7 @@ public final class BigQueryResourceManagerUtils {
   static String generateDatasetId(String datasetName) {
 
     // Take substring of datasetName to account for random suffix
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     int randomSuffixLength = 6;
     datasetName =
         datasetName.substring(
@@ -63,7 +63,7 @@ public final class BigQueryResourceManagerUtils {
                     - randomSuffixLength));
 
     // Add random suffix to avoid collision
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     return generateResourceId(
             datasetName,
             ILLEGAL_DATASET_ID_CHARS,

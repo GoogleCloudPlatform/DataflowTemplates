@@ -45,6 +45,12 @@
         </dependency>
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
+            <artifactId>spanner-custom-shard</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>spanner-migrations-sdk</artifactId>
             <version>${project.version}</version>
         </dependency>
