@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql;
 
+import static org.apache.curator.shaded.com.google.common.collect.Sets.newHashSet;
+
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
@@ -31,8 +33,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
+import java.util.HashSet;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -44,6 +48,36 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   private final MySqlVersion mySqlVersion;
 
   private static final Logger logger = LoggerFactory.getLogger(MysqlDialectAdapter.class);
+
+  /**
+   * Ref: <a
+   * href=https://dev.mysql.com/doc/mysql-errors/8.4/en/server-error-reference.html#error_er_query_interrupted>error_er_query_interrupted</a>.
+   */
+  private static final String SQL_STATE_ER_QUERY_INTERRUPTED = "70100";
+
+  private static final HashSet<String> TIMEOUT_SQL_STATES =
+      newHashSet(SQL_STATE_ER_QUERY_INTERRUPTED);
+
+  /**
+   * Ref: <a
+   * href=https://dev.mysql.com/doc/mysql-errors/8.4/en/server-error-reference.html#error_er_query_interrupted>error_er_query_interrupted</a>.
+   */
+  private static final Integer ER_QUERY_INTERRUPTED = 1317;
+
+  /** Ref <a href=>https://bugs.mysql.com/bug.php?id=96537>bug/96537</a>. */
+  private static final Integer ER_FILSORT_ABORT = 1028;
+
+  /** Ref <a href=>https://bugs.mysql.com/bug.php?id=96537>bug/96537</a>. */
+  private static final Integer ER_FILSORT_TERMINATED = 10930;
+
+  /**
+   * Ref: <a
+   * href=https://dev.mysql.com/doc/mysql-errors/8.4/en/server-error-reference.html#error_er_query_timeout>error_er_query_timeout</a>.
+   */
+  private static final Integer ER_QUERY_TIMEOUT = 3024;
+
+  private static final HashSet<Integer> TIMEOUT_SQL_ERROR_CODES =
+      newHashSet(ER_QUERY_INTERRUPTED, ER_FILSORT_ABORT, ER_FILSORT_TERMINATED, ER_QUERY_TIMEOUT);
 
   private final Counter schemaDiscoveryErrors =
       Metrics.counter(JdbcSourceRowMapper.class, MetricCounters.READER_SCHEMA_DISCOVERY_ERRORS);
@@ -477,6 +511,26 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return addWhereClause(
         String.format("select MIN(%s),MAX(%s) from %s", colName, colName, tableName),
         partitionColumns);
+  }
+
+  /**
+   * Check if a given {@link SQLException} is a timeout. The implementation needs to check for
+   * dialect specific {@link SQLException#getSQLState() SqlState} and {@link
+   * SQLException#getErrorCode() ErrorCode} to check if the exception indicates a server side
+   * timeout. The client side timeout would be already checked for by handling {@link
+   * SQLTimeoutException}, so the implementation does not need to check for the same.
+   */
+  @Override
+  public boolean checkForTimeout(SQLException exception) {
+    if (exception.getSQLState() != null) {
+      if (TIMEOUT_SQL_STATES.contains(exception.getSQLState().toLowerCase())) {
+        return true;
+      }
+    }
+    if (TIMEOUT_SQL_ERROR_CODES.contains(exception.getErrorCode())) {
+      return true;
+    }
+    return false;
   }
 
   /**

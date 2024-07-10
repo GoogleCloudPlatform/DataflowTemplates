@@ -228,9 +228,9 @@ public class ReadWithUniformPartitionsTest implements Serializable {
         getReadWithUniformPartitionsForTest(64L, null, null, null, null);
     // Large RoCount
     ReadWithUniformPartitions readWithUniformPartitionsLargeRowCount =
-        getReadWithUniformPartitionsForTest(1_000_000_000L /* 1 billion */, null, null, null, null);
+        getReadWithUniformPartitionsForTest(8_000_000_000L /* 1 billion */, null, null, null, null);
     assertThat(readWithUniformPartitionsSmallRowCount.maxPartitionsHint()).isEqualTo(1L);
-    assertThat(readWithUniformPartitionsLargeRowCount.maxPartitionsHint()).isEqualTo(3162L);
+    assertThat(readWithUniformPartitionsLargeRowCount.maxPartitionsHint()).isEqualTo(4472L);
   }
 
   @Test

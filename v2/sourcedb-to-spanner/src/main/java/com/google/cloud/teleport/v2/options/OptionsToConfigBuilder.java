@@ -104,6 +104,9 @@ public final class OptionsToConfigBuilder {
                     .build())
             .setJdbcDriverClassName(jdbcDriverClassName)
             .setJdbcDriverJars(jdbcDriverJars);
+    if (maxConnections != 0) {
+      builder = builder.setMaxConnections(maxConnections);
+    }
 
     if (sourceDbURL != null) {
       builder.setSourceDbURL(sourceDbURL);

@@ -60,12 +60,10 @@ public class MergeRangesDoFnTest {
                 testRanges.get(0),
                 // Can not merge after 0 into 1 as count exceeds mean.
                 testRanges.get(1),
-                // Can not merge after 1 into 2 as count exceeds adjusted mean.
+                // Can not merge after 1 into 2 as count exceeds mean.
                 testRanges.get(2).mergeRange(testRanges.get(3), mockProcessContext),
                 // Can not merge after 3 into 4 as the ranges are not mergable.
-                testRanges.get(4),
-                // Can not merge after 4 into 5 as count exceeds adjusted mean.
-                testRanges.get(5),
+                testRanges.get(4).mergeRange(testRanges.get(5), mockProcessContext),
                 // can not merge after 5 into 6 as ranges are not mergable.
                 testRanges
                     .get(6)
@@ -147,20 +145,22 @@ public class MergeRangesDoFnTest {
     testRangesBuilder = new ImmutableList.Builder<>();
     for (int i = 0; i < testRanges.size(); i++) {
       if (i == 4) {
-        testRangesBuilder.add(rangeWithChildSplit.getLeft()).add(rangeWithChildSplit.getRight());
+        testRangesBuilder
+            .add(rangeWithChildSplit.getLeft().withCount(1500L, mockProcessContext))
+            .add(rangeWithChildSplit.getRight().withCount(1500L, mockProcessContext));
       } else {
         testRangesBuilder.add(testRanges.get(i));
       }
     }
     /*
      * Ranges we get here are 0-32, 32-48, 48-52, 52-54, 54-55(withChild 0-8), 54-55(withChild 9 - 16), 56-60, 60-62, 62-63
-     * For testing purpose, All ranges have counts equal to 100 * (end - start) (for testing) except for the ones with a child with count 1500.
+     * For testing purpose, All ranges have counts equal to 300 * (end - start) (for testing) except for the ones with a child with count 1500.
      */
     testRanges = testRangesBuilder.build();
     return testRanges;
   }
 
   private static Range dummyCounter(Range range, ProcessContext mockProcessContext) {
-    return range.withCount(100L * ((Long) range.end() - (Long) range.start()), mockProcessContext);
+    return range.withCount(300L * ((Long) range.end() - (Long) range.start()), mockProcessContext);
   }
 }

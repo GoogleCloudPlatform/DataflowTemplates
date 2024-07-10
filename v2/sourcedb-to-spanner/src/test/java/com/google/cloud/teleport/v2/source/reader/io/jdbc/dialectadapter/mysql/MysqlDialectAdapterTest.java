@@ -446,6 +446,30 @@ public class MysqlDialectAdapterTest {
             "select MIN(col3),MAX(col3) from testTable WHERE ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
   }
 
+  @Test
+  public void testCheckTimeoutException() {
+    MysqlDialectAdapter mysqlDialectAdapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
+    //  ER_QUERY_INTERRUPTED;
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "70100")))
+        .isTrue();
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "dummy", 1317)))
+        .isTrue();
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "HY000", 3024)))
+        .isTrue();
+    //  https://bugs.mysql.com/bug.php?id=96537
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "dummy", 1028)))
+        .isTrue();
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "dummy", 10930)))
+        .isTrue();
+    // Non-Timeout errors
+    // ER_SYNTAX_ERROR.
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "42000", 1149)))
+        .isFalse();
+    // Null Check.
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", null, 1149)))
+        .isFalse();
+  }
+
   private static ResultSet getMockInfoSchemaRs() throws SQLException {
     return new MockRSBuilder(
             MockInformationSchema.builder()

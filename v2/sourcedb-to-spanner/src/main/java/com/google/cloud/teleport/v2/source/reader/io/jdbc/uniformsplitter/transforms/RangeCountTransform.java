@@ -56,8 +56,9 @@ public abstract class RangeCountTransform extends PTransform<PCollection<Range>,
             new RangeCountDoFn(
                 dataSourceProviderFn(),
                 timeoutMillis(),
-                dbAdapter().getCountQuery(tableName(), partitionColumns(), timeoutMillis()),
-                partitionColumns().size())));
+                dbAdapter(),
+                tableName(),
+                partitionColumns())));
   }
 
   public static Builder builder() {

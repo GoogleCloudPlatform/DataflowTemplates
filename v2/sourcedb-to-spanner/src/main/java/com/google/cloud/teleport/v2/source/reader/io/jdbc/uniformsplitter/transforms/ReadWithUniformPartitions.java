@@ -54,8 +54,15 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
   /* We try to get Ranges, where a Range is split if it's count is greater than twice the mean */
   /* TODO(vardhanvthigle): Add this as a configurable parameter */
   public static final long SPLITTER_MAX_RELATIVE_DEVIATION = 1;
+  private static final long SPLITTER_DEFAULT_COUNT_QUERY_TIMEOUT_MILLIS = 5 * 1000;
 
-  public static final long SPLITTER_DEFAULT_COUNT_QUERY_TIMEOUT_MILLIS = 30 * 1000;
+  /**
+   * Auto Inference of max partitions similar to <a
+   * href=https://github.com/apache/beam/blob/b50ad0fe8fc168eaded62efb08f19cf2aea341e2/sdks/java/io/jdbc/src/main/java/org/apache/beam/sdk/io/jdbc/JdbcIO.java#L1398>JDBCIO#readWithPartitions</a>
+   * We scale the square root of partitions to 20 instead of 10 as in the initial split we begin the
+   * closest power of 2 on the larger side.
+   */
+  private static final int MAX_PARTITION_INFERENCE_SCALE_FACTOR = 20;
 
   /** Provider for {@link DataSource}. Required parameter. */
   abstract SerializableFunction<Void, DataSource> dataSourceProviderFn();
@@ -126,6 +133,21 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
   abstract Long splitStageCountHint();
 
   /**
+   * If not null, limits the maximum number of parallel operations queued on a DB per transform.
+   * Defaults to null. It's best to set this to a number close to number of cores available on mySql
+   * server.
+   */
+  @Nullable
+  abstract Integer dbParallelizationForSplitProcess();
+
+  /**
+   * If not null, limits the maximum number of parallel operations queued on a DB per transform.
+   * Defaults to null.
+   */
+  @Nullable
+  abstract Integer dbParallelizationForReads();
+
+  /**
    * An optional transform that can be injected at the end of splitting process to make use of the
    * ranges. This could range anywhere for logging to gcs, to creating split points on spanner, to
    * even ease of unit testing.
@@ -182,7 +204,9 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
     PCollection<Range> rangesToRead =
         peekRanges(mergedRanges).apply(ParDo.of(new UnflattenRangesDoFn()));
     return rangesToRead
-        .apply(getTransformName("ReshuffleFinal", null), Reshuffle.viaRandomKey())
+        .apply(
+            getTransformName("ReshuffleFinal", null),
+            Reshuffle.<Range>viaRandomKey().withNumBuckets(dbParallelizationForReads()))
         .apply(
             getTransformName("RangeRead", null),
             JdbcIO.<Range, T>readAll()
@@ -196,6 +220,8 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
   public static <T> Builder<T> builder() {
     return new AutoValue_ReadWithUniformPartitions.Builder<T>()
         .setCountQueryTimeoutMillis(SPLITTER_DEFAULT_COUNT_QUERY_TIMEOUT_MILLIS)
+        .setDbParallelizationForSplitProcess(null)
+        .setDbParallelizationForReads(null)
         .setAutoAdjustMaxPartitions(true);
   }
 
@@ -291,13 +317,18 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
     PCollection<Range> countedRanges =
         classifiedRanges
             .get(RangeClassifierDoFn.TO_COUNT_TAG)
-            .apply(getTransformName("ReshuffleToCount", stageIdx), Reshuffle.viaRandomKey())
+            .apply(
+                getTransformName("ReshuffleToCount", stageIdx),
+                Reshuffle.<Range>viaRandomKey().withNumBuckets(dbParallelizationForSplitProcess()))
             .apply(getTransformName("RangeCounter", stageIdx), rangeCountTransform);
     PCollection<ColumnForBoundaryQuery> rangesToAddColumn =
         classifiedRanges.get(RangeClassifierDoFn.TO_ADD_COLUMN_TAG);
     PCollection<Range> rangesWithNewColumns =
         rangesToAddColumn
-            .apply(getTransformName("ReshuffleToAddColumn", stageIdx), Reshuffle.viaRandomKey())
+            .apply(
+                getTransformName("ReshuffleToAddColumn", stageIdx),
+                Reshuffle.<ColumnForBoundaryQuery>viaRandomKey()
+                    .withNumBuckets(dbParallelizationForSplitProcess()))
             .apply(getTransformName("RangeBoundary", stageIdx), rangeBoundaryTransform)
             .apply(
                 getTransformName("RangeSplitterAfterColumnAddition", stageIdx),
@@ -338,8 +369,18 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
     }
   }
 
+  /**
+   * Auto Inference of max partitions similar to <a
+   * href=https://github.com/apache/beam/blob/b50ad0fe8fc168eaded62efb08f19cf2aea341e2/sdks/java/io/jdbc/src/main/java/org/apache/beam/sdk/io/jdbc/JdbcIO.java#L1398>JDBCIO#readWithPartitions</a>
+   * We scale the square root of partitions to 20 instead of 10 as in the initial split we begin the
+   * closest power of 2 on the larger side.
+   *
+   * @param count approximate count of rows to migrate.
+   * @return inferred max partitions
+   */
   public static long inferMaxPartitions(long count) {
-    return Math.max(1, Math.round(Math.floor(Math.sqrt(count) / 10)));
+    return Math.max(
+        1, Math.round(Math.floor(Math.sqrt(count) / MAX_PARTITION_INFERENCE_SCALE_FACTOR)));
   }
 
   @AutoValue.Builder
@@ -373,6 +414,10 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
     abstract Optional<Long> initialSplitHint();
 
     public abstract Builder<T> setSplitStageCountHint(Long value);
+
+    public abstract Builder<T> setDbParallelizationForSplitProcess(@Nullable Integer value);
+
+    public abstract Builder<T> setDbParallelizationForReads(@Nullable Integer value);
 
     public abstract Builder<T> setRowMapper(JdbcIO.RowMapper<T> value);
 

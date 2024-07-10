@@ -222,11 +222,13 @@ public abstract class Range implements Serializable, Comparable<Range> {
     return Pair.of(
         this.toBuilder()
             .setBoundary(boundaries.getLeft())
+            .setCount(INDETERMINATE_COUNT)
             .setIsFirst(isFirst())
             .setIsLast(false)
             .build(),
         this.toBuilder()
             .setBoundary(boundaries.getRight())
+            .setCount(INDETERMINATE_COUNT)
             .setIsFirst(false)
             .setIsLast(isLast())
             .build());
