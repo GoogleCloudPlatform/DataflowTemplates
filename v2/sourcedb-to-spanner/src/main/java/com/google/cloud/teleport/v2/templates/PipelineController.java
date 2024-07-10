@@ -128,11 +128,25 @@ public class PipelineController {
               JdbcIoWrapper.of(
                   OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
                       options, List.of(srcTable), null, Wait.on(parentOutputs))));
+      String suffix = generateSuffix("", srcTable);
       PCollection<Void> output =
-          migrateForReader(options, pipeline, spannerConfig, ddl, schemaMapper, reader, "");
+          pipeline.apply(
+              "Migrate" + suffix,
+              new MigrateForTable(options, spannerConfig, ddl, schemaMapper, reader, ""));
       outputs.put(srcTable, output);
     }
     return pipeline.run();
+  }
+
+  private static String generateSuffix(String shardId, String tableName) {
+    String suffix = "";
+    if (!StringUtils.isEmpty(shardId)) {
+      suffix += "_" + shardId;
+    }
+    if (!StringUtils.isEmpty(tableName)) {
+      suffix += "_" + tableName;
+    }
+    return suffix;
   }
 
   /**
@@ -273,6 +287,7 @@ public class PipelineController {
                 "Output PCollection for parent table should not be null.");
             parentOutputs.add(parentOutputPcollection);
           }
+          String shardId = entry.getValue();
           ReaderImpl reader =
               ReaderImpl.of(
                   JdbcIoWrapper.of(
@@ -284,15 +299,17 @@ public class PipelineController {
                           shard.getUserName(),
                           shard.getPassword(),
                           entry.getKey(),
-                          entry.getValue(),
+                          shardId,
                           options.getJdbcDriverClassName(),
                           options.getJdbcDriverJars(),
                           options.getMaxConnections(),
                           options.getNumPartitions(),
                           Wait.on(parentOutputs))));
+          String suffix = generateSuffix(shardId, srcTable);
           PCollection<Void> output =
-              migrateForReader(
-                  options, pipeline, spannerConfig, ddl, schemaMapper, reader, entry.getValue());
+              pipeline.apply(
+                  "Migrate" + suffix,
+                  new MigrateForTable(options, spannerConfig, ddl, schemaMapper, reader, shardId));
           outputs.put(srcTable, output);
         }
       }
