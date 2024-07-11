@@ -290,7 +290,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       regexes = {"^projects\\/[^\\n\\r\\/]+\\/secrets\\/[^\\n\\r\\/]+\\/versions\\/[^\\n\\r\\/]+$"},
       description = "Google Cloud Secret Manager ID.",
       helpText =
-          "Secret Manager secret ID for the apiKey. If the `apiKeySource` is set to `SECRET_MANAGER`, provide this parameter. Use the format `projects/<PROJECT_ID>/secrets/<SECRET>/versions/<SECRET_VERSION>.",
+          "Secret Manager secret ID for the apiKey. If the `apiKeySource` is set to `SECRET_MANAGER`, provide this parameter. Use the format `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>.",
       example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
   String getApiKeySecretId();
 
