@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.transformer.SourceRowToMutationDoFn;
 import com.google.cloud.teleport.v2.writer.DeadLetterQueue;
 import com.google.cloud.teleport.v2.writer.SpannerWriter;
 import java.util.Arrays;
+import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -62,7 +63,7 @@ public class MigrateForTable extends PTransform<PBegin, PCollection<Void>> {
     this.ddl = ddl;
     this.schemaMapper = schemaMapper;
     this.reader = reader;
-    this.shardId = shardId;
+    this.shardId = StringUtils.isEmpty(shardId) ? "" : shardId;
   }
 
   @Override
@@ -106,7 +107,7 @@ public class MigrateForTable extends PTransform<PBegin, PCollection<Void>> {
       outputDirectory += "/";
     }
     // Dump Failed rows to DLQ
-    String dlqDirectory = outputDirectory + "dlq";
+    String dlqDirectory = outputDirectory + "dlq/" + shardId;
     LOG.info("DLQ directory: {}", dlqDirectory);
     DeadLetterQueue dlq = DeadLetterQueue.create(dlqDirectory, ddl);
     dlq.failedMutationsToDLQ(failedMutations);
@@ -118,7 +119,7 @@ public class MigrateForTable extends PTransform<PBegin, PCollection<Void>> {
     /*
      * Write filtered records to GCS
      */
-    String filterEventsDirectory = outputDirectory + "filteredEvents";
+    String filterEventsDirectory = outputDirectory + "filteredEvents/" + shardId;
     LOG.info("Filtered events directory: {}", filterEventsDirectory);
     DeadLetterQueue filteredEventsQueue = DeadLetterQueue.create(filterEventsDirectory, ddl);
     filteredEventsQueue.filteredEventsToDLQ(

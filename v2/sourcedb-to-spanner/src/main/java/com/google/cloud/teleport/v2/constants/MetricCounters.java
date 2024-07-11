@@ -34,4 +34,7 @@ public class MetricCounters {
 
   // Counter for number of mutations that failed writing to Spanner
   public static final String FAILED_MUTATION_ERRORS = "failed_mutation_errors";
+
+  // Counter for the number of tables completed.
+  public static final String TABLES_COMPLETED = "tables_completed";
 }
