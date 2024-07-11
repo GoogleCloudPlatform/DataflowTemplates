@@ -42,8 +42,8 @@ public abstract class CloudSqlResourceManager
   private static final Logger LOG = LoggerFactory.getLogger(CloudSqlResourceManager.class);
 
   protected final List<String> createdTables;
-  private boolean createdDatabase;
-  private boolean usingCustomDb;
+  protected boolean createdDatabase;
+  protected boolean usingCustomDb;
 
   protected CloudSqlResourceManager(@NonNull Builder builder) {
     super(CloudSqlContainer.of(), builder);
@@ -161,10 +161,24 @@ public abstract class CloudSqlResourceManager
       this.usingCustomDb = false;
 
       // Currently only supports static CloudSQL instance with static Cloud Auth Proxy
-      this.maybeUseStaticCloudProxy();
+      this.maybeUseStaticInstance();
     }
 
-    public Builder maybeUseStaticCloudProxy() {
+    public Builder maybeUseStaticInstance() {
+      this.configureHost();
+      this.configurePort();
+      this.configureUsername();
+      this.configurePassword();
+      this.useStaticContainer();
+
+      return this;
+    }
+
+    protected String getDefaultUsername() {
+      return DEFAULT_JDBC_USERNAME;
+    }
+
+    protected void configureHost() {
       if (System.getProperty("cloudProxyHost") != null) {
         this.setHost(System.getProperty("cloudProxyHost"));
       } else {
@@ -175,6 +189,20 @@ public abstract class CloudSqlResourceManager
       } else {
         LOG.warn("Missing -DcloudProxyPort.");
       }
+    }
+
+    protected abstract void configurePort();
+
+    protected void configureUsername() {
+      if (System.getProperty("cloudProxyUsername") != null) {
+        this.setUsername(System.getProperty("cloudProxyUsername"));
+      } else {
+        LOG.info("-DcloudProxyUsername not specified, using default: " + getDefaultUsername());
+        this.setUsername(getDefaultUsername());
+      }
+    }
+
+    protected void configurePassword() {
       if (System.getProperty("cloudProxyPassword") != null) {
         this.setPassword(System.getProperty("cloudProxyPassword"));
       } else {
@@ -186,8 +214,6 @@ public abstract class CloudSqlResourceManager
         LOG.info("-DcloudProxyUsername not specified, using default: " + DEFAULT_JDBC_USERNAME);
       }
       this.useStaticContainer();
-
-      return this;
     }
 
     @Override
