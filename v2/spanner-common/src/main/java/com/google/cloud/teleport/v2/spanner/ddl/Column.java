@@ -126,6 +126,10 @@ public abstract class Column implements Serializable {
         return Type.Code.FLOAT64.getName();
       case PG_FLOAT8:
         return Type.Code.PG_FLOAT8.getName();
+      case FLOAT32:
+        return Type.Code.FLOAT32.getName();
+      case PG_FLOAT4:
+        return Type.Code.PG_FLOAT4.getName();
       case STRING:
         return Type.Code.STRING + "(" + (size == -1 ? "MAX" : Integer.toString(size)) + ")";
       case PG_VARCHAR:
@@ -218,8 +222,11 @@ public abstract class Column implements Serializable {
     }
 
     public Builder float64() {
-
       return type(Type.float64());
+    }
+
+    public Builder float32() {
+      return type(Type.float32());
     }
 
     public Builder bool() {
@@ -335,6 +342,9 @@ public abstract class Column implements Serializable {
           if (spannerType.equals(Type.Code.FLOAT64.getName())) {
             return t(Type.float64(), null);
           }
+          if (spannerType.equals(Type.Code.FLOAT32.getName())) {
+            return t(Type.float32(), null);
+          }
           if (spannerType.startsWith(Type.Code.STRING.getName())) {
             String sizeStr = spannerType.substring(7, spannerType.length() - 1);
             int size = sizeStr.equals("MAX") ? -1 : Integer.parseInt(sizeStr);
@@ -382,6 +392,9 @@ public abstract class Column implements Serializable {
           }
           if (spannerType.equals(Type.Code.PG_FLOAT8.getName())) {
             return t(Type.pgFloat8(), null);
+          }
+          if (spannerType.equals(Type.Code.PG_FLOAT4.getName())) {
+            return t(Type.pgFloat4(), null);
           }
           if (spannerType.equals(Type.Code.PG_TEXT.getName())) {
             return t(Type.pgText(), -1);

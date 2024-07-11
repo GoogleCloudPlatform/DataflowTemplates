@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS AllDatatypeColumns2 (
   mediumint_column INT64,
   int_column INT64,
   bigint_column INT64,
-  float_column FLOAT64,
+  float_column FLOAT32,
   double_column FLOAT64,
   decimal_column NUMERIC,
   datetime_column TIMESTAMP,
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS AllDatatypeColumns2 (
 
 CREATE TABLE IF NOT EXISTS DatatypeColumnsWithSizes (
    varchar_column STRING(30) NOT NULL,
-   float_column FLOAT64,
+   float_column FLOAT32,
    decimal_column NUMERIC,
    char_column STRING(50),
    bool_column BOOL,
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS DatatypeColumnsWithSizes (
 
 CREATE TABLE IF NOT EXISTS DatatypeColumnsReducedSizes (
     varchar_column STRING(10) NOT NULL,
-    float_column FLOAT64,
+    float_column FLOAT32,
     decimal_column NUMERIC,
     char_column STRING(20),
     bool_column BOOL,
@@ -103,7 +103,7 @@ CREATE TABLE AllDatatypeTransformation (
 	date_column DATE,
 	int_column INT64,
 	bigint_column INT64,
-	float_column FLOAT64,
+	float_column FLOAT32,
 	double_column FLOAT64,
 	decimal_column NUMERIC,
 	datetime_column TIMESTAMP,

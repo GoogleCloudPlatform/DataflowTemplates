@@ -88,6 +88,9 @@ public class DdlTest {
         .generatedAs("CONCAT(first_name, ' ', last_name)")
         .stored()
         .endColumn()
+        .column("balance")
+        .type(Type.float32())
+        .endColumn()
         .primaryKey()
         .asc("id")
         .end()
@@ -104,6 +107,7 @@ public class DdlTest {
                 + " `first_name` STRING(10),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " `balance` FLOAT32,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
                 + " ) PRIMARY KEY (`id` ASC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
@@ -119,6 +123,7 @@ public class DdlTest {
                 + " `first_name` STRING(10),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " `balance` FLOAT32,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
                 + " ) PRIMARY KEY (`id` ASC)"));
     assertThat(
@@ -164,6 +169,9 @@ public class DdlTest {
         .generatedAs("CONCAT(first_name, ' ', last_name)")
         .stored()
         .endColumn()
+        .column("balance")
+        .type(Type.pgFloat4())
+        .endColumn()
         .primaryKey()
         .asc("id")
         .end()
@@ -183,6 +191,7 @@ public class DdlTest {
                 + " \"last_name\" character varying,"
                 + " \"full_name\" character varying GENERATED ALWAYS AS"
                 + " (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " \"balance\" real,"
                 + " CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\"),"
                 + " PRIMARY KEY (\"id\")"
                 + " ) "
