@@ -164,27 +164,34 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
       BigDecimal floatColumn = (BigDecimal) row.get("float_column");
       BigDecimal doubleColumn = (BigDecimal) row.get("double_column");
       row.put("tinyint_column", tinyIntColumn.toString());
-      row.put("text_column", "\'"+row.get("text_column") + " append\'");
+      row.put("text_column", "\'" + row.get("text_column") + " append\'");
       row.put("int_column", intColumn.toString());
       row.put("bigint_column", bigIntColumn.toString());
       row.put("float_column", floatColumn.add(BigDecimal.ONE).toString());
       row.put("double_column", doubleColumn.add(BigDecimal.ONE).toString());
       Double value = Double.parseDouble((String) row.get("decimal_column"));
       row.put("decimal_column", String.valueOf(value - 1));
-      row.put("time_column", "\'"+timeColumn+"\'");
+      row.put("time_column", "\'" + timeColumn + "\'");
       row.put("bool_column", "false");
-      row.put("enum_column", "3");
+      row.put("enum_column", "\'3\'");
       row.put(
-          "blob_column","from_base64(\'"+
-          Base64.getEncoder()
-              .encodeToString("blob_column_appended".getBytes(StandardCharsets.UTF_8))+"\')");
+          "blob_column",
+          "from_base64(\'"
+              + Base64.getEncoder()
+                  .encodeToString("blob_column_appended".getBytes(StandardCharsets.UTF_8))
+              + "\')");
       row.put(
-          "binary_column","binary(from_base64(\'"+
-          Base64.getEncoder()
-              .encodeToString("binary_column_appended".getBytes(StandardCharsets.UTF_8))+"\'))");
+          "binary_column",
+          "binary(from_base64(\'"
+              + Base64.getEncoder()
+                  .encodeToString("binary_column_appended".getBytes(StandardCharsets.UTF_8))
+              + "\'))");
       row.put(
-          "bit_column", "binary(from_base64(\'"+Base64.getEncoder().encodeToString("5".getBytes(StandardCharsets.UTF_8))+"\'))");
-      row.put("year_column", "\'"+yearColumn+"\'");
+          "bit_column",
+          "binary(from_base64(\'"
+              + Base64.getEncoder().encodeToString("5".getBytes(StandardCharsets.UTF_8))
+              + "\'))");
+      row.put("year_column", "\'" + yearColumn + "\'");
       try {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
@@ -193,15 +200,19 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
         calendar.add(Calendar.DAY_OF_MONTH, 1);
-        row.put("date_column", dateFormat.format(calendar.getTime()));
+        row.put("date_column", "\'" + dateFormat.format(calendar.getTime()) + "\'");
         Date dateTime = dateTimeFormat.parse((String) row.get("datetime_column"));
         calendar.setTime(dateTime);
         calendar.add(Calendar.SECOND, -1);
-        row.put("datetime_column", dateTimeFormat.format(calendar.getTime()));
+        row.put(
+            "datetime_column",
+            "CONVERT_TZ(\'" + dateTimeFormat.format(calendar.getTime()) + "\','+00:00','+00:00')");
         dateTime = dateTimeFormat.parse((String) row.get("timestamp_column"));
         calendar.setTime(dateTime);
         calendar.add(Calendar.SECOND, -1);
-        row.put("timestamp_column", dateTimeFormat.format(calendar.getTime()));
+        row.put(
+            "timestamp_column",
+            "CONVERT_TZ(\'" + dateTimeFormat.format(calendar.getTime()) + "\','+00:00','+00:00')");
 
       } catch (Exception e) {
         throw new InvalidTransformationException(e);

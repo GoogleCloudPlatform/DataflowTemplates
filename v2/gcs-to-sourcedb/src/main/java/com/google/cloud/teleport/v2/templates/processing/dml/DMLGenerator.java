@@ -41,7 +41,7 @@ public class DMLGenerator {
       JSONObject newValuesJson,
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset,
-      Map<String,Object> customTransformationResponse) {
+      Map<String, Object> customTransformationResponse) {
 
     if (schema.getSpannerToID().get(spannerTableName) == null) {
       LOG.warn(
@@ -76,7 +76,12 @@ public class DMLGenerator {
     if ("INSERT".equals(modType) || "UPDATE".equals(modType)) {
       Map<String, String> pkcolumnNameValues =
           getPkColumnValues(
-              spannerTable, sourceTable, newValuesJson, keyValuesJson, sourceDbTimezoneOffset, customTransformationResponse);
+              spannerTable,
+              sourceTable,
+              newValuesJson,
+              keyValuesJson,
+              sourceDbTimezoneOffset,
+              customTransformationResponse);
       if (pkcolumnNameValues == null) {
         LOG.warn(
             "Cannot reverse replicate for table {} without primary key, skipping the record",
@@ -85,7 +90,12 @@ public class DMLGenerator {
       }
       Map<String, String> columnNameValues =
           getColumnValues(
-              spannerTable, sourceTable, newValuesJson, keyValuesJson, sourceDbTimezoneOffset, customTransformationResponse);
+              spannerTable,
+              sourceTable,
+              newValuesJson,
+              keyValuesJson,
+              sourceDbTimezoneOffset,
+              customTransformationResponse);
       return getUpsertStatement(
           sourceTable.getName(),
           sourceTable.getPrimaryKeySet(),
@@ -95,7 +105,12 @@ public class DMLGenerator {
 
       Map<String, String> pkcolumnNameValues =
           getPkColumnValues(
-              spannerTable, sourceTable, newValuesJson, keyValuesJson, sourceDbTimezoneOffset, customTransformationResponse);
+              spannerTable,
+              sourceTable,
+              newValuesJson,
+              keyValuesJson,
+              sourceDbTimezoneOffset,
+              customTransformationResponse);
       if (pkcolumnNameValues == null) {
         LOG.warn(
             "Cannot reverse replicate for table {} without primary key, skipping the record",
@@ -195,7 +210,7 @@ public class DMLGenerator {
       JSONObject newValuesJson,
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset,
-      Map<String,Object> customTransformationResponse) {
+      Map<String, Object> customTransformationResponse) {
     Map<String, String> response = new HashMap<>();
 
     /*
@@ -213,7 +228,7 @@ public class DMLGenerator {
     */
     Set<String> sourcePKs = sourceTable.getPrimaryKeySet();
     Set<String> customTransformColumns = null;
-    if (customTransformationResponse!= null) {
+    if (customTransformationResponse != null) {
       customTransformColumns = customTransformationResponse.keySet();
     }
     for (Map.Entry<String, SourceColumnDefinition> entry : sourceTable.getColDefs().entrySet()) {
@@ -223,7 +238,7 @@ public class DMLGenerator {
       if (sourcePKs.contains(colName)) {
         continue; // we only need non-primary keys
       }
-      if (customTransformColumns!= null && customTransformColumns.contains(colName)) {
+      if (customTransformColumns != null && customTransformColumns.contains(colName)) {
         response.put(colName, (String) customTransformationResponse.get(colName));
         continue;
       }
@@ -269,7 +284,7 @@ public class DMLGenerator {
       JSONObject newValuesJson,
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset,
-      Map<String,Object> customTransformationResponse) {
+      Map<String, Object> customTransformationResponse) {
     Map<String, String> response = new HashMap<>();
     /*
     Get all primary key col ids from source table
