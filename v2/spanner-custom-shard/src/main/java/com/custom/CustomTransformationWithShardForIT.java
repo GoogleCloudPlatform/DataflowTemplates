@@ -148,11 +148,11 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
       Map<String, Object> row = new HashMap<>(request.getRequestRow());
       // Filter event in case "varchar_column" = "example1"
       if (row.get("varchar_column").equals("example1")) {
-        return new MigrationTransformationResponse(request.getRequestRow(), true);
+        return new MigrationTransformationResponse(null, true);
       }
       // In case of update/delete events, return request as response without any transformation
       if (request.getEventType().equals("UPDATE") || request.getEventType().equals("DELETE")) {
-        return new MigrationTransformationResponse(request.getRequestRow(), false);
+        return new MigrationTransformationResponse(null, false);
       }
       // In case of INSERT update the values for all the columns in all the rows except the
       // filtered row.
@@ -164,27 +164,27 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
       BigDecimal floatColumn = (BigDecimal) row.get("float_column");
       BigDecimal doubleColumn = (BigDecimal) row.get("double_column");
       row.put("tinyint_column", tinyIntColumn.toString());
-      row.put("text_column", row.get("text_column") + " append");
+      row.put("text_column", "\'"+row.get("text_column") + " append\'");
       row.put("int_column", intColumn.toString());
       row.put("bigint_column", bigIntColumn.toString());
-      row.put("float_column", floatColumn.add(BigDecimal.ONE));
-      row.put("double_column", doubleColumn.add(BigDecimal.ONE));
+      row.put("float_column", floatColumn.add(BigDecimal.ONE).toString());
+      row.put("double_column", doubleColumn.add(BigDecimal.ONE).toString());
       Double value = Double.parseDouble((String) row.get("decimal_column"));
       row.put("decimal_column", String.valueOf(value - 1));
-      row.put("time_column", timeColumn.toString());
-      row.put("bool_column", false);
+      row.put("time_column", "\'"+timeColumn+"\'");
+      row.put("bool_column", "false");
       row.put("enum_column", "3");
       row.put(
-          "blob_column",
+          "blob_column","from_base64(\'"+
           Base64.getEncoder()
-              .encodeToString("blob_column_appended".getBytes(StandardCharsets.UTF_8)));
+              .encodeToString("blob_column_appended".getBytes(StandardCharsets.UTF_8))+"\')");
       row.put(
-          "binary_column",
+          "binary_column","binary(from_base64(\'"+
           Base64.getEncoder()
-              .encodeToString("binary_column_appended".getBytes(StandardCharsets.UTF_8)));
+              .encodeToString("binary_column_appended".getBytes(StandardCharsets.UTF_8))+"\'))");
       row.put(
-          "bit_column", Base64.getEncoder().encodeToString("5".getBytes(StandardCharsets.UTF_8)));
-      row.put("year_column", yearColumn.toString());
+          "bit_column", "binary(from_base64(\'"+Base64.getEncoder().encodeToString("5".getBytes(StandardCharsets.UTF_8))+"\'))");
+      row.put("year_column", "\'"+yearColumn+"\'");
       try {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
@@ -210,6 +210,6 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
       MigrationTransformationResponse response = new MigrationTransformationResponse(row, false);
       return response;
     }
-    return new MigrationTransformationResponse(request.getRequestRow(), false);
+    return new MigrationTransformationResponse(null, false);
   }
 }

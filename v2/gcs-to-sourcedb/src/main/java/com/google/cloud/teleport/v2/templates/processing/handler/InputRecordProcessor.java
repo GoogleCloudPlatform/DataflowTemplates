@@ -83,6 +83,7 @@ public class InputRecordProcessor {
         String newValueJsonStr = chrec.getMods().get(0).getNewValuesJson();
         JSONObject newValuesJson = new JSONObject(newValueJsonStr);
         JSONObject keysJson = new JSONObject(keysJsonStr);
+        Map<String,Object> customTransformationResponse = null;
         if (spannerToSourceTransformer != null) {
           org.joda.time.Instant startTimestamp = org.joda.time.Instant.now();
           Map<String, Object> mapRequest =
@@ -104,12 +105,11 @@ public class InputRecordProcessor {
             Metrics.counter(InputRecordProcessor.class, "filtered_events_" + shardId).inc();
             continue;
           }
-          ChangeEventToMapConvertor.updateJsonWithMap(
-              migrationTransformationResponse.getResponseRow(), keysJson, newValuesJson);
+          customTransformationResponse = migrationTransformationResponse.getResponseRow();
         }
         String dmlStatement =
             DMLGenerator.getDMLStatement(
-                modType, tableName, schema, newValuesJson, keysJson, sourceDbTimezoneOffset);
+                modType, tableName, schema, newValuesJson, keysJson, sourceDbTimezoneOffset, customTransformationResponse);
         if (!dmlStatement.isEmpty()) {
           dmlBatch.add(dmlStatement);
         }
