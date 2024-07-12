@@ -145,9 +145,10 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
   public MigrationTransformationResponse toSourceRow(MigrationTransformationRequest request)
       throws InvalidTransformationException {
     if (request.getTableName().equals("AllDatatypeTransformation")) {
-      Map<String, Object> row = new HashMap<>(request.getRequestRow());
+      Map<String, Object> responseRow = new HashMap<>();
+      Map<String, Object> requestRow = request.getRequestRow();
       // Filter event in case "varchar_column" = "example1"
-      if (row.get("varchar_column").equals("example1")) {
+      if (requestRow.get("varchar_column").equals("example1")) {
         return new MigrationTransformationResponse(null, true);
       }
       // In case of update/delete events, return request as response without any transformation
@@ -156,69 +157,76 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
       }
       // In case of INSERT update the values for all the columns in all the rows except the
       // filtered row.
-      Long tinyIntColumn = Long.parseLong((String) row.get("tinyint_column")) + 1;
-      Long intColumn = Long.parseLong((String) row.get("int_column")) + 1;
-      Long bigIntColumn = Long.parseLong((String) row.get("bigint_column")) + 1;
-      Long timeColumn = Long.parseLong((String) row.get("time_column")) + 1000;
-      Long yearColumn = Long.parseLong((String) row.get("year_column")) + 1;
-      BigDecimal floatColumn = (BigDecimal) row.get("float_column");
-      BigDecimal doubleColumn = (BigDecimal) row.get("double_column");
-      row.put("tinyint_column", tinyIntColumn.toString());
-      row.put("text_column", "\'" + row.get("text_column") + " append\'");
-      row.put("int_column", intColumn.toString());
-      row.put("bigint_column", bigIntColumn.toString());
-      row.put("float_column", floatColumn.add(BigDecimal.ONE).toString());
-      row.put("double_column", doubleColumn.add(BigDecimal.ONE).toString());
-      Double value = Double.parseDouble((String) row.get("decimal_column"));
-      row.put("decimal_column", String.valueOf(value - 1));
-      row.put("time_column", "\'" + timeColumn + "\'");
-      row.put("bool_column", "false");
-      row.put("enum_column", "\'3\'");
-      row.put(
+      Long tinyIntColumn = Long.parseLong((String) requestRow.get("tinyint_column")) + 1;
+      Long intColumn = Long.parseLong((String) requestRow.get("int_column")) + 1;
+      Long bigIntColumn = Long.parseLong((String) requestRow.get("bigint_column")) + 1;
+      Long timeColumn = Long.parseLong((String) requestRow.get("time_column")) + 1000;
+      Long yearColumn = Long.parseLong((String) requestRow.get("year_column")) + 1;
+      BigDecimal floatColumn = (BigDecimal) requestRow.get("float_column");
+      BigDecimal doubleColumn = (BigDecimal) requestRow.get("double_column");
+      responseRow.put("tinyint_column", tinyIntColumn.toString());
+      responseRow.put("text_column", "\'" + requestRow.get("text_column") + " append\'");
+      responseRow.put("int_column", intColumn.toString());
+      responseRow.put("bigint_column", bigIntColumn.toString());
+      responseRow.put("float_column", floatColumn.add(BigDecimal.ONE).toString());
+      responseRow.put("double_column", doubleColumn.add(BigDecimal.ONE).toString());
+      Double value = Double.parseDouble((String) requestRow.get("decimal_column"));
+      responseRow.put("decimal_column", String.valueOf(value - 1));
+      responseRow.put("time_column", "\'" + timeColumn + "\'");
+      responseRow.put("bool_column", "false");
+      responseRow.put("enum_column", "\'3\'");
+      responseRow.put(
           "blob_column",
           "from_base64(\'"
               + Base64.getEncoder()
                   .encodeToString("blob_column_appended".getBytes(StandardCharsets.UTF_8))
               + "\')");
-      row.put(
+      responseRow.put(
           "binary_column",
           "binary(from_base64(\'"
               + Base64.getEncoder()
                   .encodeToString("binary_column_appended".getBytes(StandardCharsets.UTF_8))
               + "\'))");
-      row.put(
+      responseRow.put(
           "bit_column",
           "binary(from_base64(\'"
               + Base64.getEncoder().encodeToString("5".getBytes(StandardCharsets.UTF_8))
               + "\'))");
-      row.put("year_column", "\'" + yearColumn + "\'");
+      responseRow.put("year_column", "\'" + yearColumn + "\'");
       try {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
         dateTimeFormat.setTimeZone(TimeZone.getTimeZone("UTC")); // Ensure it handles UTC correctly
-        Date date = dateFormat.parse((String) row.get("date_column"));
+        Date date = dateFormat.parse((String) requestRow.get("date_column"));
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
         calendar.add(Calendar.DAY_OF_MONTH, 1);
-        row.put("date_column", "\'" + dateFormat.format(calendar.getTime()) + "\'");
-        Date dateTime = dateTimeFormat.parse((String) row.get("datetime_column"));
+        responseRow.put("date_column", "\'" + dateFormat.format(calendar.getTime()) + "\'");
+        Date dateTime = dateTimeFormat.parse((String) requestRow.get("datetime_column"));
         calendar.setTime(dateTime);
         calendar.add(Calendar.SECOND, -1);
-        row.put(
+        String dateTimeColumn = dateTimeFormat.format(calendar.getTime());
+        responseRow.put(
             "datetime_column",
-            "CONVERT_TZ(\'" + dateTimeFormat.format(calendar.getTime()) + "\','+00:00','+00:00')");
-        dateTime = dateTimeFormat.parse((String) row.get("timestamp_column"));
+            "CONVERT_TZ(\'"
+                + dateTimeColumn.substring(0, dateTimeColumn.length() - 1)
+                + "\','+00:00','+00:00')");
+        dateTime = dateTimeFormat.parse((String) requestRow.get("timestamp_column"));
         calendar.setTime(dateTime);
         calendar.add(Calendar.SECOND, -1);
-        row.put(
+        String timestampColumn = dateTimeFormat.format(calendar.getTime());
+        responseRow.put(
             "timestamp_column",
-            "CONVERT_TZ(\'" + dateTimeFormat.format(calendar.getTime()) + "\','+00:00','+00:00')");
+            "CONVERT_TZ(\'"
+                + timestampColumn.substring(0, timestampColumn.length() - 1)
+                + "\','+00:00','+00:00')");
 
       } catch (Exception e) {
         throw new InvalidTransformationException(e);
       }
 
-      MigrationTransformationResponse response = new MigrationTransformationResponse(row, false);
+      MigrationTransformationResponse response =
+          new MigrationTransformationResponse(responseRow, false);
       return response;
     }
     return new MigrationTransformationResponse(null, false);
