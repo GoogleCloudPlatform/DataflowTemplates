@@ -116,6 +116,8 @@ public class InputRecordProcessor {
                 keysJson,
                 sourceDbTimezoneOffset,
                 customTransformationResponse);
+        LOG.info("transformation response" + customTransformationResponse);
+        LOG.info("dml statement" + dmlStatement);
         if (!dmlStatement.isEmpty()) {
           dmlBatch.add(dmlStatement);
         }

@@ -298,11 +298,22 @@ public class DMLGenerator {
     if the column does not exist in any of the JSON - return null
     */
     ColumnPK[] sourcePKs = sourceTable.getPrimaryKeys();
+    Set<String> customTransformColumns = null;
+    if (customTransformationResponse != null) {
+      customTransformColumns = customTransformationResponse.keySet();
+    }
 
     for (int i = 0; i < sourcePKs.length; i++) {
       ColumnPK currentSourcePK = sourcePKs[i];
       String colId = currentSourcePK.getColId();
       SourceColumnDefinition sourceColDef = sourceTable.getColDefs().get(colId);
+      if (customTransformColumns != null
+          && customTransformColumns.contains(sourceColDef.getName())) {
+        response.put(
+            sourceColDef.getName(),
+            (String) customTransformationResponse.get(sourceColDef.getName()));
+        continue;
+      }
       SpannerColumnDefinition spannerColDef = spannerTable.getColDefs().get(colId);
       if (spannerColDef == null) {
         LOG.warn(
