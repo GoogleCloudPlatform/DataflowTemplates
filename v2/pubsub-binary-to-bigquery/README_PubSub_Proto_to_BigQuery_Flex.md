@@ -23,7 +23,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **protoSchemaPath** : The Cloud Storage location of the self-contained proto schema file. For example, gs://path/to/my/file.pb. You can generate this file with the `--descriptor_set_out` flag of the protoc command. The `--include_imports` flag guarantees that the file is self-contained.
+* **protoSchemaPath** : The Cloud Storage location of the self-contained proto schema file. For example, `gs://path/to/my/file.pb`. You can generate this file with the `--descriptor_set_out` flag of the protoc command. The `--include_imports` flag guarantees that the file is self-contained.
 * **fullMessageName** : The full proto message name. For example, `package.name`. `MessageName`, where `package.name` is the value provided for the `package` statement and not the `java_package` statement.
 * **inputSubscription** : The Pub/Sub input subscription to read from. (Example: projects/<PROJECT_ID>/subscription/<SUBSCRIPTION_ID>).
 * **outputTableSpec** : The BigQuery output table location to write the output to. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`.Depending on the `createDisposition` specified, the output table might be created automatically using the user provided Avro schema.
@@ -31,7 +31,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **preserveProtoFieldNames** : To preserve the original proto field name in JSON, set this property to true. To use more standard JSON names, set to false. For example, `false` would change `field_name` to `fieldName`. Defaults to: false.
+* **preserveProtoFieldNames** : To preserve the original proto field name in JSON, set this property to `true`. To use more standard JSON names, set to `false`. For example, `false` would change `field_name` to `fieldName`. Defaults to: `false`.
 * **bigQueryTableSchemaPath** : The Cloud Storage path to the BigQuery schema path. If this value isn't provided, then the schema is inferred from the Proto schema. (Example: gs://MyBucket/bq_schema.json).
 * **udfOutputTopic** : The Pub/Sub topic storing the UDF errors. If this value isn't provided, UDF errors are sent to the same topic as `outputTopic`. (Example: projects/your-project-id/topics/your-topic-name).
 * **useStorageWriteApiAtLeastOnce** : When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
@@ -39,7 +39,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **createDisposition** : The BigQuery CreateDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload). For example, `CREATE_IF_NEEDED` and `CREATE_NEVER`. Defaults to `CREATE_IF_NEEDED`.
 * **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js).
 * **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
-* **javascriptTextTransformReloadIntervalMinutes** : Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is 0, UDF reloading is disabled. The default value is 0.
+* **javascriptTextTransformReloadIntervalMinutes** : Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`.
 * **useStorageWriteApi** : If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
 * **numStorageWriteApiStreams** : When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
 * **storageWriteApiTriggeringFrequencySec** : When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.

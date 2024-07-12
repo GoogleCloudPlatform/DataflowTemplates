@@ -15,7 +15,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **readQuery** : A BigQuery SQL query that extracts data from the source. For example, select * from dataset1.sample_table.
+* **readQuery** : A BigQuery SQL query that extracts data from the source. For example, `select * from dataset1.sample_table`.
 * **datastoreWriteProjectId** : The ID of the Google Cloud project to write the Datastore entities to.
 * **errorWritePath** : The error log output file to use for write failures that occur during processing. (Example: gs://your-bucket/errors/).
 

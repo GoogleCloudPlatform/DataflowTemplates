@@ -19,7 +19,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **inputName** : The name of the JMS topic or queue that data is read from. (Example: queue).
 * **inputType** : The JMS destination type to read data from. Can be a queue or a topic. (Example: queue).
-* **outputTopic** : The name of the Pub/Sub topic to publish data to, in the format `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`. (Example: projects/your-project-id/topics/your-topic-name).
+* **outputTopic** : The name of the Pub/Sub topic to publish data to. (Example: projects/<PROJECT_ID>/topics/<TOPIC_NAME>).
 * **username** : The username to use for authentication on the JMS server. (Example: sampleusername).
 * **password** : The password associated with the provided username. (Example: samplepassword).
 
@@ -204,7 +204,7 @@ resource "google_dataflow_flex_template_job" "jms_to_pubsub" {
   parameters        = {
     inputName = "queue"
     inputType = "queue"
-    outputTopic = "projects/your-project-id/topics/your-topic-name"
+    outputTopic = "projects/<PROJECT_ID>/topics/<TOPIC_NAME>"
     username = "sampleusername"
     password = "samplepassword"
     # jmsServer = "tcp://10.0.0.1:61616"

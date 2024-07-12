@@ -24,7 +24,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **inputTopics** : Comma-separated list of PubSub topics to where CDC data is being pushed.
 * **updateFrequencySecs** : The interval at which the pipeline updates the BigQuery table replicating the MySQL database.
-* **useSingleTopic** : Set this to true if you have configured your Debezium connector to publish all table updates to a single topic. Defaults to: false.
+* **useSingleTopic** : Set this to `true` if you have configured your Debezium connector to publish all table updates to a single topic. Defaults to: false.
 * **useStorageWriteApi** : If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
 * **useStorageWriteApiAtLeastOnce** :  When using the Storage Write API, specifies the write semantics. To use at-least once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
 * **numStorageWriteApiStreams** : When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.

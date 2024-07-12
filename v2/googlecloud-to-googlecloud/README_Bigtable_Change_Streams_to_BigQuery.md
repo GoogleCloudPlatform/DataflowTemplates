@@ -25,12 +25,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Optional parameters
 
 * **writeRowkeyAsBytes** : Whether to write rowkeys as BigQuery `BYTES`. When set to `true`, row keys are written to the `BYTES` column. Otherwise, rowkeys are written to the `STRING` column. Defaults to `false`.
-* **writeValuesAsBytes** : When set true values are written to BYTES column, otherwise to STRING column. Defaults to false.
-* **writeNumericTimestamps** : Whether to write the Bigtable timestamp as BigQuery `INT64`. When set to true, values are written to the `INT64` column. Otherwise, values are written to the `TIMESTAMP` column. Columns affected: `timestamp`, `timestamp_from`, and `timestamp_to`. Defaults to `false`. When set to `true`, the time is measured in microseconds since the Unix epoch (January 1, 1970 at UTC).
+* **writeValuesAsBytes** : When set to `true`, values are written to the BYTES column. Otherwise, values are written to the STRING column. Defaults to: `false`.
+* **writeNumericTimestamps** : Whether to write the Bigtable timestamp as BigQuery INT64. When set to `true`, values are written to the INT64 column. Otherwise, values are written to the `TIMESTAMP` column. Columns affected: `timestamp`, `timestamp_from`, and `timestamp_to`. Defaults to `false`. When set to `true`, the time is measured in microseconds since the Unix epoch (January 1, 1970 at UTC).
 * **bigQueryProjectId** : The BigQuery dataset project ID. The default is the project for the Dataflow job.
 * **bigQueryChangelogTableName** : Destination BigQuery table name. If not specified, the value `bigtableReadTableId + "_changelog"` is used. Defaults to empty.
 * **bigQueryChangelogTablePartitionGranularity** : Specifies a granularity for partitioning the changelog table. When set, the table is partitioned. Use one of the following supported values: `HOUR`, `DAY`, `MONTH`, or `YEAR`. By default, the table isn't partitioned.
-* **bigQueryChangelogTablePartitionExpirationMs** : Sets the changelog table partition expiration time, in milliseconds. When set to true, partitions older than the specified number of milliseconds are deleted. By default, no expiration is set.
+* **bigQueryChangelogTablePartitionExpirationMs** : Sets the changelog table partition expiration time, in milliseconds. When set to `true`, partitions older than the specified number of milliseconds are deleted. By default, no expiration is set.
 * **bigQueryChangelogTableFieldsToIgnore** : A comma-separated list of the changelog columns that, when specified, aren't created and populated. Use one of the following supported values: `is_gc`, `source_instance`, `source_cluster`, `source_table`, `tiebreaker`, or `big_query_commit_timestamp`. By default, all columns are populated.
 * **dlqDirectory** : The directory to use for the dead-letter queue. Records that fail to be processed are stored in this directory. The default is a directory under the Dataflow job's temp location. In most cases, you can use the default path.
 * **bigtableChangeStreamMetadataInstanceId** : The Bigtable change streams metadata instance ID. Defaults to empty.

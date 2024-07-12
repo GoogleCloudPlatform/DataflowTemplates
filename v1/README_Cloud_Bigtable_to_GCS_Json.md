@@ -20,7 +20,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigtableProjectId** : The ID for the Google Cloud project that contains the Bigtable instance that you want to read data from.
 * **bigtableInstanceId** : The ID of the Bigtable instance that contains the table.
 * **bigtableTableId** : The ID of the Bigtable table to read from.
-* **filenamePrefix** : The prefix of the JSON file name. For example, "table1-". If no value is provided, defaults to `part`.
+* **filenamePrefix** : The prefix of the JSON file name. For example, `table1-`. If no value is provided, defaults to `part`.
 
 ### Optional parameters
 
