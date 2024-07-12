@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.spanner.IntegrationTest;
 import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.BigQueryDynamicDestinations.BigQueryDynamicDestinationsOptions;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
+import com.google.common.collect.ImmutableSet;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.values.KV;
@@ -65,6 +66,8 @@ public final class BigQueryDynamicDestinationsTest {
             .setBigQueryProject(TEST_PROJECT)
             .setBigQueryDataset(TEST_BIG_QUERY_DATESET)
             .setBigQueryTableTemplate("{_metadata_spanner_table_name}_changelog")
+            .setUseStorageWriteApi(false)
+            .setIgnoreFields(ImmutableSet.of())
             .build();
     bigQueryDynamicDestinations =
         BigQueryDynamicDestinations.of(bigQueryDynamicDestinationsOptions);
@@ -111,8 +114,7 @@ public final class BigQueryDynamicDestinationsTest {
     String schemaStr = bigQueryDynamicDestinations.getSchema(tableIdToTableRow).toString();
     schemaStr =
         schemaStr.replace(
-            "classInfo=[categories, collationSpec, description, fields, maxLength, mode, name,"
-                + " policyTags, precision, scale, type], ",
+            "classInfo=[categories, collation, defaultValueExpression, description, fields, maxLength, mode, name, policyTags, precision, rangeElementType, roundingMode, scale, type], ",
             "");
     schemaStr = schemaStr.replace("GenericData", "");
     assertThat(schemaStr)
@@ -125,15 +127,17 @@ public final class BigQueryDynamicDestinationsTest {
                 + " name=StringPkCol, type=STRING}}, {{mode=NULLABLE, name=TimestampPkCol,"
                 + " type=TIMESTAMP}}, {{mode=REPEATED, name=BooleanArrayCol, type=BOOL}},"
                 + " {{mode=REPEATED, name=BytesArrayCol, type=BYTES}}, {{mode=REPEATED,"
-                + " name=DateArrayCol, type=DATE}}, {{mode=REPEATED, name=Float64ArrayCol,"
+                + " name=DateArrayCol, type=DATE}}, {{mode=REPEATED, name=Float32ArrayCol,"
+                + " type=FLOAT64}}, {{mode=REPEATED, name=Float64ArrayCol,"
                 + " type=FLOAT64}}, {{mode=REPEATED, name=Int64ArrayCol, type=INT64}},"
-                + " {{mode=REPEATED, name=JsonArrayCol, type=STRING}}, {{mode=REPEATED,"
+                + " {{mode=REPEATED, name=JsonArrayCol, type=JSON}}, {{mode=REPEATED,"
                 + " name=NumericArrayCol, type=NUMERIC}}, {{mode=REPEATED, name=StringArrayCol,"
                 + " type=STRING}}, {{mode=REPEATED, name=TimestampArrayCol, type=TIMESTAMP}},"
                 + " {{mode=NULLABLE, name=BooleanCol, type=BOOL}}, {{mode=NULLABLE, name=BytesCol,"
                 + " type=BYTES}}, {{mode=NULLABLE, name=DateCol, type=DATE}}, {{mode=NULLABLE,"
+                + " name=Float32Col, type=FLOAT64}}, {{mode=NULLABLE,"
                 + " name=Float64Col, type=FLOAT64}}, {{mode=NULLABLE, name=Int64Col, type=INT64}},"
-                + " {{mode=NULLABLE, name=JsonCol, type=STRING}}, {{mode=NULLABLE, name=NumericCol,"
+                + " {{mode=NULLABLE, name=JsonCol, type=JSON}}, {{mode=NULLABLE, name=NumericCol,"
                 + " type=NUMERIC}}, {{mode=NULLABLE, name=StringCol, type=STRING}},"
                 + " {{mode=NULLABLE, name=TimestampCol, type=TIMESTAMP}}, {{mode=REQUIRED,"
                 + " name=_metadata_spanner_mod_type, type=STRING}}, {{mode=REQUIRED,"

@@ -186,6 +186,73 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     return mutation.build();
   }
 
+  @Test
+  public void testSpannerChangeStreamsToBigQueryFloatColumns() throws IOException {
+    String spannerTable = testName + RandomStringUtils.randomAlphanumeric(1, 5);
+    String createTableStatement =
+        String.format(
+            "CREATE TABLE %s (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  Float32Col FLOAT32,\n"
+                + "  Float64Col FLOAT64,\n"
+                + ") PRIMARY KEY(Id)",
+            spannerTable);
+
+    String cdcTable = spannerTable + "_changelog";
+    spannerResourceManager.executeDdlStatement(createTableStatement);
+    String createChangeStreamStatement =
+        String.format(
+            "CREATE CHANGE STREAM %s_stream FOR %s OPTIONS (value_capture_type = 'NEW_ROW')",
+            testName, spannerTable);
+    spannerResourceManager.executeDdlStatement(createChangeStreamStatement);
+    bigQueryResourceManager.createDataset(REGION);
+
+    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
+
+    launchInfo =
+        launchTemplate(
+            paramsAdder.apply(
+                LaunchConfig.builder(testName, specPath)
+                    .addParameter("spannerProjectId", PROJECT)
+                    .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
+                    .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
+                    .addParameter(
+                        "spannerMetadataInstanceId", spannerResourceManager.getInstanceId())
+                    .addParameter("spannerMetadataDatabase", spannerResourceManager.getDatabaseId())
+                    .addParameter("spannerChangeStreamName", testName + "_stream")
+                    .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
+                    .addParameter("rpcPriority", "HIGH")
+                    .addParameter("disableDlqRetries", "true")));
+
+    assertThatPipeline(launchInfo).isRunning();
+
+    int key = 1;
+    float float32Val = 3.14f;
+    double float64Val = 2.71;
+
+    Mutation expectedData =
+        Mutation.newInsertBuilder(spannerTable)
+            .set("Id")
+            .to(key)
+            .set("Float32Col")
+            .to(float32Val)
+            .set("Float64Col")
+            .to(float64Val)
+            .build();
+
+    spannerResourceManager.write(Collections.singletonList(expectedData));
+    String query = queryCdcTable(cdcTable, key);
+    waitForQueryToReturnRows(query, 1, true);
+
+    TableResult tableResult = bigQueryResourceManager.runQuery(query);
+    assertEquals(1, tableResult.getTotalRows());
+
+    for (FieldValueList row : tableResult.iterateAll()) {
+      assertEquals(float32Val, (float) (row.get("Float32Col").getDoubleValue()), 1e-6f);
+      assertEquals(float64Val, row.get("Float64Col").getDoubleValue(), 1e-15);
+    }
+  }
+
   private String queryCdcTable(String cdcTable, int key) {
     return "SELECT * FROM `"
         + bigQueryResourceManager.getDatasetId()
