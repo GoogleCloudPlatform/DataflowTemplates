@@ -26,6 +26,7 @@ import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.ParDo.SingleOutput;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
 
@@ -59,14 +60,18 @@ public abstract class RangeBoundaryTransform
 
   @Override
   public PCollection<Range> expand(PCollection<ColumnForBoundaryQuery> input) {
-    return input.apply(
+    SingleOutput<ColumnForBoundaryQuery, Range> parDo =
         ParDo.of(
             new RangeBoundaryDoFn(
                 dataSourceProviderFn(),
                 dbAdapter(),
                 tableName(),
                 partitionColumns(),
-                boundaryTypeMapper())));
+                boundaryTypeMapper()));
+    if (boundaryTypeMapper() != null) {
+      parDo = parDo.withSideInputs(boundaryTypeMapper().getCollationMapperView());
+    }
+    return input.apply(parDo);
   }
 
   public static Builder builder() {

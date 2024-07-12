@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import java.sql.SQLException;
@@ -62,4 +63,16 @@ public interface UniformSplitterDBAdapter extends Serializable {
    * @return
    */
   boolean checkForTimeout(SQLException exception);
+
+  /**
+   * Get a query that returns order of collation. The query must return all the characters in the
+   * character set with the columns listed in {@link CollationsOrderQueryColumns}.
+   *
+   * @param dbCharset character set used by the database for which collation ordering has to be
+   *     found.
+   * @param dbCollation collation set used by the database for which collation ordering has to be
+   *     found.
+   * @return Query to get the order of collation.
+   */
+  String getCollationsOrderQuery(String dbCharset, String dbCollation);
 }

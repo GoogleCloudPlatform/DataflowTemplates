@@ -20,7 +20,10 @@ import static com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.confi
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import com.google.re2j.Matcher;
+import com.google.re2j.Pattern;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -108,12 +111,14 @@ public final class OptionsToConfigBuilder {
       builder = builder.setMaxConnections(maxConnections);
     }
 
-    if (sourceDbURL != null) {
-      builder.setSourceDbURL(sourceDbURL);
-    } else {
-      // TODO - add mysql specific method in mysql class.
-      builder.setSourceDbURL("jdbc:mysql://" + host + ":" + port + "/" + dbName);
+    // TODO - add mysql specific method in mysql class.
+    if (sourceDbURL == null) {
+      sourceDbURL = "jdbc:mysql://" + host + ":" + port + "/" + dbName;
     }
+
+    sourceDbURL = addParamToJdbcUrl(sourceDbURL, "allowMultiQueries", "true");
+
+    builder.setSourceDbURL(sourceDbURL);
     if (!StringUtils.isEmpty(shardId)) {
       builder.setShardID(shardId);
     }
@@ -125,6 +130,72 @@ public final class OptionsToConfigBuilder {
     builder.setMaxPartitions(numPartitions);
     builder = builder.setTables(ImmutableList.copyOf(tables));
     return builder.build();
+  }
+
+  @VisibleForTesting
+  protected static String addParamToJdbcUrl(String jdbcUrl, String paramName, String paramValue) {
+    // URI/ URL libraries don't seem to handle jdbc URLs well
+    Pattern queryPattern = Pattern.compile("\\?(.*?)$");
+
+    Matcher matcher = queryPattern.matcher(jdbcUrl);
+
+    String baseUrl;
+    String query;
+
+    if (matcher.find()) {
+      baseUrl = jdbcUrl.substring(0, matcher.start());
+      query = matcher.group(1);
+    } else {
+      baseUrl = jdbcUrl;
+      query = null;
+    }
+
+    if (query == null) {
+      // No parameters exist, add the new one
+      return jdbcUrl + "?" + paramName + "=" + paramValue;
+    } else {
+      String[] params = query.split("&");
+      boolean paramFound = false;
+      StringBuilder newQuery = new StringBuilder();
+
+      for (String param : params) {
+        String[] keyValue = param.split("=");
+        if (keyValue[0].equals(paramName)) {
+          paramFound = true;
+          if (keyValue[1].equals(paramValue)) {
+            // Parameter exists with the correct value, keep it as is
+            if (newQuery.length() > 0) {
+              newQuery.append("&");
+            }
+            newQuery.append(param);
+          } else {
+            // Mismatch, handle based on the mismatchException flag
+            throw new IllegalArgumentException(
+                "Parameter mismatch for "
+                    + paramName
+                    + " URL = "
+                    + jdbcUrl
+                    + " config value = "
+                    + paramValue);
+          }
+        } else {
+          if (newQuery.length() > 0) {
+            newQuery.append("&");
+          }
+          newQuery.append(param);
+        }
+      }
+
+      if (!paramFound) {
+        // Parameter doesn't exist, add it
+        if (newQuery.length() > 0) {
+          newQuery.append("&");
+        }
+        newQuery.append(paramName).append("=").append(paramValue);
+      }
+
+      return baseUrl + "?" + newQuery;
+    }
   }
 
   private OptionsToConfigBuilder() {}

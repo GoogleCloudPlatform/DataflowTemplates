@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import java.io.Serializable;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
@@ -91,7 +92,12 @@ public class BoundaryTest {
             .setBoundarySplitter(
                 (BoundarySplitter<String>)
                     (start, end, partitionColumn, boundaryTypeMapper, processContext) -> null)
-            .setCollation("latin1_swedish_ci")
+            .setCollation(
+                CollationReference.builder()
+                    .setDbCharacterSet("latin1")
+                    .setDbCollation("latin1_swedish_ci")
+                    .setPadSpace(true)
+                    .build())
             .setStringMaxLength(255)
             .build();
 
@@ -113,7 +119,7 @@ public class BoundaryTest {
     assertThat(splitBoundaries.getLeft().compareTo(splitBoundaries.getRight()) < 0).isTrue();
     assertThat(splitBoundaries.getRight().compareTo(splitBoundaries.getLeft()) > 0).isTrue();
     assertThat(splitBoundaries.getLeft().compareTo(splitBoundaries.getLeft())).isEqualTo(0);
-    assertThat(stringBoundary.stringCollation()).isEqualTo("latin1_swedish_ci");
+    assertThat(stringBoundary.stringCollation().dbCollation()).isEqualTo("latin1_swedish_ci");
     assertThat(stringBoundary.stringMaxLength()).isEqualTo(255);
   }
 
