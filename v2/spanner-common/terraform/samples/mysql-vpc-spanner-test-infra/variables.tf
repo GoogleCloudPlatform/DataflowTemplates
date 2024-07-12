@@ -17,16 +17,16 @@ variable "vpc_params" {
 }
 
 variable "mysql_params" {
-  description = "Parameters for MySQL source configuration"
-  type = object({
-    vm_name              = optional(string, "mysql-db")
+  description = "Parameters for MySQL shards source configuration"
+  type = list(object({
+    vm_name              = string
     machine_type         = optional(string, "n2-standard-2")
     zone                 = optional(string, "us-central1-a")
     root_password        = optional(string, "Mysql@tftest")
     custom_user          = optional(string, "dbuser")
     custom_user_password = optional(string, "dbuser@password")
     ddl                  = optional(string, "create database tftest; use tftest; CREATE TABLE Persons (ID int, Name varchar(255), PRIMARY KEY (ID));INSERT INTO Persons VALUES (1, 'foo'); commit; ")
-  })
+  }))
 }
 
 variable "spanner_params" {

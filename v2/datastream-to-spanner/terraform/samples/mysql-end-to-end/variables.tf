@@ -2,6 +2,7 @@ variable "common_params" {
   description = "Parameters that are common to multiple resources"
   type = object({
     project      = string
+    host_project = optional(string)
     region       = string
     migration_id = optional(string)
     # Will be auto-generated if not specified

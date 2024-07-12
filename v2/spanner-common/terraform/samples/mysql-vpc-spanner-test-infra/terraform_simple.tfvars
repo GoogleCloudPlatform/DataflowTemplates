@@ -4,8 +4,12 @@ common_params = {
 }
 
 # VPC, MySQL and Spanner will be created with default names specified in variables.tf
-vpc_params     = {}
-mysql_params   = {}
+vpc_params = {}
+mysql_params = [
+  {
+    vm_name = "<YOUR_MYSQL_SHARD_NAME>"
+  }
+]
 spanner_params = {}
 
 

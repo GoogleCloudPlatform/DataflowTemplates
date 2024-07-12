@@ -295,7 +295,21 @@ can exclude it from the state file using `terraform state rm` command.
 
 ### Configuring to run using a VPC
 
-#### Datastream
+#### Specifying a shared VPC
+
+You can specify the shared VPC using the `host_project` configuration.
+This will result in -
+
+1. Datastream private connectivity link will be created in the shared VPC.
+2. Dataflow jobs will be launched inside the shared VPC.
+
+> **_NOTE:_** Usage of shared VPC requires cross-project permissions. They
+> are available as a Terraform template [here](../../../../spanner-common/terraform/samples/configure-shared-vpc/README.md).
+>
+> 1. Datastream service account permissions are documented [here](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration#shared-vpc).
+> 2. Dataflow service account permissions are documented [here](https://cloud.google.com/dataflow/docs/guides/specifying-networks#shared).
+
+#### Datastream Private Connectivity
 
 > **_NOTE:_** By default, **IP Allowlisting** based connectivity is assumed.
 
