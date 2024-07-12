@@ -56,6 +56,9 @@ public class SpannerToBigQueryUtils {
       bigQueryField.setType("BYTES");
     } else if (spannerType.equals(Type.array(Type.date()))) {
       bigQueryField.setType("DATE");
+    } else if (spannerType.equals(Type.array(Type.float32()))) {
+      // BigQuery does not support FLOAT32 type.
+      bigQueryField.setType("FLOAT64");
     } else if (spannerType.equals(Type.array(Type.float64()))) {
       bigQueryField.setType("FLOAT64");
     } else if (spannerType.equals(Type.array(Type.int64()))) {
@@ -89,6 +92,10 @@ public class SpannerToBigQueryUtils {
           break;
         case DATE:
           bigQueryType = StandardSQLTypeName.DATE;
+          break;
+        case FLOAT32:
+          // BigQuery does not support the FLOAT32 type.
+          bigQueryType = StandardSQLTypeName.FLOAT64;
           break;
         case FLOAT64:
           bigQueryType = StandardSQLTypeName.FLOAT64;
@@ -164,6 +171,8 @@ public class SpannerToBigQueryUtils {
       return removeNulls(resultSet.getDateList(columnName)).stream()
           .map(e -> e.toString())
           .collect(Collectors.toList());
+    } else if (columnType.equals(Type.array(Type.float32()))) {
+      return removeNulls(resultSet.getFloatList(columnName));
     } else if (columnType.equals(Type.array(Type.float64()))) {
       return removeNulls(resultSet.getDoubleList(columnName));
     } else if (columnType.equals(Type.array(Type.int64()))) {
@@ -191,6 +200,8 @@ public class SpannerToBigQueryUtils {
           return resultSet.getBytes(columnName).toBase64();
         case DATE:
           return resultSet.getDate(columnName).toString();
+        case FLOAT32:
+          return resultSet.getFloat(columnName);
         case FLOAT64:
           return resultSet.getDouble(columnName);
         case INT64:
@@ -231,6 +242,7 @@ public class SpannerToBigQueryUtils {
       if (columnType.equals(Type.array(Type.bool()))
           || columnType.equals(Type.array(Type.bytes()))
           || columnType.equals(Type.array(Type.date()))
+          || columnType.equals(Type.array(Type.float32()))
           || columnType.equals(Type.array(Type.float64()))
           || columnType.equals(Type.array(Type.int64()))
           || columnType.equals(Type.array(Type.json()))

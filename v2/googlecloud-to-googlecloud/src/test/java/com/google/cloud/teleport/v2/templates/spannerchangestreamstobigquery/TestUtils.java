@@ -50,6 +50,7 @@ class TestUtils {
   static final String BOOLEAN_ARRAY_COL = "BooleanArrayCol";
   static final String BYTES_ARRAY_COL = "BytesArrayCol";
   static final String DATE_ARRAY_COL = "DateArrayCol";
+  static final String FLOAT32_ARRAY_COL = "Float32ArrayCol";
   static final String FLOAT64_ARRAY_COL = "Float64ArrayCol";
   static final String INT64_ARRAY_COL = "Int64ArrayCol";
   static final String NUMERIC_ARRAY_COL = "NumericArrayCol";
@@ -60,6 +61,7 @@ class TestUtils {
   static final String BOOLEAN_COL = "BooleanCol";
   static final String BYTES_COL = "BytesCol";
   static final String DATE_COL = "DateCol";
+  static final String FLOAT32_COL = "Float32Col";
   static final String FLOAT64_COL = "Float64Col";
   static final String INT64_COL = "Int64Col";
   static final String JSON_COL = "JsonCol";
@@ -70,6 +72,7 @@ class TestUtils {
   static final Boolean BOOLEAN_RAW_VAL = true;
   static final ByteArray BYTES_RAW_VAL = ByteArray.copyFrom("456");
   static final Date DATE_RAW_VAL = Date.fromYearMonthDay(2022, 3, 11);
+  static final Float FLOAT32_RAW_VAL = 1.5f;
   static final Double FLOAT64_RAW_VAL = 2.5;
   static final Long INT64_RAW_VAL = 10L;
   static final String JSON_RAW_VAL = "{\"color\":\"red\"}";
@@ -81,6 +84,7 @@ class TestUtils {
   static final Value BOOLEAN_VAL = Value.bool(BOOLEAN_RAW_VAL);
   static final Value BYTES_VAL = Value.bytes(BYTES_RAW_VAL);
   static final Value DATE_VAL = Value.date(DATE_RAW_VAL);
+  static final Value FLOAT32_VAL = Value.float32(FLOAT32_RAW_VAL);
   static final Value FLOAT64_VAL = Value.float64(FLOAT64_RAW_VAL);
   static final Value INT64_VAL = Value.int64(INT64_RAW_VAL);
   static final Value JSON_VAL = Value.json(JSON_RAW_VAL);
@@ -96,6 +100,8 @@ class TestUtils {
           ByteArray.copyFrom("789").toBase64());
   static final List<Date> DATE_ARRAY_RAW_VAL =
       Arrays.asList(Date.fromYearMonthDay(2022, 1, 22), Date.fromYearMonthDay(2022, 3, 11));
+  static final List<Float> FLOAT32_ARRAY_RAW_VAL =
+      Arrays.asList(Float.MIN_VALUE, Float.MAX_VALUE, 0.0f, 1.0f, -1.0f, 3.14f);
   static final List<Double> FLOAT64_ARRAY_RAW_VAL =
       Arrays.asList(Double.MIN_VALUE, Double.MAX_VALUE, 0.0, 1.0, -1.0, 1.2341);
   static final List<Long> INT64_ARRAY_RAW_VAL =
@@ -114,6 +120,7 @@ class TestUtils {
   static final List<Boolean> BOOLEAN_NULLABLE_ARRAY_RAW_VAL = addNull(BOOLEAN_ARRAY_RAW_VAL);
   static final List<String> BYTES_NULLABLE_ARRAY_RAW_VAL = addNull(BYTES_ARRAY_RAW_VAL);
   static final List<Date> DATE_NULLABLE_ARRAY_RAW_VAL = addNull(DATE_ARRAY_RAW_VAL);
+  static final List<Float> FLOAT32_NULLABLE_ARRAY_RAW_VAL = addNull(FLOAT32_ARRAY_RAW_VAL);
   static final List<Double> FLOAT64_NULLABLE_ARRAY_RAW_VAL = addNull(FLOAT64_ARRAY_RAW_VAL);
   static final List<Long> INT64_NULLABLE_ARRAY_RAW_VAL = addNull(INT64_ARRAY_RAW_VAL);
   static final List<String> JSON_NULLABLE_ARRAY_RAW_VAL = addNull(JSON_ARRAY_RAW_VAL);
@@ -130,6 +137,8 @@ class TestUtils {
               ByteArray.copyFrom("789"),
               null));
   static final Value DATE_NULLABLE_ARRAY_VAL = Value.dateArray(DATE_NULLABLE_ARRAY_RAW_VAL);
+  static final Value FLOAT32_NULLABLE_ARRAY_VAL =
+      Value.float32Array(FLOAT32_NULLABLE_ARRAY_RAW_VAL);
   static final Value FLOAT64_NULLABLE_ARRAY_VAL =
       Value.float64Array(FLOAT64_NULLABLE_ARRAY_RAW_VAL);
   static final Value INT64_NULLABLE_ARRAY_VAL = Value.int64Array(INT64_NULLABLE_ARRAY_RAW_VAL);
@@ -178,6 +187,7 @@ class TestUtils {
         + "BooleanArrayCol ARRAY<BOOL>,"
         + "BytesArrayCol ARRAY<BYTES(1024)>,"
         + "DateArrayCol ARRAY<DATE>,"
+        + "Float32ArrayCol ARRAY<FLOAT32>,"
         + "Float64ArrayCol ARRAY<FLOAT64>,"
         + "Int64ArrayCol ARRAY<INT64>,"
         + "JsonArrayCol ARRAY<JSON>,"
@@ -187,6 +197,7 @@ class TestUtils {
         + "BooleanCol BOOL,"
         + "BytesCol BYTES(1024),"
         + "DateCol DATE,"
+        + "Float32Col FLOAT32,"
         + "Float64Col FLOAT64,"
         + "Int64Col INT64,"
         + "JsonCol JSON,"
