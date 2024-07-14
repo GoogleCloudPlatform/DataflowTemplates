@@ -689,9 +689,10 @@ public final class DMLGeneratorTest {
     String modType = "INSERT";
     Map<String, Object> customTransformation = new HashMap<>();
     customTransformation.put("FullName", "\'kk ll\'");
+    customTransformation.put("SingerId", "1");
 
     /*The expected sql is:
-    "INSERT INTO Singers(SingerId,FullName) VALUES (999,'kk ll') ON DUPLICATE KEY"
+    "INSERT INTO Singers(SingerId,FullName) VALUES (1,'kk ll') ON DUPLICATE KEY"
         + " UPDATE  FullName = 'kk ll'";*/
     String sql =
         DMLGenerator.getDMLStatement(
@@ -704,5 +705,6 @@ public final class DMLGeneratorTest {
             customTransformation);
 
     assertTrue(sql.contains("FullName = 'kk ll'"));
+    assertTrue(sql.contains("VALUES (1,'kk ll')"));
   }
 }
