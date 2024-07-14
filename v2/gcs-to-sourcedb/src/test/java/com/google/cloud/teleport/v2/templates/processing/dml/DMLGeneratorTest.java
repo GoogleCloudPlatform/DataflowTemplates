@@ -27,6 +27,8 @@ import com.google.gson.GsonBuilder;
 import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
@@ -674,5 +676,33 @@ public final class DMLGeneratorTest {
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("LastName = BINARY(FROM_BASE64('YmlsX2NvbA=='))"));
+  }
+
+  @Test
+  public void customTransformationMatch() {
+    Schema schema = SessionFileReader.read("src/test/resources/customTransformation.json");
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SingerId\":\"999\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+    Map<String, Object> customTransformation = new HashMap<>();
+    customTransformation.put("FullName", "\'kk ll\'");
+
+    /*The expected sql is:
+    "INSERT INTO Singers(SingerId,FullName) VALUES (999,'kk ll') ON DUPLICATE KEY"
+        + " UPDATE  FullName = 'kk ll'";*/
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType,
+            tableName,
+            schema,
+            newValuesJson,
+            keyValuesJson,
+            "+00:00",
+            customTransformation);
+
+    assertTrue(sql.contains("FullName = 'kk ll'"));
   }
 }
