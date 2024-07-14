@@ -207,7 +207,7 @@ public class SpannerChangeStreamToGcsMultiShardIT extends SpannerChangeStreamToG
             .build();
 
     PipelineOperator.Result result =
-        pipelineOperator().waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), checks);
+        pipelineOperator().waitForCondition(createConfig(jobInfo, Duration.ofMinutes(12)), checks);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
