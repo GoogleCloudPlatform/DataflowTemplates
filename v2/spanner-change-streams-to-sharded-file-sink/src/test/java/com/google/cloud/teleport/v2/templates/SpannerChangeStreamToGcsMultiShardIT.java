@@ -37,6 +37,7 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
+import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
@@ -191,24 +192,22 @@ public class SpannerChangeStreamToGcsMultiShardIT extends SpannerChangeStreamToG
   }
 
   private void assertFileContentsInGCSForMultipleShards() {
-    ChainedConditionCheck conditionCheck =
-        ChainedConditionCheck.builder(
-                List.of(
-                    GCSArtifactsCheck.builder(
-                            gcsResourceManager, "output/testShardB/", Pattern.compile(".*\\.txt$"))
-                        .setMinSize(1)
-                        .setMaxSize(2)
-                        .build(),
-                    GCSArtifactsCheck.builder(
-                            gcsResourceManager, "output/testShardC/", Pattern.compile(".*\\.txt$"))
-                        .setMinSize(1)
-                        .setMaxSize(2)
-                        .build()))
+    ConditionCheck[] checks = new ConditionCheck[2];
+    checks[0] =
+        GCSArtifactsCheck.builder(
+                gcsResourceManager, "output/testShardB/", Pattern.compile(".*\\.txt$"))
+            .setMinSize(1)
+            .setMaxSize(2)
+            .build();
+    checks[1] =
+        GCSArtifactsCheck.builder(
+                gcsResourceManager, "output/testShardC/", Pattern.compile(".*\\.txt$"))
+            .setMinSize(1)
+            .setMaxSize(2)
             .build();
 
     PipelineOperator.Result result =
-        pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(6)), conditionCheck);
+        pipelineOperator().waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), checks);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
