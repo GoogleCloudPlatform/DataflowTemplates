@@ -152,8 +152,11 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
         return new MigrationTransformationResponse(null, true);
       }
       // In case of update/delete events, return request as response without any transformation
-      if (request.getEventType().equals("UPDATE") || request.getEventType().equals("DELETE")) {
+      if (request.getEventType().equals("UPDATE")) {
         return new MigrationTransformationResponse(null, false);
+      }
+      if (request.getEventType().equals("DELETE")) {
+        return new MigrationTransformationResponse(null, true);
       }
       // In case of INSERT update the values for all the columns in all the rows except the
       // filtered row.
