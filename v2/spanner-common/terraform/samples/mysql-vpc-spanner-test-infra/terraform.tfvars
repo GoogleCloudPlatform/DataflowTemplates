@@ -9,11 +9,13 @@ vpc_params = {
   subnetwork_cidr_range = "<YOUR_CUSTOM_SUBNET_CIDR_RANGE>"
 }
 
-mysql_params = {
-  vm_name      = "<YOUR_MYSQL_VM_NAME>"
-  machine_type = "<YOUR_MYSQL_MACHINE_TYPE>"
-  zone         = "<YOUR_MYSQL_ZONE>"
-}
+mysql_params = [
+  {
+    vm_name      = "<YOUR_MYSQL_VM_NAME>"
+    machine_type = "<YOUR_MYSQL_MACHINE_TYPE>"
+    zone         = "<YOUR_MYSQL_ZONE>"
+  }
+]
 
 spanner_params = {
   config           = "<YOUR_SPANNER_INSTANCE_CONFIG>"

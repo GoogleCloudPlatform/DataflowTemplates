@@ -43,7 +43,8 @@ public interface JdbcToPubsubOptions extends CommonTemplateOptions {
       },
       description = "JDBC connection URL string.",
       helpText =
-          "The JDBC connection URL string. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string. ",
+          "The JDBC connection URL string. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. "
+              + "For example: 'echo -n \"jdbc:mysql://some-host:3306/sampledb\" | gcloud kms encrypt --location=<location> --keyring=<keyring> --key=<key> --plaintext-file=- --ciphertext-file=- | base64'",
       example = "jdbc:mysql://some-host:3306/sampledb")
   String getConnectionUrl();
 

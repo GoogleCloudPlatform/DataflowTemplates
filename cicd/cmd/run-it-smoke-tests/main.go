@@ -67,9 +67,11 @@ func main() {
 		flags.SpannerHost(),
 		flags.FailureMode(),
 		flags.RetryFailures(),
-		flags.StaticOracleInstance(),
+		flags.StaticOracleHost(),
+		flags.StaticOracleSysPassword(),
 		flags.CloudProxyHost(),
-		flags.CloudProxyPort(),
+		flags.CloudProxyMySqlPort(),
+		flags.CloudProxyPostgresPort(),
 		flags.CloudProxyPassword())
 	if err != nil {
 		log.Fatalf("%v\n", err)

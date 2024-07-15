@@ -49,7 +49,7 @@ dataflow_params = {
     num_workers = 4
     on_delete   = "cancel"
     network     = "<YOUR_VPC_NETWORK>"
-    subnetwork  = "regions/<YOUR_REGION>/subnetworks/<YOUR_SUBNETWORK_NAME>"
+    subnetwork  = "<YOUR_SUBNETWORK_NAME>"
     # subnetwork is passed "as-is". This is intentionally kept like so to
     # allow for shared VPC configurations. Learn more about subnetwork
     # configuration at: https://cloud.google.com/dataflow/docs/guides/specifying-networks#subnetwork_parameter

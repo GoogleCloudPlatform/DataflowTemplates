@@ -214,6 +214,16 @@ terraform destroy --var-file=terraform_simple.tfvars
 
 ### Configuring to run using a VPC
 
+#### Specifying a shared VPC
+
+You can specify the shared VPC using the `host_project` configuration.
+This will result in the Dataflow jobs will be launched inside the shared VPC.
+
+> **_NOTE:_** Usage of shared VPC requires cross-project permissions. They
+> are available as a Terraform template [here](../../../../spanner-common/terraform/samples/configure-shared-vpc/README.md).
+>
+> Dataflow service account permissions are documented [here](https://cloud.google.com/dataflow/docs/guides/specifying-networks#shared).
+
 #### Datastream
 
 This should already be pre-configured in the source connection profile you are

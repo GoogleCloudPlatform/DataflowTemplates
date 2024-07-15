@@ -1,7 +1,7 @@
 ## Sample Scenario: MySQL in a VPC with Spanner
 
-> **_SCENARIO:_** This Terraform example illustrates launching a MySQL 5.7
-> in a GCE Compute instance inside a custom VPC subnet. It adds firewall
+> **_SCENARIO:_** This Terraform example illustrates launching multiple MySQL
+> databases in GCE Compute instances inside a custom VPC subnet. It adds firewall
 > rules to ensure that 1) Datastream can connect to the MySQL via private
 > connectivity and 2) Dataflow VMs can communicate with each other. It also
 > creates a Spanner instance and database to migrate
@@ -87,7 +87,7 @@ configuration and creates the following resources -
 3. **Firewall rules** - Rules to allow Dataflow VMs to communicate with each
    other and Datastream to connect to the MySQL instance via private
    connectivity.
-4. **GCE VM with MySQL** - Launches a GCE VM with MySQL 5.7 setup on it inside
+4. **GCE VMs with MySQL shards** - Launches GCE VMs with MySQL setup on it inside
    the specified VPC subnet.
 5. **Spanner instance** - A spanner instance with the specified configuration.
 6. **Spanner database** - A spanner database inside the instance created.
@@ -143,13 +143,21 @@ This will launch the configured jobs and produce an output like below -
 Outputs:
 
 resource_ids = {
-  "mysql_db_ip" = "<PRIVATE_IP>"
+  "mysql_db_ips" = [
+    "10.128.0.3",
+    "10.128.0.4",
+    "10.128.0.2",
+  ]
   "network" = "sample-vpc-network"
   "spanner_instance" = "sample-spanner-instance"
   "subnetwork" = "sample-vpc-subnetwork"
 }
 resource_urls = {
-  "mysql_db" = "https://console.cloud.google.com/compute/instancesDetail/zones/us-central1-a/instances/mysql-db?project=<YOUR-PROJECT-ID>"
+  "mysql_instances" = {
+    "mysql-shard1" = "https://console.cloud.google.com/compute/instancesDetail/zones/us-central1-a/instances/mysql-shard1?project=<YOUR-PROJECT-ID>"
+    "mysql-shard2" = "https://console.cloud.google.com/compute/instancesDetail/zones/us-central1-a/instances/mysql-shard2?project=<YOUR-PROJECT-ID>"
+    "mysql-shard3" = "https://console.cloud.google.com/compute/instancesDetail/zones/us-central1-a/instances/mysql-shard3?project=<YOUR-PROJECT-ID>"
+  }
   "network" = "https://console.cloud.google.com/networking/networks/details/sample-vpc-network?project=<YOUR-PROJECT-ID>"
   "spanner_instance" = "https://console.cloud.google.com/spanner/instances/sample-spanner-instance/details/databases?project=<YOUR-PROJECT-ID>"
   "subnetwork" = "https://console.cloud.google.com/networking/subnetworks/details/us-central1/sample-vpc-subnetwork?project=<YOUR-PROJECT-ID>"
@@ -290,13 +298,9 @@ Sample output -
 
 ```shell
 ROLE
-roles/dataflow.admin
-roles/datastream.admin
-roles/iam.securityAdmin
+roles/spanner.admin
+roles/compute.admin
 roles/iam.serviceAccountUser
-roles/pubsub.admin
-roles/storage.admin
-roles/viewer
 ```
 
 ### Impersonating the Terraform service account

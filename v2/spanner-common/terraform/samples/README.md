@@ -23,7 +23,8 @@ The following sample repositories provide additional examples -
 
 ## List of examples
 
-1. [MySQL in a VPC with Private Google Access + Spanner](mysql-vpc-spanner/README.md)
+1. [MySQL in a VPC with Private Google Access + Spanner](mysql-vpc-spanner-test-infra/README.md)
+2. [Configure a shared VPC with a service project](configure-shared-vpc/README.md)
 
 ## Sample structure
 
