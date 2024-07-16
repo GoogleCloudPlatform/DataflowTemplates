@@ -41,4 +41,30 @@ public class CustomTransformationFetcherTest {
             new MigrationTransformationRequest("Customers", response.getResponseRow(), "ls1", ""));
     assertEquals(request.getRequestRow(), response2.getResponseRow());
   }
+
+  @Test
+  public void testToSourceRowInvalidTableName() throws InvalidTransformationException {
+    CustomTransformationFetcher customTransformationFetcher = new CustomTransformationFetcher();
+    Map<String, Object> requestRow = new HashMap<>();
+    requestRow.put("first_name", "abc");
+    requestRow.put("last_name", "xyz");
+    requestRow.put("id", "123");
+    MigrationTransformationRequest request =
+        new MigrationTransformationRequest("xyz", requestRow, "ls1", "");
+    MigrationTransformationResponse response = customTransformationFetcher.toSourceRow(request);
+    assertEquals(response.getResponseRow(), null);
+  }
+
+  @Test
+  public void testToSpannerRowInvalidTableName() throws InvalidTransformationException {
+    CustomTransformationFetcher customTransformationFetcher = new CustomTransformationFetcher();
+    Map<String, Object> requestRow = new HashMap<>();
+    requestRow.put("first_name", "abc");
+    requestRow.put("last_name", "xyz");
+    requestRow.put("id", "123");
+    MigrationTransformationRequest request =
+        new MigrationTransformationRequest("xyz", requestRow, "ls1", "");
+    MigrationTransformationResponse response = customTransformationFetcher.toSpannerRow(request);
+    assertEquals(response.getResponseRow(), null);
+  }
 }

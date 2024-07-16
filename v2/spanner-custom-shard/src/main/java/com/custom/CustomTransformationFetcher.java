@@ -52,7 +52,7 @@ public class CustomTransformationFetcher implements ISpannerMigrationTransformer
           new MigrationTransformationResponse(responseRow, false);
       return response;
     }
-    return new MigrationTransformationResponse(request.getRequestRow(), false);
+    return new MigrationTransformationResponse(null, false);
   }
 
   @Override
@@ -72,6 +72,6 @@ public class CustomTransformationFetcher implements ISpannerMigrationTransformer
           new MigrationTransformationResponse(responseRow, false);
       return response;
     }
-    return new MigrationTransformationResponse(request.getRequestRow(), false);
+    return new MigrationTransformationResponse(null, false);
   }
 }
