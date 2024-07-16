@@ -36,6 +36,12 @@ import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigqu
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.DATE_PK_COL;
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.DATE_RAW_VAL;
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.DATE_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT32_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT32_ARRAY_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT32_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT32_NULLABLE_ARRAY_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT32_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT32_VAL;
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT64_ARRAY_COL;
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT64_ARRAY_RAW_VAL;
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT64_COL;
@@ -101,6 +107,7 @@ import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.sch
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
@@ -126,7 +133,7 @@ import org.junit.runners.JUnit4;
 /** Test class for {@link FailsafeModJsonToTableRowTransformerTest}. */
 @RunWith(JUnit4.class)
 @Category(IntegrationTest.class)
-public final class FailsafeModJsonToTableRowTransformerTest {
+public final class FailsafeModJsonToTableRowTransformerTest implements Serializable {
 
   /** Rule for Spanner server resource. */
   @ClassRule public static final SpannerServerResource SPANNER_SERVER = new SpannerServerResource();
@@ -245,7 +252,7 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         spannerDatabaseName,
         updateCommitTimestamp,
         ModType.UPDATE,
-        ValueCaptureType.OLD_AND_NEW_VALUES,
+        ValueCaptureType.NEW_ROW,
         getKeysJson(),
         getNewValuesJson(updateCommitTimestamp),
         false,
@@ -480,6 +487,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
       expectedTableRow.set("_type_" + BYTES_ARRAY_COL, "ARRAY<BYTES>");
       expectedTableRow.set(DATE_ARRAY_COL, DATE_ARRAY_RAW_VAL);
       expectedTableRow.set("_type_" + DATE_ARRAY_COL, "ARRAY<DATE>");
+      expectedTableRow.set(FLOAT32_ARRAY_COL, FLOAT32_ARRAY_RAW_VAL);
+      expectedTableRow.set("_type_" + FLOAT32_ARRAY_COL, "ARRAY<FLOAT32>");
       expectedTableRow.set(FLOAT64_ARRAY_COL, FLOAT64_ARRAY_RAW_VAL);
       expectedTableRow.set("_type_" + FLOAT64_ARRAY_COL, "ARRAY<FLOAT64>");
       expectedTableRow.set(INT64_ARRAY_COL, INT64_ARRAY_RAW_VAL);
@@ -498,6 +507,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
       expectedTableRow.set("_type_" + BYTES_COL, "BYTES");
       expectedTableRow.set(DATE_COL, DATE_RAW_VAL.toString());
       expectedTableRow.set("_type_" + DATE_COL, "DATE");
+      expectedTableRow.set(FLOAT32_COL, FLOAT32_RAW_VAL);
+      expectedTableRow.set("_type_" + FLOAT32_COL, "FLOAT32");
       expectedTableRow.set(FLOAT64_COL, FLOAT64_RAW_VAL);
       expectedTableRow.set("_type_" + FLOAT64_COL, "FLOAT64");
       expectedTableRow.set(INT64_COL, INT64_RAW_VAL);
@@ -601,6 +612,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
             .to(BYTES_NULLABLE_ARRAY_VAL)
             .set(DATE_ARRAY_COL)
             .to(DATE_NULLABLE_ARRAY_VAL)
+            .set(FLOAT32_ARRAY_COL)
+            .to(FLOAT32_NULLABLE_ARRAY_VAL)
             .set(FLOAT64_ARRAY_COL)
             .to(FLOAT64_NULLABLE_ARRAY_VAL)
             .set(INT64_ARRAY_COL)
@@ -619,6 +632,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
             .to(BYTES_VAL)
             .set(DATE_COL)
             .to(DATE_VAL)
+            .set(FLOAT32_COL)
+            .to(FLOAT32_VAL)
             .set(FLOAT64_COL)
             .to(FLOAT64_VAL)
             .set(INT64_COL)
@@ -691,6 +706,13 @@ public final class FailsafeModJsonToTableRowTransformerTest {
     arrayNode = jsonNode.putArray(DATE_ARRAY_COL);
     arrayNode.add(DATE_ARRAY_RAW_VAL.get(0).toString());
     arrayNode.add(DATE_ARRAY_RAW_VAL.get(1).toString());
+    arrayNode = jsonNode.putArray(FLOAT32_ARRAY_COL);
+    arrayNode.add(FLOAT32_ARRAY_RAW_VAL.get(0));
+    arrayNode.add(FLOAT32_ARRAY_RAW_VAL.get(1));
+    arrayNode.add(FLOAT32_ARRAY_RAW_VAL.get(2));
+    arrayNode.add(FLOAT32_ARRAY_RAW_VAL.get(3));
+    arrayNode.add(FLOAT32_ARRAY_RAW_VAL.get(4));
+    arrayNode.add(FLOAT32_ARRAY_RAW_VAL.get(5));
     arrayNode = jsonNode.putArray(FLOAT64_ARRAY_COL);
     arrayNode.add(FLOAT64_ARRAY_RAW_VAL.get(0));
     arrayNode.add(FLOAT64_ARRAY_RAW_VAL.get(1));
@@ -723,6 +745,7 @@ public final class FailsafeModJsonToTableRowTransformerTest {
     jsonNode.put(BOOLEAN_COL, BOOLEAN_RAW_VAL);
     jsonNode.put(BYTES_COL, BYTES_RAW_VAL.toBase64());
     jsonNode.put(DATE_COL, DATE_RAW_VAL.toString());
+    jsonNode.put(FLOAT32_COL, FLOAT32_RAW_VAL);
     jsonNode.put(FLOAT64_COL, FLOAT64_RAW_VAL);
     jsonNode.put(INT64_COL, INT64_RAW_VAL);
     jsonNode.put(JSON_COL, JSON_RAW_VAL);
@@ -746,20 +769,22 @@ public final class FailsafeModJsonToTableRowTransformerTest {
       rowTypes.add(new ModColumnType(BOOLEAN_ARRAY_COL, new TypeCode("ARRAY"), false, 9));
       rowTypes.add(new ModColumnType(BYTES_ARRAY_COL, new TypeCode("ARRAY"), false, 10));
       rowTypes.add(new ModColumnType(DATE_ARRAY_COL, new TypeCode("ARRAY"), false, 11));
-      rowTypes.add(new ModColumnType(FLOAT64_ARRAY_COL, new TypeCode("ARRAY"), false, 12));
-      rowTypes.add(new ModColumnType(INT64_ARRAY_COL, new TypeCode("ARRAY"), false, 13));
-      rowTypes.add(new ModColumnType(JSON_ARRAY_COL, new TypeCode("ARRAY"), false, 14));
-      rowTypes.add(new ModColumnType(NUMERIC_ARRAY_COL, new TypeCode("ARRAY"), false, 15));
-      rowTypes.add(new ModColumnType(STRING_ARRAY_COL, new TypeCode("ARRAY"), false, 16));
-      rowTypes.add(new ModColumnType(TIMESTAMP_ARRAY_COL, new TypeCode("ARRAY"), false, 17));
-      rowTypes.add(new ModColumnType(BOOLEAN_COL, new TypeCode("BOOLEAN"), false, 18));
-      rowTypes.add(new ModColumnType(BYTES_COL, new TypeCode("BYTES"), false, 19));
-      rowTypes.add(new ModColumnType(DATE_COL, new TypeCode("DATE"), false, 20));
-      rowTypes.add(new ModColumnType(FLOAT64_COL, new TypeCode("FLOAT64"), false, 21));
-      rowTypes.add(new ModColumnType(INT64_COL, new TypeCode("INT64"), false, 22));
-      rowTypes.add(new ModColumnType(NUMERIC_COL, new TypeCode("NUMERIC"), false, 23));
-      rowTypes.add(new ModColumnType(STRING_COL, new TypeCode("STRING"), false, 24));
-      rowTypes.add(new ModColumnType(TIMESTAMP_COL, new TypeCode("TIMESTAMP"), false, 25));
+      rowTypes.add(new ModColumnType(FLOAT32_ARRAY_COL, new TypeCode("ARRAY"), false, 12));
+      rowTypes.add(new ModColumnType(FLOAT64_ARRAY_COL, new TypeCode("ARRAY"), false, 13));
+      rowTypes.add(new ModColumnType(INT64_ARRAY_COL, new TypeCode("ARRAY"), false, 14));
+      rowTypes.add(new ModColumnType(JSON_ARRAY_COL, new TypeCode("ARRAY"), false, 15));
+      rowTypes.add(new ModColumnType(NUMERIC_ARRAY_COL, new TypeCode("ARRAY"), false, 16));
+      rowTypes.add(new ModColumnType(STRING_ARRAY_COL, new TypeCode("ARRAY"), false, 17));
+      rowTypes.add(new ModColumnType(TIMESTAMP_ARRAY_COL, new TypeCode("ARRAY"), false, 18));
+      rowTypes.add(new ModColumnType(BOOLEAN_COL, new TypeCode("BOOLEAN"), false, 19));
+      rowTypes.add(new ModColumnType(BYTES_COL, new TypeCode("BYTES"), false, 20));
+      rowTypes.add(new ModColumnType(DATE_COL, new TypeCode("DATE"), false, 21));
+      rowTypes.add(new ModColumnType(FLOAT64_COL, new TypeCode("FLOAT64"), false, 22));
+      rowTypes.add(new ModColumnType(FLOAT32_COL, new TypeCode("FLOAT32"), false, 23));
+      rowTypes.add(new ModColumnType(INT64_COL, new TypeCode("INT64"), false, 24));
+      rowTypes.add(new ModColumnType(NUMERIC_COL, new TypeCode("NUMERIC"), false, 25));
+      rowTypes.add(new ModColumnType(STRING_COL, new TypeCode("STRING"), false, 26));
+      rowTypes.add(new ModColumnType(TIMESTAMP_COL, new TypeCode("TIMESTAMP"), false, 27));
     }
     return rowTypes;
   }

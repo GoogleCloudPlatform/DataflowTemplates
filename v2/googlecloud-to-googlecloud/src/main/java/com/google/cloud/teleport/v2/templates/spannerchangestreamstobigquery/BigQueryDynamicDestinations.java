@@ -61,7 +61,6 @@ public final class BigQueryDynamicDestinations
 
   private BigQueryDynamicDestinations(
       BigQueryDynamicDestinationsOptions bigQueryDynamicDestinationsOptions) {
-    this.spannerTableByName = spannerTableByName;
     this.ignoreFields = bigQueryDynamicDestinationsOptions.getIgnoreFields();
     this.bigQueryProject = bigQueryDynamicDestinationsOptions.getBigQueryProject();
     this.bigQueryDataset = bigQueryDynamicDestinationsOptions.getBigQueryDataset();

@@ -183,7 +183,7 @@ public final class FailsafeModJsonToTableRowTransformer {
                   "Caught exception when setting up FailsafeModJsonToTableRowFn, message: %s,"
                       + " cause: %s",
                   Optional.ofNullable(e.getMessage()), e.getCause()));
-          seenException = true;
+          throw new RuntimeException(e);
         }
         setUpCallContextConfigurator();
       }
@@ -267,8 +267,16 @@ public final class FailsafeModJsonToTableRowTransformer {
                   spannerAccessor, spannerChangeStream, dialect, mod, spannerTableByName);
         }
 
-        TrackedSpannerTable spannerTable =
-            checkStateNotNull(spannerTableByName.get(spannerTableName));
+        try {
+          spannerTable = checkStateNotNull(spannerTableByName.get(spannerTableName));
+
+        } catch (IllegalStateException e) {
+          String errorMessage =
+              String.format(
+                  "Can not find spanner table %s in spannerTableByName", spannerTableName);
+          LOG.error(errorMessage);
+          throw new RuntimeException(errorMessage, e);
+        }
 
         // Set metadata fields of the tableRow.
         TableRow tableRow = new TableRow();

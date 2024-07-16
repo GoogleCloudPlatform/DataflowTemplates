@@ -83,6 +83,7 @@ public class SpannerToBigQueryUtils {
       throw new IllegalArgumentException(String.format("Unsupported Spanner type: %s", type));
     }
   }
+
   private static TableFieldSchema tableRowColumnsToBigQueryIOField(String name, String type) {
     TableFieldSchema bigQueryField =
         new TableFieldSchema().setName(name).setMode(Field.Mode.REPEATED.name());
@@ -92,6 +93,7 @@ public class SpannerToBigQueryUtils {
           "BYTES",
           "DATE",
           "FLOAT64",
+          "FLOAT32",
           "INT64",
           "JSON",
           "NUMERIC",
@@ -108,6 +110,9 @@ public class SpannerToBigQueryUtils {
           bigQueryField.setType("STRING");
         } else if (arrayItemType.equals("PG_JSONB")) {
           bigQueryField.setType("JSON");
+        } else if (arrayItemType.equals("FLOAT32")) {
+          // BigQuery does not support the FLOAT32 type.
+          bigQueryField.setType("FLOAT64");
         } else {
           bigQueryField.setType(arrayItemType);
         }
@@ -127,6 +132,9 @@ public class SpannerToBigQueryUtils {
           bigQueryField.setType("STRING");
         } else if (type.equals("PG_JSONB")) {
           bigQueryField.setType("JSON");
+        } else if (type.equals("FLOAT32")) {
+          // BigQuery does not support the FLOAT32 type.
+          bigQueryField.setType("FLOAT64");
         } else {
           bigQueryField.setType(type);
         }
