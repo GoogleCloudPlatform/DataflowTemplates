@@ -105,7 +105,9 @@ public class InputRecordProcessor {
             Metrics.counter(InputRecordProcessor.class, "filtered_events_" + shardId).inc();
             continue;
           }
-          customTransformationResponse = migrationTransformationResponse.getResponseRow();
+          if (migrationTransformationResponse != null) {
+            customTransformationResponse = migrationTransformationResponse.getResponseRow();
+          }
         }
         String dmlStatement =
             DMLGenerator.getDMLStatement(
