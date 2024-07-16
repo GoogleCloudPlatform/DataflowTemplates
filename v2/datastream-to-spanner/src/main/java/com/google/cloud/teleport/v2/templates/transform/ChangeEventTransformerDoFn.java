@@ -174,7 +174,8 @@ public abstract class ChangeEventTransformerDoFn
             c.output(DatastreamToSpannerConstants.FILTERED_EVENT_TAG, msg.getPayload());
             return;
           }
-          if (migrationTransformationResponse.getResponseRow() != null) {
+          if (migrationTransformationResponse != null
+              && migrationTransformationResponse.getResponseRow() != null) {
             changeEvent =
                 ChangeEventToMapConvertor.transformChangeEventViaCustomTransformation(
                     changeEvent, migrationTransformationResponse.getResponseRow());
