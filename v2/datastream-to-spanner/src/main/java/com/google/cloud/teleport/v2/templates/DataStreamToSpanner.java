@@ -703,7 +703,8 @@ public class DataStreamToSpanner {
      * a) Retryable errors are written to retry GCS Dead letter queue
      * b) Severe errors are written to severe GCS Dead letter queue
      */
-    // We will write only the original payload from the failsafe event to the DLQ.  We do that in
+    // We will write only the original payload from the failsafe event to the DLQ.  We are doing
+    // that in
     // StringDeadLetterQueueSanitizer.
     spannerWriteResults
         .retryableErrors()
