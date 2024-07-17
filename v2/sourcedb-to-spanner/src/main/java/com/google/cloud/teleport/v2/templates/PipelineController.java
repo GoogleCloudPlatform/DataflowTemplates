@@ -122,7 +122,7 @@ public class PipelineController {
       PCollection<Void> output =
           pipeline.apply(
               "Migrate" + suffix,
-              new MigrateForTable(options, spannerConfig, ddl, schemaMapper, reader, ""));
+              new MigrateTableTransform(options, spannerConfig, ddl, schemaMapper, reader, ""));
       outputs.put(srcTable, output);
     }
 
@@ -222,7 +222,8 @@ public class PipelineController {
           PCollection<Void> output =
               pipeline.apply(
                   "Migrate" + suffix,
-                  new MigrateForTable(options, spannerConfig, ddl, schemaMapper, reader, shardId));
+                  new MigrateTableTransform(
+                      options, spannerConfig, ddl, schemaMapper, reader, shardId));
           outputs.put(srcTable, output);
         }
         // Add transform to increment table counter

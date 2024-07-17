@@ -41,8 +41,8 @@ import org.apache.beam.sdk.values.TupleTagList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MigrateForTable extends PTransform<PBegin, PCollection<Void>> {
-  private static final Logger LOG = LoggerFactory.getLogger(MigrateForTable.class);
+public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>> {
+  private static final Logger LOG = LoggerFactory.getLogger(MigrateTableTransform.class);
 
   private SourceDbToSpannerOptions options;
   private SpannerConfig spannerConfig;
@@ -51,7 +51,7 @@ public class MigrateForTable extends PTransform<PBegin, PCollection<Void>> {
   private ReaderImpl reader;
   private String shardId;
 
-  public MigrateForTable(
+  public MigrateTableTransform(
       SourceDbToSpannerOptions options,
       SpannerConfig spannerConfig,
       Ddl ddl,
