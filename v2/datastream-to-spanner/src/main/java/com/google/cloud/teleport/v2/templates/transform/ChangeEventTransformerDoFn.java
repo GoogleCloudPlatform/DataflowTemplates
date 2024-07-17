@@ -184,6 +184,8 @@ public abstract class ChangeEventTransformerDoFn
         }
       }
       transformedEvents.inc();
+      // Adding the original payload to the Failsafe element to ensure that input is not mutated in
+      // case of retries.
       c.output(
           DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG,
           FailsafeElement.of(msg.getOriginalPayload(), changeEvent.toString()));
