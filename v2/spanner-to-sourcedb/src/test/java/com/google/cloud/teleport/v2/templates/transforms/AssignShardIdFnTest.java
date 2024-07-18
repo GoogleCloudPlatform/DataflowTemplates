@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -44,7 +44,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -261,13 +260,12 @@ public class AssignShardIdFnTest {
         "serverTxnId",
         "recordSeq",
         "tableName",
-        Collections.singletonList(
-            new Mod(
-                "{\"accountId\": \"Id1\"}",
-                "{}",
-                "{\"accountName\": \"abc\", \"migration_shard_id\": \""
-                    + shardId
-                    + "\", \"accountNumber\": 1}")),
+        new Mod(
+            "{\"accountId\": \"Id1\"}",
+            "{}",
+            "{\"accountName\": \"abc\", \"migration_shard_id\": \""
+                + shardId
+                + "\", \"accountNumber\": 1}"),
         ModType.valueOf("INSERT"),
         1,
         "");
@@ -279,7 +277,7 @@ public class AssignShardIdFnTest {
         "serverTxnId",
         "recordSeq",
         "tableName",
-        Collections.singletonList(new Mod("{\"accountId\": \"Id1\"}", "{}", "{}")),
+        new Mod("{\"accountId\": \"Id1\"}", "{}", "{}"),
         ModType.valueOf("DELETE"),
         1,
         "");

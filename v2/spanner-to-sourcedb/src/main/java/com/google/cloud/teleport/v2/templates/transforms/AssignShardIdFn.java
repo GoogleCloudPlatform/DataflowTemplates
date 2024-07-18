@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -196,10 +196,10 @@ public class AssignShardIdFn
           record.setShard(skipDirName);
           qualifiedShard = skipDirName;
         } else {
-          String keysJsonStr = record.getMods().get(0).getKeysJson();
+          String keysJsonStr = record.getMod().getKeysJson();
           JsonNode keysJson = mapper.readTree(keysJsonStr);
 
-          String newValueJsonStr = record.getMods().get(0).getNewValuesJson();
+          String newValueJsonStr = record.getMod().getNewValuesJson();
           JsonNode newValueJson = mapper.readTree(newValueJsonStr);
           Map<String, Object> spannerRecord = new HashMap<>();
           // Query the spanner database in case of a DELETE event
@@ -253,7 +253,7 @@ public class AssignShardIdFn
 
       record.setShard(qualifiedShard);
       String tableName = record.getTableName();
-      String keysJsonStr = record.getMods().get(0).getKeysJson();
+      String keysJsonStr = record.getMod().getKeysJson();
       String finalKeyString = tableName + "_" + keysJsonStr + "_" + qualifiedShard;
       Long finalKey = finalKeyString.hashCode() % maxConnectionsPerShard;
       c.output(KV.of(finalKey, record));

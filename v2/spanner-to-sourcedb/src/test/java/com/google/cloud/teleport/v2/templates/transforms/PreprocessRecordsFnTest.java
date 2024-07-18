@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.templates.transforms;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import java.util.Arrays;
-import java.util.Collections;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
@@ -84,11 +83,10 @@ public class PreprocessRecordsFnTest {
         "serverTxnId",
         "recordSeq",
         "tableName",
-        Collections.singletonList(
-            new Mod(
-                "{\"accountId\": \"Id1\"}",
-                "{}",
-                "{\"accountName\": \"abc\", \"migration_shard_id\": \"" + shardId + "\"}")),
+        new Mod(
+            "{\"accountId\": \"Id1\"}",
+            "{}",
+            "{\"accountName\": \"abc\", \"migration_shard_id\": \"" + shardId + "\"}"),
         ModType.valueOf("INSERT"),
         5,
         "txnTag");

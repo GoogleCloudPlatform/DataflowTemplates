@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
-import java.util.Collections;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -39,7 +38,7 @@ public class PreprocessRecordsFn extends DoFn<DataChangeRecord, TrimmedShardedDa
               record.getServerTransactionId(),
               record.getRecordSequence(),
               record.getTableName(),
-              Collections.singletonList(mod),
+              mod,
               record.getModType(),
               record.getNumberOfRecordsInTransaction(),
               record.getTransactionTag()));

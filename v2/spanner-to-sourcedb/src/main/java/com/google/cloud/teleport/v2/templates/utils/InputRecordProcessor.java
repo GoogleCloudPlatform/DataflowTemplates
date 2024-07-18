@@ -19,8 +19,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -34,63 +32,49 @@ public class InputRecordProcessor {
 
   private static final Logger LOG = LoggerFactory.getLogger(InputRecordProcessor.class);
 
-  public static void processRecords(
-      List<TrimmedShardedDataChangeRecord> recordList,
+  public static void processRecord(
+      TrimmedShardedDataChangeRecord spannerRecord,
       Schema schema,
       MySqlDao dao,
       String shardId,
       String sourceDbTimezoneOffset) {
 
     try {
-      boolean capturedlagMetric = false;
-      long replicationLag = 0L;
-      Counter numRecProcessedMetric = Metrics.counter(shardId, "records_processed_" + shardId);
-      Counter numRecReadFromGcsMetric = Metrics.counter(shardId, "records_read_" + shardId);
-      // gives indication that records were read from GCS
-      numRecReadFromGcsMetric.inc(recordList.size());
-      Distribution lagMetric =
-          Metrics.distribution(shardId, "replication_lag_in_seconds_" + shardId);
 
-      List<String> dmlBatch = new ArrayList<>();
-      for (TrimmedShardedDataChangeRecord chrec : recordList) {
-        String tableName = chrec.getTableName();
-        String modType = chrec.getModType().name();
-        String keysJsonStr = chrec.getMods().get(0).getKeysJson();
-        String newValueJsonStr = chrec.getMods().get(0).getNewValuesJson();
-        JSONObject newValuesJson = new JSONObject(newValueJsonStr);
-        JSONObject keysJson = new JSONObject(keysJsonStr);
+      String tableName = spannerRecord.getTableName();
+      String modType = spannerRecord.getModType().name();
+      String keysJsonStr = spannerRecord.getMod().getKeysJson();
+      String newValueJsonStr = spannerRecord.getMod().getNewValuesJson();
+      JSONObject newValuesJson = new JSONObject(newValueJsonStr);
+      JSONObject keysJson = new JSONObject(keysJsonStr);
 
-        String dmlStatement =
-            DMLGenerator.getDMLStatement(
-                modType, tableName, schema, newValuesJson, keysJson, sourceDbTimezoneOffset);
-        if (!dmlStatement.isEmpty()) {
-          dmlBatch.add(dmlStatement);
-        }
-        if (!capturedlagMetric) {
-          /*
-          The commit timestamp of the first record is chosen for lag calculation
-          Since the last record may have commit timestamp which might repeat for the
-          next iteration of messages */
-          capturedlagMetric = true;
-          Instant instTime = Instant.now();
-          Instant commitTsInst = chrec.getCommitTimestamp().toSqlTimestamp().toInstant();
-          replicationLag = ChronoUnit.SECONDS.between(commitTsInst, instTime);
-        }
+      String dmlStatement =
+          DMLGenerator.getDMLStatement(
+              modType, tableName, schema, newValuesJson, keysJson, sourceDbTimezoneOffset);
+      if (dmlStatement.isEmpty()) {
+        LOG.warn("DML statement is empty for table: " + tableName);
+        return;
       }
 
       Instant daoStartTime = Instant.now();
-      dao.batchWrite(dmlBatch);
+      dao.write(dmlStatement);
       Instant daoEndTime = Instant.now();
       LOG.info(
           "Shard "
               + shardId
-              + ": Write to mysql for "
-              + recordList.size()
-              + " took : "
+              + ": Write to mysql took:  "
               + ChronoUnit.MILLIS.between(daoStartTime, daoEndTime)
               + " milliseconds ");
 
-      numRecProcessedMetric.inc(recordList.size()); // update the number of records processed metric
+      Counter numRecProcessedMetric = Metrics.counter(shardId, "records_processed_" + shardId);
+
+      numRecProcessedMetric.inc(1); // update the number of records processed metric
+      Distribution lagMetric =
+          Metrics.distribution(shardId, "replication_lag_in_seconds_" + shardId);
+
+      Instant instTime = Instant.now();
+      Instant commitTsInst = spannerRecord.getCommitTimestamp().toSqlTimestamp().toInstant();
+      long replicationLag = ChronoUnit.SECONDS.between(commitTsInst, instTime);
 
       lagMetric.update(replicationLag); // update the lag metric
 

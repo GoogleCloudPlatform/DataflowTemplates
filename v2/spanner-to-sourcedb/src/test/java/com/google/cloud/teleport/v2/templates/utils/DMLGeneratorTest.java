@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -244,8 +244,8 @@ public final class DMLGeneratorTest {
 
     String tableName = chrec.getTableName();
     String modType = chrec.getModType().name();
-    String keysJsonStr = chrec.getMods().get(0).getKeysJson();
-    String newValueJsonStr = chrec.getMods().get(0).getNewValuesJson();
+    String keysJsonStr = chrec.getMod().getKeysJson();
+    String newValueJsonStr = chrec.getMod().getNewValuesJson();
     JSONObject newValuesJson = new JSONObject(newValueJsonStr);
     JSONObject keyValuesJson = new JSONObject(keysJsonStr);
 

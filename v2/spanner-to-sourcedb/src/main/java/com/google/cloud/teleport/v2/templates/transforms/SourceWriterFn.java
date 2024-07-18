@@ -32,8 +32,6 @@ import com.google.cloud.teleport.v2.templates.utils.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.utils.MySqlDao;
 import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
 import com.google.common.collect.ImmutableList;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -121,7 +119,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     String shardId = spannerRec.getShard();
     // Get the latest commit timestamp processed at source
     try {
-      JsonNode keysJson = mapper.readTree(spannerRec.getMods().get(0).getKeysJson());
+      JsonNode keysJson = mapper.readTree(spannerRec.getMod().getKeysJson());
       String tableName = spannerRec.getTableName();
       com.google.cloud.spanner.Key primaryKey = changeEventToPrimaryKey(tableName, keysJson);
       String shadowTableName = shadowTablePrefix + tableName;
@@ -136,14 +134,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       if (!isSourceAhead) {
         MySqlDao mySqlDao = mySqlDaoMap.get(shardId);
 
-        InputRecordProcessor.processRecords(
-            new ArrayList<
-                com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord>(
-                Arrays.asList(spannerRec)),
-            schema,
-            mySqlDao,
-            shardId,
-            sourceDbTimezoneOffset);
+        InputRecordProcessor.processRecord(
+            spannerRec, schema, mySqlDao, shardId, sourceDbTimezoneOffset);
 
         try {
           spannerDao.updateProcessedCommitTimestamp(
@@ -223,7 +215,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
             pk.append(
                 ChangeEventTypeConvertor.toDate(keysJson, keyColName, /* requiredField= */ true));
             break;
-          // TODO(b/179070999) -  Add support for other data types.
+            // TODO(b/179070999) -  Add support for other data types.
           default:
             throw new IllegalArgumentException(
                 "Column name(" + keyColName + ") has unsupported column type(" + keyColType + ")");
@@ -244,6 +236,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         Mutation.newInsertOrUpdateBuilder(shadowTableName)
             .set("processed_commit_ts")
             .to(commitTimestamp);
+    // TODO: Check to refactor and use ChangeEventTypeConvertor.mutationBuilderFromEvent.
     try {
       Table table = ddl.table(tableName);
       ImmutableList<IndexColumn> keyColumns = table.primaryKeys();
@@ -328,7 +321,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                     ChangeEventTypeConvertor.toDate(
                         keysJson, keyColName, /* requiredField= */ true));
             break;
-          // TODO(b/179070999) -  Add support for other data types.
+            // TODO(b/179070999) -  Add support for other data types.
           default:
             throw new IllegalArgumentException(
                 "Column name(" + keyColName + ") has unsupported column type(" + keyColType + ")");

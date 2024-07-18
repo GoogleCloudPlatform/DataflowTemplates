@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.templates.changestream;
 
 import com.google.cloud.Timestamp;
 import java.io.Serializable;
-import java.util.List;
 import java.util.Objects;
 import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
@@ -35,7 +34,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
   private String serverTransactionId;
   private String recordSequence;
   private String tableName;
-  private List<Mod> mods;
+  private Mod mod;
   private ModType modType;
   private long numberOfRecordsInTransaction;
   private String transactionTag;
@@ -46,7 +45,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
       String serverTransactionId,
       String recordSequence,
       String tableName,
-      List<Mod> mods,
+      Mod mod,
       ModType modType,
       long numberOfRecordsInTransaction,
       String transactionTag) {
@@ -54,7 +53,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     this.serverTransactionId = serverTransactionId;
     this.recordSequence = recordSequence;
     this.tableName = tableName;
-    this.mods = mods;
+    this.mod = mod;
     this.modType = modType;
     this.numberOfRecordsInTransaction = numberOfRecordsInTransaction;
     this.transactionTag = transactionTag;
@@ -65,7 +64,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     this.serverTransactionId = other.serverTransactionId;
     this.recordSequence = other.recordSequence;
     this.tableName = other.tableName;
-    this.mods = other.mods;
+    this.mod = other.mod;
     this.modType = other.modType;
     this.numberOfRecordsInTransaction = other.numberOfRecordsInTransaction;
     this.transactionTag = other.transactionTag;
@@ -88,8 +87,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     return tableName;
   }
 
-  public List<Mod> getMods() {
-    return mods;
+  public Mod getMod() {
+    return mod;
   }
 
   public ModType getModType() {
@@ -125,7 +124,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         && Objects.equals(serverTransactionId, that.serverTransactionId)
         && Objects.equals(recordSequence, that.recordSequence)
         && Objects.equals(tableName, that.tableName)
-        && Objects.equals(mods, that.mods)
+        && Objects.equals(mod, that.mod)
         && modType == that.modType
         && numberOfRecordsInTransaction == that.numberOfRecordsInTransaction
         && Objects.equals(transactionTag, that.transactionTag)
@@ -139,7 +138,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         serverTransactionId,
         recordSequence,
         tableName,
-        mods,
+        mod,
         modType,
         numberOfRecordsInTransaction,
         transactionTag,
@@ -160,8 +159,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         + ", tableName='"
         + tableName
         + '\''
-        + ", mods="
-        + mods
+        + ", mod="
+        + mod
         + ", modType="
         + modType
         + ", numberOfRecordsInTransaction="

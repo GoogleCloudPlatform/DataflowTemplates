@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -31,6 +31,7 @@ import org.apache.commons.lang3.math.NumberUtils;
  */
 public class DataChangeRecordTypeConvertor {
 
+  // TODO : check if we can use a common ChangeEventTypeConvertor for this.
   private static final Pattern NUMERIC_PATTERN = Pattern.compile("-?\\d+(\\.\\d+)?");
 
   public static Boolean toBoolean(JsonNode changeEvent, String key, boolean requiredField)

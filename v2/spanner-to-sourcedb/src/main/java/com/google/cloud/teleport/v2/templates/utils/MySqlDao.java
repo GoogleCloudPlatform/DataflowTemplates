@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -20,7 +20,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.List;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,8 +47,8 @@ public class MySqlDao implements Serializable {
     this.sqlPasswd = sqlPasswd;
   }
 
-  // writes to database in a batch
-  public void batchWrite(List<String> batchStatements) throws SQLException {
+  // writes to database
+  public void write(String sqlStatement) throws SQLException {
     Connection connObj = null;
     Statement statement = null;
     boolean status = false;
@@ -59,10 +58,7 @@ public class MySqlDao implements Serializable {
         connObj = DriverManager.getConnection(this.sqlUrl, this.sqlUser, this.sqlPasswd);
         connObj.setAutoCommit(false);
         statement = connObj.createStatement();
-        for (String stmt : batchStatements) {
-          statement.addBatch(stmt);
-        }
-        statement.executeBatch();
+        statement.executeUpdate(sqlStatement);
         connObj.commit();
         status = true;
       } catch (com.mysql.cj.jdbc.exceptions.CommunicationsException

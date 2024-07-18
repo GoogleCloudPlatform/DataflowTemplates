@@ -728,6 +728,7 @@
         <module>spanner-common</module>
         <module>spanner-custom-shard</module>
         <module>spanner-migrations-sdk</module>
+        <module>spanner-to-sourcedb</module>
         <module>sqlserver-to-googlecloud</module>
         <module>streaming-data-generator</module>
     </modules>
