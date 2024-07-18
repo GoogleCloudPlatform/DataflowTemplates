@@ -29,6 +29,9 @@ RUN python -m venv /venv \
     && rm -rf /usr/local/lib/python$PY_VERSION/site-packages  \
     && mv /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/
 
+# Cache provider environments for faster startup and expansion time
+RUN python -m apache_beam.yaml.cache_provider_artifacts
+
 
 #============================================================#
 # Create Distroless xlang image compatible with YamlTemplate #

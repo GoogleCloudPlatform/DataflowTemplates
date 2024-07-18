@@ -150,7 +150,7 @@ public abstract class ChangeEventTransformerDoFn
     Ddl ddl = c.sideInput(ddlView());
     try {
 
-      JsonNode changeEvent = mapper.readTree(msg.getPayload());
+      JsonNode changeEvent = mapper.readTree(msg.getOriginalPayload());
       Map<String, Object> sourceRecord =
           ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
 
@@ -171,10 +171,11 @@ public abstract class ChangeEventTransformerDoFn
               getCustomTransformationResponse(changeEvent, sourceRecord);
           if (migrationTransformationResponse.isEventFiltered()) {
             filteredEvents.inc();
-            c.output(DatastreamToSpannerConstants.FILTERED_EVENT_TAG, msg.getPayload());
+            c.output(DatastreamToSpannerConstants.FILTERED_EVENT_TAG, msg.getOriginalPayload());
             return;
           }
-          if (migrationTransformationResponse.getResponseRow() != null) {
+          if (migrationTransformationResponse != null
+              && migrationTransformationResponse.getResponseRow() != null) {
             changeEvent =
                 ChangeEventToMapConvertor.transformChangeEventViaCustomTransformation(
                     changeEvent, migrationTransformationResponse.getResponseRow());
@@ -184,9 +185,11 @@ public abstract class ChangeEventTransformerDoFn
         }
       }
       transformedEvents.inc();
+      // Adding the original payload to the Failsafe element to ensure that input is not mutated in
+      // case of retries.
       c.output(
           DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG,
-          FailsafeElement.of(changeEvent.toString(), changeEvent.toString()));
+          FailsafeElement.of(msg.getOriginalPayload(), changeEvent.toString()));
     } catch (DroppedTableException e) {
       // Errors when table exists in source but was dropped during conversion. We do not output any
       // errors to dlq for this.
