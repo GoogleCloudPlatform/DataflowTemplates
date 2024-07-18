@@ -72,7 +72,7 @@
     <profile>
       <id>mysql</id>
       <activation>
-        <activeByDefault>true</activeByDefault>
+        <jdk>[1.)</jdk>
       </activation>
       <dependencies>
         <dependency>

@@ -482,6 +482,7 @@ public abstract class TemplateTestBase {
   protected LaunchInfo launchTemplate(
       LaunchConfig.Builder options, boolean setupShutdownHook, Template templateMetadata)
       throws IOException {
+    options.addParameter("customBeamRequirement", "2.68.0rc1");
 
     boolean flex =
         templateMetadata.flexContainerName() != null
