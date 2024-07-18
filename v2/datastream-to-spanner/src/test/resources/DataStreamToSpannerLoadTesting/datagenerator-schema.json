@@ -1,0 +1,6 @@
+{
+  "user_id": "{{integer(-9223372036854775808,9223372036854775807)}}",
+  "first_name": "{{alphaNumeric(460,500)}}",
+  "last_name": "{{alphaNumeric(460,500)}}",
+  "age": "{{integer(18,80)}}"
+}

@@ -25,12 +25,83 @@ gcloud sql instances create ${INSTANCE_NAME} \
 --database-version=MYSQL_8_0
 ```
 
+### Data Generation using Dataflow Streaming Data Generator for JDBC
+1. Follow the [guide](https://cloud.google.com/vpc/docs/create-modify-vpc-networks) to create a VPC Network with the following
+   properties:
+    1. Create new subnet with `Private Google Access` as On
+    2. Set `Private Google Access` as **Global**
+
+```shell
+export PROJECT_NAME=<my-project>
+export NETWORK_NAME=<my-network>
+export SUBNET_NAME=<my-subnet>
+
+gcloud compute networks create ${NETWORK_NAME} --project=${PROJECT_NAME} \
+ --subnet-mode=custom --mtu=1460 --bgp-routing-mode=global 
+ 
+gcloud compute networks subnets create ${SUBNET_NAME} --project=${PROJECT_NAME} \
+--range=10.0.0.0/24 --stack-type=IPV4_ONLY --network=${NETWORK_NAME} --region=us-central1 \
+--enable-private-ip-google-access
+```
+
+2. Modify SQL Instance and configure the VPC network created in the previous step to the Cloud SQL Instance by
+   following this [guide](https://cloud.google.com/sql/docs/mysql/configure-private-ip?_gl=1*ocwud2*_ga*MTI0MzA5MzM4My4xNzE4OTQ3NzU1*_ga_WH2QY8WWF5*MTcyMTIzOTUxNi42LjEuMTcyMTI0MzgzMC4zLjAuMA..#existing-private-instance)
+```shell
+export CLOUD_SQL_INSTANCE_ID=<my-instance>
+export PROJECT_NAME=<my-project>
+export NETWORK_PROJECT_ID=<my-network-project>
+export NETWORK_NAME=<my-network>
+
+gcloud beta sql instances patch ${CLOUD_SQL_INSTANCE_ID} \
+--project=${PROJECT_ID} \
+--network=projects/${NETWORK_PROJECT_ID}/global/networks/${NETWORK_NAME} \
+--no-assign-ip \
+--enable-google-private-path
+```
+
+3. Create tables in the instance by either connecting to it through the
+   [shell](https://cloud.google.com/sql/docs/mysql/connect-instance-cloud-shell) or through
+   [Cloud Sql Studio](https://cloud.google.com/sql/docs/mysql/manage-data-using-studio).
+
+   [**Sample MySQL Schema**](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-spanner/src/test/resources/DataStreamToSpannerLoadTesting/mysql-schema.sql)
+
+4. Create a schema file that contains a JSON template for the generated data. For more information, see the
+   [json-data-generator documentation](https://github.com/vincentrussell/json-data-generator/blob/master/README.md). Sample
+   can be found [here](https://github.com/vincentrussell/json-data-generator/blob/master/README.md). Upload the schema file
+   to a Cloud Storage bucket.
+
+   [**Sample Schema File**](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-spanner/src/test/resources/DataStreamToSpannerLoadTesting/datagenerator-schema.json)
+
+5. Run the template by following this [guide](https://cloud.google.com/dataflow/docs/guides/templates/provided/streaming-data-generator)
+```shell
+export PROJECT=<my-project>
+export BUCKET_NAME=<bucket-name>
+export REGION=<region>
+export TEMPLATE_SPEC_GCSPATH="gs://dataflow-templates-${REGION}/latest/flex/Streaming_Data_Generator"
+export QPS=<qps>
+export MESSAGE_LIMIT=<row-count>
+export SCHEMA_LOCATION=<schemaLocation>
+export DRIVER_CLASS_NAME=<driverClassName>
+export CONNECTION_URL=<connectionUrl>
+export USERNAME=<username>
+export PASSWORD=<password>
+export STATEMENT=<statement>
+export NETWORK_NAME=<my-network>
+export SUBNETWORK=<my-subnetwork>
+
+gcloud dataflow flex-template run streaming-data-generator-job --project ${PROJECT}   \
+--region ${REGION}   --template-file-gcs-location $TEMPLATE_SPEC_GCSPATH  \
+--parameters ^~^qps=${QPS}~messagesLimit=${MESSAGE_LIMIT}~schemaLocation=${SCHEMA_LOCATION}~sinkType=JDBC~driverClassName=${DRIVER_CLASS_NAME}~connectionUrl=${CONNECTION_URL}~username=${USERNAME}~password=${PASSWORD}~statement=${STATEMENT}~network=${NETWORK_NAME}~subnetwork=${SUBNETWORK}
+```
+
 ### Data Generation using CSV Import
 This approach for data generation generates a csv file and imports it to a CLoud Sql Instance. All rows are identical
 and primary key is generated through auto-increment.
 1. Create tables in the instance with Primary Key as Auto-Increment by either connecting to it through the 
 [shell](https://cloud.google.com/sql/docs/mysql/connect-instance-cloud-shell) or through 
 [Cloud Sql Studio](https://cloud.google.com/sql/docs/mysql/manage-data-using-studio)
+
+   [**Sample MySQL Schema**](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-spanner/src/test/resources/DataStreamToSpannerLoadTesting/mysql-schema.sql)
 
 2. Create a csv file with a single row with primary key omitted as we rely on MySql auto-increment for the primary-key
  generation.
@@ -68,67 +139,4 @@ export GCS_FILE_PATH=<my-csv-file>
 gcloud sql import csv ${INSTANCE_NAME} gs://${BUCKET_NAME}/${FILE_NAME} \
 --database=${DATABASE_NAME} \
 --table=${TABLE_NAME}
-```
-### Data Generation using Dataflow Streaming Data Generator for JDBC
-1. Follow the [guide](https://cloud.google.com/vpc/docs/create-modify-vpc-networks) to create a VPC Network with the following 
-properties:
-   1. Create new subnet with `Private Google Access` as On
-   2. Set `Private Google Access` as **Global**
-
-```shell
-export PROJECT_NAME=<my-project>
-export NETWORK_NAME=<my-network>
-export SUBNET_NAME=<my-subnet>
-
-gcloud compute networks create ${NETWORK_NAME} --project=${PROJECT_NAME} \
- --subnet-mode=custom --mtu=1460 --bgp-routing-mode=global 
- 
-gcloud compute networks subnets create ${SUBNET_NAME} --project=${PROJECT_NAME} \
---range=10.0.0.0/24 --stack-type=IPV4_ONLY --network=${NETWORK_NAME} --region=us-central1 \
---enable-private-ip-google-access
-```
-
-2. Modify SQL Instance and configure the VPC network created in the previous step to the Cloud SQL Instance by 
-following this [guide](https://cloud.google.com/sql/docs/mysql/configure-private-ip?_gl=1*ocwud2*_ga*MTI0MzA5MzM4My4xNzE4OTQ3NzU1*_ga_WH2QY8WWF5*MTcyMTIzOTUxNi42LjEuMTcyMTI0MzgzMC4zLjAuMA..#existing-private-instance)
-```shell
-export CLOUD_SQL_INSTANCE_ID=<my-instance>
-export PROJECT_NAME=<my-project>
-export NETWORK_PROJECT_ID=<my-network-project>
-export NETWORK_NAME=<my-network>
-
-gcloud beta sql instances patch ${CLOUD_SQL_INSTANCE_ID} \
---project=${PROJECT_ID} \
---network=projects/${NETWORK_PROJECT_ID}/global/networks/${NETWORK_NAME} \
---no-assign-ip \
---enable-google-private-path
-```
-
-3. Create tables in the instance by either connecting to it through the
-   [shell](https://cloud.google.com/sql/docs/mysql/connect-instance-cloud-shell) or through
-   [Cloud Sql Studio](https://cloud.google.com/sql/docs/mysql/manage-data-using-studio)
-
-4. Create a schema file that contains a JSON template for the generated data. For more information, see the 
-[json-data-generator documentation](https://github.com/vincentrussell/json-data-generator/blob/master/README.md). Sample
-can be found [here](https://github.com/vincentrussell/json-data-generator/blob/master/README.md). Upload the schema file
-to a Cloud Storage bucket.
-
-5. Run the template by following this [guide](https://cloud.google.com/dataflow/docs/guides/templates/provided/streaming-data-generator)
-```shell
-export PROJECT=<my-project>
-export BUCKET_NAME=<bucket-name>
-export REGION=<region>
-export TEMPLATE_SPEC_GCSPATH="gs://dataflow-templates-${REGION}/latest/flex/Streaming_Data_Generator"
-export QPS=<qps>
-export SCHEMA_LOCATION=<schemaLocation>
-export DRIVER_CLASS_NAME=<driverClassName>
-export CONNECTION_URL=<connectionUrl>
-export USERNAME=<username>
-export PASSWORD=<password>
-export STATEMENT=<statement>
-export NETWORK_NAME=<my-network>
-export SUBNETWORK=<my-subnetwork>
-
-gcloud dataflow flex-template run streaming-data-generator-job --project ${PROJECT}   \
---region ${REGION}   --template-file-gcs-location $TEMPLATE_SPEC_GCSPATH  \
---parameters ^~^qps=${QPS~}schemaLocation=${SCHEMA_LOCATION}~sinkType=JDBC~driverClassName=${DRIVER_CLASS_NAME}~connectionUrl=${CONNECTION_URL}~username=${USERNAME}~password=${PASSWORD}~statement=${STATEMENT}~network=${NETWORK_NAME}~subnetwork=${SUBNETWORK}
 ```
