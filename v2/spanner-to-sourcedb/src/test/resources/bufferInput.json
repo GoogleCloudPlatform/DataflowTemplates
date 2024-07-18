@@ -1,0 +1,17 @@
+{
+  "commitTimestamp" : {
+    "seconds" : 1685527032,
+    "nanos" : 194991000
+  },
+  "serverTransactionId" : "Nzg0OTU2OTQzNDUwMTUxMzYzNA==",
+  "recordSequence" : "00000000",
+  "tableName" : "table3",
+  "mods" : [ {
+    "keysJson" : "{\"userId\":\"test1\"}",
+    "oldValuesJson" : "{}",
+    "newValuesJson" : "{\"balance\":\"10\",\"hb_shardId\":\"shard1\",\"name\":\"gollum\"}"
+  } ],
+  "modType" : "INSERT",
+  "numberOfRecordsInTransaction" : 1,
+  "transactionTag" : ""
+}
