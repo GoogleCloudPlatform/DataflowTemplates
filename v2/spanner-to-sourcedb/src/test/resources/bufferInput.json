@@ -6,11 +6,11 @@
   "serverTransactionId" : "Nzg0OTU2OTQzNDUwMTUxMzYzNA==",
   "recordSequence" : "00000000",
   "tableName" : "table3",
-  "mods" : [ {
+  "mod" : {
     "keysJson" : "{\"userId\":\"test1\"}",
     "oldValuesJson" : "{}",
     "newValuesJson" : "{\"balance\":\"10\",\"hb_shardId\":\"shard1\",\"name\":\"gollum\"}"
-  } ],
+  } ,
   "modType" : "INSERT",
   "numberOfRecordsInTransaction" : 1,
   "transactionTag" : ""

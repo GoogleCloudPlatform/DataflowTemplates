@@ -15,10 +15,10 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
-import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -170,10 +170,10 @@ public class AssignShardIdFnTest {
         ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", getSchemaObject(), "skip"));
 
     assignShardIdFn.processElement(processContext);
-    String keyStr = "tableName" + "_" + "Id1" + "_" + "shard1";
+    String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
     assignShardIdFn.processElement(processContext);
-    verify(processContext).output(containsInAnyOrder(KV.of(key, record)));
+    verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
   }
 
   @Test
@@ -202,9 +202,10 @@ public class AssignShardIdFnTest {
         ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", getSchemaObject(), "skip"));
 
     assignShardIdFn.processElement(processContext);
-    String keyStr = "tableName" + "_" + "Id1" + "_" + "shard1";
+    String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
-    verify(processContext).output(containsInAnyOrder(KV.of(key, record)));
+
+    verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
   }
 
   @Test
@@ -225,10 +226,10 @@ public class AssignShardIdFnTest {
             10000L);
 
     record.setShard("test");
-    String keyStr = "tableName" + "_" + "Id1" + "_" + "test";
+    String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "test";
     Long key = keyStr.hashCode() % 10000L;
     assignShardIdFn.processElement(processContext);
-    verify(processContext).output(containsInAnyOrder(KV.of(key, record)));
+    verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
   }
 
   @Test(expected = RuntimeException.class)
