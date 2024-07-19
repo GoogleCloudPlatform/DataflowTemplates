@@ -20,9 +20,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **embeddingColumn** : The fully qualified column name where the embeddings are stored. In the format cf:col.
 * **embeddingByteSize** : The byte size of each entry in the embeddings array. Use 4 for Float, and 8 for Double. Defaults to: 4.
 * **vectorSearchIndex** : The Vector Search Index where changes will be streamed, in the format 'projects/{projectID}/locations/{region}/indexes/{indexID}' (no leading or trailing spaces) (Example: projects/123/locations/us-east1/indexes/456).
-* **bigtableChangeStreamAppProfile** : The application profile is used to distinguish workload in Cloud Bigtable.
-* **bigtableReadInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableReadTableId** : The Cloud Bigtable table to read from.
+* **bigtableChangeStreamAppProfile** : The Bigtable application profile ID. The application profile must use single-cluster routing and allow single-row transactions.
+* **bigtableReadInstanceId** : The source Bigtable instance ID.
+* **bigtableReadTableId** : The source Bigtable table ID.
 
 ### Optional parameters
 
@@ -33,20 +33,20 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **intNumericRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as integer `numeric_restricts`, with their alias. In the format cf:col->alias.
 * **floatNumericRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as float (4 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.
 * **doubleNumericRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as double (8 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.
-* **upsertMaxBatchSize** : The maximum number of upserts to buffer before upserting the batch to the Vector Search Index. Batches will be sent when there are either upsertBatchSize records ready, or any record has been waiting upsertBatchDelay time has passed. (Example: 10).
+* **upsertMaxBatchSize** : The maximum number of upserts to buffer before upserting the batch to the Vector Search Index. Batches will be sent when there are either upsertBatchSize records ready, or any record has been waiting upsertBatchDelay time has passed. (Example: 10). Defaults to: 10.
 * **upsertMaxBufferDuration** : The maximum delay before a batch of upserts is sent to Vector Search.Batches will be sent when there are either upsertBatchSize records ready, or any record has been waiting upsertBatchDelay time has passed. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 10s). Defaults to: 10s.
-* **deleteMaxBatchSize** : The maximum number of deletes to buffer before deleting the batch from the Vector Search Index. Batches will be sent when there are either deleteBatchSize records ready, or any record has been waiting deleteBatchDelay time has passed. (Example: 10).
+* **deleteMaxBatchSize** : The maximum number of deletes to buffer before deleting the batch from the Vector Search Index. Batches will be sent when there are either deleteBatchSize records ready, or any record has been waiting deleteBatchDelay time has passed. (Example: 10). Defaults to: 10.
 * **deleteMaxBufferDuration** : The maximum delay before a batch of deletes is sent to Vector Search.Batches will be sent when there are either deleteBatchSize records ready, or any record has been waiting deleteBatchDelay time has passed. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 10s). Defaults to: 10s.
 * **dlqDirectory** : The path to store any unprocessed records with the reason they failed to be processed. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
-* **bigtableChangeStreamMetadataInstanceId** : The Cloud Bigtable instance to use for the change streams connector metadata table. Defaults to empty.
-* **bigtableChangeStreamMetadataTableTableId** : The Cloud Bigtable change streams connector metadata table ID to use. If not provided, a Cloud Bigtable change streams connector metadata table will automatically be created during the pipeline flow. Defaults to empty.
-* **bigtableChangeStreamCharset** : Bigtable change streams charset name when reading values and column qualifiers. Default is UTF-8.
-* **bigtableChangeStreamStartTimestamp** : The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts.
-* **bigtableChangeStreamIgnoreColumnFamilies** : A comma-separated list of column family names changes to which won't be captured. Defaults to empty.
-* **bigtableChangeStreamIgnoreColumns** : A comma-separated list of column names changes to which won't be captured. Defaults to empty.
-* **bigtableChangeStreamName** : Allows to resume processing from the point where a previously running pipeline stopped.
-* **bigtableChangeStreamResume** : When set to true< a new pipeline will resume processing from the point at which a previously running pipeline with the same bigtableChangeStreamName stopped. If pipeline with the given bigtableChangeStreamName never ran in the past, a new pipeline will fail to start. When set to false a new pipeline will be started. If pipeline with the same bigtableChangeStreamName already ran in the past for the given source, a new pipeline will fail to start. Defaults to false.
-* **bigtableReadProjectId** : Project to read Cloud Bigtable data from. The default for this parameter is the project where the Dataflow pipeline is running.
+* **bigtableChangeStreamMetadataInstanceId** : The Bigtable change streams metadata instance ID. Defaults to empty.
+* **bigtableChangeStreamMetadataTableTableId** : The ID of the Bigtable change streams connector metadata table. If not provided, a Bigtable change streams connector metadata table is automatically created during pipeline execution. Defaults to empty.
+* **bigtableChangeStreamCharset** : The Bigtable change streams charset name. Defaults to: UTF-8.
+* **bigtableChangeStreamStartTimestamp** : The starting timestamp (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, `2022-05-05T07:59:59Z`. Defaults to the timestamp of the pipeline start time.
+* **bigtableChangeStreamIgnoreColumnFamilies** : A comma-separated list of column family name changes to ignore. Defaults to empty.
+* **bigtableChangeStreamIgnoreColumns** : A comma-separated list of column name changes to ignore. Defaults to empty.
+* **bigtableChangeStreamName** : A unique name for the client pipeline. Lets you resume processing from the point at which a previously running pipeline stopped. Defaults to an automatically generated name. See the Dataflow job logs for the value used.
+* **bigtableChangeStreamResume** : When set to `true`, a new pipeline resumes processing from the point at which a previously running pipeline with the same `bigtableChangeStreamName` value stopped. If the pipeline with the given `bigtableChangeStreamName` value has never run, a new pipeline doesn't start. When set to `false`, a new pipeline starts. If a pipeline with the same `bigtableChangeStreamName` value has already run for the given source, a new pipeline doesn't start. Defaults to `false`.
+* **bigtableReadProjectId** : The Bigtable project ID. The default is the project for the Dataflow job.
 
 
 
@@ -140,9 +140,9 @@ export DENY_RESTRICTS_MAPPINGS=<denyRestrictsMappings>
 export INT_NUMERIC_RESTRICTS_MAPPINGS=<intNumericRestrictsMappings>
 export FLOAT_NUMERIC_RESTRICTS_MAPPINGS=<floatNumericRestrictsMappings>
 export DOUBLE_NUMERIC_RESTRICTS_MAPPINGS=<doubleNumericRestrictsMappings>
-export UPSERT_MAX_BATCH_SIZE=<upsertMaxBatchSize>
+export UPSERT_MAX_BATCH_SIZE=10
 export UPSERT_MAX_BUFFER_DURATION=10s
-export DELETE_MAX_BATCH_SIZE=<deleteMaxBatchSize>
+export DELETE_MAX_BATCH_SIZE=10
 export DELETE_MAX_BUFFER_DURATION=10s
 export DLQ_DIRECTORY=""
 export BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID=""
@@ -219,9 +219,9 @@ export DENY_RESTRICTS_MAPPINGS=<denyRestrictsMappings>
 export INT_NUMERIC_RESTRICTS_MAPPINGS=<intNumericRestrictsMappings>
 export FLOAT_NUMERIC_RESTRICTS_MAPPINGS=<floatNumericRestrictsMappings>
 export DOUBLE_NUMERIC_RESTRICTS_MAPPINGS=<doubleNumericRestrictsMappings>
-export UPSERT_MAX_BATCH_SIZE=<upsertMaxBatchSize>
+export UPSERT_MAX_BATCH_SIZE=10
 export UPSERT_MAX_BUFFER_DURATION=10s
-export DELETE_MAX_BATCH_SIZE=<deleteMaxBatchSize>
+export DELETE_MAX_BATCH_SIZE=10
 export DELETE_MAX_BUFFER_DURATION=10s
 export DLQ_DIRECTORY=""
 export BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID=""
