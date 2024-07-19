@@ -59,7 +59,7 @@ import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link SpannerToSourceDb} Flex template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(SpannerToSourceDb.class)
+@TemplateIntegrationTest(SpannerToSourceDbMultiShardIT.class)
 @RunWith(JUnit4.class)
 public class SpannerToSourceDbMultiShardIT extends TemplateTestBase {
 
