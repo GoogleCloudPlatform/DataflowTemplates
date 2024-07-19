@@ -265,7 +265,7 @@ public class PipelineController {
   static List<String> listTablesToMigrate(String tableList, ISchemaMapper mapper, Ddl ddl) {
     List<String> tablesFromOptions =
         StringUtils.isNotBlank(tableList)
-            ? Arrays.stream(tableList.split(",")).collect(Collectors.toList())
+            ? Arrays.stream(tableList.split("\\|")).collect(Collectors.toList())
             : new ArrayList<String>();
 
     List<String> sourceTablesConfigured = null;
