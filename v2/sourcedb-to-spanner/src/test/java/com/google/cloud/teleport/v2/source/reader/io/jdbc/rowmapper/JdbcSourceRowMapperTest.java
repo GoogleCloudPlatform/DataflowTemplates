@@ -29,7 +29,6 @@ import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
-import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.Interval;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
@@ -38,7 +37,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.junit.After;
@@ -144,8 +142,10 @@ public class JdbcSourceRowMapperTest {
         assertEquals("shard1", sourceRow.shardId());
         for (int colIdx = 0; colIdx < testCols.size(); colIdx++) {
           if (valueIdx < maxNonNullValues) {
-            assertThat(sourceRow.getPayload().get(colIdx))
-                .isEqualTo(testCols.get(colIdx).expectedFields().get(valueIdx));
+            assertEquals(
+                "Failed for col: " + testCols.get(colIdx).colName() + " for valueIdx: " + valueIdx,
+                testCols.get(colIdx).expectedFields().get(valueIdx),
+                sourceRow.getPayload().get(colIdx));
           } else {
             assertThat(sourceRow.getPayload().get(colIdx)).isNull();
           }
@@ -189,18 +189,13 @@ public class JdbcSourceRowMapperTest {
     var mapping = new MysqlJdbcValueMappings().getMappings().get("TIME");
     ResultSet mockResultSet = Mockito.mock(ResultSet.class);
     when(mockResultSet.getString(anyString())).thenReturn("-838:59:58.999999");
-    assertThat(mapping.mapValue(mockResultSet, "testField", null))
-        .isEqualTo(
-            new GenericRecordBuilder(Interval.SCHEMA)
-                .set(Interval.MONTHS_FIELD_NAME, 0)
-                .set(Interval.HOURS_FIELD_NAME, -838)
-                .set(
-                    Interval.MICROS_FIELD_NAME,
-                    -1
-                        * (TimeUnit.MINUTES.toMicros(59L)
-                            + TimeUnit.SECONDS.toMicros(58L)
-                            + 999999L))
-                .build());
+    assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(-3020398999999L);
+
+    when(mockResultSet.getString(anyString())).thenReturn("838:59:58.999999");
+    assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(3020398999999L);
+
+    when(mockResultSet.getString(anyString())).thenReturn("00:00:00");
+    assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(0L);
   }
 
   @Test
@@ -385,15 +380,7 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Col.builder("time_col", "TIME", new SourceColumnType("TIME", new Long[] {}, null))
-                .withValue(
-                    "23:09:02" /* Derby supports only time of the day */,
-                    new GenericRecordBuilder(Interval.SCHEMA)
-                        .set(Interval.MONTHS_FIELD_NAME, 0)
-                        .set(Interval.HOURS_FIELD_NAME, 23)
-                        .set(
-                            Interval.MICROS_FIELD_NAME,
-                            TimeUnit.MINUTES.toMicros(9L) + TimeUnit.SECONDS.toMicros(2L))
-                        .build())
+                .withValue("23:09:02" /* Derby supports only time of the day */, 83342000000L)
                 .build())
         .add(
             Col.builder(
