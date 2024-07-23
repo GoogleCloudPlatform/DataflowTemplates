@@ -34,7 +34,6 @@
   </description>
 
   <properties>
-    <autovalue.service.version>1.0.2</autovalue.service.version>
     <mock-server-netty.version>5.14.0</mock-server-netty.version>
     <open-census.version>0.24.0</open-census.version>
     <!-- TODO: check if this could be declared on a Beam BOM instead of here -->
@@ -740,6 +739,11 @@
               <groupId>com.google.auto.value</groupId>
               <artifactId>auto-value</artifactId>
               <version>${autovalue.version}</version>
+            </path>
+            <path>
+              <groupId>com.google.auto.service</groupId>
+              <artifactId>auto-service</artifactId>
+              <version>${autovalue.service.version}</version>
             </path>
           </annotationProcessorPaths>
         </configuration>
