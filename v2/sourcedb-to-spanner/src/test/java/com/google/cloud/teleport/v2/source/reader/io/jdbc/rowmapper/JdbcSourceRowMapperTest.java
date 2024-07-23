@@ -40,6 +40,7 @@ import java.sql.Timestamp;
 import java.util.stream.Collectors;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -196,6 +197,11 @@ public class JdbcSourceRowMapperTest {
 
     when(mockResultSet.getString(anyString())).thenReturn("00:00:00");
     assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(0L);
+
+    when(mockResultSet.getString(anyString())).thenReturn("invalid_data");
+    Assert.assertThrows(
+        java.lang.IllegalArgumentException.class,
+        () -> mapping.mapValue(mockResultSet, "testField", null));
   }
 
   @Test
