@@ -179,13 +179,15 @@ public class AssignShardIdFn
   public void processElement(ProcessContext c) throws Exception {
     TrimmedShardedDataChangeRecord record = new TrimmedShardedDataChangeRecord(c.element());
     String qualifiedShard = "";
+    String tableName = record.getTableName();
+    String keysJsonStr = record.getMod().getKeysJson();
+
     try {
       if (shardingMode.equals(Constants.SHARDING_MODE_SINGLE_SHARD)) {
         record.setShard(this.shardName);
         qualifiedShard = this.shardName;
       } else {
         // Skip from processing if table not in session File
-        String tableName = record.getTableName();
         String shardIdColumn = getShardIdColumnForTableName(tableName);
         if (shardIdColumn.isEmpty()) {
           LOG.warn(
@@ -196,9 +198,8 @@ public class AssignShardIdFn
           record.setShard(skipDirName);
           qualifiedShard = skipDirName;
         } else {
-          String keysJsonStr = record.getMod().getKeysJson();
-          JsonNode keysJson = mapper.readTree(keysJsonStr);
 
+          JsonNode keysJson = mapper.readTree(keysJsonStr);
           String newValueJsonStr = record.getMod().getNewValuesJson();
           JsonNode newValueJson = mapper.readTree(newValueJsonStr);
           Map<String, Object> spannerRecord = new HashMap<>();
@@ -206,39 +207,16 @@ public class AssignShardIdFn
           if (record.getModType() == ModType.DELETE) {
             spannerRecord =
                 fetchSpannerRecord(
-                    record.getTableName(),
+                    tableName,
                     record.getCommitTimestamp(),
                     record.getServerTransactionId(),
                     keysJson);
           } else {
-            Table table = ddl.table(record.getTableName());
-
-            // Add all fields from keysJson and valuesJson to spannerRecord
-            for (Iterator<String> it = keysJson.fieldNames(); it.hasNext(); ) {
-              String key = it.next();
-              Column column = table.column(key);
-              spannerRecord.put(key, getColumnValueFromJson(column, keysJson));
-            }
-            for (Iterator<String> it = newValueJson.fieldNames(); it.hasNext(); ) {
-              String key = it.next();
-              Column column = table.column(key);
-              spannerRecord.put(key, getColumnValueFromJson(column, newValueJson));
-            }
+            spannerRecord = getSpannerRecordFromChangeStreamData(tableName, keysJson, newValueJson);
           }
-          ShardIdRequest shardIdRequest = new ShardIdRequest(record.getTableName(), spannerRecord);
+          ShardIdRequest shardIdRequest = new ShardIdRequest(tableName, spannerRecord);
 
-          ShardIdResponse shardIdResponse;
-          if (!customJarPath.isEmpty() && !shardingCustomClassName.isEmpty()) {
-            Distribution getShardIdResponseTimeMetric =
-                Metrics.distribution(AssignShardIdFn.class, "custom_shard_id_impl_latency_ms");
-            Instant startTimestamp = Instant.now();
-            shardIdResponse = shardIdFetcher.getShardId(shardIdRequest);
-            Instant endTimestamp = Instant.now();
-            getShardIdResponseTimeMetric.update(
-                new Duration(startTimestamp, endTimestamp).getMillis());
-          } else {
-            shardIdResponse = shardIdFetcher.getShardId(shardIdRequest);
-          }
+          ShardIdResponse shardIdResponse = getShardIdResponse(shardIdRequest);
 
           qualifiedShard = shardIdResponse.getLogicalShardId();
           if (qualifiedShard == null || qualifiedShard.isEmpty() || qualifiedShard.contains("/")) {
@@ -252,8 +230,6 @@ public class AssignShardIdFn
       }
 
       record.setShard(qualifiedShard);
-      String tableName = record.getTableName();
-      String keysJsonStr = record.getMod().getKeysJson();
       String finalKeyString = tableName + "_" + keysJsonStr + "_" + qualifiedShard;
       Long finalKey = finalKeyString.hashCode() % maxConnectionsPerShard;
       c.output(KV.of(finalKey, record));
@@ -493,5 +469,39 @@ public class AssignShardIdFn
               + " not found in session file. Please provide a valid session file.");
     }
     return spTable.getColDefs().get(shardColId).getName();
+  }
+
+  private Map<String, Object> getSpannerRecordFromChangeStreamData(
+      String tableName, JsonNode keysJson, JsonNode newValueJson) throws Exception {
+    Map<String, Object> spannerRecord = new HashMap<>();
+    Table table = ddl.table(tableName);
+
+    // Add all fields from keysJson and valuesJson to spannerRecord
+    for (Iterator<String> it = keysJson.fieldNames(); it.hasNext(); ) {
+      String key = it.next();
+      Column column = table.column(key);
+      spannerRecord.put(key, getColumnValueFromJson(column, keysJson));
+    }
+    for (Iterator<String> it = newValueJson.fieldNames(); it.hasNext(); ) {
+      String key = it.next();
+      Column column = table.column(key);
+      spannerRecord.put(key, getColumnValueFromJson(column, newValueJson));
+    }
+    return spannerRecord;
+  }
+
+  private ShardIdResponse getShardIdResponse(ShardIdRequest shardIdRequest) throws Exception {
+    ShardIdResponse shardIdResponse = new ShardIdResponse();
+    if (!customJarPath.isEmpty() && !shardingCustomClassName.isEmpty()) {
+      Distribution getShardIdResponseTimeMetric =
+          Metrics.distribution(AssignShardIdFn.class, "custom_shard_id_impl_latency_ms");
+      Instant startTimestamp = Instant.now();
+      shardIdResponse = shardIdFetcher.getShardId(shardIdRequest);
+      Instant endTimestamp = Instant.now();
+      getShardIdResponseTimeMetric.update(new Duration(startTimestamp, endTimestamp).getMillis());
+    } else {
+      shardIdResponse = shardIdFetcher.getShardId(shardIdRequest);
+    }
+    return shardIdResponse;
   }
 }

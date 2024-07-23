@@ -173,11 +173,9 @@ public class SpannerToSourceDb {
 
     @TemplateParameter.GcsReadFile(
         order = 10,
-        optional = true,
+        optional = false,
         description = "Path to GCS file containing the the Source shard details",
-        helpText =
-            "Path to GCS file containing connection profile info for source shards. Must be"
-                + " provided if sink is kafka.")
+        helpText = "Path to GCS file containing connection profile info for source shards.")
     String getSourceShardsFilePath();
 
     void setSourceShardsFilePath(String value);
@@ -289,6 +287,18 @@ public class SpannerToSourceDb {
     Long getMaxShardConnections();
 
     void setMaxShardConnections(Long value);
+
+    @TemplateParameter.Text(
+        order = 20,
+        optional = true,
+        description = "Dead letter queue directory.",
+        helpText =
+            "The file path used when storing the error queue output. "
+                + "The default file path is a directory under the Dataflow job's temp location.")
+    @Default.String("")
+    String getDeadLetterQueueDirectory();
+
+    void setDeadLetterQueueDirectory(String value);
   }
 
   /**
@@ -317,8 +327,6 @@ public class SpannerToSourceDb {
   public static PipelineResult run(Options options) {
 
     Pipeline pipeline = Pipeline.create(options);
-    // We disable auto-scaling as scaling operations accumulate records in the buffer which can
-    // cause the pipeline to crash.
     pipeline
         .getOptions()
         .as(DataflowPipelineWorkerPoolOptions.class)

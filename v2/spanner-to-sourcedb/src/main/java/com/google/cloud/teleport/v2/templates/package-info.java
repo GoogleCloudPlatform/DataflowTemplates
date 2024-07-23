@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Package info for Spanner change streams to Kafka module. */
+/** Package info for Spanner change streams to SourceDb module. */
 package com.google.cloud.teleport.v2.templates;

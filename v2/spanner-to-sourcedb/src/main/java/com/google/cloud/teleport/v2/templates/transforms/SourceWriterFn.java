@@ -28,6 +28,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.utils.MySqlDao;
 import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
@@ -234,7 +235,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       com.google.cloud.Timestamp commitTimestamp) {
     Mutation.WriteBuilder mutationBuilder =
         Mutation.newInsertOrUpdateBuilder(shadowTableName)
-            .set("processed_commit_ts")
+            .set(Constants.PROCESSED_COMMIT_TS_COLUMN_NAME)
             .to(commitTimestamp);
     // TODO: Check to refactor and use ChangeEventTypeConvertor.mutationBuilderFromEvent.
     try {

@@ -150,7 +150,7 @@ public class DataChangeRecordTypeConvertor {
   }
 
   /*
-   * This function converts the JSON field to string. In addition, this function also checks
+   * This function converts the JSON field to BigDecimal. In addition, this function also checks
    * if the field is a number.
    */
   public static BigDecimal toNumericBigDecimal(

@@ -12,30 +12,31 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **changeStreamName** (Name of the change stream to read from): This is the name of the Spanner change stream that the pipeline will read from.
-* **instanceId** (Cloud Spanner Instance Id.): This is the name of the Cloud Spanner instance where the changestream is present.
-* **databaseId** (Cloud Spanner Database Id.): This is the name of the Cloud Spanner database that the changestream is monitoring.
-* **spannerProjectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
-* **metadataInstance** (Cloud Spanner Instance to store metadata when reading from changestreams): This is the instance to store the metadata used by the connector to control the consumption of the change stream API data.
-* **metadataDatabase** (Cloud Spanner Database to store metadata when reading from changestreams): This is the database to store the metadata used by the connector to control the consumption of the change stream API data.
+* **changeStreamName** : This is the name of the Spanner change stream that the pipeline will read from.
+* **instanceId** : This is the name of the Cloud Spanner instance where the changestream is present.
+* **databaseId** : This is the name of the Cloud Spanner database that the changestream is monitoring.
+* **spannerProjectId** : This is the name of the Cloud Spanner project.
+* **metadataInstance** : This is the instance to store the metadata used by the connector to control the consumption of the change stream API data.
+* **metadataDatabase** : This is the database to store the metadata used by the connector to control the consumption of the change stream API data.
+* **sourceShardsFilePath** : Path to GCS file containing connection profile info for source shards.
 
-### Optional Parameters
+### Optional parameters
 
-* **startTimestamp** (Changes are read from the given timestamp): Read changes from the given timestamp. Defaults to empty.
-* **endTimestamp** (Changes are read until the given timestamp): Read changes until the given timestamp. If no timestamp provided, reads indefinitely. Defaults to empty.
-* **shadowTablePrefix** (Cloud Spanner shadow table prefix.): The prefix used to name shadow tables. Default: `shadow_`.
-* **sourceShardsFilePath** (Path to GCS file containing the the Source shard details): Path to GCS file containing connection profile info for source shards. Must be provided if sink is kafka.
-* **sessionFilePath** (Session File Path in Cloud Storage): Session file path in Cloud Storage that contains mapping information from HarbourBridge.
-* **filtrationMode** (Filtration mode): Mode of Filtration, decides how to drop certain records based on a criteria. Currently supported modes are: none (filter nothing), forward_migration (filter records written via the forward migration pipeline). Defaults to forward_migration.
-* **shardingCustomJarPath** (Custom jar location in Cloud Storage): Custom jar location in Cloud Storage that contains the customization logic for fetching shard id. Defaults to empty.
-* **shardingCustomClassName** (Custom class name): Fully qualified class name having the custom shard id implementation.  It is a mandatory field in case shardingCustomJarPath is specified. Defaults to empty.
-* **shardingCustomParameters** (Custom sharding logic parameters): String containing any custom parameters to be passed to the custom sharding class. Defaults to empty.
-* **sourceDbTimezoneOffset** (SourceDB timezone offset): This is the timezone offset from UTC for the source database. Example value: +10:00. Defaults to: +00:00.
-* **dlqGcsPubSubSubscription** (The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode.): The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored.
-* **skipDirectoryName** (Directory name for holding skipped records): Records skipped from reverse replication are written to this directory. Default directory name is skip.
-* **maxShardConnections** (Maximum connections per shard.): This will come from shard file eventually. Defaults to: 10000.
+* **startTimestamp** : Read changes from the given timestamp. Defaults to empty.
+* **endTimestamp** : Read changes until the given timestamp. If no timestamp provided, reads indefinitely. Defaults to empty.
+* **shadowTablePrefix** : The prefix used to name shadow tables. Default: `shadow_`.
+* **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from HarbourBridge.
+* **filtrationMode** : Mode of Filtration, decides how to drop certain records based on a criteria. Currently supported modes are: none (filter nothing), forward_migration (filter records written via the forward migration pipeline). Defaults to forward_migration.
+* **shardingCustomJarPath** : Custom jar location in Cloud Storage that contains the customization logic for fetching shard id. Defaults to empty.
+* **shardingCustomClassName** : Fully qualified class name having the custom shard id implementation.  It is a mandatory field in case shardingCustomJarPath is specified. Defaults to empty.
+* **shardingCustomParameters** : String containing any custom parameters to be passed to the custom sharding class. Defaults to empty.
+* **sourceDbTimezoneOffset** : This is the timezone offset from UTC for the source database. Example value: +10:00. Defaults to: +00:00.
+* **dlqGcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored.
+* **skipDirectoryName** : Records skipped from reverse replication are written to this directory. Default directory name is skip.
+* **maxShardConnections** : This will come from shard file eventually. Defaults to: 10000.
+* **deadLetterQueueDirectory** : The file path used when storing the error queue output. The default file path is a directory under the Dataflow job's temp location.
 
 
 
@@ -120,12 +121,12 @@ export DATABASE_ID=<databaseId>
 export SPANNER_PROJECT_ID=<spannerProjectId>
 export METADATA_INSTANCE=<metadataInstance>
 export METADATA_DATABASE=<metadataDatabase>
+export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 
 ### Optional
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
 export SHADOW_TABLE_PREFIX=shadow_
-export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 export SESSION_FILE_PATH=<sessionFilePath>
 export FILTRATION_MODE=forward_migration
 export SHARDING_CUSTOM_JAR_PATH=""
@@ -135,6 +136,7 @@ export SOURCE_DB_TIMEZONE_OFFSET=+00:00
 export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
 export SKIP_DIRECTORY_NAME=skip
 export MAX_SHARD_CONNECTIONS=10000
+export DEAD_LETTER_QUEUE_DIRECTORY=""
 
 gcloud dataflow flex-template run "spanner-to-sourcedb-job" \
   --project "$PROJECT" \
@@ -158,7 +160,8 @@ gcloud dataflow flex-template run "spanner-to-sourcedb-job" \
   --parameters "sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET" \
   --parameters "dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION" \
   --parameters "skipDirectoryName=$SKIP_DIRECTORY_NAME" \
-  --parameters "maxShardConnections=$MAX_SHARD_CONNECTIONS"
+  --parameters "maxShardConnections=$MAX_SHARD_CONNECTIONS" \
+  --parameters "deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY"
 ```
 
 For more information about the command, please check:
@@ -183,12 +186,12 @@ export DATABASE_ID=<databaseId>
 export SPANNER_PROJECT_ID=<spannerProjectId>
 export METADATA_INSTANCE=<metadataInstance>
 export METADATA_DATABASE=<metadataDatabase>
+export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 
 ### Optional
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
 export SHADOW_TABLE_PREFIX=shadow_
-export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 export SESSION_FILE_PATH=<sessionFilePath>
 export FILTRATION_MODE=forward_migration
 export SHARDING_CUSTOM_JAR_PATH=""
@@ -198,6 +201,7 @@ export SOURCE_DB_TIMEZONE_OFFSET=+00:00
 export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
 export SKIP_DIRECTORY_NAME=skip
 export MAX_SHARD_CONNECTIONS=10000
+export DEAD_LETTER_QUEUE_DIRECTORY=""
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -206,7 +210,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-to-sourcedb-job" \
 -DtemplateName="Spanner_to_SourceDb" \
--Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,shadowTablePrefix=$SHADOW_TABLE_PREFIX,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE,shardingCustomJarPath=$SHARDING_CUSTOM_JAR_PATH,shardingCustomClassName=$SHARDING_CUSTOM_CLASS_NAME,shardingCustomParameters=$SHARDING_CUSTOM_PARAMETERS,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,skipDirectoryName=$SKIP_DIRECTORY_NAME,maxShardConnections=$MAX_SHARD_CONNECTIONS" \
+-Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,shadowTablePrefix=$SHADOW_TABLE_PREFIX,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE,shardingCustomJarPath=$SHARDING_CUSTOM_JAR_PATH,shardingCustomClassName=$SHARDING_CUSTOM_CLASS_NAME,shardingCustomParameters=$SHARDING_CUSTOM_PARAMETERS,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,skipDirectoryName=$SKIP_DIRECTORY_NAME,maxShardConnections=$MAX_SHARD_CONNECTIONS,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY" \
 -f v2/spanner-to-sourcedb
 ```
 
@@ -215,8 +219,23 @@ mvn clean package -PtemplatesRun \
 Dataflow supports the utilization of Terraform to manage template jobs,
 see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
 
-Here is an example of Terraform configuration:
+Terraform modules have been generated for most templates in this repository. This includes the relevant parameters
+specific to the template. If available, they may be used instead of
+[dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job)
+directly.
 
+To use the autogenerated module, execute the standard
+[terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
+
+```shell
+cd v2/spanner-to-sourcedb/terraform/Spanner_to_SourceDb
+terraform init
+terraform apply
+```
+
+To use
+[dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job)
+directly:
 
 ```terraform
 provider "google-beta" {
@@ -242,10 +261,10 @@ resource "google_dataflow_flex_template_job" "spanner_to_sourcedb" {
     spannerProjectId = "<spannerProjectId>"
     metadataInstance = "<metadataInstance>"
     metadataDatabase = "<metadataDatabase>"
+    sourceShardsFilePath = "<sourceShardsFilePath>"
     # startTimestamp = ""
     # endTimestamp = ""
     # shadowTablePrefix = "shadow_"
-    # sourceShardsFilePath = "<sourceShardsFilePath>"
     # sessionFilePath = "<sessionFilePath>"
     # filtrationMode = "forward_migration"
     # shardingCustomJarPath = ""
@@ -255,6 +274,7 @@ resource "google_dataflow_flex_template_job" "spanner_to_sourcedb" {
     # dlqGcsPubSubSubscription = "<dlqGcsPubSubSubscription>"
     # skipDirectoryName = "skip"
     # maxShardConnections = "10000"
+    # deadLetterQueueDirectory = ""
   }
 }
 ```

@@ -68,7 +68,6 @@ public class MySqlDao implements Serializable {
         LOG.warn("Connection exception while executing SQL, will retry : " + e.getMessage());
         // gives indication that the shard is being retried
         Metrics.counter(MySqlDao.class, "mySQL_retry_sql").inc();
-        status = true;
       } catch (java.sql.SQLNonTransientConnectionException e) {
         if (e.getMessage().contains("Server shutdown in progress")) {
           LOG.warn(
@@ -77,8 +76,6 @@ public class MySqlDao implements Serializable {
                   + e.getMessage());
           // gives indication that the shard is being retried
           Metrics.counter(MySqlDao.class, "mySQL_retry_sql").inc();
-          status = true;
-
         } else {
           throw e;
         }
@@ -91,8 +88,6 @@ public class MySqlDao implements Serializable {
                   + e.getMessage());
           // gives indication that the shard is being retried
           Metrics.counter(MySqlDao.class, "mySQL_retry_sql").inc();
-          status = true;
-
         } else {
           throw e;
         }

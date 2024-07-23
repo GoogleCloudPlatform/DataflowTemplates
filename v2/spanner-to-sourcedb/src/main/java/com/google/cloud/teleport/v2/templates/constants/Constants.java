@@ -38,4 +38,7 @@ public class Constants {
 
   // Run mode - resume
   public static final String RUN_MODE_RESUME = "resume";
+
+  // Commit timestamp column name in shadow table
+  public static final String PROCESSED_COMMIT_TS_COLUMN_NAME = "processed_commit_ts";
 }

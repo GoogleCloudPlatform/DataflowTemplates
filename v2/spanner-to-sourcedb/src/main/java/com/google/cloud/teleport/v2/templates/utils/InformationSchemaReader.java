@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
  * the information schema as a DDL object.
  */
 public class InformationSchemaReader {
+  // TODO : move to common
   private static final Logger LOG = LoggerFactory.getLogger(InformationSchemaReader.class);
 
   public static Ddl getInformationSchemaAsDdl(SpannerConfig spannerConfig) {

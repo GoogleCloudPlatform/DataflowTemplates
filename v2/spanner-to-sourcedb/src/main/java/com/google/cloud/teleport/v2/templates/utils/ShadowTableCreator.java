@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.InformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import java.util.List;
 import java.util.Set;
@@ -135,7 +136,7 @@ public class ShadowTableCreator {
     // to source
     // by the pipeline.
     Column.Builder processedCommitTimestampColumnBuilder =
-        shadowTableBuilder.column("processed_commit_ts");
+        shadowTableBuilder.column(Constants.PROCESSED_COMMIT_TS_COLUMN_NAME);
     shadowTableBuilder.addColumn(
         processedCommitTimestampColumnBuilder.type(Type.timestamp()).notNull(false).autoBuild());
 
