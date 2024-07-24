@@ -387,7 +387,6 @@ public class SpannerToSourceDb {
         // PCollection<TrimmedShardedDataChangeRecord> which is
         // Spanner change stream data with only needed fields
         .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class))
-        .apply("Reshuffle2", Reshuffle.viaRandomKey())
         .apply(
             ParDo.of(
                 new AssignShardIdFn(
@@ -403,7 +402,7 @@ public class SpannerToSourceDb {
                     options.getMaxShardConnections()))) // This emits PCollection<KV<Long,
         // TrimmedShardedDataChangeRecord>> which is Spanner change stream data with key as PK mod
         // number of parallelism
-        .apply("Reshuffle3", Reshuffle.of())
+        .apply("Reshuffle2", Reshuffle.of())
         .apply(
             ParDo.of(
                 new SourceWriterFn(
