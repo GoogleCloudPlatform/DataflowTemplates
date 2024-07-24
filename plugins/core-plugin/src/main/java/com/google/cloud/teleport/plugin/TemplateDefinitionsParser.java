@@ -48,9 +48,7 @@ public final class TemplateDefinitionsParser {
     Set<Class<?>> templates = new Reflections(classLoader).getTypesAnnotatedWith(Template.class);
     for (Class<?> templateClass : templates) {
       Template templateAnnotation = templateClass.getAnnotation(Template.class);
-      if (!templateAnnotation.testOnly()) {
-        allDefinitions.add(new TemplateDefinitions(templateClass, templateAnnotation));
-      }
+      allDefinitions.add(new TemplateDefinitions(templateClass, templateAnnotation));
     }
 
     // Scan every @MultiTemplate class
