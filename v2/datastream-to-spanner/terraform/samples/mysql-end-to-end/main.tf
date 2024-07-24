@@ -248,6 +248,10 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     directoryWatchDurationInMinutes = tostring(var.dataflow_params.template_params.directory_watch_duration_in_minutes)
     spannerPriority                 = var.dataflow_params.template_params.spanner_priority
     dlqGcsPubSubSubscription        = var.dataflow_params.template_params.dlq_gcs_pub_sub_subscription
+    transformationJarPath           = var.dataflow_params.template_params.transformation_jar_path
+    transformationClassName         = var.dataflow_params.template_params.transformation_class_name
+    transformationCustomParameters  = var.dataflow_params.template_params.transformation_custom_parameters
+    filteredEventsDirectory         = var.dataflow_params.template_params.filtered_events_directory
   }
 
   # Additional Job Configurations

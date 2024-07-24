@@ -58,7 +58,11 @@ dataflow_params = {
     transformation_context_file_path    = "<YOUR_TRANSFORMATION_FILE_PATH>" # Path to your transformation file (optional)
     directory_watch_duration_in_minutes = "5"                               # Adjust as needed
     spanner_priority                    = "high"
-    dlq_gcs_pub_sub_subscription        = "<YOUR_DLQ_PUBSUB_SUBSCRIPTION>" # Optional
+    dlq_gcs_pub_sub_subscription        = "<YOUR_DLQ_PUBSUB_SUBSCRIPTION>"        # Optional
+    transformation_jar_path             = "<YOUR_CUSTOM_TRANSFORMATION_JAR_PATH>" # Optional
+    transformation_custom_parameters    = "<YOUR_CUSTOM_PARAMETERS_FOR_JAR>"      # Optional
+    transformation_class_name           = "<YOUR_TRANSFORMATION_CLASS_NAME>"      # Fully Classified Class Name(Optional)
+    filtered_events_directory           = "<YOUR_GCS_PATH_FOR_FILTERED_EVENTS>"   # Optional
   }
 
   runner_params = {
