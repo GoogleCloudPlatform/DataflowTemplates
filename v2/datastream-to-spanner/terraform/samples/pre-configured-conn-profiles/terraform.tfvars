@@ -16,14 +16,11 @@ datastream_params = {
   stream_id                     = "mysql-stream"   # Or your custom stream ID
   max_concurrent_cdc_tasks      = 5                # Between 1-50, remove this to use the default (5)
   max_concurrent_backfill_tasks = 15               # Between 1-50, remove this to use the default (15)
-  mysql_databases = [
-    {
+  mysql_database = {
       database = "<YOUR_DATABASE_NAME>"
       tables   = []
       # Optionally list specific tables, or remove "tables" all together for all tables
-    },
-    # Add more database objects if needed
-  ]
+    }
 }
 
 # Dataflow Parameters
@@ -47,16 +44,19 @@ dataflow_params = {
     dlq_max_retry_count = 100 # Adjust as needed
     datastream_root_url = "<YOUR_DATASTREAM_ROOT_URL>"
     # Base URL of your Datastream API (optional)
-    datastream_source_type           = "MYSQL"
+    datastream_source_type           = "mysql"
     round_json_decimals              = false
-    run_mode                         = "STREAMING"
+    run_mode                         = "regular"
     transformation_context_file_path = "<YOUR_TRANSFORMATION_FILE_PATH>"
     # Path to your transformation file (optional)
     directory_watch_duration_in_minutes = "5"
     # Adjust as needed
-    spanner_priority             = "high"
-    dlq_gcs_pub_sub_subscription = "<YOUR_DLQ_PUBSUB_SUBSCRIPTION>"
-    # Optional
+    spanner_priority             = "HIGH"
+    dlq_gcs_pub_sub_subscription = "<YOUR_DLQ_PUBSUB_SUBSCRIPTION>" # Optional
+    transformation_jar_path             = "<YOUR_CUSTOM_TRANSFORMATION_JAR_PATH>" # GCS path to the custom transformation JAR(Optional)
+    transformation_custom_parameters    = "<YOUR_CUSTOM_PARAMETERS_FOR_JAR>"      # Custom parameters used by the transformation JAR(Optional)
+    transformation_class_name           = "<YOUR_TRANSFORMATION_CLASS_NAME>"      # Fully Classified Class Name(Optional)
+    filtered_events_directory           = "<YOUR_GCS_PATH_FOR_FILTERED_EVENTS>"   # GCS path to store the filtered events(Optional)
   }
 
   runner_params = {
