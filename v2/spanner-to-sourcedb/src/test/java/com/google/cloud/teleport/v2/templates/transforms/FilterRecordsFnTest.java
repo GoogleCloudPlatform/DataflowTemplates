@@ -55,6 +55,7 @@ public class FilterRecordsFnTest {
     pipeline.run();
   }
 
+  @Test
   public void noFilteringTest() {
     PCollection<DataChangeRecord> output =
         pipeline

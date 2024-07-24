@@ -376,10 +376,16 @@ public class SpannerToSourceDb {
       shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
     }
     pipeline
-        .apply(getReadChangeStreamDoFn(options, spannerConfig))
+        .apply(
+            getReadChangeStreamDoFn(
+                options,
+                spannerConfig)) // This emits PCollection<DataChangeRecord> which is Spanner change
+        // stream data
         .apply("Reshuffle", Reshuffle.viaRandomKey())
         .apply(ParDo.of(new FilterRecordsFn(options.getFiltrationMode())))
-        .apply(ParDo.of(new PreprocessRecordsFn()))
+        .apply(ParDo.of(new PreprocessRecordsFn())) // This emits
+        // PCollection<TrimmedShardedDataChangeRecord> which is
+        // Spanner change stream data with only needed fields
         .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class))
         .apply("Reshuffle2", Reshuffle.viaRandomKey())
         .apply(
@@ -394,7 +400,10 @@ public class SpannerToSourceDb {
                     options.getShardingCustomJarPath(),
                     options.getShardingCustomClassName(),
                     options.getShardingCustomParameters(),
-                    options.getMaxShardConnections())))
+                    options.getMaxShardConnections()))) // This emits PCollection<KV<Long,
+        // TrimmedShardedDataChangeRecord>> which is Spanner change stream data with key as PK mod
+        // number of parallelism
+        .apply("Reshuffle3", Reshuffle.of())
         .apply(
             ParDo.of(
                 new SourceWriterFn(
@@ -403,7 +412,9 @@ public class SpannerToSourceDb {
                     spannerMetadataConfig,
                     options.getSourceDbTimezoneOffset(),
                     ddl,
-                    options.getShadowTablePrefix())));
+                    options
+                        .getShadowTablePrefix()))); // This writes to source, will emit DLQ records
+                                                    // in future
     // TODO: write a DLQ writer and a DLQ reader
     return pipeline.run();
   }
