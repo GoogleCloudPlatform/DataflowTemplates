@@ -414,7 +414,7 @@ public class SpannerToSourceDb {
                     ddl,
                     options
                         .getShadowTablePrefix()))); // This writes to source, will emit DLQ records
-                                                    // in future
+    // in future
     // TODO: write a DLQ writer and a DLQ reader
     return pipeline.run();
   }
