@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
@@ -34,7 +35,6 @@ import com.google.cloud.teleport.v2.templates.transforms.AssignShardIdFn;
 import com.google.cloud.teleport.v2.templates.transforms.FilterRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.PreprocessRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.SourceWriterFn;
-import com.google.cloud.teleport.v2.templates.utils.InformationSchemaReader;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableCreator;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -368,7 +368,7 @@ public class SpannerToSourceDb {
             options.getShadowTablePrefix());
 
     shadowTableCreator.createShadowTablesInSpanner();
-    Ddl ddl = InformationSchemaReader.getInformationSchemaAsDdl(spannerConfig);
+    Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
     List<Shard> shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
     String shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
