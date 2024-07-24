@@ -17,10 +17,10 @@ datastream_params = {
   max_concurrent_cdc_tasks      = 5                # Between 1-50, remove this to use the default (5)
   max_concurrent_backfill_tasks = 15               # Between 1-50, remove this to use the default (15)
   mysql_database = {
-      database = "<YOUR_DATABASE_NAME>"
-      tables   = []
-      # Optionally list specific tables, or remove "tables" all together for all tables
-    }
+    database = "<YOUR_DATABASE_NAME>"
+    tables   = []
+    # Optionally list specific tables, or remove "tables" all together for all tables
+  }
 }
 
 # Dataflow Parameters
@@ -51,12 +51,12 @@ dataflow_params = {
     # Path to your transformation file (optional)
     directory_watch_duration_in_minutes = "5"
     # Adjust as needed
-    spanner_priority             = "HIGH"
-    dlq_gcs_pub_sub_subscription = "<YOUR_DLQ_PUBSUB_SUBSCRIPTION>" # Optional
-    transformation_jar_path             = "<YOUR_CUSTOM_TRANSFORMATION_JAR_PATH>" # GCS path to the custom transformation JAR(Optional)
-    transformation_custom_parameters    = "<YOUR_CUSTOM_PARAMETERS_FOR_JAR>"      # Custom parameters used by the transformation JAR(Optional)
-    transformation_class_name           = "<YOUR_TRANSFORMATION_CLASS_NAME>"      # Fully Classified Class Name(Optional)
-    filtered_events_directory           = "<YOUR_GCS_PATH_FOR_FILTERED_EVENTS>"   # GCS path to store the filtered events(Optional)
+    spanner_priority                 = "HIGH"
+    dlq_gcs_pub_sub_subscription     = "<YOUR_DLQ_PUBSUB_SUBSCRIPTION>"        # Optional
+    transformation_jar_path          = "<YOUR_CUSTOM_TRANSFORMATION_JAR_PATH>" # GCS path to the custom transformation JAR(Optional)
+    transformation_custom_parameters = "<YOUR_CUSTOM_PARAMETERS_FOR_JAR>"      # Custom parameters used by the transformation JAR(Optional)
+    transformation_class_name        = "<YOUR_TRANSFORMATION_CLASS_NAME>"      # Fully Classified Class Name(Optional)
+    filtered_events_directory        = "<YOUR_GCS_PATH_FOR_FILTERED_EVENTS>"   # GCS path to store the filtered events(Optional)
   }
 
   runner_params = {
