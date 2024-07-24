@@ -66,6 +66,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
+import org.apache.commons.io.IOUtils;
 import org.apache.http.ConnectionClosedException;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -1658,7 +1659,14 @@ public class ElasticsearchIO {
     try (RestClient restClient = connectionConfiguration.createClient()) {
       Request request = new Request("GET", "");
       Response response = restClient.performRequest(request);
-      JsonNode jsonNode = parseResponse(response.getEntity());
+      JsonNode jsonNode;
+      try {
+        jsonNode = parseResponse(response.getEntity());
+      } catch (IOException jsonException) {
+        throw new IOException(
+            "The response is not a valid JSON: "
+                + IOUtils.toString(response.getEntity().getContent(), StandardCharsets.UTF_8));
+      }
       int backendVersion =
           Integer.parseInt(jsonNode.path("version").path("number").asText().substring(0, 1));
       checkArgument(
