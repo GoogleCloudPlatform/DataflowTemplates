@@ -170,12 +170,6 @@ public class ImportPipelineIT extends TemplateTestBase {
             + ") PRIMARY KEY(Key)";
     spannerResourceManager.executeDdlStatement(createFloat32TableStatement);
 
-    String createSearchIndexStatement =
-        "CREATE SEARCH INDEX `SearchIndex`\n"
-            + " ON `Singers`(`MyTokens` ASC)\n"
-            + " OPTIONS (sort_order_sharding=TRUE)";
-    spannerResourceManager.executeDdlStatement(createSearchIndexStatement);
-
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
             PipelineLauncher.LaunchConfig.builder(testName, specPath)

@@ -138,6 +138,11 @@ public final class Type implements Serializable {
     return TYPE_BYTES;
   }
 
+  /** Returns the descriptor for the {@code TOKENLIST} type: a collection of unique token strings. */
+  public static Type tokenlist() {
+    return TYPE_TOKENLIST;
+  }
+
   /**
    * Returns the descriptor for the {@code TOKENLIST} type: a collection of unique token strings.
    */

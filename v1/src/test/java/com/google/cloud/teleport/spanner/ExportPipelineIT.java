@@ -243,11 +243,13 @@ public class ExportPipelineIT extends TemplateTestBase {
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(modelStructArtifacts).isNotEmpty();
+    //assertThat(searchIndexArtifacts).isNotEmpty();
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
     List<GenericRecord> modelStructRecords =
         extractArtifacts(modelStructArtifacts, MODEL_STRUCT_SCHEMA);
+    //List<GenericRecord> searchIndexRecords = extractArtifacts(searchIndexArtifacts, SEARCH_INDEX_SCHEMA);
 
     assertThatGenericRecords(singersRecords)
         .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData));
