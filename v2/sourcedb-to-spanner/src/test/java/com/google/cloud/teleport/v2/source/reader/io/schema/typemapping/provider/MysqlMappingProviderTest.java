@@ -82,14 +82,7 @@ public class MysqlMappingProviderTest {
         .put("SET", "\"string\"")
         .put("SMALLINT", "\"int\"")
         .put("TEXT", "\"string\"")
-        .put(
-            "TIME",
-            "{\"type\":\"record\","
-                + "\"name\":\"interval\","
-                + "\"fields\":["
-                + "{\"name\":\"months\",\"type\":\"int\"},"
-                + "{\"name\":\"hours\",\"type\":\"int\"},"
-                + "{\"name\":\"micros\",\"type\":\"long\"}]}")
+        .put("TIME", "{\"type\":\"long\",\"logicalType\":\"time-interval-micros\"}")
         .put("TIMESTAMP", "{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}")
         .put("TINYBLOB", "\"string\"")
         .put("TINYINT", "\"int\"")

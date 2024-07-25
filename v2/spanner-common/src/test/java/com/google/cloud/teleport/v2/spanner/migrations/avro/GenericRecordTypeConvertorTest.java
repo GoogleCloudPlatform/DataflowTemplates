@@ -69,6 +69,9 @@ public class GenericRecordTypeConvertorTest {
     Schema varcharType =
         new LogicalType(GenericRecordTypeConvertor.CustomAvroTypes.VARCHAR)
             .addToSchema(SchemaBuilder.builder().stringType());
+    Schema timeIntervalType =
+        new LogicalType(GenericRecordTypeConvertor.CustomAvroTypes.TIME_INTERVAL)
+            .addToSchema(SchemaBuilder.builder().longType());
     Schema unsupportedType =
         new LogicalType(GenericRecordTypeConvertor.CustomAvroTypes.UNSUPPORTED)
             .addToSchema(SchemaBuilder.builder().nullType());
@@ -103,6 +106,9 @@ public class GenericRecordTypeConvertorTest {
         .noDefault()
         .name("varchar_col")
         .type(varcharType)
+        .noDefault()
+        .name("time_interval_col")
+        .type(timeIntervalType)
         .noDefault()
         .name("unsupported_col")
         .type(unsupportedType)
@@ -166,6 +172,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("json_col", "{\"k1\":\"v1\"}");
     genericRecord.put("number_col", "289452");
     genericRecord.put("varchar_col", "Hellogcds");
+    genericRecord.put("time_interval_col", -3020398999999L);
     genericRecord.put("unsupported_col", null);
 
     String col = "date_col";
@@ -221,6 +228,12 @@ public class GenericRecordTypeConvertorTest {
         GenericRecordTypeConvertor.handleLogicalFieldType(
             col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
     assertEquals("Test varchar_col conversion: ", "Hellogcds", result);
+
+    col = "time_interval_col";
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+    assertEquals("Test time_interval_col conversion: ", "-838:59:58.999999", result);
 
     col = "unsupported_col";
     result =

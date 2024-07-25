@@ -56,7 +56,7 @@ public final class MysqlMappingProvider {
           .put("SET", UnifiedMappingProvider.Type.STRING)
           .put("SMALLINT", UnifiedMappingProvider.Type.INTEGER)
           .put("TEXT", UnifiedMappingProvider.Type.STRING)
-          .put("TIME", UnifiedMappingProvider.Type.INTERVAL)
+          .put("TIME", UnifiedMappingProvider.Type.TIME_INTERVAL)
           .put("TIMESTAMP", UnifiedMappingProvider.Type.TIMESTAMP)
           .put("TINYBLOB", UnifiedMappingProvider.Type.STRING)
           .put("TINYINT", UnifiedMappingProvider.Type.INTEGER)

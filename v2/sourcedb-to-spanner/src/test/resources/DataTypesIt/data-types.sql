@@ -234,6 +234,8 @@ INSERT INTO `smallint_table` (`smallint_col`) VALUES (-32768);
 INSERT INTO `text_table` (`text_col`) VALUES ('xyz');
 INSERT INTO `text_table` (`text_col`) VALUES (REPEAT('a', 65535));
 INSERT INTO `time_table` (`time_col`) VALUES ('15:50:00');
+INSERT INTO `time_table` (`time_col`) VALUES ('838:59:59');
+INSERT INTO `time_table` (`time_col`) VALUES ('-838:59:59');
 INSERT INTO `timestamp_table` (`timestamp_col`) VALUES ('2022-08-05 08:23:11');
 INSERT INTO `timestamp_table` (`timestamp_col`) VALUES ('1970-01-01 00:00:01');
 INSERT INTO `timestamp_table` (`timestamp_col`) VALUES ('2038-01-19 03:14:07');
