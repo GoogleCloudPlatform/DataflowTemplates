@@ -100,6 +100,9 @@ public class InformationSchemaScanner {
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
     listIndexes(indexes);
     listIndexColumns(builder, indexes);
+    if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
+      listIndexOptions(builder, indexes);
+    }
 
     for (Map.Entry<String, NavigableMap<String, Index.Builder>> tableEntry : indexes.entrySet()) {
       String tableName = tableEntry.getKey();
@@ -299,12 +302,14 @@ public class InformationSchemaScanner {
       String generationExpression = resultSet.isNull(7) ? "" : resultSet.getString(7);
       boolean isStored = !resultSet.isNull(8) && resultSet.getString(8).equalsIgnoreCase("YES");
       String defaultExpression = resultSet.isNull(9) ? null : resultSet.getString(9);
+      boolean isHidden = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getBoolean(10) : false;
       builder
           .createTable(tableName)
           .column(columnName)
           .parseType(spannerType)
           .notNull(!nullable)
           .isGenerated(isGenerated)
+          .isHidden(isHidden)
           .generationExpression(generationExpression)
           .isStored(isStored)
           .defaultExpression(defaultExpression)
@@ -320,7 +325,8 @@ public class InformationSchemaScanner {
         return Statement.of(
             "SELECT c.table_schema, c.table_name, c.column_name,"
                 + " c.ordinal_position, c.spanner_type, c.is_nullable,"
-                + " c.is_generated, c.generation_expression, c.is_stored, c.column_default"
+                + " c.is_generated, c.generation_expression, c.is_stored,"
+                + " c.column_default, c.is_hidden"
                 + " FROM information_schema.columns as c"
                 + " WHERE c.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
@@ -369,6 +375,10 @@ public class InformationSchemaScanner {
               ? null
               : resultSet.getString(6);
 
+      String type = (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(6))
+              ? resultSet.getString(6)
+              : "not_impl";
+
       Map<String, Index.Builder> tableIndexes =
           indexes.computeIfAbsent(tableName, k -> Maps.newTreeMap());
 
@@ -380,6 +390,7 @@ public class InformationSchemaScanner {
               .unique(unique)
               .nullFiltered(nullFiltered)
               .interleaveIn(parent)
+              .type(type)
               .filter(filter));
     }
   }
@@ -390,11 +401,11 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.index_name, t.parent_table_name, t.is_unique,"
-                + " t.is_null_filtered"
+                + " t.is_null_filtered, t.index_type"
                 + " FROM information_schema.indexes AS t"
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') AND"
-                + " t.index_type='INDEX' AND t.spanner_is_managed = FALSE"
+                + " (t.index_type='INDEX' OR t.index_type='SEARCH') AND t.spanner_is_managed = FALSE"
                 + " ORDER BY t.table_name, t.index_name");
       case POSTGRESQL:
         return Statement.of(
@@ -419,6 +430,8 @@ public class InformationSchemaScanner {
       String columnName = resultSet.getString(2);
       String ordering = resultSet.isNull(3) ? null : resultSet.getString(3);
       String indexLocalName = resultSet.getString(4);
+      String indexType = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getString(5) : "not_impl";
+      String spannerType = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getString(6) : null;
 
       if (indexLocalName.equals("PRIMARY_KEY")) {
         IndexColumn.IndexColumnsBuilder<Table.Builder> pkBuilder =
@@ -429,6 +442,32 @@ public class InformationSchemaScanner {
           pkBuilder.desc(columnName).end();
         }
         pkBuilder.end().endTable();
+      } else if (indexType.equals("SEARCH")) {
+        if (!spannerType.equals("TOKENLIST") && ordering != null) {
+          continue;
+        }
+        Map<String, Index.Builder> tableIndexes = indexes.get(tableName);
+        if (tableIndexes == null) {
+          continue;
+        }
+        String indexName =
+            dialect == Dialect.POSTGRESQL
+                ? indexLocalName
+                : getQualifiedName(resultSet.getString(0), indexLocalName);
+        Index.Builder indexBuilder = tableIndexes.get(indexName);
+        if (indexBuilder == null) {
+          LOG.warn("Can not find index using name {}", indexName);
+          continue;
+        }
+        IndexColumn.IndexColumnsBuilder<Index.Builder> indexColumnsBuilder =
+            indexBuilder.columns().create().name(columnName);
+
+        if (spannerType.equals("TOKENLIST")) {
+          indexColumnsBuilder.asc();
+        } else if (ordering == null) {
+          indexColumnsBuilder.storing();
+        }
+        indexColumnsBuilder.endIndexColumn().end();
       } else {
         Map<String, Index.Builder> tableIndexes = indexes.get(tableName);
         if (tableIndexes == null) {
@@ -472,7 +511,8 @@ public class InformationSchemaScanner {
     switch (dialect) {
       case GOOGLE_STANDARD_SQL:
         return Statement.of(
-            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name "
+            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name,"
+                + " t.index_type, t.spanner_type "
                 + "FROM information_schema.index_columns AS t "
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
@@ -484,6 +524,69 @@ public class InformationSchemaScanner {
                 + "WHERE t.table_schema NOT IN "
                 + "('information_schema', 'spanner_sys', 'pg_catalog') "
                 + "ORDER BY t.table_name, t.index_name, t.ordinal_position");
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+  }
+
+  private void listIndexOptions(Ddl.Builder builder, Map<String, NavigableMap<String, Index.Builder>> indexes) {
+    Statement statement = listIndexOptionsSQL();
+
+    ResultSet resultSet = context.executeQuery(statement);
+
+    Map<KV<String, String>, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
+    while (resultSet.next()) {
+      String tableName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
+      String indexName = resultSet.getString(2);
+      String indexType = resultSet.getString(3);
+      String optionName = resultSet.getString(4);
+      String optionType = resultSet.getString(5);
+      String optionValue = resultSet.getString(6);
+
+      KV<String, String> kv = KV.of(tableName, indexName);
+      ImmutableList.Builder<String> options =
+          allOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
+
+      if (optionType.equalsIgnoreCase("STRING")) {
+        options.add(optionName + "=\"" + OPTION_STRING_ESCAPER.escape(optionValue) + "\"");
+      } else if (optionType.equalsIgnoreCase("character varying")) {
+        options.add(optionName + "='" + OPTION_STRING_ESCAPER.escape(optionValue) + "'");
+      } else {
+        options.add(optionName + "=" + optionValue);
+      }
+    }
+
+    for (Map.Entry<KV<String, String>, ImmutableList.Builder<String>> entry :
+        allOptions.entrySet()) {
+      String tableName = entry.getKey().getKey();
+      String indexName = entry.getKey().getValue();
+      ImmutableList<String> options = entry.getValue().build();
+
+      Map<String, Index.Builder> tableIndexes = indexes.get(tableName);
+      if (tableIndexes == null) {
+        continue;
+      }
+      Index.Builder indexBuilder = tableIndexes.get(indexName);
+      if (indexBuilder == null) {
+        LOG.warn("Can not find index using name {}", indexName);
+        continue;
+      }
+
+      indexBuilder.options(options);
+    }
+  }
+
+  @VisibleForTesting
+  Statement listIndexOptionsSQL() {
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        return Statement.of(
+            "SELECT t.table_schema, t.table_name, t.index_name, t.index_type,"
+                + " t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.index_options AS t"
+                + " WHERE t.table_schema NOT IN"
+                + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                + " ORDER BY t.table_name, t.index_name, t.option_name");
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
     }

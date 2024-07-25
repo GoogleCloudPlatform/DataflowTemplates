@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.DEFAULT_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GENERATION_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GOOGLE_FORMAT_VERSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GOOGLE_STORAGE;
+import static com.google.cloud.teleport.spanner.AvroUtil.HIDDEN;
 import static com.google.cloud.teleport.spanner.AvroUtil.INPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
 import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
@@ -114,12 +115,19 @@ public class DdlToAvroSchemaConverterTest {
             .generatedAs("MOD(id+1, 64)")
             .stored()
             .endColumn()
+            .column("MyTokens")
+            .tokenlist()
+            .isHidden(true)
+            .generatedAs("(TOKENIZE_FULLTEXT(MyData))")
+            .endColumn()
             .primaryKey()
             .asc("id")
             .asc("gen_id")
             .desc("last_name")
             .end()
-            .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
+            .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)",
+                                      "CREATE SEARCH INDEX `SearchIndex` ON `Users` (`MyTokens`)"
+                                        + " OPTIONS (sort_order_sharding=TRUE)"))
             .foreignKeys(
                 ImmutableList.of(
                     "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
@@ -142,7 +150,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(5));
+    assertThat(fields, hasSize(6));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -187,6 +195,15 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(4).getProp(STORED), equalTo("true"));
     assertThat(fields.get(4).getProp(DEFAULT_EXPRESSION), equalTo(null));
 
+    assertThat(fields.get(5).name(), equalTo("MyTokens"));
+    assertThat(fields.get(5).schema(), equalTo(Schema.create(Schema.Type.NULL)));
+    assertThat(fields.get(5).getProp(SQL_TYPE), equalTo("TOKENLIST"));
+    assertThat(fields.get(5).getProp(NOT_NULL), equalTo("false"));
+    assertThat(fields.get(5).getProp(STORED), equalTo("false"));
+    assertThat(fields.get(5).getProp(HIDDEN), equalTo("true"));
+    assertThat(fields.get(5).getProp(GENERATION_EXPRESSION), equalTo("(TOKENIZE_FULLTEXT(MyData))"));
+    assertThat(fields.get(5).getProp(DEFAULT_EXPRESSION), equalTo(null));
+
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("`id` ASC"));
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_1"), equalTo("`gen_id` ASC"));
@@ -197,6 +214,10 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(
         avroSchema.getProp(SPANNER_INDEX + "0"),
         equalTo("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"));
+    assertThat(
+        avroSchema.getProp(SPANNER_INDEX + "1"),
+        equalTo("CREATE SEARCH INDEX `SearchIndex` ON `Users` (`MyTokens`)"
+                + " OPTIONS (sort_order_sharding=TRUE)"));
     assertThat(
         avroSchema.getProp(SPANNER_FOREIGN_KEY + "0"),
         equalTo(

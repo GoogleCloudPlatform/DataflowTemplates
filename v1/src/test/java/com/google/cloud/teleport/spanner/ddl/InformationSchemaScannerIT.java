@@ -543,6 +543,24 @@ public class InformationSchemaScannerIT {
   }
 
   @Test
+  public void searchIndexes() throws Exception {
+    // Prefix indexes to ensure ordering.
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE `Base` ("
+                + "  `MyKey`                                 INT64 NOT NULL,"
+                + "  `MyData`                                STRING(MAX),"
+                + "  `MyTokens`                              TOKENLIST AS (TOKENIZE_FULLTEXT(MyData)) HIDDEN,"
+                + " ) PRIMARY KEY (`MyKey` ASC)",
+            " CREATE SEARCH INDEX `SearchIndex` ON `Base`(`MyTokens` ASC)"
+                + " OPTIONS (sort_order_sharding=TRUE)");
+
+    spannerServer.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
   public void pgIndexes() throws Exception {
     // Prefix indexes to ensure ordering.
     // Unique index is implicitly null-filtered.

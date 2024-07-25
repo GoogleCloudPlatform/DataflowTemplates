@@ -39,6 +39,9 @@ public abstract class Index implements Serializable {
 
   abstract ImmutableList<IndexColumn> indexColumns();
 
+  @Nullable
+  abstract ImmutableList<String> options();
+
   abstract boolean unique();
 
   // restricted for gsql
@@ -50,6 +53,8 @@ public abstract class Index implements Serializable {
 
   @Nullable
   abstract String interleaveIn();
+
+  abstract String type();
 
   public static Builder builder(Dialect dialect) {
     return new AutoValue_Index.Builder().dialect(dialect).nullFiltered(false).unique(false);
@@ -111,7 +116,9 @@ public abstract class Index implements Serializable {
 
   private void prettyPrintGsql(Appendable appendable) throws IOException {
     appendable.append("CREATE");
-    if (unique()) {
+    if (type().equals("SEARCH")) {
+      appendable.append(" SEARCH");
+    } else if (unique()) {
       appendable.append(" UNIQUE");
     }
     if (nullFiltered()) {
@@ -142,6 +149,13 @@ public abstract class Index implements Serializable {
 
     if (interleaveIn() != null) {
       appendable.append(", INTERLEAVE IN ").append(quoteIdentifier(interleaveIn(), dialect()));
+    }
+    if (options() == null) {
+      return;
+    }
+    String optionsString = String.join(",", options());
+    if (!optionsString.isEmpty()) {
+      appendable.append(" OPTIONS (").append(optionsString).append(")");
     }
   }
 
@@ -190,6 +204,8 @@ public abstract class Index implements Serializable {
       return columnsBuilder();
     }
 
+    abstract Builder options(ImmutableList<String> options);
+
     public abstract Builder unique(boolean unique);
 
     public Builder unique() {
@@ -205,6 +221,8 @@ public abstract class Index implements Serializable {
     public abstract Builder filter(String filter);
 
     public abstract Builder interleaveIn(String interleaveIn);
+
+    public abstract Builder type(String type);
 
     abstract Index autoBuild();
 

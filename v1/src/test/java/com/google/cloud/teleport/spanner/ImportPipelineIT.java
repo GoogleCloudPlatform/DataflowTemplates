@@ -158,6 +158,8 @@ public class ImportPipelineIT extends TemplateTestBase {
             + "  Id INT64,\n"
             + "  FirstName STRING(MAX),\n"
             + "  LastName STRING(MAX),\n"
+            + "  Review STRING(MAX),\n"
+            + "  MyTokens TOKENLIST AS (TOKENIZE_FULLTEXT(Review)) HIDDEN,\n"
             + ") PRIMARY KEY(Id)";
     spannerResourceManager.executeDdlStatement(createSingersTableStatement);
 
@@ -167,6 +169,12 @@ public class ImportPipelineIT extends TemplateTestBase {
             + "  Float32Value FLOAT32,\n"
             + ") PRIMARY KEY(Key)";
     spannerResourceManager.executeDdlStatement(createFloat32TableStatement);
+
+    String createSearchIndexStatement = 
+        "CREATE SEARCH INDEX `SearchIndex`\n"
+            + " ON `Singers`(`MyTokens` ASC)\n"
+            + " OPTIONS (sort_order_sharding=TRUE)";
+    spannerResourceManager.executeDdlStatement(createSearchIndexStatement);
 
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
