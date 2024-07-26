@@ -59,7 +59,7 @@ public abstract class InitialSplitRangeDoFn extends DoFn<Range, ImmutableList<Ra
         "RWUPT - Began split process for table {} with initial range as {}", tableName(), input);
 
     ArrayList<Range> ranges = new ArrayList<Range>();
-    ranges.add(input);
+    ranges.add(input.toBuilder().build());
     ArrayList<Range> splitRanges = new ArrayList<>();
     for (long i = 0; i < splitHeight(); i++) {
       logger.info(

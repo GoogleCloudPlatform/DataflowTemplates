@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
@@ -87,7 +88,7 @@ public abstract class Boundary<T extends Serializable>
   }
 
   @Nullable
-  String stringCollation() {
+  CollationReference stringCollation() {
     return partitionColumn().stringCollation();
   }
 
@@ -242,7 +243,7 @@ public abstract class Boundary<T extends Serializable>
       return this;
     }
 
-    public Builder<T> setCollation(String value) {
+    public Builder<T> setCollation(CollationReference value) {
       this.partitionColumnBuilder().setStringCollation(value);
       return this;
     }

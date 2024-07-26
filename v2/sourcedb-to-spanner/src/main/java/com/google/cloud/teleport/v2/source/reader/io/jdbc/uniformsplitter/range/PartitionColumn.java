@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
 import javax.annotation.Nullable;
@@ -41,7 +42,7 @@ public abstract class PartitionColumn implements Serializable {
    * @return string collation for this column if it's a string column. Null otherwise.
    */
   @Nullable
-  public abstract String stringCollation();
+  public abstract CollationReference stringCollation();
 
   /** Max Length of a string column. Defaults to null for non-string columns. */
   @Nullable
@@ -62,7 +63,7 @@ public abstract class PartitionColumn implements Serializable {
 
     public abstract Builder setColumnClass(Class value);
 
-    public abstract Builder setStringCollation(String value);
+    public abstract Builder setStringCollation(CollationReference value);
 
     public abstract Builder setStringMaxLength(Integer value);
 

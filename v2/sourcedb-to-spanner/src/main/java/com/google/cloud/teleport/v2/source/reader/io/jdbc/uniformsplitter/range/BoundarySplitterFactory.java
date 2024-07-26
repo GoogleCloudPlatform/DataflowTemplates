@@ -161,10 +161,10 @@ public class BoundarySplitterFactory {
         Math.max(
             Math.max(start.length(), end.length()), partitionColumn.stringMaxLength().intValue());
     BigInteger bigIntegerStart =
-        (BigInteger) typeMapper.mapString(start, lengthToPad, partitionColumn, c);
+        (BigInteger) typeMapper.mapStringToBigInteger(start, lengthToPad, partitionColumn, c);
     BigInteger bigIntegerEnd =
-        (BigInteger) typeMapper.mapString(end, lengthToPad, partitionColumn, c);
+        (BigInteger) typeMapper.mapStringToBigInteger(end, lengthToPad, partitionColumn, c);
     BigInteger bigIntegerSplit = splitBigIntegers(bigIntegerStart, bigIntegerEnd);
-    return (String) typeMapper.unMapString(bigIntegerSplit, partitionColumn, c);
+    return (String) typeMapper.unMapStringFromBigInteger(bigIntegerSplit, partitionColumn, c);
   }
 }
