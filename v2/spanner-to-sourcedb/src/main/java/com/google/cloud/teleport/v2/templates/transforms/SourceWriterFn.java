@@ -83,6 +83,21 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.shadowTablePrefix = shadowTablePrefix;
   }
 
+  // for unit testing purposes
+  public void setSpannerDao(SpannerDao spannerDao) {
+    this.spannerDao = spannerDao;
+  }
+
+  // for unit testing purposes
+  public void setMySqlDaoMap(Map<String, MySqlDao> mySqlDaoMap) {
+    this.mySqlDaoMap = mySqlDaoMap;
+  }
+
+  // for unit testing purposes
+  public void setObjectMapper(ObjectMapper mapper) {
+    this.mapper = mapper;
+  }
+
   /** Setup function connects to Cloud Spanner. */
   @Setup
   public void setup() {
