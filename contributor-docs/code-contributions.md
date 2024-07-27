@@ -90,7 +90,7 @@ The list of known rules that require this are:
 Build the entire project using the maven compile command.
 
 ```sh
-mvn clean compile
+mvn clean compile,missing-artifact-repos
 ```
 
 ### Formatting Code
@@ -135,7 +135,7 @@ gcloud auth application-default login
 After authenticated, install the plugin into your local repository:
 
 ```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
+mvn clean install -pl plugins/templates-maven-plugin,metadata -am
 ```
 
 ### Staging (Deploying) Templates
@@ -492,7 +492,7 @@ To generate the documentation for all templates, the following command can be us
 ```shell
 mvn clean prepare-package \
   -DskipTests \
-  -PtemplatesSpec
+  -PtemplatesSpec,missing-artifact-repos
 ```
 
 ## Release Process
