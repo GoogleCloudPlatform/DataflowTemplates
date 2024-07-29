@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provide
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.PostgreSQLMappingProvider;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import org.junit.Test;

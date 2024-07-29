@@ -175,20 +175,22 @@ public abstract class JdbcIOWrapperConfig {
 
   public static Builder builderWithPostgreSQLDefaults() {
     return new AutoValue_JdbcIOWrapperConfig.Builder()
-            .setSchemaMapperType(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_SCHEMA_MAPPER_TYPE)
-            .setDialectAdapter(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_DIALECT_ADAPTER)
-            .setValueMappingsProvider(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_VALUE_MAPPING_PROVIDER)
-            .setMaxConnections(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_MAX_CONNECTIONS)
-            .setSqlInitSeq(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_INIT_SEQ)
-            .setSchemaDiscoveryBackOff(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_SCHEMA_DISCOVERY_BACKOFF)
-            .setTables(ImmutableList.of())
-            .setTableVsPartitionColumns(ImmutableMap.of())
-            .setMaxPartitions(null)
-            .setWaitOn(null)
-            .setMaxFetchSize(null)
-            .setDbParallelizationForReads(null)
-            .setDbParallelizationForSplitProcess(DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
-            .setReadWithUniformPartitionsFeatureEnabled(true);
+        .setSchemaMapperType(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_SCHEMA_MAPPER_TYPE)
+        .setDialectAdapter(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_DIALECT_ADAPTER)
+        .setValueMappingsProvider(
+            PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_VALUE_MAPPING_PROVIDER)
+        .setMaxConnections(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_MAX_CONNECTIONS)
+        .setSqlInitSeq(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_INIT_SEQ)
+        .setSchemaDiscoveryBackOff(
+            PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_SCHEMA_DISCOVERY_BACKOFF)
+        .setTables(ImmutableList.of())
+        .setTableVsPartitionColumns(ImmutableMap.of())
+        .setMaxPartitions(null)
+        .setWaitOn(null)
+        .setMaxFetchSize(null)
+        .setDbParallelizationForReads(null)
+        .setDbParallelizationForSplitProcess(DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
+        .setReadWithUniformPartitionsFeatureEnabled(true);
   }
 
   @AutoValue.Builder

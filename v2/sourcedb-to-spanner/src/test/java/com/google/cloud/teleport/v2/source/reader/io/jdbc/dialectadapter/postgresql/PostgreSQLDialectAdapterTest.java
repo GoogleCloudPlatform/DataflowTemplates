@@ -15,6 +15,10 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql;
 
+import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter.PostgreSQLVersion;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
@@ -22,18 +26,13 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReferenc
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.sql.*;
+import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-
-import javax.sql.DataSource;
-import java.sql.*;
-
-import static com.google.common.truth.Truth.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
 /** Test class for {@link PostgreSQLDialectAdapter}. */
 @RunWith(MockitoJUnitRunner.class)

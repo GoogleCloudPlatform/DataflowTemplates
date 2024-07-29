@@ -50,10 +50,10 @@ public final class OptionsToConfigBuilder {
     }
 
     public static JdbcIOWrapperConfig configWithPostgreSQLDefaultsFromOptions(
-            SourceDbToSpannerOptions options,
-            List<String> tables,
-            String shardId,
-            Wait.OnSignal<?> waitOn) {
+        SourceDbToSpannerOptions options,
+        List<String> tables,
+        String shardId,
+        Wait.OnSignal<?> waitOn) {
       String sourceDbURL = options.getSourceDbURL();
       String dbName = extractDbFromURL(sourceDbURL);
       String username = options.getUsername();
@@ -62,24 +62,24 @@ public final class OptionsToConfigBuilder {
       String jdbcDriverClassName = options.getJdbcDriverClassName();
       String jdbcDriverJars = options.getJdbcDriverJars();
       long maxConnections =
-              options.getMaxConnections() > 0 ? (long) (options.getMaxConnections()) : 0;
+          options.getMaxConnections() > 0 ? (long) (options.getMaxConnections()) : 0;
       Integer numPartitions = options.getNumPartitions();
 
       return getJdbcIOWrapperConfig(
-              builderWithPostgreSQLDefaults(),
-              tables,
-              sourceDbURL,
-              null,
-              0,
-              username,
-              password,
-              dbName,
-              shardId,
-              jdbcDriverClassName,
-              jdbcDriverJars,
-              maxConnections,
-              numPartitions,
-              waitOn);
+          builderWithPostgreSQLDefaults(),
+          tables,
+          sourceDbURL,
+          null,
+          0,
+          username,
+          password,
+          dbName,
+          shardId,
+          jdbcDriverClassName,
+          jdbcDriverJars,
+          maxConnections,
+          numPartitions,
+          waitOn);
     }
   }
 
