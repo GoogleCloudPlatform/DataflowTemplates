@@ -136,6 +136,7 @@ public class BoundaryExtractorFactoryTest {
 
     assertThat(boundary.start()).isEqualTo("cloud");
     assertThat(boundary.end()).isEqualTo("spanner");
+    assertThat(boundary.isSplittable(null)).isTrue();
     // Null type mapper check
     assertThrows(
         IllegalArgumentException.class,
