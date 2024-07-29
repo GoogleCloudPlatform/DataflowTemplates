@@ -354,6 +354,12 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         && TIMEOUT_SQL_STATES.contains(exception.getSQLState().toUpperCase());
   }
 
+  @Override
+  public String getCollationsOrderQuery(String dbCharset, String dbCollation) {
+    // TODO(thiagotnunes)
+    return "";
+  }
+
   private String addWhereClause(String query, ImmutableList<String> partitionColumns) {
     StringBuilder queryBuilder = new StringBuilder();
     queryBuilder.append(query);
