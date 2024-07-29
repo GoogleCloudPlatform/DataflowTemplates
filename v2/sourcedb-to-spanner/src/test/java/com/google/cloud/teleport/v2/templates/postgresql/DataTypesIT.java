@@ -49,8 +49,8 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataTypesIt extends SourceDbToSpannerITBase {
-  private static final Logger LOG = LoggerFactory.getLogger(DataTypesIt.class);
+public class DataTypesIT extends SourceDbToSpannerITBase {
+  private static final Logger LOG = LoggerFactory.getLogger(DataTypesIT.class);
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   public static PostgresResourceManager postgreSQLResourceManager;
