@@ -26,7 +26,11 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReferenc
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
