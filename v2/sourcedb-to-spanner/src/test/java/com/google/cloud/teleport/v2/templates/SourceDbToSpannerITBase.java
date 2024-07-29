@@ -36,6 +36,7 @@ import org.apache.beam.it.gcp.JDBCBaseIT;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +49,10 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
   public MySQLResourceManager setUpMySQLResourceManager() {
     return MySQLResourceManager.builder(testName).build();
+  }
+
+  public PostgresResourceManager setUpPostgreSQLResourceManager() {
+    return PostgresResourceManager.builder(testName).build();
   }
 
   public SpannerResourceManager setUpSpannerResourceManager() {
