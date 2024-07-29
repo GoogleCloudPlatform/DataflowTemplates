@@ -1,0 +1,8 @@
+{
+  "cloud_datastream_to_spanner": {
+    "backfill100Gb": {
+      "numPreviousRunsToObserve": 10,
+      "regressionRules": ["TotalRunTimeAnomaly"]
+    }
+  }
+}
