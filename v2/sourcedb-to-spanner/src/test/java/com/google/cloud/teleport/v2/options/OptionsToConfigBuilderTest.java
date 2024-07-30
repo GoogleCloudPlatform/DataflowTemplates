@@ -19,6 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +46,7 @@ public class OptionsToConfigBuilderTest {
     final String testpassword = "password";
     SourceDbToSpannerOptions sourceDbToSpannerOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
     sourceDbToSpannerOptions.setSourceDbURL(testUrl);
     sourceDbToSpannerOptions.setJdbcDriverClassName(testdriverClassName);
     sourceDbToSpannerOptions.setMaxConnections(150);
@@ -55,7 +57,7 @@ public class OptionsToConfigBuilderTest {
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
     JdbcIOWrapperConfig config =
-        OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
+        OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
             sourceDbToSpannerOptions, List.of("table1", "table2"), null, Wait.on(dummyPCollection));
     assertThat(config.jdbcDriverClassName()).isEqualTo(testdriverClassName);
     assertThat(config.sourceDbURL()).isEqualTo(testUrl + "?allowMultiQueries=true");
@@ -70,11 +72,12 @@ public class OptionsToConfigBuilderTest {
     final String testUrl = "jd#bc://localhost";
     SourceDbToSpannerOptions sourceDbToSpannerOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
     sourceDbToSpannerOptions.setSourceDbURL(testUrl);
     assertThrows(
         RuntimeException.class,
         () ->
-            OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
+            OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
                 sourceDbToSpannerOptions, new ArrayList<>(), null, null));
   }
 

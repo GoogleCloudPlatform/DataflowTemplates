@@ -39,6 +39,9 @@ import org.apache.beam.sdk.values.PCollection;
  */
 @AutoValue
 public abstract class JdbcIOWrapperConfig {
+  /** Dialect of the database. */
+  public abstract SQLDialect sourceDbDialect();
+
   /** Source URL. */
   public abstract String sourceDbURL();
 
@@ -157,6 +160,7 @@ public abstract class JdbcIOWrapperConfig {
 
   public static Builder builderWithMySqlDefaults() {
     return new AutoValue_JdbcIOWrapperConfig.Builder()
+        .setSourceDbDialect(SQLDialect.MYSQL)
         .setSchemaMapperType(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_MAPPER_TYPE)
         .setDialectAdapter(MySqlConfigDefaults.DEFAULT_MYSQL_DIALECT_ADAPTER)
         .setValueMappingsProvider(MySqlConfigDefaults.DEFAULT_MYSQL_VALUE_MAPPING_PROVIDER)
@@ -175,6 +179,7 @@ public abstract class JdbcIOWrapperConfig {
 
   public static Builder builderWithPostgreSQLDefaults() {
     return new AutoValue_JdbcIOWrapperConfig.Builder()
+        .setSourceDbDialect(SQLDialect.POSTGRESQL)
         .setSchemaMapperType(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_SCHEMA_MAPPER_TYPE)
         .setDialectAdapter(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_DIALECT_ADAPTER)
         .setValueMappingsProvider(
@@ -195,6 +200,7 @@ public abstract class JdbcIOWrapperConfig {
 
   @AutoValue.Builder
   public abstract static class Builder {
+    public abstract Builder setSourceDbDialect(SQLDialect value);
 
     public abstract Builder setSourceDbURL(String value);
 

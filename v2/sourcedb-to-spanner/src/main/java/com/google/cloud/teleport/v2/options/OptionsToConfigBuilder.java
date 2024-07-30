@@ -20,6 +20,7 @@ import static com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.confi
 
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -36,103 +37,42 @@ import org.slf4j.LoggerFactory;
 public final class OptionsToConfigBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(OptionsToConfigBuilder.class);
 
-  public static final class PostgreSQL {
-    private static String extractDbFromURL(String sourceDbUrl) {
-      URI uri;
-      try {
-        // Strip off the prefix 'jdbc:' which the library cannot handle.
-        uri = new URI(sourceDbUrl.substring(5));
-      } catch (URISyntaxException e) {
-        throw new RuntimeException(String.format("Unable to parse url: %s", sourceDbUrl), e);
-      }
-      // Remove '/' before returning.
-      return uri.getPath().substring(1);
-    }
+  public static JdbcIOWrapperConfig getJdbcIOWrapperConfigWithDefaults(
+      SourceDbToSpannerOptions options,
+      List<String> tables,
+      String shardId,
+      Wait.OnSignal<?> waitOn) {
+    SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
+    String sourceDbURL = options.getSourceDbURL();
+    String dbName = extractDbFromURL(sourceDbURL);
+    String username = options.getUsername();
+    String password = options.getPassword();
 
-    public static JdbcIOWrapperConfig configWithPostgreSQLDefaultsFromOptions(
-        SourceDbToSpannerOptions options,
-        List<String> tables,
-        String shardId,
-        Wait.OnSignal<?> waitOn) {
-      String sourceDbURL = options.getSourceDbURL();
-      String dbName = extractDbFromURL(sourceDbURL);
-      String username = options.getUsername();
-      String password = options.getPassword();
+    String jdbcDriverClassName = options.getJdbcDriverClassName();
+    String jdbcDriverJars = options.getJdbcDriverJars();
+    long maxConnections =
+        options.getMaxConnections() > 0 ? (long) (options.getMaxConnections()) : 0;
+    Integer numPartitions = options.getNumPartitions();
 
-      String jdbcDriverClassName = options.getJdbcDriverClassName();
-      String jdbcDriverJars = options.getJdbcDriverJars();
-      long maxConnections =
-          options.getMaxConnections() > 0 ? (long) (options.getMaxConnections()) : 0;
-      Integer numPartitions = options.getNumPartitions();
-
-      return getJdbcIOWrapperConfig(
-          builderWithPostgreSQLDefaults(),
-          tables,
-          sourceDbURL,
-          null,
-          0,
-          username,
-          password,
-          dbName,
-          shardId,
-          jdbcDriverClassName,
-          jdbcDriverJars,
-          maxConnections,
-          numPartitions,
-          waitOn);
-    }
-  }
-
-  public static final class MySql {
-
-    private static String extractDbFromURL(String sourceDbUrl) {
-      URI uri;
-      try {
-        // Strip off the prefix 'jdbc:' which the library cannot handle.
-        uri = new URI(sourceDbUrl.substring(5));
-      } catch (URISyntaxException e) {
-        throw new RuntimeException(String.format("Unable to parse url: %s", sourceDbUrl), e);
-      }
-      // Remove '/' before returning.
-      return uri.getPath().substring(1);
-    }
-
-    public static JdbcIOWrapperConfig configWithMySqlDefaultsFromOptions(
-        SourceDbToSpannerOptions options,
-        List<String> tables,
-        String shardId,
-        Wait.OnSignal<?> waitOn) {
-      String sourceDbURL = options.getSourceDbURL();
-      String dbName = extractDbFromURL(sourceDbURL);
-      String username = options.getUsername();
-      String password = options.getPassword();
-
-      String jdbcDriverClassName = options.getJdbcDriverClassName();
-      String jdbcDriverJars = options.getJdbcDriverJars();
-      long maxConnections =
-          options.getMaxConnections() > 0 ? (long) (options.getMaxConnections()) : 0;
-      Integer numPartitions = options.getNumPartitions();
-
-      return getJdbcIOWrapperConfig(
-          builderWithMySqlDefaults(),
-          tables,
-          sourceDbURL,
-          null,
-          0,
-          username,
-          password,
-          dbName,
-          shardId,
-          jdbcDriverClassName,
-          jdbcDriverJars,
-          maxConnections,
-          numPartitions,
-          waitOn);
-    }
+    return getJdbcIOWrapperConfig(
+        sqlDialect,
+        tables,
+        sourceDbURL,
+        null,
+        0,
+        username,
+        password,
+        dbName,
+        shardId,
+        jdbcDriverClassName,
+        jdbcDriverJars,
+        maxConnections,
+        numPartitions,
+        waitOn);
   }
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfig(
-      JdbcIOWrapperConfig.Builder builder,
+      SQLDialect sqlDialect,
       List<String> tables,
       String sourceDbURL,
       String host,
@@ -146,6 +86,7 @@ public final class OptionsToConfigBuilder {
       long maxConnections,
       Integer numPartitions,
       Wait.OnSignal<?> waitOn) {
+    JdbcIOWrapperConfig.Builder builder = builderWithDefaultsFor(sqlDialect);
     builder =
         builder
             .setSourceSchemaReference(SourceSchemaReference.builder().setDbName(dbName).build())
@@ -160,9 +101,16 @@ public final class OptionsToConfigBuilder {
       builder = builder.setMaxConnections(maxConnections);
     }
 
-    // TODO - add mysql specific method in mysql class.
+    // TODO - add mysql/postgresql specific method in mysql class.
     if (sourceDbURL == null) {
-      sourceDbURL = "jdbc:mysql://" + host + ":" + port + "/" + dbName;
+      switch (sqlDialect) {
+        case MYSQL:
+          sourceDbURL = "jdbc:mysql://" + host + ":" + port + "/" + dbName;
+          break;
+        case POSTGRESQL:
+          sourceDbURL = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
+          break;
+      }
     }
 
     sourceDbURL = addParamToJdbcUrl(sourceDbURL, "allowMultiQueries", "true");
@@ -245,6 +193,28 @@ public final class OptionsToConfigBuilder {
 
       return baseUrl + "?" + newQuery;
     }
+  }
+
+  private static String extractDbFromURL(String sourceDbUrl) {
+    URI uri;
+    try {
+      // Strip off the prefix 'jdbc:' which the library cannot handle.
+      uri = new URI(sourceDbUrl.substring(5));
+    } catch (URISyntaxException e) {
+      throw new RuntimeException(String.format("Unable to parse url: %s", sourceDbUrl), e);
+    }
+    // Remove '/' before returning.
+    return uri.getPath().substring(1);
+  }
+
+  private static JdbcIOWrapperConfig.Builder builderWithDefaultsFor(SQLDialect dialect) {
+    switch (dialect) {
+      case MYSQL:
+        return builderWithMySqlDefaults();
+      case POSTGRESQL:
+        return builderWithPostgreSQLDefaults();
+    }
+    return null;
   }
 
   private OptionsToConfigBuilder() {}
