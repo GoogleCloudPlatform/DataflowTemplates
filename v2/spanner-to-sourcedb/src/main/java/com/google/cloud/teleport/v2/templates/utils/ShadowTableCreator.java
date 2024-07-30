@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 
-/** Helper class to create shadow tables for different source types. */
+/** Helper class to create shadow tables in the metadata database. */
 public class ShadowTableCreator {
 
   private final SpannerAccessor spannerAccessor;
@@ -47,6 +47,8 @@ public class ShadowTableCreator {
   private final SpannerConfig spannerConfig;
   private final SpannerConfig metadataConfig;
   private String shadowTablePrefix;
+  private Ddl informationSchemaOfMainDb;
+  private Ddl informationSchemaOfMetadataDb;
 
   public ShadowTableCreator(
       SpannerConfig spannerConfig,
@@ -60,20 +62,49 @@ public class ShadowTableCreator {
     this.spannerConfig = spannerConfig;
     this.metadataConfig = metadataConfig;
     this.shadowTablePrefix = shadowTablePrefix;
+    setInformationSchemaOfMainDb();
+    setInformationSchemaOfMetadataDb();
   }
 
-  public void createShadowTablesInSpanner() {
-
+  private void setInformationSchemaOfMainDb() {
     BatchClient batchClient = spannerAccessor.getBatchClient();
     BatchReadOnlyTransaction context =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
     InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
-    Ddl informationSchema = scanner.scan();
-    List<String> dataTablesWithoutShadowTables = getDataTablesWithNoShadowTables(informationSchema);
+    this.informationSchemaOfMainDb = scanner.scan();
+  }
+
+  private void setInformationSchemaOfMetadataDb() {
+    BatchClient batchClient = metadataSpannerAccessor.getBatchClient();
+    BatchReadOnlyTransaction context =
+        batchClient.batchReadOnlyTransaction(TimestampBound.strong());
+    InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
+    this.informationSchemaOfMetadataDb = scanner.scan();
+  }
+
+  // for unit testing purposes
+  public ShadowTableCreator(
+      Dialect dialect,
+      String shadowTablePrefix,
+      Ddl informationSchemaOfMainDb,
+      Ddl informationSchemaOfMetadataDb) {
+    this.dialect = dialect;
+    this.shadowTablePrefix = shadowTablePrefix;
+    this.informationSchemaOfMainDb = informationSchemaOfMainDb;
+    this.informationSchemaOfMetadataDb = informationSchemaOfMetadataDb;
+    this.spannerAccessor = null;
+    this.metadataSpannerAccessor = null;
+    this.spannerConfig = null;
+    this.metadataConfig = null;
+  }
+
+  public void createShadowTablesInSpanner() {
+
+    List<String> dataTablesWithoutShadowTables = getDataTablesWithNoShadowTables();
 
     Ddl.Builder shadowTableBuilder = Ddl.builder(dialect);
     for (String dataTableName : dataTablesWithoutShadowTables) {
-      Table shadowTable = constructShadowTable(informationSchema, dataTableName, dialect);
+      Table shadowTable = constructShadowTable(dataTableName);
       shadowTableBuilder.addTable(shadowTable);
     }
     List<String> createShadowTableStatements = shadowTableBuilder.build().createTableStatements();
@@ -104,7 +135,7 @@ public class ShadowTableCreator {
    * Note: Shadow tables for interleaved tables are not interleaved to
    * their shadow parent table.
    */
-  Table constructShadowTable(Ddl informationSchema, String dataTableName, Dialect dialect) {
+  Table constructShadowTable(String dataTableName) {
 
     // Create a new shadow table with the given prefix.
     Table.Builder shadowTableBuilder = Table.builder(dialect);
@@ -112,7 +143,7 @@ public class ShadowTableCreator {
     shadowTableBuilder.name(shadowTableName);
 
     // Add key columns from the data table to the shadow table builder.
-    Table dataTable = informationSchema.table(dataTableName);
+    Table dataTable = informationSchemaOfMainDb.table(dataTableName);
     Set<String> primaryKeyColNames =
         dataTable.primaryKeys().stream().map(k -> k.name()).collect(Collectors.toSet());
     List<Column> primaryKeyCols =
@@ -146,20 +177,17 @@ public class ShadowTableCreator {
   /*
    * Returns the list of data table names that don't have a corresponding shadow table.
    */
-  List<String> getDataTablesWithNoShadowTables(Ddl ddl) {
+  List<String> getDataTablesWithNoShadowTables() {
     // Get the list of shadow tables in the information schema based on the prefix.
-    Set<String> existingShadowTables = getShadowTablesInDdl(ddl);
+    Set<String> existingShadowTables = getShadowTablesInDdl(informationSchemaOfMainDb);
 
     List<String> allTables =
-        ddl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
+        informationSchemaOfMainDb.allTables().stream()
+            .map(t -> t.name())
+            .collect(Collectors.toList());
 
-    BatchClient batchClient = metadataSpannerAccessor.getBatchClient();
-    BatchReadOnlyTransaction context =
-        batchClient.batchReadOnlyTransaction(TimestampBound.strong());
-    InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
-    Ddl metadataDbinformationSchema = scanner.scan();
     Set<String> existingShadowTablesInMetadataDb =
-        getShadowTablesInDdl(metadataDbinformationSchema);
+        getShadowTablesInDdl(informationSchemaOfMetadataDb);
     /*
      * Filter out the following from the list of all table names to get the list of
      * data tables which do not have corresponding shadow tables:
