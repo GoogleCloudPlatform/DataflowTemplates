@@ -20,12 +20,12 @@ CREATE TABLE bit_varying_table (
 
 CREATE TABLE bool_table (
     id INT64 NOT NULL,
-    bool_col BOOLEAN
+    bool_col BOOL
 ) PRIMARY KEY (id);
 
 CREATE TABLE boolean_table (
     id INT64 NOT NULL,
-    boolean_col BOOLEAN
+    boolean_col BOOL
 ) PRIMARY KEY (id);
 
 CREATE TABLE box_table (
