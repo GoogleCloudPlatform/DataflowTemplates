@@ -18,7 +18,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputSubscription** : The Pub/Sub input subscription to read from, in the format of 'projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>' (Example: projects/your-project-id/subscriptions/your-subscription-name).
+* **inputSubscription** : The Pub/Sub input subscription to read from. (Example: projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>).
 * **driverClassName** : The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
 * **connectionUrl** : The JDBC connection URL string. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string. (Example: jdbc:mysql://some-host:3306/sampledb).
 * **driverJars** : Comma separated Cloud Storage paths for JDBC drivers.  (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
@@ -31,9 +31,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **password** : The password to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded.
 * **connectionProperties** : The properties string to use for the JDBC connection. The string must use the format `[propertyName=property;]*`.  (Example: unicode=true;characterEncoding=UTF-8).
 * **KMSEncryptionKey** : The Cloud KMS Encryption Key to use to decrypt the username, password, and connection string. If a Cloud KMS key is passed in, the username, password, and connection string must all be passed in encrypted. (Example: projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}).
-* **disabledAlgorithms** : Comma separated algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4).
-* **extraFilesToStage** : Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>).
-* **defaultLogLevel** : Set Log level in the workers. Supported options are OFF, ERROR, WARN, INFO, DEBUG, TRACE. Defaults to INFO.
+* **disabledAlgorithms** : Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4).
+* **extraFilesToStage** : Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>).
 
 
 
@@ -126,7 +125,6 @@ export CONNECTION_PROPERTIES=<connectionProperties>
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
-export DEFAULT_LOG_LEVEL=INFO
 
 gcloud dataflow flex-template run "pubsub-to-jdbc-job" \
   --project "$PROJECT" \
@@ -143,8 +141,7 @@ gcloud dataflow flex-template run "pubsub-to-jdbc-job" \
   --parameters "outputDeadletterTopic=$OUTPUT_DEADLETTER_TOPIC" \
   --parameters "KMSEncryptionKey=$KMSENCRYPTION_KEY" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
-  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
-  --parameters "defaultLogLevel=$DEFAULT_LOG_LEVEL"
+  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE"
 ```
 
 For more information about the command, please check:
@@ -177,7 +174,6 @@ export CONNECTION_PROPERTIES=<connectionProperties>
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
-export DEFAULT_LOG_LEVEL=INFO
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -186,7 +182,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-to-jdbc-job" \
 -DtemplateName="Pubsub_to_Jdbc" \
--Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,driverClassName=$DRIVER_CLASS_NAME,connectionUrl=$CONNECTION_URL,username=$USERNAME,password=$PASSWORD,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,statement=$STATEMENT,outputDeadletterTopic=$OUTPUT_DEADLETTER_TOPIC,KMSEncryptionKey=$KMSENCRYPTION_KEY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,defaultLogLevel=$DEFAULT_LOG_LEVEL" \
+-Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,driverClassName=$DRIVER_CLASS_NAME,connectionUrl=$CONNECTION_URL,username=$USERNAME,password=$PASSWORD,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,statement=$STATEMENT,outputDeadletterTopic=$OUTPUT_DEADLETTER_TOPIC,KMSEncryptionKey=$KMSENCRYPTION_KEY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
 -f v2/googlecloud-to-googlecloud
 ```
 
@@ -231,7 +227,7 @@ resource "google_dataflow_flex_template_job" "pubsub_to_jdbc" {
   name              = "pubsub-to-jdbc"
   region            = var.region
   parameters        = {
-    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
+    inputSubscription = "projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>"
     driverClassName = "com.mysql.jdbc.Driver"
     connectionUrl = "jdbc:mysql://some-host:3306/sampledb"
     driverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
@@ -242,8 +238,7 @@ resource "google_dataflow_flex_template_job" "pubsub_to_jdbc" {
     # connectionProperties = "unicode=true;characterEncoding=UTF-8"
     # KMSEncryptionKey = "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}"
     # disabledAlgorithms = "SSLv3, RC4"
-    # extraFilesToStage = "gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>"
-    # defaultLogLevel = "INFO"
+    # extraFilesToStage = "gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>"
   }
 }
 ```

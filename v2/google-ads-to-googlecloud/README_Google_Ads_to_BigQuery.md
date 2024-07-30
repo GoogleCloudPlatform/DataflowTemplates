@@ -18,7 +18,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required parameters
 
 * **customerIds** : A list of Google Ads account IDs to use to execute the query. (Example: 12345,67890).
-* **query** : The query to use to get the data. See Google Ads Query Language. For example: `SELECT campaign.id, campaign.name FROM campaign`. (Example: SELECT campaign.id, campaign.name FROM campaign).
+* **query** : The query to use to get the data. See Google Ads Query Language (https://developers.google.com/google-ads/api/docs/query/overview). (Example: SELECT campaign.id, campaign.name FROM campaign).
 * **qpsPerWorker** : The rate of query requests per second (QPS) to submit to Google Ads.  Divide the desired per pipeline QPS by the maximum number of workers. Avoid exceeding per-account or developer token limits. See Rate Limits (https://developers.google.com/google-ads/api/docs/best-practices/rate-limits).
 * **googleAdsClientId** : The OAuth 2.0 client ID that identifies the application. See Create a client ID and client secret (https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret).
 * **googleAdsClientSecret** : The OAuth 2.0 client secret that corresponds to the specified client ID. See Create a client ID and client secret (https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret).

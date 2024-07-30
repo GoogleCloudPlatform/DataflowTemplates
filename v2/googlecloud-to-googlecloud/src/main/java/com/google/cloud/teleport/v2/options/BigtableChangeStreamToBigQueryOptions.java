@@ -55,8 +55,8 @@ public interface BigtableChangeStreamToBigQueryOptions
       optional = true,
       description = "Write values as BigQuery BYTES",
       helpText =
-          "When set true values are written to BYTES column, otherwise to STRING column. "
-              + "Defaults to false.")
+          "When set to `true`, values are written to the BYTES column. Otherwise, values are written to the STRING column. "
+              + "Defaults to: `false`.")
   @Default.Boolean(false)
   Boolean getWriteValuesAsBytes();
 
@@ -67,7 +67,7 @@ public interface BigtableChangeStreamToBigQueryOptions
       optional = true,
       description = "Write Bigtable timestamp as BigQuery INT",
       helpText =
-          "Whether to write the Bigtable timestamp as BigQuery `INT64`. When set to true, values are written to the `INT64` column."
+          "Whether to write the Bigtable timestamp as BigQuery INT64. When set to `true`, values are written to the INT64 column."
               + " Otherwise, values are written to the `TIMESTAMP` column. Columns affected: `timestamp`, `timestamp_from`, "
               + "and `timestamp_to`. Defaults to `false`. When set to `true`, the time is measured in microseconds "
               + "since the Unix epoch (January 1, 1970 at UTC).")
@@ -117,7 +117,7 @@ public interface BigtableChangeStreamToBigQueryOptions
       optional = true,
       description = "Sets partition expiration time in milliseconds",
       helpText =
-          "Sets the changelog table partition expiration time, in milliseconds. When set to true, "
+          "Sets the changelog table partition expiration time, in milliseconds. When set to `true`, "
               + "partitions older than the specified number of milliseconds are deleted. "
               + "By default, no expiration is set.")
   Long getBigQueryChangelogTablePartitionExpirationMs();

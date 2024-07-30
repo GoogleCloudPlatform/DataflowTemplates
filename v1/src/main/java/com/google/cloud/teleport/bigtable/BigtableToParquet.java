@@ -111,7 +111,7 @@ public class BigtableToParquet {
         groupName = "Target",
         description = "Output file directory in Cloud Storage",
         helpText =
-            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse the directory path for date and time formatters. For example: gs://your-bucket/your-path.")
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse the directory path for date and time formatters. For example: `gs://your-bucket/your-path`.")
     ValueProvider<String> getOutputDirectory();
 
     @SuppressWarnings("unused")
@@ -122,7 +122,7 @@ public class BigtableToParquet {
         groupName = "Target",
         description = "Parquet file prefix",
         helpText =
-            "The prefix of the Parquet file name. For example, \"table1-\". Defaults to: part.")
+            "The prefix of the Parquet file name. For example, `table1-`. Defaults to: `part`.")
     @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 

@@ -155,7 +155,7 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Datastream output file format (avro/json).",
         helpText =
-            "The format of the output file produced by Datastream. For example `avro,json`. Default, `avro`.")
+            "The format of the output file produced by Datastream. For example `avro,json`. Defaults to: `avro`.")
     @Default.String("avro")
     String getInputFileFormat();
 
@@ -217,9 +217,8 @@ public class DataStreamToSpanner {
         optional = true,
         description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
         helpText =
-            "The Pub/Sub subscription being used in a Cloud Storage notification policy. The name"
-                + " should be in the format of"
-                + " projects/<project-id>/subscriptions/<subscription-name>.")
+            "The Pub/Sub subscription being used in a Cloud Storage notification policy. For the name,"
+                + " use the format of `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.")
     String getGcsPubSubSubscription();
 
     void setGcsPubSubSubscription(String value);
@@ -295,7 +294,7 @@ public class DataStreamToSpanner {
         order = 15,
         optional = true,
         description = "Dead letter queue retry minutes",
-        helpText = "The number of minutes between dead letter queue retries. Defaults to 10.")
+        helpText = "The number of minutes between dead letter queue retries. Defaults to `10`.")
     @Default.Integer(10)
     Integer getDlqRetryMinutes();
 
@@ -306,7 +305,7 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Dead letter queue maximum retry count",
         helpText =
-            "The max number of times temporary errors can be retried through DLQ. Defaults to 500.")
+            "The max number of times temporary errors can be retried through DLQ. Defaults to `500`.")
     @Default.Integer(500)
     Integer getDlqMaxRetryCount();
 
@@ -398,7 +397,7 @@ public class DataStreamToSpanner {
         description = "Priority for Spanner RPC invocations",
         helpText =
             "The request priority for Cloud Spanner calls. The value must be one of:"
-                + " [HIGH,MEDIUM,LOW]. Defaults to HIGH")
+                + " [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.")
     @Default.Enum("HIGH")
     RpcPriority getSpannerPriority();
 
@@ -412,8 +411,8 @@ public class DataStreamToSpanner {
                 + " retry directory when running in regular mode.",
         helpText =
             "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ"
-                + " retry directory when running in regular mode. The name should be in the format"
-                + " of projects/<project-id>/subscriptions/<subscription-name>. When set, the"
+                + " retry directory when running in regular mode. For the name, use the format"
+                + " `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`. When set, the"
                 + " deadLetterQueueDirectory and dlqRetryMinutes are ignored.")
     String getDlqGcsPubSubSubscription();
 

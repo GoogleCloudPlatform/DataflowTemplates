@@ -32,9 +32,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **cassandraPort** : The TCP port to use to reach Apache Cassandra on the nodes. The default value is 9042.
-* **defaultColumnFamily** : The name of the column family of the Bigtable table. The default value is default.
-* **rowKeySeparator** : The separator used to build row-keys. The default value is '#'.
+* **cassandraPort** : The TCP port to use to reach Apache Cassandra on the nodes. The default value is `9042`.
+* **defaultColumnFamily** : The name of the column family of the Bigtable table. The default value is `default`.
+* **rowKeySeparator** : The separator used to build row-keys. The default value is `#`.
 * **splitLargeRows** : The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. .
 
 

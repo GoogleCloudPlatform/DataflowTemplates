@@ -13,18 +13,18 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **readBootstrapServerAndTopic** : Kafka Topic to read the input from.
-* **kafkaReadAuthenticationMode** : The mode of authentication to use with the Kafka cluster. Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, and TLS for certificate-based authentication. Apache Kafka for BigQuery only supports the SASL_PLAIN authentication mode. Defaults to: SASL_PLAIN.
+* **readBootstrapServerAndTopic** : Kafka Bootstrap server and topic to read the input from. (Example: localhost:9092;topic1,topic2).
+* **kafkaReadAuthenticationMode** : The mode of authentication to use with the Kafka cluster. Use `NONE` for no authentication, `SASL_PLAIN` for SASL/PLAIN username and password, and `TLS` for certificate-based authentication. Apache Kafka for BigQuery only supports the `SASL_PLAIN` authentication mode. Defaults to: SASL_PLAIN.
 * **writeBootstrapServerAndTopic** : Kafka topic to write the output to.
-* **kafkaWriteAuthenticationMethod** : The mode of authentication to use with the Kafka cluster. Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, and TLS for certificate-based authentication. Defaults to: NONE.
+* **kafkaWriteAuthenticationMethod** : The mode of authentication to use with the Kafka cluster. Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, and TLS for certificate-based authentication. Defaults to: APPLICATION_DEFAULT_CREDENTIALS.
 
 ### Optional parameters
 
 * **enableCommitOffsets** : Commit offsets of processed messages to Kafka. If enabled, this will minimize the gaps or duplicate processing of messages when restarting the pipeline. Requires specifying the Consumer Group ID. Defaults to: false.
 * **consumerGroupId** : The unique identifier for the consumer group that this pipeline belongs to. Required if Commit Offsets to Kafka is enabled. Defaults to empty.
 * **kafkaReadOffset** : The starting point for reading messages when no committed offsets exist. The earliest starts from the beginning, the latest from the newest message. Defaults to: latest.
-* **kafkaReadUsernameSecretId** : The Google Cloud Secret Manager secret ID that contains the Kafka username to use with SASL_PLAIN authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>). Defaults to empty.
-* **kafkaReadPasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the Kafka password to use with SASL_PLAIN authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>). Defaults to empty.
+* **kafkaReadUsernameSecretId** : The Google Cloud Secret Manager secret ID that contains the Kafka username to use with `SASL_PLAIN` authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>). Defaults to empty.
+* **kafkaReadPasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the Kafka password to use with `SASL_PLAIN` authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>). Defaults to empty.
 * **kafkaReadKeystoreLocation** : The Google Cloud Storage path to the Java KeyStore (JKS) file that contains the TLS certificate and private key to use when authenticating with the Kafka cluster. (Example: gs://your-bucket/keystore.jks).
 * **kafkaReadTruststoreLocation** : The Google Cloud Storage path to the Java TrustStore (JKS) file that contains the trusted certificates to use to verify the identity of the Kafka broker.
 * **kafkaReadTruststorePasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to use to access the Java TrustStore (JKS) file for Kafka TLS authentication (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
@@ -118,7 +118,7 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Kafka_to_Kafka"
 export READ_BOOTSTRAP_SERVER_AND_TOPIC=<readBootstrapServerAndTopic>
 export KAFKA_READ_AUTHENTICATION_MODE=SASL_PLAIN
 export WRITE_BOOTSTRAP_SERVER_AND_TOPIC=<writeBootstrapServerAndTopic>
-export KAFKA_WRITE_AUTHENTICATION_METHOD=NONE
+export KAFKA_WRITE_AUTHENTICATION_METHOD=APPLICATION_DEFAULT_CREDENTIALS
 
 ### Optional
 export ENABLE_COMMIT_OFFSETS=false
@@ -185,7 +185,7 @@ export REGION=us-central1
 export READ_BOOTSTRAP_SERVER_AND_TOPIC=<readBootstrapServerAndTopic>
 export KAFKA_READ_AUTHENTICATION_MODE=SASL_PLAIN
 export WRITE_BOOTSTRAP_SERVER_AND_TOPIC=<writeBootstrapServerAndTopic>
-export KAFKA_WRITE_AUTHENTICATION_METHOD=NONE
+export KAFKA_WRITE_AUTHENTICATION_METHOD=APPLICATION_DEFAULT_CREDENTIALS
 
 ### Optional
 export ENABLE_COMMIT_OFFSETS=false
@@ -258,10 +258,10 @@ resource "google_dataflow_flex_template_job" "kafka_to_kafka" {
   name              = "kafka-to-kafka"
   region            = var.region
   parameters        = {
-    readBootstrapServerAndTopic = "<readBootstrapServerAndTopic>"
+    readBootstrapServerAndTopic = "localhost:9092;topic1,topic2"
     kafkaReadAuthenticationMode = "SASL_PLAIN"
     writeBootstrapServerAndTopic = "<writeBootstrapServerAndTopic>"
-    kafkaWriteAuthenticationMethod = "NONE"
+    kafkaWriteAuthenticationMethod = "APPLICATION_DEFAULT_CREDENTIALS"
     # enableCommitOffsets = "false"
     # consumerGroupId = ""
     # kafkaReadOffset = "latest"

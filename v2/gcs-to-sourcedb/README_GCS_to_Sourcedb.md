@@ -34,6 +34,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **windowDuration** : The window duration/size in which data is written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode. (Example: 5m).
 * **runMode** : Regular writes to source db, reprocess does processing the specific shards marked as REPROCESS, resumeFailed does reprocess of all shards in error state, resumeSuccess continues processing shards in successful state, resumeAll continues processing all shards irrespective of state. Defaults to: regular.
 * **metadataTableSuffix** : Suffix appended to the spanner_to_gcs_metadata and shard_file_create_progress metadata tables.Useful when doing multiple runs.Only alpha numeric and underscores are allowed. Defaults to empty.
+* **transformationJarPath** : Custom jar location in Cloud Storage that contains the custom transformation logic for processing records in reverse replication. Defaults to empty.
+* **transformationClassName** : Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
+* **transformationCustomParameters** : String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
+* **writeFilteredEventsToGcs** : This is a flag which if set to true will write filtered events from custom transformation to GCS. Defaults to: false.
 
 
 
@@ -128,6 +132,10 @@ export START_TIMESTAMP=<startTimestamp>
 export WINDOW_DURATION=<windowDuration>
 export RUN_MODE=regular
 export METADATA_TABLE_SUFFIX=""
+export TRANSFORMATION_JAR_PATH=""
+export TRANSFORMATION_CLASS_NAME=""
+export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export WRITE_FILTERED_EVENTS_TO_GCS=false
 
 gcloud dataflow flex-template run "gcs-to-sourcedb-job" \
   --project "$PROJECT" \
@@ -146,7 +154,11 @@ gcloud dataflow flex-template run "gcs-to-sourcedb-job" \
   --parameters "metadataDatabase=$METADATA_DATABASE" \
   --parameters "runMode=$RUN_MODE" \
   --parameters "metadataTableSuffix=$METADATA_TABLE_SUFFIX" \
-  --parameters "runIdentifier=$RUN_IDENTIFIER"
+  --parameters "runIdentifier=$RUN_IDENTIFIER" \
+  --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
+  --parameters "transformationClassName=$TRANSFORMATION_CLASS_NAME" \
+  --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
+  --parameters "writeFilteredEventsToGcs=$WRITE_FILTERED_EVENTS_TO_GCS"
 ```
 
 For more information about the command, please check:
@@ -181,6 +193,10 @@ export START_TIMESTAMP=<startTimestamp>
 export WINDOW_DURATION=<windowDuration>
 export RUN_MODE=regular
 export METADATA_TABLE_SUFFIX=""
+export TRANSFORMATION_JAR_PATH=""
+export TRANSFORMATION_CLASS_NAME=""
+export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export WRITE_FILTERED_EVENTS_TO_GCS=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -189,7 +205,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-to-sourcedb-job" \
 -DtemplateName="GCS_to_Sourcedb" \
--Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerIntervalInMilliSec=$TIMER_INTERVAL_IN_MILLI_SEC,startTimestamp=$START_TIMESTAMP,windowDuration=$WINDOW_DURATION,GCSInputDirectoryPath=$GCSINPUT_DIRECTORY_PATH,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,runMode=$RUN_MODE,metadataTableSuffix=$METADATA_TABLE_SUFFIX,runIdentifier=$RUN_IDENTIFIER" \
+-Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerIntervalInMilliSec=$TIMER_INTERVAL_IN_MILLI_SEC,startTimestamp=$START_TIMESTAMP,windowDuration=$WINDOW_DURATION,GCSInputDirectoryPath=$GCSINPUT_DIRECTORY_PATH,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,runMode=$RUN_MODE,metadataTableSuffix=$METADATA_TABLE_SUFFIX,runIdentifier=$RUN_IDENTIFIER,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,writeFilteredEventsToGcs=$WRITE_FILTERED_EVENTS_TO_GCS" \
 -f v2/gcs-to-sourcedb
 ```
 
@@ -248,6 +264,10 @@ resource "google_dataflow_flex_template_job" "gcs_to_sourcedb" {
     # windowDuration = "5m"
     # runMode = "regular"
     # metadataTableSuffix = ""
+    # transformationJarPath = ""
+    # transformationClassName = ""
+    # transformationCustomParameters = ""
+    # writeFilteredEventsToGcs = "false"
   }
 }
 ```

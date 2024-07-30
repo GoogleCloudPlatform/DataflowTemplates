@@ -25,7 +25,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **inputFileFormat** : File format of the input files. Needs to be either avro, parquet or csv.
 * **outputFileFormat** : File format of the output files. Needs to be either avro or parquet.
-* **inputFileSpec** : The Cloud Storage file pattern to search for CSV files. Example: gs://mybucket/test-*.csv.
+* **inputFileSpec** : The Cloud Storage file pattern to search for CSV files. Example: `gs://mybucket/test-*.csv`.
 * **outputBucket** : Cloud storage directory for writing output files. This value must end in a slash. (Example: gs://your-bucket/path/).
 * **schema** : Cloud storage path to the avro schema file. (Example: gs://your-bucket/your-path/schema.avsc).
 
@@ -33,12 +33,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **containsHeaders** : Input CSV files contain a header record (true/false). Only required if reading CSV files. Defaults to: false.
 * **deadletterTable** : Messages failed to reach the target for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. (Example: your-project:your-dataset.your-table-name).
-* **delimiter** : The column delimiter of the input text files. Default: use delimiter provided in csvFormat (Example: ,).
-* **csvFormat** : CSV format specification to use for parsing records. Default is: Default. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html.
-* **jsonSchemaPath** : The path to the JSON schema. Defaults to: null. (Example: gs://path/to/schema).
-* **largeNumFiles** : Set to true if number of files is in the tens of thousands. Defaults to: false.
-* **csvFileEncoding** : The CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, and UTF-16. Defaults to: UTF-8.
-* **logDetailedCsvConversionErrors** : Set to true to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords). Default: false.
+* **delimiter** : The column delimiter of the input text files. Default: `,` (Example: ,).
+* **csvFormat** : CSV format specification to use for parsing records. Default is: `Default`. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html.
+* **jsonSchemaPath** : The path to the JSON schema. Defaults to: `null`. (Example: gs://path/to/schema).
+* **largeNumFiles** : Set to true if number of files is in the tens of thousands. Defaults to: `false`.
+* **csvFileEncoding** : The CSV file character encoding format. Allowed Values are `US-ASCII`, `ISO-8859-1`, `UTF-8`, and `UTF-16`. Defaults to: UTF-8.
+* **logDetailedCsvConversionErrors** : Set to `true` to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords). Default: `false`.
 * **numShards** : The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Default value is decided by Dataflow.
 * **outputFilePrefix** : The prefix of the files to write to. Defaults to: output.
 

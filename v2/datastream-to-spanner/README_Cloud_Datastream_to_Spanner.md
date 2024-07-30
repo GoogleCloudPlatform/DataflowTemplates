@@ -49,26 +49,26 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **inputFileFormat** : The format of the output file produced by Datastream. For example `avro,json`. Default, `avro`.
+* **inputFileFormat** : The format of the output file produced by Datastream. For example `avro,json`. Defaults to: `avro`.
 * **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from HarbourBridge.
 * **projectId** : The Spanner project ID.
 * **spannerHost** : The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
-* **gcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>.
+* **gcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy. For the name, use the format of `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.
 * **shadowTablePrefix** : The prefix used to name shadow tables. Default: `shadow_`.
 * **shouldCreateShadowTables** : This flag indicates whether shadow tables must be created in Cloud Spanner database. Defaults to: true.
 * **rfcStartDateTime** : The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z.
 * **fileReadConcurrency** : The number of concurrent DataStream files to read. Defaults to: 30.
 * **deadLetterQueueDirectory** : The file path used when storing the error queue output. The default file path is a directory under the Dataflow job's temp location.
-* **dlqRetryMinutes** : The number of minutes between dead letter queue retries. Defaults to 10.
-* **dlqMaxRetryCount** : The max number of times temporary errors can be retried through DLQ. Defaults to 500.
+* **dlqRetryMinutes** : The number of minutes between dead letter queue retries. Defaults to `10`.
+* **dlqMaxRetryCount** : The max number of times temporary errors can be retried through DLQ. Defaults to `500`.
 * **dataStreamRootUrl** : Datastream API Root URL. Defaults to: https://datastream.googleapis.com/.
 * **datastreamSourceType** : This is the type of source database that Datastream connects to. Example - mysql/oracle. Need to be set when testing without an actual running Datastream.
 * **roundJsonDecimals** : This flag if set, rounds the decimal values in json columns to a number that can be stored without loss of precision. Defaults to: false.
 * **runMode** : This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
 * **transformationContextFilePath** : Transformation context file path in cloud storage used to populate data used in transformations performed during migrations   Eg: The shard id to db name to identify the db from which a row was migrated.
 * **directoryWatchDurationInMinutes** : The Duration for which the pipeline should keep polling a directory in GCS. Datastreamoutput files are arranged in a directory structure which depicts the timestamp of the event grouped by minutes. This parameter should be approximately equal tomaximum delay which could occur between event occurring in source database and the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes. Defaults to: 10.
-* **spannerPriority** : The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]. Defaults to HIGH.
-* **dlqGcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored.
+* **spannerPriority** : The request priority for Cloud Spanner calls. The value must be one of: [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.
+* **dlqGcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. For the name, use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored.
 * **transformationJarPath** : Custom jar location in Cloud Storage that contains the custom transformation logic for processing records in forward migration. Defaults to empty.
 * **transformationClassName** : Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
 * **transformationCustomParameters** : String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.

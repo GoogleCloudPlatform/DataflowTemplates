@@ -23,10 +23,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **inputTableSpec** : The BigQuery table to read from. Format: `projectId:datasetId.tablename`. If you specify `inputTableSpec`, the template reads the data directly from BigQuery storage by using the BigQuery Storage Read API (https://cloud.google.com/bigquery/docs/reference/storage). For information about limitations in the Storage Read API, see https://cloud.google.com/bigquery/docs/reference/storage#limitations. You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter. (Example: bigquery-project:dataset.input_table).
-* **outputDeadletterTable** : The BigQuery table for messages that failed to reach the output table, in the format <PROJECT_ID>:<DATASET_NAME>.<DEADLETTER_TABLE>. If a table doesn't exist, is is created during pipeline execution. If not specified, `<outputTableSpec>_error_records` is used. (Example: your-project-id:your-dataset.your-table-name).
+* **inputTableSpec** : The BigQuery table to read from. If you specify `inputTableSpec`, the template reads the data directly from BigQuery storage by using the BigQuery Storage Read API (https://cloud.google.com/bigquery/docs/reference/storage). For information about limitations in the Storage Read API, see https://cloud.google.com/bigquery/docs/reference/storage#limitations. You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter. (Example: <BIGQUERY_PROJECT>:<DATASET_NAME>.<INPUT_TABLE>).
+* **outputDeadletterTable** : The BigQuery table for messages that failed to reach the output table. If a table doesn't exist, it is created during pipeline execution. If not specified, `<outputTableSpec>_error_records` is used. (Example: <PROJECT_ID>:<DATASET_NAME>.<DEADLETTER_TABLE>).
 * **query** : The SQL query to use to read data from BigQuery. If the BigQuery dataset is in a different project than the Dataflow job, specify the full dataset name in the SQL query, for example: <PROJECT_ID>.<DATASET_NAME>.<TABLE_NAME>. By default, the `query` parameter uses GoogleSQL (https://cloud.google.com/bigquery/docs/introduction-sql), unless `useLegacySql` is `true`. You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter. (Example: select * from sampledb.sample_table).
-* **useLegacySql** : Set to true to use legacy SQL. This parameter only applies when using the `query` parameter. Defaults to: false.
+* **useLegacySql** : Set to `true` to use legacy SQL. This parameter only applies when using the `query` parameter. Defaults to: `false`.
 * **queryLocation** : Needed when reading from an authorized view without underlying table's permission. (Example: US).
 * **bigtableRpcAttemptTimeoutMs** : The timeout for each Bigtable RPC attempt in milliseconds.
 * **bigtableRpcTimeoutMs** : The total timeout for a Bigtable RPC operation in milliseconds.
@@ -249,8 +249,8 @@ resource "google_dataflow_flex_template_job" "bigquery_to_bigtable" {
     bigtableWriteInstanceId = "<bigtableWriteInstanceId>"
     bigtableWriteTableId = "<bigtableWriteTableId>"
     bigtableWriteColumnFamily = "<bigtableWriteColumnFamily>"
-    # inputTableSpec = "bigquery-project:dataset.input_table"
-    # outputDeadletterTable = "your-project-id:your-dataset.your-table-name"
+    # inputTableSpec = "<BIGQUERY_PROJECT>:<DATASET_NAME>.<INPUT_TABLE>"
+    # outputDeadletterTable = "<PROJECT_ID>:<DATASET_NAME>.<DEADLETTER_TABLE>"
     # query = "select * from sampledb.sample_table"
     # useLegacySql = "false"
     # queryLocation = "US"

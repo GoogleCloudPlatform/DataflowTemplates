@@ -21,8 +21,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigtableProjectId** : The ID of the Google Cloud project that contains the Cloud Bigtable instance that you want to read data from.
 * **bigtableInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
 * **bigtableTableId** : The ID of the Cloud Bigtable table to export.
-* **outputDirectory** : The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse the directory path for date and time formatters. For example: gs://your-bucket/your-path.
-* **filenamePrefix** : The prefix of the Parquet file name. For example, "table1-". Defaults to: part.
+* **outputDirectory** : The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse the directory path for date and time formatters. For example: `gs://your-bucket/your-path`.
+* **filenamePrefix** : The prefix of the Parquet file name. For example, `table1-`. Defaults to: `part`.
 
 ### Optional parameters
 

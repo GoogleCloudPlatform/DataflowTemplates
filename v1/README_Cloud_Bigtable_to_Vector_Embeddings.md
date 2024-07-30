@@ -21,20 +21,20 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigtableProjectId** : The ID for the Google Cloud project that contains the Bigtable instance that you want to read data from.
 * **bigtableInstanceId** : The ID of the Bigtable instance that contains the table.
 * **bigtableTableId** : The ID of the Bigtable table to read from.
-* **filenamePrefix** : The prefix of the JSON filename. For example: "table1-". If no value is provided, defaults to "part".
-* **idColumn** : The fully qualified column name where the ID is stored. In the format cf:col or _key.
-* **embeddingColumn** : The fully qualified column name where the embeddings are stored. In the format cf:col or _key.
+* **filenamePrefix** : The prefix of the JSON filename. For example: `table1-`. If no value is provided, defaults to `part`.
+* **idColumn** : The fully qualified column name where the ID is stored. In the format `cf:col` or `_key`.
+* **embeddingColumn** : The fully qualified column name where the embeddings are stored. In the format `cf:col` or `_key`.
 
 ### Optional parameters
 
 * **outputDirectory** : The Cloud Storage path where the output JSON files are stored. (Example: gs://your-bucket/your-path/).
-* **crowdingTagColumn** : The fully qualified column name where the crowding tag is stored. In the format cf:col or _key.
-* **embeddingByteSize** : The byte size of each entry in the embeddings array. For float, use the value 4. For double, use the value 8. Defaults to 4.
-* **allowRestrictsMappings** : The comma-separated, fully qualified column names for the columns to use as the allow restricts, with their aliases. In the format cf:col->alias.
-* **denyRestrictsMappings** : The comma-separated, fully qualified column names for the columns to use as the deny restricts, with their aliases. In the format cf:col->alias.
-* **intNumericRestrictsMappings** : The comma-separated, fully qualified column names of the columns to use as integer numeric_restricts, with their aliases. In the format cf:col->alias.
-* **floatNumericRestrictsMappings** : The comma-separated, fully qualified column names of the columns to use as float (4 bytes) numeric_restricts, with their aliases. In the format cf:col->alias.
-* **doubleNumericRestrictsMappings** : The comma-separated, fully qualified column names of the columns to use as double (8 bytes) numeric_restricts, with their aliases. In the format cf:col->alias.
+* **crowdingTagColumn** : The fully qualified column name where the crowding tag is stored. In the format `cf:col` or `_key`.
+* **embeddingByteSize** : The byte size of each entry in the embeddings array. For float, use the value `4`. For double, use the value `8`. Defaults to `4`.
+* **allowRestrictsMappings** : The comma-separated, fully qualified column names for the columns to use as the allow restricts, with their aliases. In the format `cf:col->alias`.
+* **denyRestrictsMappings** : The comma-separated, fully qualified column names for the columns to use as the deny restricts, with their aliases. In the format `cf:col->alias`.
+* **intNumericRestrictsMappings** : The comma-separated, fully qualified column names of the columns to use as integer numeric_restricts, with their aliases. In the format `cf:col->alias`.
+* **floatNumericRestrictsMappings** : The comma-separated, fully qualified column names of the columns to use as float (4 bytes) numeric_restricts, with their aliases. In the format `cf:col->alias`.
+* **doubleNumericRestrictsMappings** : The comma-separated, fully qualified column names of the columns to use as double (8 bytes) numeric_restricts, with their aliases. In the format `cf:col->alias`.
 * **bigtableAppProfileId** : The ID of the Cloud Bigtable app profile to be used for the export. Defaults to: default.
 
 

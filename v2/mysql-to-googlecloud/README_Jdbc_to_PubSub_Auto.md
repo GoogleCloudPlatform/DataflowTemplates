@@ -19,7 +19,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **connectionUrl** : Url connection string to connect to the JDBC source. Connection string can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS. (Example: jdbc:mysql://some-host:3306/sampledb).
 * **driverJars** : Comma separate Cloud Storage paths for JDBC drivers. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
 * **query** : Query to be executed on the source to extract the data. (Example: select * from sampledb.sample_table).
-* **outputTopic** : The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
+* **outputTopic** : The name of the topic to publish data to. (Example: projects/<PROJECT_ID>/topics/<TOPIC_NAME>).
 
 ### Optional parameters
 
@@ -236,7 +236,7 @@ resource "google_dataflow_flex_template_job" "jdbc_to_pubsub_auto" {
     connectionUrl = "jdbc:mysql://some-host:3306/sampledb"
     driverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
     query = "select * from sampledb.sample_table"
-    outputTopic = "projects/your-project-id/topics/your-topic-name"
+    outputTopic = "projects/<PROJECT_ID>/topics/<TOPIC_NAME>"
     # username = "<username>"
     # password = "<password>"
     # connectionProperties = "unicode=true;characterEncoding=UTF-8"

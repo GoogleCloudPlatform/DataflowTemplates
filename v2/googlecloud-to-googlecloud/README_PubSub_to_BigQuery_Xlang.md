@@ -20,13 +20,13 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **outputTableSpec** : The BigQuery table to write to, formatted as `"PROJECT_ID:DATASET_NAME.TABLE_NAME"`.
+* **outputTableSpec** : The BigQuery table to write to, formatted as `PROJECT_ID:DATASET_NAME.TABLE_NAME`.
 
 ### Optional parameters
 
-* **inputTopic** : The Pub/Sub topic to read from, formatted as `"projects/<PROJECT_ID>/topics/<TOPIC_NAME>"`.
-* **inputSubscription** : The Pub/Sub subscription to read from, formatted as `"projects/<PROJECT_ID>/subscriptions/<SUBCRIPTION_NAME>"`.
-* **outputDeadletterTable** : The BigQuery table to use for messages that failed to reach the output table, formatted as `"PROJECT_ID:DATASET_NAME.TABLE_NAME"`. If the table doesn't exist, it is created when the pipeline runs. If this parameter is not specified, the value `"OUTPUT_TABLE_SPEC_error_records"` is used instead.
+* **inputTopic** : The Pub/Sub topic to read from, formatted as `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
+* **inputSubscription** : The Pub/Sub subscription to read from, formatted as `projects/<PROJECT_ID>/subscriptions/<SUBCRIPTION_NAME>`.
+* **outputDeadletterTable** : The BigQuery table to use for messages that failed to reach the output table, formatted as `PROJECT_ID:DATASET_NAME.TABLE_NAME`. If the table doesn't exist, it is created when the pipeline runs. If this parameter is not specified, the value `OUTPUT_TABLE_SPEC_error_records` is used instead.
 * **useStorageWriteApiAtLeastOnce** : When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to true. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
 * **useStorageWriteApi** : If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
 * **numStorageWriteApiStreams** : When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.

@@ -32,9 +32,8 @@ public class WriteToPubSub implements TemplateTransform<WriteToPubSubOptions> {
         order = 8,
         groupName = "Target",
         description = "Output Pub/Sub topic",
-        helpText =
-            "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
-        example = "projects/your-project-id/topics/your-topic-name")
+        helpText = "The name of the topic to publish data to.",
+        example = "projects/<PROJECT_ID>/topics/<TOPIC_NAME>")
     @Validation.Required
     String getOutputTopic();
 

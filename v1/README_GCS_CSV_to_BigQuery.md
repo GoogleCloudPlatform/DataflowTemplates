@@ -22,12 +22,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigQueryLoadingTemporaryDirectory** : The temporary directory to use during the BigQuery loading process. (Example: gs://your-bucket/your-files/temp_dir).
 * **badRecordsOutputTable** : The name of the BigQuery table to use to store the rejected data when processing the CSV files. If you reuse an existing BigQuery table, the data is appended to the destination table. The schema of this table must match the error table schema (https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-csv-to-bigquery#GcsCSVToBigQueryBadRecordsSchema).
 * **delimiter** : The column delimiter that the CSV file uses. (Example: ,).
-* **csvFormat** : The CSV format according to Apache Commons CSV format. Defaults to: Default.
+* **csvFormat** : The CSV format according to Apache Commons CSV format. Defaults to: `Default`.
 
 ### Optional parameters
 
-* **containsHeaders** : Whether headers are included in the CSV file. Defaults to: false.
-* **csvFileEncoding** : The CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, and UTF-16. Defaults to: UTF-8.
+* **containsHeaders** : Whether headers are included in the CSV file. Defaults to: `false`.
+* **csvFileEncoding** : The CSV file character encoding format. Allowed Values are `US-ASCII`, `ISO-8859-1`, `UTF-8`, and `UTF-16`. Defaults to: UTF-8.
 
 
 

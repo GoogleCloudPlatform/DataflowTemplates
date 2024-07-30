@@ -21,11 +21,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigtableProjectId** : The ID of the Google Cloud project that contains the Bigtable instance that you want to write data to.
 * **bigtableInstanceId** : The ID of the Bigtable instance that contains the table.
 * **bigtableTableId** : The ID of the Bigtable table to import.
-* **inputFilePattern** : The Cloud Storage path pattern where data is located. (Example: gs://<BUCKET>/<FOLDER>/<PREFIX>*).
+* **inputFilePattern** : The Cloud Storage path pattern where data is located. (Example: gs://<BUCKET_NAME>/FOLDER/PREFIX*).
 
 ### Optional parameters
 
-* **splitLargeRows** : The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. .
+* **splitLargeRows** : The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic.
 
 
 
@@ -205,7 +205,7 @@ resource "google_dataflow_job" "gcs_avro_to_cloud_bigtable" {
     bigtableProjectId = "<bigtableProjectId>"
     bigtableInstanceId = "<bigtableInstanceId>"
     bigtableTableId = "<bigtableTableId>"
-    inputFilePattern = "gs://<BUCKET>/<FOLDER>/<PREFIX>*"
+    inputFilePattern = "gs://<BUCKET_NAME>/FOLDER/PREFIX*"
     # splitLargeRows = "<splitLargeRows>"
   }
 }

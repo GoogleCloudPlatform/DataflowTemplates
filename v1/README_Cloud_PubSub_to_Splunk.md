@@ -35,17 +35,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **inputSubscription** : The Pub/Sub subscription to read the input from. (Example: projects/your-project-id/subscriptions/your-subscription-name).
 * **url** : The Splunk HEC URL. The URL must be routable from the VPC that the pipeline runs in. (Example: https://splunk-hec-host:8088).
-* **outputDeadletterTopic** : The Pub/Sub topic to forward undeliverable messages to. For example, projects/<PROJECT_ID>/topics/<TOPIC_NAME>.
+* **outputDeadletterTopic** : The Pub/Sub topic to forward undeliverable messages to. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
 
 ### Optional parameters
 
 * **token** : The Splunk HEC authentication token. Must be provided if the `tokenSource` parameter is set to `PLAINTEXT` or `KMS`.
-* **batchCount** : The batch size for sending multiple events to Splunk. Defaults to 1 (no batching).
-* **disableCertificateValidation** : Disable SSL certificate validation. Default false (validation enabled). If true, the certificates are not validated (all certificates are trusted) and `rootCaCertificatePath` parameter is ignored.
-* **parallelism** : The maximum number of parallel requests. Defaults to 1 (no parallelism).
-* **includePubsubMessage** : Include the full Pub/Sub message in the payload. Default false (only the data element is included in the payload).
-* **tokenKMSEncryptionKey** : The Cloud KMS key to use to decrypt the HEC token string. This parameter must be provided when tokenSource is set to KMS. If the Cloud KMS key is provided, the HEC token string `must` be passed in encrypted. (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).
-* **tokenSecretId** : The Secret Manager secret ID for the token. This parameter must provided when the tokenSource is set to SECRET_MANAGER. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
+* **batchCount** : The batch size for sending multiple events to Splunk. Defaults to `1` (no batching).
+* **disableCertificateValidation** : Disable SSL certificate validation. Default `false` (validation enabled). If `true`, the certificates are not validated (all certificates are trusted) and `rootCaCertificatePath` parameter is ignored.
+* **parallelism** : The maximum number of parallel requests. Defaults to `1` (no parallelism).
+* **includePubsubMessage** : Include the full Pub/Sub message in the payload. Default `false` (only the data element is included in the payload).
+* **tokenKMSEncryptionKey** : The Cloud KMS key to use to decrypt the HEC token string. This parameter must be provided when tokenSource is set to KMS. If the Cloud KMS key is provided, the HEC token string must be passed in encrypted. (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).
+* **tokenSecretId** : The Secret Manager secret ID for the token. This parameter must provided when the tokenSource is set to `SECRET_MANAGER`. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
 * **tokenSource** : The source of the token. The following values are allowed: `PLAINTEXT`, `KMS`, and `SECRET_MANAGER`. You must provide this parameter when Secret Manager is used. If `tokenSource` is set to `KMS`, `tokenKMSEncryptionKey`, and encrypted, then `token` must be provided. If `tokenSource` is set to `SECRET_MANAGER`, then `tokenSecretId` must be provided. If `tokenSource` is set to `PLAINTEXT`, then `token` must be provided.
 * **rootCaCertificatePath** : The full URL to the root CA certificate in Cloud Storage. The certificate provided in Cloud Storage must be DER-encoded and can be supplied in binary or printable (Base64) encoding. If the certificate is provided in Base64 encoding, it must be bounded at the beginning by -----BEGIN CERTIFICATE-----, and must be bounded at the end by -----END CERTIFICATE-----. If this parameter is provided, this private CA certificate file is fetched and added to the Dataflow worker's trust store in order to verify the Splunk HEC endpoint's SSL certificate. If this parameter is not provided, the default trust store is used. (Example: gs://mybucket/mycerts/privateCA.crt).
 * **enableBatchLogs** : Specifies whether logs should be enabled for batches written to Splunk. Default: `true`.
