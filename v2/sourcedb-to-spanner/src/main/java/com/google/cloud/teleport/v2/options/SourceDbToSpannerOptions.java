@@ -60,10 +60,10 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   // TODO - reset the regex matches here
   @TemplateParameter.Text(
       order = 4,
-      regexes = {"(^jdbc:mysql://.*|^gs://.*)"},
+      regexes = {"(^jdbc:mysql://.*|^jdbc:postgresql://.*|^gs://.*)"},
       groupName = "Source",
       description =
-          "Connection URL to connect to the source database host. Must contain the host, port and source db name. Can optionally contain properties like autoReconnect, maxReconnects etc. Format: `jdbc:mysql://{host}:{port}/{dbName}?{parameters}`",
+          "Connection URL to connect to the source database host. Must contain the host, port and source db name. Can optionally contain properties like autoReconnect, maxReconnects etc. Format: `jdbc:{mysql|postgresql}://{host}:{port}/{dbName}?{parameters}`",
       helpText =
           "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`.")
   String getSourceDbURL();

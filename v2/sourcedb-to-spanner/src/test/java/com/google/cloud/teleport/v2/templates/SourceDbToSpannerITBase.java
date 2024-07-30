@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
 import java.io.IOException;
@@ -150,10 +151,12 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             put("projectId", PROJECT);
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
+            put("sourceDbDialect", sqlDialectFrom(jdbcResourceManager));
             put("sourceDbURL", jdbcResourceManager.getUri());
             put("username", jdbcResourceManager.getUsername());
             put("password", jdbcResourceManager.getPassword());
             put("outputDirectory", "gs://" + artifactBucketName);
+            put("jdbcDriverClassName", driverClassNameFrom(jdbcResourceManager));
           }
         };
 
@@ -209,5 +212,23 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     gcsClient.uploadArtifact(
         gcsPathPrefix + "/customTransformation.jar",
         "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
+  }
+
+  private String sqlDialectFrom(JDBCResourceManager jdbcResourceManager) {
+    if (jdbcResourceManager instanceof PostgresResourceManager) {
+      return SQLDialect.POSTGRESQL.name();
+    }
+    return SQLDialect.MYSQL.name();
+  }
+
+  private String driverClassNameFrom(JDBCResourceManager jdbcResourceManager) {
+    try {
+      if (jdbcResourceManager instanceof PostgresResourceManager) {
+        return Class.forName("org.postgresql.Driver").getCanonicalName();
+      }
+      return Class.forName("com.mysql.jdbc.Driver").getCanonicalName();
+    } catch (ClassNotFoundException e) {
+      throw new IllegalArgumentException(e);
+    }
   }
 }
