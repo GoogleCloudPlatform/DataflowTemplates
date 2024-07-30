@@ -40,7 +40,6 @@ ARG PY_VERSION=${pythonVersion}
 
 # Set environment variables
 ENV DATAFLOW_JAVA_COMMAND_SPEC=${commandSpec}
-ENV PIP_NO_DEPS=True
 
 # Copy template, python wheels and python launcher script from python-base
 COPY --from=python-base /template /template
