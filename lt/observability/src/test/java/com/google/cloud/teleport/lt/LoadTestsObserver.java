@@ -20,7 +20,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
-public class Main {
+public class LoadTestsObserver {
 
   protected static final Credentials CREDENTIALS = TestProperties.googleCredentials();
 
@@ -29,7 +29,7 @@ public class Main {
   @Before
   public void setup() {
     // Your Google Cloud Project ID
-    String projectId = "cloud-teleport-testing";
+    String projectId = TestProperties.exportProject();
     bigQueryResourceManager =
         BigQueryResourceManager.builder("Load-test-analyzer", projectId, CREDENTIALS)
             .setDatasetId(TestProperties.exportDataset())
