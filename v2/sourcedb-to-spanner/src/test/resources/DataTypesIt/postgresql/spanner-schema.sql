@@ -35,7 +35,7 @@ CREATE TABLE box_table (
 
 CREATE TABLE bytea_table (
     id INT64 NOT NULL,
-    bytea_col BYTEA
+    bytea_col BYTES(MAX)
 ) PRIMARY KEY (id);
 
 CREATE TABLE char_table (
@@ -75,17 +75,17 @@ CREATE TABLE decimal_table (
 
 CREATE TABLE double_precision_table (
     id INT64 NOT NULL,
-    double_precision_col DOUBLE
+    double_precision_col FLOAT64
 ) PRIMARY KEY (id);
 
 CREATE TABLE float4_table (
     id INT64 NOT NULL,
-    float4_col DOUBLE
+    float4_col FLOAT32
 ) PRIMARY KEY (id);
 
 CREATE TABLE float8_table (
     id INT64 NOT NULL,
-    float8_col DOUBLE
+    float8_col FLOAT64
 ) PRIMARY KEY (id);
 
 CREATE TABLE inet_table (
@@ -185,7 +185,7 @@ CREATE TABLE polygon_table (
 
 CREATE TABLE real_table (
     id INT64 NOT NULL,
-    real_col DOUBLE
+    real_col FLOAT32
 ) PRIMARY KEY (id);
 
 CREATE TABLE serial2_table (

@@ -76,7 +76,7 @@ public class DataTypesIT extends SourceDbToSpannerITBase {
   }
 
   @Test
-  public void mySQLAllTypesTest() throws Exception {
+  public void allTypesTest() throws Exception {
     loadSQLFileResource(postgreSQLResourceManager, POSTGRESQL_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =
