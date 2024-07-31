@@ -41,10 +41,6 @@ public final class BigtableResourceManagerUtils {
   private static final Pattern ILLEGAL_TABLE_CHARS = Pattern.compile("[^a-zA-Z0-9-_.]");
   private static final String REPLACE_TABLE_ID_CHAR = "-";
 
-  private static final int MAX_APP_PROFILE_ID_LENGTH = 20;
-  private static final String REPLACE_APP_PROFILE_ID_CHAR = "-";
-  private static final Pattern ILLEGAL_APP_PROFILE_CHARS = Pattern.compile("[^a-zA-Z0-9-_.]");
-
   private static final String TIME_FORMAT = "yyyyMMdd-HHmmss";
 
   private BigtableResourceManagerUtils() {}
@@ -192,7 +188,7 @@ public final class BigtableResourceManagerUtils {
   }
 
   /**
-   * Generates an app profile id from a given string.
+   * Generates an app profile id.
    *
    * @return The app profile id string.
    */
