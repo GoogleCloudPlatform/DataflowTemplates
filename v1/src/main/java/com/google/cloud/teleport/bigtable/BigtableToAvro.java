@@ -167,6 +167,7 @@ public class BigtableToAvro {
         BigtableIO.read()
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
+            .withAppProfileId(options.getBigtableAppProfileId())
             .withTableId(options.getBigtableTableId());
 
     // Do not validate input fields if it is running as a template.
