@@ -16,13 +16,11 @@ datastream_params = {
   # ID of the GCS target connection profile
   target_gcs_bucket_name = "<YOUR_TARGET_GCS_BUCKET_NAME>"
   # Name of the target GCS bucket used in the target connection profile above.
-  mysql_databases = [
-    {
-      database = "<YOUR_DATABASE_NAME>"
-      tables   = []
-      # Optionally list specific tables, or remove "tables" all together for all tables
-    }
-  ]
+  mysql_database = {
+    database = "<YOUR_DATABASE_NAME>"
+    tables   = []
+    # Optionally list specific tables, or remove "tables" all together for all tables
+  }
 }
 
 # Dataflow Parameters

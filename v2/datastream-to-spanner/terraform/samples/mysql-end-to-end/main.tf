@@ -248,6 +248,10 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     directoryWatchDurationInMinutes = tostring(var.dataflow_params.template_params.directory_watch_duration_in_minutes)
     spannerPriority                 = var.dataflow_params.template_params.spanner_priority
     dlqGcsPubSubSubscription        = var.dataflow_params.template_params.dlq_gcs_pub_sub_subscription
+    transformationJarPath           = var.dataflow_params.template_params.transformation_jar_path
+    transformationClassName         = var.dataflow_params.template_params.transformation_class_name
+    transformationCustomParameters  = var.dataflow_params.template_params.transformation_custom_parameters
+    filteredEventsDirectory         = var.dataflow_params.template_params.filtered_events_directory
   }
 
   # Additional Job Configurations
@@ -265,7 +269,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
   service_account_email        = var.dataflow_params.runner_params.service_account_email
   skip_wait_on_job_termination = var.dataflow_params.runner_params.skip_wait_on_job_termination
   staging_location             = var.dataflow_params.runner_params.staging_location
-  subnetwork                   = var.common_params.host_project != null ? "https://www.googleapis.com/compute/v1/projects/${var.common_params.host_project}/regions/${var.common_params.region}/subnetworks/${var.dataflow_params.runner_params.subnetwork}" : "https://www.googleapis.com/compute/v1/projects/${var.common_params.project}/regions/${var.common_params.region}/subnetworks/${var.dataflow_params.runner_params.subnetwork}"
+  subnetwork                   = var.dataflow_params.runner_params.subnetwork != null ? var.common_params.host_project != null ? "https://www.googleapis.com/compute/v1/projects/${var.common_params.host_project}/regions/${var.common_params.region}/subnetworks/${var.dataflow_params.runner_params.subnetwork}" : "https://www.googleapis.com/compute/v1/projects/${var.common_params.project}/regions/${var.common_params.region}/subnetworks/${var.dataflow_params.runner_params.subnetwork}" : null
   temp_location                = var.dataflow_params.runner_params.temp_location
   on_delete                    = var.dataflow_params.runner_params.on_delete
   region                       = var.common_params.region

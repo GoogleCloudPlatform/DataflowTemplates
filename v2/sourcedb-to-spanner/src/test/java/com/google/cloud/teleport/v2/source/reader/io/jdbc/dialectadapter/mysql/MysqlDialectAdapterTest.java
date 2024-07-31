@@ -40,6 +40,7 @@ import com.google.common.collect.ImmutableMap;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTransientConnectionException;
@@ -345,11 +346,111 @@ public class MysqlDialectAdapterTest {
     final SourceSchemaReference sourceSchemaReference =
         SourceSchemaReference.builder().setDbName("testDB").build();
     ResultSet mockResultSet = mock(ResultSet.class);
+    ResultSetMetaData mockMetadata = mock(ResultSetMetaData.class);
+
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
     doNothing().when(mockPreparedStatement).setString(1, testTables.get(0));
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
 
+    when(mockResultSet.getMetaData()).thenReturn(mockMetadata);
+    when(mockMetadata.getColumnCount()).thenReturn(InformationSchemaStatsCols.colList().size());
+    for (int i = 0; i < InformationSchemaStatsCols.colList().size(); i++) {
+      when(mockMetadata.getColumnName(i + 1))
+          .thenReturn(InformationSchemaStatsCols.colList().get(i));
+    }
+
+    wireMockResultSet(colTypes, expectedSourceColumnIndexInfos, mockResultSet);
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoveredIndexes =
+        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+            .discoverTableIndexes(mockDataSource, sourceSchemaReference, testTables);
+
+    assertThat(discoveredIndexes)
+        .isEqualTo(ImmutableMap.of(testTables.get(0), expectedSourceColumnIndexInfos));
+  }
+
+  @Test
+  public void testDiscoverIndexes5_7() throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableList<String> testTables = ImmutableList.of("testTable1");
+    ImmutableList<String> colTypes = ImmutableList.of("integer", "char", "varBinary");
+    ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
+        ImmutableList.of(
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testCol0")
+                .setIndexName("testIndex1")
+                .setIsUnique(false)
+                .setIsPrimary(false)
+                .setCardinality(42L)
+                .setOrdinalPosition(1)
+                .setIndexType(IndexType.NUMERIC)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testCol1")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(42L)
+                .setIndexType(IndexType.STRING)
+                .setOrdinalPosition(2)
+                .setCollationReference(
+                    CollationReference.builder()
+                        .setDbCharacterSet("big5")
+                        .setDbCollation("big5_chinese_ci")
+                        .setPadSpace(true)
+                        .build())
+                .setStringMaxLength(42)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testColVarBinary")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(42L)
+                .setIndexType(IndexType.STRING)
+                .setOrdinalPosition(3)
+                .setCollationReference(
+                    CollationReference.builder()
+                        .setDbCharacterSet("binary")
+                        .setDbCollation("binary")
+                        .setPadSpace(false)
+                        .build())
+                .setStringMaxLength(100)
+                .build());
+
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
+    ResultSet mockResultSet = mock(ResultSet.class);
+    ResultSetMetaData mockMetadata = mock(ResultSetMetaData.class);
+    when(mockResultSet.getMetaData()).thenReturn(mockMetadata);
+    ImmutableList<String> cols =
+        InformationSchemaStatsCols.colList().stream()
+            .filter(c -> !c.equals(InformationSchemaStatsCols.PAD_SPACE_COL))
+            .collect(ImmutableList.toImmutableList());
+    when(mockMetadata.getColumnCount()).thenReturn(cols.size());
+    for (int i = 0; i < cols.size(); i++) {
+      when(mockMetadata.getColumnName(i + 1)).thenReturn(cols.get(i));
+    }
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    doNothing().when(mockPreparedStatement).setString(1, testTables.get(0));
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+
+    wireMockResultSet(colTypes, expectedSourceColumnIndexInfos, mockResultSet);
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoveredIndexes =
+        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+            .discoverTableIndexes(mockDataSource, sourceSchemaReference, testTables);
+
+    assertThat(discoveredIndexes)
+        .isEqualTo(ImmutableMap.of(testTables.get(0), expectedSourceColumnIndexInfos));
+  }
+
+  private static void wireMockResultSet(
+      ImmutableList<String> colTypes,
+      ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos,
+      ResultSet mockResultSet)
+      throws SQLException {
     OngoingStubbing stubGetColName =
         when(mockResultSet.getString(InformationSchemaStatsCols.COL_NAME_COL));
     for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
@@ -438,13 +539,6 @@ public class MysqlDialectAdapterTest {
       stubNext = stubNext.thenReturn(true);
     }
     stubNext = stubNext.thenReturn(false);
-
-    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoveredIndexes =
-        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
-            .discoverTableIndexes(mockDataSource, sourceSchemaReference, testTables);
-
-    assertThat(discoveredIndexes)
-        .isEqualTo(ImmutableMap.of(testTables.get(0), expectedSourceColumnIndexInfos));
   }
 
   @Test
@@ -453,7 +547,7 @@ public class MysqlDialectAdapterTest {
             MysqlDialectAdapter.getIndexDiscoveryQuery(
                 SourceSchemaReference.builder().setDbName("testDB").build()))
         .isEqualTo(
-            "SELECT stats.COLUMN_NAME,stats.INDEX_NAME,stats.SEQ_IN_INDEX,stats.NON_UNIQUE,stats.CARDINALITY,cols.DATA_TYPE,cols.CHARACTER_MAXIMUM_LENGTH,cols.CHARACTER_SET_NAME,cols.COLLATION_NAME,collations.PAD_ATTRIBUTE FROM INFORMATION_SCHEMA.STATISTICS stats JOIN INFORMATION_SCHEMA.COLUMNS cols ON stats.table_schema = cols.table_schema AND stats.table_name = cols.table_name AND stats.column_name = cols.column_name LEFT JOIN INFORMATION_SCHEMA.COLLATIONS collations ON cols.COLLATION_NAME = collations.COLLATION_NAME WHERE stats.TABLE_SCHEMA = 'testDB' AND stats.TABLE_NAME = ?");
+            "SELECT * FROM INFORMATION_SCHEMA.STATISTICS stats JOIN INFORMATION_SCHEMA.COLUMNS cols ON stats.table_schema = cols.table_schema AND stats.table_name = cols.table_name AND stats.column_name = cols.column_name LEFT JOIN INFORMATION_SCHEMA.COLLATIONS collations ON cols.COLLATION_NAME = collations.COLLATION_NAME WHERE stats.TABLE_SCHEMA = 'testDB' AND stats.TABLE_NAME = ?");
   }
 
   @Test

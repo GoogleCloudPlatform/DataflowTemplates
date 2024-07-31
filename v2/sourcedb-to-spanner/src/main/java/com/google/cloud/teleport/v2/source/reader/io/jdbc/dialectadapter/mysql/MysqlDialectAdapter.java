@@ -38,6 +38,7 @@ import com.google.re2j.Pattern;
 import java.net.URL;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTimeoutException;
@@ -310,8 +311,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    * @return
    */
   protected static String getIndexDiscoveryQuery(SourceSchemaReference sourceSchemaReference) {
-    return "SELECT "
-        + String.join(",", InformationSchemaStatsCols.colList())
+    return "SELECT *"
         + " FROM INFORMATION_SCHEMA.STATISTICS stats"
         + " JOIN "
         + "INFORMATION_SCHEMA.COLUMNS cols"
@@ -374,6 +374,28 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   private ImmutableSet<String> binaryColumnTypes = ImmutableSet.of("BINARY", "VARBINARY", "BLOB");
 
+  /**
+   * Get the PadSpace attribute from {@link ResultSet} for index discovery query {@link
+   * #getIndexDiscoveryQuery(SourceSchemaReference)}. This method takes care of the fact that older
+   * versions of MySQL notably Mysql5.7 don't have a {@link
+   * InformationSchemaStatsCols#PAD_SPACE_COL} column and default to PAD SPACE comparisons.
+   */
+  @VisibleForTesting
+  @Nullable
+  protected String getPadSpaceString(ResultSet resultSet) throws SQLException {
+    ResultSetMetaData metaData = resultSet.getMetaData();
+    for (int i = 0; i < metaData.getColumnCount(); i++) {
+      if (metaData.getColumnName(i + 1).equals(InformationSchemaStatsCols.PAD_SPACE_COL)) {
+        return resultSet.getString(InformationSchemaStatsCols.PAD_SPACE_COL);
+      }
+    }
+    // For MySql5.7 there is no pad-space column
+    logger.info(
+        "Did not find {} column in INFORMATION_SCHEMA.COLLATIONS table. Assuming PAD-SPACE collation for non-binary strings as per MySQL5.7 spec",
+        InformationSchemaStatsCols.PAD_SPACE_COL);
+    return PAD_SPACE;
+  }
+
   private ImmutableList<SourceColumnIndexInfo> getTableIndexes(
       String table, PreparedStatement statement) throws SchemaDiscoveryException {
 
@@ -396,7 +418,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         }
         @Nullable String characterSet = rs.getString(InformationSchemaStatsCols.CHARACTER_SET_COL);
         @Nullable String collation = rs.getString(InformationSchemaStatsCols.COLLATION_COL);
-        @Nullable String padSpace = rs.getString(InformationSchemaStatsCols.PAD_SPACE_COL);
+        @Nullable String padSpace = getPadSpaceString(rs);
         logger.debug(
             "Discovered column {} from index {}, isUnique {}, isPrimary {}, cardinality {}, ordinalPosition {}, character-set {}, collation {}, pad-space {}",
             colName,
@@ -419,6 +441,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         // Ref https://dev.mysql.com/doc/refman/8.4/en/charset-binary-collations.html
         // In information_schema.columns query, these column types show null as character set.
         // Ref: https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/2
+        // Also for both mySQL 5.7 and 8.0 binary columns have a NO-PAD comparison.
+        // Ref: https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/0.
         if (binaryColumnTypes.contains(columType) && characterSet == null) {
           characterSet = BINARY_CHARACTER_SET;
           collation = BINARY_COLLATION;
