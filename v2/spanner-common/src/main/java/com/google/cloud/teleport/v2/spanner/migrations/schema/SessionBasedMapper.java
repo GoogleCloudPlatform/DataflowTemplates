@@ -47,10 +47,17 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
 
   private final Schema schema;
 
+  /*If enabled, through error on mismatches between spanner schema and session file. Defaults to false.
+   */
   private boolean strictCheckSchema = false;
 
   public SessionBasedMapper(String sessionFilePath, Ddl ddl) throws InputMismatchException {
-    this(SessionFileReader.read(sessionFilePath), ddl);
+    this(sessionFilePath, ddl, false);
+  }
+
+  public SessionBasedMapper(String sessionFilePath, Ddl ddl, boolean strictCheckSchema)
+      throws InputMismatchException {
+    this(SessionFileReader.read(sessionFilePath), ddl, strictCheckSchema);
   }
 
   public SessionBasedMapper(Schema schema, Ddl ddl) throws InputMismatchException {
