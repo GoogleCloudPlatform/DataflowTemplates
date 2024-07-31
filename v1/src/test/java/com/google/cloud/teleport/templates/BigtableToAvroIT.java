@@ -130,7 +130,8 @@ public class BigtableToAvroIT extends TemplateTestBase {
             .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
             .addParameter("bigtableTableId", tableId)
             .addParameter("outputDirectory", getGcsPath("output/"))
-            .addParameter("filenamePrefix", "bigtable-to-avro-output-");
+            .addParameter("filenamePrefix", "bigtable-to-avro-output-")
+            .addParameter("bigtableAppProfileId", "default");
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
