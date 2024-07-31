@@ -18,6 +18,7 @@
 package org.apache.beam.it.gcp.bigtable;
 
 import static org.apache.beam.it.common.utils.ResourceManagerUtils.generateResourceId;
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import java.time.format.DateTimeFormatter;
@@ -193,34 +194,9 @@ public final class BigtableResourceManagerUtils {
   /**
    * Generates an app profile id from a given string.
    *
-   * @param baseString The string to generate the id from.
    * @return The app profile id string.
    */
-  public static String generateAppProfileId(String baseString) {
-
-    // Take substring of baseString to account for random suffix
-    // TODO(polber) - remove with Beam 2.58.0
-    int randomSuffixLength = 6;
-    baseString =
-        baseString.substring(
-            0,
-            Math.min(
-                baseString.length(),
-                MAX_APP_PROFILE_ID_LENGTH
-                    - REPLACE_APP_PROFILE_ID_CHAR.length()
-                    - TIME_FORMAT.length()
-                    - REPLACE_APP_PROFILE_ID_CHAR.length()
-                    - randomSuffixLength));
-
-    // Add random suffix to avoid collision
-    // TODO(polber) - remove with Beam 2.58.0
-    return generateResourceId(
-            baseString.toLowerCase(),
-            ILLEGAL_APP_PROFILE_CHARS,
-            REPLACE_APP_PROFILE_ID_CHAR,
-            MAX_APP_PROFILE_ID_LENGTH,
-            DateTimeFormatter.ofPattern(TIME_FORMAT))
-        + REPLACE_APP_PROFILE_ID_CHAR
-        + RandomStringUtils.randomAlphanumeric(6).toLowerCase();
+  public static String generateAppProfileId() {
+    return "app_profile_" + randomAlphanumeric(8).toLowerCase() + "_" + System.nanoTime();
   }
 }
