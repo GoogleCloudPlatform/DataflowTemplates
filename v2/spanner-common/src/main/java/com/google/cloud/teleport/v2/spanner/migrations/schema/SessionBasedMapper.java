@@ -32,6 +32,8 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.curator.shaded.com.google.common.collect.ImmutableList;
 import org.apache.parquet.Strings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This mapper uses an SMT session file to map table and column names. For fetching destination data
@@ -39,20 +41,37 @@ import org.apache.parquet.Strings;
  */
 public class SessionBasedMapper implements ISchemaMapper, Serializable {
 
+  private static final Logger LOG = LoggerFactory.getLogger(SessionBasedMapper.class);
+
   private final Ddl ddl;
 
   private final Schema schema;
 
+  private boolean strictCheckSchema = false;
+
   public SessionBasedMapper(String sessionFilePath, Ddl ddl) throws InputMismatchException {
-    this.schema = SessionFileReader.read(sessionFilePath);
-    this.ddl = ddl;
-    validateSchemaAndDdl(schema, ddl);
+    this(SessionFileReader.read(sessionFilePath), ddl);
   }
 
   public SessionBasedMapper(Schema schema, Ddl ddl) throws InputMismatchException {
+    this(schema, ddl, false);
+  }
+
+  public SessionBasedMapper(Schema schema, Ddl ddl, boolean strictCheckSchema) throws InputMismatchException {
     this.schema = schema;
     this.ddl = ddl;
-    validateSchemaAndDdl(schema, ddl);
+    try {
+      validateSchemaAndDdl(schema, ddl);
+      LOG.info("schema matches between session file and spanner");
+    } catch(InputMismatchException e) {
+      if(strictCheckSchema) {
+        LOG.warn("schema does not match between session and spanner: {}", e.getMessage());
+        throw e;
+      } else {
+        LOG.warn("proceeding without schema match between session and spanner");
+      }
+    }
+
   }
 
   static void validateSchemaAndDdl(Schema schema, Ddl ddl) throws InputMismatchException {
