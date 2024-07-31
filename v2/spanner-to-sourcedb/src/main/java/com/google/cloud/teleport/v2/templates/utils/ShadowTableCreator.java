@@ -47,7 +47,7 @@ public class ShadowTableCreator {
   private final SpannerConfig spannerConfig;
   private final SpannerConfig metadataConfig;
   private String shadowTablePrefix;
-  private Ddl informationSchemaOfMainDb;
+  private Ddl informationSchemaOfPrimaryDb;
   private Ddl informationSchemaOfMetadataDb;
 
   public ShadowTableCreator(
@@ -62,16 +62,16 @@ public class ShadowTableCreator {
     this.spannerConfig = spannerConfig;
     this.metadataConfig = metadataConfig;
     this.shadowTablePrefix = shadowTablePrefix;
-    setInformationSchemaOfMainDb();
+    setinformationSchemaOfPrimaryDb();
     setInformationSchemaOfMetadataDb();
   }
 
-  private void setInformationSchemaOfMainDb() {
+  private void setinformationSchemaOfPrimaryDb() {
     BatchClient batchClient = spannerAccessor.getBatchClient();
     BatchReadOnlyTransaction context =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
     InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
-    this.informationSchemaOfMainDb = scanner.scan();
+    this.informationSchemaOfPrimaryDb = scanner.scan();
   }
 
   private void setInformationSchemaOfMetadataDb() {
@@ -86,11 +86,11 @@ public class ShadowTableCreator {
   public ShadowTableCreator(
       Dialect dialect,
       String shadowTablePrefix,
-      Ddl informationSchemaOfMainDb,
+      Ddl informationSchemaOfPrimaryDb,
       Ddl informationSchemaOfMetadataDb) {
     this.dialect = dialect;
     this.shadowTablePrefix = shadowTablePrefix;
-    this.informationSchemaOfMainDb = informationSchemaOfMainDb;
+    this.informationSchemaOfPrimaryDb = informationSchemaOfPrimaryDb;
     this.informationSchemaOfMetadataDb = informationSchemaOfMetadataDb;
     this.spannerAccessor = null;
     this.metadataSpannerAccessor = null;
@@ -143,7 +143,7 @@ public class ShadowTableCreator {
     shadowTableBuilder.name(shadowTableName);
 
     // Add key columns from the data table to the shadow table builder.
-    Table dataTable = informationSchemaOfMainDb.table(dataTableName);
+    Table dataTable = informationSchemaOfPrimaryDb.table(dataTableName);
     Set<String> primaryKeyColNames =
         dataTable.primaryKeys().stream().map(k -> k.name()).collect(Collectors.toSet());
     List<Column> primaryKeyCols =
@@ -179,10 +179,10 @@ public class ShadowTableCreator {
    */
   List<String> getDataTablesWithNoShadowTables() {
     // Get the list of shadow tables in the information schema based on the prefix.
-    Set<String> existingShadowTables = getShadowTablesInDdl(informationSchemaOfMainDb);
+    Set<String> existingShadowTables = getShadowTablesInDdl(informationSchemaOfPrimaryDb);
 
     List<String> allTables =
-        informationSchemaOfMainDb.allTables().stream()
+        informationSchemaOfPrimaryDb.allTables().stream()
             .map(t -> t.name())
             .collect(Collectors.toList());
 
