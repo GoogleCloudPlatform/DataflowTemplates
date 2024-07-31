@@ -45,18 +45,19 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   void setJdbcDriverClassName(String driverClassName);
 
-  // TODO - reset the regex matches here
   @TemplateParameter.Text(
       order = 3,
       regexes = {"(^jdbc:mysql://.*|^gs://.*)"},
       groupName = "Source",
       description =
-          "Connection URL to connect to the source database host. Must contain the host, port and source db name. Can optionally contain properties like autoReconnect, maxReconnects etc. Format: `jdbc:mysql://{host}:{port}/{dbName}?{parameters}`",
+          "URL to connect to the source database host. It can be either of "
+              + "1. The JDBC connection URL - which must contain the host, port and source db name and can optionally contain properties like autoReconnect, maxReconnects etc. Format: `jdbc:mysql://{host}:{port}/{dbName}?{parameters}`"
+              + "2. The shard config path",
       helpText =
-          "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`.")
-  String getSourceDbURL();//Rename
+          "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8` or the shard config")
+  String getSourceConfigURL();
 
-  void setSourceDbURL(String url);
+  void setSourceConfigURL(String url);
 
   @TemplateParameter.Text(
       order = 4,
@@ -65,7 +66,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       description = "JDBC connection username.",
       helpText = "The username to be used for the JDBC connection.")
   @Default.String("")
-  String getUsername();//Make optional
+  String getUsername(); // Make optional
 
   void setUsername(String username);
 
@@ -75,7 +76,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       description = "JDBC connection password.",
       helpText = "The password to be used for the JDBC connection.")
   @Default.String("")
-  String getPassword();//make optional
+  String getPassword(); // make optional
 
   void setPassword(String password);
 

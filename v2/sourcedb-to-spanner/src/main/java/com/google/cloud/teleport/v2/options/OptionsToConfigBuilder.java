@@ -54,7 +54,7 @@ public final class OptionsToConfigBuilder {
         List<String> tables,
         String shardId,
         Wait.OnSignal<?> waitOn) {
-      String sourceDbURL = options.getSourceDbURL();
+      String sourceDbURL = options.getSourceConfigURL();
       String dbName = extractDbFromURL(sourceDbURL);
       String username = options.getUsername();
       String password = options.getPassword();
