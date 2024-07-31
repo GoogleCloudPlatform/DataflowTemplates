@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.elasticsearch.options.GCSToElasticsearchOpti
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteStringMessageErrors;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
@@ -145,7 +146,7 @@ public class GCSToElasticsearch {
 
     GCSToElasticsearchOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(GCSToElasticsearchOptions.class);
-
+    PythonExternalTextTransformer.overwritepyVersion(options);
     run(options);
   }
 

@@ -315,6 +315,7 @@ public class PubSubToMongoDB {
 
     // Parse the user options passed from the command-line.
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    PythonExternalTextTransformer.overwritepyVersion(options);
     run(options);
   }
 

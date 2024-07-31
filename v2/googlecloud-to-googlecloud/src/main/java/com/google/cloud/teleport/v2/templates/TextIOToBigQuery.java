@@ -291,6 +291,7 @@ public class TextIOToBigQuery {
     UncaughtExceptionLogger.register();
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    PythonExternalTextTransformer.overwritepyVersion(options);
     run(options, () -> writeToBQTransform(options));
   }
 

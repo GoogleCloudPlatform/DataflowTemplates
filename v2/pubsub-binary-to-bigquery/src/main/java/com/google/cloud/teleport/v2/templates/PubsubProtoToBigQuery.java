@@ -244,6 +244,7 @@ public final class PubsubProtoToBigQuery {
 
   /** Runs the pipeline and returns the results. */
   private static PipelineResult run(PubSubProtoToBigQueryOptions options) {
+    PythonExternalTextTransformer.overwritepyVersion(options);
     BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
 
     Pipeline pipeline = Pipeline.create(options);

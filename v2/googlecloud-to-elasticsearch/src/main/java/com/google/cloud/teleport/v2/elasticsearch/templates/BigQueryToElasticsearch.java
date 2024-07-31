@@ -99,7 +99,7 @@ public class BigQueryToElasticsearch {
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
             .as(BigQueryToElasticsearchOptions.class);
-
+    PythonExternalTextTransformer.overwritepyVersion(options);
     run(options);
   }
 
