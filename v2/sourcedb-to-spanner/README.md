@@ -60,7 +60,7 @@ mvn test
 ### Executing Template
 
 #### Required Parameters
-* **sourceDbURL** (JDBC URL of the source database): The URL which can be used to connect to the source database. (Example: jdbc:mysql://10.10.10.10:3306/testdb)
+* **sourceConfigURL** (Configuration to connect to the source database): Can be the JDBC URL or the location of the sharding config. (Example: jdbc:mysql://10.10.10.10:3306/testdb or gs://test1/shard.conf)
 * **username** (username of the source database): The username which can be used to connect to the source database.
 * **password** (username of the source database): The username which can be used to connect to the source database.
 * **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
@@ -84,6 +84,6 @@ export JOB_NAME="${IMAGE_NAME}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters sourceDbURL="jdbc:mysql://<source_ip>:3306/<mysql_db_name>",username=<mysql user>,password=<mysql pass>,instanceId="<spanner instanceid>",databaseId="<spanner_database_id>",projectId="$PROJECT",DLQDirectory=gs://<gcs-dir> \
+        --parameters sourceConfigURL="jdbc:mysql://<source_ip>:3306/<mysql_db_name>",username=<mysql user>,password=<mysql pass>,instanceId="<spanner instanceid>",databaseId="<spanner_database_id>",projectId="$PROJECT",DLQDirectory=gs://<gcs-dir> \
         --additional-experiments=disable_runner_v2
 ```
