@@ -102,7 +102,8 @@ public final class OptionsToConfigBuilder {
             .setSourceSchemaReference(SourceSchemaReference.builder().setDbName(dbName).build())
             .setDbAuth(
                 LocalCredentialsProvider.builder()
-                    .setUserName(username)
+                    .setUserName(
+                        username) // TODO - support taking username and password from url as well
                     .setPassword(password)
                     .build())
             .setJdbcDriverClassName(jdbcDriverClassName)
