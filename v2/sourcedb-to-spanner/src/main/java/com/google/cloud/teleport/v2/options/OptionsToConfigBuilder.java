@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.confi
 
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -27,6 +28,7 @@ import com.google.re2j.Pattern;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Map.Entry;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -116,7 +118,10 @@ public final class OptionsToConfigBuilder {
       sourceDbURL = "jdbc:mysql://" + host + ":" + port + "/" + dbName;
     }
 
-    sourceDbURL = addParamToJdbcUrl(sourceDbURL, "allowMultiQueries", "true");
+    for (Entry<String, String> entry :
+        MySqlConfigDefaults.DEFAULT_MYSQL_URL_PROPERTIES.entrySet()) {
+      sourceDbURL = addParamToJdbcUrl(sourceDbURL, entry.getKey(), entry.getValue());
+    }
 
     builder.setSourceDbURL(sourceDbURL);
     if (!StringUtils.isEmpty(shardId)) {
