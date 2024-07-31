@@ -141,6 +141,20 @@ public class BigtableToParquet {
 
     @SuppressWarnings("unused")
     void setNumShards(ValueProvider<Integer> numShards);
+
+    @TemplateParameter.Text(
+            order = 7,
+            groupName = "Source",
+            optional = true,
+            regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
+            description = "Application profile ID",
+            helpText =
+                    "The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.")
+    @Default.String("default")
+    ValueProvider<String> getBigtableAppProfileId();
+
+    @SuppressWarnings("unused")
+    void setBigtableAppProfileId(ValueProvider<String> appProfileId);
   }
 
   /**
@@ -170,6 +184,7 @@ public class BigtableToParquet {
         BigtableIO.read()
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
+            .withAppProfileId(options.getBigtableAppProfileId())
             .withTableId(options.getBigtableTableId());
 
     // Do not validate input fields if it is running as a template.
