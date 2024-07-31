@@ -54,7 +54,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
           "Connection URL to connect to the source database host. Must contain the host, port and source db name. Can optionally contain properties like autoReconnect, maxReconnects etc. Format: `jdbc:mysql://{host}:{port}/{dbName}?{parameters}`",
       helpText =
           "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`.")
-  String getSourceDbURL();
+  String getSourceDbURL();//Rename
 
   void setSourceDbURL(String url);
 
@@ -65,7 +65,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       description = "JDBC connection username.",
       helpText = "The username to be used for the JDBC connection.")
   @Default.String("")
-  String getUsername();
+  String getUsername();//Make optional
 
   void setUsername(String username);
 
@@ -75,7 +75,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       description = "JDBC connection password.",
       helpText = "The password to be used for the JDBC connection.")
   @Default.String("")
-  String getPassword();
+  String getPassword();//make optional
 
   void setPassword(String password);
 

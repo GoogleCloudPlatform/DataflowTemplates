@@ -129,6 +129,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       ResultSet rs = stmt.executeQuery(tableDiscoveryQuery);
       while (rs.next()) {
         tablesBuilder.add(rs.getString(1));
+        rs.findColumn()
       }
       ImmutableList<String> tables = tablesBuilder.build();
       logger.info(
