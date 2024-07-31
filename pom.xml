@@ -49,8 +49,8 @@
 
     <!-- Beam and linked versions -->
     <beam.version>2.58.0</beam.version>
-    <beam-python.version>2.58.0rc1</beam-python.version>
-    <beam-maven-repo>https://repository.apache.org/content/repositories/orgapachebeam-1381/</beam-maven-repo>
+    <beam-python.version>2.58.0rc2</beam-python.version>
+    <beam-maven-repo>https://repository.apache.org/content/repositories/orgapachebeam-1383/</beam-maven-repo>
 
     <!-- Common dependency versions -->
     <autovalue.version>1.10.4</autovalue.version>
