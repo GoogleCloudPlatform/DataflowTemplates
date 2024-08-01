@@ -90,6 +90,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     ImmutableList.Builder<String> tablesBuilder = ImmutableList.builder();
     try (PreparedStatement stmt = dataSource.getConnection().prepareStatement(query)) {
       stmt.setString(1, sourceSchemaReference.dbName());
+      logger.info("Executing query " + query + ": " + stmt);
       try (ResultSet rs = stmt.executeQuery()) {
         StringBuilder tableName = new StringBuilder();
         while (rs.next()) {
