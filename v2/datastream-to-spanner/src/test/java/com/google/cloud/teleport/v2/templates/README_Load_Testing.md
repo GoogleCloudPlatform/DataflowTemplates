@@ -4,7 +4,7 @@ ingests data supplied by DataStream, optionally applies a Javascript or Python U
 and writes the data to Cloud Spanner database. To verify horizontal scalability, reliability, performance 
 variation based on data shapes of migration dataflow templates and to identify any regression during feature
 release, the dataflow template needs to load tested. These tests will benchmark measures such as throughput, data-correctness 
-and time taken. These load tests will run on a weekly schedule.
+and time taken.
 
 Following steps will be used to generate fixed datasets to ensures all benchmarks run against the same set of 
 sources, eliminating any performances changes due to differences in the source database.
@@ -67,7 +67,7 @@ gcloud beta sql instances patch ${CLOUD_SQL_INSTANCE_ID} \
 
 4. Create a schema file that contains a JSON template for the generated data. For more information, see the
    [json-data-generator documentation](https://github.com/vincentrussell/json-data-generator/blob/master/README.md). Sample
-   can be found [here](https://github.com/vincentrussell/json-data-generator/blob/master/README.md). Upload the schema file
+   can be found [here](https://github.com/vincentrussell/json-data-generator?tab=readme-ov-file#example). Upload the schema file
    to a Cloud Storage bucket.
 
    [**Sample Schema File**](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-spanner/src/test/resources/DataStreamToSpannerLoadTesting/datagenerator-schema.json)
@@ -80,11 +80,20 @@ export REGION=<region>
 export TEMPLATE_SPEC_GCSPATH="gs://dataflow-templates-${REGION}/latest/flex/Streaming_Data_Generator"
 export QPS=<qps>
 export MESSAGE_LIMIT=<row-count>
+// Cloud Storage path of schema location
 export SCHEMA_LOCATION=<schemaLocation>
+// JDBC driver class name to use. Example: com.mysql.jdbc.Driver
 export DRIVER_CLASS_NAME=<driverClassName>
+// Url connection string to connect to the JDBC source. Example: jdbc:mysql://some-host:3306/sampledb.
 export CONNECTION_URL=<connectionUrl>
+// User name to be used for the JDBC connection
 export USERNAME=<username>
+//password : Password to be used for the JDBC connection
 export PASSWORD=<password>
+// statement : SQL statement which will be executed to write to the database
+// The statement must specify the column names of the table in any order
+// Only the values of the specified column names will be read from the json and added to the statement. 
+// Example: INSERT INTO tableName (column1, column2) VALUES (?,?)
 export STATEMENT=<statement>
 export NETWORK_NAME=<my-network>
 export SUBNETWORK=<my-subnetwork>
@@ -99,7 +108,8 @@ This approach for data generation generates a csv file and imports it to a CLoud
 and primary key is generated through auto-increment.
 1. Create tables in the instance with Primary Key as Auto-Increment by either connecting to it through the 
 [shell](https://cloud.google.com/sql/docs/mysql/connect-instance-cloud-shell) or through 
-[Cloud Sql Studio](https://cloud.google.com/sql/docs/mysql/manage-data-using-studio)
+[Cloud Sql Studio](https://cloud.google.com/sql/docs/mysql/manage-data-using-studio). The auto-increment approach is recommended
+for generating large datasets by appending datasets as manual generation takes a long time.
 
    [**Sample MySQL Schema**](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-spanner/src/test/resources/DataStreamToSpannerLoadTesting/mysql-schema.sql)
 
