@@ -329,7 +329,6 @@ public class DataStreamToSQL {
 
   /** Parse the SchemaMap config which allows key:value pairs of column naming configs. */
   public static Map<String, String> parseSchemaMap(String schemaMapString) {
-    LOG.info("FINDME: Parsing schema map: {}", schemaMapString);
     if (schemaMapString == null || schemaMapString.equals("")) {
       return new HashMap<>();
     }
@@ -357,7 +356,7 @@ public class DataStreamToSQL {
     CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration = getDataSourceConfiguration(options);
     validateOptions(options, dataSourceConfiguration);
     Map<String, String> schemaMap = parseSchemaMap(options.getSchemaMap());
-    LOG.info("FINDME: Parsed schema map: {}", schemaMap);
+    LOG.info("Parsed schema map: {}", schemaMap);
 
     /*
      * Stage 1: Ingest and Normalize Data to FailsafeElement with JSON Strings
