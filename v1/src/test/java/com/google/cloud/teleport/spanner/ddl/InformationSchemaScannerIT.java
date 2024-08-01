@@ -573,12 +573,22 @@ public class InformationSchemaScannerIT {
     // Prefix indexes to ensure ordering.
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE `Base` ("
-                + "  `MyKey`                                 INT64 NOT NULL,"
-                + "  `MyData`                                STRING(MAX),"
-                + "  `MyTokens`                              TOKENLIST AS (TOKENIZE_FULLTEXT(MyData)) HIDDEN,"
-                + " ) PRIMARY KEY (`MyKey` ASC)",
-            " CREATE SEARCH INDEX `SearchIndex` ON `Base`(`MyTokens` ASC)"
+            "CREATE TABLE `Users` ("
+                + "  `UserId`                                INT64 NOT NULL,"
+                + " ) PRIMARY KEY (`UserId` ASC)",
+            " CREATE TABLE `Messages` ("
+                + "  `UserId`                                INT64 NOT NULL,"
+                + "  `MessageId`                             INT64 NOT NULL,"
+                + "  `Subject`                               STRING(MAX),"
+                + "  `Subject_Tokens`                        TOKENLIST AS (TOKENIZE_FULLTEXT(`Subject`)) HIDDEN,"
+                + "  `Body`                                  STRING(MAX),"
+                + "  `Body_Tokens`                           TOKENLIST AS (TOKENIZE_FULLTEXT(`Body`)) HIDDEN,"
+                + "  `Data`                                  STRING(MAX),"
+                + " ) PRIMARY KEY (`UserId` ASC, `MessageId` ASC), INTERLEAVE IN PARENT `Users`",
+            " CREATE SEARCH INDEX `SearchIndex` ON `Messages`(`Subject_Tokens` ASC, `Body_Tokens` ASC)"
+                + " STORING (`Data`)"
+                + " PARTITION BY `UserId`,"
+                + " INTERLEAVE IN `Users`"
                 + " OPTIONS (sort_order_sharding=TRUE)");
 
     spannerServer.createDatabase(dbId, statements);

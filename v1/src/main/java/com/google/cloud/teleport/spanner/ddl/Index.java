@@ -57,6 +57,8 @@ public abstract class Index implements Serializable {
   @Nullable
   abstract String type();
 
+  abstract ImmutableList<String> partitionBy();
+
   public static Builder builder(Dialect dialect) {
     return new AutoValue_Index.Builder().dialect(dialect).nullFiltered(false).unique(false);
   }
@@ -148,6 +150,15 @@ public abstract class Index implements Serializable {
       appendable.append(" STORING (").append(storingString).append(")");
     }
 
+    String partitionByString = 
+        partitionBy().stream()
+            .map(c -> quoteIdentifier(c, dialect()))
+            .collect(Collectors.joining(","));
+
+    if (!partitionByString.isEmpty()) {
+      appendable.append(" PARTITION BY ").append(partitionByString);
+    }
+
     if (interleaveIn() != null) {
       appendable.append(", INTERLEAVE IN ").append(quoteIdentifier(interleaveIn(), dialect()));
     }
@@ -223,6 +234,8 @@ public abstract class Index implements Serializable {
     public abstract Builder interleaveIn(String interleaveIn);
 
     public abstract Builder type(String type);
+
+    public abstract Builder partitionBy(ImmutableList<String> keys);
 
     abstract Index autoBuild();
 
