@@ -118,7 +118,8 @@ public class BigtableToAvroIT extends TemplateTestBase {
     bigtableResourceManager.createTable(tableId, ImmutableList.of("family1", "family2"));
 
     String appProfileId = generateAppProfileId();
-    bigtableResourceManager.createAppProfile(appProfileId, false, bigtableResourceManager.getClusterNames());
+    bigtableResourceManager.createAppProfile(
+        appProfileId, false, bigtableResourceManager.getClusterNames());
 
     long timestamp = System.currentTimeMillis() * 1000;
     bigtableResourceManager.write(

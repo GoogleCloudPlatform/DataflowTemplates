@@ -70,7 +70,8 @@ public class BigtableToJsonIT extends TemplateTestBase {
     bigtableResourceManager.createTable(tableId, ImmutableList.of("col1"));
 
     String appProfileId = generateAppProfileId();
-    bigtableResourceManager.createAppProfile(appProfileId, false, bigtableResourceManager.getClusterNames());
+    bigtableResourceManager.createAppProfile(
+        appProfileId, false, bigtableResourceManager.getClusterNames());
 
     long timestamp = System.currentTimeMillis() * 1000;
     bigtableResourceManager.write(
@@ -112,7 +113,8 @@ public class BigtableToJsonIT extends TemplateTestBase {
     bigtableResourceManager.createTable(tableId, ImmutableList.of("col1"));
 
     String appProfileId = generateAppProfileId();
-    bigtableResourceManager.createAppProfile(appProfileId, false, bigtableResourceManager.getClusterNames());
+    bigtableResourceManager.createAppProfile(
+        appProfileId, false, bigtableResourceManager.getClusterNames());
 
     long timestamp = System.currentTimeMillis() * 1000;
     bigtableResourceManager.write(
