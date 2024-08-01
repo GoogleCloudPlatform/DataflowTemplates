@@ -156,6 +156,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       for (String table : tables) {
         statement.setString(1, sourceSchemaReference.dbName());
         statement.setString(2, table);
+        logger.info("Executing query " + query + ": " + statement);
         try (ResultSet resultSet = statement.executeQuery()) {
           ImmutableMap.Builder<String, SourceColumnType> schema = ImmutableMap.builder();
           while (resultSet.next()) {
