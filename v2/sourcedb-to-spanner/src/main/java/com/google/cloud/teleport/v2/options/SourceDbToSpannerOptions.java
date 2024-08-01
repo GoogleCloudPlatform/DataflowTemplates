@@ -83,7 +83,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   @TemplateParameter.Text(
       order = 6,
       optional = true,
-      description = "Pipe-separated names of the tables in the source database.",
+      description = "colon-separated names of the tables in the source database.",
       helpText = "Tables to migrate from source.")
   @Default.String("")
   String getTables();

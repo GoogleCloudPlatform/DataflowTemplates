@@ -31,12 +31,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
 * **databaseId** (Cloud Spanner Database Id.): The destination Cloud Spanner database.
 * **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
-* **DLQDirectory** (GCS path of the dead letter queue directory): The GCS path of the DLQ Directory to be used during migrations
+* **OutputDirectory** (GCS path of the ouput directory): The GCS path of the Directory where all error and skipped events are dumped to be used during migrations
 
 #### Optional Parameters
 * **jdbcDriverJars** (Comma-separated Cloud Storage path(s) of the JDBC driver(s)): The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
 * **jdbcDriverClassName** (JDBC driver class name): The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
-* **tables** (Comma seperated list of tables to migrate): Tables that will be migrated to Spanner. Leave this empty if all tables are to be migrated. (Example: table1,table2).
+* **tables** (Colon seperated list of tables to migrate): Tables that will be migrated to Spanner. Leave this empty if all tables are to be migrated. (Example: table1:table2).
 * **numPartitions** (Number of partitions to create per table): A table is split into partitions and loaded independently. Use higher number of partitions for larger tables. (Example: 1000).
 * **spannerHost** (Cloud Spanner Endpoint): Use this endpoint to connect to Spanner. (Example: https://batch-spanner.googleapis.com)
 * **maxConnections** (Number of connections to create per source database): The max number of connections that can be used at any given time at source. (Example: 100)
@@ -128,7 +128,7 @@ export SOURCE_CONFIG_URL=<sourceConfigURL>
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
 export PROJECT_ID=<projectId>
-export DLQDIRECTORY=<DLQDirectory>
+export OUTPUT_DIRECTORY=<OutputDirectory>
 
 ### Optional
 export JDBC_DRIVER_JARS=""
@@ -161,7 +161,7 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "spannerHost=$SPANNER_HOST" \
   --parameters "maxConnections=$MAX_CONNECTIONS" \
   --parameters "sessionFilePath=$SESSION_FILE_PATH" \
-  --parameters "DLQDirectory=$DLQDIRECTORY" \
+  --parameters "OutputDirectory=$OUTPUT_DIRECTORY" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
   --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
   --parameters "defaultLogLevel=$DEFAULT_LOG_LEVEL"
@@ -187,7 +187,7 @@ export SOURCE_CONFIG_URL=<sourceConfigURL>
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
 export PROJECT_ID=<projectId>
-export DLQDIRECTORY=<DLQDirectory>
+export OUTPUT_DIRECTORY=<OutputDirectory>
 
 ### Optional
 export JDBC_DRIVER_JARS=""
@@ -210,7 +210,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,DLQDirectory=$DLQDIRECTORY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,defaultLogLevel=$DEFAULT_LOG_LEVEL" \
+-Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,OutputDirectory=$OUTPUT_DIRECTORY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,defaultLogLevel=$DEFAULT_LOG_LEVEL" \
 -f v2/sourcedb-to-spanner
 ```
 
@@ -246,7 +246,7 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     sourceConfigURL = "jdbc:mysql://some-host:3306/sampledb"
     username = "<username>"
     password = "<password>"
-    DLQDirectory = "gs://your-bucket/dir"
+    OutputDirectory = "gs://your-bucket/dir"
 
     # jdbcDriverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
     # jdbcDriverClassName = "com.mysql.jdbc.Driver"
