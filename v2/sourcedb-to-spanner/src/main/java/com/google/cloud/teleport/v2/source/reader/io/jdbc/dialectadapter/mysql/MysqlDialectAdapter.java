@@ -22,21 +22,30 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDi
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;
+import java.net.URL;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
 import java.util.HashSet;
+import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -45,6 +54,11 @@ import org.slf4j.LoggerFactory;
 
 /** Adapter for MySql dialect of JDBC databases. */
 public final class MysqlDialectAdapter implements DialectAdapter {
+
+  public static final String PAD_SPACE = "PAD SPACE";
+  public static final String NO_PAD = "NO PAD";
+  public static final String BINARY_CHARACTER_SET = "binary";
+  public static final String BINARY_COLLATION = "binary";
   private final MySqlVersion mySqlVersion;
 
   private static final Logger logger = LoggerFactory.getLogger(MysqlDialectAdapter.class);
@@ -81,6 +95,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   private final Counter schemaDiscoveryErrors =
       Metrics.counter(JdbcSourceRowMapper.class, MetricCounters.READER_SCHEMA_DISCOVERY_ERRORS);
+
+  private static final String COLLATIONS_QUERY_RESOURCE_PATH = "sql/mysql_collation_oder_query.sql";
 
   public MysqlDialectAdapter(MySqlVersion mySqlVersion) {
     this.mySqlVersion = mySqlVersion;
@@ -287,9 +303,15 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         + " TABLE_NAME = ?";
   }
 
+  /**
+   * Discover Indexed columns and their Collations(if applicable). You could try this on <a href =
+   * https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/2>db-fiddle</a>
+   *
+   * @param sourceSchemaReference
+   * @return
+   */
   protected static String getIndexDiscoveryQuery(SourceSchemaReference sourceSchemaReference) {
-    return "SELECT "
-        + String.join(",", InformationSchemaStatsCols.colList())
+    return "SELECT *"
         + " FROM INFORMATION_SCHEMA.STATISTICS stats"
         + " JOIN "
         + "INFORMATION_SCHEMA.COLUMNS cols"
@@ -297,6 +319,10 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         + "stats.table_schema = cols.table_schema"
         + " AND stats.table_name = cols.table_name"
         + " AND stats.column_name = cols.column_name"
+        + " LEFT JOIN "
+        + "INFORMATION_SCHEMA.COLLATIONS collations"
+        + " ON "
+        + "cols.COLLATION_NAME = collations.COLLATION_NAME"
         + " WHERE stats.TABLE_SCHEMA = "
         + "'"
         + sourceSchemaReference.dbName()
@@ -335,7 +361,40 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("MEDIUMINT", IndexType.NUMERIC)
           .put("SMALLINT", IndexType.NUMERIC)
           .put("TINYINT", IndexType.NUMERIC)
+          // String types: Ref https://dev.mysql.com/doc/refman/8.4/en/string-type-syntax.html
+          .put("CHAR", IndexType.STRING)
+          .put("VARCHAR", IndexType.STRING)
+          .put("BINARY", IndexType.STRING)
+          .put("VARBINARY", IndexType.STRING)
+          .put("BLOB", IndexType.STRING)
+          .put("TEXT", IndexType.STRING)
+          .put("ENUM", IndexType.STRING)
+          .put("SET", IndexType.STRING)
           .build();
+
+  private ImmutableSet<String> binaryColumnTypes = ImmutableSet.of("BINARY", "VARBINARY", "BLOB");
+
+  /**
+   * Get the PadSpace attribute from {@link ResultSet} for index discovery query {@link
+   * #getIndexDiscoveryQuery(SourceSchemaReference)}. This method takes care of the fact that older
+   * versions of MySQL notably Mysql5.7 don't have a {@link
+   * InformationSchemaStatsCols#PAD_SPACE_COL} column and default to PAD SPACE comparisons.
+   */
+  @VisibleForTesting
+  @Nullable
+  protected String getPadSpaceString(ResultSet resultSet) throws SQLException {
+    ResultSetMetaData metaData = resultSet.getMetaData();
+    for (int i = 0; i < metaData.getColumnCount(); i++) {
+      if (metaData.getColumnName(i + 1).equals(InformationSchemaStatsCols.PAD_SPACE_COL)) {
+        return resultSet.getString(InformationSchemaStatsCols.PAD_SPACE_COL);
+      }
+    }
+    // For MySql5.7 there is no pad-space column
+    logger.info(
+        "Did not find {} column in INFORMATION_SCHEMA.COLLATIONS table. Assuming PAD-SPACE collation for non-binary strings as per MySQL5.7 spec",
+        InformationSchemaStatsCols.PAD_SPACE_COL);
+    return PAD_SPACE;
+  }
 
   private ImmutableList<SourceColumnIndexInfo> getTableIndexes(
       String table, PreparedStatement statement) throws SchemaDiscoveryException {
@@ -352,8 +411,52 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         boolean isPrimary = indexName.trim().toUpperCase().equals("PRIMARY");
         long cardinality = rs.getLong(InformationSchemaStatsCols.CARDINALITY_COL);
         long ordinalPosition = rs.getLong(InformationSchemaStatsCols.ORDINAL_POS_COL);
+        @Nullable
+        Integer stringMaxLength = rs.getInt(InformationSchemaStatsCols.CHAR_MAX_LENGTH_COL);
+        if (rs.wasNull()) {
+          stringMaxLength = null;
+        }
+        @Nullable String characterSet = rs.getString(InformationSchemaStatsCols.CHARACTER_SET_COL);
+        @Nullable String collation = rs.getString(InformationSchemaStatsCols.COLLATION_COL);
+        @Nullable String padSpace = getPadSpaceString(rs);
+        logger.debug(
+            "Discovered column {} from index {}, isUnique {}, isPrimary {}, cardinality {}, ordinalPosition {}, character-set {}, collation {}, pad-space {}",
+            colName,
+            indexName,
+            isUnique,
+            isPrimary,
+            cardinality,
+            ordinalPosition,
+            characterSet,
+            collation,
+            padSpace);
+        // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE
+        // Column.
         String columType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
         IndexType indexType = INDEX_TYPE_MAPPING.getOrDefault(columType, IndexType.OTHER);
+
+        CollationReference collationReference = null;
+        // Binary (and similar columns like VarBinary, Blob etc) columns have a fixed character-set
+        // and collation called "binary".
+        // Ref https://dev.mysql.com/doc/refman/8.4/en/charset-binary-collations.html
+        // In information_schema.columns query, these column types show null as character set.
+        // Ref: https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/2
+        // Also for both mySQL 5.7 and 8.0 binary columns have a NO-PAD comparison.
+        // Ref: https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/0.
+        if (binaryColumnTypes.contains(columType) && characterSet == null) {
+          characterSet = BINARY_CHARACTER_SET;
+          collation = BINARY_COLLATION;
+          padSpace = NO_PAD;
+        }
+        if (characterSet != null) {
+          collationReference =
+              CollationReference.builder()
+                  .setDbCharacterSet(characterSet)
+                  .setDbCollation(collation)
+                  .setPadSpace(
+                      (padSpace == null) ? false : padSpace.trim().toUpperCase().equals(PAD_SPACE))
+                  .build();
+        }
 
         indexesBuilder.add(
             SourceColumnIndexInfo.builder()
@@ -364,6 +467,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
                 .setCardinality(cardinality)
                 .setOrdinalPosition(ordinalPosition)
                 .setIndexType(indexType)
+                .setCollationReference(collationReference)
+                .setStringMaxLength(stringMaxLength)
                 .build());
       }
     } catch (java.sql.SQLException e) {
@@ -534,6 +639,77 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   }
 
   /**
+   * Replace tags for collations and character set as needed in run-time, and, Remove blank lines
+   * and comments from the collations query. Queries with size > max_allowed_packet get rejected by
+   * the db. max_allowed_packet is generally around 16Mb which is a lot for our use case.
+   *
+   * @param query query to prepare.
+   * @param dbCharset character set used by the database for which collation ordering has to be
+   *     found.
+   * @param dbCollation collation set used by the database for which collation ordering has to be
+   *     found.
+   * @return
+   */
+  @VisibleForTesting
+  protected String prepareCollationsOrderQuery(String query, String dbCharset, String dbCollation) {
+    // Replace tags
+    String processedQuery =
+        query
+            .replace("'charset_replacement_tag'", "'" + dbCharset + "'")
+            .replace("'collation_replacement_tag'", "'" + dbCollation + "'");
+
+    // Remove MySQL comments and blank lines.
+
+    // Remove MySql Comments.
+    // Note we don't remove block comments for sake of simplicity.
+    Pattern commentPattern = Pattern.compile("(?m)^[ \\t]?--.*$");
+    Matcher matcher = commentPattern.matcher(processedQuery);
+    processedQuery = matcher.replaceAll("");
+
+    // Remove blank lines
+    processedQuery = processedQuery.replaceAll("(?m)^\\s*\\r?\\n", "");
+    return processedQuery;
+  }
+
+  /**
+   * Load a resource file as string.
+   *
+   * @param resource path of the resource file.
+   * @return resource file as string.
+   */
+  @VisibleForTesting
+  protected static String resourceAsString(String resource) {
+    try {
+      URL url = com.google.common.io.Resources.getResource(resource);
+      return com.google.common.io.Resources.toString(url, Charsets.UTF_8);
+    } catch (Exception e) {
+      // This exception should not happen in production as it really means we don't have the
+      // expected resource
+      // file in bundled in the build or a fatal IO failure in reading one.
+      logger.error(
+          "Exception {} while trying to load the SQL file {} for collation discovery.",
+          e,
+          resource);
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Get Query that returns order of collation. The query must return all the characters in the
+   * character set with the columns listed in {@link CollationsOrderQueryColumns}.
+   *
+   * @param dbCharset character set used by the database for which collation ordering has to be
+   *     found.
+   * @param dbCollation collation set used by the database for which collation ordering has to be
+   *     found.
+   */
+  @Override
+  public String getCollationsOrderQuery(String dbCharset, String dbCollation) {
+    return prepareCollationsOrderQuery(
+        resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH), dbCharset, dbCollation);
+  }
+
+  /**
    * Version of MySql. As of now the code does not need to distinguish between versions of Mysql.
    * Having the type allows the implementation do finer distinctions if needed in the future.
    */
@@ -564,10 +740,25 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     public static final String CARDINALITY_COL = "stats.CARDINALITY";
 
     public static final String TYPE_COL = "cols.DATA_TYPE";
+    public static final String CHAR_MAX_LENGTH_COL = "cols.CHARACTER_MAXIMUM_LENGTH";
+    public static final String CHARACTER_SET_COL = "cols.CHARACTER_SET_NAME";
+    public static final String COLLATION_COL = "cols.COLLATION_NAME";
+
+    // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE Column.
+    public static final String PAD_SPACE_COL = "collations.PAD_ATTRIBUTE";
 
     public static ImmutableList<String> colList() {
       return ImmutableList.of(
-          COL_NAME_COL, INDEX_NAME_COL, ORDINAL_POS_COL, NON_UNIQ_COL, CARDINALITY_COL, TYPE_COL);
+          COL_NAME_COL,
+          INDEX_NAME_COL,
+          ORDINAL_POS_COL,
+          NON_UNIQ_COL,
+          CARDINALITY_COL,
+          TYPE_COL,
+          CHAR_MAX_LENGTH_COL,
+          CHARACTER_SET_COL,
+          COLLATION_COL,
+          PAD_SPACE_COL);
     }
 
     private InformationSchemaStatsCols() {}

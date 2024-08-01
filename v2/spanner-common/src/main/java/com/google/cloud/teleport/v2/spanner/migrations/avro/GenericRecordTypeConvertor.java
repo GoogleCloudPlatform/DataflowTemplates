@@ -349,8 +349,13 @@ public class GenericRecordTypeConvertor {
 
   static class CustomAvroTypes {
     public static final String VARCHAR = "varchar";
+
     public static final String NUMBER = "number";
+
     public static final String JSON = "json";
+
+    public static final String TIME_INTERVAL = "time-interval-micros";
+
     public static final String UNSUPPORTED = "unsupported";
   }
 
@@ -398,6 +403,29 @@ public class GenericRecordTypeConvertor {
     } else if (fieldSchema.getLogicalType() != null
         && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.VARCHAR)) {
       return recordValue.toString();
+    } else if (fieldSchema.getLogicalType() != null
+        && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.TIME_INTERVAL)) {
+      Long timeMicrosTotal = Long.valueOf(recordValue.toString());
+      boolean isNegative = false;
+      if (timeMicrosTotal < 0) {
+        timeMicrosTotal *= -1;
+        isNegative = true;
+      }
+      Long nanoseconds = timeMicrosTotal * TimeUnit.MICROSECONDS.toNanos(1);
+      Long hours = TimeUnit.NANOSECONDS.toHours(nanoseconds);
+      nanoseconds -= TimeUnit.HOURS.toNanos(hours);
+      Long minutes = TimeUnit.NANOSECONDS.toMinutes(nanoseconds);
+      nanoseconds -= TimeUnit.MINUTES.toNanos(minutes);
+      Long seconds = TimeUnit.NANOSECONDS.toSeconds(nanoseconds);
+      nanoseconds -= TimeUnit.SECONDS.toNanos(seconds);
+      Long micros = TimeUnit.NANOSECONDS.toMicros(nanoseconds);
+      // Pad 0 if single digit hour.
+      String timeString = (hours < 10) ? String.format("%02d", hours) : String.format("%d", hours);
+      timeString += String.format(":%02d:%02d", minutes, seconds);
+      if (micros > 0) {
+        timeString += String.format(".%d", micros);
+      }
+      return isNegative ? "-" + timeString : timeString;
     } else if (fieldSchema.getLogicalType() != null
         && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.UNSUPPORTED)) {
       return null;

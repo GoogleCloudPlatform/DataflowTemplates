@@ -17,12 +17,15 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.trans
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryTypeMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
+import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.ParDo.SingleOutput;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
 
@@ -49,16 +52,25 @@ public abstract class RangeCountTransform extends PTransform<PCollection<Range>,
   /** List of partition columns. */
   abstract ImmutableList<String> partitionColumns();
 
+  /** Type mapper to help map types like {@link String String.Class}. */
+  @Nullable
+  abstract BoundaryTypeMapper boundaryTypeMapper();
+
   @Override
   public PCollection<Range> expand(PCollection<Range> input) {
-    return input.apply(
+    SingleOutput<Range, Range> parDo =
         ParDo.of(
             new RangeCountDoFn(
                 dataSourceProviderFn(),
                 timeoutMillis(),
                 dbAdapter(),
                 tableName(),
-                partitionColumns())));
+                partitionColumns()));
+
+    if (boundaryTypeMapper() != null) {
+      parDo = parDo.withSideInputs(boundaryTypeMapper().getCollationMapperView());
+    }
+    return input.apply(parDo);
   }
 
   public static Builder builder() {
@@ -77,6 +89,8 @@ public abstract class RangeCountTransform extends PTransform<PCollection<Range>,
     public abstract Builder setTableName(String value);
 
     public abstract Builder setPartitionColumns(ImmutableList<String> value);
+
+    public abstract Builder setBoundaryTypeMapper(BoundaryTypeMapper value);
 
     public abstract RangeCountTransform build();
   }
