@@ -57,10 +57,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   // Information schema / System tables constants
   private static final ImmutableList<String> EXCLUDED_SCHEMAS =
       ImmutableList.of("information_schema");
-  private static final String EXCLUDED_SCHEMAS_STR = EXCLUDED_SCHEMAS
-          .stream()
-          .map(schema -> "'" + schema + "'")
-          .collect(Collectors.joining(","));
+  private static final String EXCLUDED_SCHEMAS_STR =
+      EXCLUDED_SCHEMAS.stream().map(schema -> "'" + schema + "'").collect(Collectors.joining(","));
   private static final char SCHEMA_TABLE_SEPARATOR = '.';
 
   // Errors
