@@ -66,7 +66,7 @@ mvn test
 * **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
 * **databaseId** (Cloud Spanner Database Id.): The destination Cloud Spanner database.
 * **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
-* **OutputDirectory** (GCS path of the output directory): The GCS path of the directory where all errors and skipped events are dumped to be used during migrations
+* **outputDirectory** (GCS path of the output directory): The GCS path of the directory where all errors and skipped events are dumped to be used during migrations
 
 #### Optional Parameters
 * **jdbcDriverJars** (Comma-separated Cloud Storage path(s) of the JDBC driver(s)): The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
@@ -84,6 +84,6 @@ export JOB_NAME="${IMAGE_NAME}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters sourceConfigURL="jdbc:mysql://<source_ip>:3306/<mysql_db_name>",username=<mysql user>,password=<mysql pass>,instanceId="<spanner instanceid>",databaseId="<spanner_database_id>",projectId="$PROJECT",OutputDirectory=gs://<gcs-dir> \
+        --parameters sourceConfigURL="jdbc:mysql://<source_ip>:3306/<mysql_db_name>",username=<mysql user>,password=<mysql pass>,instanceId="<spanner instanceid>",databaseId="<spanner_database_id>",projectId="$PROJECT",outputDirectory=gs://<gcs-dir> \
         --additional-experiments=disable_runner_v2
 ```
