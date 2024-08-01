@@ -34,11 +34,11 @@ import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.neo4j.DatabaseWaitOptions;
 import org.apache.beam.it.neo4j.Neo4jResourceManager;
 import org.apache.beam.it.neo4j.conditions.Neo4jQueryCheck;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -59,7 +59,8 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
   public void setup() {
     neo4jClient =
         Neo4jResourceManager.builder(testName)
-            .setDatabaseName(dynamicDatabase() ? null : "neo4j")
+            .setDatabaseName(
+                dynamicDatabase() ? null : "neo4j", DatabaseWaitOptions.waitDatabase(60))
             .setAdminPassword("letmein!")
             .setHost(TestProperties.hostIp())
             .setContainerImageTag(neo4jTagName())
@@ -242,7 +243,6 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
   @Category(TemplateIntegrationTest.class)
   @TemplateIntegrationTest(GoogleCloudToNeo4j.class)
   @RunWith(JUnit4.class)
-  @Ignore("Has known issues to be fixed in Beam 2.57")
   public static class Neo4j5EnterpriseIT extends ConstraintsIndicesIT {
 
     @Override

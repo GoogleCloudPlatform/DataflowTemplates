@@ -30,6 +30,7 @@ import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.neo4j.DatabaseWaitOptions;
 import org.apache.beam.it.neo4j.Neo4jResourceManager;
 import org.apache.beam.it.neo4j.conditions.Neo4jQueryCheck;
 import org.junit.After;
@@ -50,6 +51,7 @@ public class InlineDataToNeo4jIT extends TemplateTestBase {
     neo4jClient =
         Neo4jResourceManager.builder(testName)
             .setAdminPassword("letmein!")
+            .setDatabaseName(null, DatabaseWaitOptions.waitDatabase(60))
             .setHost(TestProperties.hostIp())
             .build();
   }
