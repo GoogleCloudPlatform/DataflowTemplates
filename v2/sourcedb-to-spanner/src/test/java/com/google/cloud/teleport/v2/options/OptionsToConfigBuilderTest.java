@@ -45,7 +45,7 @@ public class OptionsToConfigBuilderTest {
     final String testpassword = "password";
     SourceDbToSpannerOptions sourceDbToSpannerOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
-    sourceDbToSpannerOptions.setSourceDbURL(testUrl);
+    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
     sourceDbToSpannerOptions.setJdbcDriverClassName(testdriverClassName);
     sourceDbToSpannerOptions.setMaxConnections(150);
     sourceDbToSpannerOptions.setNumPartitions(4000);
@@ -71,7 +71,7 @@ public class OptionsToConfigBuilderTest {
     final String testUrl = "jd#bc://localhost";
     SourceDbToSpannerOptions sourceDbToSpannerOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
-    sourceDbToSpannerOptions.setSourceDbURL(testUrl);
+    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
     assertThrows(
         RuntimeException.class,
         () ->

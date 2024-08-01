@@ -145,7 +145,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             put("projectId", PROJECT);
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
-            put("sourceDbURL", jdbcResourceManager.getUri());
+            put("sourceConfigURL", jdbcResourceManager.getUri());
             put("username", jdbcResourceManager.getUsername());
             put("password", jdbcResourceManager.getPassword());
             put("outputDirectory", "gs://" + artifactBucketName);

@@ -26,6 +26,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
+* **bigtableAppProfileId** : The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.
 
 
 
@@ -113,6 +114,7 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 export FILENAME_PREFIX=part
 
 ### Optional
+export BIGTABLE_APP_PROFILE_ID=default
 
 gcloud dataflow jobs run "cloud-bigtable-to-gcs-avro-job" \
   --project "$PROJECT" \
@@ -122,7 +124,8 @@ gcloud dataflow jobs run "cloud-bigtable-to-gcs-avro-job" \
   --parameters "bigtableInstanceId=$BIGTABLE_INSTANCE_ID" \
   --parameters "bigtableTableId=$BIGTABLE_TABLE_ID" \
   --parameters "outputDirectory=$OUTPUT_DIRECTORY" \
-  --parameters "filenamePrefix=$FILENAME_PREFIX"
+  --parameters "filenamePrefix=$FILENAME_PREFIX" \
+  --parameters "bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID"
 ```
 
 For more information about the command, please check:
@@ -148,6 +151,7 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 export FILENAME_PREFIX=part
 
 ### Optional
+export BIGTABLE_APP_PROFILE_ID=default
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -156,7 +160,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-bigtable-to-gcs-avro-job" \
 -DtemplateName="Cloud_Bigtable_to_GCS_Avro" \
--Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX" \
+-Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID" \
 -f v1
 ```
 
@@ -207,6 +211,7 @@ resource "google_dataflow_job" "cloud_bigtable_to_gcs_avro" {
     bigtableTableId = "<bigtableTableId>"
     outputDirectory = "gs://mybucket/somefolder"
     filenamePrefix = "part"
+    # bigtableAppProfileId = "default"
   }
 }
 ```
