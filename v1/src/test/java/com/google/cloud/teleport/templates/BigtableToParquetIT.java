@@ -17,6 +17,7 @@ package com.google.cloud.teleport.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatGenericRecords;
+import static org.apache.beam.it.gcp.bigtable.BigtableResourceManagerUtils.generateAppProfileId;
 import static org.apache.beam.it.gcp.bigtable.BigtableResourceManagerUtils.generateTableId;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -71,6 +72,10 @@ public class BigtableToParquetIT extends TemplateTestBase {
     String tableId = generateTableId(testName);
     bigtableResourceManager.createTable(tableId, ImmutableList.of("col1"));
 
+    String appProfileId = generateAppProfileId();
+    bigtableResourceManager.createAppProfile(
+        appProfileId, false, bigtableResourceManager.getClusterNames());
+
     long timestamp = System.currentTimeMillis() * 1000;
     bigtableResourceManager.write(
         ImmutableList.of(
@@ -85,7 +90,8 @@ public class BigtableToParquetIT extends TemplateTestBase {
             .addParameter("bigtableTableId", tableId)
             .addParameter("outputDirectory", getGcsPath("output/"))
             .addParameter("filenamePrefix", "bigtable-to-parquet-output-")
-            .addParameter("numShards", "1");
+            .addParameter("numShards", "1")
+            .addParameter("bigtableAppProfileId", appProfileId);
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
