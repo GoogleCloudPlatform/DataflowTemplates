@@ -65,11 +65,6 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
   @Override
   public String getTargetSchemaName(DatastreamRow row) {
     String schemaName = row.getSchemaName();
-    LOG.info(
-        "FINDME: Schema Source to Target: {} -> {} via {}",
-        schemaName,
-        cleanSchemaName(schemaName),
-        schemaMap);
     return cleanSchemaName(schemaName);
   }
 
