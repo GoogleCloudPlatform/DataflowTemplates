@@ -366,7 +366,7 @@ public class FormatDatastreamRecordToJson
         // Logical types should be handled separately.
         handleLogicalFieldType(fieldName, fieldSchema, record, jsonObject);
         return;
-      } else if (fieldSchema.getProp(LOGICAL_TYPE)!= null) {
+      } else if (fieldSchema.getProp(LOGICAL_TYPE) != null) {
         // Handling for custom logical types.
         handleCustomLogicalType(fieldName, fieldSchema, record, jsonObject);
         return;
@@ -430,7 +430,7 @@ public class FormatDatastreamRecordToJson
     }
 
     static void handleCustomLogicalType(
-            String fieldName, Schema fieldSchema, GenericRecord element, ObjectNode jsonObject) {
+        String fieldName, Schema fieldSchema, GenericRecord element, ObjectNode jsonObject) {
       if (fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.TIME_INTERVAL_MICROS)) {
         Long timeMicrosTotal = (Long) element.get(fieldName);
         boolean isNegative = false;
@@ -447,7 +447,8 @@ public class FormatDatastreamRecordToJson
         nanoseconds -= TimeUnit.SECONDS.toNanos(seconds);
         Long micros = TimeUnit.NANOSECONDS.toMicros(nanoseconds);
         // Pad 0 if single digit hour.
-        String timeString = (hours < 10) ? String.format("%02d", hours) : String.format("%d", hours);
+        String timeString =
+            (hours < 10) ? String.format("%02d", hours) : String.format("%d", hours);
         timeString += String.format(":%02d:%02d", minutes, seconds);
         if (micros > 0) {
           timeString += String.format(".%d", micros);
@@ -462,10 +463,10 @@ public class FormatDatastreamRecordToJson
         jsonObject.put(fieldName, varcharValue);
       } else {
         LOG.error(
-                "Unknown custom logical type {} for field {} in {}. Ignoring it.",
-                fieldSchema,
-                fieldName,
-                element.get(fieldName));
+            "Unknown custom logical type {} for field {} in {}. Ignoring it.",
+            fieldSchema,
+            fieldName,
+            element.get(fieldName));
       }
     }
 
