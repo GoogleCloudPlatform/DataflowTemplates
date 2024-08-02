@@ -19,11 +19,15 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationMapper;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import java.math.BigInteger;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Map;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.PoolableDataSourceProvider;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -90,7 +94,12 @@ public class BoundaryExtractorFactoryTest {
         PartitionColumn.builder()
             .setColumnName("col1")
             .setColumnClass(String.class)
-            .setStringCollation("latin1_swedish_ci")
+            .setStringCollation(
+                CollationReference.builder()
+                    .setDbCharacterSet("latin1")
+                    .setDbCollation("latin1_swedish_ci")
+                    .setPadSpace(true)
+                    .build())
             .setStringMaxLength(255)
             .build();
     BoundaryExtractor<String> extractor = BoundaryExtractorFactory.create(String.class);
@@ -104,7 +113,7 @@ public class BoundaryExtractorFactoryTest {
             mockResultSet,
             new BoundaryTypeMapper() {
               @Override
-              public BigInteger mapString(
+              public BigInteger mapStringToBigInteger(
                   String element,
                   int lengthTOPad,
                   PartitionColumn partitionColumn,
@@ -113,14 +122,21 @@ public class BoundaryExtractorFactoryTest {
               }
 
               @Override
-              public String unMapString(
+              public String unMapStringFromBigInteger(
                   BigInteger element, PartitionColumn partitionColumn, ProcessContext c) {
+                return null;
+              }
+
+              @Override
+              public PCollectionView<Map<CollationReference, CollationMapper>>
+                  getCollationMapperView() {
                 return null;
               }
             });
 
     assertThat(boundary.start()).isEqualTo("cloud");
     assertThat(boundary.end()).isEqualTo("spanner");
+    assertThat(boundary.isSplittable(null)).isTrue();
     // Null type mapper check
     assertThrows(
         IllegalArgumentException.class,

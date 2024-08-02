@@ -30,28 +30,32 @@ common_params = {
 
   dataflow_params = {
     template_params = {
-      shadow_table_prefix                 = "<YOUR_SHADOW_TABLE_PREFIX>"    # Prefix for shadow tables (e.g., "shadow_")
-      create_shadow_tables                = "<TRUE/FALSE>"                  # Whether to create shadow tables in Spanner
-      rfc_start_date_time                 = "<YOUR_RFC_START_DATETIME>"     # RFC 3339 timestamp for the start of replication (optional)
-      file_read_concurrency               = "<YOUR_CONCURRENCY>"            # File read concurrency for Dataflow
-      spanner_project_id                  = "<YOUR_PROJECT_ID>"             # GCP project ID for Spanner
-      spanner_instance_id                 = "<YOUR_SPANNER_INSTANCE_ID>"    # Spanner instance ID
-      spanner_database_id                 = "<YOUR_SPANNER_DATABASE_ID>"    # Spanner database ID
-      spanner_host                        = "<YOUR_SPANNER_HOST>"           # Spanner host (typically "spanner.googleapis.com")
-      dlq_retry_minutes                   = "<YOUR_DLQ_RETRY_MINUTES>"      # Retry interval for dead-letter queue messages (in minutes)
-      dlq_max_retry_count                 = "<YOUR_DLQ_MAX_RETRIES>"        # Maximum retry count for dead-letter queue messages
-      datastream_root_url                 = "<YOUR_DATASTREAM_ROOT_URL>"    # Datastream API root URL (typically "https://datastream.googleapis.com/v1")
-      datastream_source_type              = "<YOUR_DATASTREAM_SOURCE_TYPE>" # Datastream source type (e.g., "MYSQL")
-      round_json_decimals                 = "<TRUE/FALSE>"                  # Whether to round JSON decimal values in Dataflow
-      directory_watch_duration_in_minutes = "<YOUR_WATCH_DURATION>"         # Directory watch duration (in minutes) for Dataflow
-      spanner_priority                    = "<YOUR_SPANNER_PRIORITY>"       # Spanner priority ("high", "medium", or "low")
-      local_session_file_path             = "<YOUR_SESSION_FILE_PATH>"      # Path to local session file (optional)
+      shadow_table_prefix                 = "<YOUR_SHADOW_TABLE_PREFIX>"            # Prefix for shadow tables (e.g., "shadow_")
+      create_shadow_tables                = "<TRUE/FALSE>"                          # Whether to create shadow tables in Spanner
+      rfc_start_date_time                 = "<YOUR_RFC_START_DATETIME>"             # RFC 3339 timestamp for the start of replication (optional)
+      file_read_concurrency               = "<YOUR_CONCURRENCY>"                    # File read concurrency for Dataflow
+      spanner_project_id                  = "<YOUR_PROJECT_ID>"                     # GCP project ID for Spanner
+      spanner_instance_id                 = "<YOUR_SPANNER_INSTANCE_ID>"            # Spanner instance ID
+      spanner_database_id                 = "<YOUR_SPANNER_DATABASE_ID>"            # Spanner database ID
+      spanner_host                        = "<YOUR_SPANNER_HOST>"                   # Spanner host (typically "spanner.googleapis.com")
+      dlq_retry_minutes                   = "<YOUR_DLQ_RETRY_MINUTES>"              # Retry interval for dead-letter queue messages (in minutes)
+      dlq_max_retry_count                 = "<YOUR_DLQ_MAX_RETRIES>"                # Maximum retry count for dead-letter queue messages
+      datastream_root_url                 = "<YOUR_DATASTREAM_ROOT_URL>"            # Datastream API root URL (typically "https://datastream.googleapis.com/v1")
+      datastream_source_type              = "<YOUR_DATASTREAM_SOURCE_TYPE>"         # Datastream source type (e.g., "mysql")
+      round_json_decimals                 = "<TRUE/FALSE>"                          # Whether to round JSON decimal values in Dataflow
+      directory_watch_duration_in_minutes = "<YOUR_WATCH_DURATION>"                 # Directory watch duration (in minutes) for Dataflow
+      spanner_priority                    = "<YOUR_SPANNER_PRIORITY>"               # Spanner priority ("HIGH", "MEDIUM", or "LOW")
+      local_session_file_path             = "<YOUR_SESSION_FILE_PATH>"              # Path to local session file (optional)
+      transformation_jar_path             = "<YOUR_CUSTOM_TRANSFORMATION_JAR_PATH>" # GCS path to the custom transformation JAR(Optional)
+      transformation_custom_parameters    = "<YOUR_CUSTOM_PARAMETERS_FOR_JAR>"      # Custom parameters used by the transformation JAR(Optional)
+      transformation_class_name           = "<YOUR_TRANSFORMATION_CLASS_NAME>"      # Fully Classified Class Name(Optional)
+      filtered_events_directory           = "<YOUR_GCS_PATH_FOR_FILTERED_EVENTS>"   # GCS path to store the filtered events(Optional)
     }
 
     runner_params = {
       additional_experiments = ["enable_google_cloud_profiler", "enable_stackdriver_agent_metrics",
       "disable_runner_v2", "enable_google_cloud_heap_sampling"]
-      autoscaling_algorithm        = "<YOUR_AUTOSCALING_ALGORITHM>"   # e.g., "THROUGHPUT_BASED", "NONE"
+      autoscaling_algorithm        = "<YOUR_AUTOSCALING_ALGORITHM>"   # e.g., "BASIC", "NONE"
       enable_streaming_engine      = "<TRUE/FALSE>"                   # Whether to use Dataflow Streaming Engine
       kms_key_name                 = "<YOUR_KMS_KEY_NAME>"            # KMS key name for encryption (optional)
       labels                       = { env = "<YOUR_ENVIRONMENT>" }   # Labels for the Dataflow job
@@ -65,7 +69,7 @@ common_params = {
       service_account_email        = "<YOUR_SERVICE_ACCOUNT_EMAIL>"   # Service account email for Dataflow
       skip_wait_on_job_termination = "<TRUE/FALSE>"                   # Whether to skip waiting for job termination on deletion
       staging_location             = "gs://<YOUR_GCS_BUCKET>/staging" # GCS staging location for Dataflow
-      subnetwork                   = "<YOUR-FULL-PATH-SUBNETWORK"     # Give the full path to the subnetwork
+      subnetwork                   = "<YOUR-FULL-PATH-SUBNETWORK>"    # Give the full path to the subnetwork
       temp_location                = "gs://<YOUR_GCS_BUCKET>/temp"    # GCS temp location for Dataflow
       on_delete                    = "<YOUR_ON_DELETE_ACTION>"        # Action on Dataflow job deletion ("cancel" or "drain")
       ip_configuration             = "<YOUR_IP_CONFIGURATION>"        # IP configuration for Dataflow workers ("WORKER_IP_PRIVATE" or "WORKER_IP_PUBLIC")
@@ -94,7 +98,7 @@ shard_list = [
 
     dataflow_params = {
       template_params = {
-        run_mode                          = "<YOUR_RUN_MODE>"         # Dataflow run mode ("streaming" or "daemon")
+        run_mode                          = "<YOUR_RUN_MODE>"         # Dataflow run mode ("regular" or "retryDLQ")
         local_transformation_context_path = "<YOUR_CONTEXT_PATH>"     # Path to local transformation context (optional)
         dlq_gcs_pub_sub_subscription      = "<YOUR_DLQ_SUBSCRIPTION>" # Pub/Sub subscription for the dead-letter queue (optional)
       }

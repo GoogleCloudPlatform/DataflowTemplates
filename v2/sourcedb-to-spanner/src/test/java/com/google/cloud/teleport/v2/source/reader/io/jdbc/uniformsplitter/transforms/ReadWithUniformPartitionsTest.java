@@ -88,7 +88,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
   @Test
   public void testReadWithUniformPartitionsPartitionTillSingleRow() throws Exception {
     // In this test we expect all the entries to split till single row. And hence each range to have
-    // atmost 2 count (mean being 1, there will be atmost 2 rows in the partitions).
+    // at most 2 count (mean being 1, there will be at most 2 rows in the partitions).
     TestRangesPeekVerification testRangesPeekVerification =
         (capturedRanges) -> {
           long totalCount = 0;

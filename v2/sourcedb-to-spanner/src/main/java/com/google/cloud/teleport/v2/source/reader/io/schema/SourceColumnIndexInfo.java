@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.v2.source.reader.io.schema;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.common.base.Preconditions;
+import javax.annotation.Nullable;
 
 @AutoValue
 /**
@@ -68,6 +70,14 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
    */
   public abstract IndexType indexType();
 
+  /** Collation details for string columns. Null if the column is not of string type. */
+  @Nullable
+  public abstract CollationReference collationReference();
+
+  /** Maximum Length for String Columns. Null for other types. */
+  @Nullable
+  public abstract Integer stringMaxLength();
+
   /**
    * Builder for {@link SourceColumnIndexInfo}.
    *
@@ -109,6 +119,10 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
 
     public abstract Builder setIndexType(IndexType value);
 
+    public abstract Builder setCollationReference(CollationReference value);
+
+    public abstract Builder setStringMaxLength(@Nullable Integer value);
+
     abstract SourceColumnIndexInfo autoBuild();
 
     public SourceColumnIndexInfo build() {
@@ -121,6 +135,7 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
 
   public enum IndexType {
     NUMERIC,
+    STRING,
     DATE_TIME,
     OTHER
   };

@@ -15,14 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper;
-import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
-import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
@@ -30,10 +27,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
-import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
-import com.google.cloud.teleport.v2.transformer.SourceRowToMutationDoFn;
-import com.google.cloud.teleport.v2.writer.DeadLetterQueue;
-import com.google.cloud.teleport.v2.writer.SpannerWriter;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,16 +40,12 @@ import java.util.stream.Collectors;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.SerializableCoder;
-import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +54,8 @@ import org.slf4j.LoggerFactory;
 public class PipelineController {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpanner.class);
+  private static final Counter tablesCompleted =
+      Metrics.counter(PipelineController.class, "tablesCompleted");
 
   static PipelineResult executeSingleInstanceMigration(
       SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
@@ -128,95 +119,32 @@ public class PipelineController {
               JdbcIoWrapper.of(
                   OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
                       options, List.of(srcTable), null, Wait.on(parentOutputs))));
+      String suffix = generateSuffix("", srcTable);
       PCollection<Void> output =
-          migrateForReader(options, pipeline, spannerConfig, ddl, schemaMapper, reader, "");
+          pipeline.apply(
+              "Migrate" + suffix,
+              new MigrateTableTransform(options, spannerConfig, ddl, schemaMapper, reader, ""));
       outputs.put(srcTable, output);
     }
+
+    // Add transform to increment table counter
+    Map<String, Wait.OnSignal<?>> waitOnsMap =
+        outputs.entrySet().stream()
+            .collect(Collectors.toMap(Map.Entry::getKey, entry -> Wait.on(entry.getValue())));
+    pipeline.apply("Increment_table_counters", new IncrementTableCounter(waitOnsMap, ""));
+
     return pipeline.run();
   }
 
-  /**
-   * Perform migration for a given reader. This created a separate dag on dataflow per reader.
-   *
-   * @param options
-   * @param pipeline
-   * @param spannerConfig
-   * @param ddl
-   * @param schemaMapper
-   * @param reader
-   * @param shardId
-   */
-  private static PCollection<Void> migrateForReader(
-      SourceDbToSpannerOptions options,
-      Pipeline pipeline,
-      SpannerConfig spannerConfig,
-      Ddl ddl,
-      ISchemaMapper schemaMapper,
-      ReaderImpl reader,
-      String shardId) {
-    String shardIdSuffix = StringUtils.isEmpty(shardId) ? "" : "_" + shardId;
-    SourceSchema srcSchema = reader.getSourceSchema();
-
-    ReaderTransform readerTransform = reader.getReaderTransform();
-
-    PCollectionTuple rowsAndTables =
-        pipeline.apply("Read_rows" + shardIdSuffix, readerTransform.readTransform());
-    PCollection<SourceRow> sourceRows = rowsAndTables.get(readerTransform.sourceRowTag());
-
-    CustomTransformation customTransformation =
-        CustomTransformation.builder(
-                options.getTransformationJarPath(), options.getTransformationClassName())
-            .setCustomParameters(options.getTransformationCustomParameters())
-            .build();
-
-    // Transform source data to Spanner Compatible Data
-    SourceRowToMutationDoFn transformDoFn =
-        SourceRowToMutationDoFn.create(schemaMapper, customTransformation);
-    PCollectionTuple transformationResult =
-        sourceRows.apply(
-            "Transform" + shardIdSuffix,
-            ParDo.of(transformDoFn)
-                .withOutputTags(
-                    SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS,
-                    TupleTagList.of(
-                        Arrays.asList(
-                            SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR,
-                            SourceDbToSpannerConstants.FILTERED_EVENT_TAG))));
-
-    // Write to Spanner
-    SpannerWriter writer = new SpannerWriter(spannerConfig);
-    SpannerWriteResult spannerWriteResult =
-        writer.writeToSpanner(
-            transformationResult
-                .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS)
-                .setCoder(SerializableCoder.of(RowContext.class)));
-    PCollection<MutationGroup> failedMutations = spannerWriteResult.getFailedMutations();
-
-    String outputDirectory = options.getOutputDirectory();
-    if (!outputDirectory.endsWith("/")) {
-      outputDirectory += "/";
+  private static String generateSuffix(String shardId, String tableName) {
+    String suffix = "";
+    if (!StringUtils.isEmpty(shardId)) {
+      suffix += "_" + shardId;
     }
-    // Dump Failed rows to DLQ
-    String dlqDirectory = outputDirectory + "dlq";
-    LOG.info("DLQ directory: {}", dlqDirectory);
-    DeadLetterQueue dlq = DeadLetterQueue.create(dlqDirectory, ddl);
-    dlq.failedMutationsToDLQ(failedMutations);
-    dlq.failedTransformsToDLQ(
-        transformationResult
-            .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)
-            .setCoder(SerializableCoder.of(RowContext.class)));
-
-    /*
-     * Write filtered records to GCS
-     */
-    String filterEventsDirectory = outputDirectory + "filteredEvents";
-    LOG.info("Filtered events directory: {}", filterEventsDirectory);
-    DeadLetterQueue filteredEventsQueue = DeadLetterQueue.create(filterEventsDirectory, ddl);
-    filteredEventsQueue.filteredEventsToDLQ(
-        transformationResult
-            .get(SourceDbToSpannerConstants.FILTERED_EVENT_TAG)
-            .setCoder(SerializableCoder.of(RowContext.class)));
-    return spannerWriteResult.getOutput();
+    if (!StringUtils.isEmpty(tableName)) {
+      suffix += "_" + tableName;
+    }
+    return suffix;
   }
 
   static PipelineResult executeShardedMigration(
@@ -245,6 +173,7 @@ public class PipelineController {
     for (Shard shard : shards) {
       for (Map.Entry<String, String> entry : shard.getDbNameToLogicalShardIdMap().entrySet()) {
         // Read data from source
+        String shardId = entry.getValue();
         Map<String, PCollection<Void>> outputs = new HashMap<>();
         for (String spTable : orderedSpTables) {
           String srcTable = schemaMapper.getSourceTableName("", spTable);
@@ -284,17 +213,27 @@ public class PipelineController {
                           shard.getUserName(),
                           shard.getPassword(),
                           entry.getKey(),
-                          entry.getValue(),
+                          shardId,
                           options.getJdbcDriverClassName(),
                           options.getJdbcDriverJars(),
                           options.getMaxConnections(),
                           options.getNumPartitions(),
                           Wait.on(parentOutputs))));
+          String suffix = generateSuffix(shardId, srcTable);
           PCollection<Void> output =
-              migrateForReader(
-                  options, pipeline, spannerConfig, ddl, schemaMapper, reader, entry.getValue());
+              pipeline.apply(
+                  "Migrate" + suffix,
+                  new MigrateTableTransform(
+                      options, spannerConfig, ddl, schemaMapper, reader, shardId));
           outputs.put(srcTable, output);
         }
+        // Add transform to increment table counter
+        Map<String, Wait.OnSignal<?>> waitOnsMap =
+            outputs.entrySet().stream()
+                .collect(
+                    Collectors.toMap(Map.Entry::getKey, mapEntry -> Wait.on(mapEntry.getValue())));
+        pipeline.apply(
+            "Increment_table_counters_" + shardId, new IncrementTableCounter(waitOnsMap, shardId));
       }
     }
     return pipeline.run();
@@ -306,7 +245,8 @@ public class PipelineController {
         .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
         .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
         .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
+        .withRpcPriority(RpcPriority.HIGH);
   }
 
   @VisibleForTesting
@@ -327,7 +267,7 @@ public class PipelineController {
   static List<String> listTablesToMigrate(String tableList, ISchemaMapper mapper, Ddl ddl) {
     List<String> tablesFromOptions =
         StringUtils.isNotBlank(tableList)
-            ? Arrays.stream(tableList.split(",")).collect(Collectors.toList())
+            ? Arrays.stream(tableList.split("\\:|,")).collect(Collectors.toList())
             : new ArrayList<String>();
 
     List<String> sourceTablesConfigured = null;
