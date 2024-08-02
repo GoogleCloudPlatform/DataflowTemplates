@@ -22,6 +22,8 @@ import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRespons
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.Calendar;
 import java.util.Date;
@@ -69,8 +71,12 @@ public class CustomTransformationWithShardForIT implements ISpannerMigrationTran
       row.put("double_column", (double) row.get("double_column") + 1);
       Double value = Double.parseDouble((String) row.get("decimal_column"));
       row.put("decimal_column", String.valueOf(value + 1));
-      // TODO (b/349257952): update once TIME handling is made consistent for bulk and live.
-      // row.put("time_column", (Long) row.get("time_column") + 1000);
+      DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+      LocalTime time = LocalTime.parse((String) row.get("time_column"), formatter);
+
+      // Add one hour to the time
+      LocalTime newTime = time.plusHours(1);
+      row.put("time_column", newTime.format(formatter));
       row.put("bool_column", 1);
       row.put("enum_column", "1");
       row.put("blob_column", "576f726d64");
