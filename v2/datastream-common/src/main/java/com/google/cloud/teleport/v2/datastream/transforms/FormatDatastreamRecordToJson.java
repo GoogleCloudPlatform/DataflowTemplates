@@ -462,7 +462,7 @@ public class FormatDatastreamRecordToJson
         jsonObject.put(fieldName, varcharValue);
       } else {
         LOG.error(
-                "Unknown field type {} for field {} in {}. Ignoring it.",
+                "Unknown custom logical type {} for field {} in {}. Ignoring it.",
                 fieldSchema,
                 fieldName,
                 element.get(fieldName));
