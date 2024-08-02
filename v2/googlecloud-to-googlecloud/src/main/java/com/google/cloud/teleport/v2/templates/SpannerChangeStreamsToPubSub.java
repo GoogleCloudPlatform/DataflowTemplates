@@ -112,6 +112,7 @@ public class SpannerChangeStreamsToPubSub {
     String pubsubProjectId = getPubsubProjectId(options);
     String pubsubTopicName = options.getPubsubTopic();
     String pubsubAPI = options.getPubsubAPI();
+    Boolean includeSpannerSource = options.getIncludeSpannerSource();
 
     // Retrieve and parse the start / end timestamps.
     Timestamp startTimestamp =
@@ -170,6 +171,9 @@ public class SpannerChangeStreamsToPubSub {
                 .setProjectId(pubsubProjectId)
                 .setPubsubAPI(pubsubAPI)
                 .setPubsubTopicName(pubsubTopicName)
+                .setIncludeSpannerSource(includeSpannerSource)
+                .setSpannerDatabase(databaseId)
+                .setSpannerInstanceId(instanceId)
                 .build());
     return pipeline.run();
   }
