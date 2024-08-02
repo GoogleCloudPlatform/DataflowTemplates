@@ -57,7 +57,10 @@ public class FormatDatastreamRecordToJson
   public static class CustomAvroTypes {
     public static final String VARCHAR = "varchar";
     public static final String NUMBER = "number";
+    public static final String TIME_INTERVAL_MICROS = "time-interval-micros";
   }
+
+  static final String LOGICAL_TYPE = "logicalType";
 
   static final Logger LOG = LoggerFactory.getLogger(FormatDatastreamRecordToJson.class);
   static final DateTimeFormatter DEFAULT_DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
@@ -356,9 +359,16 @@ public class FormatDatastreamRecordToJson
 
     static void putField(
         String fieldName, Schema fieldSchema, GenericRecord record, ObjectNode jsonObject) {
+
+      // fieldSchema.getLogicalType() returns object of type org.apache.avro.LogicalType,
+      // therefore, is null for custom logical types
       if (fieldSchema.getLogicalType() != null) {
         // Logical types should be handled separately.
         handleLogicalFieldType(fieldName, fieldSchema, record, jsonObject);
+        return;
+      } else if (fieldSchema.getProp(LOGICAL_TYPE)!= null) {
+        // Handling for custom logical types.
+        handleCustomLogicalType(fieldName, fieldSchema, record, jsonObject);
         return;
       }
 
@@ -416,6 +426,46 @@ public class FormatDatastreamRecordToJson
           FormatDatastreamRecordToJson.LOG.error(
               "Unknown field type {} for field {} in record {}.", fieldSchema, fieldName, record);
           break;
+      }
+    }
+
+    static void handleCustomLogicalType(
+            String fieldName, Schema fieldSchema, GenericRecord element, ObjectNode jsonObject) {
+      if (fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.TIME_INTERVAL_MICROS)) {
+        Long timeMicrosTotal = (Long) element.get(fieldName);
+        boolean isNegative = false;
+        if (timeMicrosTotal < 0) {
+          timeMicrosTotal *= -1;
+          isNegative = true;
+        }
+        Long nanoseconds = timeMicrosTotal * TimeUnit.MICROSECONDS.toNanos(1);
+        Long hours = TimeUnit.NANOSECONDS.toHours(nanoseconds);
+        nanoseconds -= TimeUnit.HOURS.toNanos(hours);
+        Long minutes = TimeUnit.NANOSECONDS.toMinutes(nanoseconds);
+        nanoseconds -= TimeUnit.MINUTES.toNanos(minutes);
+        Long seconds = TimeUnit.NANOSECONDS.toSeconds(nanoseconds);
+        nanoseconds -= TimeUnit.SECONDS.toNanos(seconds);
+        Long micros = TimeUnit.NANOSECONDS.toMicros(nanoseconds);
+        // Pad 0 if single digit hour.
+        String timeString = (hours < 10) ? String.format("%02d", hours) : String.format("%d", hours);
+        timeString += String.format(":%02d:%02d", minutes, seconds);
+        if (micros > 0) {
+          timeString += String.format(".%d", micros);
+        }
+        String resultString = isNegative ? "-" + timeString : timeString;
+        jsonObject.put(fieldName, resultString);
+      } else if (fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.NUMBER)) {
+        String number = (String) element.get(fieldName);
+        jsonObject.put(fieldName, number);
+      } else if (fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.VARCHAR)) {
+        String varcharValue = (String) element.get(fieldName);
+        jsonObject.put(fieldName, varcharValue);
+      } else {
+        LOG.error(
+                "Unknown field type {} for field {} in {}. Ignoring it.",
+                fieldSchema,
+                fieldName,
+                element.get(fieldName));
       }
     }
 
