@@ -424,6 +424,49 @@ public final class FailsafeModJsonToTableRowTransformerTest implements Serializa
     p.run().waitUntilFinish();
   }
 
+  private void fillNullNonPkColsForDelete(TableRow expectedTableRow) {
+    expectedTableRow.set(BOOLEAN_ARRAY_COL, null);
+    expectedTableRow.set("_type_" + BOOLEAN_ARRAY_COL, "ARRAY<BOOL>");
+    expectedTableRow.set(BYTES_ARRAY_COL, null);
+    expectedTableRow.set("_type_" + BYTES_ARRAY_COL, "ARRAY<BYTES>");
+    expectedTableRow.set(DATE_ARRAY_COL, null);
+    expectedTableRow.set("_type_" + DATE_ARRAY_COL, "ARRAY<DATE>");
+    expectedTableRow.set(FLOAT32_ARRAY_COL, null);
+    expectedTableRow.set("_type_" + FLOAT32_ARRAY_COL, "ARRAY<FLOAT32>");
+    expectedTableRow.set(FLOAT64_ARRAY_COL, null);
+    expectedTableRow.set("_type_" + FLOAT64_ARRAY_COL, "ARRAY<FLOAT64>");
+    expectedTableRow.set(INT64_ARRAY_COL, null);
+    expectedTableRow.set("_type_" + INT64_ARRAY_COL, "ARRAY<INT64>");
+    expectedTableRow.set(JSON_ARRAY_COL, null);
+    expectedTableRow.set("_type_" + JSON_ARRAY_COL, "ARRAY<JSON>");
+    expectedTableRow.set(NUMERIC_ARRAY_COL, null);
+    expectedTableRow.set("_type_" + NUMERIC_ARRAY_COL, "ARRAY<NUMERIC>");
+    expectedTableRow.set(STRING_ARRAY_COL, null);
+    expectedTableRow.set("_type_" + STRING_ARRAY_COL, "ARRAY<STRING>");
+    expectedTableRow.set(TIMESTAMP_ARRAY_COL, null);
+    expectedTableRow.set("_type_" + TIMESTAMP_ARRAY_COL, "ARRAY<TIMESTAMP>");
+    expectedTableRow.set(BOOLEAN_COL, null);
+    expectedTableRow.set("_type_" + BOOLEAN_COL, "BOOL");
+    expectedTableRow.set(BYTES_COL, null);
+    expectedTableRow.set("_type_" + BYTES_COL, "BYTES");
+    expectedTableRow.set(DATE_COL, null);
+    expectedTableRow.set("_type_" + DATE_COL, "DATE");
+    expectedTableRow.set(FLOAT32_COL, null);
+    expectedTableRow.set("_type_" + FLOAT32_COL, "FLOAT32");
+    expectedTableRow.set(FLOAT64_COL, null);
+    expectedTableRow.set("_type_" + FLOAT64_COL, "FLOAT64");
+    expectedTableRow.set(INT64_COL, null);
+    expectedTableRow.set("_type_" + INT64_COL, "INT64");
+    expectedTableRow.set(JSON_COL, null);
+    expectedTableRow.set("_type_" + JSON_COL, "JSON");
+    expectedTableRow.set(NUMERIC_COL, null);
+    expectedTableRow.set("_type_" + NUMERIC_COL, "NUMERIC");
+    expectedTableRow.set(STRING_COL, null);
+    expectedTableRow.set("_type_" + STRING_COL, "STRING");
+    expectedTableRow.set(TIMESTAMP_COL, null);
+    expectedTableRow.set("_type_" + TIMESTAMP_COL, "TIMESTAMP");
+  }
+
   private void validateBigQueryRow(
       String spannerDatabaseName,
       Timestamp commitTimestamp,
@@ -529,6 +572,8 @@ public final class FailsafeModJsonToTableRowTransformerTest implements Serializa
         expectedTableRow.set(TIMESTAMP_COL, commitTimestamp.toString());
         expectedTableRow.set("_type_" + TIMESTAMP_COL, "TIMESTAMP");
       }
+    } else {
+      fillNullNonPkColsForDelete(expectedTableRow);
     }
 
     TestStream<String> testSream =

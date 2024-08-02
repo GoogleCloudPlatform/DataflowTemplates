@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -273,12 +274,27 @@ public class SpannerToBigQueryUtils {
   }
 
   public static void addSpannerNonPkColumnsToTableRow(
-      String newValuesJson, List<TrackedSpannerColumn> spannerNonPkColumns, TableRow tableRow) {
-    JSONObject newValuesJsonObject = new JSONObject(newValuesJson);
+      String newValuesJson,
+      List<TrackedSpannerColumn> spannerNonPkColumns,
+      TableRow tableRow,
+      ModType modType) {
+    JSONObject newValuesJsonObject =
+        new JSONObject(modType == ModType.DELETE ? "{}" : newValuesJson);
     for (TrackedSpannerColumn spannerColumn : spannerNonPkColumns) {
       String columnName = spannerColumn.getName();
       Type columnType = spannerColumn.getType();
+      // For "DELETE" mod, fill the tracking non-key column with null
+      if (modType == ModType.DELETE) {
+        tableRow.set(columnName, null);
+        tableRow.set("_type_" + columnName, cleanSpannerType(columnType.toString()));
+        continue;
+      }
+      // This scenario only happens for UPDATE in OLD_AND_NEW_VALUES or NEW_VALUES. If a tracked
+      // column is not updated, we should still populate that column with type information to ensure
+      // initial bigquery dynamic destination contains this column.
       if (!newValuesJsonObject.has(columnName)) {
+        tableRow.set(columnName, null);
+        tableRow.set("_type_" + columnName, cleanSpannerType(columnType.toString()));
         continue;
       }
       if (newValuesJsonObject.isNull(columnName)) {

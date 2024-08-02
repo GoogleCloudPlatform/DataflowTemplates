@@ -292,17 +292,14 @@ public final class FailsafeModJsonToTableRowTransformer {
         SpannerToBigQueryUtils.addSpannerPkColumnsToTableRow(
             keysJsonObject, spannerTable.getPkColumns(), tableRow);
 
-        // For "DELETE" mod, we only need to set the key columns.
-        if (mod.getModType() == ModType.DELETE) {
-          return tableRow;
-        }
-
         // Set non-key columns of the tableRow.
         SpannerToBigQueryUtils.addSpannerNonPkColumnsToTableRow(
-            mod.getNewValuesJson(), spannerTable.getNonPkColumns(), tableRow);
+            mod.getNewValuesJson(), spannerTable.getNonPkColumns(), tableRow, mod.getModType());
 
         // For "INSERT" mod, we can get all columns from mod.
-        if (mod.getModType() == ModType.INSERT) {
+        // For "DELETE" mod, we only set the key columns. For all non-key columns, we already
+        // populated "null".
+        if (mod.getModType() == ModType.INSERT || mod.getModType() == ModType.DELETE) {
           return tableRow;
         }
 
