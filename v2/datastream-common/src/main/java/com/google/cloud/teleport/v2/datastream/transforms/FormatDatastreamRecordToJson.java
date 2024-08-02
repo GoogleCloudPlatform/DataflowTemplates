@@ -506,12 +506,6 @@ public class FormatDatastreamRecordToJson
         jsonObject.put(
             fieldName,
             timestamp.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
-      } else if (fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.NUMBER)) {
-        String number = (String) element.get(fieldName);
-        jsonObject.put(fieldName, number);
-      } else if (fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.VARCHAR)) {
-        String varcharValue = (String) element.get(fieldName);
-        jsonObject.put(fieldName, varcharValue);
       } else {
         LOG.error(
             "Unknown field type {} for field {} in {}. Ignoring it.",
