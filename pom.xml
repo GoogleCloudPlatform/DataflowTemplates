@@ -23,6 +23,26 @@
   <artifactId>templates</artifactId>
   <version>1.0-SNAPSHOT</version>
   <name>Google Cloud Dataflow Templates</name>
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-testcontainers</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-testcontainers</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-google-cloud-platform</artifactId>
+      <version>1.0-SNAPSHOT</version>
+      <scope>compile</scope>
+    </dependency>
+  </dependencies>
   <packaging>pom</packaging>
   <description>
     Unifies all the template libraries under one POM for easier automation and
@@ -391,6 +411,14 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>7</source>
+          <target>7</target>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 
@@ -615,6 +643,10 @@
           <id>ossrh</id>
           <url>https://oss.sonatype.org/content/repositories/snapshots</url>
         </repository>
+        <repository>
+          <id>confluent</id>
+          <url>https://packages.confluent.io/maven/</url>
+        </repository>
       </repositories>
       <pluginRepositories>
         <pluginRepository>
@@ -661,6 +693,7 @@
     <module>metadata</module>
     <module>plugins</module>
     <module>it</module>
+    <module>lt</module>
     <module>v1</module>
     <module>v2</module>
     <module>structured-logging</module>
