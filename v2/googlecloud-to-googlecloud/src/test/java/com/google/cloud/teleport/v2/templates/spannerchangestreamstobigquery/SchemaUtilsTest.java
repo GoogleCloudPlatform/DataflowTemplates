@@ -81,6 +81,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -702,11 +703,11 @@ public class SchemaUtilsTest {
   @Test
   public void testAddSpannerNonPkColumnsToTableRow() throws Exception {
     String newValuesJson =
-        "{\"BoolCol\":true,\"BytesCol\":\"ZmZm\",\"DateCol\":\"2020-12-12\",\"Float64Col\":1.3,"
+        "{\"BooleanCol\":true,\"BytesCol\":\"ZmZm\",\"DateCol\":\"2020-12-12\",\"Float64Col\":1.3,"
             + "\"Int64Col\":\"5\","
             + "\"JsonCol\":\"{\\\"color\\\":\\\"red\\\",\\\"value\\\":\\\"#f00\\\"}\","
             + "\"NumericCol\":\"4.4\",\"StringCol\":\"abc\","
-            + "\"TimestampCol\":\"2022-03-19T18:51:33.963910279Z\",\"BoolArrayCol\":[true,false],"
+            + "\"TimestampCol\":\"2022-03-19T18:51:33.963910279Z\",\"BooleanArrayCol\":[true,false],"
             + "\"BytesArrayCol\":[\"YWJj\",\"YmNk\"],"
             + "\"DateArrayCol\":[\"2021-01-22\",\"2022-01-01\"],\"Float64ArrayCol\":[1.2,4.4],"
             + "\"Int64ArrayCol\":[\"1\",\"2\"],"
@@ -717,16 +718,16 @@ public class SchemaUtilsTest {
             + "\"2022-03-19T18:51:33.963910279Z\"]}";
     TableRow tableRow = new TableRow();
     SpannerToBigQueryUtils.addSpannerNonPkColumnsToTableRow(
-        newValuesJson, spannerColumnsOfAllTypes, tableRow);
+        newValuesJson, spannerColumnsOfAllTypes, tableRow, ModType.INSERT);
 
     assertThat(tableRow.toString())
         .isEqualTo(
-            "GenericData{classInfo=[f], {BytesCol=ZmZm, _type_BytesCol=BYTES, DateCol=2020-12-12,"
+            "GenericData{classInfo=[f], {BooleanCol=true, _type_BooleanCol=BOOL, BytesCol=ZmZm, _type_BytesCol=BYTES, DateCol=2020-12-12,"
                 + " _type_DateCol=DATE, Float64Col=1.3, _type_Float64Col=FLOAT64, Int64Col=5,"
                 + " _type_Int64Col=INT64, JsonCol={\"color\":\"red\",\"value\":\"#f00\"},"
                 + " _type_JsonCol=JSON, NumericCol=4.4, _type_NumericCol=NUMERIC, StringCol=abc,"
                 + " _type_StringCol=STRING, TimestampCol=2022-03-19T18:51:33.963910279Z,"
-                + " _type_TimestampCol=TIMESTAMP, BytesArrayCol=[YWJj, YmNk],"
+                + " _type_TimestampCol=TIMESTAMP, BooleanArrayCol=[true, false], _type_BooleanArrayCol=ARRAY<BOOL>, BytesArrayCol=[YWJj, YmNk],"
                 + " _type_BytesArrayCol=ARRAY<BYTES>, DateArrayCol=[2021-01-22,"
                 + " 2022-01-01], _type_DateArrayCol=ARRAY<DATE>, Float64ArrayCol=[1.2, 4.4],"
                 + " _type_Float64ArrayCol=ARRAY<FLOAT64>, Int64ArrayCol=[1, 2],"
@@ -737,6 +738,54 @@ public class SchemaUtilsTest {
                 + " StringArrayCol=[a, b], _type_StringArrayCol=ARRAY<STRING>,"
                 + " TimestampArrayCol=[2022-03-19T18:51:33.963910279Z,"
                 + " 2022-03-19T18:51:33.963910279Z], _type_TimestampArrayCol=ARRAY<TIMESTAMP>}}");
+  }
+
+  @Test
+  public void testAddSpannerNonPkColumnsToTableRowForDelete() throws Exception {
+    String newValuesJson = "";
+    TableRow tableRow = new TableRow();
+    SpannerToBigQueryUtils.addSpannerNonPkColumnsToTableRow(
+        newValuesJson, spannerColumnsOfAllTypes, tableRow, ModType.DELETE);
+
+    assertThat(tableRow.toString())
+        .isEqualTo(
+            "GenericData{classInfo=[f], {BooleanCol=null, _type_BooleanCol=BOOL, BytesCol=null, _type_BytesCol=BYTES, DateCol=null,"
+                + " _type_DateCol=DATE, Float64Col=null, _type_Float64Col=FLOAT64, Int64Col=null,"
+                + " _type_Int64Col=INT64, JsonCol=null,"
+                + " _type_JsonCol=JSON, NumericCol=null, _type_NumericCol=NUMERIC, StringCol=null,"
+                + " _type_StringCol=STRING, TimestampCol=null,"
+                + " _type_TimestampCol=TIMESTAMP, BooleanArrayCol=null, _type_BooleanArrayCol=ARRAY<BOOL>, BytesArrayCol=null,"
+                + " _type_BytesArrayCol=ARRAY<BYTES>, DateArrayCol=null, _type_DateArrayCol=ARRAY<DATE>, Float64ArrayCol=null,"
+                + " _type_Float64ArrayCol=ARRAY<FLOAT64>, Int64ArrayCol=null,"
+                + " _type_Int64ArrayCol=ARRAY<INT64>,"
+                + " JsonArrayCol=null, _type_JsonArrayCol=ARRAY<JSON>,"
+                + " NumericArrayCol=null, _type_NumericArrayCol=ARRAY<NUMERIC>,"
+                + " StringArrayCol=null, _type_StringArrayCol=ARRAY<STRING>,"
+                + " TimestampArrayCol=null, _type_TimestampArrayCol=ARRAY<TIMESTAMP>}}");
+  }
+
+  @Test
+  public void testAddSpannerNonPkColumnsToTableRowForNewRowOldValuesUpdate() throws Exception {
+    String newValuesJson = "{\"BooleanCol\":true,\"BytesCol\":\"ZmZm\"}";
+    TableRow tableRow = new TableRow();
+    SpannerToBigQueryUtils.addSpannerNonPkColumnsToTableRow(
+        newValuesJson, spannerColumnsOfAllTypes, tableRow, ModType.UPDATE);
+
+    assertThat(tableRow.toString())
+        .isEqualTo(
+            "GenericData{classInfo=[f], {BooleanCol=true, _type_BooleanCol=BOOL, BytesCol=ZmZm, _type_BytesCol=BYTES, DateCol=null,"
+                + " _type_DateCol=DATE, Float64Col=null, _type_Float64Col=FLOAT64, Int64Col=null,"
+                + " _type_Int64Col=INT64, JsonCol=null,"
+                + " _type_JsonCol=JSON, NumericCol=null, _type_NumericCol=NUMERIC, StringCol=null,"
+                + " _type_StringCol=STRING, TimestampCol=null,"
+                + " _type_TimestampCol=TIMESTAMP, BooleanArrayCol=null, _type_BooleanArrayCol=ARRAY<BOOL>, BytesArrayCol=null,"
+                + " _type_BytesArrayCol=ARRAY<BYTES>, DateArrayCol=null, _type_DateArrayCol=ARRAY<DATE>, Float64ArrayCol=null,"
+                + " _type_Float64ArrayCol=ARRAY<FLOAT64>, Int64ArrayCol=null,"
+                + " _type_Int64ArrayCol=ARRAY<INT64>,"
+                + " JsonArrayCol=null, _type_JsonArrayCol=ARRAY<JSON>,"
+                + " NumericArrayCol=null, _type_NumericArrayCol=ARRAY<NUMERIC>,"
+                + " StringArrayCol=null, _type_StringArrayCol=ARRAY<STRING>,"
+                + " TimestampArrayCol=null, _type_TimestampArrayCol=ARRAY<TIMESTAMP>}}");
   }
 
   private void mockInformationSchemaChangeStreamsQuery(boolean isTrackingAll) {
