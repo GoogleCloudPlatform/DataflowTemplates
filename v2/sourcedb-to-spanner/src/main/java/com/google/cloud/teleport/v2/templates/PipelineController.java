@@ -72,6 +72,15 @@ public class PipelineController {
 
     Map<String, PCollection<Void>> outputs = new HashMap<>();
 
+    LOG.info("Tables to migrate: ");
+    for (String tableToMigrate : tablesToMigrateSet) {
+      LOG.info(tableToMigrate);
+    }
+    LOG.info("Spanner tables: ");
+    for (String spTable: orderedSpTables) {
+      LOG.info(spTable);
+    }
+
     for (String spTable : orderedSpTables) {
       String srcTable = schemaMapper.getSourceTableName("", spTable);
       if (!tablesToMigrateSet.contains(srcTable)) {
