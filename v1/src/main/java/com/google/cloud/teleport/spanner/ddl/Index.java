@@ -59,6 +59,8 @@ public abstract class Index implements Serializable {
 
   abstract ImmutableList<String> partitionBy();
 
+  abstract ImmutableList<String> orderBy();
+
   public static Builder builder(Dialect dialect) {
     return new AutoValue_Index.Builder().dialect(dialect).nullFiltered(false).unique(false);
   }
@@ -159,6 +161,15 @@ public abstract class Index implements Serializable {
       appendable.append(" PARTITION BY ").append(partitionByString);
     }
 
+    String orderByString = 
+        orderBy().stream()
+            .map(c -> quoteIdentifier(c, dialect()))
+            .collect(Collectors.joining(","));
+
+    if (!orderByString.isEmpty()) {
+      appendable.append(" ORDER BY ").append(orderByString);
+    }
+
     if (interleaveIn() != null) {
       appendable.append(", INTERLEAVE IN ").append(quoteIdentifier(interleaveIn(), dialect()));
     }
@@ -236,6 +247,8 @@ public abstract class Index implements Serializable {
     public abstract Builder type(String type);
 
     public abstract Builder partitionBy(ImmutableList<String> keys);
+
+    public abstract Builder orderBy(ImmutableList<String> keys);
 
     abstract Index autoBuild();
 

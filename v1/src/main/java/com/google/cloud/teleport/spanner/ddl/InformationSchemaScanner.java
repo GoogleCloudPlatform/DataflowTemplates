@@ -391,8 +391,10 @@ public class InformationSchemaScanner {
                    .build()
               : null;
 
-      List<String> orderBy = (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(8))
-              ? resultSet.getStringList(8)
+      ImmutableList<String> searchOrderBy = (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(8))
+              ? ImmutableList.<String>builder()
+                   .addAll(resultSet.getStringList(8))
+                   .build()
               : null;
 
       Map<String, Index.Builder> tableIndexes =
@@ -408,6 +410,7 @@ public class InformationSchemaScanner {
               .interleaveIn(parent)
               .type(type)
               .partitionBy(searchPartitionBy)
+              .orderBy(searchOrderBy)
               .filter(filter));
     }
   }
