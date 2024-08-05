@@ -23,7 +23,7 @@ import org.junit.Test;
 
 public class PostgreSQLMappingProviderTest {
   @Test
-  public void testMySqlMappingProvider() {
+  public void testPostgreSQLMappingProvider() {
     Long[] testMods = {1L, 1L};
     // We don't have a use case for arrays yet.
     Long[] testArrayBounds = {};
@@ -45,20 +45,23 @@ public class PostgreSQLMappingProviderTest {
     return ImmutableMap.<String, String>builder()
         .put("BIGINT", "\"long\"")
         .put("BIGSERIAL", "\"long\"")
-        .put("BIT", "\"string\"")
-        .put("BIT VARYING", "\"string\"")
+        .put("BIT", "\"bytes\"")
+        .put("BIT VARYING", "\"bytes\"")
         .put("BOOL", "\"boolean\"")
         .put("BOOLEAN", "\"boolean\"")
-        .put("BOX", "\"string\"")
+        .put("BOX", "{\"type\":\"null\",\"logicalType\":\"unsupported\"}")
         .put("BYTEA", "\"bytes\"")
         .put("CHAR", "\"string\"")
         .put("CHARACTER", "\"string\"")
         .put("CHARACTER VARYING", "\"string\"")
         .put("CIDR", "\"string\"")
-        .put("CIRCLE", "\"string\"")
+        .put("CIRCLE", "{\"type\":\"null\",\"logicalType\":\"unsupported\"}")
         .put("DATE", "{\"type\":\"int\",\"logicalType\":\"date\"}")
-        .put("DECIMAL", "{\"type\":\"string\",\"logicalType\":\"number\"}")
+        .put(
+            "DECIMAL",
+            "{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":1,\"scale\":1}")
         .put("DOUBLE PRECISION", "\"double\"")
+        .put("ENUM", "\"string\"")
         .put("FLOAT4", "\"float\"")
         .put("FLOAT8", "\"double\"")
         .put("INET", "\"string\"")
@@ -66,21 +69,27 @@ public class PostgreSQLMappingProviderTest {
         .put("INT2", "\"int\"")
         .put("INT4", "\"int\"")
         .put("INT8", "\"long\"")
-        .put("INTERVAL", "{\"type\":\"long\",\"logicalType\":\"time-interval-micros\"}")
+        .put(
+            "INTERVAL",
+            "{\"type\":\"record\",\"name\":\"interval\",\"fields\":[{\"name\":\"months\",\"type\":\"int\"},{\"name\":\"hours\",\"type\":\"int\"},{\"name\":\"micros\",\"type\":\"long\"}]}")
         .put("JSON", "{\"type\":\"string\",\"logicalType\":\"json\"}")
         .put("JSONB", "{\"type\":\"string\",\"logicalType\":\"json\"}")
-        .put("LINE", "\"string\"")
-        .put("LSEG", "\"string\"")
+        .put("LINE", "{\"type\":\"null\",\"logicalType\":\"unsupported\"}")
+        .put("LSEG", "{\"type\":\"null\",\"logicalType\":\"unsupported\"}")
         .put("MACADDR", "\"string\"")
         .put("MACADDR8", "\"string\"")
-        .put("MONEY", "\"string\"")
-        .put("NUMERIC", "{\"type\":\"string\",\"logicalType\":\"number\"}")
-        .put("PATH", "\"string\"")
+        .put("MONEY", "\"double\"")
+        .put(
+            "NUMERIC",
+            "{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":1,\"scale\":1}")
+        .put("OID", "\"long\"")
+        .put("PATH", "{\"type\":\"null\",\"logicalType\":\"unsupported\"}")
         .put("PG_LSN", "\"string\"")
         .put("PG_SNAPSHOT", "\"string\"")
-        .put("POINT", "\"string\"")
-        .put("POLYGON", "\"string\"")
+        .put("POINT", "{\"type\":\"null\",\"logicalType\":\"unsupported\"}")
+        .put("POLYGON", "{\"type\":\"null\",\"logicalType\":\"unsupported\"}")
         .put("REAL", "\"float\"")
+        .put("SERIAL", "\"int\"")
         .put("SERIAL2", "\"int\"")
         .put("SERIAL4", "\"int\"")
         .put("SERIAL8", "\"long\"")
@@ -109,7 +118,7 @@ public class PostgreSQLMappingProviderTest {
         .put("TSVECTOR", "\"string\"")
         .put("TXID_SNAPSHOT", "\"string\"")
         .put("UUID", "\"string\"")
-        .put("VARBIT", "\"string\"")
+        .put("VARBIT", "\"bytes\"")
         .put("VARCHAR", "\"string\"")
         .put("XML", "\"string\"")
         .build()

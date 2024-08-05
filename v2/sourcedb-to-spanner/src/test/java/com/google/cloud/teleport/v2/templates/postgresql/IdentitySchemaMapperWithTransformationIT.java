@@ -89,14 +89,14 @@ public class IdentitySchemaMapperWithTransformationIT extends SourceDbToSpannerI
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
-    List<Map<String, Object>> companyMySQL =
+    List<Map<String, Object>> companyPostgreSQL =
         postgreSQLResourceManager.runSQLQuery("SELECT company_id, company_name FROM company");
     ImmutableList<Struct> companySpanner =
         spannerResourceManager.readTableRecords("company", "company_id", "company_name");
 
     SpannerAsserts.assertThatStructs(companySpanner)
-        .hasRecordsUnorderedCaseInsensitiveColumns(companyMySQL);
-    SpannerAsserts.assertThatStructs(companySpanner).hasRows(companyMySQL.size());
+        .hasRecordsUnorderedCaseInsensitiveColumns(companyPostgreSQL);
+    SpannerAsserts.assertThatStructs(companySpanner).hasRows(companyPostgreSQL.size());
 
     ImmutableList<Struct> employeeSpanner =
         spannerResourceManager.readTableRecords(

@@ -28,6 +28,7 @@ import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.tuple.Pair;
 
+/** PostgreSQL data type mapping to AVRO types. */
 public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
   private static final ResultSetValueMapper<?> valuePassThrough = (value, schema) -> value;
 

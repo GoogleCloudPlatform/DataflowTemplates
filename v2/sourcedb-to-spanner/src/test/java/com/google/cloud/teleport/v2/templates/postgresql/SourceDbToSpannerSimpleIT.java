@@ -99,11 +99,11 @@ public class SourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
 
   @Test
   public void simpleTest() throws IOException {
-    List<Map<String, Object>> mySQLData = getPostgreSQLData();
+    List<Map<String, Object>> postgreSQLData = getPostgreSQLData();
     postgreSQLResourceManager.createTable(TABLE1, getPostgreSQLSchema(ID));
     postgreSQLResourceManager.createTable(TABLE2, getPostgreSQLSchema(NAME));
-    postgreSQLResourceManager.write(TABLE1, mySQLData);
-    postgreSQLResourceManager.write(TABLE2, mySQLData);
+    postgreSQLResourceManager.write(TABLE1, postgreSQLData);
+    postgreSQLResourceManager.write(TABLE2, postgreSQLData);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =
         launchDataflowJob(
@@ -117,8 +117,8 @@ public class SourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
     SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE1, ID, NAME))
-        .hasRecordsUnorderedCaseInsensitiveColumns(mySQLData);
+        .hasRecordsUnorderedCaseInsensitiveColumns(postgreSQLData);
     SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE2, ID, NAME))
-        .hasRecordsUnorderedCaseInsensitiveColumns(mySQLData);
+        .hasRecordsUnorderedCaseInsensitiveColumns(postgreSQLData);
   }
 }

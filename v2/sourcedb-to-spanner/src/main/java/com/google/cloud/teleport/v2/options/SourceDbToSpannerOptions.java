@@ -27,7 +27,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
         @TemplateParameter.TemplateEnumOption("POSTGRESQL")
       },
       description = "SQL Dialect of the source database",
-      helpText = "Possible values are `MySQL` and `PostgreSQL`.")
+      helpText = "Possible values are `MYSQL` and `POSTGRESQL`.")
   @Default.String("MYSQL")
   String getSourceDbDialect();
 

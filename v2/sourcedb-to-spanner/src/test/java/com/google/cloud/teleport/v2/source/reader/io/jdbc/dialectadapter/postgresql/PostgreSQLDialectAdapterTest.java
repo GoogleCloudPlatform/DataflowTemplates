@@ -16,10 +16,12 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
+import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter.PostgreSQLVersion;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
@@ -30,6 +32,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
 import javax.sql.DataSource;
 import org.junit.Before;
@@ -74,18 +78,47 @@ public class PostgreSQLDialectAdapterTest {
   }
 
   @Test
+  public void testDiscoverTableExceptions() throws SQLException {
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
+
+    when(mockDataSource.getConnection())
+        .thenThrow(new SQLTransientConnectionException("test"))
+        .thenThrow(new SQLNonTransientConnectionException("test"))
+        .thenThrow(new SQLException("test"));
+
+    assertThrows(
+        RetriableSchemaDiscoveryException.class,
+        () ->
+            new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT)
+                .discoverTables(mockDataSource, sourceSchemaReference));
+
+    assertThrows(
+        SchemaDiscoveryException.class,
+        () ->
+            new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT)
+                .discoverTables(mockDataSource, sourceSchemaReference));
+
+    assertThrows(
+        SchemaDiscoveryException.class,
+        () ->
+            new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT)
+                .discoverTables(mockDataSource, sourceSchemaReference));
+  }
+
+  @Test
   public void testDiscoverTableSchema() throws SQLException, RetriableSchemaDiscoveryException {
     ImmutableList<String> tables = ImmutableList.of("my_schema.table1");
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
-    when(mockResultSet.next()).thenReturn(true, true, false);
-    when(mockResultSet.getString("column_name")).thenReturn("id", "col");
-    when(mockResultSet.getString("data_type")).thenReturn("bigint", "text");
-    when(mockResultSet.getLong("character_maximum_length")).thenReturn(0L, 0L);
-    when(mockResultSet.getLong("numeric_precision")).thenReturn(64L, 0L);
-    when(mockResultSet.getLong("numeric_scale")).thenReturn(0L, 0L);
+    when(mockResultSet.next()).thenReturn(true, true, true, true, false);
+    when(mockResultSet.getString("column_name")).thenReturn("id", "col1", "col2", "col3");
+    when(mockResultSet.getString("data_type")).thenReturn("bigint", "text", "varchar", "numeric");
+    when(mockResultSet.getLong("character_maximum_length")).thenReturn(0L, 0L, 100L, 0L);
+    when(mockResultSet.getLong("numeric_precision")).thenReturn(64L, 0L, 0L, 100L);
+    when(mockResultSet.getLong("numeric_scale")).thenReturn(0L, 0L, 0L, 200L);
     when(mockResultSet.wasNull())
         .thenReturn(
             // id column -> character_maximum_length == null, numeric_precision != null,
@@ -93,18 +126,71 @@ public class PostgreSQLDialectAdapterTest {
             true,
             false,
             true,
-            // col column -> character_maximum_length == null, numeric_precision == null,
+            // col1 column -> character_maximum_length == null, numeric_precision == null,
             // numeric_scale == null
             true,
             true,
-            true);
+            true,
+            // col2 column -> character_maximum_length != null, numeric_precision == null,
+            // numeric_scale == null
+            false,
+            true,
+            true,
+            // col3 column -> character_maximum_length == null, numeric_precision != null,
+            // numeric_scale != null
+            true,
+            false,
+            false);
 
     assertThat(adapter.discoverTableSchema(mockDataSource, sourceSchemaReference, tables))
         .containsExactly(
             "my_schema.table1",
             ImmutableMap.of(
                 "id", new SourceColumnType("bigint", new Long[] {64L}, null),
-                "col", new SourceColumnType("text", new Long[] {}, null)));
+                "col1", new SourceColumnType("text", new Long[] {}, null),
+                "col2", new SourceColumnType("varchar", new Long[] {100L}, null),
+                "col3", new SourceColumnType("numeric", new Long[] {100L, 200L}, null)));
+  }
+
+  @Test
+  public void testDiscoverTableSchemaExceptions() throws SQLException {
+    final String testTable = "testTable";
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
+
+    when(mockDataSource.getConnection())
+        .thenThrow(new SQLTransientConnectionException("test"))
+        .thenThrow(new SQLNonTransientConnectionException("test"))
+        .thenThrow(new SQLException("test"))
+        .thenThrow(new SchemaDiscoveryException(new RuntimeException("test")));
+
+    assertThrows(
+        RetriableSchemaDiscoveryException.class,
+        () ->
+            new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT)
+                .discoverTableSchema(
+                    mockDataSource, sourceSchemaReference, ImmutableList.of(testTable)));
+
+    assertThrows(
+        SchemaDiscoveryException.class,
+        () ->
+            new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT)
+                .discoverTableSchema(
+                    mockDataSource, sourceSchemaReference, ImmutableList.of(testTable)));
+
+    assertThrows(
+        SchemaDiscoveryException.class,
+        () ->
+            new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT)
+                .discoverTableSchema(
+                    mockDataSource, sourceSchemaReference, ImmutableList.of(testTable)));
+
+    assertThrows(
+        SchemaDiscoveryException.class,
+        () ->
+            new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT)
+                .discoverTableSchema(
+                    mockDataSource, sourceSchemaReference, ImmutableList.of(testTable)));
   }
 
   @Test
@@ -164,6 +250,47 @@ public class PostgreSQLDialectAdapterTest {
                     .setOrdinalPosition(2L)
                     .setIndexType(SourceColumnIndexInfo.IndexType.DATE_TIME)
                     .build()));
+  }
+
+  @Test
+  public void testDiscoverTableIndexesExceptions() throws SQLException {
+    final String testTable = "testTable";
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
+
+    when(mockDataSource.getConnection())
+        .thenThrow(new SQLTransientConnectionException("test"))
+        .thenThrow(new SQLNonTransientConnectionException("test"))
+        .thenThrow(new SQLException("test"))
+        .thenThrow(new SchemaDiscoveryException(new RuntimeException("test")));
+
+    assertThrows(
+        RetriableSchemaDiscoveryException.class,
+        () ->
+            new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT)
+                .discoverTableIndexes(
+                    mockDataSource, sourceSchemaReference, ImmutableList.of(testTable)));
+
+    assertThrows(
+        SchemaDiscoveryException.class,
+        () ->
+            new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT)
+                .discoverTableIndexes(
+                    mockDataSource, sourceSchemaReference, ImmutableList.of(testTable)));
+
+    assertThrows(
+        SchemaDiscoveryException.class,
+        () ->
+            new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT)
+                .discoverTableIndexes(
+                    mockDataSource, sourceSchemaReference, ImmutableList.of(testTable)));
+
+    assertThrows(
+        SchemaDiscoveryException.class,
+        () ->
+            new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT)
+                .discoverTableIndexes(
+                    mockDataSource, sourceSchemaReference, ImmutableList.of(testTable)));
   }
 
   @Test

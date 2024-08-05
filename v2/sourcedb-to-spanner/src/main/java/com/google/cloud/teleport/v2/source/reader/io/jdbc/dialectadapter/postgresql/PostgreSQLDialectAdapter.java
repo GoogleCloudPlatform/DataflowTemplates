@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDi
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
@@ -30,6 +31,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -39,6 +41,7 @@ import org.apache.beam.sdk.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Adapter for PostgreSQL dialect of JDBC databases. */
 public class PostgreSQLDialectAdapter implements DialectAdapter {
 
   public enum PostgreSQLVersion {
@@ -71,6 +74,17 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     this.version = version;
   }
 
+  /**
+   * Discover Tables to migrate. This method could be used to auto infer tables to migrate if not
+   * passed via options.
+   *
+   * @param dataSource Provider for JDBC connection.
+   * @return The list of table names for the given database.
+   * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
+   * @throws RetriableSchemaDiscoveryException - Retriable exception during Schema Discovery.
+   *     <p><b>Note:</b>
+   *     <p>This Implementation logs every exception and generate metrics as appropriate.
+   */
   @Override
   public ImmutableList<String> discoverTables(
       DataSource dataSource, SourceSchemaReference sourceSchemaReference)
@@ -91,7 +105,6 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     ImmutableList.Builder<String> tablesBuilder = ImmutableList.builder();
     try (PreparedStatement stmt = dataSource.getConnection().prepareStatement(query)) {
       stmt.setString(1, sourceSchemaReference.dbName());
-      logger.info("Executing query " + query + ": " + stmt);
       try (ResultSet rs = stmt.executeQuery()) {
         StringBuilder tableName = new StringBuilder();
         while (rs.next()) {
@@ -126,6 +139,16 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     }
   }
 
+  /**
+   * Discover the schema of tables to migrate.
+   *
+   * @param dataSource Provider for JDBC connection.
+   * @param sourceSchemaReference Source database name and (optionally namespace)
+   * @param tables Tables to migrate.
+   * @return source table schema.
+   * @throws SchemaDiscoveryException - Fatal exception during Schema discovery.
+   * @throws RetriableSchemaDiscoveryException - Retriable exception during Schema discovery.
+   */
   @Override
   public ImmutableMap<String, ImmutableMap<String, SourceColumnType>> discoverTableSchema(
       DataSource dataSource,
@@ -233,6 +256,16 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     return tableSchema;
   }
 
+  /**
+   * Discover the indexes of tables to migrate.
+   *
+   * @param dataSource Provider for JDBC connection.
+   * @param sourceSchemaReference Source database name and (optionally namespace)
+   * @param tables Tables to migrate.
+   * @return The discovered indexes.
+   * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
+   * @throws RetriableSchemaDiscoveryException - Retriable exception during Schema Discovery.
+   */
   @Override
   public ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoverTableIndexes(
       DataSource dataSource,
@@ -329,11 +362,26 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     return tableIndexes;
   }
 
+  /**
+   * Get query for the prepared statement to read columns within a range.
+   *
+   * @param tableName name of the table to read
+   * @param partitionColumns partition columns.
+   * @return Query Statement.
+   */
   @Override
   public String getReadQuery(String tableName, ImmutableList<String> partitionColumns) {
     return addWhereClause("SELECT * FROM " + tableName, partitionColumns);
   }
 
+  /**
+   * Get query for the prepared statement to count a given range.
+   *
+   * @param tableName name of the table to read.
+   * @param partitionColumns partition columns.
+   * @param timeoutMillis timeout of the count query in milliseconds. Set to 0 to disable timeout.
+   * @return Query Statement.
+   */
   @Override
   public String getCountQuery(
       String tableName, ImmutableList<String> partitionColumns, long timeoutMillis) {
@@ -343,6 +391,14 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         partitionColumns);
   }
 
+  /**
+   * Get query for the prepared statement to get min and max of a given column, optionally in the
+   * context of a parent range.
+   *
+   * @param tableName name of the table to read.
+   * @param partitionColumns if not-empty, partition columns. Set empty for first column of
+   *     partitioning.
+   */
   @Override
   public String getBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
@@ -351,12 +407,28 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         partitionColumns);
   }
 
+  /**
+   * Check if a given {@link SQLException} is a timeout. The implementation needs to check for
+   * dialect specific {@link SQLException#getSQLState() SqlState} to check if the exception
+   * indicates a server side timeout. The client side timeout would be already checked for by
+   * handling {@link SQLTimeoutException}, so the implementation does not need to check for the
+   * same.
+   */
   @Override
   public boolean checkForTimeout(SQLException exception) {
     return exception.getSQLState() != null
         && TIMEOUT_SQL_STATES.contains(exception.getSQLState().toUpperCase());
   }
 
+  /**
+   * Get Query that returns order of collation. The query must return all the characters in the
+   * character set with the columns listed in {@link CollationOrderRow.CollationsOrderQueryColumns}.
+   *
+   * @param dbCharset character set used by the database for which collation ordering has to be
+   *     found.
+   * @param dbCollation collation set used by the database for which collation ordering has to be
+   *     found.
+   */
   @Override
   public String getCollationsOrderQuery(String dbCharset, String dbCollation) {
     // TODO(thiagotnunes)
@@ -383,8 +455,10 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     return queryBuilder.toString();
   }
 
-  // Ref <a
-  // href="https://www.postgresql.org/docs/16/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE"></a>
+  /**
+   * Ref <a
+   * href="https://www.postgresql.org/docs/16/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE"></a>.
+   */
   private SourceColumnIndexInfo.IndexType indexTypeFrom(String typeCategory) {
     switch (typeCategory) {
       case "N":

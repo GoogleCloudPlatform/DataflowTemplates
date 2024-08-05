@@ -15,6 +15,14 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config;
 
+/**
+ * The dialect of the source database. One of:
+ *
+ * <ul>
+ *   <lI>MYSQL
+ *   <lI>POSTGRESQL
+ * </ul>
+ */
 public enum SQLDialect {
   MYSQL,
   POSTGRESQL

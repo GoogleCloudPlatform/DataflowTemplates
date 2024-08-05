@@ -69,6 +69,41 @@ public class OptionsToConfigBuilderTest {
   }
 
   @Test
+  public void testConfigWithPostgreSQLDefaultsFromOptions() {
+    final String testDriverClassName = "org.apache.derby.jdbc.EmbeddedDriver";
+    final String testUrl = "jdbc:postgresql://localhost:5432/testDB";
+    final String testUser = "user";
+    final String testPassword = "password";
+    SourceDbToSpannerOptions sourceDbToSpannerOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.POSTGRESQL.name());
+    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
+    sourceDbToSpannerOptions.setJdbcDriverClassName(testDriverClassName);
+    sourceDbToSpannerOptions.setMaxConnections(150);
+    sourceDbToSpannerOptions.setNumPartitions(4000);
+    sourceDbToSpannerOptions.setUsername(testUser);
+    sourceDbToSpannerOptions.setPassword(testPassword);
+    sourceDbToSpannerOptions.setTables("table1,table2,custom_schema.table3");
+    PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
+    JdbcIOWrapperConfig config =
+        OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
+            sourceDbToSpannerOptions,
+            List.of("table1", "table2", "custom_schema.table3"),
+            null,
+            Wait.on(dummyPCollection));
+    assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
+    assertThat(config.sourceDbURL()).isEqualTo(testUrl);
+    // "public" schema is added to the schemaless tables
+    assertThat(config.tables())
+        .containsExactlyElementsIn(
+            new String[] {"public.table1", "public.table2", "custom_schema.table3"});
+    assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
+    assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
+    assertThat(config.waitOn()).isNotNull();
+  }
+
+  @Test
   public void testURIParsingException() {
     final String testUrl = "jd#bc://localhost";
     SourceDbToSpannerOptions sourceDbToSpannerOptions =

@@ -24,6 +24,12 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedT
 import com.google.common.collect.ImmutableList;
 import org.apache.beam.sdk.util.FluentBackoff;
 
+// TODO: Fine-tune the defaults based on benchmarking.
+
+/**
+ * PostgreSQL Default Configuration for {@link
+ * com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper JdbcIoWrapper}.
+ */
 public class PostgreSQLConfigDefaults {
   public static final UnifiedTypeMapper.MapperType DEFAULT_POSTGRESQL_SCHEMA_MAPPER_TYPE =
       UnifiedTypeMapper.MapperType.POSTGRESQL;
@@ -38,7 +44,6 @@ public class PostgreSQLConfigDefaults {
       FluentBackoff.DEFAULT;
 
   /** Default Initialization Sequence for the JDBC connection. */
-  // correct.
   public static final ImmutableList<String> DEFAULT_POSTGRESQL_INIT_SEQ =
       ImmutableList.of("SET TIME ZONE 'UTC'");
 

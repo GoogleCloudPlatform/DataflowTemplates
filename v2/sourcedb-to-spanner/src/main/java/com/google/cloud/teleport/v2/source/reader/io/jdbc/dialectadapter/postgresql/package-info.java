@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Mysql dialect adapter. */
+/** PostgreSQL dialect adapter. */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql;

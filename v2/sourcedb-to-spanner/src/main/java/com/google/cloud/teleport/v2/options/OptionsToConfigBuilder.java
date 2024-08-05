@@ -105,7 +105,6 @@ public final class OptionsToConfigBuilder {
       builder = builder.setMaxConnections(maxConnections);
     }
 
-    // TODO - add mysql/postgresql specific method in mysql class.
     switch (sqlDialect) {
       case MYSQL:
         if (sourceDbURL == null) {
