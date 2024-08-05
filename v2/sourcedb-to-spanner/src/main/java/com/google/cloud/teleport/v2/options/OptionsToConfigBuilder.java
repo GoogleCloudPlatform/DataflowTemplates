@@ -21,6 +21,7 @@ import static com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.confi
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -29,6 +30,7 @@ import com.google.re2j.Pattern;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Map.Entry;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -43,7 +45,7 @@ public final class OptionsToConfigBuilder {
       String shardId,
       Wait.OnSignal<?> waitOn) {
     SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
-    String sourceDbURL = options.getSourceDbURL();
+    String sourceDbURL = options.getSourceConfigURL();
     String dbName = extractDbFromURL(sourceDbURL);
     String username = options.getUsername();
     String password = options.getPassword();
@@ -92,7 +94,8 @@ public final class OptionsToConfigBuilder {
             .setSourceSchemaReference(SourceSchemaReference.builder().setDbName(dbName).build())
             .setDbAuth(
                 LocalCredentialsProvider.builder()
-                    .setUserName(username)
+                    .setUserName(
+                        username) // TODO - support taking username and password from url as well
                     .setPassword(password)
                     .build())
             .setJdbcDriverClassName(jdbcDriverClassName)
@@ -102,18 +105,22 @@ public final class OptionsToConfigBuilder {
     }
 
     // TODO - add mysql/postgresql specific method in mysql class.
-    if (sourceDbURL == null) {
-      switch (sqlDialect) {
-        case MYSQL:
+    switch (sqlDialect) {
+      case MYSQL:
+        if (sourceDbURL == null) {
           sourceDbURL = "jdbc:mysql://" + host + ":" + port + "/" + dbName;
-          break;
-        case POSTGRESQL:
+        }
+        for (Entry<String, String> entry :
+            MySqlConfigDefaults.DEFAULT_MYSQL_URL_PROPERTIES.entrySet()) {
+          sourceDbURL = addParamToJdbcUrl(sourceDbURL, entry.getKey(), entry.getValue());
+        }
+        break;
+      case POSTGRESQL:
+        if (sourceDbURL == null) {
           sourceDbURL = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
-          break;
-      }
+        }
+        break;
     }
-
-    sourceDbURL = addParamToJdbcUrl(sourceDbURL, "allowMultiQueries", "true");
 
     builder.setSourceDbURL(sourceDbURL);
     if (!StringUtils.isEmpty(shardId)) {

@@ -324,12 +324,26 @@ public class SessionBasedMapperTest {
     assertEquals(2, sourceTablesToMigrate.size());
   }
 
+  @Test
+  public void testIgnoreStrictCheck() {
+    // Expected to fail as spanner tables mentioned in session file do not exist
+    SessionBasedMapper emptymapper =
+        new SessionBasedMapper(
+            Paths.get(Resources.getResource("session-file-empty.json").getPath()).toString(),
+            ddl,
+            false);
+    List<String> sourceTablesToMigrate = emptymapper.getSourceTablesToMigrate("");
+    assertTrue(sourceTablesToMigrate.isEmpty());
+  }
+
   @Test(expected = InputMismatchException.class)
   public void testSourceTablesToMigrateEmpty() {
     // Expected to fail as spanner tables mentioned in session file do not exist
     SessionBasedMapper emptymapper =
         new SessionBasedMapper(
-            Paths.get(Resources.getResource("session-file-empty.json").getPath()).toString(), ddl);
+            Paths.get(Resources.getResource("session-file-empty.json").getPath()).toString(),
+            ddl,
+            true);
     List<String> sourceTablesToMigrate = emptymapper.getSourceTablesToMigrate("");
   }
 

@@ -47,7 +47,7 @@ public class OptionsToConfigBuilderTest {
     SourceDbToSpannerOptions sourceDbToSpannerOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
-    sourceDbToSpannerOptions.setSourceDbURL(testUrl);
+    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
     sourceDbToSpannerOptions.setJdbcDriverClassName(testdriverClassName);
     sourceDbToSpannerOptions.setMaxConnections(150);
     sourceDbToSpannerOptions.setNumPartitions(4000);
@@ -60,7 +60,8 @@ public class OptionsToConfigBuilderTest {
         OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
             sourceDbToSpannerOptions, List.of("table1", "table2"), null, Wait.on(dummyPCollection));
     assertThat(config.jdbcDriverClassName()).isEqualTo(testdriverClassName);
-    assertThat(config.sourceDbURL()).isEqualTo(testUrl + "?allowMultiQueries=true");
+    assertThat(config.sourceDbURL())
+        .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testuser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testpassword);
@@ -73,7 +74,7 @@ public class OptionsToConfigBuilderTest {
     SourceDbToSpannerOptions sourceDbToSpannerOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
-    sourceDbToSpannerOptions.setSourceDbURL(testUrl);
+    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
     assertThrows(
         RuntimeException.class,
         () ->

@@ -356,6 +356,7 @@ public class DataStreamToSQL {
     CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration = getDataSourceConfiguration(options);
     validateOptions(options, dataSourceConfiguration);
     Map<String, String> schemaMap = parseSchemaMap(options.getSchemaMap());
+    LOG.info("Parsed schema map: {}", schemaMap);
 
     /*
      * Stage 1: Ingest and Normalize Data to FailsafeElement with JSON Strings

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
@@ -77,7 +78,7 @@ public class PipelineController {
       LOG.info(tableToMigrate);
     }
     LOG.info("Spanner tables: ");
-    for (String spTable: orderedSpTables) {
+    for (String spTable : orderedSpTables) {
       LOG.info(spTable);
     }
 
@@ -256,7 +257,8 @@ public class PipelineController {
         .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
         .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
         .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
+        .withRpcPriority(RpcPriority.HIGH);
   }
 
   @VisibleForTesting
@@ -277,7 +279,7 @@ public class PipelineController {
   static List<String> listTablesToMigrate(String tableList, ISchemaMapper mapper, Ddl ddl) {
     List<String> tablesFromOptions =
         StringUtils.isNotBlank(tableList)
-            ? Arrays.stream(tableList.split(",")).collect(Collectors.toList())
+            ? Arrays.stream(tableList.split("\\:|,")).collect(Collectors.toList())
             : new ArrayList<String>();
 
     List<String> sourceTablesConfigured = null;

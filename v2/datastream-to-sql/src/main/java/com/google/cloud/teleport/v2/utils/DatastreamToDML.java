@@ -55,7 +55,7 @@ public abstract class DatastreamToDML
   private CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
   private DataSource dataSource;
   public String quoteCharacter;
-  private static Map<String, String> schemaMap = new HashMap<String, String>();
+  protected Map<String, String> schemaMap = new HashMap<String, String>();
 
   public abstract String getDefaultQuoteCharacter();
 

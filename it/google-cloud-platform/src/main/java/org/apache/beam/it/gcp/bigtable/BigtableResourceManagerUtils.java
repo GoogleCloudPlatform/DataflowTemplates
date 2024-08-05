@@ -18,6 +18,7 @@
 package org.apache.beam.it.gcp.bigtable;
 
 import static org.apache.beam.it.common.utils.ResourceManagerUtils.generateResourceId;
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import java.time.format.DateTimeFormatter;
@@ -184,5 +185,14 @@ public final class BigtableResourceManagerUtils {
               + idToCheck
               + " is not a valid ID. Only letters, numbers, hyphens, underscores and exclamation points are allowed.");
     }
+  }
+
+  /**
+   * Generates an app profile id.
+   *
+   * @return The app profile id string.
+   */
+  public static String generateAppProfileId() {
+    return "app_profile_" + randomAlphanumeric(8).toLowerCase() + "_" + System.nanoTime();
   }
 }

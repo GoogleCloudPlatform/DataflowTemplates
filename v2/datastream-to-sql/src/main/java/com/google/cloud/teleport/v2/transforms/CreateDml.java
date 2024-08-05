@@ -63,10 +63,12 @@ public class CreateDml
     String driverName = this.dataSourceConfiguration.getDriverClassName().get();
     switch (driverName) {
       case "org.postgresql.Driver":
-        datastreamToDML = DatastreamToPostgresDML.of(dataSourceConfiguration);
+        datastreamToDML =
+            DatastreamToPostgresDML.of(dataSourceConfiguration).withSchemaMap(this.schemaMap);
         break;
       case "com.mysql.cj.jdbc.Driver":
-        datastreamToDML = DatastreamToMySQLDML.of(dataSourceConfiguration);
+        datastreamToDML =
+            DatastreamToMySQLDML.of(dataSourceConfiguration).withSchemaMap(this.schemaMap);
         break;
       default:
         throw new IllegalArgumentException(

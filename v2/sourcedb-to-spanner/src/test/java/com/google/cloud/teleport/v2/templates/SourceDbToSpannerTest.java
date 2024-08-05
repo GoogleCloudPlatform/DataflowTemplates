@@ -149,7 +149,7 @@ public class SourceDbToSpannerTest {
         createOptionsHelper(
             Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
                 .toString(),
-            "");
+            "cart,people");
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
     List<String> tables =
         PipelineController.listTablesToMigrate(mockOptions.getTables(), schemaMapper, spannerDdl);
