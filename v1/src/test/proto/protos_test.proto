@@ -76,3 +76,35 @@ enum TestEnum2 {
   VAL4 = 4;
   VAL5 = 5;
 }
+
+message Order {
+  optional string order_number = 1;
+  optional int64 date = 2;
+
+  message Address {
+    optional string street = 1;
+    optional string city = 2;
+    optional string state = 3;
+    optional string country = 4;
+  }
+
+  optional Address shipping_address = 3;
+
+  enum PaymentMode{
+    CASH = 0;
+    CARD = 1;
+    UPI = 2;
+  }
+
+  message Item {
+    optional string product_name = 1;
+    optional int32 quantity = 2;
+  }
+
+  repeated Item line_item = 4;
+}
+
+message OrderHistory {
+  optional string order_number = 1;
+  optional int64 date = 2;
+}

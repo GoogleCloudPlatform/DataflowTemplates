@@ -108,13 +108,15 @@ public final class SizedType {
         return "jsonb";
       case PROTO:
         if (outputAsDdlRepresentation) {
-          return type.getProtoTypeFqn();
+          String quote = NameUtils.identifierQuote(Dialect.GOOGLE_STANDARD_SQL);
+          return quote + type.getProtoTypeFqn() + quote;
         } else {
           return "PROTO<" + type.getProtoTypeFqn() + ">";
         }
       case ENUM:
         if (outputAsDdlRepresentation) {
-          return type.getProtoTypeFqn();
+          String quote = NameUtils.identifierQuote(Dialect.GOOGLE_STANDARD_SQL);
+          return quote + type.getProtoTypeFqn() + quote;
         } else {
           return "ENUM<" + type.getProtoTypeFqn() + ">";
         }
