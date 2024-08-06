@@ -40,6 +40,7 @@ import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
 import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
 import com.google.protobuf.DescriptorProtos.MessageOptions;
 import com.google.protobuf.InvalidProtocolBufferException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -96,6 +97,9 @@ public class InformationSchemaScanner {
       } else {
         listSequenceOptionsPostgreSQL(builder, currentCounters);
       }
+    }
+    if (placementsSupported()) {
+      listPlacements(builder);
     }
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
     listIndexes(indexes);
@@ -1278,6 +1282,83 @@ public class InformationSchemaScanner {
           .skipRangeMin(skipRangeMin)
           .skipRangeMax(skipRangeMax)
           .endSequence();
+    }
+  }
+
+  // TODO: Remove after placements are supported in POSTGRESQL.
+  private boolean placementsSupported() {
+    if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
+      return true;
+    }
+
+    for (String tableName : Arrays.asList("placements", "placement_options")) {
+      try (ResultSet resultSet = context.executeQuery(Statement.of("SELECT COUNT(1)"
+                + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
+                + " t.TABLE_SCHEMA = 'information_schema'"
+                + " AND t.TABLE_NAME = '" + tableName + "'"))) {
+        resultSet.next();
+        if (resultSet.getLong(0) == 0) {
+          LOG.info(String.join("information_schema.", tableName, "not available"));
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  private void listPlacements(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT p.placement_name, p.is_default, po.option_name, "
+                    + " po.option_type, po.option_value"
+                    + " FROM information_schema.placements AS p"
+                    + " LEFT JOIN information_schema.placement_options AS po"
+                    + " ON p.placement_name = po.placement_name"
+                    + " ORDER BY po.placement_name, po.option_name"));
+
+    Map<String, ImmutableList.Builder<String>> placementNameToOptions = Maps.newHashMap();
+    while (resultSet.next()) {
+      String name = resultSet.getString(0);
+      boolean isDefault = resultSet.getBoolean(1);
+      if (isDefault) {
+        // Skip `default` placement as this is not created by user DDL.
+        continue;
+      }
+      String optionName = resultSet.getString(2);
+      String optionType = resultSet.getString(3);
+      String optionValue = resultSet.getString(4);
+      LOG.info("placement option name = " + optionName + ", optionType = " + optionType + ", optionValue = " + optionValue);
+
+      ImmutableList.Builder<String> options = placementNameToOptions.computeIfAbsent(name, k -> ImmutableList.builder());
+
+      if (optionType.equalsIgnoreCase("STRING(MAX)")) {
+        options.add(
+            optionName
+                + "="
+                + GSQL_LITERAL_QUOTE
+                + OPTION_STRING_ESCAPER.escape(optionValue)
+                + GSQL_LITERAL_QUOTE);
+      } else if (optionType.equalsIgnoreCase("character varying")) {
+        options.add(
+            optionName
+                + "="
+                + POSTGRESQL_LITERAL_QUOTE
+                + OPTION_STRING_ESCAPER.escape(optionValue)
+                + POSTGRESQL_LITERAL_QUOTE);
+      } else {
+        options.add(optionName + "=" + optionValue);
+      }
+    }
+
+    for (Map.Entry<String, ImmutableList.Builder<String>> entry :
+         placementNameToOptions.entrySet()) {
+      String placementName = entry.getKey();
+      ImmutableList<String> options = entry.getValue().build();
+      builder
+          .createPlacement(placementName)
+          .options(options)
+          .endPlacement();
     }
   }
 
