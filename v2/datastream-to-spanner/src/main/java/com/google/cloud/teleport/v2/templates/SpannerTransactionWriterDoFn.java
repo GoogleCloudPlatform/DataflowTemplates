@@ -37,6 +37,7 @@ import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Gauge;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -95,6 +96,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   private final Counter retryableErrors =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Retryable errors");
+
+  private final Gauge maxRetries = Metrics.gauge(SpannerTransactionWriterDoFn.class, "");
 
   // The max length of tag allowed in Spanner Transaction tags.
   private static final int MAX_TXN_TAG_LENGTH = 50;

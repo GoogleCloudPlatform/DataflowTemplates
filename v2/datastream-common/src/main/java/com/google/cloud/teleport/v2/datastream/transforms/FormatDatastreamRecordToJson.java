@@ -360,6 +360,15 @@ public class FormatDatastreamRecordToJson
     static void putField(
         String fieldName, Schema fieldSchema, GenericRecord record, ObjectNode jsonObject) {
 
+      LOG.info(
+          "LOG!!! "
+              + fieldSchema
+              + "----"
+              + fieldSchema.getType()
+              + "----"
+              + fieldSchema.getLogicalType()
+              + "----"
+              + fieldSchema.getProp(LOGICAL_TYPE));
       // fieldSchema.getLogicalType() returns object of type org.apache.avro.LogicalType,
       // therefore, is null for custom logical types
       if (fieldSchema.getLogicalType() != null) {
@@ -368,8 +377,11 @@ public class FormatDatastreamRecordToJson
         return;
       } else if (fieldSchema.getProp(LOGICAL_TYPE) != null) {
         // Handling for custom logical types.
-        handleCustomLogicalType(fieldName, fieldSchema, record, jsonObject);
-        return;
+        boolean isSupportedCustomType =
+            handleCustomLogicalType(fieldName, fieldSchema, record, jsonObject);
+        if (isSupportedCustomType) {
+          return;
+        }
       }
 
       switch (fieldSchema.getType()) {
@@ -429,7 +441,7 @@ public class FormatDatastreamRecordToJson
       }
     }
 
-    static void handleCustomLogicalType(
+    static boolean handleCustomLogicalType(
         String fieldName, Schema fieldSchema, GenericRecord element, ObjectNode jsonObject) {
       if (fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.TIME_INTERVAL_MICROS)) {
         Long timeMicrosTotal = (Long) element.get(fieldName);
@@ -455,19 +467,17 @@ public class FormatDatastreamRecordToJson
         }
         String resultString = isNegative ? "-" + timeString : timeString;
         jsonObject.put(fieldName, resultString);
+        return true;
       } else if (fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.NUMBER)) {
         String number = (String) element.get(fieldName);
         jsonObject.put(fieldName, number);
+        return true;
       } else if (fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.VARCHAR)) {
         String varcharValue = (String) element.get(fieldName);
         jsonObject.put(fieldName, varcharValue);
-      } else {
-        LOG.error(
-            "Unknown custom logical type {} for field {} in {}. Ignoring it.",
-            fieldSchema,
-            fieldName,
-            element.get(fieldName));
+        return true;
       }
+      return false;
     }
 
     static void handleLogicalFieldType(
