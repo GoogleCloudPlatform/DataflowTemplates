@@ -26,6 +26,9 @@ import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 
+/**
+ * Transforms Avro GenericRecords into Spanner Structs.
+ */
 @AutoValue
 public abstract class AvroToStructFn extends SimpleFunction<GenericRecord, Struct> {
 
@@ -49,15 +52,16 @@ public abstract class AvroToStructFn extends SimpleFunction<GenericRecord, Struc
         case MAP:
         case NULL:
         case RECORD:
-        case UNION: // TODO: implement support for Union when it's type + null.
+        case UNION:
+          // TODO: implement support for Union when it's type + null.
           throw new UnsupportedOperationException(
               String.format("Avro field type %s is not supported.", fieldType));
         case BOOLEAN:
           fieldSetter.to(Value.bool((boolean) record.get(field.name())));
           break;
-          // TODO: Implement FIXED and BYTES including LogicalTypes.
         case BYTES:
         case FIXED:
+          // TODO: Implement FIXED and BYTES including LogicalTypes.
           throw new UnsupportedOperationException(
               String.format("Support for Avro field type %s is not implemented yet.", fieldType));
         case DOUBLE:
@@ -66,9 +70,9 @@ public abstract class AvroToStructFn extends SimpleFunction<GenericRecord, Struc
         case FLOAT:
           fieldSetter.to(Value.float32((float) record.get(field.name())));
           break;
-          // TODO: Implement Logical Type for Long timestamp
         case INT:
         case LONG:
+          // TODO: Implement Logical Type for Long timestamp
           fieldSetter.to(Value.int64((long) record.get(field.name())));
           break;
         case STRING:

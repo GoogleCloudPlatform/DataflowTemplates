@@ -16,28 +16,19 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.Timestamp;
-import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.ReadContext;
-import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
-import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
-import com.google.cloud.spanner.Type;
-import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.AvroToSpannerScdPipeline.AvroToSpannerScdOptions.ScdType;
+import com.google.cloud.teleport.v2.utils.SpannerQueryHelper;
+import com.google.cloud.teleport.v2.utils.StructValueHelper.CommonValues;
+import com.google.cloud.teleport.v2.utils.StructValueHelper.NullTypes;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -45,12 +36,27 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 
+/**
+ * Writes batch rows into Spanner using the defined SCD Type.
+ *
+ * <ul>
+ *   <li>
+ *     SCD Type 1: if primary key(s) exist, updates the existing row; it inserts a new row
+ *     otherwise.
+ *   </li>
+ *   <li>
+ *     SCD Type 2: if primary key(s) exist, updates the end timestamp to the current timestamp.
+ *     Note: since end timestamp is part of the primary key, it requires delete and insert to
+ *     achieve this. In all cases, it inserts a new row with the new data and null end timestamp.
+ *     If start timestamp column is specified, it sets it to the current timestamp when inserting.
+ *   </li>
+ * </ul>
+ */
 @AutoValue
-public abstract class SpannerScdMutationTransform extends PTransform<PCollection<Struct>, PDone> {
+public abstract class SpannerScdMutationTransform
+    extends PTransform<PCollection<Iterable<Struct>>, PDone> {
 
   abstract ScdType scdType();
-
-  abstract Integer batchSize();
 
   abstract SpannerConfig spannerConfig();
 
@@ -68,8 +74,6 @@ public abstract class SpannerScdMutationTransform extends PTransform<PCollection
 
     public abstract Builder setScdType(ScdType value);
 
-    public abstract Builder setBatchSize(Integer value);
-
     public abstract Builder setSpannerConfig(SpannerConfig spannerConfig);
 
     public abstract Builder setTableName(String value);
@@ -84,24 +88,17 @@ public abstract class SpannerScdMutationTransform extends PTransform<PCollection
   }
 
   @Override
-  public PDone expand(PCollection<Struct> input) {
-
-    PCollection<Iterable<Struct>> batchRecords =
-        input.apply("Create batches of struct", MakeBatchesTransform.create(batchSize()));
+  public PDone expand(PCollection<Iterable<Struct>> input) {
 
     switch (scdType()) {
       default:
         throw new UnsupportedOperationException(
             String.format("Only SCD Type 1 and 2 are supported. Found %s.", scdType()));
       case TYPE_1:
-        batchRecords.apply(
-            "Create Spanner mutations in atomic groups based on data and SCD Type 1",
-            ParDo.of(new SpannerScdType1Runner()));
+        input.apply("WriteScdType1ToSpanner", ParDo.of(new SpannerScdType1Runner()));
         break;
       case TYPE_2:
-        batchRecords.apply(
-            "Create Spanner mutations in atomic groups based on data and SCD Type 2",
-            ParDo.of(new SpannerScdType2Runner()));
+        input.apply("WriteScdType2ToSpanner", ParDo.of(new SpannerScdType2Runner()));
         break;
     }
 
@@ -112,7 +109,12 @@ public abstract class SpannerScdMutationTransform extends PTransform<PCollection
     return new AutoValue_SpannerScdMutationTransform.Builder();
   }
 
-  public class SpannerScdType1Runner extends DoFn<Iterable<Struct>, Void> implements Serializable {
+  /**
+   * Runs SCD Type 1 mutations to Spanner.
+   *
+   * <p>If primary key(s) exist, updates the existing row; it inserts a new row otherwise.
+   */
+  class SpannerScdType1Runner extends DoFn<Iterable<Struct>, Void> implements Serializable {
 
     @ProcessElement
     public void writeBatchChanges(@Element Iterable<Struct> recordBatch) {
@@ -123,11 +125,24 @@ public abstract class SpannerScdMutationTransform extends PTransform<PCollection
           .run(transaction -> createMutationGroups(recordBatch, transaction));
     }
 
-    public Void createMutationGroups(Iterable<Struct> recordBatch, TransactionContext transaction) {
+    /**
+     * Creates the mutations required for the batch of records for SCD Type 1.
+     *
+     * Only upsert is required.
+     * @param recordBatch
+     * @param transaction
+     */
+    private Void createMutationGroups(
+        Iterable<Struct> recordBatch, TransactionContext transaction) {
       recordBatch.forEach(record -> transaction.buffer(createUpsertMutation(record)));
       return null;
     }
 
+    /**
+     * Creates an upsert (insertOrUpdate) mutation for the given record.
+     * @param record
+     * @return Spanner upsert mutation performed within the transaction.
+     */
     private Mutation createUpsertMutation(Struct record) {
       Mutation.WriteBuilder upsertMutationBuilder = Mutation.newInsertOrUpdateBuilder(tableName());
       record
@@ -140,7 +155,17 @@ public abstract class SpannerScdMutationTransform extends PTransform<PCollection
     }
   }
 
-  public class SpannerScdType2Runner extends DoFn<Iterable<Struct>, Void> implements Serializable {
+  /**
+   * Runs SCD Type 2 mutations to Spanner.
+   *
+   * <p>If primary key(s) exist, updates the end timestamp to the current timestamp.
+   * Note: since end timestamp is part of the primary key, it requires delete and insert to
+   * achieve this.
+   *
+   * <p>In all cases, it inserts a new row with the new data and null end timestamp.
+   * If start timestamp column is specified, it sets it to the current timestamp when inserting.
+   */
+  class SpannerScdType2Runner extends DoFn<Iterable<Struct>, Void> implements Serializable {
 
     @ProcessElement
     public void writeBatchChanges(@Element Iterable<Struct> recordBatch) {
@@ -151,11 +176,20 @@ public abstract class SpannerScdMutationTransform extends PTransform<PCollection
           .run(transaction -> createMutationGroups(recordBatch, transaction));
     }
 
-    public Void createMutationGroups(Iterable<Struct> recordBatch, TransactionContext transaction) {
-      com.google.cloud.Timestamp nullTimestamp = null;
+    /**
+     * Creates the mutations required for the batch of records for SCD Type 2.
+     *
+     * Update (insert and delete) of existing (old) data is required if the row exists.
+     * Insert of new data is required for all cases.
+     * @param recordBatch
+     * @param transaction
+     */
+    private Void createMutationGroups(
+        Iterable<Struct> recordBatch, TransactionContext transaction) {
       SpannerQueryHelper spannerQueryHelper = SpannerQueryHelper.create(spannerConfig());
       recordBatch.forEach(
           record -> {
+            com.google.cloud.Timestamp currentTimestamp = CommonValues.currentTimestamp();
             HashMap<com.google.cloud.spanner.Key, Struct> existingRows =
                 getMatchingRecords(recordBatch, transaction);
 
@@ -163,24 +197,28 @@ public abstract class SpannerScdMutationTransform extends PTransform<PCollection
                 spannerQueryHelper
                     .addRecordFieldsToKeyBuilder(
                         record, primaryKeyColumnNames(), com.google.cloud.spanner.Key.newBuilder())
-                    .append(nullTimestamp) // endTimestamp
+                    .append(NullTypes.NULL_TIMESTAMP) // endTimestamp
                     .build();
 
             if (existingRows.containsKey(recordKey)) {
               Struct existingRow = existingRows.get(recordKey);
               transaction.buffer(createDeleteOldRowMutation(existingRow));
-              transaction.buffer(createInsertOldRowMutation(existingRow));
+              transaction.buffer(createInsertOldRowMutation(existingRow, currentTimestamp));
             }
 
-            transaction.buffer(createInsertNewDataMutation(record));
+            transaction.buffer(createInsertNewDataMutation(record, currentTimestamp));
           });
       return null;
     }
 
+    /**
+     * Gets the matching rows in the Spanner table for the given batch of records.
+     * @param recordBatch
+     * @param transaction Transaction in which to operate the database read.
+     * @return Map of the matching rows' Keys to the matching rows' Structs.
+     */
     private HashMap<com.google.cloud.spanner.Key, Struct> getMatchingRecords(
         Iterable<Struct> recordBatch, TransactionContext transaction) {
-      com.google.cloud.Timestamp nullTimestamp = null;
-
       SpannerQueryHelper spannerQueryHelper = SpannerQueryHelper.create(spannerConfig());
       KeySet.Builder keySetBuilder = KeySet.newBuilder();
       recordBatch.forEach(
@@ -189,7 +227,7 @@ public abstract class SpannerScdMutationTransform extends PTransform<PCollection
                 spannerQueryHelper
                     .addRecordFieldsToKeyBuilder(
                         record, primaryKeyColumnNames(), com.google.cloud.spanner.Key.newBuilder())
-                    .append(nullTimestamp) // endTimestamp
+                    .append(NullTypes.NULL_TIMESTAMP) // endTimestamp
                     .build();
             keySetBuilder.addKey(recordQueryKey);
           });
@@ -208,6 +246,12 @@ public abstract class SpannerScdMutationTransform extends PTransform<PCollection
       return existingRows;
     }
 
+    /**
+     * Creates a deletion mutation for the existing given record.
+     * Required since it is not possible to update primary keys.
+     * @param record
+     * @return Spanner mutation performed within the transaction.
+     */
     private Mutation createDeleteOldRowMutation(Struct record) {
       SpannerQueryHelper spannerQueryHelper = SpannerQueryHelper.create(spannerConfig());
       com.google.cloud.spanner.Key recordKey =
@@ -215,18 +259,31 @@ public abstract class SpannerScdMutationTransform extends PTransform<PCollection
       return Mutation.delete(tableName(), recordKey);
     }
 
-    private Mutation createInsertOldRowMutation(Struct record) {
+    /**
+     * Creates an insert mutation for the existing given record.
+     * Required since it is not possible to update primary keys.
+     * @param record
+     * @return Spanner mutation performed within the transaction.
+     */
+    private Mutation createInsertOldRowMutation(
+        Struct record, com.google.cloud.Timestamp currentTimestamp) {
       Mutation.WriteBuilder insertMutationBuilder = Mutation.newInsertBuilder(tableName());
       record.getType().getStructFields().stream()
           .filter(field -> !field.getName().equals(endDateColumnName()))
           .forEach(
               field ->
                   insertMutationBuilder.set(field.getName()).to(record.getValue(field.getName())));
-      insertMutationBuilder.set(endDateColumnName()).to(com.google.cloud.Timestamp.now());
+      insertMutationBuilder.set(endDateColumnName()).to(currentTimestamp);
       return insertMutationBuilder.build();
     }
 
-    private Mutation createInsertNewDataMutation(Struct record) {
+    /**
+     * Creates an insert mutation for the new given record.
+     * @param record
+     * @return Spanner mutation performed within the transaction.
+     */
+    private Mutation createInsertNewDataMutation(
+        Struct record, com.google.cloud.Timestamp currentTimestamp) {
       Mutation.WriteBuilder insertMutationBuilder = Mutation.newInsertBuilder(tableName());
       record
           .getType()
@@ -235,131 +292,10 @@ public abstract class SpannerScdMutationTransform extends PTransform<PCollection
               field ->
                   insertMutationBuilder.set(field.getName()).to(record.getValue(field.getName())));
       if (startDateColumnName() != null) {
-        insertMutationBuilder.set(startDateColumnName()).to(com.google.cloud.Timestamp.now());
+        insertMutationBuilder.set(startDateColumnName()).to(currentTimestamp);
       }
-      com.google.cloud.Timestamp nullTimestamp = null;
-      insertMutationBuilder.set(endDateColumnName()).to(nullTimestamp);
+      insertMutationBuilder.set(endDateColumnName()).to(NullTypes.NULL_TIMESTAMP);
       return insertMutationBuilder.build();
-    }
-
-    /** Primary key column names excluding columns used for SCD Typing. */
-    private List<String> getBasePrimaryKeyColumnNames() {
-      return primaryKeyColumnNames().stream()
-          .filter(
-              primaryKeyColumnName ->
-                  (!primaryKeyColumnName.equals(startDateColumnName())
-                      && !primaryKeyColumnName.equals(endDateColumnName())))
-          .collect(Collectors.toList());
-    }
-  }
-
-  @AutoValue
-  abstract static class SpannerQueryHelper {
-
-    public static SpannerQueryHelper create(SpannerConfig spannerConfig) {
-      return new AutoValue_SpannerScdMutationTransform_SpannerQueryHelper(spannerConfig);
-    }
-
-    abstract SpannerConfig spannerConfig();
-
-    private DatabaseClient createDatabaseClient() {
-      SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig());
-      return spannerAccessor.getDatabaseClient();
-    }
-
-    private Key createKeyForRecord(Struct record, Iterable<String> primaryKeyColumnNames) {
-      Key.Builder keyBuilder = Key.newBuilder();
-      addRecordFieldsToKeyBuilder(record, primaryKeyColumnNames, keyBuilder);
-      return keyBuilder.build();
-    }
-
-    private Key.Builder addRecordFieldsToKeyBuilder(
-        Struct record, Iterable<String> columnNames, Key.Builder keyBuilder) {
-      HashSet<String> columnNamesSet = new HashSet<>();
-      columnNames.forEach(columnNamesSet::add);
-
-      record.getType().getStructFields().stream()
-          .filter(field -> columnNamesSet.contains(field.getName()))
-          .forEach(
-              field -> {
-                Value fieldValue = record.getValue(field.getName());
-                Type fieldType = fieldValue.getType();
-
-                switch (fieldType.getCode()) {
-                    // TODO(Nito): handle isNull() for all data types.
-                  case BOOL:
-                    keyBuilder.append(fieldValue.getBool());
-                    break;
-                  case BYTES:
-                    keyBuilder.append(fieldValue.getBytes());
-                    break;
-                  case DATE:
-                    keyBuilder.append(fieldValue.getDate());
-                    break;
-                  case FLOAT32:
-                    keyBuilder.append(fieldValue.getFloat32());
-                    break;
-                  case FLOAT64:
-                    keyBuilder.append(fieldValue.getFloat64());
-                    break;
-                  case INT64:
-                    keyBuilder.append(fieldValue.getInt64());
-                    break;
-                  case JSON:
-                    keyBuilder.append(fieldValue.getJson());
-                    break;
-                  case NUMERIC:
-                  case PG_NUMERIC:
-                    keyBuilder.append(fieldValue.getNumeric());
-                    break;
-                  case PG_JSONB:
-                    keyBuilder.append(fieldValue.getPgJsonb());
-                    break;
-                  case STRING:
-                    keyBuilder.append(fieldValue.getString());
-                    break;
-                  case TIMESTAMP:
-                    if (fieldValue.isNull()) {
-                      Timestamp nullTimestamp = null;
-                      keyBuilder.append(nullTimestamp);
-                    } else {
-                      keyBuilder.append(fieldValue.getTimestamp());
-                    }
-                    break;
-                  default:
-                    throw new UnsupportedOperationException(
-                        String.format("Unsupported Spanner field type %s.", fieldType.getCode()));
-                }
-              });
-      return keyBuilder;
-    }
-
-    private ResultSet queryRecords(String tableName, KeySet queryKeySet, Iterable<String> columns) {
-      ReadOnlyTransaction transaction = createDatabaseClient().readOnlyTransaction();
-      return queryRecordsWithTransaction(transaction, tableName, queryKeySet, columns);
-    }
-
-    private ResultSet queryRecordsWithTransaction(
-        ReadContext transaction, String tableName, KeySet queryKeySet, Iterable<String> columns) {
-      Iterable<String> queryColumns = columns != null ? columns : getTableColumnNames(tableName);
-      return transaction.read(tableName, queryKeySet, queryColumns);
-    }
-
-    private Iterable<String> getTableColumnNames(String tableName) {
-      DatabaseClient spannerClient = createDatabaseClient();
-      String schemaQuery =
-          String.format(
-              "SELECT COLUMN_NAME FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE TABLE_NAME = \"%s\"",
-              tableName);
-      ResultSet results =
-          spannerClient.readOnlyTransaction().executeQuery(Statement.of(schemaQuery));
-
-      ArrayList<String> columnNames = new ArrayList<>();
-      while (results.next()) {
-        Struct rowStruct = results.getCurrentRowAsStruct();
-        columnNames.add(rowStruct.getString("COLUMN_NAME"));
-      }
-      return columnNames;
     }
   }
 }

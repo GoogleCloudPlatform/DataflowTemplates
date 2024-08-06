@@ -23,7 +23,9 @@ import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.values.PCollection;
 
-// TODO: add JavaDoc
+/**
+ * Batches individual rows (Structs) into groups of the given size.
+ */
 @AutoValue
 public abstract class MakeBatchesTransform
     extends PTransform<PCollection<Struct>, PCollection<Iterable<Struct>>> {
@@ -37,8 +39,8 @@ public abstract class MakeBatchesTransform
   @Override
   public PCollection<Iterable<Struct>> expand(PCollection<Struct> input) {
     return input
-        .apply("Create arbitrary keys", WithKeys.of(1))
-        .apply("Group into batches", GroupIntoBatches.ofSize(batchSize()))
-        .apply("Remove arbitrary keys", Values.create());
+        .apply("CreateArbitraryBatchKey", WithKeys.of(1))
+        .apply("GroupRowsIntoBatches", GroupIntoBatches.ofSize(batchSize()))
+        .apply("RemoveArbitraryBatchKey", Values.create());
   }
 }

@@ -25,6 +25,7 @@ import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.transforms.AvroToStructFn;
+import com.google.cloud.teleport.v2.transforms.MakeBatchesTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerScdMutationTransform;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -79,6 +80,11 @@ public class AvroToSpannerScdPipeline {
     this.options = options;
   }
 
+  /**
+   * Main entry point for executing the pipeline.
+   *
+   * @param args The command-line arguments to the pipeline.
+   */
   public static void main(String[] args) {
     AvroToSpannerScdPipeline.AvroToSpannerScdOptions options =
         PipelineOptionsFactory.fromArgs(args)
@@ -126,13 +132,14 @@ public class AvroToSpannerScdPipeline {
 
     pipeline
         .apply(
-            "Read Avro records",
+            "ReadAvroRecordsAsStruct",
             AvroIO.parseGenericRecords(AvroToStructFn.create()).from(options.getInputFilePattern()))
         .apply(
-            "Write mutation groups to Spanner",
+            "BatchRowsIntoGroups", MakeBatchesTransform.create(options.getSpannerBatchSize().get()))
+        .apply(
+            "WriteScdChangesToSpanner",
             SpannerScdMutationTransform.builder()
                 .setScdType(options.getScdType().get())
-                .setBatchSize(options.getSpannerBatchSize().get())
                 .setSpannerConfig(spannerConfig)
                 .setTableName(options.getTableName().get())
                 .setPrimaryKeyColumnNames(options.getPrimaryKeyColumnNames().get())
@@ -143,6 +150,11 @@ public class AvroToSpannerScdPipeline {
     return pipeline;
   }
 
+  /**
+   * Options supported by the pipeline.
+   *
+   * <p>Inherits standard configuration options.
+   */
   public interface AvroToSpannerScdOptions extends PipelineOptions {
 
     @TemplateParameter.Text(
