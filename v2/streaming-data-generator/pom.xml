@@ -71,6 +71,11 @@
       <artifactId>postgresql</artifactId>
       <version>${postgresql.version}</version>
     </dependency>
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>${mysql-connector-java.version}</version>
+    </dependency>
 
     <!-- json-data-generator dependency javafaker depends on snakeyaml  -->
     <dependency>
