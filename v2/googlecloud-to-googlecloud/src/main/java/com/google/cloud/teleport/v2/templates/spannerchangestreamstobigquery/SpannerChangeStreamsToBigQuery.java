@@ -478,7 +478,7 @@ public final class SpannerChangeStreamsToBigQuery {
             ? tempLocation + "dlq/"
             : options.getDeadLetterQueueDirectory();
 
-    LOG.info("Dead letter queue directory: {}" + dlqDirectory);
+    LOG.info("Dead letter queue directory: {}", dlqDirectory);
     return DeadLetterQueueManager.create(dlqDirectory, DLQ_MAX_RETRIES);
   }
 
