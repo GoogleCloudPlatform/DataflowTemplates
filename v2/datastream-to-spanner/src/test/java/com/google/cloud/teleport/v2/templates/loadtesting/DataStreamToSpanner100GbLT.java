@@ -20,6 +20,8 @@ import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.HashMap;
+import org.apache.beam.it.gcp.datastream.JDBCSource;
+import org.apache.beam.it.gcp.datastream.MySQLSource;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -37,6 +39,10 @@ public class DataStreamToSpanner100GbLT extends DataStreamToSpannerLTBase {
     for (int i = 1; i <= 10; i++) {
       tables100GB.put("person" + i, 6500000);
     }
-    runLoadTest(tables100GB);
+    JDBCSource source= getMySQLSource(
+        "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-ip-address/versions/1",
+        "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-username/versions/1",
+        "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-password/versions/1");
+    runLoadTest(tables100GB, source);
   }
 }

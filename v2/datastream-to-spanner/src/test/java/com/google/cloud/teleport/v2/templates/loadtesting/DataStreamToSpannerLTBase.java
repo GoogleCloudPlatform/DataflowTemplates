@@ -92,13 +92,14 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     createSpannerDDL(spannerResourceManager, spannerDdlResource);
   }
 
-  public void runLoadTest(HashMap<String, Integer> tables)
+  public void runLoadTest(HashMap<String, Integer> tables, JDBCSource source)
       throws IOException, ParseException, InterruptedException {
-    runLoadTest(tables, new HashMap<>(), new HashMap<>());
+    runLoadTest(tables, source, new HashMap<>(), new HashMap<>());
   }
 
   public void runLoadTest(
       HashMap<String, Integer> tables,
+      JDBCSource source,
       HashMap<String, String> templateParameters,
       HashMap<String, Object> environmentOptions)
       throws IOException, ParseException, InterruptedException {
@@ -118,11 +119,9 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
             dlqGcsPrefix,
             gcsResourceManager);
 
-    // Setup Datastream
-    MySQLSource mySQLSource = getMySQLSource();
     Stream stream =
         createDatastreamResources(
-            artifactBucket, gcsPrefix, mySQLSource, datastreamResourceManager);
+            artifactBucket, gcsPrefix, source, datastreamResourceManager);
 
     // Setup Parameters
     Map<String, String> params =
@@ -192,16 +191,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
         datastreamResourceManager);
   }
 
-  public MySQLSource getMySQLSource() {
-    String hostIp =
-        secretClient.accessSecret(
-            "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-ip-address/versions/1");
-    String username =
-        secretClient.accessSecret(
-            "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-username/versions/1");
-    String password =
-        secretClient.accessSecret(
-            "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-password/versions/1");
+  public MySQLSource getMySQLSource(String hostIp, String username, String password) {
     MySQLSource mySQLSource = new MySQLSource.Builder(hostIp, username, password, 3306).build();
     return mySQLSource;
   }
