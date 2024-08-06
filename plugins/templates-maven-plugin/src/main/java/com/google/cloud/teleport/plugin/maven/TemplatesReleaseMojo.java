@@ -104,6 +104,20 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
       List<TemplateDefinitions> templateDefinitions =
           TemplateDefinitionsParser.scanDefinitions(loader);
 
+      // Filter for template name, if specified.
+      // Also filter out testOnly templates.
+      templateDefinitions =
+          templateDefinitions.stream()
+              .filter(
+                  candidate -> {
+                    boolean filterName = true;
+                    if (templateName != null && !templateName.isEmpty()) {
+                      filterName = candidate.getTemplateAnnotation().name().equals(templateName);
+                    }
+                    return filterName && !candidate.getTemplateAnnotation().testOnly();
+                  })
+              .collect(Collectors.toList());
+
       if (templateName != null && !templateName.isEmpty()) {
         templateDefinitions =
             templateDefinitions.stream()
