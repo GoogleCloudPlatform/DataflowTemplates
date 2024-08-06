@@ -28,7 +28,6 @@ import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.Fail
 import com.google.cloud.teleport.util.ResourceUtils;
 import com.google.cloud.teleport.util.ValueProviderUtils;
 import com.google.cloud.teleport.values.FailsafeElement;
-import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteStreams;
 import java.io.ByteArrayOutputStream;
@@ -36,6 +35,7 @@ import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
