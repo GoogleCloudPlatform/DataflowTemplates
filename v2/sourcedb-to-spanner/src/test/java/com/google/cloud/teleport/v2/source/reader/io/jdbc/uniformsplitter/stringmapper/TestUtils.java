@@ -35,7 +35,7 @@ public class TestUtils {
   public static int wireMockResultSet(String tsvFilePath, ResultSet mockResultSet)
       throws IOException, SQLException {
     URL url = Resources.getResource(tsvFilePath);
-    List<String> lines = Resources.readLines(url, StandardCharsetsUTF_8);
+    List<String> lines = Resources.readLines(url, StandardCharsets.UTF_8);
     String header = lines.get(0);
     String[] columnNames = header.split("\t");
     Map<String, Integer> colToIdx = new HashedMap();

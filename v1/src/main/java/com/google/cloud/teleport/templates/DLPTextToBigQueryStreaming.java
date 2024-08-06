@@ -739,7 +739,7 @@ public class DLPTextToBigQueryStreaming {
 
     if (channel != null) {
 
-      br = new BufferedReader(Channels.newReader(channel, StandardCharsetsUTF_8.name()));
+      br = new BufferedReader(Channels.newReader(channel, StandardCharsets.UTF_8.name()));
     }
 
     return br;

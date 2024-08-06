@@ -270,7 +270,7 @@ public final class GCSToSplunkTest {
 
     // Assert
     File file = new File(tmpFolder.getRoot().getAbsolutePath() + "errors.txt-00000-of-00001");
-    String fileContents = Files.toString(file, StandardCharsetsUTF_8);
+    String fileContents = Files.toString(file, StandardCharsets.UTF_8);
     assertThat(fileContents).contains(stringifiedSplunkError);
   }
 }

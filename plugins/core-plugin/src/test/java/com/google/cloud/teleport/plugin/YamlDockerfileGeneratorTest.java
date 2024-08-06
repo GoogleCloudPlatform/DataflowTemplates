@@ -46,7 +46,7 @@ public class YamlDockerfileGeneratorTest {
     File outputFile = new File(outputFolder.getAbsolutePath() + "/word-count/Dockerfile");
 
     assertTrue(outputFile.exists());
-    String fileContents = Files.toString(outputFile, StandardCharsetsUTF_8);
+    String fileContents = Files.toString(outputFile, StandardCharsets.UTF_8);
     assertThat(fileContents).contains("FROM a java container image");
     assertThat(fileContents).contains("=beam_version");
     assertThat(fileContents).contains("=py_version");
@@ -69,7 +69,7 @@ public class YamlDockerfileGeneratorTest {
     File outputFile = new File(outputFolder.getAbsolutePath() + "/word-count/Dockerfile");
 
     assertTrue(outputFile.exists());
-    String fileContents = Files.toString(outputFile, StandardCharsetsUTF_8);
+    String fileContents = Files.toString(outputFile, StandardCharsets.UTF_8);
     assertThat(fileContents).contains("FROM a java container image");
     assertThat(fileContents).contains("=beam_version");
     assertThat(fileContents).contains("=py_version");

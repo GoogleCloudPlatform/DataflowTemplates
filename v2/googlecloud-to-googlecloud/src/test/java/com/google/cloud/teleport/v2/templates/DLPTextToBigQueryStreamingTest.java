@@ -81,7 +81,7 @@ public class DLPTextToBigQueryStreamingTest {
     fileContents.append(HEADER_ROW + "\n");
     fileContents.append(CONTENTS_ROW);
     Files.write(
-        new File(tokenizedFilePath).toPath(), fileContents.toString().getBytes(Charsets.UTF_8));
+        new File(tokenizedFilePath).toPath(), fileContents.toString().getBytes(StandardCharsets.UTF_8));
   }
 
   @After

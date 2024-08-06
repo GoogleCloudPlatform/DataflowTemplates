@@ -39,7 +39,7 @@ public class PythonDockerfileGeneratorTest {
     File outputFile = new File(outputFolder.getAbsolutePath() + "/word-count/Dockerfile");
 
     assertTrue(outputFile.exists());
-    String fileContents = Files.toString(outputFile, StandardCharsetsUTF_8);
+    String fileContents = Files.toString(outputFile, StandardCharsets.UTF_8);
     assertThat(fileContents).contains("FROM a container image");
   }
 }

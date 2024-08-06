@@ -365,7 +365,7 @@ public class TextToBigQueryStreaming {
               try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
                 try (WritableByteChannel wbc = Channels.newChannel(baos)) {
                   ByteStreams.copy(rbc, wbc);
-                  schema = baos.toString(Charsets.UTF_8.name());
+                  schema = baos.toString(StandardCharsets.UTF_8.name());
                   LOG.info("Extracted schema: " + schema);
                 }
               }

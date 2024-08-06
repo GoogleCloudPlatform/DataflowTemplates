@@ -681,7 +681,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   protected static String resourceAsString(String resource) {
     try {
       URL url = com.google.common.io.Resources.getResource(resource);
-      return com.google.common.io.Resources.toString(url, StandardCharsetsUTF_8);
+      return com.google.common.io.Resources.toString(url, StandardCharsets.UTF_8);
     } catch (Exception e) {
       // This exception should not happen in production as it really means we don't have the
       // expected resource
