@@ -52,6 +52,7 @@ public class AvroUtil {
   public static final String SPANNER_NAMED_SCHEMA = "spannerNamedSchema";
   public static final String SPANNER_NAME = "spannerName";
   public static final String STORED = "stored";
+  public static final String SPANNER_PLACEMENT_KEY = "spannerPlacementKey";
 
   public static Schema unpackNullable(Schema schema) {
     if (schema.getType() != Schema.Type.UNION) {

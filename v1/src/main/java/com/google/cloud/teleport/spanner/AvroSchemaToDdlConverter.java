@@ -30,6 +30,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAMED_SCHEMA;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ON_DELETE_ACTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PLACEMENT_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
@@ -274,6 +275,10 @@ public class AvroSchemaToDdlConverter {
         }
         String defaultExpression = f.getProp(DEFAULT_EXPRESSION);
         column.parseType(sqlType).notNull(!nullable).defaultExpression(defaultExpression);
+      }
+      String placementKey = f.getProp(SPANNER_PLACEMENT_KEY);
+      if (placementKey != null) {
+        column.isPlacementKey(Boolean.parseBoolean(placementKey));
       }
       ImmutableList.Builder<String> columnOptions = ImmutableList.builder();
       for (int i = 0; ; i++) {
