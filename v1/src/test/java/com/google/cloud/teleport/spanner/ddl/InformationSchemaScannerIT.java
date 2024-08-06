@@ -920,4 +920,20 @@ public class InformationSchemaScannerIT {
             + "\n\tPRIMARY KEY (\"id\")\n)\n\n";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
   }
+
+  // TODO: Enable once placements can point to the default partition.
+  @Test
+  public void placements() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "ALTER DATABASE `db` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n",
+            "CREATE PLACEMENT `pl1` OPTIONS (instance_partition = 'mr-partition')",
+            "CREATE PLACEMENT `pl2` OPTIONS (instance_partition = 'mr-partition', default_leader = 'us-central1')",
+            "CREATE PLACEMENT `pl3` OPTIONS (instance_partition = 'mr-partition', default_leader = 'us-east4')");
+
+    spannerServer.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    statements.set(0, statements.get(0).replace("db", "%db_name%"));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("\n", statements)));
+  }
 }

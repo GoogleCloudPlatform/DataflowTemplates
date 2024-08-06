@@ -51,6 +51,8 @@ public class AvroUtil {
   public static final String SPANNER_VIEW_SECURITY = "spannerViewSecurity";
   public static final String SPANNER_NAMED_SCHEMA = "spannerNamedSchema";
   public static final String SPANNER_NAME = "spannerName";
+  public static final String SPANNER_PLACEMENT_INSTANCE_PARTITION = "spannerPlacementInstancePartition";
+  public static final String SPANNER_PLACEMENT_DEFAULT_LEADER = "spannerPlacementDefaultLeader";
   public static final String STORED = "stored";
 
   public static Schema unpackNullable(Schema schema) {

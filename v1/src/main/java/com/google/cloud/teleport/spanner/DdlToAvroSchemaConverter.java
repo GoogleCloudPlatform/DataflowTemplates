@@ -33,6 +33,8 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAMED_SCHEMA;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ON_DELETE_ACTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PLACEMENT_DEFAULT_LEADER;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PLACEMENT_INSTANCE_PARTITION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
@@ -55,6 +57,7 @@ import com.google.cloud.teleport.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.ModelColumn;
 import com.google.cloud.teleport.spanner.ddl.NamedSchema;
+import com.google.cloud.teleport.spanner.ddl.Placement;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
@@ -295,6 +298,24 @@ public class DdlToAvroSchemaConverter {
       schemas.add(recordBuilder.fields().endRecord());
     }
 
+    for (Placement placement : ddl.placements()) {
+      LOG.info("DdlToAvo placement {}", placement.name());
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(generateAvroSchemaName(placement.name()))
+              .namespace(this.namespace);
+      recordBuilder.prop(SPANNER_NAME, placement.name());
+      recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
+      recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
+      if (placement.instancePartition() != null) {
+        recordBuilder.prop(
+          SPANNER_PLACEMENT_INSTANCE_PARTITION, placement.instancePartition());
+      }
+      if (placement.defaultLeader() != null) {
+        recordBuilder.prop(
+          SPANNER_PLACEMENT_DEFAULT_LEADER, placement.defaultLeader());
+      }
+      schemas.add(recordBuilder.fields().endRecord());
+    }
     return schemas;
   }
 

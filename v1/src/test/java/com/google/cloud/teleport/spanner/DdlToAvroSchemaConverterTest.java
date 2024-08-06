@@ -31,6 +31,8 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ON_DELETE_ACTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PLACEMENT_DEFAULT_LEADER;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PLACEMENT_INSTANCE_PARTITION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
@@ -1411,6 +1413,48 @@ public class DdlToAvroSchemaConverterTest {
     Schema avroSchema3 = it.next();
     assertThat(avroSchema3.getName(), equalTo("PGSequence3"));
     assertThat(avroSchema3.getProp(SPANNER_SEQUENCE_KIND), equalTo("bit_reversed_positive"));
+  }
+
+  @Test
+  public void placements() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    String placementName1 = "pl1";
+    String placementName2 = "pl2";
+    String instancePartition = "mr-partition";
+    String defaultLeader = "us-central1";
+    Ddl ddl =
+        Ddl.builder()
+            .createPlacement(placementName1)
+            .instancePartition(instancePartition)
+            .endPlacement()
+            .createPlacement(placementName2)
+            .instancePartition(instancePartition)
+            .defaultLeader(defaultLeader)
+            .endPlacement()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(2));
+
+    Iterator<Schema> it = result.iterator();
+    Schema avroSchema1 = it.next();
+    assertThat(avroSchema1.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema1.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema1.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroSchema1.getFields(), empty());
+    assertThat(avroSchema1.getName(), equalTo(placementName1));
+    assertThat(avroSchema1.getProp(SPANNER_PLACEMENT_INSTANCE_PARTITION), equalTo(instancePartition));
+    assertThat(avroSchema1.getProp(SPANNER_PLACEMENT_DEFAULT_LEADER), equalTo(null));
+
+    Schema avroSchema2 = it.next();
+    assertThat(avroSchema2.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema2.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema2.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroSchema2.getFields(), empty());
+    assertThat(avroSchema2.getName(), equalTo(placementName2));
+    assertThat(avroSchema2.getProp(SPANNER_PLACEMENT_INSTANCE_PARTITION), equalTo(instancePartition));
+    assertThat(avroSchema2.getProp(SPANNER_PLACEMENT_DEFAULT_LEADER), equalTo(defaultLeader));
   }
 
   private Schema nullableUnion(Schema.Type s) {

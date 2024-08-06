@@ -40,6 +40,7 @@ import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
 import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
 import com.google.protobuf.DescriptorProtos.MessageOptions;
 import com.google.protobuf.InvalidProtocolBufferException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -96,6 +97,9 @@ public class InformationSchemaScanner {
       } else {
         listSequenceOptionsPostgreSQL(builder, currentCounters);
       }
+    }
+    if (placementsSupported()) {
+      listPlacements(builder);
     }
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
     listIndexes(indexes);
@@ -1278,6 +1282,69 @@ public class InformationSchemaScanner {
           .skipRangeMin(skipRangeMin)
           .skipRangeMax(skipRangeMax)
           .endSequence();
+    }
+  }
+
+  // TODO: Remove after placements are supported in POSTGRESQL.
+  private boolean placementsSupported() {
+    if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
+      return true;
+    }
+
+    for (String tableName : Arrays.asList("placements", "placement_options")) {
+      try (ResultSet resultSet = context.executeQuery(Statement.of("SELECT COUNT(1)"
+                + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
+                + " t.TABLE_SCHEMA = 'information_schema'"
+                + " AND t.TABLE_NAME = '" + tableName + "'"))) {
+        resultSet.next();
+        if (resultSet.getLong(0) == 0) {
+          LOG.info(String.join("information_schema.", tableName, "not available"));
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  private void listPlacements(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT p.placement_name, p.is_default, po.option_name, "
+                    + " po.option_value"
+                    + " FROM information_schema.placements AS p"
+                    + " LEFT JOIN information_schema.placement_options AS po"
+                    + " ON p.placement_name = po.placement_name"));
+
+    Set<String> placementNames = new HashSet<>();
+    while (resultSet.next()) {
+      String placementName = resultSet.getString(0);
+      boolean isDefault = resultSet.getBoolean(1);
+      if (isDefault) {
+        // Skip `default` placement as this is not created by user DDL.
+        continue;
+      }
+
+      String placementOptionName =
+          resultSet.isNull(2)
+              ? null
+              : resultSet.getString(2);
+      String placementOptionValue =
+          resultSet.isNull(3)
+              ? null
+              : resultSet.getString(3);
+
+      if (placementOptionName == null || placementOptionValue == null) {
+        continue;
+      }
+
+      placementNames.add(placementName);
+
+      if (placementOptionName.equals("instance_partition")) {
+        builder.createPlacement(placementName).instancePartition(placementOptionValue).endPlacement();
+      } else if (placementOptionName.equals("default_leader")) {
+        builder.createPlacement(placementName).defaultLeader(placementOptionValue).endPlacement();
+      }
     }
   }
 
