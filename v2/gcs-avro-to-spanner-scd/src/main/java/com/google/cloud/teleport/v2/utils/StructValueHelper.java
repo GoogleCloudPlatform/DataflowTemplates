@@ -21,14 +21,10 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Value;
 import java.math.BigDecimal;
 
-/**
- * Provides functionality to interact with Struct values.
- */
+/** Provides functionality to interact with Struct values. */
 public class StructValueHelper {
 
-  /**
-   * Struct types with null values.
-   */
+  /** Struct types with null values. */
   public static class NullTypes {
     public static final Boolean NULL_BOOLEAN = null;
     public static final ByteArray NULL_BYTES = null;

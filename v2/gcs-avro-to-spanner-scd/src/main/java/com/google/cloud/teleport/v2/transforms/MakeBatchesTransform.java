@@ -23,9 +23,7 @@ import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.values.PCollection;
 
-/**
- * Batches individual rows (Structs) into groups of the given size.
- */
+/** Batches individual rows (Structs) into groups of the given size. */
 @AutoValue
 public abstract class MakeBatchesTransform
     extends PTransform<PCollection<Struct>, PCollection<Iterable<Struct>>> {

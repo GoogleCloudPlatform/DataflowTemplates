@@ -31,9 +31,7 @@ import java.util.HashSet;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 
-/**
- * Provides functionality to interact with Spanner.
- */
+/** Provides functionality to interact with Spanner. */
 @AutoValue
 public abstract class SpannerQueryHelper {
 
@@ -45,6 +43,7 @@ public abstract class SpannerQueryHelper {
 
   /**
    * Creates a new Spanner database client.
+   *
    * @return Spanner database client.
    */
   public DatabaseClient createDatabaseClient() {
@@ -54,6 +53,7 @@ public abstract class SpannerQueryHelper {
 
   /**
    * Generates the Key for a given record and (primary) key column names.
+   *
    * @param record
    * @param primaryKeyColumnNames
    * @return Primary Key for the record.
@@ -67,7 +67,8 @@ public abstract class SpannerQueryHelper {
   /**
    * Adds struct values to the Key builder for the requested column names.
    *
-   * Used to generate Keys for records.
+   * <p>Used to generate Keys for records.
+   *
    * @param record
    * @param columnNames to add to the Key.
    * @param keyBuilder
@@ -132,7 +133,9 @@ public abstract class SpannerQueryHelper {
    * Queries Spanner table.
    *
    * <p>Uses the KeySet as the WHERE clause and the columns in the SELECT.
+   *
    * <p>Creates a new database client and transaction.
+   *
    * @param tableName
    * @param queryKeySet
    * @param columns
@@ -147,7 +150,9 @@ public abstract class SpannerQueryHelper {
    * Queries Spanner table.
    *
    * <p>Uses the KeySet as the WHERE clause and the columns in the SELECT.
+   *
    * <p>Uses the provided transaction for the query.
+   *
    * @param transaction
    * @param tableName
    * @param queryKeySet
@@ -165,6 +170,7 @@ public abstract class SpannerQueryHelper {
    *
    * <p>Always creates a new transaction. It is not possible to use the same transaction to read
    * data and schema.
+   *
    * @param tableName
    * @return List of columns for the given table name.
    */
@@ -174,8 +180,7 @@ public abstract class SpannerQueryHelper {
         String.format(
             "SELECT COLUMN_NAME FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE TABLE_NAME = \"%s\"",
             tableName);
-    ResultSet results =
-        spannerClient.readOnlyTransaction().executeQuery(Statement.of(schemaQuery));
+    ResultSet results = spannerClient.readOnlyTransaction().executeQuery(Statement.of(schemaQuery));
 
     ArrayList<String> columnNames = new ArrayList<>();
     while (results.next()) {

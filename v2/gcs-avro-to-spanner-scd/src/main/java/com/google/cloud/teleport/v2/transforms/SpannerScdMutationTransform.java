@@ -40,16 +40,12 @@ import org.apache.beam.sdk.values.PDone;
  * Writes batch rows into Spanner using the defined SCD Type.
  *
  * <ul>
- *   <li>
- *     SCD Type 1: if primary key(s) exist, updates the existing row; it inserts a new row
- *     otherwise.
- *   </li>
- *   <li>
- *     SCD Type 2: if primary key(s) exist, updates the end timestamp to the current timestamp.
- *     Note: since end timestamp is part of the primary key, it requires delete and insert to
- *     achieve this. In all cases, it inserts a new row with the new data and null end timestamp.
- *     If start timestamp column is specified, it sets it to the current timestamp when inserting.
- *   </li>
+ *   <li>SCD Type 1: if primary key(s) exist, updates the existing row; it inserts a new row
+ *       otherwise.
+ *   <li>SCD Type 2: if primary key(s) exist, updates the end timestamp to the current timestamp.
+ *       Note: since end timestamp is part of the primary key, it requires delete and insert to
+ *       achieve this. In all cases, it inserts a new row with the new data and null end timestamp.
+ *       If start timestamp column is specified, it sets it to the current timestamp when inserting.
  * </ul>
  */
 @AutoValue
@@ -128,7 +124,8 @@ public abstract class SpannerScdMutationTransform
     /**
      * Creates the mutations required for the batch of records for SCD Type 1.
      *
-     * Only upsert is required.
+     * <p>Only upsert is required.
+     *
      * @param recordBatch
      * @param transaction
      */
@@ -140,6 +137,7 @@ public abstract class SpannerScdMutationTransform
 
     /**
      * Creates an upsert (insertOrUpdate) mutation for the given record.
+     *
      * @param record
      * @return Spanner upsert mutation performed within the transaction.
      */
@@ -158,12 +156,11 @@ public abstract class SpannerScdMutationTransform
   /**
    * Runs SCD Type 2 mutations to Spanner.
    *
-   * <p>If primary key(s) exist, updates the end timestamp to the current timestamp.
-   * Note: since end timestamp is part of the primary key, it requires delete and insert to
-   * achieve this.
+   * <p>If primary key(s) exist, updates the end timestamp to the current timestamp. Note: since end
+   * timestamp is part of the primary key, it requires delete and insert to achieve this.
    *
-   * <p>In all cases, it inserts a new row with the new data and null end timestamp.
-   * If start timestamp column is specified, it sets it to the current timestamp when inserting.
+   * <p>In all cases, it inserts a new row with the new data and null end timestamp. If start
+   * timestamp column is specified, it sets it to the current timestamp when inserting.
    */
   class SpannerScdType2Runner extends DoFn<Iterable<Struct>, Void> implements Serializable {
 
@@ -179,8 +176,9 @@ public abstract class SpannerScdMutationTransform
     /**
      * Creates the mutations required for the batch of records for SCD Type 2.
      *
-     * Update (insert and delete) of existing (old) data is required if the row exists.
-     * Insert of new data is required for all cases.
+     * <p>Update (insert and delete) of existing (old) data is required if the row exists. Insert of
+     * new data is required for all cases.
+     *
      * @param recordBatch
      * @param transaction
      */
@@ -213,6 +211,7 @@ public abstract class SpannerScdMutationTransform
 
     /**
      * Gets the matching rows in the Spanner table for the given batch of records.
+     *
      * @param recordBatch
      * @param transaction Transaction in which to operate the database read.
      * @return Map of the matching rows' Keys to the matching rows' Structs.
@@ -247,8 +246,9 @@ public abstract class SpannerScdMutationTransform
     }
 
     /**
-     * Creates a deletion mutation for the existing given record.
-     * Required since it is not possible to update primary keys.
+     * Creates a deletion mutation for the existing given record. Required since it is not possible
+     * to update primary keys.
+     *
      * @param record
      * @return Spanner mutation performed within the transaction.
      */
@@ -260,8 +260,9 @@ public abstract class SpannerScdMutationTransform
     }
 
     /**
-     * Creates an insert mutation for the existing given record.
-     * Required since it is not possible to update primary keys.
+     * Creates an insert mutation for the existing given record. Required since it is not possible
+     * to update primary keys.
+     *
      * @param record
      * @return Spanner mutation performed within the transaction.
      */
@@ -279,6 +280,7 @@ public abstract class SpannerScdMutationTransform
 
     /**
      * Creates an insert mutation for the new given record.
+     *
      * @param record
      * @return Spanner mutation performed within the transaction.
      */

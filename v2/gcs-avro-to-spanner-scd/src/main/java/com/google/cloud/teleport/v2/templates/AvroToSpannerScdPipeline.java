@@ -60,9 +60,11 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
     flexContainerName = "gcs-avro-to-spanner-scd",
     optionsClass = AvroToSpannerScdPipeline.AvroToSpannerScdOptions.class,
     requirements = {
+      "The Avro files must contain all table columns (other than the ones required for SCD).",
       "The Spanner tables must exist before pipeline execution.",
-      "The Spanner tables must have a compatible schema.",
-      "The relational database must be accessible from the subnet where Dataflow runs."
+      "Spanner tables must have a compatible schema with the provided.",
+      "The relational database must be accessible from the subnet where Dataflow runs.",
+      "If using SCD Type 2, (start and) end date must be a TIMESTAMP.",
     })
 public class AvroToSpannerScdPipeline {
 
@@ -170,7 +172,7 @@ public class AvroToSpannerScdPipeline {
         groupName = "Target",
         order = 2,
         optional = true,
-        description = "Cloud Spanner Project Id",
+        description = "Cloud Spanner project ID",
         helpText =
             "The ID of the Google Cloud project that contains the Spanner database. If not set, the"
                 + " default Google Cloud project is used.")
@@ -202,7 +204,7 @@ public class AvroToSpannerScdPipeline {
         groupName = "Target",
         order = 5,
         optional = true,
-        description = "Cloud Spanner Endpoint to call",
+        description = "Cloud Spanner endpoint to call",
         helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
         example = "https://batch-spanner.googleapis.com")
     @Default.String("https://batch-spanner.googleapis.com")
@@ -219,7 +221,7 @@ public class AvroToSpannerScdPipeline {
           @TemplateEnumOption("HIGH")
         },
         optional = true,
-        description = "Priority for Spanner RPC invocations",
+        description = "Priority for Cloud Spanner RPC invocations",
         helpText =
             "The request priority for Spanner calls. Possible values are `HIGH`, `MEDIUM`, and"
                 + " `LOW`. The default value is `MEDIUM`.")
@@ -231,8 +233,8 @@ public class AvroToSpannerScdPipeline {
         groupName = "Target",
         order = 7,
         optional = true,
-        description = "Spanner Batch Size",
-        helpText = "How many rows to process on each batch. Only used for SCD-Type=2.",
+        description = "Cloud Spanner batch size",
+        helpText = "How many rows to process on each batch. The default value is 100.",
         example = "100")
     @Default.Integer(100)
     ValueProvider<Integer> getSpannerBatchSize();
@@ -242,7 +244,7 @@ public class AvroToSpannerScdPipeline {
     @TemplateParameter.Text(
         groupName = "Schema",
         order = 8,
-        description = "Spanner table name",
+        description = "Cloud Spanner table name",
         helpText = "Name of the Spanner table where to upsert data.")
     ValueProvider<String> getTableName();
 
@@ -253,8 +255,10 @@ public class AvroToSpannerScdPipeline {
         order = 9,
         optional = true,
         enumOptions = {@TemplateEnumOption("TYPE_1"), @TemplateEnumOption("TYPE_2")},
-        description = "Slow Changing Dimension",
-        helpText = "Type of SCD which will be applied when writing to Spanner.",
+        description = "Slow Changing Dimension (SCD) type",
+        helpText =
+            "Type of SCD which will be applied when writing to Spanner. The default value is"
+                + " TYPE_1.",
         example = "TYPE_1 or TYPE_2")
     @Default.Enum("TYPE_1")
     ValueProvider<AvroToSpannerScdOptions.ScdType> getScdType();
@@ -268,7 +272,7 @@ public class AvroToSpannerScdPipeline {
         description = "Primary key column name(s)",
         helpText =
             "Name of column(s) for the primary key(s). If more than one, enter as CSV with no"
-                + " spaces (e.g. column1,column2) Only required for SCD-Type=2.")
+                + " spaces (e.g. column1,column2). Only required for SCD-Type=2.")
     ValueProvider<List<String>> getPrimaryKeyColumnNames();
 
     void setPrimaryKeyColumnNames(ValueProvider<List<String>> value);
@@ -278,7 +282,7 @@ public class AvroToSpannerScdPipeline {
         order = 11,
         optional = true,
         description = "Start date column name",
-        helpText = "Name of column name for the start date. Only used for SCD-Type=2.")
+        helpText = "Name of column name for the start date (TIMESTAMP). Only used for SCD-Type=2.")
     ValueProvider<String> getStartDateColumnName();
 
     void setStartDateColumnName(ValueProvider<String> value);
@@ -288,13 +292,14 @@ public class AvroToSpannerScdPipeline {
         order = 13,
         optional = true,
         description = "End date column name",
-        helpText = "Name of column name for the end date. Only required for SCD-Type=2.")
+        helpText =
+            "Name of column name for the end date (TIMESTAMP). Only required for" + " SCD-Type=2.")
     ValueProvider<String> getEndDateColumnName();
 
     void setEndDateColumnName(ValueProvider<String> value);
 
     @TemplateCreationParameter(value = "false")
-    @Description("If true, wait for job finish")
+    @Description("If true, wait for job finish.")
     @Default.Boolean(true)
     boolean getWaitUntilFinish();
 

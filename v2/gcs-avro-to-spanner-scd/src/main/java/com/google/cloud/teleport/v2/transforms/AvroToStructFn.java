@@ -26,9 +26,7 @@ import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 
-/**
- * Transforms Avro GenericRecords into Spanner Structs.
- */
+/** Transforms Avro GenericRecords into Spanner Structs. */
 @AutoValue
 public abstract class AvroToStructFn extends SimpleFunction<GenericRecord, Struct> {
 
