@@ -97,7 +97,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private final Counter retryableErrors =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Retryable errors");
 
-  private final Gauge maxRetries = Metrics.gauge(SpannerTransactionWriterDoFn.class, "");
+  private final Gauge maxRetries = Metrics.gauge(SpannerTransactionWriterDoFn.class, "Max retries");
 
   // The max length of tag allowed in Spanner Transaction tags.
   private static final int MAX_TXN_TAG_LENGTH = 50;
