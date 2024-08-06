@@ -145,7 +145,7 @@ public final class BigQueryResourceManager implements ResourceManager {
    * @return the table, if it exists.
    * @throws IllegalStateException if the given table name does not exist in the dataset.
    */
-  private synchronized Table getTableIfExists(String tableId) throws IllegalStateException {
+  public synchronized Table getTableIfExists(String tableId) throws IllegalStateException {
     checkHasDataset();
     Table table = dataset.get(tableId);
     if (table == null) {
