@@ -192,6 +192,34 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   @Test
+  public void testPostgresWithUnicodeCharactersInQuery() throws IOException {
+    String tableName = "unicóde_table";
+
+    postgresResourceManager = PostgresResourceManager.builder(testName).build();
+    gcsClient.createArtifact(
+        "input/query.sql",
+        "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+            + tableName);
+
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put(ROW_ID, "INTEGER NOT NULL");
+    columns.put(NAME, "VARCHAR(200)");
+    columns.put(AGE, "INTEGER");
+    columns.put(MEMBER, "VARCHAR(200)");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+
+    simpleJdbcToBigQueryTest(
+        tableName,
+        schema,
+        POSTGRES_DRIVER,
+        postgresDriverGCSPath(),
+        postgresResourceManager,
+        true,
+        config -> config.addParameter("query", getGcsPath("input/query.sql")));
+  }
+
+  @Test
   public void testOracleToBigQueryFlex() throws IOException {
     // Oracle image does not work on M1
     if (System.getProperty("testOnM1") != null) {
