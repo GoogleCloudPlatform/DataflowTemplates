@@ -152,7 +152,7 @@ public abstract class Index implements Serializable {
       appendable.append(" STORING (").append(storingString).append(")");
     }
 
-    String partitionByString = 
+    String partitionByString =
         partitionBy().stream()
             .map(c -> quoteIdentifier(c, dialect()))
             .collect(Collectors.joining(","));
@@ -161,10 +161,8 @@ public abstract class Index implements Serializable {
       appendable.append(" PARTITION BY ").append(partitionByString);
     }
 
-    String orderByString = 
-        orderBy().stream()
-            .map(c -> quoteIdentifier(c, dialect()))
-            .collect(Collectors.joining(","));
+    String orderByString =
+        orderBy().stream().map(c -> quoteIdentifier(c, dialect())).collect(Collectors.joining(","));
 
     if (!orderByString.isEmpty()) {
       appendable.append(" ORDER BY ").append(orderByString);

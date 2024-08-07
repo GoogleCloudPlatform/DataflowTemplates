@@ -385,16 +385,14 @@ public class InformationSchemaScanner {
               ? resultSet.getString(6)
               : null;
 
-      ImmutableList<String> searchPartitionBy = (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(7))
-              ? ImmutableList.<String>builder()
-                   .addAll(resultSet.getStringList(7))
-                   .build()
+      ImmutableList<String> searchPartitionBy =
+          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(7))
+              ? ImmutableList.<String>builder().addAll(resultSet.getStringList(7)).build()
               : null;
 
-      ImmutableList<String> searchOrderBy = (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(8))
-              ? ImmutableList.<String>builder()
-                   .addAll(resultSet.getStringList(8))
-                   .build()
+      ImmutableList<String> searchOrderBy =
+          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(8))
+              ? ImmutableList.<String>builder().addAll(resultSet.getStringList(8)).build()
               : null;
 
       Map<String, Index.Builder> tableIndexes =
