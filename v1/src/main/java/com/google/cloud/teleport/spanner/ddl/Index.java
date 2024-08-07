@@ -57,8 +57,10 @@ public abstract class Index implements Serializable {
   @Nullable
   abstract String type();
 
+  @Nullable
   abstract ImmutableList<String> partitionBy();
 
+  @Nullable
   abstract ImmutableList<String> orderBy();
 
   public static Builder builder(Dialect dialect) {
@@ -152,20 +154,26 @@ public abstract class Index implements Serializable {
       appendable.append(" STORING (").append(storingString).append(")");
     }
 
-    String partitionByString =
-        partitionBy().stream()
-            .map(c -> quoteIdentifier(c, dialect()))
-            .collect(Collectors.joining(","));
+    if (partitionBy() != null) {
+      String partitionByString =
+          partitionBy().stream()
+              .map(c -> quoteIdentifier(c, dialect()))
+              .collect(Collectors.joining(","));
 
-    if (!partitionByString.isEmpty()) {
-      appendable.append(" PARTITION BY ").append(partitionByString);
+      if (!partitionByString.isEmpty()) {
+        appendable.append(" PARTITION BY ").append(partitionByString);
+      }
     }
 
-    String orderByString =
-        orderBy().stream().map(c -> quoteIdentifier(c, dialect())).collect(Collectors.joining(","));
+    if (orderBy() != null) {
+      String orderByString =
+          orderBy().stream()
+              .map(c -> quoteIdentifier(c, dialect()))
+              .collect(Collectors.joining(","));
 
-    if (!orderByString.isEmpty()) {
-      appendable.append(" ORDER BY ").append(orderByString);
+      if (!orderByString.isEmpty()) {
+        appendable.append(" ORDER BY ").append(orderByString);
+      }
     }
 
     if (interleaveIn() != null) {
