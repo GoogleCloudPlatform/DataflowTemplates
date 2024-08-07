@@ -377,7 +377,8 @@ public class InformationSchemaScanner {
 
       // Note that 'type' is only queried from GoogleSQL and is not from Postgres and
       // the number of columns will be different.
-      String type = (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(6))
+      String type =
+          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(6))
               ? resultSet.getString(6)
               : null;
 
@@ -531,7 +532,8 @@ public class InformationSchemaScanner {
     }
   }
 
-  private void listIndexOptions(Ddl.Builder builder, Map<String, NavigableMap<String, Index.Builder>> indexes) {
+  private void listIndexOptions(
+      Ddl.Builder builder, Map<String, NavigableMap<String, Index.Builder>> indexes) {
     Statement statement = listIndexOptionsSQL();
 
     ResultSet resultSet = context.executeQuery(statement);

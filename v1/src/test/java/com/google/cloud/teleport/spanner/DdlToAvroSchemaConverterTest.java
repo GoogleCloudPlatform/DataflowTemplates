@@ -125,9 +125,11 @@ public class DdlToAvroSchemaConverterTest {
             .asc("gen_id")
             .desc("last_name")
             .end()
-            .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)",
-                                      "CREATE SEARCH INDEX `SearchIndex` ON `Users` (`MyTokens`)"
-                                        + " OPTIONS (sort_order_sharding=TRUE)"))
+            .indexes(
+                ImmutableList.of(
+                    "CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)",
+                    "CREATE SEARCH INDEX `SearchIndex` ON `Users` (`MyTokens`)"
+                        + " OPTIONS (sort_order_sharding=TRUE)"))
             .foreignKeys(
                 ImmutableList.of(
                     "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
@@ -201,7 +203,8 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(5).getProp(NOT_NULL), equalTo("false"));
     assertThat(fields.get(5).getProp(STORED), equalTo("false"));
     assertThat(fields.get(5).getProp(HIDDEN), equalTo("true"));
-    assertThat(fields.get(5).getProp(GENERATION_EXPRESSION), equalTo("(TOKENIZE_FULLTEXT(MyData))"));
+    assertThat(
+        fields.get(5).getProp(GENERATION_EXPRESSION), equalTo("(TOKENIZE_FULLTEXT(MyData))"));
     assertThat(fields.get(5).getProp(DEFAULT_EXPRESSION), equalTo(null));
 
     // spanner pk
@@ -216,7 +219,8 @@ public class DdlToAvroSchemaConverterTest {
         equalTo("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"));
     assertThat(
         avroSchema.getProp(SPANNER_INDEX + "1"),
-        equalTo("CREATE SEARCH INDEX `SearchIndex` ON `Users` (`MyTokens`)"
+        equalTo(
+            "CREATE SEARCH INDEX `SearchIndex` ON `Users` (`MyTokens`)"
                 + " OPTIONS (sort_order_sharding=TRUE)"));
     assertThat(
         avroSchema.getProp(SPANNER_FOREIGN_KEY + "0"),
