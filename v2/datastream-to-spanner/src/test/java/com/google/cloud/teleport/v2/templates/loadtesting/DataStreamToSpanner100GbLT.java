@@ -21,10 +21,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.HashMap;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
-<<<<<<< HEAD
 import org.apache.beam.it.gcp.datastream.MySQLSource;
-=======
->>>>>>> a0dfc1734 (changes)
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -42,13 +39,6 @@ public class DataStreamToSpanner100GbLT extends DataStreamToSpannerLTBase {
     for (int i = 1; i <= 10; i++) {
       tables100GB.put("person" + i, 6500000);
     }
-<<<<<<< HEAD
-    JDBCSource source= getMySQLSource(
-        "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-ip-address/versions/1",
-        "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-username/versions/1",
-        "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-password/versions/1");
-    runLoadTest(tables100GB, source);
-=======
 
     // Setup Datastream
     String hostIp =
@@ -63,6 +53,5 @@ public class DataStreamToSpanner100GbLT extends DataStreamToSpannerLTBase {
 
     JDBCSource mySQLSource = getMySQLSource(hostIp, username, password);
     runLoadTest(tables100GB, mySQLSource);
->>>>>>> a0dfc1734 (changes)
   }
 }
