@@ -92,14 +92,24 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     createSpannerDDL(spannerResourceManager, spannerDdlResource);
   }
 
+<<<<<<< HEAD
   public void runLoadTest(HashMap<String, Integer> tables, JDBCSource source)
       throws IOException, ParseException, InterruptedException {
     runLoadTest(tables, source, new HashMap<>(), new HashMap<>());
+=======
+  public void runLoadTest(HashMap<String, Integer> tables, JDBCSource mySQLSource)
+      throws IOException, ParseException, InterruptedException {
+    runLoadTest(tables, mySQLSource, new HashMap<>(), new HashMap<>());
+>>>>>>> a0dfc1734 (changes)
   }
 
   public void runLoadTest(
       HashMap<String, Integer> tables,
+<<<<<<< HEAD
       JDBCSource source,
+=======
+      JDBCSource mySQLSource,
+>>>>>>> a0dfc1734 (changes)
       HashMap<String, String> templateParameters,
       HashMap<String, Object> environmentOptions)
       throws IOException, ParseException, InterruptedException {
@@ -121,7 +131,11 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
 
     Stream stream =
         createDatastreamResources(
+<<<<<<< HEAD
             artifactBucket, gcsPrefix, source, datastreamResourceManager);
+=======
+            artifactBucket, gcsPrefix, mySQLSource, datastreamResourceManager);
+>>>>>>> a0dfc1734 (changes)
 
     // Setup Parameters
     Map<String, String> params =
