@@ -149,10 +149,10 @@ public class SpannerChangeStreamsToPubSubIT extends TemplateTestBase {
                       .parse(receivedMessage.getMessage().getData().toStringUtf8())
                       .getAsJsonObject();
               assertEquals(
-                  o.get("spannerDatabase").getAsString(), spannerResourceManager.getDatabaseId());
+                  o.get("spannerDatabaseId").getAsString(), spannerResourceManager.getDatabaseId());
               assertEquals(
                   o.get("spannerInstanceId").getAsString(), spannerResourceManager.getInstanceId());
-              o.remove("spannerDatabase");
+              o.remove("spannerDatabaseId");
               o.remove("spannerInstanceId");
               DataChangeRecord s = new Gson().fromJson(o, DataChangeRecord.class);
               for (Mod mod : s.getMods()) {
@@ -184,7 +184,7 @@ public class SpannerChangeStreamsToPubSubIT extends TemplateTestBase {
   }
 
   @Test
-  public void testSpannerChangeStreamsToPubsubSpannerSourceAvro() throws IOException {
+  public void testSpannerChangeStreamsToPubsubAvro() throws IOException {
     // Arrange
     String createTableStatement =
         String.format(
@@ -250,7 +250,7 @@ public class SpannerChangeStreamsToPubSubIT extends TemplateTestBase {
                     CoderUtils.decodeFromByteArray(
                         coder, receivedMessage.getMessage().getData().toByteArray());
                 assertEquals(
-                    avroRecord.get("spannerDatabase"), spannerResourceManager.getDatabaseId());
+                    avroRecord.get("spannerDatabaseId"), spannerResourceManager.getDatabaseId());
                 assertEquals(
                     avroRecord.get("spannerInstanceId"), spannerResourceManager.getInstanceId());
               } catch (IOException e) {

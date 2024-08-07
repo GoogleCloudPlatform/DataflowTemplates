@@ -60,7 +60,7 @@
       "type" : {
         "name": "ValueCaptureType",
         "type": "enum",
-        "symbols": ["OLD_AND_NEW_VALUES", "NEW_ROW", "NEW_VALUES", "NEW_ROW_AND_OLD_VALUES"]
+        "symbols": ["OLD_AND_NEW_VALUES", "NEW_ROW", "NEW_VALUES"]
       }
     },
     { "name" : "numberOfRecordsInTransaction", "type" : "long"},
@@ -84,7 +84,7 @@
           { "name" : "numberOfRecordsRead","type":"long"}
         ]
         }],"default":null},
-        {"name": "spannerDatabase", "type": ["null", "string"], "default": null },
+        {"name": "spannerDatabaseId", "type": ["null", "string"], "default": null },
         {"name": "spannerInstanceId", "type": ["null", "string"], "default": null }
     ]
     }

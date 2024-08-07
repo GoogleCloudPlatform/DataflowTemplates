@@ -66,7 +66,7 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
   protected abstract Boolean includeSpannerSource();
 
   @Nullable
-  protected abstract String spannerDatabase();
+  protected abstract String spannerDatabaseId();
 
   @Nullable
   protected abstract String spannerInstanceId();
@@ -82,16 +82,15 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
       case "AVRO":
         AvroCoder<com.google.cloud.teleport.v2.DataChangeRecord> coder =
             AvroCoder.of(com.google.cloud.teleport.v2.DataChangeRecord.class);
+        DataChangeRecordToAvroFn.Builder avroBuilder = new DataChangeRecordToAvroFn.Builder();
+        if (includeSpannerSource()) {
+          avroBuilder
+              .setSpannerDatabaseId(spannerDatabaseId())
+              .setSpannerInstanceId(spannerInstanceId());
+        }
         encodedRecords =
             records
-                .apply(
-                    "Write DataChangeRecord into AVRO",
-                    MapElements.via(
-                        new DataChangeRecordToAvroFn.Builder()
-                            .setIncludeSpannerSource(includeSpannerSource())
-                            .setSpannerDatabase(spannerDatabase())
-                            .setSpannerInstanceId(spannerInstanceId())
-                            .build()))
+                .apply("Write DataChangeRecord into AVRO", MapElements.via(avroBuilder.build()))
                 .apply(
                     "Convert encoded DataChangeRecord in AVRO to bytes to be saved into"
                         + " PubsubMessage.",
@@ -116,16 +115,16 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
 
         break;
       case "JSON":
+        DataChangeRecordToJsonTextFn.Builder jsonBuilder =
+            new DataChangeRecordToJsonTextFn.Builder();
+        if (includeSpannerSource()) {
+          jsonBuilder
+              .setSpannerDatabaseId(spannerDatabaseId())
+              .setSpannerInstanceId(spannerInstanceId());
+        }
         encodedRecords =
             records
-                .apply(
-                    "Write DataChangeRecord into JSON",
-                    MapElements.via(
-                        new DataChangeRecordToJsonTextFn.Builder()
-                            .setIncludeSpannerSource(includeSpannerSource())
-                            .setSpannerDatabase(spannerDatabase())
-                            .setSpannerInstanceId(spannerInstanceId())
-                            .build()))
+                .apply("Write DataChangeRecord into JSON", MapElements.via(jsonBuilder.build()))
                 .apply(
                     "Convert encoded DataChangeRecord in JSON to bytes to be saved into"
                         + " PubsubMessage.",
@@ -205,7 +204,7 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
 
     public abstract WriteToPubSubBuilder setIncludeSpannerSource(Boolean value);
 
-    public abstract WriteToPubSubBuilder setSpannerDatabase(String value);
+    public abstract WriteToPubSubBuilder setSpannerDatabaseId(String value);
 
     public abstract WriteToPubSubBuilder setSpannerInstanceId(String value);
 

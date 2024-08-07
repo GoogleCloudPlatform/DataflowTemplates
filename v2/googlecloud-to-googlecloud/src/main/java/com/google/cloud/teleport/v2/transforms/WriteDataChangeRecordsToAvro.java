@@ -47,18 +47,12 @@ public class WriteDataChangeRecordsToAvro {
   public static class DataChangeRecordToAvroFn
       extends SimpleFunction<DataChangeRecord, com.google.cloud.teleport.v2.DataChangeRecord> {
 
-    private boolean includeSpannerSource = false;
-
-    private String spannerDatabase;
+    private String spannerDatabaseId;
 
     private String spannerInstanceId;
 
-    public boolean includeSpannerSource() {
-      return includeSpannerSource;
-    }
-
-    public String spannerDatabase() {
-      return spannerDatabase;
+    public String spannerDatabaseId() {
+      return spannerDatabaseId;
     }
 
     public String spannerInstanceId() {
@@ -71,11 +65,9 @@ public class WriteDataChangeRecordsToAvro {
     }
 
     public DataChangeRecordToAvroFn() {}
-    ;
 
     private DataChangeRecordToAvroFn(Builder builder) {
-      this.includeSpannerSource = builder.includeSpannerSource;
-      this.spannerDatabase = builder.spannerDatabase;
+      this.spannerDatabaseId = builder.spannerDatabaseId;
       this.spannerInstanceId = builder.spannerInstanceId;
     }
 
@@ -136,8 +128,6 @@ public class WriteDataChangeRecordsToAvro {
                   record.getMetadata().getTotalStreamTimeMillis(),
                   record.getMetadata().getNumberOfRecordsRead());
 
-      String spannerDatabase = includeSpannerSource() ? spannerDatabase() : null;
-      String spannerInstanceId = includeSpannerSource() ? spannerInstanceId() : null;
       // Add ChangeStreamMetadata and spanner source info
       return new com.google.cloud.teleport.v2.DataChangeRecord(
           partitionToken,
@@ -153,23 +143,18 @@ public class WriteDataChangeRecordsToAvro {
           numberOfRecordsInTransaction,
           numberOfPartitionsInTransaction,
           metadata,
-          spannerDatabase,
-          spannerInstanceId);
+          // If includeSpannerSource is false, spannerDatabaseId() and spannerInstanceId() are null.
+          spannerDatabaseId(),
+          spannerInstanceId());
     }
 
     static class Builder {
-      private boolean includeSpannerSource = false;
-      private String spannerDatabase;
+      private String spannerDatabaseId;
 
       private String spannerInstanceId;
 
-      public Builder setIncludeSpannerSource(Boolean value) {
-        this.includeSpannerSource = value;
-        return this;
-      }
-
-      public Builder setSpannerDatabase(String value) {
-        this.spannerDatabase = value;
+      public Builder setSpannerDatabaseId(String value) {
+        this.spannerDatabaseId = value;
         return this;
       }
 

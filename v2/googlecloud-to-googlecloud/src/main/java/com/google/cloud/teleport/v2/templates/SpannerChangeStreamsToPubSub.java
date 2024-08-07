@@ -172,7 +172,7 @@ public class SpannerChangeStreamsToPubSub {
                 .setPubsubAPI(pubsubAPI)
                 .setPubsubTopicName(pubsubTopicName)
                 .setIncludeSpannerSource(includeSpannerSource)
-                .setSpannerDatabase(databaseId)
+                .setSpannerDatabaseId(databaseId)
                 .setSpannerInstanceId(instanceId)
                 .build());
     return pipeline.run();

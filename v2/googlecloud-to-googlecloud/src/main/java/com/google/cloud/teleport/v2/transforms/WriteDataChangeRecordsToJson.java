@@ -22,6 +22,7 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,19 +38,12 @@ public abstract class WriteDataChangeRecordsToJson {
 
   static class DataChangeRecordToJsonTextFn extends SimpleFunction<DataChangeRecord, String> {
     private static Gson gson = new Gson();
-
-    private boolean includeSpannerResource = false;
-
-    private String spannerDatabase;
+    private String spannerDatabaseId;
 
     private String spannerInstanceId;
 
-    public Boolean includeSpannerSource() {
-      return includeSpannerResource;
-    }
-
-    public String spannerDatabase() {
-      return spannerDatabase;
+    public String spannerDatabaseId() {
+      return spannerDatabaseId;
     }
 
     public String spannerInstanceId() {
@@ -59,16 +53,15 @@ public abstract class WriteDataChangeRecordsToJson {
     public DataChangeRecordToJsonTextFn() {}
 
     private DataChangeRecordToJsonTextFn(Builder builder) {
-      this.includeSpannerResource = builder.includeSpannerResource;
-      this.spannerDatabase = builder.spannerDatabase;
+      this.spannerDatabaseId = builder.spannerDatabaseId;
       this.spannerInstanceId = builder.spannerInstanceId;
     }
 
     @Override
     public String apply(DataChangeRecord record) {
-      if (includeSpannerSource()) {
+      if (!StringUtils.isEmpty(spannerDatabaseId()) && !StringUtils.isEmpty(spannerInstanceId())) {
         JsonElement jsonElement = gson.toJsonTree(record);
-        jsonElement.getAsJsonObject().addProperty("spannerDatabase", spannerDatabase());
+        jsonElement.getAsJsonObject().addProperty("spannerDatabaseId", spannerDatabaseId());
         jsonElement.getAsJsonObject().addProperty("spannerInstanceId", spannerInstanceId());
         return gson.toJson(jsonElement);
       }
@@ -76,18 +69,11 @@ public abstract class WriteDataChangeRecordsToJson {
     }
 
     static class Builder {
-      private boolean includeSpannerResource = false;
-      private String spannerDatabase;
-
+      private String spannerDatabaseId;
       private String spannerInstanceId;
 
-      public Builder setIncludeSpannerSource(Boolean value) {
-        this.includeSpannerResource = value;
-        return this;
-      }
-
-      public Builder setSpannerDatabase(String value) {
-        this.spannerDatabase = value;
+      public Builder setSpannerDatabaseId(String value) {
+        this.spannerDatabaseId = value;
         return this;
       }
 

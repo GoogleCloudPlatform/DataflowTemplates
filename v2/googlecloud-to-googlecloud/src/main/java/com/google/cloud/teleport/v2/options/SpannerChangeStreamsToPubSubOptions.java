@@ -218,10 +218,9 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   @TemplateParameter.Boolean(
       order = 17,
       optional = true,
-      description =
-          "Whether or not to include the spanner database and instance to read the change stream from in the output message data",
+      description = "Include spanner database id and instance id in output message",
       helpText =
-          "Whether or not to include the spanner database and instance to read the change stream from in the output message data. Defaults to: false")
+          "Whether or not to include the spanner database id and instance id to read the change stream from in the output message data. Defaults to: false")
   @Default.Boolean(false)
   Boolean getIncludeSpannerSource();
 
