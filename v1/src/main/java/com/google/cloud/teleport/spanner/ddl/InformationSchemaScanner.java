@@ -375,9 +375,11 @@ public class InformationSchemaScanner {
               ? null
               : resultSet.getString(6);
 
+      // Note that 'type' is only queried from GoogleSQL and is not from Postgres and
+      // the number of columns will be different.
       String type = (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(6))
               ? resultSet.getString(6)
-              : "not_impl";
+              : null;
 
       Map<String, Index.Builder> tableIndexes =
           indexes.computeIfAbsent(tableName, k -> Maps.newTreeMap());
@@ -430,7 +432,7 @@ public class InformationSchemaScanner {
       String columnName = resultSet.getString(2);
       String ordering = resultSet.isNull(3) ? null : resultSet.getString(3);
       String indexLocalName = resultSet.getString(4);
-      String indexType = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getString(5) : "not_impl";
+      String indexType = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getString(5) : null;
       String spannerType = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getString(6) : null;
 
       if (indexLocalName.equals("PRIMARY_KEY")) {
@@ -442,7 +444,7 @@ public class InformationSchemaScanner {
           pkBuilder.desc(columnName).end();
         }
         pkBuilder.end().endTable();
-      } else if (indexType.equals("SEARCH")) {
+      } else if (indexType != null && indexType.equals("SEARCH")) {
         if (!spannerType.equals("TOKENLIST") && ordering != null) {
           continue;
         }

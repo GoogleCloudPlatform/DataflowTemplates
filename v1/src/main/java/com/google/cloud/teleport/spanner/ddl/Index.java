@@ -54,6 +54,7 @@ public abstract class Index implements Serializable {
   @Nullable
   abstract String interleaveIn();
 
+  @Nullable
   abstract String type();
 
   public static Builder builder(Dialect dialect) {
@@ -116,7 +117,7 @@ public abstract class Index implements Serializable {
 
   private void prettyPrintGsql(Appendable appendable) throws IOException {
     appendable.append("CREATE");
-    if (type().equals("SEARCH")) {
+    if (type() != null && type().equals("SEARCH")) {
       appendable.append(" SEARCH");
     } else if (unique()) {
       appendable.append(" UNIQUE");
@@ -150,12 +151,11 @@ public abstract class Index implements Serializable {
     if (interleaveIn() != null) {
       appendable.append(", INTERLEAVE IN ").append(quoteIdentifier(interleaveIn(), dialect()));
     }
-    if (options() == null) {
-      return;
-    }
-    String optionsString = String.join(",", options());
-    if (!optionsString.isEmpty()) {
-      appendable.append(" OPTIONS (").append(optionsString).append(")");
+    if (options() != null) {
+      String optionsString = String.join(",", options());
+      if (!optionsString.isEmpty()) {
+        appendable.append(" OPTIONS (").append(optionsString).append(")");
+      }
     }
   }
 

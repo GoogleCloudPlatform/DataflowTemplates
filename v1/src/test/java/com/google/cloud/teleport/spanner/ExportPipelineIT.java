@@ -142,18 +142,6 @@ public class ExportPipelineIT extends TemplateTestBase {
                   + "  ]"
                   + "}");
 
-  private static final Schema SEARCH_INDEX_SCHEMA =
-      new Schema.Parser()
-          .parse(
-              "{\n"
-                  + "  \"type\": \"record\",\n"
-                  + "  \"name\": \"SearchIndex\",\n"
-                  + "  \"namespace\": \"com.google.cloud.teleport.spanner\",\n"
-                  + "  \"fields\": [\n"
-                  + "    { \"name\": \"MyTokens\", \"type\": \"string\" }\n"
-                  + "  ]\n"
-                  + "}");
-
   private SpannerResourceManager spannerResourceManager;
 
   @After
@@ -254,13 +242,11 @@ public class ExportPipelineIT extends TemplateTestBase {
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(modelStructArtifacts).isNotEmpty();
-    //assertThat(searchIndexArtifacts).isNotEmpty();
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
     List<GenericRecord> modelStructRecords =
         extractArtifacts(modelStructArtifacts, MODEL_STRUCT_SCHEMA);
-    //List<GenericRecord> searchIndexRecords = extractArtifacts(searchIndexArtifacts, SEARCH_INDEX_SCHEMA);
 
     assertThatGenericRecords(singersRecords)
         .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData));
