@@ -235,7 +235,7 @@ abstract class SpannerSchema implements Serializable {
             Type itemType = parseSpannerType(arrayElementType, dialect);
             return Type.array(itemType);
           }
-          throw new IllegalArgumentException("dbg_sql: Unknown spanner type " + spannerType);
+          throw new IllegalArgumentException("Unknown spanner type " + spannerType);
         case POSTGRESQL:
           // Handle vector_length annotation
           Matcher m = PG_EMBEDDING_VECTOR_PATTERN.matcher(spannerType);
@@ -285,7 +285,7 @@ abstract class SpannerSchema implements Serializable {
           if ("SPANNER.COMMIT_TIMESTAMP".equals(spannerType)) {
             return Type.timestamp();
           }
-          throw new IllegalArgumentException("dbg_pg: Unknown spanner type " + spannerType);
+          throw new IllegalArgumentException("Unknown spanner type " + spannerType);
         default:
           throw new IllegalArgumentException("Unrecognized dialect: " + dialect.name());
       }

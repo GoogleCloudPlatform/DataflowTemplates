@@ -358,6 +358,6 @@ public final class SizedType {
       default:
         break;
     }
-    throw new IllegalArgumentException("dbg_size: Unknown spanner type " + spannerType);
+    throw new IllegalArgumentException("Unknown spanner type " + spannerType);
   }
 }
