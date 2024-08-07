@@ -29,13 +29,13 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInf
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -681,7 +681,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   protected static String resourceAsString(String resource) {
     try {
       URL url = com.google.common.io.Resources.getResource(resource);
-      return com.google.common.io.Resources.toString(url, Charsets.UTF_8);
+      return com.google.common.io.Resources.toString(url, StandardCharsets.UTF_8);
     } catch (Exception e) {
       // This exception should not happen in production as it really means we don't have the
       // expected resource
