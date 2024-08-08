@@ -15,12 +15,16 @@
  */
 package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model;
 
+import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.TypesUtils;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 
@@ -37,6 +41,7 @@ public final class TrackedSpannerTable implements Serializable {
   // Non-primary key only include the tracked Spanner columns.
   private List<TrackedSpannerColumn> nonPkColumns;
   private List<TrackedSpannerColumn> allColumns;
+  private Set<String> nonPkColumnsNamesSet;
 
   /** Default constructor for serialization only. */
   public TrackedSpannerTable() {}
@@ -59,6 +64,8 @@ public final class TrackedSpannerTable implements Serializable {
       List<TrackedSpannerColumn> nonPkColumns) {
     this.pkColumns = new ArrayList<>(pkColumns);
     this.nonPkColumns = new ArrayList<>(nonPkColumns);
+    this.nonPkColumnsNamesSet =
+        this.nonPkColumns.stream().map(TrackedSpannerColumn::getName).collect(Collectors.toSet());
     // Sort the primary key column by primary key oridinal position.
     Collections.sort(this.pkColumns, new SortByPkOrdinalPosition());
     Collections.sort(this.nonPkColumns, new SortByOrdinalPosition());
@@ -81,8 +88,35 @@ public final class TrackedSpannerTable implements Serializable {
     return nonPkColumns;
   }
 
+  public Set<String> getNonPkColumnsNamesSet() {
+    return nonPkColumnsNamesSet;
+  }
+
   public List<TrackedSpannerColumn> getAllColumns() {
     return allColumns;
+  }
+
+  // TrackedSpannerColumn.create requires name, type, ordinalPosition, pkOrdinalPosition. The
+  // ordinal position of the primary key should be set to -1 for non-primary key and vice versa.
+  public void addTrackedSpannerColumn(
+      String columnName,
+      String typeString,
+      int ordinalPosition,
+      int pkOrdinalPosition,
+      Dialect dialect) {
+    TrackedSpannerColumn newSpannerColumnObj =
+        TrackedSpannerColumn.create(
+            columnName,
+            TypesUtils.informationSchemaGoogleSQLTypeToSpannerType(typeString),
+            ordinalPosition,
+            pkOrdinalPosition);
+    if (pkOrdinalPosition == -1) {
+      this.nonPkColumns.add(newSpannerColumnObj);
+      this.nonPkColumnsNamesSet.add(columnName);
+    } else {
+      this.pkColumns.add(newSpannerColumnObj);
+    }
+    this.allColumns.add(newSpannerColumnObj);
   }
 
   @Override
