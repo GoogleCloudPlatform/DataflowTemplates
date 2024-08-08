@@ -40,10 +40,13 @@ import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
 import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
 import com.google.protobuf.DescriptorProtos.MessageOptions;
 import com.google.protobuf.InvalidProtocolBufferException;
+import java.util.ArrayDeque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.values.KV;
@@ -1287,21 +1290,63 @@ public class InformationSchemaScanner {
     return messageOptions.getUnknownFields().hasField(14004);
   }
 
+  private Set<String> collectEnumTypes(
+      String rootPackage, List<EnumDescriptorProto> enumDescriptors) {
+    Set<String> enums = new HashSet<>();
+    String typePrefix = rootPackage.isEmpty() ? "" : rootPackage + ".";
+    for (EnumDescriptorProto enumDescriptor : enumDescriptors) {
+      String qualifiedName = typePrefix + enumDescriptor.getName();
+      enums.add(qualifiedName);
+    }
+    return enums;
+  }
+
+  private Set<String> collectAllTypes(String rootPackage, List<DescriptorProto> descriptors) {
+    Set<String> result = new HashSet<>();
+
+    Map<String, DescriptorProto> messageTypes = new HashMap<>();
+    Queue<String> queue = new ArrayDeque<>();
+
+    String typePrefix = rootPackage.isEmpty() ? "" : rootPackage + ".";
+    for (DescriptorProto descriptor : descriptors) {
+      if (isUnknownType(descriptor)) {
+        continue;
+      }
+
+      String qualifiedName = typePrefix + descriptor.getName();
+      if (!messageTypes.containsKey(qualifiedName)) {
+        messageTypes.put(qualifiedName, descriptor);
+        queue.add(qualifiedName);
+      }
+    }
+
+    while (!queue.isEmpty()) {
+      String type = queue.poll();
+      DescriptorProto currentDescriptor = messageTypes.get(type);
+      result.addAll(collectEnumTypes(type, currentDescriptor.getEnumTypeList()));
+
+      for (DescriptorProto child : currentDescriptor.getNestedTypeList()) {
+        if (isUnknownType(child)) {
+          continue;
+        }
+        String childName = type + "." + child.getName();
+        if (!messageTypes.containsKey(childName)) {
+          messageTypes.put(childName, child);
+          queue.add(childName);
+        }
+      }
+    }
+
+    result.addAll(messageTypes.keySet());
+    return result;
+  }
+
   private Set<String> collectBundleTypes(FileDescriptorSet fds) {
     Set<String> result = new HashSet<>();
     for (FileDescriptorProto file : fds.getFileList()) {
-      String filePackage = file.hasPackage() ? file.getPackage() + "." : "";
-      for (DescriptorProto descriptor : file.getMessageTypeList()) {
-        if (isUnknownType(descriptor)) {
-          continue;
-        }
-        String descriptorName = filePackage + descriptor.getName();
-        result.add(descriptorName);
-      }
-      for (EnumDescriptorProto enumDescriptor : file.getEnumTypeList()) {
-        String descriptorName = filePackage + enumDescriptor.getName();
-        result.add(descriptorName);
-      }
+      String filePackage = file.hasPackage() ? file.getPackage() : "";
+      result.addAll(collectAllTypes(filePackage, file.getMessageTypeList()));
+      result.addAll(collectEnumTypes(filePackage, file.getEnumTypeList()));
     }
     return result;
   }
