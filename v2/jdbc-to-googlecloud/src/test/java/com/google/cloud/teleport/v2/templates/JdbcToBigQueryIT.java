@@ -118,6 +118,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         testName,
+        testName,
         schema,
         MYSQL_DRIVER,
         mySqlDriverGCSPath(),
@@ -149,6 +150,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         tableName,
+        tableName,
         schema,
         MYSQL_DRIVER,
         mySqlDriverGCSPath(),
@@ -179,6 +181,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         testName,
+        testName,
         schema,
         POSTGRES_DRIVER,
         postgresDriverGCSPath(),
@@ -189,6 +192,35 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
                 "query",
                 "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
                     + testName));
+  }
+
+  @Test
+  public void testPostgresWithUnicodeCharactersInQuery() throws IOException {
+    String tableName = "unicóde_table";
+
+    postgresResourceManager = PostgresResourceManager.builder(testName).build();
+    gcsClient.createArtifact(
+        "input/query.sql",
+        "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+            + tableName);
+
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put(ROW_ID, "INTEGER NOT NULL");
+    columns.put(NAME, "VARCHAR(200)");
+    columns.put(AGE, "INTEGER");
+    columns.put(MEMBER, "VARCHAR(200)");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+
+    simpleJdbcToBigQueryTest(
+        testName,
+        tableName,
+        schema,
+        POSTGRES_DRIVER,
+        postgresDriverGCSPath(),
+        postgresResourceManager,
+        true,
+        config -> config.addParameter("query", getGcsPath("input/query.sql")));
   }
 
   @Test
@@ -213,6 +245,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
     // Run a simple IT
     simpleJdbcToBigQueryTest(
+        testName,
         testName,
         schema,
         ORACLE_DRIVER,
@@ -243,6 +276,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         testName,
+        testName,
         schema,
         MSSQL_DRIVER,
         msSqlDriverGCSPath(),
@@ -270,6 +304,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         testName,
+        testName,
         schema,
         POSTGRES_DRIVER,
         postgresDriverGCSPath(),
@@ -279,6 +314,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   private void simpleJdbcToBigQueryTest(
+      String testName,
       String tableName,
       JDBCResourceManager.JDBCSchema schema,
       String driverClassName,

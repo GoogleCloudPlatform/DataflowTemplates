@@ -32,7 +32,7 @@ public final class BigQueryResourceManagerUtils {
   private static final String REPLACE_CHAR = "_";
   private static final int MIN_TABLE_ID_LENGTH = 1;
   private static final int MAX_TABLE_ID_LENGTH = 1024;
-  private static final Pattern ILLEGAL_TABLE_CHARS = Pattern.compile("[^a-zA-Z0-9-_]");
+  private static final Pattern ILLEGAL_TABLE_CHARS = Pattern.compile("[^a-zA-Z0-9-_\\p{L}]");
   private static final String TIME_FORMAT = "yyyyMMdd_HHmmss";
 
   private BigQueryResourceManagerUtils() {}
