@@ -31,7 +31,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -119,11 +118,6 @@ public final class OptionsToConfigBuilder {
         if (sourceDbURL == null) {
           sourceDbURL = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
         }
-        // Appends public namespace to tables without one
-        tables =
-            tables.stream()
-                .map(t -> t.contains(".") ? t : "public." + t)
-                .collect(Collectors.toList());
         break;
     }
 

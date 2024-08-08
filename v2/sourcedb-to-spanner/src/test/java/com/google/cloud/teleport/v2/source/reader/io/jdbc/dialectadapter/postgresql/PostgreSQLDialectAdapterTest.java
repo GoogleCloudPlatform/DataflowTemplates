@@ -71,10 +71,9 @@ public class PostgreSQLDialectAdapterTest {
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
     when(mockResultSet.next()).thenReturn(true, true, false);
     when(mockResultSet.getString("table_name")).thenReturn("table1", "table2");
-    when(mockResultSet.getString("table_schema")).thenReturn("my_schema", "public");
 
     assertThat(adapter.discoverTables(mockDataSource, sourceSchemaReference))
-        .containsExactly("my_schema.table1", "public.table2");
+        .containsExactly("table1", "table2");
   }
 
   @Test

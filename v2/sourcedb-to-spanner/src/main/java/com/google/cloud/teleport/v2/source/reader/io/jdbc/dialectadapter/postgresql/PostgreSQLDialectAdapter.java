@@ -93,8 +93,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
 
     final String query =
         String.format(
-            "SELECT table_schema,"
-                + "  table_name"
+            "SELECT table_name"
                 + " FROM information_schema.tables"
                 + " WHERE table_type = 'BASE TABLE'"
                 + "  AND table_catalog = ?"
@@ -106,13 +105,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     try (PreparedStatement stmt = dataSource.getConnection().prepareStatement(query)) {
       stmt.setString(1, sourceSchemaReference.dbName());
       try (ResultSet rs = stmt.executeQuery()) {
-        StringBuilder tableName = new StringBuilder();
         while (rs.next()) {
-          tableName.append(rs.getString("table_schema"));
-          tableName.append(SCHEMA_TABLE_SEPARATOR);
-          tableName.append(rs.getString("table_name"));
-          tablesBuilder.add(tableName.toString());
-          tableName.setLength(0);
+          tablesBuilder.add(rs.getString("table_name"));
         }
         ImmutableList<String> tables = tablesBuilder.build();
         logger.info("Discovered tables for DataSource: {}, tables: {}", dataSource, tables);
@@ -170,7 +164,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                 + "  numeric_scale"
                 + " FROM information_schema.columns"
                 + " WHERE table_catalog = ?"
-                + "  AND (table_schema || '.' || table_name) = ?"
+                + "  AND table_name = ?"
                 + "  AND table_schema NOT LIKE 'pg_%%'"
                 + "  AND table_schema NOT IN (%s)",
             EXCLUDED_SCHEMAS_STR);
@@ -292,7 +286,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                 + "  JOIN pg_catalog.pg_index ix on c.oid = ix.indexrelid"
                 + "  JOIN pg_catalog.pg_attribute a on c.oid = a.attrelid"
                 + "  JOIN pg_catalog.pg_type t on t.oid = a.atttypid"
-                + " WHERE (ixs.schemaname || '.' || ixs.tablename) = ?"
+                + " WHERE ixs.tablename = ?"
                 + "  AND ixs.schemaname NOT LIKE 'pg_%%'"
                 + "  AND ixs.schemaname NOT IN (%s)"
                 + " ORDER BY ix.indexrelid, ordinal_position ASC;",
