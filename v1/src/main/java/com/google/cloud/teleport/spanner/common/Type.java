@@ -146,13 +146,6 @@ public final class Type implements Serializable {
   }
 
   /**
-   * Returns the descriptor for the {@code TOKENLIST} type: a collection of unique token strings.
-   */
-  public static Type tokenlist() {
-    return TYPE_TOKENLIST;
-  }
-
-  /**
    * Returns the descriptor for the {@code TIMESTAMP} type: a nano precision timestamp in the range
    * [0000-01-01 00:00:00, 9999-12-31 23:59:59.999999999 UTC].
    */
