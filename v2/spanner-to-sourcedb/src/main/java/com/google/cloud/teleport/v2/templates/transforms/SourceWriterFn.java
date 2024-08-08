@@ -19,14 +19,12 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
-import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.InputRecordProcessor;
@@ -34,8 +32,11 @@ import com.google.cloud.teleport.v2.templates.utils.MySqlDao;
 import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
 import com.google.common.collect.ImmutableList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
@@ -137,7 +138,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     try {
       JsonNode keysJson = mapper.readTree(spannerRec.getMod().getKeysJson());
       String tableName = spannerRec.getTableName();
-      com.google.cloud.spanner.Key primaryKey = changeEventToPrimaryKey(tableName, keysJson);
+      com.google.cloud.spanner.Key primaryKey =
+          ChangeEventSpannerConvertor.changeEventToPrimaryKey(
+              tableName, ddl, keysJson, /* convertNameToLowerCase= */ false);
       String shadowTableName = shadowTablePrefix + tableName;
       boolean isSourceAhead = false;
 
@@ -167,182 +170,27 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     }
   }
 
-  private com.google.cloud.spanner.Key changeEventToPrimaryKey(
-      String tableName, JsonNode keysJson) {
-    com.google.cloud.spanner.Key.Builder pk = com.google.cloud.spanner.Key.newBuilder();
-
-    try {
-      Table table = ddl.table(tableName);
-      ImmutableList<IndexColumn> keyColumns = table.primaryKeys();
-
-      for (IndexColumn keyColumn : keyColumns) {
-        Column key = table.column(keyColumn.name());
-        Type keyColType = key.type();
-        String keyColName = key.name(); // .toLowerCase();
-        switch (keyColType.getCode()) {
-          case BOOL:
-          case PG_BOOL:
-            pk.append(
-                ChangeEventTypeConvertor.toBoolean(
-                    keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case INT64:
-          case PG_INT8:
-            pk.append(
-                ChangeEventTypeConvertor.toLong(keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case FLOAT64:
-          case PG_FLOAT8:
-            pk.append(
-                ChangeEventTypeConvertor.toDouble(keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case STRING:
-          case PG_VARCHAR:
-          case PG_TEXT:
-            pk.append(
-                ChangeEventTypeConvertor.toString(keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case NUMERIC:
-          case PG_NUMERIC:
-            pk.append(
-                ChangeEventTypeConvertor.toNumericBigDecimal(
-                    keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case JSON:
-          case PG_JSONB:
-            pk.append(
-                ChangeEventTypeConvertor.toString(keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case BYTES:
-          case PG_BYTEA:
-            pk.append(
-                ChangeEventTypeConvertor.toByteArray(
-                    keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case TIMESTAMP:
-          case PG_COMMIT_TIMESTAMP:
-          case PG_TIMESTAMPTZ:
-            pk.append(
-                ChangeEventTypeConvertor.toTimestamp(
-                    keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case DATE:
-          case PG_DATE:
-            pk.append(
-                ChangeEventTypeConvertor.toDate(keysJson, keyColName, /* requiredField= */ true));
-            break;
-            // TODO(b/179070999) -  Add support for other data types.
-          default:
-            throw new IllegalArgumentException(
-                "Column name(" + keyColName + ") has unsupported column type(" + keyColType + ")");
-        }
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to update last commit timestamp", e);
-    }
-    return pk.build();
-  }
-
   private Mutation getShadowTableMutation(
       String tableName,
       String shadowTableName,
       JsonNode keysJson,
       com.google.cloud.Timestamp commitTimestamp) {
-    Mutation.WriteBuilder mutationBuilder =
-        Mutation.newInsertOrUpdateBuilder(shadowTableName)
-            .set(Constants.PROCESSED_COMMIT_TS_COLUMN_NAME)
-            .to(commitTimestamp);
-    // TODO: Check to refactor and use ChangeEventTypeConvertor.mutationBuilderFromEvent.
+    Mutation.WriteBuilder mutationBuilder = null;
     try {
       Table table = ddl.table(tableName);
       ImmutableList<IndexColumn> keyColumns = table.primaryKeys();
-      com.google.cloud.spanner.Key.Builder pk = com.google.cloud.spanner.Key.newBuilder();
-
-      for (IndexColumn keyColumn : keyColumns) {
-        Column key = table.column(keyColumn.name());
-        Type keyColType = key.type();
-        String keyColName = key.name(); // .toLowerCase();
-        switch (keyColType.getCode()) {
-          case BOOL:
-          case PG_BOOL:
-            mutationBuilder
-                .set(keyColName)
-                .to(
-                    ChangeEventTypeConvertor.toBoolean(
-                        keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case INT64:
-          case PG_INT8:
-            mutationBuilder
-                .set(keyColName)
-                .to(
-                    ChangeEventTypeConvertor.toLong(
-                        keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case FLOAT64:
-          case PG_FLOAT8:
-            mutationBuilder
-                .set(keyColName)
-                .to(
-                    ChangeEventTypeConvertor.toDouble(
-                        keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case STRING:
-          case PG_VARCHAR:
-          case PG_TEXT:
-            mutationBuilder
-                .set(keyColName)
-                .to(
-                    ChangeEventTypeConvertor.toString(
-                        keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case NUMERIC:
-          case PG_NUMERIC:
-            mutationBuilder
-                .set(keyColName)
-                .to(
-                    ChangeEventTypeConvertor.toNumericBigDecimal(
-                        keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case JSON:
-          case PG_JSONB:
-            mutationBuilder
-                .set(keyColName)
-                .to(
-                    ChangeEventTypeConvertor.toString(
-                        keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case BYTES:
-          case PG_BYTEA:
-            mutationBuilder
-                .set(keyColName)
-                .to(
-                    ChangeEventTypeConvertor.toByteArray(
-                        keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case TIMESTAMP:
-          case PG_COMMIT_TIMESTAMP:
-          case PG_TIMESTAMPTZ:
-            mutationBuilder
-                .set(keyColName)
-                .to(
-                    ChangeEventTypeConvertor.toTimestamp(
-                        keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case DATE:
-          case PG_DATE:
-            mutationBuilder
-                .set(keyColName)
-                .to(
-                    ChangeEventTypeConvertor.toDate(
-                        keysJson, keyColName, /* requiredField= */ true));
-            break;
-            // TODO(b/179070999) -  Add support for other data types.
-          default:
-            throw new IllegalArgumentException(
-                "Column name(" + keyColName + ") has unsupported column type(" + keyColType + ")");
-        }
-      }
+      List<String> keyColumnNames =
+          keyColumns.stream().map(k -> k.name()).collect(Collectors.toList());
+      Set<String> keyColumnNamesSet = new HashSet<>(keyColumnNames);
+      mutationBuilder =
+          ChangeEventSpannerConvertor.mutationBuilderFromEvent(
+              shadowTableName,
+              table,
+              keysJson,
+              keyColumnNames,
+              keyColumnNamesSet,
+              /* convertNameToLowerCase= */ false);
+      mutationBuilder.set(Constants.PROCESSED_COMMIT_TS_COLUMN_NAME).to(commitTimestamp);
     } catch (Exception e) {
       LOG.error("Failed to update last commit timestamp", e);
     }

@@ -138,13 +138,17 @@ public class DataStreamToSpanner {
    * <p>Inherits standard configuration options.
    */
   public interface Options extends PipelineOptions, StreamingOptions {
+    @Deprecated
     @TemplateParameter.GcsReadFile(
         order = 1,
         groupName = "Source",
-        description = "File location for Datastream file output in Cloud Storage.",
+        optional = true,
+        description =
+            "[Deprecated] File location for Datastream file output in Cloud Storage. Support for this feature has been disabled."
+                + "Please set pubsub subscription instead.",
         helpText =
-            "The Cloud Storage file location that contains the Datastream files to replicate. Typically, "
-                + "this is the root path for a stream.")
+            "[Deprecated] The Cloud Storage file location that contains the Datastream files to replicate. Typically, "
+                + "this is the root path for a stream. Support for this feature has been disabled. Please set pubsub subscription instead.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -214,7 +218,6 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.PubsubSubscription(
         order = 8,
-        optional = true,
         description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
         helpText =
             "The Pub/Sub subscription being used in a Cloud Storage notification policy. The name"
@@ -371,21 +374,6 @@ public class DataStreamToSpanner {
     String getTransformationContextFilePath();
 
     void setTransformationContextFilePath(String value);
-
-    @TemplateParameter.Integer(
-        order = 22,
-        optional = true,
-        description = "Directory watch duration in minutes. Default: 10 minutes",
-        helpText =
-            "The Duration for which the pipeline should keep polling a directory in GCS. Datastream"
-                + "output files are arranged in a directory structure which depicts the timestamp "
-                + "of the event grouped by minutes. This parameter should be approximately equal to"
-                + "maximum delay which could occur between event occurring in source database and "
-                + "the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes")
-    @Default.Integer(10)
-    Integer getDirectoryWatchDurationInMinutes();
-
-    void setDirectoryWatchDurationInMinutes(Integer value);
 
     @TemplateParameter.Enum(
         order = 23,
@@ -608,13 +596,11 @@ public class DataStreamToSpanner {
           pipeline.apply(
               new DataStreamIO(
                       options.getStreamName(),
-                      options.getInputFilePattern(),
+                      null,
                       options.getInputFileFormat(),
                       options.getGcsPubSubSubscription(),
                       options.getRfcStartDateTime())
-                  .withFileReadConcurrency(options.getFileReadConcurrency())
-                  .withDirectoryWatchDuration(
-                      Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes())));
+                  .withFileReadConcurrency(options.getFileReadConcurrency()));
       jsonRecords =
           PCollectionList.of(datastreamJsonRecords)
               .and(dlqJsonRecords)

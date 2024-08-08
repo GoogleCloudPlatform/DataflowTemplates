@@ -32,11 +32,11 @@ import com.google.cloud.teleport.v2.coders.SplunkEventCoder;
 import com.google.cloud.teleport.v2.coders.SplunkWriteErrorCoder;
 import com.google.cloud.teleport.v2.templates.GCSToSplunk.GCSToSplunkOptions;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 import com.google.common.io.Resources;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
@@ -270,7 +270,7 @@ public final class GCSToSplunkTest {
 
     // Assert
     File file = new File(tmpFolder.getRoot().getAbsolutePath() + "errors.txt-00000-of-00001");
-    String fileContents = Files.toString(file, Charsets.UTF_8);
+    String fileContents = Files.toString(file, StandardCharsets.UTF_8);
     assertThat(fileContents).contains(stringifiedSplunkError);
   }
 }

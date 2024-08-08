@@ -381,11 +381,13 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     datastreamResourceManager.startStream(stream);
 
     // Construct template
+    createPubSubNotifications();
     String jobName = PipelineUtils.createJobName(testName);
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
             PipelineLauncher.LaunchConfig.builder(jobName, specPath)
-                .addParameter("inputFilePattern", getGcsPath(testName) + "/cdc/")
+                .addParameter("gcsPubSubSubscription", subscription.toString())
+                .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
                 .addParameter("streamName", stream.getName())
                 .addParameter("instanceId", spannerResourceManager.getInstanceId())
                 .addParameter("databaseId", spannerResourceManager.getDatabaseId())

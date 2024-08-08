@@ -18,10 +18,10 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.strin
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Iterator;
@@ -35,7 +35,7 @@ public class TestUtils {
   public static int wireMockResultSet(String tsvFilePath, ResultSet mockResultSet)
       throws IOException, SQLException {
     URL url = Resources.getResource(tsvFilePath);
-    List<String> lines = Resources.readLines(url, Charsets.UTF_8);
+    List<String> lines = Resources.readLines(url, StandardCharsets.UTF_8);
     String header = lines.get(0);
     String[] columnNames = header.split("\t");
     Map<String, Integer> colToIdx = new HashedMap();

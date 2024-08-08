@@ -24,12 +24,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -160,6 +163,80 @@ public class ChangeEventSpannerConvertorTest {
     return null;
   }
 
+  static Ddl getTestDdlForPrimaryKeyTest() {
+
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users2")
+            .column("first_name")
+            .string()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .string()
+            .size(5)
+            .endColumn()
+            .column("age")
+            .int64()
+            .endColumn()
+            .column("bool_field")
+            .bool()
+            .endColumn()
+            .column("bool_field2")
+            .bool()
+            .endColumn()
+            .column("int64_field")
+            .int64()
+            .endColumn()
+            .column("float32_field")
+            .float32()
+            .endColumn()
+            .column("float64_field")
+            .float64()
+            .endColumn()
+            .column("string_field")
+            .string()
+            .max()
+            .endColumn()
+            .column("json_field")
+            .json()
+            .endColumn()
+            .column("bytes_field")
+            .bytes()
+            .max()
+            .endColumn()
+            .column("timestamp_field")
+            .timestamp()
+            .endColumn()
+            .column("timestamp_field2")
+            .timestamp()
+            .endColumn()
+            .column("date_field")
+            .date()
+            .endColumn()
+            .column("date_field2")
+            .date()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .desc("last_name")
+            .asc("age")
+            .asc("bool_field")
+            .asc("bool_field2")
+            .asc("int64_field")
+            .asc("float64_field")
+            .asc("string_field")
+            .asc("bytes_field")
+            .asc("timestamp_field")
+            .asc("timestamp_field2")
+            .asc("date_field")
+            .asc("date_field2")
+            .end()
+            .endTable()
+            .build();
+    return ddl;
+  }
+
   @Test
   public void mutationFromEventBasic() throws Exception {
     Ddl ddl = getTestDdl();
@@ -190,5 +267,92 @@ public class ChangeEventSpannerConvertorTest {
     Map<String, Value> expected = getExpectedMapForTestChangeEvent();
 
     assertThat(actual, is(expected));
+  }
+
+  @Test
+  public void canConvertChangeEventToPrimaryKey() throws Exception {
+    Ddl ddl = getTestDdlForPrimaryKeyTest();
+    JSONObject changeEvent = getTestChangeEvent("Users2");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Key key =
+        ChangeEventSpannerConvertor.changeEventToPrimaryKey(
+            "Users2", ddl, ce, /* convertNameToLowerCase= */ true);
+    Iterable<Object> keyParts = key.getParts();
+    ArrayList<Object> expectedKeyParts = new ArrayList<>();
+    expectedKeyParts.add("A");
+    expectedKeyParts.add("B");
+    expectedKeyParts.add(Long.valueOf(10));
+    expectedKeyParts.add(Boolean.valueOf(true));
+    expectedKeyParts.add(Boolean.valueOf(true));
+    expectedKeyParts.add(Long.valueOf(2344));
+    expectedKeyParts.add(Double.valueOf(2344.34));
+    expectedKeyParts.add("testtest");
+    expectedKeyParts.add(ByteArray.copyFrom(new byte[] {120, 53, 56, 48, 48}));
+    expectedKeyParts.add(Timestamp.of(java.sql.Timestamp.valueOf("2020-12-30 4:12:12")));
+    expectedKeyParts.add(Timestamp.of(java.sql.Timestamp.valueOf("2020-12-30 4:12:12.1")));
+    expectedKeyParts.add(Date.parseDate("2020-12-30"));
+    expectedKeyParts.add(Date.parseDate("2020-12-30"));
+
+    assertThat(keyParts, is(expectedKeyParts));
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertChangeEventWithMissingKeyColToPrimaryKey() throws Exception {
+    Ddl ddl = getTestDdlForPrimaryKeyTest();
+    JSONObject changeEvent = getTestChangeEvent("Users2");
+    changeEvent.remove("last_name");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Key key =
+        ChangeEventSpannerConvertor.changeEventToPrimaryKey(
+            "Users2", ddl, ce, /* convertNameToLowerCase= */ true);
+    // Expect an exception since the event is missing a primary key
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertChangeEventWithInvalidTimestampToPrimaryKey() throws Exception {
+    Ddl ddl = getTestDdlForPrimaryKeyTest();
+    JSONObject changeEvent = getTestChangeEvent("Users2");
+    changeEvent.put("timestamp_field", "2020-12-asdf");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Key key =
+        ChangeEventSpannerConvertor.changeEventToPrimaryKey(
+            "Users2", ddl, ce, /* convertNameToLowerCase= */ true);
+    // Expect an exception since the event has invalid timestamp
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertChangeEventWithInvalidDateToPrimaryKey() throws Exception {
+    Ddl ddl = getTestDdlForPrimaryKeyTest();
+    JSONObject changeEvent = getTestChangeEvent("Users2");
+    changeEvent.put("date_field", "asdf");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Key key =
+        ChangeEventSpannerConvertor.changeEventToPrimaryKey(
+            "Users2", ddl, ce, /* convertNameToLowerCase= */ true);
+    // Expect an exception since the event has invalid timestamp
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertChangeEventWithInvalidInt64ToPrimaryKey() throws Exception {
+    Ddl ddl = getTestDdlForPrimaryKeyTest();
+    JSONObject changeEvent = getTestChangeEvent("Users2");
+    changeEvent.put("int64_field", "asdfas");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Key key =
+        ChangeEventSpannerConvertor.changeEventToPrimaryKey(
+            "Users2", ddl, ce, /* convertNameToLowerCase= */ true);
+    // Expect an exception since the event has invalid timestamp
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertChangeEventWithInvalidFloat64ToPrimaryKey() throws Exception {
+    Ddl ddl = getTestDdlForPrimaryKeyTest();
+    JSONObject changeEvent = getTestChangeEvent("Users2");
+    changeEvent.put("float64_field", "asdfasdf");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Key key =
+        ChangeEventSpannerConvertor.changeEventToPrimaryKey(
+            "Users2", ddl, ce, /* convertNameToLowerCase= */ true);
+    // Expect an exception since the event has invalid timestamp
   }
 }

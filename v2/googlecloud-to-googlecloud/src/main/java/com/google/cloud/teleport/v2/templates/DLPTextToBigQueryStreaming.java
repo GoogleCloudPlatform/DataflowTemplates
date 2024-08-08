@@ -31,7 +31,6 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.DLPTextToBigQueryStreaming.TokenizePipelineOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
-import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
 import com.google.privacy.dlp.v2.ContentItem;
 import com.google.privacy.dlp.v2.DeidentifyContentRequest;
@@ -47,6 +46,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -744,7 +744,7 @@ public class DLPTextToBigQueryStreaming {
 
     if (channel != null) {
 
-      br = new BufferedReader(Channels.newReader(channel, Charsets.UTF_8.name()));
+      br = new BufferedReader(Channels.newReader(channel, StandardCharsets.UTF_8.name()));
     }
 
     return br;

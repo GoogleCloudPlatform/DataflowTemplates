@@ -22,10 +22,10 @@ import static org.junit.Assert.assertThat;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.templates.DLPTextToBigQueryStreaming.CSVReader;
 import com.google.cloud.teleport.templates.DLPTextToBigQueryStreaming.TableRowProcessorDoFn;
-import com.google.common.base.Charsets;
 import com.google.privacy.dlp.v2.Table;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
@@ -82,7 +82,8 @@ public class DLPTextToBigQueryStreamingTest {
     fileContents.append(HEADER_ROW + "\n");
     fileContents.append(CONTENTS_ROW);
     Files.write(
-        new File(tokenizedFilePath).toPath(), fileContents.toString().getBytes(Charsets.UTF_8));
+        new File(tokenizedFilePath).toPath(),
+        fileContents.toString().getBytes(StandardCharsets.UTF_8));
   }
 
   @After

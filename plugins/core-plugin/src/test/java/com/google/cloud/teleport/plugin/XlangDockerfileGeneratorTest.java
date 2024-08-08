@@ -18,11 +18,11 @@ package com.google.cloud.teleport.plugin;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 import freemarker.template.TemplateException;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -50,7 +50,7 @@ public class XlangDockerfileGeneratorTest {
         new File(outputFolder.getAbsolutePath() + "/classes/containerName/Dockerfile");
 
     assertTrue(outputFile.exists());
-    String fileContents = Files.toString(outputFile, Charsets.UTF_8);
+    String fileContents = Files.toString(outputFile, StandardCharsets.UTF_8);
     assertThat(fileContents).contains("FROM a java container image");
     assertThat(fileContents).contains("=beam_version");
     assertThat(fileContents).contains("=py_version");
