@@ -118,6 +118,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         testName,
+        testName,
         schema,
         MYSQL_DRIVER,
         mySqlDriverGCSPath(),
@@ -149,6 +150,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         tableName,
+        tableName,
         schema,
         MYSQL_DRIVER,
         mySqlDriverGCSPath(),
@@ -178,6 +180,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
     // Run a simple IT
     simpleJdbcToBigQueryTest(
+        testName,
         testName,
         schema,
         POSTGRES_DRIVER,
@@ -210,6 +213,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     simpleJdbcToBigQueryTest(
+        testName,
         tableName,
         schema,
         POSTGRES_DRIVER,
@@ -242,6 +246,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         testName,
+        testName,
         schema,
         ORACLE_DRIVER,
         oracleDriverGCSPath(),
@@ -271,6 +276,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         testName,
+        testName,
         schema,
         MSSQL_DRIVER,
         msSqlDriverGCSPath(),
@@ -298,6 +304,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         testName,
+        testName,
         schema,
         POSTGRES_DRIVER,
         postgresDriverGCSPath(),
@@ -307,6 +314,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   private void simpleJdbcToBigQueryTest(
+      String testName,
       String tableName,
       JDBCResourceManager.JDBCSchema schema,
       String driverClassName,
