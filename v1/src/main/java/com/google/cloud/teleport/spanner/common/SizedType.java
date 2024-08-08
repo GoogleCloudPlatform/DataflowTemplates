@@ -86,6 +86,8 @@ public final class SizedType {
         return "text";
       case BYTES:
         return "BYTES(" + (size == -1 ? "MAX" : Integer.toString(size)) + ")";
+      case TOKENLIST:
+        return "TOKENLIST";
       case PG_BYTEA:
         return "bytea";
       case DATE:
@@ -212,6 +214,9 @@ public final class SizedType {
           }
           if (spannerType.equals("JSON")) {
             return t(Type.json(), null);
+          }
+          if (spannerType.equals("TOKENLIST")) {
+            return t(Type.tokenlist(), null);
           }
           if (spannerType.startsWith("ARRAY<")) {
             // Substring "ARRAY<xxx> or ARRAY<xxx>(vector_length)"
