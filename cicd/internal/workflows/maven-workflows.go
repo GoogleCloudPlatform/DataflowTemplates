@@ -49,11 +49,9 @@ type MavenFlags interface {
 	SkipSpotlessCheck() string
 	SkipIntegrationTests() string
 	FailAtTheEnd() string
-	ProduceErrors() string
 	RunIntegrationTests() string
 	RunIntegrationSmokeTests() string
 	RunLoadTests() string
-	RunRelease() string
 	ThreadCount(int) string
 	IntegrationTestParallelism(int) string
 	StaticBigtableInstance(string) string
@@ -107,10 +105,6 @@ func (*mvnFlags) FailAtTheEnd() string {
 	return "-fae"
 }
 
-func (*mvnFlags) ProduceErrors() string {
-	return "-e"
-}
-
 func (*mvnFlags) RunIntegrationTests() string {
 	return "-PtemplatesIntegrationTests,splunkDeps,missing-artifact-repos"
 }
@@ -121,10 +115,6 @@ func (*mvnFlags) RunIntegrationSmokeTests() string {
 
 func (*mvnFlags) RunLoadTests() string {
 	return "-PtemplatesLoadTests,splunkDeps,missing-artifact-repos"
-}
-
-func (*mvnFlags) RunRelease() string {
-	return "-PtemplatesRelease,splunkDeps,missing-artifact-repos"
 }
 
 // The number of modules Maven is going to build in parallel in a multi-module project.
