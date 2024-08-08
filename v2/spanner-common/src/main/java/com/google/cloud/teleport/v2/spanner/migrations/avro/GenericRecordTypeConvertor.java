@@ -112,10 +112,12 @@ public class GenericRecordTypeConvertor {
             schemaMapper.getSourceColumnName(namespace, spannerTableName, spannerColName);
         Type spannerColumnType =
             schemaMapper.getSpannerColumnType(namespace, spannerTableName, spannerColName);
-        LOG.debug(
-            "Transformer processing srcCol: {} spannerColumnType:{}",
+        LOG.info(
+            "Transformer processing srcCol: {} spannerColumnType:{}, srcColVal: {}, srcColSchema: {}",
             srcColName,
-            spannerColumnType);
+            spannerColumnType,
+            record.get(srcColName),
+            record.getSchema().getField(srcColName).schema());
 
         Value value =
             getSpannerValue(

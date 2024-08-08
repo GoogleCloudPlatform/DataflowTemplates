@@ -89,6 +89,7 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
       GenericRecordTypeConvertor genericRecordTypeConvertor =
           new GenericRecordTypeConvertor(
               iSchemaMapper(), "", sourceRow.shardId(), sourceDbToSpannerTransformer);
+      LOG.info("Record is" + record);
       Map<String, Value> values =
           genericRecordTypeConvertor.transformChangeEvent(record, srcTableName);
       if (values == null) {
