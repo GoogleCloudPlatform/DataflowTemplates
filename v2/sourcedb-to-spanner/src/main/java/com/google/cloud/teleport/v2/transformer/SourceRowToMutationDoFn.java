@@ -80,7 +80,7 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
   @ProcessElement
   public void processElement(ProcessContext c, MultiOutputReceiver output) {
     SourceRow sourceRow = c.element();
-    LOG.debug("Starting transformation for Source Row {}", sourceRow);
+    LOG.info("Starting transformation for Source Row {}", sourceRow);
 
     try {
       // TODO: update namespace in constructor when Spanner namespace support is added.
@@ -89,6 +89,7 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
       GenericRecordTypeConvertor genericRecordTypeConvertor =
           new GenericRecordTypeConvertor(
               iSchemaMapper(), "", sourceRow.shardId(), sourceDbToSpannerTransformer);
+      LOG.info("Record is" + record);
       Map<String, Value> values =
           genericRecordTypeConvertor.transformChangeEvent(record, srcTableName);
       if (values == null) {
@@ -98,14 +99,19 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
             .output(RowContext.builder().setRow(sourceRow).build());
         return;
       }
+      for (Map.Entry<String, Value> entry : values.entrySet()) {
+        LOG.info("Entry is " + entry.getKey() + " = " + entry.getValue());
+      }
 
       String spannerTableName = iSchemaMapper().getSpannerTableName("", srcTableName);
       // TODO: Move the mutation generation to writer. Create generic record here instead
       Mutation mutation = mutationFromMap(spannerTableName, values);
+      LOG.info("Mutation is " + mutation.toString());
       output
           .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS)
           .output(RowContext.builder().setRow(sourceRow).setMutation(mutation).build());
     } catch (Exception e) {
+      LOG.error("Error while processing element", e);
       transformerErrors.inc();
       output
           .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)

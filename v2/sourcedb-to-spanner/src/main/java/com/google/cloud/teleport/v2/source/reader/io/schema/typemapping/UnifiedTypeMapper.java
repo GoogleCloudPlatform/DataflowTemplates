@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.schema.typemapping;
 
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.MysqlMappingProvider;
+import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.PostgreSQLMappingProvider;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.Unsupported;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableMap;
@@ -36,7 +37,9 @@ public final class UnifiedTypeMapper {
    * TODO(vardhanvthigle): Support other mappings beyond Mysql.
    */
   private static final ImmutableMap<MapperType, ImmutableMap<String, UnifiedTypeMapping>> mappers =
-      ImmutableMap.of(MapperType.MYSQL, MysqlMappingProvider.getMapping());
+      ImmutableMap.of(
+          MapperType.MYSQL, MysqlMappingProvider.getMapping(),
+          MapperType.POSTGRESQL, PostgreSQLMappingProvider.getMapping());
 
   private final MapperType mapperType;
 
