@@ -214,4 +214,15 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   RpcPriority getRpcPriority();
 
   void setRpcPriority(RpcPriority rpcPriority);
+
+  @TemplateParameter.Boolean(
+      order = 17,
+      optional = true,
+      description = "Include spanner database id and instance id in output message",
+      helpText =
+          "Whether or not to include the spanner database id and instance id to read the change stream from in the output message data. Defaults to: false")
+  @Default.Boolean(false)
+  Boolean getIncludeSpannerSource();
+
+  void setIncludeSpannerSource(Boolean value);
 }

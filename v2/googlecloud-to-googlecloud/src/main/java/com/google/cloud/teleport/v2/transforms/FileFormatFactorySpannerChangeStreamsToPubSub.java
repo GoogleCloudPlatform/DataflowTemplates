@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import static com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToAvro.DataChangeRecordToAvroFn;
 import static com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToJson.DataChangeRecordToJsonTextFn;
 
+import autovalue.shaded.org.jetbrains.annotations.Nullable;
 import com.google.auto.value.AutoValue;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
@@ -61,6 +62,15 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
 
   protected abstract String pubsubTopicName();
 
+  @Nullable
+  protected abstract Boolean includeSpannerSource();
+
+  @Nullable
+  protected abstract String spannerDatabaseId();
+
+  @Nullable
+  protected abstract String spannerInstanceId();
+
   @Override
   public PCollection<byte[]> expand(PCollection<DataChangeRecord> records) {
     PCollection<byte[]> encodedRecords = null;
@@ -72,11 +82,15 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
       case "AVRO":
         AvroCoder<com.google.cloud.teleport.v2.DataChangeRecord> coder =
             AvroCoder.of(com.google.cloud.teleport.v2.DataChangeRecord.class);
+        DataChangeRecordToAvroFn.Builder builder = new DataChangeRecordToAvroFn.Builder();
+        if (includeSpannerSource()) {
+          builder
+              .setSpannerDatabaseId(spannerDatabaseId())
+              .setSpannerInstanceId(spannerInstanceId());
+        }
         encodedRecords =
             records
-                .apply(
-                    "Write DataChangeRecord into AVRO",
-                    MapElements.via(new DataChangeRecordToAvroFn()))
+                .apply("Write DataChangeRecord into AVRO", MapElements.via(builder.build()))
                 .apply(
                     "Convert encoded DataChangeRecord in AVRO to bytes to be saved into"
                         + " PubsubMessage.",
@@ -105,7 +119,12 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
             records
                 .apply(
                     "Write DataChangeRecord into JSON",
-                    MapElements.via(new DataChangeRecordToJsonTextFn()))
+                    MapElements.via(
+                        new DataChangeRecordToJsonTextFn.Builder()
+                            .setIncludeSpannerSource(includeSpannerSource())
+                            .setSpannerDatabaseId(spannerDatabaseId())
+                            .setSpannerInstanceId(spannerInstanceId())
+                            .build()))
                 .apply(
                     "Convert encoded DataChangeRecord in JSON to bytes to be saved into"
                         + " PubsubMessage.",
@@ -182,6 +201,12 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
     public abstract WriteToPubSubBuilder setPubsubAPI(String value);
 
     public abstract WriteToPubSubBuilder setPubsubTopicName(String value);
+
+    public abstract WriteToPubSubBuilder setIncludeSpannerSource(Boolean value);
+
+    public abstract WriteToPubSubBuilder setSpannerDatabaseId(String value);
+
+    public abstract WriteToPubSubBuilder setSpannerInstanceId(String value);
 
     abstract FileFormatFactorySpannerChangeStreamsToPubSub autoBuild();
 

@@ -83,6 +83,8 @@
           { "name" : "totalStreamTimeMillis", "type":"long"},
           { "name" : "numberOfRecordsRead","type":"long"}
         ]
-        }],"default":null}
+        }],"default":null},
+        {"name": "spannerDatabaseId", "type": ["null", "string"], "default": null },
+        {"name": "spannerInstanceId", "type": ["null", "string"], "default": null }
     ]
     }
