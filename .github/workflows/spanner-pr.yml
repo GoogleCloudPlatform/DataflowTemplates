@@ -30,6 +30,7 @@ on:
       - 'v2/spanner-migrations-sdk/**'
       - 'v2/spanner-custom-shard/**'
       - 'v2/sourcedb-to-spanner/**'
+      - 'v2/spanner-to-sourcedb/**'
   schedule:
   - cron: "0 */12 * * *"
   workflow_dispatch:
@@ -116,6 +117,8 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: GoogleCloudPlatform/DataflowTemplates
         files: 'target/site/jacoco-aggregate/jacoco.xml'
+        # Temp fix for https://github.com/codecov/codecov-action/issues/1487
+        version: v0.6.0
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_integration_smoke_tests_templates:

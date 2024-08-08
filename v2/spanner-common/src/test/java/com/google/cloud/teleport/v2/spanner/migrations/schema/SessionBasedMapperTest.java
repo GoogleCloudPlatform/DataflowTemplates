@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -121,6 +122,21 @@ public class SessionBasedMapperTest {
     String shardedSessionFilePath =
         Paths.get(Resources.getResource("session-file-sharded.json").getPath()).toString();
     this.shardedMapper = new SessionBasedMapper(shardedSessionFilePath, shardedDdl);
+  }
+
+  @Test
+  public void testGetSourceTableName() {
+    String srcTableName = "new_cart";
+    String result = mapper.getSourceTableName("", srcTableName);
+    String expectedTableName = "cart";
+    assertEquals(expectedTableName, result);
+
+    srcTableName = "new_people";
+    result = mapper.getSourceTableName("", srcTableName);
+    expectedTableName = "people";
+    assertEquals(expectedTableName, result);
+
+    assertThrows(NoSuchElementException.class, () -> mapper.getSourceTableName("", "xyz"));
   }
 
   @Test
@@ -261,6 +277,12 @@ public class SessionBasedMapperTest {
         () -> erronousMapper.getShardIdColumnName("", "nonexistent_table"));
   }
 
+  @Test
+  public void testNonShardedGetShardIdColumnName() {
+    String cartShardId = mapper.getShardIdColumnName("", "new_cart");
+    assertNull(cartShardId);
+  }
+
   @Test(expected = NoSuchElementException.class)
   public void testGetSpannerColumnsMissingTable() {
     String spannerTable = "WrongTableName";
@@ -302,12 +324,26 @@ public class SessionBasedMapperTest {
     assertEquals(2, sourceTablesToMigrate.size());
   }
 
+  @Test
+  public void testIgnoreStrictCheck() {
+    // Expected to fail as spanner tables mentioned in session file do not exist
+    SessionBasedMapper emptymapper =
+        new SessionBasedMapper(
+            Paths.get(Resources.getResource("session-file-empty.json").getPath()).toString(),
+            ddl,
+            false);
+    List<String> sourceTablesToMigrate = emptymapper.getSourceTablesToMigrate("");
+    assertTrue(sourceTablesToMigrate.isEmpty());
+  }
+
   @Test(expected = InputMismatchException.class)
   public void testSourceTablesToMigrateEmpty() {
     // Expected to fail as spanner tables mentioned in session file do not exist
     SessionBasedMapper emptymapper =
         new SessionBasedMapper(
-            Paths.get(Resources.getResource("session-file-empty.json").getPath()).toString(), ddl);
+            Paths.get(Resources.getResource("session-file-empty.json").getPath()).toString(),
+            ddl,
+            true);
     List<String> sourceTablesToMigrate = emptymapper.getSourceTablesToMigrate("");
   }
 

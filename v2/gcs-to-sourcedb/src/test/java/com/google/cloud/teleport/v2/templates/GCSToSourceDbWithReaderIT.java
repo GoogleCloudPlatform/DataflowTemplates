@@ -41,8 +41,8 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.it.jdbc.CustomMySQLResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -61,15 +61,15 @@ public class GCSToSourceDbWithReaderIT extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(GCSToSourceDbWithReaderIT.class);
 
   private static final String SPANNER_DDL_RESOURCE = "GCSToSourceDbWithReaderIT/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURSE = "GCSToSourceDbWithReaderIT/session.json";
+  private static final String SESSION_FILE_RESOURCE = "GCSToSourceDbWithReaderIT/session.json";
 
   private static final String TABLE = "Users";
-  private static HashSet<GCSToSourceDbWithReaderIT> testInstances = new HashSet<>();
+  private static final HashSet<GCSToSourceDbWithReaderIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo writerJobInfo;
   private static PipelineLauncher.LaunchInfo readerJobInfo;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
-  private static CustomMySQLResourceManager jdbcResourceManager;
+  private static MySQLResourceManager jdbcResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
 
@@ -84,10 +84,10 @@ public class GCSToSourceDbWithReaderIT extends TemplateTestBase {
     synchronized (GCSToSourceDbWithReaderIT.class) {
       testInstances.add(this);
       if (writerJobInfo == null) {
-        spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
+        spannerResourceManager = createSpannerDatabase();
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = CustomMySQLResourceManager.builder(testName).build();
+        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
         createMySQLSchema(jdbcResourceManager);
 
         gcsResourceManager =
@@ -95,7 +95,7 @@ public class GCSToSourceDbWithReaderIT extends TemplateTestBase {
                 .build();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
         gcsResourceManager.uploadArtifact(
-            "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());
+            "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
 
         launchReaderDataflowJob();
         launchWriterDataflowJob();
@@ -122,7 +122,7 @@ public class GCSToSourceDbWithReaderIT extends TemplateTestBase {
   }
 
   @Test
-  public void testGCSToSource() throws IOException, InterruptedException {
+  public void testGCSToSource() throws InterruptedException {
     assertThatPipeline(readerJobInfo).isRunning();
     assertThatPipeline(writerJobInfo).isRunning();
     // Write row in Spanner
@@ -153,8 +153,7 @@ public class GCSToSourceDbWithReaderIT extends TemplateTestBase {
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
   }
 
-  private SpannerResourceManager createSpannerDatabase(String spannerDdlResourceFile)
-      throws IOException {
+  private SpannerResourceManager createSpannerDatabase() throws IOException {
     SpannerResourceManager spannerResourceManager =
         SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
             .maybeUseStaticInstance()
@@ -163,7 +162,8 @@ public class GCSToSourceDbWithReaderIT extends TemplateTestBase {
         String.join(
             " ",
             Resources.readLines(
-                Resources.getResource(spannerDdlResourceFile), StandardCharsets.UTF_8));
+                Resources.getResource(GCSToSourceDbWithReaderIT.SPANNER_DDL_RESOURCE),
+                StandardCharsets.UTF_8));
     ddl = ddl.trim();
     String[] ddls = ddl.split(";");
     for (String d : ddls) {
@@ -184,7 +184,7 @@ public class GCSToSourceDbWithReaderIT extends TemplateTestBase {
     return spannerMetadataResourceManager;
   }
 
-  private void createMySQLSchema(CustomMySQLResourceManager jdbcResourceManager) {
+  private void createMySQLSchema(MySQLResourceManager jdbcResourceManager) {
     HashMap<String, String> columns = new HashMap<>();
     columns.put("id", "INT NOT NULL");
     columns.put("name", "VARCHAR(25)");
@@ -238,7 +238,7 @@ public class GCSToSourceDbWithReaderIT extends TemplateTestBase {
   }
 
   private void createAndUploadShardConfigToGcs(
-      GcsResourceManager gcsResourceManager, CustomMySQLResourceManager jdbcResourceManager)
+      GcsResourceManager gcsResourceManager, MySQLResourceManager jdbcResourceManager)
       throws IOException {
     Shard shard = new Shard();
     shard.setLogicalShardId("Shard1");
@@ -247,7 +247,7 @@ public class GCSToSourceDbWithReaderIT extends TemplateTestBase {
     shard.setPassword(jdbcResourceManager.getPassword());
     shard.setPort(String.valueOf(jdbcResourceManager.getPort()));
     shard.setDbName(jdbcResourceManager.getDatabaseName());
-    JsonObject jsObj = (JsonObject) new Gson().toJsonTree(shard).getAsJsonObject();
+    JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
     jsObj.remove("secretManagerUri"); // remove field secretManagerUri
     JsonArray ja = new JsonArray();
     ja.add(jsObj);

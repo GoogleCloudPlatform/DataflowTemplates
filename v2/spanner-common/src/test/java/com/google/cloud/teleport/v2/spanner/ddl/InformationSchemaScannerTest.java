@@ -146,7 +146,8 @@ public class InformationSchemaScannerTest {
         Statement.of(
             "SELECT t.table_name, t.parent_table_name, t.on_delete_action"
                 + " FROM information_schema.tables AS t"
-                + " WHERE t.table_catalog = '' AND t.table_schema = ''");
+                + " WHERE t.table_catalog = '' AND t.table_schema = ''"
+                + " AND t.table_type='BASE TABLE'");
     ResultSet listTablesResultSet = mock(ResultSet.class);
     when(context.executeQuery(listTables)).thenReturn(listTablesResultSet);
     when(listTablesResultSet.next()).thenReturn(true, true, false);
@@ -168,12 +169,15 @@ public class InformationSchemaScannerTest {
     ResultSet listColumnsResultSet = mock(ResultSet.class);
 
     when(context.executeQuery(listColumns)).thenReturn(listColumnsResultSet);
-    when(listColumnsResultSet.next()).thenReturn(true, true, true, true, true, false);
+    when(listColumnsResultSet.next()).thenReturn(true, true, true, true, true, true, true, false);
     when(listColumnsResultSet.getString(0))
-        .thenReturn("singer", "singer", "album", "album", "album");
+        .thenReturn("singer", "singer", "album", "album", "album", "album", "album");
     when(listColumnsResultSet.getString(1))
-        .thenReturn("singerId", "singerName", "singerId", "albumId", "albumName");
-    when(listColumnsResultSet.getString(3)).thenReturn("STRING(50)");
+        .thenReturn(
+            "singerId", "singerName", "singerId", "albumId", "albumName", "rating", "ratings");
+    when(listColumnsResultSet.getString(3))
+        .thenReturn(
+            "INT64", "STRING(50)", "INT64", "INT64", "STRING(50)", "FLOAT32", "ARRAY<FLOAT32>");
     when(listColumnsResultSet.getString(4)).thenReturn("NO");
     when(listColumnsResultSet.getString(5)).thenReturn("NO");
     when(listColumnsResultSet.isNull(6)).thenReturn(true);
@@ -302,7 +306,8 @@ public class InformationSchemaScannerTest {
             "SELECT t.table_name, t.parent_table_name, t.on_delete_action FROM"
                 + " information_schema.tables AS t"
                 + " WHERE t.table_schema NOT IN "
-                + "('information_schema', 'spanner_sys', 'pg_catalog')");
+                + "('information_schema', 'spanner_sys', 'pg_catalog')"
+                + " AND t.table_type='BASE TABLE'");
     ResultSet listTablesResultSet = mock(ResultSet.class);
     when(context.executeQuery(listTables)).thenReturn(listTablesResultSet);
     when(listTablesResultSet.next()).thenReturn(true, true, false);
@@ -325,12 +330,21 @@ public class InformationSchemaScannerTest {
     ResultSet listColumnsResultSet = mock(ResultSet.class);
 
     when(context.executeQuery(listColumns)).thenReturn(listColumnsResultSet);
-    when(listColumnsResultSet.next()).thenReturn(true, true, true, true, true, false);
+    when(listColumnsResultSet.next()).thenReturn(true, true, true, true, true, true, true, false);
     when(listColumnsResultSet.getString(0))
-        .thenReturn("singer", "singer", "album", "album", "album");
+        .thenReturn("singer", "singer", "album", "album", "album", "album", "album");
     when(listColumnsResultSet.getString(1))
-        .thenReturn("singerId", "singerName", "singerId", "albumId", "albumName");
-    when(listColumnsResultSet.getString(3)).thenReturn("character varying(50)");
+        .thenReturn(
+            "singerId", "singerName", "singerId", "albumId", "albumName", "rating", "ratings");
+    when(listColumnsResultSet.getString(3))
+        .thenReturn(
+            "bigint",
+            "character varying(50)",
+            "bigint",
+            "bigint",
+            "character varying(50)",
+            "real",
+            "real[]");
     when(listColumnsResultSet.getString(4)).thenReturn("NO");
     when(listColumnsResultSet.getString(5)).thenReturn("NO");
     when(listColumnsResultSet.isNull(6)).thenReturn(true);
@@ -353,16 +367,18 @@ public class InformationSchemaScannerTest {
     Ddl ddl = informationSchemaScanner.scan();
     String expectedDdl =
         "CREATE TABLE `singer` (\n"
-            + "\t`singerId`                              STRING(50) NOT NULL,\n"
+            + "\t`singerId`                              INT64 NOT NULL,\n"
             + "\t`singerName`                            STRING(50) NOT NULL OPTIONS (option1=\"SomeName\"),\n"
             + ") PRIMARY KEY (`singerId` ASC)\n"
             + "CREATE INDEX `PRIMARY_KEY` ON `singer`()\n"
             + "CREATE INDEX `index1` ON `singer`() STORING (`singerName`)\n"
             + "\n"
             + "CREATE TABLE `album` (\n"
-            + "\t`singerId`                              STRING(50) NOT NULL,\n"
-            + "\t`albumId`                               STRING(50) NOT NULL,\n"
+            + "\t`singerId`                              INT64 NOT NULL,\n"
+            + "\t`albumId`                               INT64 NOT NULL,\n"
             + "\t`albumName`                             STRING(50) NOT NULL,\n"
+            + "\t`rating`                                FLOAT32 NOT NULL,\n"
+            + "\t`ratings`                               ARRAY<FLOAT32> NOT NULL,\n"
             + "\tCONSTRAINT `check1` CHECK (albumName!=NULL),\n"
             + ") PRIMARY KEY (`albumId` DESC),\n"
             + "INTERLEAVE IN PARENT `singer` ON DELETE CASCADE\n"
@@ -387,16 +403,18 @@ public class InformationSchemaScannerTest {
     Ddl ddl = informationSchemaScanner.scan();
     String expectedDdl =
         "CREATE TABLE \"singer\" (\n"
-            + "\t\"singerId\"                              character varying(50) NOT NULL,\n"
+            + "\t\"singerId\"                              bigint NOT NULL,\n"
             + "\t\"singerName\"                            character varying(50) NOT NULL OPTIONS (option1='SomeName'),\n"
             + "\tPRIMARY KEY ()\n"
             + ")\n"
             + "CREATE UNIQUE INDEX \"index1\" ON \"singer\"() INCLUDE (\"singerName\")\n"
             + "\n"
             + "CREATE TABLE \"album\" (\n"
-            + "\t\"singerId\"                              character varying(50) NOT NULL,\n"
-            + "\t\"albumId\"                               character varying(50) NOT NULL,\n"
+            + "\t\"singerId\"                              bigint NOT NULL,\n"
+            + "\t\"albumId\"                               bigint NOT NULL,\n"
             + "\t\"albumName\"                             character varying(50) NOT NULL,\n"
+            + "\t\"rating\"                                real NOT NULL,\n"
+            + "\t\"ratings\"                               real[] NOT NULL,\n"
             + "\tCONSTRAINT \"check1\" CHECK (albumName!=NULL),\n"
             + "\tPRIMARY KEY ()\n"
             + ") \n"

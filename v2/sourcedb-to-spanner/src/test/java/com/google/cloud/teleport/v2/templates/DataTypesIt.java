@@ -85,6 +85,7 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
             null,
             mySQLResourceManager,
             spannerResourceManager,
+            null,
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
@@ -175,6 +176,7 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
     expectedData.put("enum", createRows("enum", "1", "NULL"));
     expectedData.put("float", createRows("float", "45.56", "3.4E38", "-3.4E38", "NULL"));
     expectedData.put("int", createRows("int", "30", "2147483647", "-2147483648", "NULL"));
+    expectedData.put("json", createRows("json", "{\"k1\": \"v1\"}", "NULL"));
     expectedData.put(
         "longblob", createRows("longblob", "eDU4MDA=", repeatString("/", 87380), "NULL"));
     expectedData.put(
@@ -188,7 +190,7 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
         createRows("mediumtext", "mediumtext", repeatString("a", 33) + "...", "NULL"));
     expectedData.put("smallint", createRows("smallint", "15", "32767", "-32768", "NULL"));
     expectedData.put("text", createRows("text", "xyz", repeatString("a", 33) + "...", "NULL"));
-    expectedData.put("time", createRows("time", "15:50:00", "NULL"));
+    expectedData.put("time", createRows("time", "15:50:00", "838:59:59", "-838:59:59", "NULL"));
     expectedData.put(
         "timestamp",
         createRows(

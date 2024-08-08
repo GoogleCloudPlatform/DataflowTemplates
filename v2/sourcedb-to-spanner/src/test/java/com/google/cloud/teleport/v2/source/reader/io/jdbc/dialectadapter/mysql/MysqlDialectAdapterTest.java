@@ -30,6 +30,7 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryEx
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.InformationSchemaCols;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.InformationSchemaStatsCols;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
@@ -39,6 +40,7 @@ import com.google.common.collect.ImmutableMap;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTransientConnectionException;
@@ -200,7 +202,10 @@ public class MysqlDialectAdapterTest {
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.createStatement()).thenReturn(mockStatement);
-    when(mockStatement.executeQuery("SHOW TABLES in testDB")).thenReturn(mockResultSet);
+    when(mockStatement.executeQuery(
+            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE "
+                + "TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = 'testDB' "))
+        .thenReturn(mockResultSet);
     OngoingStubbing stubGetString = when(mockResultSet.getString(1));
     for (String tbl : testTables) {
       stubGetString = stubGetString.thenReturn(tbl);
@@ -250,7 +255,10 @@ public class MysqlDialectAdapterTest {
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.createStatement()).thenReturn(mockStatement);
-    when(mockStatement.executeQuery("SHOW TABLES in testDB")).thenReturn(mockResultSet);
+    when(mockStatement.executeQuery(
+            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE "
+                + "TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = 'testDB' "))
+        .thenReturn(mockResultSet);
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getString(1)).thenThrow(new SQLException("test"));
 
@@ -264,11 +272,12 @@ public class MysqlDialectAdapterTest {
   @Test
   public void testDiscoverIndexesBasic() throws SQLException, RetriableSchemaDiscoveryException {
     ImmutableList<String> testTables = ImmutableList.of("testTable1");
-    ImmutableList<String> colTypes = ImmutableList.of("varchar", "integer");
+    ImmutableList<String> colTypes =
+        ImmutableList.of("float", "integer", "char", "varbinary", "binary");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         ImmutableList.of(
             SourceColumnIndexInfo.builder()
-                .setColumnName("testCol1")
+                .setColumnName("testCol0")
                 .setIndexName("testIndex1")
                 .setIsUnique(false)
                 .setIsPrimary(false)
@@ -284,16 +293,164 @@ public class MysqlDialectAdapterTest {
                 .setCardinality(42L)
                 .setIndexType(IndexType.NUMERIC)
                 .setOrdinalPosition(1)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testCol2")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(42L)
+                .setIndexType(IndexType.STRING)
+                .setOrdinalPosition(2)
+                .setCollationReference(
+                    CollationReference.builder()
+                        .setDbCharacterSet("utf8mb4")
+                        .setDbCollation("utf8mb4_0900_ai_ci")
+                        .setPadSpace(false)
+                        .build())
+                .setStringMaxLength(42)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testColVarBinary")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(42L)
+                .setIndexType(IndexType.STRING)
+                .setOrdinalPosition(3)
+                .setCollationReference(
+                    CollationReference.builder()
+                        .setDbCharacterSet("binary")
+                        .setDbCollation("binary")
+                        .setPadSpace(false)
+                        .build())
+                .setStringMaxLength(100)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testColBinary")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(42L)
+                .setIndexType(IndexType.STRING)
+                .setOrdinalPosition(4)
+                .setCollationReference(
+                    CollationReference.builder()
+                        .setDbCharacterSet("binary")
+                        .setDbCollation("binary")
+                        .setPadSpace(false)
+                        .build())
+                .setStringMaxLength(255)
                 .build());
 
     final SourceSchemaReference sourceSchemaReference =
         SourceSchemaReference.builder().setDbName("testDB").build();
     ResultSet mockResultSet = mock(ResultSet.class);
+    ResultSetMetaData mockMetadata = mock(ResultSetMetaData.class);
+
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
     doNothing().when(mockPreparedStatement).setString(1, testTables.get(0));
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
 
+    when(mockResultSet.getMetaData()).thenReturn(mockMetadata);
+    when(mockMetadata.getColumnCount()).thenReturn(InformationSchemaStatsCols.colList().size());
+    for (int i = 0; i < InformationSchemaStatsCols.colList().size(); i++) {
+      when(mockMetadata.getColumnName(i + 1))
+          .thenReturn(InformationSchemaStatsCols.colList().get(i));
+    }
+
+    wireMockResultSet(colTypes, expectedSourceColumnIndexInfos, mockResultSet);
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoveredIndexes =
+        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+            .discoverTableIndexes(mockDataSource, sourceSchemaReference, testTables);
+
+    assertThat(discoveredIndexes)
+        .isEqualTo(ImmutableMap.of(testTables.get(0), expectedSourceColumnIndexInfos));
+  }
+
+  @Test
+  public void testDiscoverIndexes5_7() throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableList<String> testTables = ImmutableList.of("testTable1");
+    ImmutableList<String> colTypes = ImmutableList.of("integer", "char", "varBinary");
+    ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
+        ImmutableList.of(
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testCol0")
+                .setIndexName("testIndex1")
+                .setIsUnique(false)
+                .setIsPrimary(false)
+                .setCardinality(42L)
+                .setOrdinalPosition(1)
+                .setIndexType(IndexType.NUMERIC)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testCol1")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(42L)
+                .setIndexType(IndexType.STRING)
+                .setOrdinalPosition(2)
+                .setCollationReference(
+                    CollationReference.builder()
+                        .setDbCharacterSet("big5")
+                        .setDbCollation("big5_chinese_ci")
+                        .setPadSpace(true)
+                        .build())
+                .setStringMaxLength(42)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testColVarBinary")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(42L)
+                .setIndexType(IndexType.STRING)
+                .setOrdinalPosition(3)
+                .setCollationReference(
+                    CollationReference.builder()
+                        .setDbCharacterSet("binary")
+                        .setDbCollation("binary")
+                        .setPadSpace(false)
+                        .build())
+                .setStringMaxLength(100)
+                .build());
+
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
+    ResultSet mockResultSet = mock(ResultSet.class);
+    ResultSetMetaData mockMetadata = mock(ResultSetMetaData.class);
+    when(mockResultSet.getMetaData()).thenReturn(mockMetadata);
+    ImmutableList<String> cols =
+        InformationSchemaStatsCols.colList().stream()
+            .filter(c -> !c.equals(InformationSchemaStatsCols.PAD_SPACE_COL))
+            .collect(ImmutableList.toImmutableList());
+    when(mockMetadata.getColumnCount()).thenReturn(cols.size());
+    for (int i = 0; i < cols.size(); i++) {
+      when(mockMetadata.getColumnName(i + 1)).thenReturn(cols.get(i));
+    }
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    doNothing().when(mockPreparedStatement).setString(1, testTables.get(0));
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+
+    wireMockResultSet(colTypes, expectedSourceColumnIndexInfos, mockResultSet);
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoveredIndexes =
+        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+            .discoverTableIndexes(mockDataSource, sourceSchemaReference, testTables);
+
+    assertThat(discoveredIndexes)
+        .isEqualTo(ImmutableMap.of(testTables.get(0), expectedSourceColumnIndexInfos));
+  }
+
+  private static void wireMockResultSet(
+      ImmutableList<String> colTypes,
+      ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos,
+      ResultSet mockResultSet)
+      throws SQLException {
     OngoingStubbing stubGetColName =
         when(mockResultSet.getString(InformationSchemaStatsCols.COL_NAME_COL));
     for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
@@ -325,18 +482,63 @@ public class MysqlDialectAdapterTest {
     for (String colType : colTypes) {
       stubGetColType = stubGetColType.thenReturn(colType);
     }
+
+    OngoingStubbing stubCharMaxLengthCol =
+        when(mockResultSet.getInt(InformationSchemaStatsCols.CHAR_MAX_LENGTH_COL));
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      stubCharMaxLengthCol =
+          stubCharMaxLengthCol.thenReturn(
+              (info.stringMaxLength() == null) ? 0 : info.stringMaxLength());
+    }
+    // Note that CharMaxLength is the only integer column in this query till now.
+    OngoingStubbing stubWasNull = when(mockResultSet.wasNull());
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      stubWasNull = stubWasNull.thenReturn(info.stringMaxLength() == null);
+    }
+
+    OngoingStubbing stubCharSetCol =
+        when(mockResultSet.getString(InformationSchemaStatsCols.CHARACTER_SET_COL));
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      String ret =
+          (info.collationReference() == null) ? null : info.collationReference().dbCharacterSet();
+      if (info.columnName() == "testColVarBinary") {
+        // For columns like varBinary, the charset is null in information schema, but the db uses
+        // "binary" charset and collation.
+        ret = null;
+      }
+      stubCharSetCol = stubCharSetCol.thenReturn(ret);
+    }
+    OngoingStubbing stubCollationCol =
+        when(mockResultSet.getString(InformationSchemaStatsCols.COLLATION_COL));
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      String ret =
+          (info.collationReference() == null) ? null : info.collationReference().dbCollation();
+      if (info.columnName() == "testColVarBinary") {
+        // For columns like varBinary, the charset is null in information schema, but the db uses
+        // "binary" charset and collation.
+        ret = null;
+      }
+      stubCollationCol = stubCollationCol.thenReturn(ret);
+    }
+    OngoingStubbing stubPadSpaceCol =
+        when(mockResultSet.getString(InformationSchemaStatsCols.PAD_SPACE_COL));
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      String ret =
+          (info.collationReference() == null)
+              ? null
+              : (info.collationReference().padSpace() ? "PAD SPACE" : "NO PAD");
+      if (info.columnName() == "testColVarBinary") {
+        // For columns like varBinary, the charset is null in information schema, but the db uses
+        // "binary" charset and collation.
+        ret = null;
+      }
+      stubPadSpaceCol = stubPadSpaceCol.thenReturn(ret);
+    }
     OngoingStubbing stubNext = when(mockResultSet.next());
     for (long i = 0; i < expectedSourceColumnIndexInfos.size(); i++) {
       stubNext = stubNext.thenReturn(true);
     }
     stubNext = stubNext.thenReturn(false);
-
-    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoveredIndexes =
-        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
-            .discoverTableIndexes(mockDataSource, sourceSchemaReference, testTables);
-
-    assertThat(discoveredIndexes)
-        .isEqualTo(ImmutableMap.of(testTables.get(0), expectedSourceColumnIndexInfos));
   }
 
   @Test
@@ -345,7 +547,7 @@ public class MysqlDialectAdapterTest {
             MysqlDialectAdapter.getIndexDiscoveryQuery(
                 SourceSchemaReference.builder().setDbName("testDB").build()))
         .isEqualTo(
-            "SELECT stats.COLUMN_NAME,stats.INDEX_NAME,stats.SEQ_IN_INDEX,stats.NON_UNIQUE,stats.CARDINALITY,cols.DATA_TYPE FROM INFORMATION_SCHEMA.STATISTICS stats JOIN INFORMATION_SCHEMA.COLUMNS cols ON stats.table_schema = cols.table_schema AND stats.table_name = cols.table_name AND stats.column_name = cols.column_name WHERE stats.TABLE_SCHEMA = 'testDB' AND stats.TABLE_NAME = ?");
+            "SELECT * FROM INFORMATION_SCHEMA.STATISTICS stats JOIN INFORMATION_SCHEMA.COLUMNS cols ON stats.table_schema = cols.table_schema AND stats.table_name = cols.table_name AND stats.column_name = cols.column_name LEFT JOIN INFORMATION_SCHEMA.COLLATIONS collations ON cols.COLLATION_NAME = collations.COLLATION_NAME WHERE stats.TABLE_SCHEMA = 'testDB' AND stats.TABLE_NAME = ?");
   }
 
   @Test
@@ -407,6 +609,96 @@ public class MysqlDialectAdapterTest {
               new MysqlDialectAdapter(MySqlVersion.DEFAULT)
                   .discoverTableIndexes(mockDataSource, sourceSchemaReference, testTables));
     }
+  }
+
+  @Test
+  public void testGetReadQuery() {
+    String testTable = "testTable";
+    ImmutableList<String> cols = ImmutableList.of("col_1", "col_2");
+    assertThat(new MysqlDialectAdapter(MySqlVersion.DEFAULT).getReadQuery(testTable, cols))
+        .isEqualTo(
+            "select * from testTable WHERE ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
+  }
+
+  @Test
+  public void testGetCountQuery() {
+    String testTable = "testTable";
+    ImmutableList<String> cols = ImmutableList.of("col_1", "col_2");
+    Long timeoutMillis = 42L;
+    assertThat(
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+                .getCountQuery(testTable, cols, timeoutMillis))
+        .isEqualTo(
+            "select /*+ MAX_EXECUTION_TIME(42) */ COUNT(*) from testTable WHERE ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
+  }
+
+  @Test
+  public void testGetBoundaryQuery() {
+    String testTable = "testTable";
+    ImmutableList<String> cols = ImmutableList.of("col_1", "col_2");
+    assertThat(
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT).getBoundaryQuery(testTable, cols, "col3"))
+        .isEqualTo(
+            "select MIN(col3),MAX(col3) from testTable WHERE ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
+  }
+
+  @Test
+  public void testCheckTimeoutException() {
+    MysqlDialectAdapter mysqlDialectAdapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
+    //  ER_QUERY_INTERRUPTED;
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "70100")))
+        .isTrue();
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "dummy", 1317)))
+        .isTrue();
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "HY000", 3024)))
+        .isTrue();
+    //  https://bugs.mysql.com/bug.php?id=96537
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "dummy", 1028)))
+        .isTrue();
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "dummy", 10930)))
+        .isTrue();
+    // Non-Timeout errors
+    // ER_SYNTAX_ERROR.
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", "42000", 1149)))
+        .isFalse();
+    // Null Check.
+    assertThat(mysqlDialectAdapter.checkForTimeout(new SQLException("testReason", null, 1149)))
+        .isFalse();
+  }
+
+  @Test
+  public void testPrepareCollationsOrderQuery() {
+    String originalQuery =
+        "SET @db_charset = 'charset_replacement_tag';\n"
+            + " -- You have a blank line below and a comment here.\n"
+            + "SET @db_collation = 'collation_replacement_tag';\n\n"
+            + "  \n"
+            + "SELECT * FROM my_table1;\n"
+            + "-- This is another comment\n"
+            + " -- This is uet another comment!\n"
+            + "SELECT * FROM my_table2;";
+    String expectedQuery =
+        "SET @db_charset = 'utf8mb4';\n"
+            + "SET @db_collation = 'utf8mb4_general_ci';\n"
+            + "SELECT * FROM my_table1;\n"
+            + "SELECT * FROM my_table2;";
+
+    String dbCharset = "utf8mb4";
+    String dbCollation = "utf8mb4_general_ci";
+
+    String processedQuery =
+        (new MysqlDialectAdapter(MySqlVersion.DEFAULT))
+            .prepareCollationsOrderQuery(originalQuery, dbCharset, dbCollation);
+
+    assertThat(processedQuery).isEqualTo(expectedQuery);
+  }
+
+  @Test
+  public void testResourceAsString() {
+    String query = MysqlDialectAdapter.resourceAsString("sql/mysql_collation_oder_query.sql");
+    assertThat(query).isNotEmpty();
+    assertThrows(
+        RuntimeException.class, () -> MysqlDialectAdapter.resourceAsString("no_such_file.sql"));
   }
 
   private static ResultSet getMockInfoSchemaRs() throws SQLException {

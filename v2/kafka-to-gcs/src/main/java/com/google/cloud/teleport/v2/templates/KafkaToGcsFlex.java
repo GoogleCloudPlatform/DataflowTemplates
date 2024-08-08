@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.kafka.dlq.BigQueryDeadLetterQueue;
+import com.google.cloud.teleport.v2.kafka.dlq.BigQueryDeadLetterQueueOptions;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.kafka.options.SchemaRegistryOptions;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
@@ -35,6 +37,9 @@ import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecordRouter;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.PCollection;
 
 @Template(
@@ -49,12 +54,17 @@ import org.apache.beam.sdk.values.PCollection;
     contactInformation = "https://cloud.google.com/support",
     requirements = {"The output Google Cloud Storage directory must exist."})
 public class KafkaToGcsFlex {
+
   public interface KafkaToGcsOptions
-      extends PipelineOptions, DataflowPipelineOptions, KafkaReadOptions, SchemaRegistryOptions {
+      extends PipelineOptions,
+          DataflowPipelineOptions,
+          KafkaReadOptions,
+          SchemaRegistryOptions,
+          BigQueryDeadLetterQueueOptions {
 
     // This is a duplicate option that already exist in KafkaReadOptions but keeping it here
     // so the KafkaTopic appears above the authentication enum on the Templates UI.
-    @TemplateParameter.KafkaTopic(
+    @TemplateParameter.KafkaReadTopic(
         order = 1,
         name = "readBootstrapServerAndTopic",
         groupName = "Source",
@@ -116,8 +126,7 @@ public class KafkaToGcsFlex {
     void setNumShards(Integer numShards);
   }
 
-  public static PipelineResult run(KafkaToGcsOptions options) throws UnsupportedOperationException {
-
+  public static PipelineResult run(KafkaToGcsOptions options) throws Exception {
     // Create the Pipeline
     Pipeline pipeline = Pipeline.create(options);
     String bootstrapServes;
@@ -137,17 +146,47 @@ public class KafkaToGcsFlex {
 
     Map<String, Object> kafkaConfig = new HashMap<>(KafkaConfig.fromReadOptions(options));
 
+    // Configure dead letter queue params
+    ErrorHandler<BadRecord, ?> errorHandler = new ErrorHandler.DefaultErrorHandler<>();
+    // Throwing Router throws the error instead of sending it to the DLQ. This will be the case
+    // when no DLQ is configured and the pipeline will retry the failed error.
+    BadRecordRouter badRecordRouter = BadRecordRouter.THROWING_ROUTER;
+
+    if (options.getUseBigQueryDLQ()) {
+      if (options.getOutputDeadletterTable() == null
+          || options.getOutputDeadletterTable().isBlank()) {
+        throw new IllegalArgumentException(
+            "Please provide a Fully Qualified BigQuery table name when BigQuery Dead Letter"
+                + "Queue is enabled");
+      }
+      badRecordRouter = BadRecordRouter.RECORDING_ROUTER;
+      errorHandler =
+          pipeline.registerBadRecordErrorHandler(
+              BigQueryDeadLetterQueue.newBuilder()
+                  .setTableName(options.getOutputDeadletterTable())
+                  .build());
+    }
+
     PCollection<KafkaRecord<byte[], byte[]>> kafkaRecord;
     // Step 1: Read from Kafka as bytes.
     KafkaIO.Read<byte[], byte[]> kafkaTransform =
         KafkaTransform.readBytesFromKafka(
             bootstrapServes, topicsList, kafkaConfig, options.getEnableCommitOffsets());
     kafkaRecord = pipeline.apply(kafkaTransform);
-    kafkaRecord.apply(WriteTransform.newBuilder().setOptions(options).build());
+
+    kafkaRecord.apply(
+        WriteTransform.newBuilder()
+            .setOptions(options)
+            .setBadRecordErrorHandler(errorHandler)
+            .setBadRecordRouter(badRecordRouter)
+            .build());
+    if (options.getUseBigQueryDLQ()) {
+      errorHandler.close();
+    }
     return pipeline.run();
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     KafkaToGcsOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToGcsOptions.class);
 

@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMap
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider.MysqlJdbcValueMappings;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import java.util.Calendar;
 import org.apache.beam.sdk.util.FluentBackoff;
 
@@ -51,9 +52,16 @@ public class MySqlConfigDefaults {
 
   public static final Long DEFAULT_MYSQL_MAX_CONNECTIONS = 160L;
 
-  public static final boolean DEFAULT_MYSQL_AUTO_RECONNECT = true;
+  /**
+   * URL settings for MySQL. allowMultiQueries is required for multi line collation discovery query.
+   * autoReconnect and maxReconnects help to re-establish connection for transient failures.
+   */
+  public static final ImmutableMap<String, String> DEFAULT_MYSQL_URL_PROPERTIES =
+      ImmutableMap.of(
+          "allowMultiQueries", "true",
+          "autoReconnect", "true",
+          "maxReconnects", "10");
 
-  public static final long DEFAULT_MYSQL_RECONNECT_ATTEMPTS = 10L;
   public static final FluentBackoff DEFAULT_MYSQL_SCHEMA_DISCOVERY_BACKOFF = FluentBackoff.DEFAULT;
 
   /**
@@ -72,6 +80,7 @@ public class MySqlConfigDefaults {
    *       we are also setting the session timezone to UTC.
    * </ol>
    */
+  // TODO: Add innodb_parallel_read_threads for better performance tuning.
   public static final ImmutableList<String> DEFAULT_MYSQL_INIT_SEQ =
       ImmutableList.of("SET TIME_ZONE = 'UTC'");
 

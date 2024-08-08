@@ -64,8 +64,15 @@ func main() {
 		flags.ArtifactBucket(),
 		flags.StageBucket(),
 		flags.PrivateConnectivity(),
+		flags.SpannerHost(),
 		flags.FailureMode(),
-		flags.RetryFailures())
+		flags.RetryFailures(),
+		flags.StaticOracleHost(),
+		flags.StaticOracleSysPassword(),
+		flags.CloudProxyHost(),
+		flags.CloudProxyMySqlPort(),
+		flags.CloudProxyPostgresPort(),
+		flags.CloudProxyPassword())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}

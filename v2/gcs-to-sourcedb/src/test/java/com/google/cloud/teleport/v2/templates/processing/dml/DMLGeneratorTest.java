@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.processing.dml;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -27,6 +27,8 @@ import com.google.gson.GsonBuilder;
 import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
@@ -47,17 +49,15 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
-            + " UPDATE  FirstName = 'kk', LastName = 'll'";
+    /*The expected sql is:
+    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
+        + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // workaround comparison to bypass TAP flaky behavior
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("FirstName = 'kk'"));
+    assertTrue(sql.contains("LastName = 'll'"));
   }
 
   @Test
@@ -70,17 +70,15 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
-            + " UPDATE  FirstName = 'kk', LastName = 'll'";
+    /* The expected sql is:
+    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
+        + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // workaround comparison to bypass TAP flaky behavior
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("FirstName = 'kk'"));
+    assertTrue(sql.contains("LastName = 'll'"));
   }
 
   @Test
@@ -92,18 +90,15 @@ public final class DMLGeneratorTest {
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
-
-    String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES ('999',222,'ll') ON DUPLICATE"
-            + " KEY UPDATE  FirstName = 222, LastName = 'll'";
+    /*The expected sql is:
+    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES ('999',222,'ll') ON DUPLICATE"
+        + " KEY UPDATE  FirstName = 222, LastName = 'll'";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // workaround comparison to bypass TAP flaky behavior
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("FirstName = 222"));
+    assertTrue(sql.contains("LastName = 'll'"));
   }
 
   @Test
@@ -117,17 +112,15 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
-            + " UPDATE  FirstName = 'kk', LastName = 'll'";
+    /* The expected sql is:
+    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
+        + " UPDATE  FirstName = 'kk', LastName = 'll'"; */
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // workaround comparison to bypass TAP flaky behavior
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("FirstName = 'kk'"));
+    assertTrue(sql.contains("LastName = 'll'"));
   }
 
   @Test
@@ -142,17 +135,15 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
-            + " UPDATE  FirstName = 'kk', LastName = 'll'";
+    /* The expected sql is:
+    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
+        + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // workaround comparison to bypass TAP flaky behavior
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("FirstName = 'kk'"));
+    assertTrue(sql.contains("LastName = 'll'"));
   }
 
   @Test
@@ -165,15 +156,12 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql = "";
+    /* The expected sql is: ""*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // workaround comparison to bypass TAP flaky behavior
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.isEmpty());
   }
 
   @Test
@@ -186,16 +174,13 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql = "";
+    /* The expected sql is: ""*/
     String sql =
         sql =
             DMLGenerator.getDMLStatement(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // workaround comparison to bypass TAP flaky behavior
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.isEmpty());
   }
 
   @Test
@@ -208,18 +193,16 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO Singers(SingerId,Bday) VALUES (999,"
-            + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')) ON DUPLICATE KEY"
-            + " UPDATE  Bday =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')";
+    /* The expected sql is:
+    "INSERT INTO Singers(SingerId,Bday) VALUES (999,"
+        + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')) ON DUPLICATE KEY"
+        + " UPDATE  Bday =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+10:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+10:00", null);
 
-    // workaround comparison to bypass TAP flaky behavior
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(
+        sql.contains("Bday =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00'"));
   }
 
   @Test
@@ -232,17 +215,15 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
-            + " UPDATE  FirstName = 'kk', LastName = 'll'";
+    /* The expected sql is:
+    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
+        + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // workaround comparison to bypass TAP flaky behavior
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("FirstName = 'kk'"));
+    assertTrue(sql.contains("LastName = 'll'"));
   }
 
   @Test
@@ -270,33 +251,71 @@ public final class DMLGeneratorTest {
     JSONObject newValuesJson = new JSONObject(newValueJsonStr);
     JSONObject keyValuesJson = new JSONObject(keysJsonStr);
 
-    String expectedSql =
-        "INSERT INTO"
-            + " sample_table(id,mediumint_column,tinyblob_column,datetime_column,enum_column,longtext_column,mediumblob_column,text_column,tinyint_column,timestamp_column,float_column,varbinary_column,binary_column,bigint_column,time_column,tinytext_column,set_column,longblob_column,mediumtext_column,year_column,blob_column,decimal_column,bool_column,char_column,date_column,double_column,smallint_column,varchar_column)"
-            + " VALUES (12,333,'abc',"
-            + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),'1','<longtext_column>','abclarge','aaaaaddd',1,"
-            + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),4.2,X'6162636c61726765',X'6162636c61726765',4444,'10:10:10','<tinytext_column>','1,2','ablongblobc','<mediumtext_column>','2023','abbigc',444.222,false,'<char_c','2023-05-18',42.42,22,'abc')"
-            + " ON DUPLICATE KEY UPDATE  mediumint_column = 333, tinyblob_column = 'abc',"
-            + " datetime_column =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),"
-            + " enum_column = '1', longtext_column = '<longtext_column>', mediumblob_column ="
-            + " 'abclarge', text_column = 'aaaaaddd', tinyint_column = 1, timestamp_column = "
-            + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'), float_column = 4.2,"
-            + " varbinary_column = X'6162636c61726765', binary_column = X'6162636c61726765',"
-            + " bigint_column = 4444, time_column = '10:10:10', tinytext_column ="
-            + " '<tinytext_column>', set_column = '1,2', longblob_column = 'ablongblobc',"
-            + " mediumtext_column = '<mediumtext_column>', year_column = '2023', blob_column ="
-            + " 'abbigc', decimal_column = 444.222, bool_column = false, char_column = '<char_c',"
-            + " date_column = '2023-05-18', double_column = 42.42, smallint_column = 22,"
-            + " varchar_column = 'abc'";
+    /* The expected sql is:
+    "INSERT INTO"
+        + " sample_table(id,mediumint_column,tinyblob_column,datetime_column,enum_column,longtext_column,mediumblob_column,text_column,tinyint_column,timestamp_column,float_column,varbinary_column,binary_column,bigint_column,time_column,tinytext_column,set_column,longblob_column,mediumtext_column,year_column,blob_column,decimal_column,bool_column,char_column,date_column,double_column,smallint_column,varchar_column)"
+        + " VALUES (12,333,FROM_BASE64('YWJj'),"
+        + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),'1','<longtext_column>',FROM_BASE64('YWJjbGFyZ2U='),'aaaaaddd',1,"
+        + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),4.2,BINARY(FROM_BASE64('YWJjbGFyZ2U=')),BINARY(FROM_BASE64('YWJjbGFyZ2U=')),4444,'10:10:10','<tinytext_column>','1,2',FROM_BASE64('YWJsb25nYmxvYmM='),'<mediumtext_column>','2023',FROM_BASE64('YWJiaWdj'),444.222,false,'<char_c','2023-05-18',42.42,22,'abc')"
+        + " ON DUPLICATE KEY UPDATE  mediumint_column = 333, tinyblob_column ="
+        + " FROM_BASE64('YWJj'), datetime_column = "
+        + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'), enum_column = '1',"
+        + " longtext_column = '<longtext_column>', mediumblob_column ="
+        + " FROM_BASE64('YWJjbGFyZ2U='), text_column = 'aaaaaddd', tinyint_column = 1,"
+        + " timestamp_column =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),"
+        + " float_column = 4.2, varbinary_column = BINARY(FROM_BASE64('YWJjbGFyZ2U=')),"
+        + " binary_column = BINARY(FROM_BASE64('YWJjbGFyZ2U=')), bigint_column = 4444, time_column"
+        + " = '10:10:10', tinytext_column = '<tinytext_column>', set_column = '1,2',"
+        + " longblob_column = FROM_BASE64('YWJsb25nYmxvYmM='), mediumtext_column ="
+        + " '<mediumtext_column>', year_column = '2023', blob_column = FROM_BASE64('YWJiaWdj'),"
+        + " decimal_column = 444.222, bool_column = false, char_column = '<char_c', date_column"
+        + " = '2023-05-18', double_column = 42.42, smallint_column = 22, varchar_column ="
+        + " 'abc'"; */
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // Note that this fails in critique since the column order is not predictable
-    // But this test case will run locally
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("mediumint_column = 333"));
+    assertTrue(sql.contains("tinyblob_column = FROM_BASE64('YWJj')"));
+    boolean datetimeFlag =
+        sql.contains(
+            "datetime_column =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'");
+    assertTrue(datetimeFlag);
+    // The same assert below fails to run hence as a workaround we are using the above boolean
+    // flag
+    /*  assertTrue(
+    sql.contains(
+        "datetime_column = CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')"));*/
+    assertTrue(sql.contains("enum_column = '1'"));
+    assertTrue(sql.contains("longtext_column = '<longtext_column>'"));
+    assertTrue(sql.contains("mediumblob_column = FROM_BASE64('YWJjbGFyZ2U=')"));
+    assertTrue(sql.contains("text_column = 'aaaaaddd'"));
+    assertTrue(sql.contains("tinyint_column = 1"));
+    boolean timestampFlag =
+        sql.contains(
+            "timestamp_column =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')");
+    assertTrue(timestampFlag);
+    // The same assert below fails to run hence as a workaround we are using the above boolean
+    // flag
+    /* assertTrue(
+    sql.contains(
+        "timestamp_column = CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')"));*/
+    assertTrue(sql.contains("float_column = 4.2"));
+    assertTrue(sql.contains("varbinary_column = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
+    assertTrue(sql.contains("binary_column = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
+    assertTrue(sql.contains("bigint_column = 4444"));
+    assertTrue(sql.contains("time_column = '10:10:10'"));
+    assertTrue(sql.contains("tinytext_column = '<tinytext_column>'"));
+    assertTrue(sql.contains("set_column = '1,2'"));
+    assertTrue(sql.contains("longblob_column = FROM_BASE64('YWJsb25nYmxvYmM=')"));
+    assertTrue(sql.contains("mediumtext_column = '<mediumtext_column>'"));
+    assertTrue(sql.contains("year_column = '2023'"));
+    assertTrue(sql.contains("blob_column = FROM_BASE64('YWJiaWdj')"));
+    assertTrue(sql.contains("decimal_column = 444.222"));
+    assertTrue(sql.contains("bool_column = false"));
+    assertTrue(sql.contains("char_column = '<char_c'"));
+    assertTrue(sql.contains("date_column = '2023-05-18'"));
+    assertTrue(sql.contains("double_column = 42.42"));
   }
 
   @Test
@@ -309,17 +328,15 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',NULL) ON DUPLICATE KEY"
-            + " UPDATE  FirstName = 'kk', LastName = NULL";
+    /* The expected sql is:
+    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',NULL) ON DUPLICATE KEY"
+        + " UPDATE  FirstName = 'kk', LastName = NULL";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // workaround comparison to bypass TAP flaky behavior
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("FirstName = 'kk'"));
+    assertTrue(sql.contains("LastName = NULL"));
   }
 
   @Test
@@ -332,15 +349,15 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "DELETE";
 
-    String expectedSql = "DELETE FROM Singers WHERE  FirstName = 'kk' AND  SingerId = 999";
+    /* The expected sql is:
+    "DELETE FROM Singers WHERE  FirstName = 'kk' AND  SingerId = 999";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // workaround comparison to bypass TAP flaky behavior
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("FirstName = 'kk'"));
+    assertTrue(sql.contains("SingerId = 999"));
+    assertTrue(sql.contains("DELETE FROM Singers WHERE"));
   }
 
   @Test
@@ -353,17 +370,15 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'k''k','ll') ON DUPLICATE KEY"
-            + " UPDATE  FirstName = 'k''k', LastName = 'll'";
+    /* The expected sql is:
+    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'k''k','ll') ON DUPLICATE KEY"
+        + " UPDATE  FirstName = 'k''k', LastName = 'll'"; */
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // workaround comparison to bypass TAP flaky behavior
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("FirstName = 'k''k'"));
+    assertTrue(sql.contains("LastName = 'll'"));
   }
 
   @Test
@@ -380,20 +395,16 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO"
-            + " sample_table(id,varchar_column,blob_column)"
-            + " VALUES (12,'''','''')"
-            + " ON DUPLICATE KEY UPDATE  varchar_column = '''', blob_column = ''''";
+    /* The expected sql is:
+    "INSERT INTO"
+        + " sample_table(id,varchar_column,blob_column)"
+        + " VALUES (12,'''',FROM_BASE64('Jw=='))"
+        + " ON DUPLICATE KEY UPDATE  varchar_column = '''', blob_column = FROM_BASE64('Jw==')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
-
-    // Note that this fails in critique since the column order is not predictable
-    // But this test case will run locally
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
+    assertTrue(sql.contains("varchar_column = '''"));
+    assertTrue(sql.contains("blob_column = FROM_BASE64('Jw==')"));
   }
 
   @Test
@@ -411,20 +422,16 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO"
-            + " sample_table(id,varchar_column,blob_column)"
-            + " VALUES (12,'''''','''''')"
-            + " ON DUPLICATE KEY UPDATE  varchar_column = '''''', blob_column = ''''''";
+    /* The expected sql is:
+    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES"
+        + " (12,'''''',FROM_BASE64('Jyc=')) ON DUPLICATE KEY UPDATE  varchar_column = '''''',"
+        + " blob_column = FROM_BASE64('Jyc=')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // Note that this fails in critique since the column order is not predictable
-    // But this test case will run locally
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("varchar_column = '''''"));
+    assertTrue(sql.contains("blob_column = FROM_BASE64('Jyc=')"));
   }
 
   @Test
@@ -442,20 +449,16 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO"
-            + " sample_table(id,varchar_column,blob_column)"
-            + " VALUES (12,'\\\\''','\\\\''')"
-            + " ON DUPLICATE KEY UPDATE  varchar_column = '\\\\''', blob_column = '\\\\'''";
+    /* The expected sql is:
+    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES"
+        + " (12,'\\\\''',FROM_BASE64('XCc=')) ON DUPLICATE KEY UPDATE  varchar_column ="
+        + " '\\\\''', blob_column = FROM_BASE64('XCc=')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // Note that this fails in critique since the column order is not predictable
-    // But this test case will run locally
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("varchar_column = '\\\\'"));
+    assertTrue(sql.contains("blob_column = FROM_BASE64('XCc=')"));
   }
 
   @Test
@@ -474,18 +477,16 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\t','\t'"
-            + ") ON DUPLICATE KEY UPDATE  varchar_column = '\t', blob_column = '\t'";
+    /* The expected sql is:
+    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'"
+        + "\t',FROM_BASE64('CQ==')) ON DUPLICATE KEY UPDATE  varchar_column = '\t', blob_column"
+        + " = FROM_BASE64('CQ==')"; */
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // Note that this fails in critique since the column order is not predictable
-    // But this test case will run locally
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("varchar_column = '\t'"));
+    assertTrue(sql.contains("blob_column = FROM_BASE64('CQ==')"));
   }
 
   @Test
@@ -504,18 +505,16 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\b','\b'"
-            + ") ON DUPLICATE KEY UPDATE  varchar_column = '\b', blob_column = '\b'";
+    /* The expected sql is:
+    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES"
+        + " (12,'\b',FROM_BASE64('CA==')) ON DUPLICATE KEY UPDATE  varchar_column = '\b',"
+        + " blob_column = FROM_BASE64('CA==')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // Note that this fails in critique since the column order is not predictable
-    // But this test case will run locally
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("varchar_column = '\b'"));
+    assertTrue(sql.contains("blob_column = FROM_BASE64('CA==')"));
   }
 
   @Test
@@ -534,18 +533,16 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\n','\n'"
-            + ") ON DUPLICATE KEY UPDATE  varchar_column = '\n', blob_column = '\n'";
+    /* The expected sql is:
+    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\n"
+        + "',FROM_BASE64('Cg==')) ON DUPLICATE KEY UPDATE  varchar_column = '\n"
+        + "', blob_column = FROM_BASE64('Cg==')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // Note that this fails in critique since the column order is not predictable
-    // But this test case will run locally
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("varchar_column = '\n'"));
+    assertTrue(sql.contains("blob_column = FROM_BASE64('Cg==')"));
   }
 
   @Test
@@ -564,18 +561,16 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\r','\r'"
-            + ") ON DUPLICATE KEY UPDATE  varchar_column = '\r', blob_column = '\r'";
+    /* The expected sql is:
+    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\r"
+        + "',FROM_BASE64('DQ==')) ON DUPLICATE KEY UPDATE  varchar_column = '\r"
+        + "', blob_column = FROM_BASE64('DQ==')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // Note that this fails in critique since the column order is not predictable
-    // But this test case will run locally
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("varchar_column = '\r'"));
+    assertTrue(sql.contains("blob_column = FROM_BASE64('DQ==')"));
   }
 
   @Test
@@ -594,18 +589,16 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\f','\f'"
-            + ") ON DUPLICATE KEY UPDATE  varchar_column = '\f', blob_column = '\f'";
+    /* The expected sql is:
+    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES"
+        + " (12,'\f',FROM_BASE64('DA==')) ON DUPLICATE KEY UPDATE  varchar_column = '\f',"
+        + " blob_column = FROM_BASE64('DA==')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // Note that this fails in critique since the column order is not predictable
-    // But this test case will run locally
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("varchar_column = '\f'"));
+    assertTrue(sql.contains("blob_column = FROM_BASE64('DA==')"));
   }
 
   @Test
@@ -624,18 +617,16 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\"','\"'"
-            + ") ON DUPLICATE KEY UPDATE  varchar_column = '\"', blob_column = '\"'";
+    /* The expected sql is:
+    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES"
+        + " (12,'\"',FROM_BASE64('Ig==')) ON DUPLICATE KEY UPDATE  varchar_column = '\"',"
+        + " blob_column = FROM_BASE64('Ig==')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // Note that this fails in critique since the column order is not predictable
-    // But this test case will run locally
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("varchar_column = '\"'"));
+    assertTrue(sql.contains("blob_column = FROM_BASE64('Ig==')"));
   }
 
   @Test
@@ -654,18 +645,16 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\\\\','\\\\'"
-            + ") ON DUPLICATE KEY UPDATE  varchar_column = '\\\\', blob_column = '\\\\'";
+    /*The expected sql is:
+    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES"
+        + " (12,'\\\\',FROM_BASE64('XA==')) ON DUPLICATE KEY UPDATE  varchar_column = '\\\\',"
+        + " blob_column = FROM_BASE64('XA==')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // Note that this fails in critique since the column order is not predictable
-    // But this test case will run locally
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("varchar_column = '\\\\'"));
+    assertTrue(sql.contains("blob_column = FROM_BASE64('XA==')"));
   }
 
   @Test
@@ -678,16 +667,44 @@ public final class DMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
 
-    String expectedSql =
-        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',X'62696c5f636f6c') ON"
-            + " DUPLICATE KEY UPDATE  FirstName = 'kk', LastName = X'62696c5f636f6c'";
+    /*The expected sql is:
+    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES"
+        + " (999,'kk',BINARY(FROM_BASE64('YmlsX2NvbA=='))) ON DUPLICATE KEY UPDATE  FirstName ="
+        + " 'kk', LastName = BINARY(FROM_BASE64('YmlsX2NvbA=='))"; */
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    // workaround comparison to bypass TAP flaky behavior
-    // TODO: Parse the returned SQL to create map of column names and values and compare with
-    // expected map of column names and values
-    assertEquals(sql, sql);
+    assertTrue(sql.contains("LastName = BINARY(FROM_BASE64('YmlsX2NvbA=='))"));
+  }
+
+  @Test
+  public void customTransformationMatch() {
+    Schema schema = SessionFileReader.read("src/test/resources/customTransformation.json");
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SingerId\":\"999\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+    Map<String, Object> customTransformation = new HashMap<>();
+    customTransformation.put("FullName", "\'kk ll\'");
+    customTransformation.put("SingerId", "1");
+
+    /*The expected sql is:
+    "INSERT INTO Singers(SingerId,FullName) VALUES (1,'kk ll') ON DUPLICATE KEY"
+        + " UPDATE  FullName = 'kk ll'";*/
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType,
+            tableName,
+            schema,
+            newValuesJson,
+            keyValuesJson,
+            "+00:00",
+            customTransformation);
+
+    assertTrue(sql.contains("FullName = 'kk ll'"));
+    assertTrue(sql.contains("VALUES (1,'kk ll')"));
   }
 }

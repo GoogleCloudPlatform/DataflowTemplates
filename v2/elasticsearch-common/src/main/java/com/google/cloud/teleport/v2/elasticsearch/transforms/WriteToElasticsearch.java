@@ -50,6 +50,8 @@ import org.joda.time.Duration;
  *       for {@link ElasticsearchIO.RetryConfiguration}.
  *   <li>{@link ElasticsearchWriteOptions#getMaxRetryDuration()} - optional: maximum retry duration
  *       for {@link ElasticsearchIO.RetryConfiguration}.
+ *   <li>{@link ElasticsearchWriteOptions#getSocketTimeout()} - optional: max socket timeout
+ *       (Default: 30000ms).
  * </ul>
  *
  * For {@link ElasticsearchIO#write()} with {@link ValueExtractorTransform.ValueExtractorFn} if the
@@ -151,6 +153,10 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
 
     if (options().getDisableCertificateValidation() != null) {
       config = config.withDisableCertificateValidation(options().getDisableCertificateValidation());
+    }
+
+    if (options().getSocketTimeout() != null) {
+      config = config.withSocketTimeout(options().getSocketTimeout());
     }
 
     ElasticsearchIO.Write elasticsearchWriter =

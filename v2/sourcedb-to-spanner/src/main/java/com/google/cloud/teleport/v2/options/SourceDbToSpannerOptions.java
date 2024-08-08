@@ -47,15 +47,17 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 3,
-      regexes = {"(^jdbc:mysql://[^\\n\\r]+$)"},
+      regexes = {"(^jdbc:mysql://.*|^gs://.*)"},
       groupName = "Source",
       description =
-          "Connection URL to connect to the source database host. Must contain the host, port and source db name. Can optionally contain properties like autoReconnect, maxReconnects etc. Format: `jdbc:mysql://{host}:{port}/{dbName}?{parameters}`",
+          "URL to connect to the source database host. It can be either of "
+              + "1. The JDBC connection URL - which must contain the host, port and source db name and can optionally contain properties like autoReconnect, maxReconnects etc. Format: `jdbc:mysql://{host}:{port}/{dbName}?{parameters}`"
+              + "2. The shard config path",
       helpText =
-          "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`.")
-  String getSourceDbURL();
+          "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8` or the shard config")
+  String getSourceConfigURL();
 
-  void setSourceDbURL(String url);
+  void setSourceConfigURL(String url);
 
   @TemplateParameter.Text(
       order = 4,
@@ -64,7 +66,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       description = "JDBC connection username.",
       helpText = "The username to be used for the JDBC connection.")
   @Default.String("")
-  String getUsername();
+  String getUsername(); // Make optional
 
   void setUsername(String username);
 
@@ -74,15 +76,15 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       description = "JDBC connection password.",
       helpText = "The password to be used for the JDBC connection.")
   @Default.String("")
-  String getPassword();
+  String getPassword(); // make optional
 
   void setPassword(String password);
 
   @TemplateParameter.Text(
       order = 6,
       optional = true,
-      description = "Comma-separated names of the tables in the source database.",
-      helpText = "Tables to read from using partitions.")
+      description = "colon-separated names of the tables in the source database.",
+      helpText = "Tables to migrate from source.")
   @Default.String("")
   String getTables();
 
@@ -168,9 +170,44 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.GcsReadFile(
       order = 14,
-      description = "Dead letter queue directory",
-      helpText = "This directory is used to dump the failed records in a migration.")
-  String getDLQDirectory();
+      description = "Output directory for failed/skipped/filtered events",
+      helpText =
+          "This directory is used to dump the failed/skipped/filtered records in a migration.")
+  String getOutputDirectory();
 
-  void setDLQDirectory(String value);
+  void setOutputDirectory(String value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 15,
+      optional = true,
+      description = "Custom jar location in Cloud Storage",
+      helpText =
+          "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records.")
+  @Default.String("")
+  String getTransformationJarPath();
+
+  void setTransformationJarPath(String value);
+
+  @TemplateParameter.Text(
+      order = 16,
+      optional = true,
+      description = "Custom class name",
+      helpText =
+          "Fully qualified class name having the custom transformation logic. It is a"
+              + " mandatory field in case transformationJarPath is specified")
+  @Default.String("")
+  String getTransformationClassName();
+
+  void setTransformationClassName(String value);
+
+  @TemplateParameter.Text(
+      order = 17,
+      optional = true,
+      description = "Custom parameters for transformation",
+      helpText =
+          "String containing any custom parameters to be passed to the custom transformation class.")
+  @Default.String("")
+  String getTransformationCustomParameters();
+
+  void setTransformationCustomParameters(String value);
 }

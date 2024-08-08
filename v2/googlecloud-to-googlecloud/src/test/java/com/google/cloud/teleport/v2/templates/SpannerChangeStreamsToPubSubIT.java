@@ -20,7 +20,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatRecords
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Type;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.gson.Gson;
@@ -87,6 +87,8 @@ public class SpannerChangeStreamsToPubSubIT extends TemplateTestBase {
                 + "  Id INT64 NOT NULL,\n"
                 + "  FirstName String(1024),\n"
                 + "  LastName String(1024),\n"
+                + "  Float32Col FLOAT32,\n"
+                + "  Float64Col FLOAT64,\n"
                 + ") PRIMARY KEY(Id)",
             testName);
     spannerResourceManager.executeDdlStatement(createTableStatement);
@@ -163,18 +165,25 @@ public class SpannerChangeStreamsToPubSubIT extends TemplateTestBase {
         mutation -> {
           Map<String, Object> expectedRecord =
               mutation.asMap().entrySet().stream()
-                  .collect(
-                      Collectors.toMap(
-                          e -> e.getKey(),
-                          // Only checking for int64 and string here. If adding another type, this
-                          // will need to be fixed.
-                          e ->
-                              e.getValue().getType() == Type.int64()
-                                  ? e.getValue().getInt64()
-                                  : e.getValue().getString()));
+                  .collect(Collectors.toMap(e -> e.getKey(), e -> valueToString(e.getValue())));
           expectedRecords.add(expectedRecord);
         });
     assertThatRecords(records).hasRecordsUnorderedCaseInsensitiveColumns(expectedRecords);
+  }
+
+  private static String valueToString(Value val) {
+    switch (val.getType().getCode()) {
+      case INT64:
+        return Long.toString(val.getInt64());
+      case FLOAT32:
+        return Float.toString(val.getFloat32());
+      case FLOAT64:
+        return Double.toString(val.getFloat64());
+      case STRING:
+        return val.getString();
+      default:
+        throw new IllegalArgumentException("Unsupported type: " + val.getType());
+    }
   }
 
   private static List<Mutation> generateTableRows(String tableId) {
@@ -184,6 +193,10 @@ public class SpannerChangeStreamsToPubSubIT extends TemplateTestBase {
       mutation.set("Id").to(i);
       mutation.set("FirstName").to(RandomStringUtils.randomAlphanumeric(1, 20));
       mutation.set("LastName").to(RandomStringUtils.randomAlphanumeric(1, 20));
+      // Avoiding random numbers as asserting their presence via string match is
+      // error-prone for floats.
+      mutation.set("Float32Col").to(i + 0.5);
+      mutation.set("Float64Col").to(i + 1.5);
       mutations.add(mutation.build());
     }
 

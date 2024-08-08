@@ -19,6 +19,7 @@ on:
   workflow_run:
     workflows:
       - Java PR
+      - Spanner PR
       - Release
     types: [ completed ]
 

@@ -78,6 +78,7 @@ jobs:
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-private-connect-us-central1" \
+        --it-spanner-host="https://staging-wrenchworks.sandbox.googleapis.com/" \
         --it-release=true \
         --it-retry-failures=2
     - name: Run Integration Tests
@@ -87,6 +88,7 @@ jobs:
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-private-connect-us-central1" \
+        --it-spanner-host="https://staging-wrenchworks.sandbox.googleapis.com/" \
         --it-release=true \
         --it-retry-failures=2
     - name: Upload Tests Report
@@ -98,7 +100,7 @@ jobs:
         retention-days: 1
     - name: Create artifacts and push
       run: |
-        mvn verify -PtemplatesRelease \
+        mvn verify -PtemplatesRelease,splunkDeps,missing-artifact-repos \
         -DprojectId="dataflow-templates" \
         -DbucketName="dataflow-templates-staging" \
         -DlibrariesBucketName="dataflow-templates-libraries" \

@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.writer;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import java.io.Serializable;
-import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO.FailureMode;
@@ -47,7 +46,7 @@ public class SpannerWriter implements Serializable {
         .withFailureMode(FailureMode.REPORT_FAILURES);
   }
 
-  public PCollection<MutationGroup> writeToSpanner(PCollection<RowContext> rows) {
+  public SpannerWriteResult writeToSpanner(PCollection<RowContext> rows) {
     LOG.info("initiating write to spanner");
     SpannerWriteResult writeResult =
         rows.apply(
@@ -58,6 +57,6 @@ public class SpannerWriter implements Serializable {
 
     // This current returns only the failed mutation.
     // This needs to return the whole RowContext and Exception
-    return writeResult.getFailedMutations();
+    return writeResult;
   }
 }

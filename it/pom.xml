@@ -124,6 +124,18 @@
           <!-- <compilerArgument>-parameters</compilerArgument> -->
           <parameters>true</parameters>
           <testCompilerArgument>-parameters</testCompilerArgument>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>com.google.auto.value</groupId>
+              <artifactId>auto-value</artifactId>
+              <version>${autovalue.version}</version>
+            </path>
+            <path>
+              <groupId>com.google.auto.service</groupId>
+              <artifactId>auto-service</artifactId>
+              <version>${autovalue.service.version}</version>
+            </path>
+          </annotationProcessorPaths>
         </configuration>
       </plugin>
       <plugin>

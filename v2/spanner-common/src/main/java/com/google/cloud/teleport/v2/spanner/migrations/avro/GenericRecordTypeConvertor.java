@@ -17,8 +17,12 @@ package com.google.cloud.teleport.v2.spanner.migrations.avro;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
+import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
+import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.time.Instant;
@@ -32,11 +36,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.apache.arrow.util.VisibleForTesting;
 import org.apache.avro.Conversions;
+import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.data.TimeConversions;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.sdk.metrics.Distribution;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,18 +63,35 @@ public class GenericRecordTypeConvertor {
 
   private final String shardId;
 
-  public GenericRecordTypeConvertor(ISchemaMapper schemaMapper, String namespace, String shardId) {
+  private final ISpannerMigrationTransformer customTransformer;
+
+  private static final Schema CUSTOM_TRANSFORMATION_AVRO_SCHEMA =
+      new LogicalType("custom_transform").addToSchema(SchemaBuilder.builder().stringType());
+
+  private final Distribution applyCustomTransformationResponseTimeMetric =
+      Metrics.distribution(
+          GenericRecordTypeConvertor.class, "apply_custom_transformation_impl_latency_ms");
+
+  public GenericRecordTypeConvertor(
+      ISchemaMapper schemaMapper,
+      String namespace,
+      String shardId,
+      ISpannerMigrationTransformer customTransformer) {
     this.schemaMapper = schemaMapper;
     this.namespace = namespace;
     this.shardId = shardId;
+    this.customTransformer = customTransformer;
   }
 
   /**
    * This method takes in a generic record and returns a map between the Spanner column name and the
    * corresponding Spanner column value. This handles the data conversion logic from a GenericRecord
    * field to a Map of Spanner column name to spanner Value.
+   *
+   * <p>This method can return 'null' which indicates the change event needs to be skipped.
    */
-  public Map<String, Value> transformChangeEvent(GenericRecord record, String srcTableName) {
+  public Map<String, Value> transformChangeEvent(GenericRecord record, String srcTableName)
+      throws InvalidTransformationException {
     Map<String, Value> result = new HashMap<>();
     String spannerTableName = schemaMapper.getSpannerTableName(namespace, srcTableName);
     List<String> spannerColNames = schemaMapper.getSpannerColumns(namespace, spannerTableName);
@@ -107,7 +134,123 @@ public class GenericRecordTypeConvertor {
             e);
       }
     }
+    result = populateCustomTransformations(result, record, srcTableName);
     return result;
+  }
+
+  /**
+   * Applies custom transformations to the source row (Generic Record) and returns a Map of Spanner
+   * Columns to values to be overwritten.
+   *
+   * <p>This method leverages a customTransformer to modify the data, potentially filtering out
+   * records or adding new columns.
+   *
+   * @param result The initial map of column names to Spanner values. This map will be modified
+   *     in-place with any additional or changed values.
+   * @param record The GenericRecord representing the source data to be transformed.
+   * @param srcTableName The name of the source table.
+   * @return The updated map with custom transformations applied, or `null` if the record should be
+   *     filtered out based on transformation rules.
+   * @throws InvalidTransformationException If an error occurs during the transformation process,
+   *     such as incompatible data types or missing columns.
+   */
+  private Map<String, Value> populateCustomTransformations(
+      Map<String, Value> result, GenericRecord record, String srcTableName)
+      throws InvalidTransformationException {
+    if (customTransformer == null) {
+      return result;
+    }
+    LOG.debug("Populating custom transformation for table {}: {}", srcTableName, result);
+    String spannerTableName = schemaMapper.getSpannerTableName(namespace, srcTableName);
+    // TODO: verify if direct to object (Current) works the same as Object -> JsonNode-> Object
+    // (Live).
+    Map<String, Object> sourceRowMap = genericRecordToMap(record);
+    MigrationTransformationResponse migrationTransformationResponse =
+        getCustomTransformationResponse(sourceRowMap, srcTableName, shardId);
+    if (migrationTransformationResponse.isEventFiltered()) {
+      return null;
+    }
+    Map<String, Object> transformedCols = migrationTransformationResponse.getResponseRow();
+    for (Map.Entry<String, Object> entry : transformedCols.entrySet()) {
+      LOG.debug(
+          "Updating record with {} from custom transformations for table {}", entry, srcTableName);
+      String spannerColName = entry.getKey();
+      Type spannerType =
+          schemaMapper.getSpannerColumnType(namespace, spannerTableName, spannerColName);
+      Value val =
+          getSpannerValueFromObject(
+              entry.getValue(), CUSTOM_TRANSFORMATION_AVRO_SCHEMA, spannerColName, spannerType);
+      result.put(spannerColName, val);
+    }
+    LOG.debug("Updated record with custom transformations for table {}: {}", srcTableName, result);
+    return result;
+  }
+
+  /** Converts a generic record to a Map. */
+  private Map<String, Object> genericRecordToMap(GenericRecord record) {
+    Map<String, Object> map = new HashMap<>();
+    Schema schema = record.getSchema();
+
+    for (Schema.Field field : schema.getFields()) {
+      String fieldName = field.name();
+      Object fieldValue = record.get(fieldName);
+      if (fieldValue == null) {
+        map.put(fieldName, null);
+        continue;
+      }
+      Schema fieldSchema = filterNullSchema(field.schema(), fieldName, fieldValue);
+      // Handle logical/record types.
+      fieldValue = handleNonPrimitiveAvroTypes(fieldValue, fieldSchema, fieldName);
+      // Standardising the types for custom jar input.
+      if (fieldSchema.getLogicalType() != null || fieldSchema.getType() == Schema.Type.RECORD) {
+        map.put(fieldName, fieldValue);
+        continue;
+      }
+      Schema.Type fieldType = fieldSchema.getType();
+      switch (fieldType) {
+        case INT:
+        case LONG:
+        case BOOLEAN:
+          fieldValue = (fieldValue == null) ? null : Long.valueOf(fieldValue.toString());
+          break;
+        case FLOAT:
+        case DOUBLE:
+          fieldValue = (fieldValue == null) ? null : Double.valueOf(fieldValue.toString());
+          break;
+        default:
+          fieldValue = (fieldValue == null) ? null : fieldValue.toString();
+      }
+      map.put(fieldName, fieldValue);
+    }
+    return map;
+  }
+
+  @VisibleForTesting
+  private MigrationTransformationResponse getCustomTransformationResponse(
+      Map<String, Object> sourceRecord, String tableName, String shardId)
+      throws InvalidTransformationException {
+
+    org.joda.time.Instant startTimestamp = org.joda.time.Instant.now();
+    MigrationTransformationRequest migrationTransformationRequest =
+        new MigrationTransformationRequest(tableName, sourceRecord, shardId, "INSERT");
+    LOG.debug(
+        "using migration transformation request {} for table {}",
+        migrationTransformationRequest,
+        tableName);
+    MigrationTransformationResponse migrationTransformationResponse;
+    try {
+      migrationTransformationResponse =
+          customTransformer.toSpannerRow(migrationTransformationRequest);
+    } finally {
+      org.joda.time.Instant endTimestamp = org.joda.time.Instant.now();
+      applyCustomTransformationResponseTimeMetric.update(
+          new Duration(startTimestamp, endTimestamp).getMillis());
+    }
+    LOG.debug(
+        "Got migration transformation response {} for table {}",
+        migrationTransformationResponse,
+        tableName);
+    return migrationTransformationResponse;
   }
 
   private Map<String, Value> populateShardId(Map<String, Value> result, String shardIdCol) {
@@ -128,13 +271,26 @@ public class GenericRecordTypeConvertor {
         recordValue,
         fieldSchema,
         spannerType);
+    fieldSchema = filterNullSchema(fieldSchema, recordColName, recordValue);
+    recordValue = handleNonPrimitiveAvroTypes(recordValue, fieldSchema, recordColName);
+    return getSpannerValueFromObject(recordValue, fieldSchema, recordColName, spannerType);
+  }
+
+  /**
+   * Filters a union schema to remove the nullable (NULL) option.
+   *
+   * <p>This method checks if the input schema is a UNION type. If it is, and the union only
+   * contains two types (one of which is NULL), it returns the non-nullable type. If the schema is
+   * not a union, or if it's a union with more than two types or a non-nullable type other than
+   * NULL, an IllegalArgumentException is thrown.
+   */
+  private Schema filterNullSchema(Schema fieldSchema, String recordColName, Object recordValue) {
     if (fieldSchema.getType().equals(Schema.Type.UNION)) {
       List<Schema> types = fieldSchema.getTypes();
       LOG.debug("found union type: {}", types);
       // Schema types can only union with Type NULL. Any other UNION is unsupported.
       if (types.size() == 2 && types.stream().anyMatch(s -> s.getType().equals(Schema.Type.NULL))) {
-        fieldSchema =
-            types.stream().filter(s -> !s.getType().equals(Schema.Type.NULL)).findFirst().get();
+        return types.stream().filter(s -> !s.getType().equals(Schema.Type.NULL)).findFirst().get();
       } else {
         throw new IllegalArgumentException(
             String.format(
@@ -142,6 +298,24 @@ public class GenericRecordTypeConvertor {
                 fieldSchema, recordColName, recordValue));
       }
     }
+    return fieldSchema;
+  }
+
+  /**
+   * Handles complex Avro types (logical types or records) within a GenericRecord.
+   *
+   * <p>This method examines the schema of the given field and applies appropriate processing based
+   * on whether it is a logical type or a nested record. The resulting value is potentially
+   * transformed and returned.
+   *
+   * @param recordValue The original value of the field in the GenericRecord.
+   * @param fieldSchema The Avro schema describing the field's type.
+   * @param recordColName The name of the column (field) in the record.
+   * @return The processed value of the field, potentially transformed according to its complex
+   *     type.
+   */
+  private Object handleNonPrimitiveAvroTypes(
+      Object recordValue, Schema fieldSchema, String recordColName) {
     if (fieldSchema.getLogicalType() != null) {
       recordValue = handleLogicalFieldType(recordColName, recordValue, fieldSchema);
     } else if (fieldSchema.getType().equals(Schema.Type.RECORD)) {
@@ -149,6 +323,12 @@ public class GenericRecordTypeConvertor {
       recordValue = handleRecordFieldType(recordColName, (GenericRecord) recordValue, fieldSchema);
     }
     LOG.debug("Updated record value is {} for recordColName {}", recordValue, recordColName);
+    return recordValue;
+  }
+
+  /** Converts an avro object to Spanner Value of the specified type. */
+  private Value getSpannerValueFromObject(
+      Object value, Schema fieldSchema, String recordColName, Type spannerType) {
     Dialect dialect = schemaMapper.getDialect();
     if (dialect == null) {
       throw new NullPointerException("schemaMapper returned null spanner dialect.");
@@ -157,7 +337,7 @@ public class GenericRecordTypeConvertor {
       return AvroToValueMapper.convertorMap()
           .get(dialect)
           .get(spannerType)
-          .apply(recordValue, fieldSchema);
+          .apply(value, fieldSchema);
     } else {
       throw new IllegalArgumentException(
           "Found unsupported Spanner column type("
@@ -169,8 +349,13 @@ public class GenericRecordTypeConvertor {
 
   static class CustomAvroTypes {
     public static final String VARCHAR = "varchar";
+
     public static final String NUMBER = "number";
+
     public static final String JSON = "json";
+
+    public static final String TIME_INTERVAL = "time-interval-micros";
+
     public static final String UNSUPPORTED = "unsupported";
   }
 
@@ -218,6 +403,29 @@ public class GenericRecordTypeConvertor {
     } else if (fieldSchema.getLogicalType() != null
         && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.VARCHAR)) {
       return recordValue.toString();
+    } else if (fieldSchema.getLogicalType() != null
+        && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.TIME_INTERVAL)) {
+      Long timeMicrosTotal = Long.valueOf(recordValue.toString());
+      boolean isNegative = false;
+      if (timeMicrosTotal < 0) {
+        timeMicrosTotal *= -1;
+        isNegative = true;
+      }
+      Long nanoseconds = timeMicrosTotal * TimeUnit.MICROSECONDS.toNanos(1);
+      Long hours = TimeUnit.NANOSECONDS.toHours(nanoseconds);
+      nanoseconds -= TimeUnit.HOURS.toNanos(hours);
+      Long minutes = TimeUnit.NANOSECONDS.toMinutes(nanoseconds);
+      nanoseconds -= TimeUnit.MINUTES.toNanos(minutes);
+      Long seconds = TimeUnit.NANOSECONDS.toSeconds(nanoseconds);
+      nanoseconds -= TimeUnit.SECONDS.toNanos(seconds);
+      Long micros = TimeUnit.NANOSECONDS.toMicros(nanoseconds);
+      // Pad 0 if single digit hour.
+      String timeString = (hours < 10) ? String.format("%02d", hours) : String.format("%d", hours);
+      timeString += String.format(":%02d:%02d", minutes, seconds);
+      if (micros > 0) {
+        timeString += String.format(".%d", micros);
+      }
+      return isNegative ? "-" + timeString : timeString;
     } else if (fieldSchema.getLogicalType() != null
         && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.UNSUPPORTED)) {
       return null;

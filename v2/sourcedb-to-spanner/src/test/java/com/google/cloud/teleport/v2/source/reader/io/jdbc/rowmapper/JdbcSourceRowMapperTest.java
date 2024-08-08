@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -25,9 +26,9 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.exception.ValueMappingException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider.MysqlJdbcValueMappings;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
-import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.Interval;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
@@ -36,10 +37,10 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -122,8 +123,13 @@ public class JdbcSourceRowMapperTest {
                 sourceTableSchemaBuilder.addSourceColumnNameToSourceColumnType(
                     col.colName(), col.sourceColumnType()));
 
+    var sourceSchemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     JdbcSourceRowMapper mapper =
-        new JdbcSourceRowMapper(new MysqlJdbcValueMappings(), sourceTableSchemaBuilder.build());
+        new JdbcSourceRowMapper(
+            new MysqlJdbcValueMappings(),
+            sourceSchemaRef,
+            sourceTableSchemaBuilder.build(),
+            "shard1");
 
     // Read Test Database and verify mapper.
     try (var statement = conn.createStatement()) {
@@ -132,10 +138,15 @@ public class JdbcSourceRowMapperTest {
       while (rs.next()) {
         valueIdx++;
         var sourceRow = mapper.mapRow(rs);
+        assertEquals(sourceSchemaRef, sourceRow.sourceSchemaReference());
+        assertEquals(testTable, sourceRow.tableName());
+        assertEquals("shard1", sourceRow.shardId());
         for (int colIdx = 0; colIdx < testCols.size(); colIdx++) {
           if (valueIdx < maxNonNullValues) {
-            assertThat(sourceRow.getPayload().get(colIdx))
-                .isEqualTo(testCols.get(colIdx).expectedFields().get(valueIdx));
+            assertEquals(
+                "Failed for col: " + testCols.get(colIdx).colName() + " for valueIdx: " + valueIdx,
+                testCols.get(colIdx).expectedFields().get(valueIdx),
+                sourceRow.getPayload().get(colIdx));
           } else {
             assertThat(sourceRow.getPayload().get(colIdx)).isNull();
           }
@@ -146,6 +157,7 @@ public class JdbcSourceRowMapperTest {
     }
   }
 
+  // Add test case for shard id
   @Test
   public void testMapRowException() {
 
@@ -158,9 +170,10 @@ public class JdbcSourceRowMapperTest {
             col ->
                 sourceTableSchemaBuilder.addSourceColumnNameToSourceColumnType(
                     col.colName(), col.sourceColumnType()));
-
+    var sourceSchemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     JdbcSourceRowMapper mapper =
-        new JdbcSourceRowMapper(new MysqlJdbcValueMappings(), sourceTableSchemaBuilder.build());
+        new JdbcSourceRowMapper(
+            new MysqlJdbcValueMappings(), sourceSchemaRef, sourceTableSchemaBuilder.build(), null);
     ResultSet mockResultSet =
         Mockito.mock(
             ResultSet.class,
@@ -177,18 +190,18 @@ public class JdbcSourceRowMapperTest {
     var mapping = new MysqlJdbcValueMappings().getMappings().get("TIME");
     ResultSet mockResultSet = Mockito.mock(ResultSet.class);
     when(mockResultSet.getString(anyString())).thenReturn("-838:59:58.999999");
-    assertThat(mapping.mapValue(mockResultSet, "testField", null))
-        .isEqualTo(
-            new GenericRecordBuilder(Interval.SCHEMA)
-                .set(Interval.MONTHS_FIELD_NAME, 0)
-                .set(Interval.HOURS_FIELD_NAME, -838)
-                .set(
-                    Interval.MICROS_FIELD_NAME,
-                    -1
-                        * (TimeUnit.MINUTES.toMicros(59L)
-                            + TimeUnit.SECONDS.toMicros(58L)
-                            + 999999L))
-                .build());
+    assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(-3020398999999L);
+
+    when(mockResultSet.getString(anyString())).thenReturn("838:59:58.999999");
+    assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(3020398999999L);
+
+    when(mockResultSet.getString(anyString())).thenReturn("00:00:00");
+    assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(0L);
+
+    when(mockResultSet.getString(anyString())).thenReturn("invalid_data");
+    Assert.assertThrows(
+        java.lang.IllegalArgumentException.class,
+        () -> mapping.mapValue(mockResultSet, "testField", null));
   }
 
   @Test
@@ -209,8 +222,10 @@ public class JdbcSourceRowMapperTest {
             .addSourceColumnNameToSourceColumnType(
                 "unsupported_col", new SourceColumnType("UNSUPPORTED", new Long[] {}, null))
             .build();
+    var sourceSchemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     JdbcSourceRowMapper mapper =
-        new JdbcSourceRowMapper(new MysqlJdbcValueMappings(), sourceTableSchema);
+        new JdbcSourceRowMapper(
+            new MysqlJdbcValueMappings(), sourceSchemaRef, sourceTableSchema, null);
     assertThat(mapper.mapRow(mockResultSet).getPayload().get("unsupported_col")).isNull();
   }
 
@@ -371,15 +386,7 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Col.builder("time_col", "TIME", new SourceColumnType("TIME", new Long[] {}, null))
-                .withValue(
-                    "23:09:02" /* Derby supports only time of the day */,
-                    new GenericRecordBuilder(Interval.SCHEMA)
-                        .set(Interval.MONTHS_FIELD_NAME, 0)
-                        .set(Interval.HOURS_FIELD_NAME, 23)
-                        .set(
-                            Interval.MICROS_FIELD_NAME,
-                            TimeUnit.MINUTES.toMicros(9L) + TimeUnit.SECONDS.toMicros(2L))
-                        .build())
+                .withValue("23:09:02" /* Derby supports only time of the day */, 83342000000L)
                 .build())
         .add(
             Col.builder(

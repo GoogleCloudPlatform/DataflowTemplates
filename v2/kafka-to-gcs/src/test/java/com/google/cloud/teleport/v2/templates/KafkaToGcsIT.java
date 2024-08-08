@@ -82,14 +82,12 @@ public class KafkaToGcsIT extends TemplateTestBase {
   }
 
   @Test
-  public void testKafkaToGcsText() throws IOException, RestClientException {
-    baseKafkaToGcs(b -> b.addParameter("messageFormat", MessageFormatConstants.JSON));
-  }
-
-  @Test
   public void testKafkaToGcsAvro() throws IOException, RestClientException {
     baseKafkaToGcs(
-        b -> b.addParameter("messageFormat", MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT));
+        b ->
+            b.addParameter("messageFormat", MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
+                .addParameter("schemaFormat", "SINGLE_SCHEMA_FILE")
+                .addParameter("confluentAvroSchemaPath", getGcsPath("avro_schema.avsc")));
   }
 
   private void baseKafkaToGcs(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
@@ -107,16 +105,12 @@ public class KafkaToGcsIT extends TemplateTestBase {
                         + ";"
                         + topicName)
                 .addParameter("windowDuration", "10s")
-                .addParameter("schemaFormat", "SINGLE_SCHEMA_FILE")
-                .addParameter("confluentAvroSchemaPath", getGcsPath("avro_schema.avsc"))
                 .addParameter("kafkaReadOffset", "earliest")
                 .addParameter("outputDirectory", getGcsPath(testName))
                 .addParameter("outputFilenamePrefix", testName + "-")
                 .addParameter("numShards", "2")
-                // TODO: Move these to separate tests once they are added
                 .addParameter("kafkaReadAuthenticationMode", "NONE")
-                .addParameter("kafkaReadUsernameSecretId", "")
-                .addParameter("kafkaReadPasswordSecretId", ""));
+                .addParameter("useBigQueryDLQ", "false"));
 
     // Act
     LaunchInfo info = launchTemplate(options);

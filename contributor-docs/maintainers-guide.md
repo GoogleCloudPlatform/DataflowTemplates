@@ -47,83 +47,76 @@ for handling any issues that arise as a result of this setup.
 
 ## Merging PRs
 
-This repo's code currently is mirrored in Google's internal source control system. Merging a PR should use the following flow:
+Merging a PR should use the following flow:
 
 1) PR author creates a PR. If they are an external contributor, checks won't be automatically run.
 2) Code reviewers review/iterate with Author until PR is ready to be approved. After reviewing and verifying there is no malicious code, but before step 3 make sure to click "approve and run" to allow their workflows to run.
 3) PR reviewer approves PR
-4) PR reviewer adds "Google LGTM" tag to PR. Google tooling will now automatically create an internal CL.
-5) After a minute or two, click the "import/copybara" check in the checks section. This will navigate to an internal UI.
-6) Approve the change internally. At this point, the change will get automatically merged internally and externally.
+4) A maintainer will squash and merge PR once checks are passing.
+5) If there are issues and/or merge conflicts, repeat steps 1-4 until conflicts are resolved and checks are passing
 
-We are actively working to deprecate this process and use GitHub as the only source of truth.
-If you encounter unresolvable issues with this flow, please reach out to the Dataflow team directly.
+Note: All PRs require an approval from at least 1 reviewer and can only be merged by a maintainer.
 
 ## GitHub actions
 
-There are several workflows that leverage GitHub actions to keep the repo healthy. Of these workflows, there are 
-currently 2 that are run on self-hosted runners on GCP - [Java PR](../.github/workflows/java-pr.yml) which is used to 
-test PR's and [Release](../.github/workflows/release.yml) which is the workflow used for releasing new templates each 
-week.
+This repository uses GitHub Actions for all CI/CD needs. Please do not introduce other methods of building/running code without consulting with the core Dataflow team.
+For information on GitHub Actions and CI/CD workflows, see [CI/CD](./cicd.md).
 
-### Provision new runners
+## Validating and upgrading Beam versions
 
-There are instances where we may need to re-provision self-hosted runners, due to unexpected failures, updating 
-dependencies, increasing memory, etc. In these cases, there are helper scripts to aid in redeployment of the GitHub 
-actions runners.
+With each new release of [Apache Beam](https://github.com/apache/beam), the Beam version for the repo needs to be 
+upgraded to match. This way, our templates can take advantage of the greatest and latest features of the Beam SDK.
 
-There are 3 scripts: [configure-runners.sh](../.github/scripts/configure-runners.sh), 
-[startup-script.sh](../.github/scripts/startup-script.sh) and 
-[shutdown-script.sh](../.github/scripts/shutdown-script.sh). The first is the main script used to provision the runners 
-themselves. The startup script is what will be invoked by the GCE VM as it is booted up for the first time and will 
-install all necessary packages needed by IT's, unit tests, Release, etc. as well as link the machine as a runner for the 
-repo. Likewise, the shutdown script is run when the VM is shutdown.
+To get ahead of possible failures with each Beam release, we validate the templates by running all the tests against
+the Beam release candidate before it is released.
 
-To provision GitHub actions runners, there are a couple prerequisites
-- Must be a maintainer of the repo
-- Must have access to GCP project cloud-teleport-testing
+The Beam SDK version(s) are defined in the root [pom.xml](../pom.xml) file. Locate the lines below
+```
+<beam.version>X.XX.X</beam.version>
+<beam-python.version>X.XX.X</beam-python.version>
+<beam-maven-repo></beam-maven-repo>
+```
 
-Things to remember:
-- Running the script will tear down existing runners and provision new ones. This will kill any actions currently
-running on any of the runners. Failure to spin up new runner correctly will block PR's and Releases, so use carefully.
-- After running the script, it is likely the old runners will still be listed under
-https://github.com/GoogleCloudPlatform/DataflowTemplates/settings/actions/runners. Simply force remove these to keep the
-repo clean
-- The commands below will demonstrate how to provision runners for use with our workflows as they exist today. If there
-arises a need to provision runners in a different manner, feel free to modify the scripts directly and open a PR with 
-the necessary changes.
+### Validating the release candidate
 
-To run the configuration script:
+When _validating_ the templates, all 3 of these values need to be updated. 
+- `<beam.version>` will just take the form of the expected release version
+- `<beam-python.version>` will append `rcX` where `X` is the version of the latest release candidate (rc0, rc1, etc.)
+- `<beam-maven-repo>` will take the form `https://repository.apache.org/content/repositories/orgapachebeam-XXXX` where 
+`XXXX` can be found in the release vote email sent by the release manager for Apache Beam
 
-1. Set gcloud project to cloud-teleport-testing if not already set
-    ```
-    gcloud config set project cloud-teleport-testing
-    ```
+The `-PvalidateCandidate` profile also needs to be passed to the validation command, or set the `activeByDefault` value
+to `true`.
+https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/pom.xml#L592
 
-2. Export the GitHub actions token
-    ```
-    GITACTIONS_TOKEN=$(gcloud secrets versions access latest --secret=gitactions-runner-secret)
-    ```
+For example, when validating 2.57.0:
+```
+<beam.version>2.57.0</beam.version>
+<beam-python.version>2.57.0rc0</beam-python.version>
+<beam-maven-repo>https://repository.apache.org/content/repositories/orgapachebeam-1379</beam-maven-repo>
+```
+and
+```
+<profile>
+  <id>validateCandidate</id>
+    <activation>
+      <activeByDefault>true</activeByDefault>
+    </activation>
+    ...
+</profile>
+```
 
-3. Run the script
-   
-   * For IT runners:
-   
-      ```
-      ./configure-runners.sh \
-        -p cloud-teleport-testing \
-        -a 269744978479-compute@developer.gserviceaccount.com \
-        -t $GITACTIONS_TOKEN
-      ```
-   
-   * For Performance Test Runner
-      ```
-      ./configure-runners.sh \
-        -p cloud-teleport-testing \
-        -a 269744978479-compute@developer.gserviceaccount.com \
-        -t $GITACTIONS_TOKEN \
-        -S perf \
-        -s 1
-      ```
+Once all the tests have been validated against the release candidate, make sure to send a +1 to the release manager for
+Beam to let them know that the latest version works against this repo.
 
-**Note**: To see optional configurable parameters, run `./configure-runners.sh -h`
+### Upgrading the repo's Beam version
+
+Once a new candidate is released, make sure to edit the `<beam.version>` _only_. The other 2 properties mentioned 
+above are for validation _only_.
+
+For example, when upgrading from 2.56.0 to 2.57.0:
+```
+<beam.version>2.57.0</beam.version>
+<beam-python.version>2.57.0</beam-python.version>
+<beam-maven-repo></beam-maven-repo>
+```

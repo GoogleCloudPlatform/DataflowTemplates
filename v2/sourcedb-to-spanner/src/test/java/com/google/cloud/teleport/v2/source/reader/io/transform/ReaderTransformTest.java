@@ -17,10 +17,7 @@ package com.google.cloud.teleport.v2.source.reader.io.transform;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
-import org.apache.beam.sdk.values.TupleTag;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -36,8 +33,6 @@ public class ReaderTransformTest {
         SourceSchemaReference.builder().setDbName(dbName).build();
     final long rowCountPerTable = 10;
     final long tableCount = 1;
-    final TupleTag<SourceRow> sourceRowTupleTag = new TupleTag<>();
-    final TupleTag<SourceTableReference> sourceTableReferenceTupleTag = new TupleTag<>();
     ReaderTransformTestUtils readerTransformTestUtils =
         new ReaderTransformTestUtils(rowCountPerTable, tableCount, sourceSchemaReference);
     var readerTransform = readerTransformTestUtils.getTestReaderTransform();

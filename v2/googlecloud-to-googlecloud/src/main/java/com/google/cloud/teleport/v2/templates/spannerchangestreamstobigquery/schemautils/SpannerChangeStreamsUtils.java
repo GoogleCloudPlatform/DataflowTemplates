@@ -447,6 +447,8 @@ public class SpannerChangeStreamsUtils {
         return Type.bytes();
       case "DATE":
         return Type.date();
+      case "FLOAT32":
+        return Type.float32();
       case "FLOAT64":
         return Type.float64();
       case "INT64":
@@ -487,6 +489,8 @@ public class SpannerChangeStreamsUtils {
         return Type.bool();
       case "BYTEA":
         return Type.bytes();
+      case "REAL":
+        return Type.float32();
       case "DOUBLE PRECISION":
         return Type.float64();
       case "BIGINT":

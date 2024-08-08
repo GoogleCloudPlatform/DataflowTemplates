@@ -23,6 +23,9 @@ on:
     paths:
       - '**.java'
       - '**.xml'
+      # Include python files and Dockerfiles used for YAML and xlang templates.
+      - '**.py'
+      - 'plugins/core-plugin/src/main/resources/**'
       # Include relevant GitHub Action files for running these checks.
       # This will make it easier to verify action changes don't break anything.
       - '.github/actions/setup-env/*'
@@ -113,6 +116,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: GoogleCloudPlatform/DataflowTemplates
           files: 'target/site/jacoco-aggregate/jacoco.xml'
+          # Temp fix for https://github.com/codecov/codecov-action/issues/1487
+          version: v0.6.0
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
   java_integration_smoke_tests_templates:
@@ -146,7 +151,7 @@ jobs:
   java_integration_tests_templates:
     name: Dataflow Templates Integration Tests
     needs: [java_integration_smoke_tests_templates]
-    timeout-minutes: 180
+    timeout-minutes: 240
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, it]
     steps:

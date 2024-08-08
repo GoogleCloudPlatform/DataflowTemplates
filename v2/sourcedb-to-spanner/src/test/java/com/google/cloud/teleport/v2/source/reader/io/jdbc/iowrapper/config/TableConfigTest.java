@@ -16,8 +16,8 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.assertThrows;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -29,42 +29,36 @@ public class TableConfigTest {
   @Test
   public void testTableConfigBuildsWithDefaults() {
     final String testTable = "testTable";
-    final String partitionColumn = "col_1";
+    final PartitionColumn partitionColumn =
+        PartitionColumn.builder().setColumnName("col_1").setColumnClass(Integer.class).build();
 
     TableConfig tableConfig =
-        TableConfig.builder(testTable).withPartitionColum(partitionColumn).build();
+        TableConfig.builder(testTable)
+            .withPartitionColum(partitionColumn)
+            .setApproxRowCount(42L)
+            .build();
     assertThat(tableConfig.tableName()).isEqualTo(testTable);
     assertThat(tableConfig.maxPartitions()).isNull();
     assertThat(tableConfig.partitionColumns()).isEqualTo(ImmutableList.of(partitionColumn));
+    assertThat(tableConfig.approxRowCount()).isEqualTo(42L);
   }
 
   @Test
   public void testTableConfigBuilds() {
     final String testTable = "testTable";
-    final String partitionColumn = "col_1";
+    final PartitionColumn partitionColumn =
+        PartitionColumn.builder().setColumnName("col_1").setColumnClass(Integer.class).build();
     final int maxPartitions = 100;
 
     TableConfig tableConfig =
         TableConfig.builder(testTable)
             .withPartitionColum(partitionColumn)
             .setMaxPartitions(maxPartitions)
+            .setApproxRowCount(42L)
             .build();
     assertThat(tableConfig.tableName()).isEqualTo(testTable);
     assertThat(tableConfig.maxPartitions()).isEqualTo(maxPartitions);
     assertThat(tableConfig.partitionColumns()).isEqualTo(ImmutableList.of(partitionColumn));
-  }
-
-  @Test
-  public void testTableConfigPreconditions() {
-    final String testTable = "testTable";
-
-    assertThrows(IllegalStateException.class, () -> TableConfig.builder(testTable).build());
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            TableConfig.builder(testTable)
-                .withPartitionColum("col_1")
-                .withPartitionColum("col_2")
-                .build());
+    assertThat(tableConfig.approxRowCount()).isEqualTo(42L);
   }
 }

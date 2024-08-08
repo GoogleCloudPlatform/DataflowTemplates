@@ -242,7 +242,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
             .build();
     result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo1, Duration.ofMinutes(10)), rowsConditionCheck);
+            .waitForCondition(createConfig(jobInfo2, Duration.ofMinutes(10)), rowsConditionCheck);
     assertThatResult(result).meetsConditions();
 
     // Assert specific rows

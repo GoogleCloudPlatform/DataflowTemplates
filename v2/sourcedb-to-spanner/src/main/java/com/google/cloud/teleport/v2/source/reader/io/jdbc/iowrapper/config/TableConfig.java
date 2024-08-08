@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config;
 
 import com.google.auto.value.AutoValue;
-import com.google.common.base.Preconditions;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.common.collect.ImmutableList;
 import javax.annotation.Nullable;
 
@@ -35,7 +35,10 @@ public abstract class TableConfig {
   public abstract Integer maxPartitions();
 
   /** Partition Column. As of now only a single partition column is supported */
-  public abstract ImmutableList<String> partitionColumns();
+  public abstract ImmutableList<PartitionColumn> partitionColumns();
+
+  /** Approximate count of the rows in the table. */
+  public abstract Long approxRowCount();
 
   public static Builder builder(String tableName) {
     return new AutoValue_TableConfig.Builder().setTableName(tableName).setMaxPartitions(null);
@@ -48,9 +51,11 @@ public abstract class TableConfig {
 
     public abstract Builder setMaxPartitions(Integer value);
 
-    abstract ImmutableList.Builder<String> partitionColumnsBuilder();
+    abstract ImmutableList.Builder<PartitionColumn> partitionColumnsBuilder();
 
-    public Builder withPartitionColum(String column) {
+    public abstract Builder setApproxRowCount(Long value);
+
+    public Builder withPartitionColum(PartitionColumn column) {
       this.partitionColumnsBuilder().add(column);
       return this;
     }
@@ -59,9 +64,6 @@ public abstract class TableConfig {
 
     public TableConfig build() {
       TableConfig tableConfig = this.autoBuild();
-      Preconditions.checkState(
-          tableConfig.partitionColumns().size() == 1,
-          "A single partition column is required. Currently Partition Columns are not auto inferred and composite partition columns are not supported.");
       return tableConfig;
     }
   }

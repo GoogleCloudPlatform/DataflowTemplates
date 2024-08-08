@@ -36,6 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -58,6 +59,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -106,20 +108,36 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
 
   @Test
   public void testFakeMessagesToGcs() throws IOException {
+    testFakeMessagesToGcsBase(Function.identity());
+  }
+
+  @Test
+  public void testFakeMessagesToGcsBaseUsingRunnerV2() throws IOException {
+    testFakeMessagesToGcsBase(this::enableRunnerV2);
+  }
+
+  @Test
+  public void testFakeMessagesToGcsStreamingEngine() throws IOException {
+    testFakeMessagesToGcsBase(this::enableStreamingEngine);
+  }
+
+  private void testFakeMessagesToGcsBase(
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
     // Arrange
     gcsClient.uploadArtifact(SCHEMA_FILE, LOCAL_SCHEMA_PATH);
     String name = testName;
 
     LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, specPath)
-            // TODO(zhoufek): See if it is possible to use the properties interface and generate
-            // the map from the set values.
-            .addParameter(SCHEMA_LOCATION_KEY, getGcsPath(SCHEMA_FILE))
-            .addParameter(QPS_KEY, DEFAULT_QPS)
-            .addParameter(SINK_TYPE_KEY, SinkType.GCS.name())
-            .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
-            .addParameter(OUTPUT_DIRECTORY_KEY, getGcsPath(testName))
-            .addParameter(NUM_SHARDS_KEY, "1");
+        paramsAdder.apply(
+            LaunchConfig.builder(testName, specPath)
+                // TODO(zhoufek): See if it is possible to use the properties interface and generate
+                // the map from the set values.
+                .addParameter(SCHEMA_LOCATION_KEY, getGcsPath(SCHEMA_FILE))
+                .addParameter(QPS_KEY, DEFAULT_QPS)
+                .addParameter(SINK_TYPE_KEY, SinkType.GCS.name())
+                .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
+                .addParameter(OUTPUT_DIRECTORY_KEY, getGcsPath(testName))
+                .addParameter(NUM_SHARDS_KEY, "1"));
     // Act
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
@@ -373,6 +391,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   }
 
   @Test
+  @Ignore("https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/1752")
   public void testFakeMessagesToKafka() throws IOException {
     // Set up resource manager
     kafkaResourceManager =

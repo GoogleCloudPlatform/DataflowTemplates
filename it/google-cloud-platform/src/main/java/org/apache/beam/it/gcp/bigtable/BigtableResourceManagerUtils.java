@@ -18,6 +18,7 @@
 package org.apache.beam.it.gcp.bigtable;
 
 import static org.apache.beam.it.common.utils.ResourceManagerUtils.generateResourceId;
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import java.time.format.DateTimeFormatter;
@@ -58,7 +59,7 @@ public final class BigtableResourceManagerUtils {
       String baseString, String zone, int numNodes, StorageType storageType) {
 
     // Take substring of baseString to account for random suffix
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     int randomSuffixLength = 6;
     baseString =
         baseString
@@ -82,7 +83,7 @@ public final class BigtableResourceManagerUtils {
             DateTimeFormatter.ofPattern(TIME_FORMAT));
 
     // Add random suffix to avoid collision
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     clusterId =
         clusterId + REPLACE_CLUSTER_CHAR + RandomStringUtils.randomAlphanumeric(6).toLowerCase();
 
@@ -101,7 +102,7 @@ public final class BigtableResourceManagerUtils {
   static String generateInstanceId(String baseString) {
 
     // Take substring of baseString to account for random suffix
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     int randomSuffixLength = 6;
     baseString =
         baseString.substring(
@@ -115,7 +116,7 @@ public final class BigtableResourceManagerUtils {
                     - randomSuffixLength));
 
     // Add random suffix to avoid collision
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     return generateResourceId(
             baseString.toLowerCase(),
             ILLEGAL_INSTANCE_ID_CHARS,
@@ -135,7 +136,7 @@ public final class BigtableResourceManagerUtils {
   public static String generateTableId(String baseString) {
 
     // Take substring of baseString to account for random suffix
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     int randomSuffixLength = 6;
     baseString =
         baseString.substring(
@@ -149,7 +150,7 @@ public final class BigtableResourceManagerUtils {
                     - randomSuffixLength));
 
     // Add random suffix to avoid collision
-    // TODO(polber) - remove with Beam 2.57.0
+    // TODO(polber) - remove with Beam 2.58.0
     return generateResourceId(
             baseString.toLowerCase(),
             ILLEGAL_TABLE_CHARS,
@@ -184,5 +185,14 @@ public final class BigtableResourceManagerUtils {
               + idToCheck
               + " is not a valid ID. Only letters, numbers, hyphens, underscores and exclamation points are allowed.");
     }
+  }
+
+  /**
+   * Generates an app profile id.
+   *
+   * @return The app profile id string.
+   */
+  public static String generateAppProfileId() {
+    return "app_profile_" + randomAlphanumeric(8).toLowerCase() + "_" + System.nanoTime();
   }
 }

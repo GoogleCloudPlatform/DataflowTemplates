@@ -17,21 +17,27 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
 
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SuitableIndexNotFoundException;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaDiscovery;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaDiscoveryImpl;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -49,6 +55,10 @@ import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/*
+ * TODO(vardhanvthigle): Towards M3, make this a reconfigurable class, and expose (if required) the approxRowCounts
+ *  and maxPartitionHints (auto inferred) to the pipeline controller helping a better sequencing of tables.
+ */
 public final class JdbcIoWrapper implements IoWrapper {
   private static final Logger LOG = LoggerFactory.getLogger(JdbcIoWrapper.class);
 
@@ -121,7 +131,19 @@ public final class JdbcIoWrapper implements IoWrapper {
                       .setSourceTableName(sourceTableSchema.tableName())
                       .setSourceTableSchemaUUID(sourceTableSchema.tableSchemaUUID())
                       .build(),
-                  getJdbcIO(config, dataSourceConfiguration, tableConfig, sourceTableSchema));
+                  (config.readWithUniformPartitionsFeatureEnabled())
+                      ? getReadWithUniformPartitionIO(
+                          config,
+                          dataSourceConfiguration,
+                          sourceSchema.schemaReference(),
+                          tableConfig,
+                          sourceTableSchema)
+                      : getJdbcIO(
+                          config,
+                          dataSourceConfiguration,
+                          sourceSchema.schemaReference(),
+                          tableConfig,
+                          sourceTableSchema));
             })
         .collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, Map.Entry::getValue));
   }
@@ -184,42 +206,84 @@ public final class JdbcIoWrapper implements IoWrapper {
         schemaDiscovery.discoverTableIndexes(dataSource, config.sourceSchemaReference(), tables);
     ImmutableList.Builder<TableConfig> tableConfigsBuilder = ImmutableList.builder();
     for (String table : tables) {
-      TableConfig.Builder configBuilder = TableConfig.builder(table);
-      if (config.tableVsPartitionColumns().containsKey(table)) {
-        config.tableVsPartitionColumns().get(table).forEach(configBuilder::withPartitionColum);
-      } else {
-        if (indexes.containsKey(table)) {
-          // As of now only Primary key index with Numeric type is supported.
-          // TODO:
-          //    1. support unique indexes.
-          //    2. support for DateTime type
-          //    3. support for String type.
-          ImmutableList<String> partitionColumns =
-              indexes.get(table).stream()
-                  .filter(
-                      indexInfo ->
-                          (indexInfo.isPrimary()
-                              && indexInfo.ordinalPosition() == 1
-                              && indexInfo.indexType() == IndexType.NUMERIC))
-                  .map(SourceColumnIndexInfo::columnName)
-                  .collect(ImmutableList.toImmutableList());
-          if (partitionColumns.isEmpty()) {
-            throw new SuitableIndexNotFoundException(
-                new Throwable(
-                    "No Suitable Index Found for partition column inference for table " + table));
-          }
-          partitionColumns.forEach(configBuilder::withPartitionColum);
-        } else {
-          throw new SuitableIndexNotFoundException(
-              new Throwable("No Index Found for partition column inference for table " + table));
-        }
-      }
-      if (config.maxPartitions() != null && config.maxPartitions() != 0) {
-        configBuilder.setMaxPartitions(config.maxPartitions());
-      }
-      tableConfigsBuilder.add(configBuilder.build());
+      tableConfigsBuilder.add(getTableConfig(table, config, indexes));
     }
     return tableConfigsBuilder.build();
+  }
+
+  private static TableConfig getTableConfig(
+      String tableName,
+      JdbcIOWrapperConfig config,
+      ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexInfo) {
+    TableConfig.Builder tableConfigBuilder = TableConfig.builder(tableName);
+    if (config.maxPartitions() != null && config.maxPartitions() != 0) {
+      tableConfigBuilder.setMaxPartitions(config.maxPartitions());
+    }
+    /*
+     * TODO(vardhanvthigle): Add optional support for non-primary indexes.
+     * Note: most of the implementation is generic for any unique index.
+     *  Need to benchmark and do the end to end implementation.
+     */
+    if (indexInfo.containsKey(tableName)) {
+      ImmutableList<SourceColumnIndexInfo> tableIndexInfo = indexInfo.get(tableName);
+
+      // TODO(vardhanvthigle): support for non-primary indexes.
+      tableIndexInfo.stream()
+          .filter(info -> info.isPrimary() && info.ordinalPosition() == 1)
+          .map(SourceColumnIndexInfo::cardinality)
+          .forEach(tableConfigBuilder::setApproxRowCount);
+      if (config.tableVsPartitionColumns().containsKey(tableName)) {
+        config.tableVsPartitionColumns().get(tableName).stream()
+            .map(
+                colName ->
+                    tableIndexInfo.stream()
+                        .filter(info -> info.columnName().equals(colName))
+                        .findFirst()
+                        .get())
+            .sorted()
+            .map(JdbcIoWrapper::partitionColumnFromIndexInfo)
+            .forEach(tableConfigBuilder::withPartitionColum);
+      } else {
+        ImmutableSet<IndexType> supportedIndexTypes =
+            ImmutableSet.of(IndexType.NUMERIC, IndexType.STRING);
+        // As of now only Primary key index with Numeric type is supported.
+        // TODO:
+        //    1. support non-primary unique indexes.
+        //        Note: most of the implementation is generic for any unique index.
+        //        Need to benchmark and do the end to end implementation.
+        //    2. support for DateTime type
+        //    3. support for composite indexes
+        //       Note: though we have most of the code for composite index, since we cap the
+        // splitting stages to 1, additional indexes will not be considered for splitting as of now.
+        tableIndexInfo.stream()
+            .filter(
+                idxInfo ->
+                    (idxInfo.isPrimary() && supportedIndexTypes.contains(idxInfo.indexType())))
+            .sorted()
+            .map(JdbcIoWrapper::partitionColumnFromIndexInfo)
+            .forEach(tableConfigBuilder::withPartitionColum);
+      }
+      TableConfig tableConfig = tableConfigBuilder.build();
+      if (tableConfig.partitionColumns().isEmpty()) {
+        throw new SuitableIndexNotFoundException(
+            new Throwable(
+                "No Suitable Index Found for partition column inference for table " + tableName));
+      }
+      return tableConfig;
+    } else {
+      throw new SuitableIndexNotFoundException(
+          new Throwable("No Index Found for partition column inference for table " + tableName));
+    }
+  }
+
+  private static PartitionColumn partitionColumnFromIndexInfo(SourceColumnIndexInfo idxInfo) {
+    return PartitionColumn.builder()
+        .setColumnName(idxInfo.columnName())
+        // TODO(vardhanvthigle): handle other types
+        .setColumnClass((idxInfo.indexType() == IndexType.NUMERIC) ? Long.class : String.class)
+        .setStringCollation(idxInfo.collationReference())
+        .setStringMaxLength(idxInfo.stringMaxLength())
+        .build();
   }
 
   @VisibleForTesting
@@ -251,19 +315,71 @@ public final class JdbcIoWrapper implements IoWrapper {
   private static PTransform<PBegin, PCollection<SourceRow>> getJdbcIO(
       JdbcIOWrapperConfig config,
       DataSourceConfiguration dataSourceConfiguration,
+      SourceSchemaReference sourceSchemaReference,
       TableConfig tableConfig,
       SourceTableSchema sourceTableSchema) {
     ReadWithPartitions<SourceRow, @UnknownKeyFor @NonNull @Initialized Long> jdbcIO =
         JdbcIO.<SourceRow>readWithPartitions()
             .withTable(tableConfig.tableName())
-            .withPartitionColumn(tableConfig.partitionColumns().get(0))
+            .withPartitionColumn(tableConfig.partitionColumns().get(0).columnName())
             .withDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
             .withRowMapper(
-                new JdbcSourceRowMapper(config.valueMappingsProvider(), sourceTableSchema));
+                new JdbcSourceRowMapper(
+                    config.valueMappingsProvider(),
+                    sourceSchemaReference,
+                    sourceTableSchema,
+                    config.shardID()));
     if (tableConfig.maxPartitions() != null) {
       jdbcIO = jdbcIO.withNumPartitions(tableConfig.maxPartitions());
     }
     return jdbcIO;
+  }
+
+  /**
+   * Private helper to construct {@link ReadWithUniformPartitions} as per the reader configuration.
+   *
+   * @param config Configuration.
+   * @param dataSourceConfiguration dataSourceConfiguration (which is derived earlier from the
+   *     reader configuration)
+   * @param tableConfig discovered table configurations.
+   * @param sourceTableSchema schema of the source table.
+   * @return
+   */
+  private static PTransform<PBegin, PCollection<SourceRow>> getReadWithUniformPartitionIO(
+      JdbcIOWrapperConfig config,
+      DataSourceConfiguration dataSourceConfiguration,
+      SourceSchemaReference sourceSchemaReference,
+      TableConfig tableConfig,
+      SourceTableSchema sourceTableSchema) {
+
+    ReadWithUniformPartitions.Builder<SourceRow> readWithUniformPartitionsBuilder =
+        ReadWithUniformPartitions.<SourceRow>builder()
+            .setTableName(tableConfig.tableName())
+            .setPartitionColumns(tableConfig.partitionColumns())
+            .setDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
+            .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
+            .setApproxTotalRowCount(tableConfig.approxRowCount())
+            .setRowMapper(
+                new JdbcSourceRowMapper(
+                    config.valueMappingsProvider(),
+                    sourceSchemaReference,
+                    sourceTableSchema,
+                    config.shardID()))
+            .setWaitOn(config.waitOn())
+            /* The following setting limits number of stages provisioned for the split process.
+             * Currently we mostly deal with auto incrementing keys, so we don't need a split depth to make the partition uniform, unless there is a large dataset with a lot of holes.
+             * TODO(vardhanvthigle): if index is not of the type of a single auto incrementing key, don't set this.
+             */
+            .setSplitStageCountHint(0L)
+            .setDbParallelizationForSplitProcess(config.dbParallelizationForSplitProcess())
+            .setDbParallelizationForReads(config.dbParallelizationForReads())
+            .setAdditionalOperationsOnRanges(config.additionalOperationsOnRanges());
+
+    if (tableConfig.maxPartitions() != null) {
+      readWithUniformPartitionsBuilder =
+          readWithUniformPartitionsBuilder.setMaxPartitionsHint((long) tableConfig.maxPartitions());
+    }
+    return readWithUniformPartitionsBuilder.build();
   }
 
   /**

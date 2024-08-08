@@ -34,6 +34,7 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
+import org.apache.parquet.Strings;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -105,6 +106,7 @@ public final class YAMLTemplateIT extends TemplateTestBase {
       Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
           paramsAdder)
       throws IOException {
+    boolean useStagedJars = !Strings.isNullOrEmpty(System.getProperty("beamMavenRepo"));
     // Arrange
     String inputPath = getGcsBasePath() + "/input/test.csv";
     String outputPath = getGcsBasePath() + "/output";
@@ -114,8 +116,18 @@ public final class YAMLTemplateIT extends TemplateTestBase {
                 .addParameter(
                     "jinja_variables",
                     String.format(
-                        "{\"INPUT_PATH_PARAM\": \"%s\", \"OUTPUT_PATH_PARAM\": \"%s\"}",
-                        inputPath, outputPath)));
+                        "{"
+                            + "\"INPUT_PATH_PARAM\": \"%s\", "
+                            + "\"OUTPUT_PATH_PARAM\": \"%s\", "
+                            + "\"USE_STAGED_JARS\": \"%s\", "
+                            + "\"BEAM_VERSION\": \"%s\", "
+                            + "\"BEAM_MAVEN_REPO\": \"%s\""
+                            + "}",
+                        inputPath,
+                        outputPath,
+                        useStagedJars,
+                        System.getProperty("beamJavaVersion"),
+                        System.getProperty("beamMavenRepo"))));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

@@ -20,13 +20,13 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.bigquery.Field;
-import com.google.cloud.bigquery.Field.Mode;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.kafka.transforms.BinaryAvroSerializer;
+import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters;
 import com.google.common.io.Resources;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
@@ -166,6 +166,8 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
         b ->
             b.addParameter("messageFormat", "AVRO_CONFLUENT_WIRE_FORMAT")
                 .addParameter("schemaFormat", "SCHEMA_REGISTRY")
+                // Schemas are registered with ids 3 and 4. If this test fails, check if the
+                // below schema registry address contains the expected schema registered.
                 .addParameter("schemaRegistryConnectionUrl", "http://10.128.0.60:8081")
                 .addParameter("writeMode", "DYNAMIC_TABLE_NAMES")
                 .addParameter("outputProject", PROJECT)
@@ -192,6 +194,23 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
   }
 
   @Test
+  public void testKafkaToBigQueryAvroInNonConfluentFormatWithDLQ()
+      throws IOException, RestClientException {
+    tableId = bigQueryClient.createTable(testName, bqSchema);
+    deadletterTableId = TableId.of(bigQueryClient.getDatasetId(), testName + "_dlq");
+    baseKafkaToBigQueryAvro(
+        b ->
+            b.addParameter("messageFormat", "AVRO_BINARY_ENCODING")
+                .addParameter("schemaFormat", "SINGLE_SCHEMA_FILE")
+                .addParameter("binaryAvroSchemaPath", getGcsPath("avro_schema.avsc"))
+                .addParameter("writeMode", "SINGLE_TABLE_NAME")
+                .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
+                .addParameter("useBigQueryDLQ", "true")
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId))
+                .addParameter("kafkaReadAuthenticationMode", "NONE"));
+  }
+
+  @Test
   public void testKafkaToBigQueryAvroInNonConfluentFormatWithKey()
       throws IOException, RestClientException {
     List<Field> fields = new ArrayList<>(bqSchema.getFields());
@@ -213,7 +232,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
   @Test
   public void testKafkaToBigQueryAvroWithExistingDLQ() throws IOException, RestClientException {
     tableId = bigQueryClient.createTable(testName, bqSchema);
-    deadletterTableId = bigQueryClient.createTable(testName + "_dlq", getDeadletterSchema());
+    deadletterTableId = TableId.of(bigQueryClient.getDatasetId(), testName + "_dlq");
 
     baseKafkaToBigQueryAvro(
         b ->
@@ -227,36 +246,129 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
                 .addParameter("kafkaReadAuthenticationMode", "NONE"));
   }
 
-  private Schema getDeadletterSchema() {
-    Schema dlqSchema =
-        Schema.of(
-            Field.newBuilder("timestamp", StandardSQLTypeName.TIMESTAMP)
-                .setMode(Mode.REQUIRED)
-                .build(),
-            Field.newBuilder("payloadString", StandardSQLTypeName.STRING)
-                .setMode(Mode.REQUIRED)
-                .build(),
-            Field.newBuilder("payloadBytes", StandardSQLTypeName.BYTES)
-                .setMode(Mode.REQUIRED)
-                .build(),
-            Field.newBuilder(
-                    "attributes",
-                    StandardSQLTypeName.STRUCT,
-                    Field.newBuilder("key", StandardSQLTypeName.STRING)
-                        .setMode(Mode.NULLABLE)
-                        .build(),
-                    Field.newBuilder("value", StandardSQLTypeName.STRING)
-                        .setMode(Mode.NULLABLE)
-                        .build())
-                .setMode(Mode.REPEATED)
-                .build(),
-            Field.newBuilder("errorMessage", StandardSQLTypeName.STRING)
-                .setMode(Mode.NULLABLE)
-                .build(),
-            Field.newBuilder("stacktrace", StandardSQLTypeName.STRING)
-                .setMode(Mode.NULLABLE)
-                .build());
-    return dlqSchema;
+  @Test
+  public void testKafkaToBigQueryAvroSerializationErrorWithDLQ()
+      throws IOException, RestClientException {
+    tableId = bigQueryClient.createTable(testName, bqSchema);
+    deadletterTableId = TableId.of(bigQueryClient.getDatasetId(), testName + "_dlq");
+
+    baseKafkaToBigQueryAvroSerializationErrorWithDLQ(
+        b ->
+            b.addParameter("messageFormat", "AVRO_CONFLUENT_WIRE_FORMAT")
+                .addParameter("schemaFormat", "SINGLE_SCHEMA_FILE")
+                .addParameter("confluentAvroSchemaPath", getGcsPath("avro_schema.avsc"))
+                .addParameter("writeMode", "SINGLE_TABLE_NAME")
+                .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
+                .addParameter("useBigQueryDLQ", "true")
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId))
+                .addParameter("kafkaReadAuthenticationMode", "NONE"));
+  }
+
+  private void baseKafkaToBigQueryAvroSerializationErrorWithDLQ(
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException, RestClientException {
+    String topicName = kafkaResourceManager.createTopic(testName, 5);
+
+    LaunchConfig.Builder options =
+        paramsAdder.apply(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter(
+                    "readBootstrapServerAndTopic",
+                    kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "")
+                        + ";"
+                        + topicName)
+                .addParameter("kafkaReadOffset", "earliest"));
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    List<ConditionCheck> conditions = new ArrayList<ConditionCheck>();
+
+    // Publish messages with IDs 1 and 2.
+    publishDoubleSchemaMessages(topicName, 1, 2);
+
+    // For dead letter queue test, pass a single schema file as schema source and
+    // use CONFLUENT_WIRE_FORMAT as message format. This expects all the messages in the single
+    // topic
+    // to contain the schema ID to be 1. The messages with schema id 2 will fail to deserialize and
+    // will go
+    // into dead letter queue.
+
+    // 20 elements in expected success table. 40 messages will be in the dead letter queue table.
+    conditions.add(BigQueryRowsCheck.builder(bigQueryClient, tableId).setMinRows(20).build());
+    conditions.add(
+        BigQueryRowsCheck.builder(bigQueryClient, deadletterTableId).setMinRows(40).build());
+
+    Result result =
+        pipelineOperator()
+            .waitForConditionsAndFinish(
+                createConfig(info), conditions.toArray(new ConditionCheck[0]));
+    // Assert
+    assertThatResult(result).meetsConditions();
+  }
+
+  @Test
+  public void testKafkaToBigQueryBinarySerializationErrorWithDLQ() throws IOException {
+    tableId = bigQueryClient.createTable(testName, bqSchema);
+    deadletterTableId = TableId.of(bigQueryClient.getDatasetId(), testName + "_dlq");
+
+    baseKafkaToBigQueryBinarySerializationWithDLQ(
+        b ->
+            b.addParameter(
+                    "messageFormat",
+                    KafkaTemplateParameters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)
+                .addParameter(
+                    "schemaFormat", KafkaTemplateParameters.SchemaFormat.SINGLE_SCHEMA_FILE)
+                .addParameter("confluentAvroSchemaPath", getGcsPath("avro_schema.avsc"))
+                .addParameter("writeMode", "SINGLE_TABLE_NAME")
+                .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
+                .addParameter("useBigQueryDLQ", "true")
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId))
+                .addParameter("kafkaReadAuthenticationMode", "NONE"),
+        0,
+        30);
+  }
+
+  private void baseKafkaToBigQueryBinarySerializationWithDLQ(
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder,
+      int successRowCount,
+      int failRowCount)
+      throws IOException {
+    String topicName = kafkaResourceManager.createTopic(testName, 5);
+
+    LaunchConfig.Builder options =
+        paramsAdder.apply(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter(
+                    "readBootstrapServerAndTopic",
+                    kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "")
+                        + ";"
+                        + topicName)
+                .addParameter("kafkaReadOffset", "earliest"));
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    List<ConditionCheck> conditions = new ArrayList<ConditionCheck>();
+
+    // Publishing the binary messages.
+    publishBinaryMessages(topicName);
+
+    // Reading the AVRO_CONFLUENT_WIRE_FORMAT messages. All the messages should go into DLQ since
+    // confluent wire format can't deserialize binary format messages since it requires magic byte
+    // and schema id in the byte payload.
+    conditions.add(BigQueryRowsCheck.builder(bigQueryClient, tableId).setMinRows(0).build());
+    conditions.add(
+        BigQueryRowsCheck.builder(bigQueryClient, deadletterTableId).setMinRows(30).build());
+
+    Result result =
+        pipelineOperator()
+            .waitForConditionsAndFinish(
+                createConfig(info), conditions.toArray(new ConditionCheck[0]));
+    // Assert
+    assertThatResult(result).meetsConditions();
   }
 
   private void baseKafkaToBigQueryAvro(
@@ -287,7 +399,10 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
         && options.getParameter("schemaFormat").equals("SCHEMA_REGISTRY")
         && options.getParameter("schemaRegistryConnectionUrl") != null) {
 
-      publishDoubleSchemaMessages(topicName);
+      // Schemas are registered in schema registry with IDs 3 and 4 for Kafka Reads. So for these
+      // tests
+      // publish the messages with schema IDs 3 and 4.
+      publishDoubleSchemaMessages(topicName, 3, 4);
       tableId = TableId.of(bqDatasetId, avroSchema.getFullName().replace(".", "-"));
       TableId otherTableId =
           TableId.of(bqDatasetId, otherAvroSchema.getFullName().replace(".", "-"));
@@ -378,11 +493,11 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
     }
   }
 
-  private void publishDoubleSchemaMessages(String topicName)
+  private void publishDoubleSchemaMessages(String topicName, int schemaId1, int schemaId2)
       throws IOException, RestClientException {
     MockSchemaRegistryClient registryClient = new MockSchemaRegistryClient();
-    registryClient.register(topicName + "-value", avroSchema, 1, 3);
-    registryClient.register(topicName + "-value", otherAvroSchema, 1, 4);
+    registryClient.register(topicName + "-value", avroSchema, 1, schemaId1);
+    registryClient.register(topicName + "-value", otherAvroSchema, 1, schemaId2);
 
     KafkaProducer<String, Object> kafkaProducer =
         kafkaResourceManager.buildProducer(

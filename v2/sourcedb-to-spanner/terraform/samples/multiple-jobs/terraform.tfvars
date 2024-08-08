@@ -1,7 +1,7 @@
 common_params = {
-  on_delete                    = "drain"  # Or "cancel" if you prefer
+  on_delete                    = "drain" # Or "cancel" if you prefer
   project                      = "your-google-cloud-project-id"
-  region                       = "us-central1"  # Or your desired region
+  region                       = "us-central1" # Or your desired region
   jdbcDriverJars               = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
   jdbcDriverClassName          = "com.mysql.jdbc.Driver"
   projectId                    = "your-cloud-spanner-project-id"

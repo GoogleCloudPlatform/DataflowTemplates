@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -93,6 +94,17 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
   @Test
   @TemplateIntegrationTest(value = PubSubToBigQuery.class, template = "PubSub_to_BigQuery")
   public void testTopicToBigQueryClassic() throws IOException {
+    testTopicToBigQueryClassicBase(Function.identity());
+  }
+
+  @Test
+  @TemplateIntegrationTest(value = PubSubToBigQuery.class, template = "PubSub_to_BigQuery")
+  public void testTopicToBigQueryClassicStreamingEngine() throws IOException {
+    testTopicToBigQueryClassicBase(this::enableStreamingEngine);
+  }
+
+  private void testTopicToBigQueryClassicBase(
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
     // Arrange
     List<Field> bqSchemaFields =
         Arrays.asList(
@@ -113,12 +125,13 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
     // Act
     LaunchInfo info =
         launchTemplate(
-            LaunchConfig.builder(testName, specPath)
-                .addParameter("inputTopic", topic.toString())
-                .addParameter("outputTableSpec", toTableSpecLegacy(table))
-                .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
-                .addParameter("javascriptTextTransformFunctionName", "uppercaseName")
-                .addParameter("outputDeadletterTable", toTableSpecLegacy(dlqTable)));
+            paramsAdder.apply(
+                LaunchConfig.builder(testName, specPath)
+                    .addParameter("inputTopic", topic.toString())
+                    .addParameter("outputTableSpec", toTableSpecLegacy(table))
+                    .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
+                    .addParameter("javascriptTextTransformFunctionName", "uppercaseName")
+                    .addParameter("outputDeadletterTable", toTableSpecLegacy(dlqTable))));
     assertThatPipeline(info).isRunning();
 
     List<Map<String, Object>> expectedMessages = new ArrayList<>();

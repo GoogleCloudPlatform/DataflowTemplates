@@ -23,15 +23,11 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform.WriteDLQ;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.PCollection;
@@ -81,7 +77,7 @@ public class DeadLetterQueueTest {
 
   @Test
   public void testCreateGCSDLQ() {
-    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", spannerDdl, new HashMap<>());
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", spannerDdl);
     assertEquals("testDir", dlq.getDlqDirectory());
 
     assertTrue(dlq.getDlqTransform() instanceof WriteDLQ);
@@ -91,32 +87,60 @@ public class DeadLetterQueueTest {
 
   @Test
   public void testCreateLogDlq() {
-    DeadLetterQueue dlq = DeadLetterQueue.create("LOG", spannerDdl, new HashMap<>());
+    DeadLetterQueue dlq = DeadLetterQueue.create("LOG", spannerDdl);
     assertEquals("LOG", dlq.getDlqDirectory());
     assertTrue(dlq.getDlqTransform() instanceof DeadLetterQueue.WriteToLog);
   }
 
   @Test
   public void testCreateIgnoreDlq() {
-    DeadLetterQueue dlq = DeadLetterQueue.create("IGNORE", spannerDdl, new HashMap<>());
+    DeadLetterQueue dlq = DeadLetterQueue.create("IGNORE", spannerDdl);
     assertEquals("IGNORE", dlq.getDlqDirectory());
     assertNull(dlq.getDlqTransform());
   }
 
   @Test(expected = RuntimeException.class)
   public void testNoDlqDirectory() {
-    DeadLetterQueue.create(null, spannerDdl, new HashMap<>()).getDlqDirectory();
+    DeadLetterQueue.create(null, spannerDdl).getDlqDirectory();
   }
 
   @Test
-  public void testFailedRowsToLog() {
-    DeadLetterQueue dlq = DeadLetterQueue.create("LOG", spannerDdl, new HashMap<>());
+  public void testFilteredRowsToLog() {
+    DeadLetterQueue dlq = DeadLetterQueue.create("LOG", spannerDdl);
     final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
     RowContext r1 =
         RowContext.builder()
             .setRow(
-                SourceRow.builder(schema, null, 12412435345L)
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
+                    .setField("firstName", "abc")
+                    .setField("lastName", "def")
+                    .build())
+            .setMutation(
+                Mutation.newInsertOrUpdateBuilder(testTable)
+                    .set("firstName")
+                    .to("abc")
+                    .set("lastName")
+                    .to("def")
+                    .build())
+            .build();
+
+    PCollection<RowContext> filteredRows = pipeline.apply(Create.of(r1));
+    dlq.filteredEventsToDLQ(filteredRows);
+    pipeline.run();
+  }
+
+  @Test
+  public void testFailedRowsToLog() {
+    DeadLetterQueue dlq = DeadLetterQueue.create("LOG", spannerDdl);
+    final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
+    RowContext r1 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
                     .setField("firstName", "abc")
                     .setField("lastName", "def")
                     .build())
@@ -137,30 +161,21 @@ public class DeadLetterQueueTest {
   @Test
   public void testRowContextToDlqElement() {
     final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
 
-    SourceTableReference ref =
-        SourceTableReference.builder()
-            .setSourceTableName(schema.tableName())
-            .setSourceTableSchemaUUID(schema.tableSchemaUUID())
-            .setSourceSchemaReference(
-                SourceSchemaReference.builder().setNamespace("").setDbName("testDB").build())
-            .build();
-
-    DeadLetterQueue dlq =
-        DeadLetterQueue.create("testDir", spannerDdl, Map.of(schema.tableSchemaUUID(), ref));
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", spannerDdl);
 
     RowContext r1 =
         RowContext.builder()
             .setRow(
-                SourceRow.builder(schema, null, 12412435345L)
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
                     .setField("firstName", "abc")
                     .setField("lastName", "def")
                     .build())
             .setErr(new Exception("test exception"))
             .build();
     FailsafeElement<String, String> dlqElement = dlq.rowContextToDlqElement(r1);
-    System.out.println(dlqElement);
     assertNotNull(dlqElement);
     assertTrue(dlqElement.getErrorMessage().contains("test exception"));
     assertTrue(dlqElement.getOriginalPayload().contains("\"_metadata_table\":\"srcTable\""));
@@ -169,33 +184,8 @@ public class DeadLetterQueueTest {
   }
 
   @Test
-  public void testRowContextToDlqElementUnkownTable() {
-    final String testTable = "srcTable";
-    SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
-
-    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", spannerDdl, new HashMap<>());
-
-    RowContext r1 =
-        RowContext.builder()
-            .setRow(
-                SourceRow.builder(schema, null, 12412435345L)
-                    .setField("firstName", "abc")
-                    .setField("lastName", "def")
-                    .build())
-            .setErr(new Exception("test exception"))
-            .build();
-    FailsafeElement<String, String> dlqElement = dlq.rowContextToDlqElement(r1);
-    System.out.println(dlqElement);
-    assertNotNull(dlqElement);
-    assertTrue(dlqElement.getErrorMessage().contains("test exception"));
-    assertTrue(dlqElement.getOriginalPayload().contains("\"_metadata_table\":\"UNKNOWN\""));
-    assertTrue(dlqElement.getOriginalPayload().contains("\"firstName\":\"abc\""));
-    assertTrue(dlqElement.getOriginalPayload().contains("\"lastName\":\"def\""));
-  }
-
-  @Test
   public void testMutationToDlqElement() {
-    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", spannerDdl, new HashMap<>());
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", spannerDdl);
     Mutation m =
         Mutation.newInsertOrUpdateBuilder("srcTable")
             .set("firstName")

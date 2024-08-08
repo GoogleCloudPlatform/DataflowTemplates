@@ -1,0 +1,111 @@
+name: Spanner Terraform Validator
+
+#  1. Adds a Terraform Validator for Terraform samples being added to the repo. It verifies the sample structure and the plan generated for it via terraform validate.
+#  2. Checks the formatting of the samples for correctness. Samples need to be formatted with terraform fmt.
+#  3. Verifies that the README.md follows a standard convention with a minimum set of headers always present.
+
+on:
+  pull_request:
+    branches:
+    - main  # Adjust the branch if needed
+    paths:
+    # Include spanner terraform sample paths only
+    - '.github/workflows/spanner-terraform-validator.yml'
+    - 'v2/datastream-to-spanner/terraform/samples/**'
+    - 'v2/sourcedb-to-spanner/terraform/samples/**'
+
+jobs:
+  verify-terraform-samples:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        terraform_paths:
+        - v2/datastream-to-spanner/terraform/samples
+        - v2/spanner-common/terraform/samples
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+    - name: Verify Terraform formatting
+      uses: dflook/terraform-fmt-check@v1
+      with:
+        path: ${{ matrix.terraform_paths }}
+    - name: Verify Terraform template and required structure
+      id: find-samples
+      run: |
+        SAMPLES=$(find ${{ matrix.terraform_paths }} -mindepth 1 -maxdepth 1 -type d)
+        echo "Identified sample directories:" $SAMPLES
+        FILE_LIST=(main.tf outputs.tf variables.tf terraform.tf terraform.tfvars terraform_simple.tfvars README.md)
+        FAILED_SAMPLES=()
+        
+        for SAMPLE in $SAMPLES; do
+          if [[ ! -d "$SAMPLE" ]]; then
+          echo "Skipping non-directory: $SAMPLE"
+            continue
+          fi
+        
+          echo "Verifying sample: $SAMPLE"
+        
+          echo "Verifying terraform configuration..."
+          terraform -chdir="$SAMPLE" init
+          terraform -chdir="$SAMPLE" validate
+        
+          echo "Verifying sample structure..."
+          MISSING_FILES=() # Initialize empty list for missing files in each sample
+          for FILE in ${FILE_LIST[@]}; do
+            if [[ ! -f "$SAMPLE/$FILE" ]]; then
+              echo "ERROR: Missing file: $SAMPLE/$FILE"
+              MISSING_FILES+=("$FILE") # Add missing file to list
+            fi
+          done
+        
+          if [[ ${#MISSING_FILES[@]} -gt 0 ]]; then # Check if there are any missing files
+            echo "Sample failed validation: $SAMPLE"
+            echo "Missing files:"
+            for FILE in "${MISSING_FILES[@]}"; do
+              echo "- $FILE"
+              done
+            FAILED_SAMPLES+=("$SAMPLE") # Add the sample to failed list
+            echo "----------------------"
+          else
+            echo "Verified file structure of sample successfully: $SAMPLE"
+          fi
+          # Array of required headings (prefix matching)
+          required_headings=(
+            "Sample Scenario"
+            "Terraform permissions"
+            "Assumptions"
+            "Description"
+            "Resources Created"
+            "How to run"
+            "FAQ"
+          )
+          
+          filename="$SAMPLE/README.md"
+          
+          # Extract headings from the README
+          headings_found=$(grep -E "^## |^### " "$filename" | sed 's/^## \|^### //')
+          # Check if all required headings are found (prefix matching)
+          missing_headings=()
+          for heading_prefix in "${required_headings[@]}"; do
+            if ! echo "$headings_found" | grep -q -E "${heading_prefix}"; then  # Corrected regex
+              missing_headings+=("$heading_prefix")
+            fi
+          done
+          if [ ${#missing_headings[@]} -eq 0 ]; then
+            echo "README.md contains all required headings: $SAMPLE" 
+          else
+            echo "README.md is missing headings with the following prefixes:"
+            printf "  * %s\n" "${missing_headings[@]}"
+            FAILED_SAMPLES+=("$SAMPLE") # Add the sample to failed list
+          fi
+        done  
+        echo "Verification completed: $SAMPLE"
+        echo "----------------------"
+        if [[ ${#FAILED_SAMPLES[@]} -gt 0 ]]; then
+          echo "The following samples failed validation:"
+          for SAMPLE in "${FAILED_SAMPLES[@]}"; do
+            echo "- $SAMPLE"
+          done
+          exit 1  # Indicate failure if there were any failed samples
+        fi
+        echo "All samples validated successfully!"
