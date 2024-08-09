@@ -23,7 +23,7 @@ import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
+import org.apache.beam.sdk.transforms.SerializableBiFunction;
 import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.TransactionConfig;
 import org.slf4j.Logger;
@@ -33,7 +33,8 @@ import org.slf4j.LoggerFactory;
 public class PreloadCypherAction implements PreloadAction {
 
   private static final Logger LOG = LoggerFactory.getLogger(PreloadCypherAction.class);
-  private final BiFunction<ConnectionParams, String, Neo4jConnection> connectionProvider;
+  private final SerializableBiFunction<ConnectionParams, String, Neo4jConnection>
+      connectionProvider;
 
   private String cypher;
   private ActionContext context;
@@ -43,7 +44,8 @@ public class PreloadCypherAction implements PreloadAction {
   }
 
   @VisibleForTesting
-  PreloadCypherAction(BiFunction<ConnectionParams, String, Neo4jConnection> connectionProvider) {
+  PreloadCypherAction(
+      SerializableBiFunction<ConnectionParams, String, Neo4jConnection> connectionProvider) {
     this.connectionProvider = connectionProvider;
   }
 
