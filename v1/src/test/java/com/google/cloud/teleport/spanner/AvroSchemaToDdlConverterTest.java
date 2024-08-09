@@ -995,7 +995,7 @@ public class AvroSchemaToDdlConverterTest {
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
-            "\nCREATE PLACEMENT `Placement1`\n\t" +
-            " OPTIONS (instance_partition='mr-partition', default_leader='us-east1')"));
+            "\nCREATE PLACEMENT `Placement1`\n\t"
+                + " OPTIONS (instance_partition='mr-partition', default_leader='us-east1')"));
   }
 }

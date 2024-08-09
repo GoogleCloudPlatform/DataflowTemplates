@@ -177,11 +177,11 @@ public class ExportTransformTest {
     ddlBuilder.createModel("model1").remote(true).endModel();
     ddlBuilder.createChangeStream("changeStream").endChangeStream();
     ddlBuilder.createSequence("sequence").endSequence();
-    ddlBuilder.createPlacement("placement")
-              .options(
-                ImmutableList.of(
-                    "instance_partition=\"mr-partition\"", "default_leader=\"us-east1\""))
-              .endPlacement();
+    ddlBuilder
+        .createPlacement("placement")
+        .options(
+            ImmutableList.of("instance_partition=\"mr-partition\"", "default_leader=\"us-east1\""))
+        .endPlacement();
     ddlBuilder.mergeProtoBundle(protoBundle);
     ddlBuilder.mergeProtoDescriptors(protoDescriptors);
     Ddl ddl = ddlBuilder.build();

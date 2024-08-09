@@ -71,6 +71,7 @@ import org.junit.rules.TemporaryFolder;
 public class ImportFromAvroTest {
   @Rule public final TestPipeline importPipeline = TestPipeline.create();
   @Rule public final TemporaryFolder tmpDir = new TemporaryFolder();
+
   /** Class rule for Spanner server resource. */
   @ClassRule public static final SpannerServerResource SPANNER_SERVER = new SpannerServerResource();
 
@@ -1697,7 +1698,8 @@ public class ImportFromAvroTest {
   @Test
   public void placements() throws Exception {
     String fileName = "Sequence1.avro";
-    Schema schema = SchemaBuilder.record("Placement1")
+    Schema schema =
+        SchemaBuilder.record("Placement1")
             .prop("spannerEntity", "Placement")
             .prop("spannerOption_0", "instance_partition=\"mr-partition\"")
             .prop("spannerOption_1", "default_leader=\"us-east1\"")
@@ -1726,7 +1728,13 @@ public class ImportFromAvroTest {
         JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
 
     // Create the target database.
-    SPANNER_SERVER.createDatabase(dbName, Arrays.asList("ALTER DATABASE `" + dbName + "` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n", "CREATE PLACEMENT `Placement2` OPTIONS (instance_partition=\"mr-partition\")"));
+    SPANNER_SERVER.createDatabase(
+        dbName,
+        Arrays.asList(
+            "ALTER DATABASE `"
+                + dbName
+                + "` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n",
+            "CREATE PLACEMENT `Placement2` OPTIONS (instance_partition=\"mr-partition\")"));
 
     // Run the import pipeline.
     importPipeline.apply(
@@ -1750,11 +1758,11 @@ public class ImportFromAvroTest {
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
-          "ALTER DATABASE `%db_name%` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n"
-          + "CREATE PLACEMENT `Placement1`\n\t"
-            + "OPTIONS (default_leader=\"us-east1\", instance_partition=\"mr-partition\")\n"
-          + "CREATE PLACEMENT `Placement2`\n\t"
-            + "OPTIONS (instance_partition=\"mr-partition\")"));
+            "ALTER DATABASE `%db_name%` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n"
+                + "CREATE PLACEMENT `Placement1`\n\t"
+                + "OPTIONS (default_leader=\"us-east1\", instance_partition=\"mr-partition\")\n"
+                + "CREATE PLACEMENT `Placement2`\n\t"
+                + "OPTIONS (instance_partition=\"mr-partition\")"));
   }
 
   @Test

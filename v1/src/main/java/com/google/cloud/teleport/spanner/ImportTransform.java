@@ -580,7 +580,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           if (!missingPlacements.isEmpty()) {
                             Ddl.Builder builder = Ddl.builder(dialect);
                             for (KV<String, Schema> kv : missingPlacements) {
-                              Placement placement = converter.toPlacement(kv.getKey(), kv.getValue());
+                              Placement placement =
+                                  converter.toPlacement(kv.getKey(), kv.getValue());
                               builder.addPlacement(placement);
                               mergedDdl.addPlacement(placement);
                             }

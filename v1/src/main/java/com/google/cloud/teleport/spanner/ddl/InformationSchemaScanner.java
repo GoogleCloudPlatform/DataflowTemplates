@@ -1292,10 +1292,15 @@ public class InformationSchemaScanner {
     }
 
     for (String tableName : Arrays.asList("placements", "placement_options")) {
-      try (ResultSet resultSet = context.executeQuery(Statement.of("SELECT COUNT(1)"
-                + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
-                + " t.TABLE_SCHEMA = 'information_schema'"
-                + " AND t.TABLE_NAME = '" + tableName + "'"))) {
+      try (ResultSet resultSet =
+          context.executeQuery(
+              Statement.of(
+                  "SELECT COUNT(1)"
+                      + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
+                      + " t.TABLE_SCHEMA = 'information_schema'"
+                      + " AND t.TABLE_NAME = '"
+                      + tableName
+                      + "'"))) {
         resultSet.next();
         if (resultSet.getLong(0) == 0) {
           LOG.info(String.join("information_schema.", tableName, "not available"));
@@ -1328,9 +1333,16 @@ public class InformationSchemaScanner {
       String optionName = resultSet.getString(2);
       String optionType = resultSet.getString(3);
       String optionValue = resultSet.getString(4);
-      LOG.info("placement option name = " + optionName + ", optionType = " + optionType + ", optionValue = " + optionValue);
+      LOG.info(
+          "placement option name = "
+              + optionName
+              + ", optionType = "
+              + optionType
+              + ", optionValue = "
+              + optionValue);
 
-      ImmutableList.Builder<String> options = placementNameToOptions.computeIfAbsent(name, k -> ImmutableList.builder());
+      ImmutableList.Builder<String> options =
+          placementNameToOptions.computeIfAbsent(name, k -> ImmutableList.builder());
 
       if (optionType.equalsIgnoreCase("STRING(MAX)")) {
         options.add(
@@ -1352,13 +1364,10 @@ public class InformationSchemaScanner {
     }
 
     for (Map.Entry<String, ImmutableList.Builder<String>> entry :
-         placementNameToOptions.entrySet()) {
+        placementNameToOptions.entrySet()) {
       String placementName = entry.getKey();
       ImmutableList<String> options = entry.getValue().build();
-      builder
-          .createPlacement(placementName)
-          .options(options)
-          .endPlacement();
+      builder.createPlacement(placementName).options(options).endPlacement();
     }
   }
 

@@ -1425,14 +1425,13 @@ public class DdlToAvroSchemaConverterTest {
     Ddl ddl =
         Ddl.builder()
             .createPlacement(placementName1)
-            .options(
-                ImmutableList.of(
-                    "instance_partition=\"" + instancePartition + "\""))
+            .options(ImmutableList.of("instance_partition=\"" + instancePartition + "\""))
             .endPlacement()
             .createPlacement(placementName2)
             .options(
                 ImmutableList.of(
-                    "instance_partition=\"" + instancePartition + "\"", "default_leader=\"" + defaultLeader + "\""))
+                    "instance_partition=\"" + instancePartition + "\"",
+                    "default_leader=\"" + defaultLeader + "\""))
             .endPlacement()
             .build();
 
@@ -1447,7 +1446,9 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(avroSchema1.getProp(SPANNER_ENTITY), equalTo(SPANNER_ENTITY_PLACEMENT));
     assertThat(avroSchema1.getFields(), empty());
     assertThat(avroSchema1.getName(), equalTo(placementName1));
-    assertThat(avroSchema1.getProp(SPANNER_OPTION + "0"), equalTo("instance_partition=\"" + instancePartition + "\""));
+    assertThat(
+        avroSchema1.getProp(SPANNER_OPTION + "0"),
+        equalTo("instance_partition=\"" + instancePartition + "\""));
 
     Schema avroSchema2 = it.next();
     assertThat(avroSchema2.getNamespace(), equalTo("spannertest"));
@@ -1456,8 +1457,12 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(avroSchema2.getProp(SPANNER_ENTITY), equalTo(SPANNER_ENTITY_PLACEMENT));
     assertThat(avroSchema2.getFields(), empty());
     assertThat(avroSchema2.getName(), equalTo(placementName2));
-    assertThat(avroSchema2.getProp(SPANNER_OPTION + "0"), equalTo("instance_partition=\"" + instancePartition + "\""));
-    assertThat(avroSchema2.getProp(SPANNER_OPTION + "1"), equalTo("default_leader=\"" + defaultLeader + "\""));
+    assertThat(
+        avroSchema2.getProp(SPANNER_OPTION + "0"),
+        equalTo("instance_partition=\"" + instancePartition + "\""));
+    assertThat(
+        avroSchema2.getProp(SPANNER_OPTION + "1"),
+        equalTo("default_leader=\"" + defaultLeader + "\""));
   }
 
   private Schema nullableUnion(Schema.Type s) {

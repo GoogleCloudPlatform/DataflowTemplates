@@ -942,9 +942,15 @@ public class InformationSchemaScannerIT {
         // Create placements pointing to MR partition, which uses nam3 config.
         Arrays.asList(
             "ALTER DATABASE `" + dbId + "` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n",
-            "CREATE PLACEMENT `pl1`\n\tOPTIONS (instance_partition=\"" + INSTANCE_PARTITION_ID + "\")\n",
-            "CREATE PLACEMENT `pl2`\n\tOPTIONS (default_leader=\"us-east1\", instance_partition=\"" + INSTANCE_PARTITION_ID + "\")\n",
-            "CREATE PLACEMENT `pl3`\n\tOPTIONS (default_leader=\"us-east4\", instance_partition=\"" + INSTANCE_PARTITION_ID + "\")");
+            "CREATE PLACEMENT `pl1`\n\tOPTIONS (instance_partition=\""
+                + INSTANCE_PARTITION_ID
+                + "\")\n",
+            "CREATE PLACEMENT `pl2`\n\tOPTIONS (default_leader=\"us-east1\", instance_partition=\""
+                + INSTANCE_PARTITION_ID
+                + "\")\n",
+            "CREATE PLACEMENT `pl3`\n\tOPTIONS (default_leader=\"us-east4\", instance_partition=\""
+                + INSTANCE_PARTITION_ID
+                + "\")");
 
     SPANNER_SERVER.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();

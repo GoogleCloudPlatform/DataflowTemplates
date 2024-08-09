@@ -300,8 +300,7 @@ public class DdlToAvroSchemaConverter {
     for (Placement placement : ddl.placements()) {
       LOG.info("DdlToAvo placement {}", placement.name());
       SchemaBuilder.RecordBuilder<Schema> recordBuilder =
-          SchemaBuilder.record(generateAvroSchemaName(placement.name()))
-              .namespace(this.namespace);
+          SchemaBuilder.record(generateAvroSchemaName(placement.name())).namespace(this.namespace);
       recordBuilder.prop(SPANNER_NAME, placement.name());
       recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
       recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");

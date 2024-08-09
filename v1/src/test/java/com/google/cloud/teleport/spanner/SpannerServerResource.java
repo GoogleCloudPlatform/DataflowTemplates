@@ -199,7 +199,8 @@ public class SpannerServerResource extends ExternalResource {
     }
   }
 
-  public void createInstancePartition(String instancePartitionId, String instanceConfigId) throws Exception {
+  public void createInstancePartition(String instancePartitionId, String instanceConfigId)
+      throws Exception {
     InstancePartition instancePartition =
         InstancePartition.newBuilder()
             .setDisplayName("mr partition")
@@ -208,20 +209,21 @@ public class SpannerServerResource extends ExternalResource {
             .build();
 
     InstancePartition ip =
-          instanceAdminClient
-              .createInstancePartitionAsync(
-                  CreateInstancePartitionRequest.newBuilder()
-                      .setParent(InstanceName.of(projectId, instanceId).toString())
-                      .setInstancePartitionId(instancePartitionId)
-                      .setInstancePartition(instancePartition)
-                      .build())
-              .get();
+        instanceAdminClient
+            .createInstancePartitionAsync(
+                CreateInstancePartitionRequest.newBuilder()
+                    .setParent(InstanceName.of(projectId, instanceId).toString())
+                    .setInstancePartitionId(instancePartitionId)
+                    .setInstancePartition(instancePartition)
+                    .build())
+            .get();
   }
 
   public void deleteInstancePartition(String instancePartitionId) throws Exception {
     if (client.isClosed()) {
       before();
     }
-    instanceAdminClient.deleteInstancePartition(InstancePartitionName.of(projectId, instanceId, instancePartitionId).toString());
+    instanceAdminClient.deleteInstancePartition(
+        InstancePartitionName.of(projectId, instanceId, instancePartitionId).toString());
   }
 }
