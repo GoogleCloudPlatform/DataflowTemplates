@@ -25,12 +25,6 @@ public class OptionsParamsMapper {
   public static OptionsParams fromPipelineOptions(Neo4jFlexTemplateOptions pipelineOptions) {
     OptionsParams optionsParams = new OptionsParams();
     try {
-      if (StringUtils.isNotEmpty(pipelineOptions.getReadQuery())) {
-        optionsParams.setReadQuery(pipelineOptions.getReadQuery());
-      }
-      if (StringUtils.isNotEmpty(pipelineOptions.getInputFilePattern())) {
-        optionsParams.setInputFilePattern(pipelineOptions.getInputFilePattern());
-      }
       if (StringUtils.isNotEmpty(pipelineOptions.getOptionsJson())) {
         optionsParams.overlayTokens(pipelineOptions.getOptionsJson());
       }

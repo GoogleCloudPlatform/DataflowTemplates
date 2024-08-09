@@ -6,7 +6,7 @@
     {
       "type": "text",
       "format": "EXCEL",
-      "name": "likes",
+      "name": "likes_src",
       "ordered_field_names": "id,personId,foodId,rating",
       "data": [
         [
@@ -33,7 +33,7 @@
   "targets": [
     {
       "edge": {
-        "source": "likes",
+        "source": "likes_src",
         "name": "likes",
         "mode": "merge",
         "edge_nodes_match_mode": "merge",

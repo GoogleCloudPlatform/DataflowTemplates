@@ -24,51 +24,23 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Runtime options object that coalesces well-known (readQuery, inputFilePattern) and arbitrary
- * options.
- */
+/** Runtime options object that coalesces arbitrary options. */
 public class OptionsParams implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(OptionsParams.class);
 
-  private String readQuery = "";
-  private String inputFilePattern = "";
-  private HashMap<String, String> tokenMap = new HashMap<>();
-
-  public OptionsParams() {}
+  private final Map<String, String> tokenMap = new HashMap<>();
 
   @JsonIgnore
   public void overlayTokens(String optionsJsonStr) {
-    LOG.info("Pipeline options: {}", optionsJsonStr);
+    LOG.debug("Parsing pipeline options: {}", optionsJsonStr);
     JSONObject optionsJson = new JSONObject(optionsJsonStr);
     Iterator<String> optionsKeys = optionsJson.keys();
     while (optionsKeys.hasNext()) {
       String optionsKey = optionsKeys.next();
       this.tokenMap.put(optionsKey, String.valueOf(optionsJson.opt(optionsKey)));
-      if ("readQuery".equals(optionsKey)) {
-        this.readQuery = optionsJson.getString("readQuery");
-      } else if ("inputFilePattern".equals(optionsKey)) {
-        this.inputFilePattern = optionsJson.getString("inputFilePattern");
-      }
-      LOG.info("{}: {}", optionsKey, optionsJson.opt(optionsKey));
+      LOG.debug("{}: {}", optionsKey, optionsJson.opt(optionsKey));
     }
-  }
-
-  public String getReadQuery() {
-    return readQuery;
-  }
-
-  public void setReadQuery(String readQuery) {
-    this.readQuery = readQuery;
-  }
-
-  public String getInputFilePattern() {
-    return inputFilePattern;
-  }
-
-  public void setInputFilePattern(String inputFilePattern) {
-    this.inputFilePattern = inputFilePattern;
   }
 
   public Map<String, String> getTokenMap() {

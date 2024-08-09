@@ -36,16 +36,19 @@ public class ListOfStringToRowFn extends DoFn<List<Object>, Row> {
 
   @ProcessElement
   public void processElement(ProcessContext processContext) {
-
     List<Object> strCols = processContext.element();
+    if (strCols == null) {
+      LOG.error("Row is null, expected a row with {} field(s)", this.schema.getFieldCount());
+      return;
+    }
     if (this.schema.getFieldCount() != strCols.size()) {
       LOG.error(
           "Row field count mismatch, expecting: {}, row: {}",
           this.schema.getFieldCount(),
           StringUtils.join(strCols.size(), ","));
-    } else {
-      Row row = Row.withSchema(this.schema).addValues(strCols).build();
-      processContext.output(row);
+      return;
     }
+    Row row = Row.withSchema(this.schema).addValues(strCols).build();
+    processContext.output(row);
   }
 }

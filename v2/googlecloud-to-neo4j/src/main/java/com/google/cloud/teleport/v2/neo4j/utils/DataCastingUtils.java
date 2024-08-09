@@ -16,9 +16,6 @@
 package com.google.cloud.teleport.v2.neo4j.utils;
 
 import com.google.cloud.teleport.v2.neo4j.logicaltypes.IsoDateTime;
-import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
-import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
-import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
@@ -51,8 +48,8 @@ import org.apache.beam.sdk.schemas.logicaltypes.Time;
 import org.apache.beam.sdk.values.Row;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.ReadableInstant;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
+import org.neo4j.importer.v1.targets.NodeTarget;
+import org.neo4j.importer.v1.targets.Target;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,14 +76,10 @@ public class DataCastingUtils {
    */
   private static final Logger LOG = LoggerFactory.getLogger(DataCastingUtils.class);
 
-  private static final DateTimeFormatter jsDateTimeFormatter =
-      DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ssZ");
-  private static final DateTimeFormatter jsDateFormatter = DateTimeFormat.forPattern("YYYY-MM-dd");
-
-  public static List<Object> sourceTextToTargetObjects(Row row, Target target) {
-    Schema targetSchema = BeamUtils.toBeamSchema(target);
-    List<Mapping> targetMappings = target.getMappings();
+  public static List<Object> sourceTextToTargetObjects(
+      Row row, Target target, NodeTarget startNodeTarget, NodeTarget endNodeTarget) {
     List<Object> castVals = new ArrayList<>();
+    Schema targetSchema = BeamUtils.toBeamSchema(target, startNodeTarget, endNodeTarget);
 
     List<String> missingFields = new ArrayList<>();
 
@@ -102,13 +95,8 @@ public class DataCastingUtils {
       }
 
       if (objVal == null) {
-        String constant = findConstantValue(targetMappings, fieldName);
-        if (constant != null) {
-          castVals.add(StringUtils.trim(constant));
-        } else {
-          missingFields.add(fieldName);
-          castVals.add(null);
-        }
+        missingFields.add(fieldName);
+        castVals.add(null);
         continue;
       }
 
@@ -201,46 +189,12 @@ public class DataCastingUtils {
     return castVals;
   }
 
-  private static String findConstantValue(List<Mapping> targetMappings, String fieldName) {
-    for (Mapping m : targetMappings) {
-      // lookup data type
-      if (StringUtils.isNotEmpty(m.getConstant())) {
-        if (m.getName().equals(fieldName) || m.getConstant().equals(fieldName)) {
-          return m.getConstant();
-        }
-      }
-    }
-    return null;
-  }
-
   public static Map<String, Object> rowToNeo4jDataMap(Row row, Target target) {
     Map<String, Object> map = new HashMap<>();
-
-    Schema dataSchema = row.getSchema();
-    for (Schema.Field field : dataSchema.getFields()) {
+    for (Schema.Field field : row.getSchema().getFields()) {
       String fieldName = field.getName();
-
       map.put(fieldName, fromBeamType(fieldName, field.getType(), row.getValue(fieldName)));
     }
-
-    for (Mapping mapping : target.getMappings()) {
-      // if row is empty continue
-      if (listFullOfNulls(row.getValues())) {
-        continue;
-      }
-      var role = mapping.getRole();
-      if (role == RoleType.label || role == RoleType.type) {
-        continue;
-      }
-      if (StringUtils.isNotEmpty(mapping.getConstant())) {
-        if (StringUtils.isNotEmpty(mapping.getName())) {
-          map.put(mapping.getName(), mapping.getConstant());
-        } else {
-          map.put(mapping.getConstant(), mapping.getConstant());
-        }
-      }
-    }
-
     return map;
   }
 

@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.neo4j.utils;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ArtifactType;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,7 +24,6 @@ import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.Row;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,10 +41,13 @@ public class BeamBlock {
   private final Map<String, PCollection<Row>> executionContexts = new HashMap<>();
   private PCollection<Row> defaultCollection;
 
-  private BeamBlock() {}
-
   public BeamBlock(PCollection<Row> defaultCollection) {
     this.defaultCollection = defaultCollection;
+  }
+
+  public void addToQueue(
+      ArtifactType artifactType, boolean preload, String name, PCollection<Row> blockingReturn) {
+    addToQueue(artifactType, preload, name, blockingReturn, defaultCollection);
   }
 
   public void addToQueue(
@@ -80,17 +81,8 @@ public class BeamBlock {
     executionContexts.put(artifactType.name() + ":" + name, executionContext);
   }
 
-  public PCollection<Row> getContextCollection(ArtifactType artifactType, String name) {
-    if (executionContexts.containsKey(artifactType + ":" + name)) {
-      // execution context has been registered
-      return executionContexts.get(artifactType + ":" + name);
-    }
-    return defaultCollection;
-  }
-
-  public PCollection<Row> waitOnCollection(
-      ActionExecuteAfter executeAfter, String executeAfterName, String queuingDescription) {
-    List<PCollection<Row>> waitOnQueues = populateQueue(executeAfter, executeAfterName);
+  public PCollection<Row> waitOnCollections(List<String> dependencies, String queuingDescription) {
+    List<PCollection<Row>> waitOnQueues = populateQueueForTargets(dependencies);
     if (waitOnQueues.isEmpty()) {
       waitOnQueues.add(defaultCollection);
     }
@@ -98,85 +90,24 @@ public class BeamBlock {
     LOG.info(
         "Queue: "
             + queuingDescription
-            + ", executeAfter: "
-            + executeAfter.name()
-            + ", executeAfterName: "
-            + executeAfterName
+            + ", dependencies: "
+            + String.join(", ", dependencies)
             + ", waiting on "
             + waitOnQueues.size()
             + " queues");
     return PCollectionList.of(waitOnQueues)
         .apply(
-            "** Waiting "
-                + queuingDescription
-                + " (after "
-                + executeAfter.name()
-                + "/"
-                + executeAfterName
-                + ")",
+            "** Waiting " + queuingDescription + " (after " + String.join(", ", dependencies) + ")",
             Flatten.pCollections());
   }
 
-  private List<PCollection<Row>> populateQueue(
-      ActionExecuteAfter executeAfter, String executeAfterName) {
+  private List<PCollection<Row>> populateQueueForTargets(List<String> dependencies) {
     List<PCollection<Row>> waitOnQueues = new ArrayList<>();
-    if (executeAfter == ActionExecuteAfter.start) {
-      return waitOnQueues;
-    }
-    if (executeAfter == ActionExecuteAfter.preloads) {
-      return enqueueFirstNonEmpty(waitOnQueues, preloadActionQueue);
-    }
-    if (executeAfter == ActionExecuteAfter.sources) {
-      return enqueueFirstNonEmpty(waitOnQueues, sourceQueue);
-    }
-    if (executeAfter == ActionExecuteAfter.nodes) {
-      return enqueueFirstNonEmpty(waitOnQueues, nodeQueue, sourceQueue);
-    }
-    if (executeAfter == ActionExecuteAfter.edges || executeAfter == ActionExecuteAfter.loads) {
-      return enqueueFirstNonEmpty(waitOnQueues, edgeQueue, nodeQueue, sourceQueue);
-    }
-    if (executeAfter == ActionExecuteAfter.custom_queries) {
-      return enqueueFirstNonEmpty(waitOnQueues, customQueue, edgeQueue, nodeQueue, sourceQueue);
-    }
-    if (StringUtils.isEmpty(executeAfterName)) {
-      return waitOnQueues;
-    }
-    if (executeAfter == ActionExecuteAfter.source) {
-      waitOnQueues.add(
-          executeAfterNamedQueue.get(ArtifactType.source.name() + ":" + executeAfterName));
-      return waitOnQueues;
-    }
-    if (executeAfter == ActionExecuteAfter.node) {
-      waitOnQueues.add(
-          executeAfterNamedQueue.get(ArtifactType.node.name() + ":" + executeAfterName));
-      return waitOnQueues;
-    }
-    if (executeAfter == ActionExecuteAfter.edge) {
-      waitOnQueues.add(
-          executeAfterNamedQueue.get(ArtifactType.edge.name() + ":" + executeAfterName));
-      return waitOnQueues;
-    }
-    if (executeAfter == ActionExecuteAfter.custom_query) {
-      PCollection<Row> rows =
-          executeAfterNamedQueue.get(ArtifactType.custom_query.name() + ":" + executeAfterName);
-      waitOnQueues.add(rows);
-      return waitOnQueues;
-    }
-    if (executeAfter == ActionExecuteAfter.action) {
-      waitOnQueues.add(
-          executeAfterNamedQueue.get(ArtifactType.action.name() + ":" + executeAfterName));
-      return waitOnQueues;
-    }
-    return waitOnQueues;
-  }
-
-  @SafeVarargs
-  private static List<PCollection<Row>> enqueueFirstNonEmpty(
-      List<PCollection<Row>> waitOnQueues, List<PCollection<Row>>... targets) {
-    for (List<PCollection<Row>> target : targets) {
-      waitOnQueues.addAll(target);
-      if (!waitOnQueues.isEmpty()) {
-        return waitOnQueues;
+    for (String dependency : dependencies) {
+      for (ArtifactType type : ArtifactType.values()) {
+        if (executeAfterNamedQueue.containsKey(type + ":" + dependency)) {
+          waitOnQueues.add(executeAfterNamedQueue.get(type + ":" + dependency));
+        }
       }
     }
     return waitOnQueues;
