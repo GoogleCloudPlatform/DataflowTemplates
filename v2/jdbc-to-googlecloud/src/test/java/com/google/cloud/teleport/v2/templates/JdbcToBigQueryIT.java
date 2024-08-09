@@ -348,7 +348,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
-            PipelineLauncher.LaunchConfig.builder(tableName, specPath)
+            PipelineLauncher.LaunchConfig.builder(testName, specPath)
                 .addParameter("connectionURL", encrypt.apply(jdbcResourceManager.getUri()))
                 .addParameter("driverClassName", driverClassName)
                 .addParameter("outputTable", toTableSpecLegacy(table))
