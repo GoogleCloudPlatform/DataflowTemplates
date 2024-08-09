@@ -78,7 +78,10 @@ import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptor;
+import org.apache.commons.io.input.BOMInputStream;
 import org.joda.time.Duration;
+import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -374,8 +377,9 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
     private static ImportManifest readManifest(ResourceId fileResource) {
       ImportManifest.Builder result = ImportManifest.newBuilder();
       try (InputStream stream = Channels.newInputStream(FileSystems.open(fileResource))) {
-        Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
-        JsonFormat.parser().merge(reader, result);
+        Reader reader = new InputStreamReader(new BOMInputStream(stream), StandardCharsets.UTF_8);
+        JSONObject json = new JSONObject(new JSONTokener(reader));
+        JsonFormat.parser().merge(json.toString(), result);
       } catch (IOException e) {
         throw new RuntimeException(
             "Failed to read manifest. Make sure it is ASCII or UTF-8 encoded and contains a"
