@@ -37,8 +37,9 @@ mvn clean test -pl v2/azure-eventhub-to-pubsub -am
 
 ## Uploading Templates
 
-NOTE: This requires [Cloud SDK](https://cloud.google.com/sdk/downloads) version
-284.0.0 or higher.
+> [!NOTE]
+> This requires [Cloud SDK](https://cloud.google.com/sdk/downloads) version
+> 284.0.0 or higher.
 
 The Template should be build from the parent pom.xml (DataflowTemplates/).
 
