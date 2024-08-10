@@ -86,6 +86,8 @@ public final class SizedType {
         return "text";
       case BYTES:
         return "BYTES(" + (size == -1 ? "MAX" : Integer.toString(size)) + ")";
+      case TOKENLIST:
+        return "TOKENLIST";
       case PG_BYTEA:
         return "bytea";
       case DATE:
@@ -108,13 +110,15 @@ public final class SizedType {
         return "jsonb";
       case PROTO:
         if (outputAsDdlRepresentation) {
-          return type.getProtoTypeFqn();
+          String quote = NameUtils.identifierQuote(Dialect.GOOGLE_STANDARD_SQL);
+          return quote + type.getProtoTypeFqn() + quote;
         } else {
           return "PROTO<" + type.getProtoTypeFqn() + ">";
         }
       case ENUM:
         if (outputAsDdlRepresentation) {
-          return type.getProtoTypeFqn();
+          String quote = NameUtils.identifierQuote(Dialect.GOOGLE_STANDARD_SQL);
+          return quote + type.getProtoTypeFqn() + quote;
         } else {
           return "ENUM<" + type.getProtoTypeFqn() + ">";
         }
@@ -210,6 +214,9 @@ public final class SizedType {
           }
           if (spannerType.equals("JSON")) {
             return t(Type.json(), null);
+          }
+          if (spannerType.equals("TOKENLIST")) {
+            return t(Type.tokenlist(), null);
           }
           if (spannerType.startsWith("ARRAY<")) {
             // Substring "ARRAY<xxx> or ARRAY<xxx>(vector_length)"

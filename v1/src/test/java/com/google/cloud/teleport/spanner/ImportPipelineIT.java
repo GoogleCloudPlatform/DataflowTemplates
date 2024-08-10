@@ -158,6 +158,8 @@ public class ImportPipelineIT extends TemplateTestBase {
             + "  Id INT64,\n"
             + "  FirstName STRING(MAX),\n"
             + "  LastName STRING(MAX),\n"
+            + "  Review STRING(MAX),\n"
+            + "  MyTokens TOKENLIST AS (TOKENIZE_FULLTEXT(Review)) HIDDEN,\n"
             + ") PRIMARY KEY(Id)";
     spannerResourceManager.executeDdlStatement(createSingersTableStatement);
 

@@ -17,6 +17,7 @@ package com.google.cloud.teleport.spanner;
 
 import static com.google.cloud.teleport.spanner.AvroUtil.DEFAULT_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GENERATION_EXPRESSION;
+import static com.google.cloud.teleport.spanner.AvroUtil.HIDDEN;
 import static com.google.cloud.teleport.spanner.AvroUtil.INPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
 import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
@@ -282,6 +283,10 @@ public class AvroSchemaToDdlConverter {
         }
         if (Boolean.parseBoolean(stored)) {
           column.stored();
+        }
+        String hidden = f.getProp(HIDDEN);
+        if (Boolean.parseBoolean(hidden)) {
+          column.isHidden(true);
         }
       } else {
         boolean nullable = false;

@@ -120,6 +120,7 @@ jobs:
           version: v0.6.0
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
+        if: always()
   java_integration_smoke_tests_templates:
     name: Dataflow Templates Integration Smoke Tests
     needs: [spotless_check, checkstyle_check, java_build, java_unit_tests]
@@ -148,6 +149,7 @@ jobs:
           retention-days: 1
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
+        if: always()
   java_integration_tests_templates:
     name: Dataflow Templates Integration Tests
     needs: [java_integration_smoke_tests_templates]
@@ -176,6 +178,7 @@ jobs:
           retention-days: 1
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
+        if: always()
   java_load_tests_templates:
     if: contains(github.event.pull_request.labels.*.name, 'run-load-tests')
     name: Dataflow Templates Load Tests
@@ -198,3 +201,4 @@ jobs:
         --it-private-connectivity="datastream-private-connect-us-central1"
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
+      if: always()

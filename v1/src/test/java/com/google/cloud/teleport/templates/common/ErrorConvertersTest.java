@@ -28,7 +28,6 @@ import com.google.cloud.teleport.templates.common.ErrorConverters.FailedPubsubMe
 import com.google.cloud.teleport.templates.common.ErrorConverters.FailedStringToPubsubMessageFn;
 import com.google.cloud.teleport.templates.common.ErrorConverters.FailedStringToTableRowFn;
 import com.google.cloud.teleport.values.FailsafeElement;
-import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
 import java.io.File;
@@ -104,7 +103,7 @@ public class ErrorConvertersTest implements Serializable {
 
     // Read in tempfile data
     File file = new File(tmpFolder.getRoot().getAbsolutePath() + "errors.txt-00000-of-00001");
-    String fileContents = Files.toString(file, Charsets.UTF_8);
+    String fileContents = Files.toString(file, StandardCharsets.UTF_8);
     tmpFolder.delete();
 
     // Get the unique expected & received lines of text

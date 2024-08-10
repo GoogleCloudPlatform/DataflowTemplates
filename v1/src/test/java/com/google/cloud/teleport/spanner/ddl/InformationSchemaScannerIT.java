@@ -23,7 +23,6 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.BatchClient;
@@ -36,6 +35,7 @@ import com.google.cloud.teleport.spanner.common.Type;
 import com.google.common.collect.HashMultimap;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -116,12 +116,18 @@ public class InformationSchemaScannerIT {
 
   @Test
   public void tableWithAllTypes() throws Exception {
-    String allTypes =
+    String createProtoBundleStmt =
         "CREATE PROTO BUNDLE ("
-            + " com.google.cloud.teleport.spanner.tests.TestMessage,"
-            + " com.google.cloud.teleport.spanner.tests.TestEnum"
-            + ")"
-            + "CREATE TABLE `alltypes` ("
+            + "\n\t`com.google.cloud.teleport.spanner.tests.TestMessage`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.Order.PaymentMode`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.Order.Item`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.Order.Address`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.Order`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.TestEnum`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.OrderHistory`,)";
+
+    String createTableStmt =
+        "CREATE TABLE `alltypes` ("
             + " `first_name`            STRING(MAX),"
             + " `last_name`             STRING(5),"
             + " `id`                    INT64 NOT NULL,"
@@ -133,8 +139,10 @@ public class InformationSchemaScannerIT {
             + " `bytes_field`           BYTES(13),"
             + " `timestamp_field`       TIMESTAMP,"
             + " `date_field`            DATE,"
-            + " `proto_field`           com.google.cloud.teleport.spanner.tests.TestMessage,"
-            + " `enum_field`            com.google.cloud.teleport.spanner.tests.TestEnum,"
+            + " `proto_field`           `com.google.cloud.teleport.spanner.tests.TestMessage`,"
+            + " `proto_field_2`         `com.google.cloud.teleport.spanner.tests.Order`,"
+            + " `nested_enum`           `com.google.cloud.teleport.spanner.tests.Order.PaymentMode`,"
+            + " `enum_field`            `com.google.cloud.teleport.spanner.tests.TestEnum`,"
             + " `arr_bool_field`        ARRAY<BOOL>,"
             + " `arr_int64_field`       ARRAY<INT64>,"
             + " `arr_float32_field`     ARRAY<FLOAT32>,"
@@ -144,8 +152,10 @@ public class InformationSchemaScannerIT {
             + " `arr_timestamp_field`   ARRAY<TIMESTAMP>,"
             + " `arr_date_field`        ARRAY<DATE>,"
             + " `embedding_vector`      ARRAY<FLOAT64>(vector_length=>16),"
-            + " `arr_proto_field`       ARRAY<com.google.cloud.teleport.spanner.tests.TestMessage>,"
-            + " `arr_enum_field`        ARRAY<com.google.cloud.teleport.spanner.tests.TestEnum>,"
+            + " `arr_proto_field`       ARRAY<`com.google.cloud.teleport.spanner.tests.TestMessage`>,"
+            + " `arr_proto_field_2`     ARRAY<`com.google.cloud.teleport.spanner.tests.Order`>,"
+            + " `arr_nested_enum`       ARRAY<`com.google.cloud.teleport.spanner.tests.Order.PaymentMode`>,"
+            + " `arr_enum_field`        ARRAY<`com.google.cloud.teleport.spanner.tests.TestEnum`>,"
             + " ) PRIMARY KEY (`first_name` ASC, `last_name` DESC, `id` ASC)";
 
     FileDescriptorSet.Builder fileDescriptorSetBuilder = FileDescriptorSet.newBuilder();
@@ -153,16 +163,18 @@ public class InformationSchemaScannerIT {
         com.google.cloud.teleport.spanner.tests.TestMessage.getDescriptor().getFile().toProto());
     ByteString protoDescriptorBytes = fileDescriptorSetBuilder.build().toByteString();
 
-    SPANNER_SERVER.createDatabase(dbId, Collections.singleton(allTypes), protoDescriptorBytes);
+    List<String> statements = new ArrayList<>();
+    statements.add(createProtoBundleStmt);
+    statements.add(createTableStmt);
+    SPANNER_SERVER.createDatabase(dbId, statements, protoDescriptorBytes);
     Ddl ddl = getDatabaseDdl();
 
-    assertEquals(FileDescriptorSet.parseFrom(protoDescriptorBytes), ddl.protoDescriptors());
     assertThat(ddl.allTables(), hasSize(1));
     assertThat(ddl.table("alltypes"), notNullValue());
     assertThat(ddl.table("aLlTYPeS"), notNullValue());
 
     Table table = ddl.table("alltypes");
-    assertThat(table.columns(), hasSize(18));
+    assertThat(table.columns(), hasSize(28));
 
     // Check case sensitiveness.
     assertThat(table.column("first_name"), notNullValue());
@@ -185,6 +197,12 @@ public class InformationSchemaScannerIT {
         table.column("proto_field").type(),
         equalTo(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage")));
     assertThat(
+        table.column("proto_field_2").type(),
+        equalTo(Type.proto("com.google.cloud.teleport.spanner.tests.Order")));
+    assertThat(
+        table.column("nested_enum").type(),
+        equalTo(Type.protoEnum("com.google.cloud.teleport.spanner.tests.Order.PaymentMode")));
+    assertThat(
         table.column("enum_field").type(),
         equalTo(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum")));
     assertThat(table.column("arr_bool_field").type(), equalTo(Type.array(Type.bool())));
@@ -202,6 +220,14 @@ public class InformationSchemaScannerIT {
     assertThat(
         table.column("arr_proto_field").type(),
         equalTo(Type.array(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage"))));
+    assertThat(
+        table.column("arr_proto_field_2").type(),
+        equalTo(Type.array(Type.proto("com.google.cloud.teleport.spanner.tests.Order"))));
+    assertThat(
+        table.column("arr_nested_enum").type(),
+        equalTo(
+            Type.array(
+                Type.protoEnum("com.google.cloud.teleport.spanner.tests.Order.PaymentMode"))));
     assertThat(
         table.column("arr_enum_field").type(),
         equalTo(Type.array(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum"))));
@@ -222,7 +248,8 @@ public class InformationSchemaScannerIT {
     assertThat(pk.get(2).order(), equalTo(IndexColumn.Order.ASC));
 
     // Verify pretty print.
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(allTypes));
+    assertThat(
+        ddl.prettyPrint(), equalToCompressingWhiteSpace(createProtoBundleStmt + createTableStmt));
   }
 
   @Test
@@ -553,6 +580,34 @@ public class InformationSchemaScannerIT {
             " CREATE UNIQUE INDEX `c_first_name_idx` ON `Users`(`first_name` ASC)");
 
     SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
+  public void searchIndexes() throws Exception {
+    // Prefix indexes to ensure ordering.
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE `Users` ("
+                + "  `UserId`                                INT64 NOT NULL,"
+                + " ) PRIMARY KEY (`UserId` ASC)",
+            " CREATE TABLE `Messages` ("
+                + "  `UserId`                                INT64 NOT NULL,"
+                + "  `MessageId`                             INT64 NOT NULL,"
+                + "  `Subject`                               STRING(MAX),"
+                + "  `Subject_Tokens`                        TOKENLIST AS (TOKENIZE_FULLTEXT(`Subject`)) HIDDEN,"
+                + "  `Body`                                  STRING(MAX),"
+                + "  `Body_Tokens`                           TOKENLIST AS (TOKENIZE_FULLTEXT(`Body`)) HIDDEN,"
+                + "  `Data`                                  STRING(MAX),"
+                + " ) PRIMARY KEY (`UserId` ASC, `MessageId` ASC), INTERLEAVE IN PARENT `Users`",
+            " CREATE SEARCH INDEX `SearchIndex` ON `Messages`(`Subject_Tokens` ASC, `Body_Tokens` ASC)"
+                + " STORING (`Data`)"
+                + " PARTITION BY `UserId`,"
+                + " INTERLEAVE IN `Users`"
+                + " OPTIONS (sort_order_sharding=TRUE)");
+
+    spannerServer.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }

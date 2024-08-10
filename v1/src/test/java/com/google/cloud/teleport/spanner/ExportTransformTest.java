@@ -153,6 +153,7 @@ public class ExportTransformTest {
     builder
         .addMessageType(
             com.google.cloud.teleport.spanner.tests.TestMessage.getDescriptor().toProto())
+        .addMessageType(com.google.cloud.teleport.spanner.tests.Order.getDescriptor().toProto())
         .addEnumType(com.google.cloud.teleport.spanner.tests.TestEnum.getDescriptor().toProto());
     FileDescriptorSet.Builder fileDescriptorSetBuilder = FileDescriptorSet.newBuilder();
     fileDescriptorSetBuilder.addFile(builder);
@@ -160,6 +161,7 @@ public class ExportTransformTest {
     ImmutableSet<String> protoBundle =
         ImmutableSet.of(
             "com.google.cloud.teleport.spanner.tests.TestMessage",
+            "com.google.cloud.teleport.spanner.tests.Order",
             "com.google.cloud.teleport.spanner.tests.TestEnum");
     PCollection<List<Export.Table>> metadataTables =
         pipeline

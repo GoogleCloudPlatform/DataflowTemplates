@@ -59,8 +59,9 @@ public interface SpannerToBigQueryOptions
   @TemplateParameter.Text(
       order = 4,
       groupName = "Source",
+      optional = true,
       description = "Spanner table name",
-      helpText = "The table name of the Spanner database to export.")
+      helpText = "The table name of the Spanner database to export. Ignored if sqlQuery is set.")
   String getSpannerTableId();
 
   void setSpannerTableId(String spannerTableId);
@@ -82,8 +83,10 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 6,
+      optional = true,
       description = "Spanner query",
-      helpText = "The SQL query to use to read data from the Spanner database.")
+      helpText =
+          "The SQL query to use to read data from the Spanner database. Required if spannerTableId is empty.")
   String getSqlQuery();
 
   void setSqlQuery(String sqlQuery);
