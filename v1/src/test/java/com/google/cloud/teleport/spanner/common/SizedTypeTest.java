@@ -107,19 +107,20 @@ public class SizedTypeTest {
 
     assertEquals(proto.type, Type.proto("a.b.proto"));
     assertEquals(
-        SizedType.typeString(proto.type, null, /* outputAsDdlRepresentation= */ true), "a.b.proto");
+        SizedType.typeString(proto.type, null, /* outputAsDdlRepresentation= */ true),
+        "`a.b.proto`");
 
     assertEquals(protoArray.type, Type.array(Type.proto("a.b.proto")));
     assertEquals(
         SizedType.typeString(protoArray.type, null, /* outputAsDdlRepresentation= */ true),
-        "ARRAY<a.b.proto>");
+        "ARRAY<`a.b.proto`>");
     assertEquals(enumType.type, Type.protoEnum("a.b.enum"));
     assertEquals(
         SizedType.typeString(enumType.type, null, /* outputAsDdlRepresentation= */ true),
-        "a.b.enum");
+        "`a.b.enum`");
     assertEquals(enumArray.type, Type.array(Type.protoEnum("a.b.enum")));
     assertEquals(
         SizedType.typeString(enumArray.type, null, /* outputAsDdlRepresentation= */ true),
-        "ARRAY<a.b.enum>");
+        "ARRAY<`a.b.enum`>");
   }
 }

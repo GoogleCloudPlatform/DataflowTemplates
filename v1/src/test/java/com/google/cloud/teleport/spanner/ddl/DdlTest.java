@@ -879,13 +879,22 @@ public class DdlTest {
     builder.mergeProtoBundle(
         ImmutableSet.of(
             "com.google.cloud.teleport.spanner.tests.TestMessage",
+            "com.google.cloud.teleport.spanner.tests.Order",
+            "com.google.cloud.teleport.spanner.tests.Order.Item",
+            "com.google.cloud.teleport.spanner.tests.Order.Address",
+            "com.google.cloud.teleport.spanner.tests.Order.PaymentMode",
+            "com.google.cloud.teleport.spanner.tests.OrderHistory",
             "com.google.cloud.teleport.spanner.tests.TestEnum"));
     Ddl ddl = builder.build();
     String expectedProtoBundle =
         "CREATE PROTO BUNDLE ("
-            + " com.google.cloud.teleport.spanner.tests.TestMessage,"
-            + " com.google.cloud.teleport.spanner.tests.TestEnum,"
-            + ")";
+            + "\n\t`com.google.cloud.teleport.spanner.tests.TestMessage`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.Order.PaymentMode`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.Order.Item`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.Order.Address`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.Order`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.TestEnum`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.OrderHistory`,)";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedProtoBundle));
 
     List<String> statements = ddl.statements();

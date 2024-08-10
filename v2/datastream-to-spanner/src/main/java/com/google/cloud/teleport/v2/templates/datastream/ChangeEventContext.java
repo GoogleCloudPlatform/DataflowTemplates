@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import java.util.Arrays;
@@ -62,7 +63,12 @@ public abstract class ChangeEventContext {
       throws ChangeEventConvertorException, InvalidChangeEventException {
     ChangeEventConvertor.convertChangeEventColumnKeysToLowerCase(changeEvent);
     ChangeEventConvertor.verifySpannerSchema(ddl, changeEvent);
-    this.primaryKey = ChangeEventConvertor.changeEventToPrimaryKey(ddl, changeEvent);
+    this.primaryKey =
+        ChangeEventSpannerConvertor.changeEventToPrimaryKey(
+            changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText(),
+            ddl,
+            changeEvent,
+            /* convertNameToLowerCase= */ true);
     this.dataMutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
     this.shadowTableMutation = generateShadowTableMutation(ddl);
   }
