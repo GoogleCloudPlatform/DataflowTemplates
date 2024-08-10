@@ -298,7 +298,7 @@ public class DdlToAvroSchemaConverter {
     }
 
     for (Placement placement : ddl.placements()) {
-      LOG.info("DdlToAvo placement {}", placement.name());
+      LOG.info("DdlToAvro placement {}", placement.name());
       SchemaBuilder.RecordBuilder<Schema> recordBuilder =
           SchemaBuilder.record(generateAvroSchemaName(placement.name())).namespace(this.namespace);
       recordBuilder.prop(SPANNER_NAME, placement.name());

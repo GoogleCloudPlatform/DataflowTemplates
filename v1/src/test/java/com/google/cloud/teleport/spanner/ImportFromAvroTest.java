@@ -1697,7 +1697,7 @@ public class ImportFromAvroTest {
 
   @Test
   public void placements() throws Exception {
-    String fileName = "Sequence1.avro";
+    String fileName = "Placement1.avro";
     Schema schema =
         SchemaBuilder.record("Placement1")
             .prop("spannerEntity", "Placement")
