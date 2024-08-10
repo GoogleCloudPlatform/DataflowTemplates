@@ -118,7 +118,6 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         testName,
-        testName,
         schema,
         MYSQL_DRIVER,
         mySqlDriverGCSPath(),
@@ -150,7 +149,6 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         tableName,
-        tableName,
         schema,
         MYSQL_DRIVER,
         mySqlDriverGCSPath(),
@@ -180,7 +178,6 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
     // Run a simple IT
     simpleJdbcToBigQueryTest(
-        testName,
         testName,
         schema,
         POSTGRES_DRIVER,
@@ -215,6 +212,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     simpleJdbcToBigQueryTest(
         testName,
         tableName,
+        testName,
         schema,
         POSTGRES_DRIVER,
         postgresDriverGCSPath(),
@@ -246,7 +244,6 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         testName,
-        testName,
         schema,
         ORACLE_DRIVER,
         oracleDriverGCSPath(),
@@ -276,7 +273,6 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         testName,
-        testName,
         schema,
         MSSQL_DRIVER,
         msSqlDriverGCSPath(),
@@ -304,7 +300,6 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
         testName,
-        testName,
         schema,
         POSTGRES_DRIVER,
         postgresDriverGCSPath(),
@@ -315,7 +310,29 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
   private void simpleJdbcToBigQueryTest(
       String testName,
-      String tableName,
+      JDBCResourceManager.JDBCSchema schema,
+      String driverClassName,
+      String driverJars,
+      JDBCResourceManager jdbcResourceManager,
+      boolean useColumnAlias,
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException {
+    simpleJdbcToBigQueryTest(
+        testName,
+        testName,
+        testName,
+        schema,
+        driverClassName,
+        driverJars,
+        jdbcResourceManager,
+        useColumnAlias,
+        paramsAdder);
+  }
+
+  private void simpleJdbcToBigQueryTest(
+      String testName,
+      String sourceTableName,
+      String targetTableName,
       JDBCResourceManager.JDBCSchema schema,
       String driverClassName,
       String driverJars,
@@ -327,8 +344,8 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Arrange
     List<Map<String, Object>> jdbcData =
         getJdbcData(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED));
-    jdbcResourceManager.createTable(tableName, schema);
-    jdbcResourceManager.write(tableName, jdbcData);
+    jdbcResourceManager.createTable(sourceTableName, schema);
+    jdbcResourceManager.write(sourceTableName, jdbcData);
 
     List<Field> bqSchemaFields =
         Arrays.asList(
@@ -340,7 +357,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     bigQueryResourceManager.createDataset(REGION);
-    TableId table = bigQueryResourceManager.createTable(tableName, bqSchema);
+    TableId table = bigQueryResourceManager.createTable(targetTableName, bqSchema);
 
     Function<String, String> encrypt =
         message -> kmsResourceManager.encrypt(KEYRING_ID, CRYPTO_KEY_NAME, message);
@@ -378,7 +395,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
             row.put("is_member", row.remove("member"));
           });
     }
-    assertThatBigQueryRecords(bigQueryResourceManager.readTable(tableName))
+    assertThatBigQueryRecords(bigQueryResourceManager.readTable(targetTableName))
         .hasRecordsUnorderedCaseInsensitiveColumns(jdbcData);
   }
 
