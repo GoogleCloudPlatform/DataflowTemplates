@@ -111,7 +111,7 @@ public abstract class SpannerScdMutationTransform
     return new AutoValue_SpannerScdMutationTransform.Builder();
   }
 
-  private SpannerScdTypeGenericRunner chooseScdTypeRunner() {
+  private SpannerScdTypeAbstractRunner chooseScdTypeRunner() {
     switch (scdType()) {
       case TYPE_1:
         return new SpannerScdType1Runner();
@@ -123,7 +123,8 @@ public abstract class SpannerScdMutationTransform
     }
   }
 
-  class SpannerScdTypeGenericRunner extends DoFn<Iterable<Struct>, Void> implements Serializable {
+  abstract class SpannerScdTypeAbstractRunner extends DoFn<Iterable<Struct>, Void>
+      implements Serializable {
     public transient SpannerAccessor spannerAccessor;
 
     @Setup
@@ -151,6 +152,32 @@ public abstract class SpannerScdMutationTransform
     public void teardown() throws Exception {
       spannerAccessor.close();
     }
+
+    @ProcessElement
+    public void writeBatchChanges(@Element Iterable<Struct> recordBatch) {
+
+      spannerAccessor
+          .getDatabaseClient()
+          .readWriteTransaction()
+          .allowNestedTransaction()
+          .run(
+              transaction -> {
+                bufferMutations(transaction, recordBatch);
+                return null;
+              });
+    }
+
+    /**
+     * Buffers the required mutations for the batch of records within the transaction.
+     *
+     * <p>Takes a transaction context and adds the required mutations for the given SCD Type for all
+     * the records in the batch.
+     *
+     * @param transactionContext Transaction where mutations will be executed.
+     * @param recordBatch Batch of records for which mutations will be created.
+     */
+    abstract Void bufferMutations(
+        TransactionContext transactionContext, Iterable<Struct> recordBatch);
   }
 
   /**
@@ -158,27 +185,19 @@ public abstract class SpannerScdMutationTransform
    *
    * <p>If primary key(s) exist, updates the existing row; it inserts a new row otherwise.
    */
-  class SpannerScdType1Runner extends SpannerScdTypeGenericRunner {
-
-    @ProcessElement
-    public void writeBatchChanges(@Element Iterable<Struct> recordBatch) {
-      spannerAccessor
-          .getDatabaseClient()
-          .readWriteTransaction()
-          .allowNestedTransaction()
-          .run(transaction -> createMutationGroups(recordBatch, transaction));
-    }
+  class SpannerScdType1Runner extends SpannerScdTypeAbstractRunner {
 
     /**
-     * Creates the mutations required for the batch of records for SCD Type 1.
+     * Buffers the mutations required for the batch of records for SCD Type 1.
      *
-     * <p>Only upsert is required.
+     * <p>Only upsert is required for each of the records.
      *
-     * @param recordBatch
      * @param transaction
+     * @param recordBatch
      */
-    private Void createMutationGroups(
-        Iterable<Struct> recordBatch, TransactionContext transaction) {
+    @Nullable
+    @Override
+    Void bufferMutations(TransactionContext transaction, Iterable<Struct> recordBatch) {
       recordBatch.forEach(record -> transaction.buffer(createUpsertMutation(record)));
       return null;
     }
@@ -210,19 +229,10 @@ public abstract class SpannerScdMutationTransform
    * <p>In all cases, it inserts a new row with the new data and null end timestamp. If start
    * timestamp column is specified, it sets it to the current timestamp when inserting.
    */
-  class SpannerScdType2Runner extends SpannerScdTypeGenericRunner {
-
-    @ProcessElement
-    public void writeBatchChanges(@Element Iterable<Struct> recordBatch) {
-      spannerAccessor
-          .getDatabaseClient()
-          .readWriteTransaction()
-          .allowNestedTransaction()
-          .run(transaction -> createMutationGroups(recordBatch, transaction));
-    }
+  class SpannerScdType2Runner extends SpannerScdTypeAbstractRunner {
 
     /**
-     * Creates the mutations required for the batch of records for SCD Type 2.
+     * Buffers the mutations required for the batch of records for SCD Type 2.
      *
      * <p>Update (insert and delete) of existing (old) data is required if the row exists. Insert of
      * new data is required for all cases.
@@ -230,8 +240,8 @@ public abstract class SpannerScdMutationTransform
      * @param recordBatch
      * @param transaction
      */
-    private Void createMutationGroups(
-        Iterable<Struct> recordBatch, TransactionContext transaction) {
+    @Override
+    Void bufferMutations(TransactionContext transaction, Iterable<Struct> recordBatch) {
       StructValueHelper structValueHelper = new StructValueHelper();
 
       recordBatch.forEach(
