@@ -18,8 +18,12 @@ package com.google.cloud.teleport.v2.utils;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Key;
+import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
 import java.math.BigDecimal;
+import java.util.HashSet;
 
 /** Provides functionality to interact with Struct values. */
 public class StructValueHelper {
@@ -120,5 +124,83 @@ public class StructValueHelper {
       return NullTypes.NULL_TIMESTAMP;
     }
     return value.getTimestamp();
+  }
+
+  /**
+   * Generates the Key for a given record and (primary) key column names.
+   *
+   * @param record
+   * @param primaryKeyColumnNames
+   * @return Primary Key for the record.
+   */
+  public static Key createKeyForRecord(Struct record, Iterable<String> primaryKeyColumnNames) {
+    Key.Builder keyBuilder = Key.newBuilder();
+    addRecordFieldsToKeyBuilder(record, primaryKeyColumnNames, keyBuilder);
+    return keyBuilder.build();
+  }
+
+  /**
+   * Adds struct values to the Key builder for the requested column names.
+   *
+   * <p>Used to generate Keys for records.
+   *
+   * @param record
+   * @param columnNames to add to the Key.
+   * @param keyBuilder
+   * @return
+   */
+  public static Key.Builder addRecordFieldsToKeyBuilder(
+      Struct record, Iterable<String> columnNames, Key.Builder keyBuilder) {
+    HashSet<String> columnNamesSet = new HashSet<>();
+    columnNames.forEach(columnNamesSet::add);
+
+    record.getType().getStructFields().stream()
+        .filter(field -> columnNamesSet.contains(field.getName()))
+        .forEach(
+            field -> {
+              Value fieldValue = record.getValue(field.getName());
+              Type fieldType = fieldValue.getType();
+
+              switch (fieldType.getCode()) {
+                case BOOL:
+                  keyBuilder.append(getBoolOrNull(fieldValue));
+                  break;
+                case BYTES:
+                  keyBuilder.append(getBytesOrNull(fieldValue));
+                  break;
+                case DATE:
+                  keyBuilder.append(getDateOrNull(fieldValue));
+                  break;
+                case FLOAT32:
+                  keyBuilder.append(getFloat32OrNull(fieldValue));
+                  break;
+                case FLOAT64:
+                  keyBuilder.append(getFloat64OrNull(fieldValue));
+                  break;
+                case INT64:
+                  keyBuilder.append(getInt64OrNull(fieldValue));
+                  break;
+                case JSON:
+                  keyBuilder.append(getJsonOrNull(fieldValue));
+                  break;
+                case NUMERIC:
+                case PG_NUMERIC:
+                  keyBuilder.append(getNumericOrNull(fieldValue));
+                  break;
+                case PG_JSONB:
+                  keyBuilder.append(getPgJsonbOrNull(fieldValue));
+                  break;
+                case STRING:
+                  keyBuilder.append(getStringOrNull(fieldValue));
+                  break;
+                case TIMESTAMP:
+                  keyBuilder.append(getTimestampOrNull(fieldValue));
+                  break;
+                default:
+                  throw new UnsupportedOperationException(
+                      String.format("Unsupported Spanner field type %s.", fieldType.getCode()));
+              }
+            });
+    return keyBuilder;
   }
 }

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.google.api.gax.retrying.RetrySettings;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
@@ -22,19 +23,22 @@ import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.teleport.v2.templates.AvroToSpannerScdPipeline.AvroToSpannerScdOptions.ScdType;
-import com.google.cloud.teleport.v2.utils.SpannerQueryHelper;
+import com.google.cloud.teleport.v2.utils.StructValueHelper;
 import com.google.cloud.teleport.v2.utils.StructValueHelper.CommonValues;
 import com.google.cloud.teleport.v2.utils.StructValueHelper.NullTypes;
+import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import javax.annotation.Nullable;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
+import org.threeten.bp.Duration;
 
 /**
  * Writes batch rows into Spanner using the defined SCD Type.
@@ -65,6 +69,8 @@ public abstract class SpannerScdMutationTransform
 
   abstract String endDateColumnName();
 
+  abstract ImmutableList<String> tableColumnNames();
+
   @AutoValue.Builder
   public abstract static class Builder {
 
@@ -80,24 +86,24 @@ public abstract class SpannerScdMutationTransform
 
     public abstract Builder setEndDateColumnName(String value);
 
+    public abstract Builder setTableColumnNames(ImmutableList<String> value);
+
+    public Builder setTableColumnNames(Iterable<String> columnNames) {
+      return setTableColumnNames(ImmutableList.copyOf(columnNames));
+    }
+
     public abstract SpannerScdMutationTransform build();
   }
 
   @Override
   public PDone expand(PCollection<Iterable<Struct>> input) {
+    String scdTypeName = scdType().toString().toLowerCase().replace("_", "");
+    String stepName =
+        String.format(
+            "WriteScd%sToSpanner",
+            scdTypeName.substring(0, 1).toUpperCase() + scdTypeName.substring(1));
 
-    switch (scdType()) {
-      default:
-        throw new UnsupportedOperationException(
-            String.format("Only SCD Type 1 and 2 are supported. Found %s.", scdType()));
-      case TYPE_1:
-        input.apply("WriteScdType1ToSpanner", ParDo.of(new SpannerScdType1Runner()));
-        break;
-      case TYPE_2:
-        input.apply("WriteScdType2ToSpanner", ParDo.of(new SpannerScdType2Runner()));
-        break;
-    }
-
+    input.apply(stepName, ParDo.of(chooseScdTypeRunner()));
     return PDone.in(input.getPipeline());
   }
 
@@ -105,17 +111,59 @@ public abstract class SpannerScdMutationTransform
     return new AutoValue_SpannerScdMutationTransform.Builder();
   }
 
+  private SpannerScdTypeGenericRunner chooseScdTypeRunner() {
+    switch (scdType()) {
+      case TYPE_1:
+        return new SpannerScdType1Runner();
+      case TYPE_2:
+        return new SpannerScdType2Runner();
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Only SCD Type 1 and 2 are supported. Found %s.", scdType()));
+    }
+  }
+
+  class SpannerScdTypeGenericRunner extends DoFn<Iterable<Struct>, Void> implements Serializable {
+    public transient SpannerAccessor spannerAccessor;
+
+    @Setup
+    public void setup() throws Exception {
+      RetrySettings retrySettings =
+          RetrySettings.newBuilder()
+              .setInitialRpcTimeout(Duration.ofHours(2))
+              .setMaxRpcTimeout(Duration.ofHours(2))
+              .setTotalTimeout(Duration.ofHours(2))
+              .setRpcTimeoutMultiplier(1.0)
+              .setInitialRetryDelay(Duration.ofSeconds(2))
+              .setMaxRetryDelay(Duration.ofSeconds(60))
+              .setRetryDelayMultiplier(1.5)
+              .setMaxAttempts(100)
+              .build();
+      // This property sets the default timeout between 2 response packets in the client library.
+      System.setProperty("com.google.cloud.spanner.watchdogTimeoutSeconds", "7200");
+
+      spannerAccessor =
+          SpannerAccessor.getOrCreate(
+              spannerConfig().withExecuteStreamingSqlRetrySettings(retrySettings));
+    }
+
+    @Teardown
+    public void teardown() throws Exception {
+      spannerAccessor.close();
+    }
+  }
+
   /**
    * Runs SCD Type 1 mutations to Spanner.
    *
    * <p>If primary key(s) exist, updates the existing row; it inserts a new row otherwise.
    */
-  class SpannerScdType1Runner extends DoFn<Iterable<Struct>, Void> implements Serializable {
+  class SpannerScdType1Runner extends SpannerScdTypeGenericRunner {
 
     @ProcessElement
     public void writeBatchChanges(@Element Iterable<Struct> recordBatch) {
-      SpannerQueryHelper.create(spannerConfig())
-          .createDatabaseClient()
+      spannerAccessor
+          .getDatabaseClient()
           .readWriteTransaction()
           .allowNestedTransaction()
           .run(transaction -> createMutationGroups(recordBatch, transaction));
@@ -162,12 +210,12 @@ public abstract class SpannerScdMutationTransform
    * <p>In all cases, it inserts a new row with the new data and null end timestamp. If start
    * timestamp column is specified, it sets it to the current timestamp when inserting.
    */
-  class SpannerScdType2Runner extends DoFn<Iterable<Struct>, Void> implements Serializable {
+  class SpannerScdType2Runner extends SpannerScdTypeGenericRunner {
 
     @ProcessElement
     public void writeBatchChanges(@Element Iterable<Struct> recordBatch) {
-      SpannerQueryHelper.create(spannerConfig())
-          .createDatabaseClient()
+      spannerAccessor
+          .getDatabaseClient()
           .readWriteTransaction()
           .allowNestedTransaction()
           .run(transaction -> createMutationGroups(recordBatch, transaction));
@@ -184,7 +232,8 @@ public abstract class SpannerScdMutationTransform
      */
     private Void createMutationGroups(
         Iterable<Struct> recordBatch, TransactionContext transaction) {
-      SpannerQueryHelper spannerQueryHelper = SpannerQueryHelper.create(spannerConfig());
+      StructValueHelper structValueHelper = new StructValueHelper();
+
       recordBatch.forEach(
           record -> {
             com.google.cloud.Timestamp currentTimestamp = CommonValues.currentTimestamp();
@@ -192,7 +241,7 @@ public abstract class SpannerScdMutationTransform
                 getMatchingRecords(recordBatch, transaction);
 
             com.google.cloud.spanner.Key recordKey =
-                spannerQueryHelper
+                structValueHelper
                     .addRecordFieldsToKeyBuilder(
                         record, primaryKeyColumnNames(), com.google.cloud.spanner.Key.newBuilder())
                     .append(NullTypes.NULL_TIMESTAMP) // endTimestamp
@@ -218,12 +267,13 @@ public abstract class SpannerScdMutationTransform
      */
     private HashMap<com.google.cloud.spanner.Key, Struct> getMatchingRecords(
         Iterable<Struct> recordBatch, TransactionContext transaction) {
-      SpannerQueryHelper spannerQueryHelper = SpannerQueryHelper.create(spannerConfig());
+      StructValueHelper structValueHelper = new StructValueHelper();
+
       KeySet.Builder keySetBuilder = KeySet.newBuilder();
       recordBatch.forEach(
           record -> {
             com.google.cloud.spanner.Key recordQueryKey =
-                spannerQueryHelper
+                structValueHelper
                     .addRecordFieldsToKeyBuilder(
                         record, primaryKeyColumnNames(), com.google.cloud.spanner.Key.newBuilder())
                     .append(NullTypes.NULL_TIMESTAMP) // endTimestamp
@@ -232,14 +282,13 @@ public abstract class SpannerScdMutationTransform
           });
       KeySet queryKeySet = keySetBuilder.build();
 
-      ResultSet results =
-          spannerQueryHelper.queryRecordsWithTransaction(
-              transaction, tableName(), queryKeySet, null);
+      ResultSet results = transaction.read(tableName(), queryKeySet, tableColumnNames());
+
       HashMap<com.google.cloud.spanner.Key, Struct> existingRows = new HashMap<>();
       while (results.next()) {
         Struct resultRow = results.getCurrentRowAsStruct();
         com.google.cloud.spanner.Key resultKey =
-            spannerQueryHelper.createKeyForRecord(resultRow, primaryKeyColumnNames());
+            structValueHelper.createKeyForRecord(resultRow, primaryKeyColumnNames());
         existingRows.put(resultKey, resultRow);
       }
       return existingRows;
@@ -253,9 +302,9 @@ public abstract class SpannerScdMutationTransform
      * @return Spanner mutation performed within the transaction.
      */
     private Mutation createDeleteOldRowMutation(Struct record) {
-      SpannerQueryHelper spannerQueryHelper = SpannerQueryHelper.create(spannerConfig());
+      StructValueHelper structValueHelper = new StructValueHelper();
       com.google.cloud.spanner.Key recordKey =
-          spannerQueryHelper.createKeyForRecord(record, primaryKeyColumnNames());
+          structValueHelper.createKeyForRecord(record, primaryKeyColumnNames());
       return Mutation.delete(tableName(), recordKey);
     }
 

@@ -17,8 +17,12 @@ package com.google.cloud.teleport.v2.templates;
 
 // TODO(Nito): add JavaDoc.
 
+import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Options.RpcPriority;
+import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerOptions;
+import com.google.cloud.spanner.Statement;
+import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
@@ -27,11 +31,13 @@ import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.transforms.AvroToStructFn;
 import com.google.cloud.teleport.v2.transforms.MakeBatchesTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerScdMutationTransform;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
@@ -135,7 +141,7 @@ public class AvroToSpannerScdPipeline {
     pipeline
         .apply(
             "ReadAvroRecordsAsStruct",
-            AvroIO.parseGenericRecords(AvroToStructFn.create()).from(options.getInputFilePattern()))
+            AvroIO.parseGenericRecords(new AvroToStructFn()).from(options.getInputFilePattern()))
         .apply(
             "BatchRowsIntoGroups", MakeBatchesTransform.create(options.getSpannerBatchSize().get()))
         .apply(
@@ -147,9 +153,32 @@ public class AvroToSpannerScdPipeline {
                 .setPrimaryKeyColumnNames(options.getPrimaryKeyColumnNames().get())
                 .setStartDateColumnName(options.getStartDateColumnName().get())
                 .setEndDateColumnName(options.getEndDateColumnName().get())
+                .setTableColumnNames(
+                    getTableColumnNames(spannerConfig, options.getTableName().get()))
                 .build());
 
     return pipeline;
+  }
+
+  private static Iterable<String> getTableColumnNames(
+      SpannerConfig spannerConfig, String tableName) {
+    SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+    DatabaseClient spannerClient = spannerAccessor.getDatabaseClient();
+
+    String schemaQuery =
+        String.format(
+            "SELECT COLUMN_NAME FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE TABLE_NAME = \"%s\"",
+            tableName);
+    ResultSet results = spannerClient.readOnlyTransaction().executeQuery(Statement.of(schemaQuery));
+
+    ArrayList<String> columnNames = new ArrayList<>();
+    while (results.next()) {
+      Struct rowStruct = results.getCurrentRowAsStruct();
+      columnNames.add(rowStruct.getString("COLUMN_NAME"));
+    }
+
+    spannerAccessor.close();
+    return columnNames;
   }
 
   /**
