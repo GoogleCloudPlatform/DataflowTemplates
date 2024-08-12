@@ -106,15 +106,15 @@ func (*mvnFlags) FailAtTheEnd() string {
 }
 
 func (*mvnFlags) RunIntegrationTests() string {
-	return "-PtemplatesIntegrationTests,splunkDeps,missing-artifact-repos"
+	return "-PtemplatesIntegrationTests"
 }
 
 func (*mvnFlags) RunIntegrationSmokeTests() string {
-	return "-PtemplatesIntegrationSmokeTests,splunkDeps,missing-artifact-repos"
+	return "-PtemplatesIntegrationSmokeTests"
 }
 
 func (*mvnFlags) RunLoadTests() string {
-	return "-PtemplatesLoadTests,splunkDeps,missing-artifact-repos"
+	return "-PtemplatesLoadTests"
 }
 
 // The number of modules Maven is going to build in parallel in a multi-module project.

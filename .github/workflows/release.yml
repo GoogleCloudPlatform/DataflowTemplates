@@ -98,7 +98,7 @@ jobs:
       if: always()
     - name: Create artifacts and push
       run: |
-        mvn verify -PtemplatesRelease,splunkDeps,missing-artifact-repos \
+        mvn verify -PtemplatesRelease \
         -DprojectId="dataflow-templates" \
         -DbucketName="dataflow-templates-staging" \
         -DlibrariesBucketName="dataflow-templates-libraries" \
