@@ -16,13 +16,17 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.templates.KafkaToBigQueryFlex;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import org.apache.beam.sdk.coders.NullableCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.kafka.KafkaRecord;
+import org.apache.beam.sdk.io.kafka.KafkaRecordCoder;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 
@@ -44,30 +48,42 @@ import org.apache.beam.sdk.values.PCollectionTuple;
  * </ul>
  */
 public class StringMessageToTableRow
-    extends PTransform<PCollection<KV<String, String>>, PCollectionTuple> {
+    extends PTransform<PCollection<KafkaRecord<String, String>>, PCollectionTuple> {
 
   @Override
-  public PCollectionTuple expand(PCollection<KV<String, String>> input) {
+  public PCollectionTuple expand(PCollection<KafkaRecord<String, String>> input) {
 
     PCollectionTuple jsonToTableRowOut =
         input
             // Map the incoming messages into FailsafeElements so we can recover from failures
             // across multiple transforms.
             .apply("MapToRecord", ParDo.of(new StringMessageToFailsafeElementFn()))
+            .setCoder(
+                FailsafeElementCoder.of(
+                    NullableCoder.of(
+                        KafkaRecordCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())),
+                    NullableCoder.of(StringUtf8Coder.of())))
             .apply(
                 "JsonToTableRow",
-                FailsafeJsonToTableRow.<KV<String, String>>newBuilder()
+                FailsafeJsonToTableRow.<KafkaRecord<String, String>>newBuilder()
                     .setSuccessTag(KafkaToBigQueryFlex.TRANSFORM_OUT)
                     .setFailureTag(KafkaToBigQueryFlex.TRANSFORM_DEADLETTER_OUT)
                     .build());
+
+    PCollection<FailsafeElement<KafkaRecord<String, String>, String>> badRecords =
+        jsonToTableRowOut
+            .get(KafkaToBigQueryFlex.TRANSFORM_DEADLETTER_OUT)
+            .setCoder(
+                FailsafeElementCoder.of(
+                    NullableCoder.of(
+                        KafkaRecordCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())),
+                    NullableCoder.of(StringUtf8Coder.of())));
 
     // Re-wrap the PCollections so we can return a single PCollectionTuple
     return PCollectionTuple.of(
             KafkaToBigQueryFlex.TRANSFORM_OUT,
             jsonToTableRowOut.get(KafkaToBigQueryFlex.TRANSFORM_OUT))
-        .and(
-            KafkaToBigQueryFlex.TRANSFORM_DEADLETTER_OUT,
-            jsonToTableRowOut.get(KafkaToBigQueryFlex.TRANSFORM_DEADLETTER_OUT));
+        .and(KafkaToBigQueryFlex.TRANSFORM_DEADLETTER_OUT, badRecords);
   }
 
   /**
@@ -76,12 +92,14 @@ public class StringMessageToTableRow
    * to an error records table.
    */
   static class StringMessageToFailsafeElementFn
-      extends DoFn<KV<String, String>, FailsafeElement<KV<String, String>, String>> {
+      extends DoFn<
+          KafkaRecord<String, String>, FailsafeElement<KafkaRecord<String, String>, String>> {
 
     @ProcessElement
     public void processElement(ProcessContext context) {
-      KV<String, String> message = context.element();
-      context.output(FailsafeElement.of(message, message.getValue()));
+      KafkaRecord<String, String> message = context.element();
+      assert message != null;
+      context.output(FailsafeElement.of(message, message.getKV().getValue()));
     }
   }
 }
