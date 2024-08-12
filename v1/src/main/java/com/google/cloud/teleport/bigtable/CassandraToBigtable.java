@@ -192,9 +192,9 @@ final class CassandraToBigtable {
             "GCS path to Cassandra JSON column schema. If set, the template will use the schema info to copy Cassandra write time to Bigtable cells",
         helpText =
             "GCS path to schema to copy Cassandra writetimes to Bigtable. The command to generate this schema is ```cqlsh -e \"select json * from system_schema.columns where keyspace_name='$CASSANDRA_KEYSPACE' and table_name='$CASSANDRA_TABLE'`\" > column_schema.json```. Set $CASSANDRA_COLUMN_SCHEMA to a GCS path, e.g. `gs://$BUCKET_NAME/column_schema.json`. Then upload the schema to GCS: `gcloud storage cp column_schema.json $CASSANDRA_COLUMN_SCHEMA`. Requires Cassandra version 2.2 onwards for JSON support.")
-    ValueProvider<String> getCassandraColumnSchema();
+    ValueProvider<String> getWritetimeCassandraColumnSchema();
 
-    void setCassandraColumnSchema(ValueProvider<String> cassandraColumnSchema);
+    void setWritetimeCassandraColumnSchema(ValueProvider<String> writetimeCassandraColumnSchema);
 
     @TemplateParameter.Boolean(
         order = 12,
@@ -217,7 +217,6 @@ final class CassandraToBigtable {
    */
   public static void main(String[] args) throws Exception {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
-
     // Split the Cassandra Hosts value provider into a list value provider.
     ValueProvider.NestedValueProvider<List<String>, String> hosts =
         ValueProvider.NestedValueProvider.of(
@@ -241,7 +240,7 @@ final class CassandraToBigtable {
             .withCoder(SerializableCoder.of(Row.class))
             .withQuery(
                 new CassandraWritetimeQueryProvider(
-                    options.getCassandraColumnSchema(),
+                    options.getWritetimeCassandraColumnSchema(),
                     options.getCassandraKeyspace(),
                     options.getCassandraTable()));
 
@@ -260,7 +259,7 @@ final class CassandraToBigtable {
                     options.getDefaultColumnFamily(),
                     options.getSplitLargeRows(),
                     BeamRowToBigtableFn.MAX_MUTATION_PER_REQUEST,
-                    options.getCassandraColumnSchema(),
+                    options.getWritetimeCassandraColumnSchema(),
                     options.getSetZeroTimestamp())))
         .apply("Write to Bigtable", sink);
     p.run();

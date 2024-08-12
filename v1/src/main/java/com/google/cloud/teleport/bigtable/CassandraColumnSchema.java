@@ -129,10 +129,7 @@ class CassandraColumnSchema {
   private String createWritetimeQuery(
       String keyspace, String table, List<String> primaryKeyColumns, List<String> regularColumns) {
 
-    Select query =
-        selectFrom(keyspace, table)
-            .columns(primaryKeyColumns)
-            .columns(regularColumns);
+    Select query = selectFrom(keyspace, table).columns(primaryKeyColumns).columns(regularColumns);
 
     for (String regularColumn : regularColumns) {
       query = query.writeTime(regularColumn);
