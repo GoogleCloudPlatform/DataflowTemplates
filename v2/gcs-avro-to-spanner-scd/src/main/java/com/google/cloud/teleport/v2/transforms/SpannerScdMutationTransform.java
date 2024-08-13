@@ -155,7 +155,6 @@ public abstract class SpannerScdMutationTransform
 
     @ProcessElement
     public void writeBatchChanges(@Element Iterable<Struct> recordBatch) {
-
       spannerAccessor
           .getDatabaseClient()
           .readWriteTransaction()
@@ -243,7 +242,6 @@ public abstract class SpannerScdMutationTransform
     @Override
     Void bufferMutations(TransactionContext transaction, Iterable<Struct> recordBatch) {
       StructValueHelper structValueHelper = new StructValueHelper();
-
       recordBatch.forEach(
           record -> {
             com.google.cloud.Timestamp currentTimestamp = CommonValues.currentTimestamp();
@@ -301,6 +299,7 @@ public abstract class SpannerScdMutationTransform
             structValueHelper.createKeyForRecord(resultRow, primaryKeyColumnNames());
         existingRows.put(resultKey, resultRow);
       }
+
       return existingRows;
     }
 
