@@ -30,7 +30,7 @@ runs:
   steps:
     - name: Generate Site Report
       shell: bash
-      run: mvn -B surefire-report:report-only -f pom.xml -Daggregate=true
+      run: mvn -B surefire-report:report-only -f pom.xml -Daggregate=true -Denforcer.skip=true
     - name: Publish Site Report
       uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v3.1.2
       with:
