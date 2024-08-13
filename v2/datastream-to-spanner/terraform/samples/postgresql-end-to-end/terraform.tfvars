@@ -9,21 +9,21 @@ common_params = {
 
 # Datastream Parameters
 datastream_params = {
-  source_connection_profile_id  = "source-postgresql"   # Or provide a custom ID
-  target_connection_profile_id  = "target-gcs"     # Or provide a custom ID
-  target_gcs_bucket_name        = "live-migration" # Or provide a custom bucket name
-  pubsub_topic_name             = "live-migration" # Or provide a custom topic name
-  stream_id                     = "postgresql-stream"   # Or provide a custom stream ID
-  max_concurrent_cdc_tasks      = 50               # Adjust as needed
-  max_concurrent_backfill_tasks = 50               # Adjust as needed
-  postgresql_host                    = "<YOUR_POSTGRESQL_HOST_IP_ADDRESS>"
+  source_connection_profile_id  = "source-postgresql" # Or provide a custom ID
+  target_connection_profile_id  = "target-gcs"        # Or provide a custom ID
+  target_gcs_bucket_name        = "live-migration"    # Or provide a custom bucket name
+  pubsub_topic_name             = "live-migration"    # Or provide a custom topic name
+  stream_id                     = "postgresql-stream" # Or provide a custom stream ID
+  max_concurrent_cdc_tasks      = 50                  # Adjust as needed
+  max_concurrent_backfill_tasks = 50                  # Adjust as needed
+  postgresql_host               = "<YOUR_POSTGRESQL_HOST_IP_ADDRESS>"
   # Use the Public IP if using IP allowlisting and Private IP if using
   # private connectivity.
-  postgresql_username = "<YOUR_POSTGRESQL_USERNAME>"
-  postgresql_password = "<YOUR_POSTGRESQL_PASSWORD>"
-  postgresql_publication = "<YOUR_POSTGRESQL_PUBLICATION>"
+  postgresql_username         = "<YOUR_POSTGRESQL_USERNAME>"
+  postgresql_password         = "<YOUR_POSTGRESQL_PASSWORD>"
+  postgresql_publication      = "<YOUR_POSTGRESQL_PUBLICATION>"
   postgresql_replication_slot = "<YOUR_POSTGRESQL_REPLICATION_SLOT>"
-  postgresql_port     = 3306
+  postgresql_port             = 3306
   postgresql_database = {
     database = "<YOUR_DATABASE_NAME>"
     tables   = [] # List specific tables to replicate (optional)

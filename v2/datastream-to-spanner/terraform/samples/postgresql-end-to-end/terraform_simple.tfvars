@@ -9,11 +9,11 @@ datastream_params = {
   postgresql_host = "<YOUR_POSTGRESQL_HOST_IP_ADDRESS>"
   # Use the Public IP if using IP allowlisting and Private IP if using
   # private connectivity.
-  postgresql_username = "<YOUR_POSTGRESQL_USERNAME>"
-  postgresql_password = "<YOUR_POSTGRESQL_PASSWORD>"
-  postgresql_publication = "<YOUR_POSTGRESQL_PUBLICATION>"
+  postgresql_username         = "<YOUR_POSTGRESQL_USERNAME>"
+  postgresql_password         = "<YOUR_POSTGRESQL_PASSWORD>"
+  postgresql_publication      = "<YOUR_POSTGRESQL_PUBLICATION>"
   postgresql_replication_slot = "<YOUR_POSTGRESQL_REPLICATION_SLOT>"
-  postgresql_port     = 3306
+  postgresql_port             = 3306
   postgresql_database = {
     database = "<YOUR_DATABASE_NAME>"
     tables   = []
