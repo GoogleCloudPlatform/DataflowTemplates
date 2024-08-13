@@ -167,7 +167,7 @@ resource "google_datastream_stream" "postgresql_to_gcs" {
     source_connection_profile = google_datastream_connection_profile.source_postgresql.id
 
     postgresql_source_config {
-      publication = var.datastream_params.postgresql_publication
+      publication      = var.datastream_params.postgresql_publication
       replication_slot = var.datastream_params.postgresql_replication_slot
       # max_concurrent_cdc_tasks      = var.datastream_params.max_concurrent_cdc_tasks
       max_concurrent_backfill_tasks = var.datastream_params.max_concurrent_backfill_tasks

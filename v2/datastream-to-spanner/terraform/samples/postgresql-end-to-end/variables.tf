@@ -20,12 +20,12 @@ variable "datastream_params" {
     }))
     private_connectivity_id       = optional(string)
     source_connection_profile_id  = optional(string, "source-postgresql")
-    postgresql_host                    = string
-    postgresql_username                = string
-    postgresql_password                = string
-    postgresql_publication = string
-    postgresql_replication_slot = string
-    postgresql_port                    = number
+    postgresql_host               = string
+    postgresql_username           = string
+    postgresql_password           = string
+    postgresql_publication        = string
+    postgresql_replication_slot   = string
+    postgresql_port               = number
     target_connection_profile_id  = optional(string, "target-gcs")
     gcs_bucket_name               = optional(string, "live-migration")
     gcs_root_path                 = optional(string, "/")
