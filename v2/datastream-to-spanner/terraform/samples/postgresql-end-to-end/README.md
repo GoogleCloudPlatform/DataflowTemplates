@@ -162,10 +162,10 @@ This sample contains the following files -
    configure the resources.
 4. `terraform.tf` - This contains the required providers and APIs/project
    configurations for this sample.
-5. `terraform_tfvars` - This contains the dummy inputs that need to be populated
-   to run this example. This can be renamed to terraform.tfvars and replaced with actual values
-6. `terraform_simple_tfvars` - This contains the minimal list of dummy inputs
-   that need to be populated to run this example. This can be renamed to terraform_simple.tfvars and replaced with actual values
+5. `terraform.tfvars` - This contains the dummy inputs that need to be populated
+   to run this example.
+6. `terraform_simple.tfvars` - This contains the minimal list of dummy inputs
+   that need to be populated to run this example.
 
 ## Resources Created
 
