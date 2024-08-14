@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.kafka.dlq.BigQueryDeadLetterQueue;
 import com.google.cloud.teleport.v2.kafka.transforms.AvroDynamicTransform;
 import com.google.cloud.teleport.v2.kafka.transforms.AvroTransform;
+import com.google.cloud.teleport.v2.kafka.transforms.KafkaRecordErrorConverters.WriteKafkaRecordMessageErrors;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaConfig;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
@@ -31,7 +32,6 @@ import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters.SchemaF
 import com.google.cloud.teleport.v2.options.KafkaToBigQueryFlexOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryWriteUtils;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
-import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteKafkaMessageErrors;
 import com.google.cloud.teleport.v2.transforms.StringMessageToTableRow;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.MetadataValidator;
@@ -45,7 +45,6 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
 import org.apache.beam.sdk.coders.CoderRegistry;
-import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -64,7 +63,6 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
 import org.apache.beam.sdk.transforms.errorhandling.BadRecordRouter;
 import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -120,7 +118,7 @@ public class KafkaToBigQueryFlex {
   public static final TupleTag<TableRow> TRANSFORM_OUT = new TupleTag<>() {};
 
   /** The tag for the dead-letter output of the json to table row transform. */
-  public static final TupleTag<FailsafeElement<KV<String, String>, String>>
+  public static final TupleTag<FailsafeElement<KafkaRecord<String, String>, String>>
       TRANSFORM_DEADLETTER_OUT = new TupleTag<>() {};
 
   /** String/String Coder for FailsafeElement. */
@@ -489,9 +487,9 @@ public class KafkaToBigQueryFlex {
       Map<String, Object> kafkaConfig) {
 
     // Register the coder for pipeline
-    FailsafeElementCoder<KV<String, String>, String> coder =
+    FailsafeElementCoder<KafkaRecord<String, String>, String> coder =
         FailsafeElementCoder.of(
-            KvCoder.of(
+            KafkaRecordCoder.of(
                 NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of())),
             NullableCoder.of(StringUtf8Coder.of()));
 
@@ -553,7 +551,7 @@ public class KafkaToBigQueryFlex {
           .apply("Flatten", Flatten.pCollections())
           .apply(
               "WriteTransformationFailedRecords",
-              WriteKafkaMessageErrors.newBuilder()
+              WriteKafkaRecordMessageErrors.newBuilder()
                   .setErrorRecordsTable(
                       ObjectUtils.firstNonNull(options.getOutputDeadletterTable()))
                   .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
