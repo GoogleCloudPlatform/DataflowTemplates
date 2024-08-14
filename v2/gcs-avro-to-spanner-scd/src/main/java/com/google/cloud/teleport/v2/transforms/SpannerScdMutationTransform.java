@@ -22,10 +22,10 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.AvroToSpannerScdPipeline.AvroToSpannerScdOptions.ScdType;
-import com.google.cloud.teleport.v2.utils.StructValueHelper;
-import com.google.cloud.teleport.v2.utils.StructValueHelper.CommonValues;
-import com.google.cloud.teleport.v2.utils.StructValueHelper.NullTypes;
+import com.google.cloud.teleport.v2.utils.StructHelper;
+import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import java.util.HashMap;
@@ -241,19 +241,16 @@ public abstract class SpannerScdMutationTransform
      */
     @Override
     Void bufferMutations(TransactionContext transaction, Iterable<Struct> recordBatch) {
-      StructValueHelper structValueHelper = new StructValueHelper();
       recordBatch.forEach(
           record -> {
-            com.google.cloud.Timestamp currentTimestamp = CommonValues.currentTimestamp();
+            com.google.cloud.Timestamp currentTimestamp = com.google.cloud.Timestamp.now();
             HashMap<com.google.cloud.spanner.Key, Struct> existingRows =
                 getMatchingRecords(recordBatch, transaction);
-
             com.google.cloud.spanner.Key recordKey =
-                structValueHelper
-                    .addRecordFieldsToKeyBuilder(
-                        record, primaryKeyColumnNames(), com.google.cloud.spanner.Key.newBuilder())
-                    .append(NullTypes.NULL_TIMESTAMP) // endTimestamp
-                    .build();
+                StructHelper.of(record)
+                    .keyMaker(primaryKeyColumnNames())
+                    .createKeyWithExtraValues(
+                        /* endTimestamp= */ Value.timestamp(ValueHelper.NullTypes.NULL_TIMESTAMP));
 
             if (existingRows.containsKey(recordKey)) {
               Struct existingRow = existingRows.get(recordKey);
@@ -275,17 +272,14 @@ public abstract class SpannerScdMutationTransform
      */
     private HashMap<com.google.cloud.spanner.Key, Struct> getMatchingRecords(
         Iterable<Struct> recordBatch, TransactionContext transaction) {
-      StructValueHelper structValueHelper = new StructValueHelper();
-
       KeySet.Builder keySetBuilder = KeySet.newBuilder();
       recordBatch.forEach(
           record -> {
             com.google.cloud.spanner.Key recordQueryKey =
-                structValueHelper
-                    .addRecordFieldsToKeyBuilder(
-                        record, primaryKeyColumnNames(), com.google.cloud.spanner.Key.newBuilder())
-                    .append(NullTypes.NULL_TIMESTAMP) // endTimestamp
-                    .build();
+                StructHelper.of(record)
+                    .keyMaker(primaryKeyColumnNames())
+                    .createKeyWithExtraValues(
+                        /* endTimestamp= */ Value.timestamp(ValueHelper.NullTypes.NULL_TIMESTAMP));
             keySetBuilder.addKey(recordQueryKey);
           });
       KeySet queryKeySet = keySetBuilder.build();
@@ -296,7 +290,7 @@ public abstract class SpannerScdMutationTransform
       while (results.next()) {
         Struct resultRow = results.getCurrentRowAsStruct();
         com.google.cloud.spanner.Key resultKey =
-            structValueHelper.createKeyForRecord(resultRow, primaryKeyColumnNames());
+            StructHelper.of(resultRow).keyMaker(primaryKeyColumnNames()).createKey();
         existingRows.put(resultKey, resultRow);
       }
 
@@ -311,9 +305,8 @@ public abstract class SpannerScdMutationTransform
      * @return Spanner mutation performed within the transaction.
      */
     private Mutation createDeleteOldRowMutation(Struct record) {
-      StructValueHelper structValueHelper = new StructValueHelper();
       com.google.cloud.spanner.Key recordKey =
-          structValueHelper.createKeyForRecord(record, primaryKeyColumnNames());
+          StructHelper.of(record).keyMaker(primaryKeyColumnNames()).createKey();
       return Mutation.delete(tableName(), recordKey);
     }
 
@@ -354,7 +347,7 @@ public abstract class SpannerScdMutationTransform
       if (startDateColumnName() != null) {
         insertMutationBuilder.set(startDateColumnName()).to(currentTimestamp);
       }
-      insertMutationBuilder.set(endDateColumnName()).to(NullTypes.NULL_TIMESTAMP);
+      insertMutationBuilder.set(endDateColumnName()).to(ValueHelper.NullTypes.NULL_TIMESTAMP);
       return insertMutationBuilder.build();
     }
   }
