@@ -215,9 +215,9 @@ public class StructHelper {
       public static final Timestamp NULL_TIMESTAMP = null;
     }
 
-    // TODO(Nito): throws NullPointerException.
     public Boolean getBoolOrNull() {
-      return value.isNull() ? NullTypes.NULL_BOOLEAN : value.getBool();
+
+      return value.isNull() ? NullTypes.NULL_BOOLEAN : Boolean.valueOf(value.getBool());
     }
 
     public ByteArray getBytesOrNull() {
@@ -229,15 +229,15 @@ public class StructHelper {
     }
 
     public Float getFloat32OrNull() {
-      return value.isNull() ? NullTypes.NULL_FLOAT32 : value.getFloat32();
+      return value.isNull() ? NullTypes.NULL_FLOAT32 : Float.valueOf(value.getFloat32());
     }
 
     public Double getFloat64OrNull() {
-      return value.isNull() ? NullTypes.NULL_FLOAT64 : value.getFloat64();
+      return value.isNull() ? NullTypes.NULL_FLOAT64 : Double.valueOf(value.getFloat64());
     }
 
     public Long getInt64OrNull() {
-      return value.isNull() ? NullTypes.NULL_INT64 : value.getInt64();
+      return value.isNull() ? NullTypes.NULL_INT64 : Long.valueOf(value.getInt64());
     }
 
     public String getJsonOrNull() {
