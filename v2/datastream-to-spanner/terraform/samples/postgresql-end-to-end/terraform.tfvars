@@ -23,9 +23,10 @@ datastream_params = {
   postgresql_password         = "<YOUR_POSTGRESQL_PASSWORD>"
   postgresql_publication      = "<YOUR_POSTGRESQL_PUBLICATION>"
   postgresql_replication_slot = "<YOUR_POSTGRESQL_REPLICATION_SLOT>"
-  postgresql_port             = 3306
+  postgresql_port             = 5432
   postgresql_database = {
     database = "<YOUR_DATABASE_NAME>"
+    schema = "<YOUR_SCHEMA_NAME>"
     tables   = [] # List specific tables to replicate (optional)
   }
   private_connectivity_id = "<YOUR_PRIVATE_CONNECTIVITY_ID>"

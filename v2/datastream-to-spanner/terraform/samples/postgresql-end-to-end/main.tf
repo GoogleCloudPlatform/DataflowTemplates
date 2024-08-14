@@ -173,7 +173,7 @@ resource "google_datastream_stream" "postgresql_to_gcs" {
       max_concurrent_backfill_tasks = var.datastream_params.max_concurrent_backfill_tasks
       include_objects {
         postgresql_schemas {
-          schema = "public"
+          schema = var.datastream_params.postgresql_database.schema
           # Handle optional tables within the single database
           dynamic "postgresql_tables" {
             for_each = var.datastream_params.postgresql_database.tables != null ? var.datastream_params.postgresql_database.tables : []
