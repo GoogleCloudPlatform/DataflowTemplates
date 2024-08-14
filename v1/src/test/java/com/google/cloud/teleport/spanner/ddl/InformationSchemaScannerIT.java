@@ -926,9 +926,7 @@ public class InformationSchemaScannerIT {
   public void placementTables() throws Exception {
     List<String> statements =
         Arrays.asList(
-            "ALTER DATABASE `"
-                + dbId
-                + "` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n",
+            "ALTER DATABASE `" + dbId + "` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n",
             "CREATE TABLE `PlacementKeyAsPrimaryKey` (\n\t"
                 + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n\t"
                 + "`val`                                   STRING(MAX),\n"
@@ -954,7 +952,8 @@ public class InformationSchemaScannerIT {
   // @Test
   public void pgPlacementTables() throws Exception {
     List<String> statements =
-        Arrays.asList("ALTER DATABASE \"" + dbId + "\" SET spanner.opt_in_dataplacement_preview = TRUE\n",
+        Arrays.asList(
+            "ALTER DATABASE \"" + dbId + "\" SET spanner.opt_in_dataplacement_preview = TRUE\n",
             " CREATE TABLE \"PlacementKeyAsPrimaryKey\" ("
                 + " \"location\"                              character varying NOT NULL PLACEMENT KEY,"
                 + " \"val\"                                   character varying,"
@@ -964,7 +963,7 @@ public class InformationSchemaScannerIT {
                 + " \"location\"                              character varying NOT NULL,"
                 + " \"user_id\"                               character varying NOT NULL,"
                 + " PRIMARY KEY (\"location\", \"user_id\") "
-                +  ") INTERLEAVE IN PARENT \"PlacementKeyAsPrimaryKey\"",
+                + ") INTERLEAVE IN PARENT \"PlacementKeyAsPrimaryKey\"",
             " CREATE TABLE \"UsersWithPlacement\" ("
                 + " \"user_id\"                               bigint NOT NULL,"
                 + " \"location\"                              character varying NOT NULL PLACEMENT KEY,"

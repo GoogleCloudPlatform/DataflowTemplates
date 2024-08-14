@@ -320,13 +320,14 @@ public class InformationSchemaScanner {
     if (dialect != Dialect.GOOGLE_STANDARD_SQL && dialect != Dialect.POSTGRESQL) {
       throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
     }
-    return Statement.of(String.format(
+    return Statement.of(
+        String.format(
             "WITH placementkeycolumns AS ("
                 + "      SELECT c.table_name, c.column_name, c.constraint_name"
                 + "      FROM information_schema.constraint_column_usage AS c"
                 + "    WHERE c.constraint_name = CONCAT('PLACEMENT_KEY_', c.table_name)"
                 + "  ) "
-          + "SELECT c.table_schema, c.table_name, c.column_name,"
+                + "SELECT c.table_schema, c.table_name, c.column_name,"
                 + " c.ordinal_position, c.spanner_type, c.is_nullable,"
                 + " c.is_generated, c.generation_expression, c.is_stored, c.column_default,"
                 + " pkc.constraint_name IS NOT NULL AS is_placement_key"
@@ -336,7 +337,9 @@ public class InformationSchemaScanner {
                 + " WHERE c.table_schema NOT IN (%s)"
                 + " AND c.spanner_state = 'COMMITTED' "
                 + " ORDER BY c.table_name, c.ordinal_position",
-                dialect == Dialect.GOOGLE_STANDARD_SQL ? "'INFORMATION_SCHEMA', 'SPANNER_SYS'" : "'information_schema', 'spanner_sys', 'pg_catalog'"));
+            dialect == Dialect.GOOGLE_STANDARD_SQL
+                ? "'INFORMATION_SCHEMA', 'SPANNER_SYS'"
+                : "'information_schema', 'spanner_sys', 'pg_catalog'"));
   }
 
   private void listIndexes(Map<String, NavigableMap<String, Index.Builder>> indexes) {

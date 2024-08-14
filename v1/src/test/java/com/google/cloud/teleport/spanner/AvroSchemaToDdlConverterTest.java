@@ -1032,7 +1032,7 @@ public class AvroSchemaToDdlConverterTest {
                 + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n\t"
                 + "`val`                                   STRING(MAX) NOT NULL,\n"
                 + ") PRIMARY KEY (`location` ASC)\n\n\n"
-            + "CREATE TABLE `UsersWithPlacement` (\n\t"
+                + "CREATE TABLE `UsersWithPlacement` (\n\t"
                 + "`id`                                    INT64 NOT NULL,\n\t"
                 + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n"
                 + ") PRIMARY KEY (`id` ASC)\n\n"));
@@ -1099,7 +1099,7 @@ public class AvroSchemaToDdlConverterTest {
                 + "\"location\"                              character varying NOT NULL PLACEMENT KEY,\n\t"
                 + "\"val\"                                   character varying NOT NULL,\n\t"
                 + "PRIMARY KEY (\"location\")\n)\n\n\n"
-            + "CREATE TABLE \"UsersWithPlacement\" (\n\t"
+                + "CREATE TABLE \"UsersWithPlacement\" (\n\t"
                 + "\"id\"                                    bigint NOT NULL,\n\t"
                 + "\"location\"                              character varying NOT NULL PLACEMENT KEY,\n\t"
                 + "PRIMARY KEY (\"id\")\n)\n\n"));
