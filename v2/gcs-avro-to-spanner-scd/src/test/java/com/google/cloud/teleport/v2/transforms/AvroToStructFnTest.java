@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 
+import com.google.cloud.ByteArray;
 import com.google.cloud.spanner.Struct;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
@@ -86,6 +88,45 @@ public final class AvroToStructFnTest {
       assertThat(output).isEqualTo(expectedOutput);
     }
 
+    @Test
+    public void testApply_throwsForUnsupportedTypes() {
+      Schema inputSchema =
+          Schema.createRecord(
+              ImmutableList.<Field>builder()
+                  .add(new Field("array", Schema.createArray(Schema.create(Schema.Type.STRING))))
+                  .build());
+      GenericRecord input =
+          new GenericRecordBuilder(inputSchema)
+              .set("array", ImmutableList.of("arrayValue"))
+              .build();
+
+      UnsupportedOperationException thrown =
+          assertThrows(
+              UnsupportedOperationException.class, () -> AvroToStructFn.create().apply(input));
+
+      assertThat(thrown).hasMessageThat().contains("Avro field type ARRAY is not supported.");
+    }
+
+    @Test
+    public void testApply_throwsForNotYetImplementedTypes() {
+      Schema inputSchema =
+          Schema.createRecord(
+              ImmutableList.<Field>builder()
+                  .add(new Field("bytes", Schema.create(Schema.Type.BYTES)))
+                  .build());
+      GenericRecord input =
+          new GenericRecordBuilder(inputSchema)
+              .set("bytes", ByteArray.fromBase64("Tml0byBidWlsdCB0aGlzLg=="))
+              .build();
+
+      UnsupportedOperationException thrown =
+          assertThrows(
+              UnsupportedOperationException.class, () -> AvroToStructFn.create().apply(input));
+
+      assertThat(thrown)
+          .hasMessageThat()
+          .contains("Support for Avro field type BYTES is not implemented yet.");
+    }
   }
 
   @RunWith(JUnit4.class)
