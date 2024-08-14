@@ -36,6 +36,7 @@ variable "datastream_params" {
     max_concurrent_backfill_tasks = optional(number, 20)
     postgresql_database = object({
       database = string
+      schema   = string
       tables   = optional(list(string))
     })
   })
