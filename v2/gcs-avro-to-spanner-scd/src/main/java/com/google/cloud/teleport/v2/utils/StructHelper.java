@@ -216,7 +216,6 @@ public class StructHelper {
     }
 
     public Boolean getBoolOrNull() {
-
       return value.isNull() ? NullTypes.NULL_BOOLEAN : Boolean.valueOf(value.getBool());
     }
 

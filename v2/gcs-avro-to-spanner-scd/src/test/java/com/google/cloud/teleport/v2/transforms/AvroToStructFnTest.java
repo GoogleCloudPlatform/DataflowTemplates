@@ -20,10 +20,8 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.cloud.spanner.Struct;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import kotlin.reflect.jvm.internal.calls.CallerImpl.Constructor;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericRecord;
@@ -50,6 +48,7 @@ public final class AvroToStructFnTest {
 
     private final ImmutableList<GenericRecord> input;
     private final ImmutableList<Struct> expectedOutputs;
+
     public ParameterizedTests(
         String testName,
         ImmutableList<GenericRecord> input,
@@ -71,8 +70,8 @@ public final class AvroToStructFnTest {
       return ImmutableList.<Object[]>builder()
           .add(
               new Object[] {
-                  /*testName=*/"castsBooleans",
-                  /*input=*/ImmutableList.of(
+                /* testName= */ "castsBooleans",
+                /* input= */ ImmutableList.of(
                     new GenericRecordBuilder(
                             Schema.createRecord(
                                 ImmutableList.<Field>builder()
@@ -86,7 +85,7 @@ public final class AvroToStructFnTest {
                         .set("fieldNameTrue", Boolean.TRUE)
                         .set("fieldNameFalse", Boolean.FALSE)
                         .build()),
-                /*expectedOutput=*/ImmutableList.of(
+                /* expectedOutput= */ ImmutableList.of(
                     Struct.newBuilder()
                         .set("fieldNameTrue")
                         .to(Boolean.TRUE)
@@ -96,7 +95,7 @@ public final class AvroToStructFnTest {
               })
           .add(
               new Object[] {
-                /*testName=*/"castsDoubles",
+                /* testName= */ "castsDoubles",
                 ImmutableList.of(
                     new GenericRecordBuilder(
                             Schema.createRecord(
