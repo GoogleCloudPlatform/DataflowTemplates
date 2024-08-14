@@ -31,6 +31,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ON_DELETE_ACTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PLACEMENT_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
@@ -1411,6 +1412,100 @@ public class DdlToAvroSchemaConverterTest {
     Schema avroSchema3 = it.next();
     assertThat(avroSchema3.getName(), equalTo("PGSequence3"));
     assertThat(avroSchema3.getProp(SPANNER_SEQUENCE_KIND), equalTo("bit_reversed_positive"));
+  }
+
+  @Test
+  public void placementTable() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("PlacementKeyWithPrimaryKey")
+            .column("location")
+            .type(Type.string())
+            .max()
+            .notNull()
+            .placementKey()
+            .endColumn()
+            .column("val")
+            .type(Type.string())
+            .size(10)
+            .endColumn()
+            .endTable()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(1));
+    Schema avroSchema = result.iterator().next();
+
+    assertThat(avroSchema.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+
+    assertThat(avroSchema.getName(), equalTo("PlacementKeyWithPrimaryKey"));
+
+    List<Schema.Field> fields = avroSchema.getFields();
+
+    assertThat(fields, hasSize(2));
+
+    // Placement key column
+    assertThat(fields.get(0).name(), equalTo("location"));
+    assertThat(fields.get(0).schema().getType(), equalTo(Schema.Type.STRING));
+    assertThat(fields.get(0).getProp(SQL_TYPE), equalTo("STRING(MAX)"));
+    assertThat(fields.get(0).getProp(SPANNER_PLACEMENT_KEY), equalTo("true"));
+    assertThat(fields.get(0).getProp(STORED), equalTo(null));
+
+    assertThat(fields.get(1).name(), equalTo("val"));
+    assertThat(fields.get(1).schema(), equalTo(nullableUnion(Schema.Type.STRING)));
+    assertThat(fields.get(1).getProp(SQL_TYPE), equalTo("STRING(10)"));
+    assertThat(fields.get(1).getProp(SPANNER_PLACEMENT_KEY), equalTo(null));
+  }
+
+  @Test
+  public void pgPlacementTable() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("PlacementKeyWithPrimaryKey")
+            .column("location")
+            .pgVarchar()
+            .max()
+            .notNull()
+            .placementKey()
+            .endColumn()
+            .column("val")
+            .pgVarchar()
+            .size(10)
+            .endColumn()
+            .endTable()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(1));
+    Schema avroSchema = result.iterator().next();
+
+    assertThat(avroSchema.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+
+    assertThat(avroSchema.getName(), equalTo("PlacementKeyWithPrimaryKey"));
+
+    List<Schema.Field> fields = avroSchema.getFields();
+
+    assertThat(fields, hasSize(2));
+
+    // Placement key column
+    assertThat(fields.get(0).name(), equalTo("location"));
+    assertThat(fields.get(0).schema().getType(), equalTo(Schema.Type.STRING));
+    assertThat(fields.get(0).getProp(SQL_TYPE), equalTo("character varying"));
+    assertThat(fields.get(0).getProp(SPANNER_PLACEMENT_KEY), equalTo("true"));
+    assertThat(fields.get(0).getProp(STORED), equalTo(null));
+
+    assertThat(fields.get(1).name(), equalTo("val"));
+    assertThat(fields.get(1).schema(), equalTo(nullableUnion(Schema.Type.STRING)));
+    assertThat(fields.get(1).getProp(SQL_TYPE), equalTo("character varying(10)"));
+    assertThat(fields.get(1).getProp(SPANNER_PLACEMENT_KEY), equalTo(null));
   }
 
   private Schema nullableUnion(Schema.Type s) {

@@ -317,46 +317,26 @@ public class InformationSchemaScanner {
 
   @VisibleForTesting
   Statement listColumnsSQL() {
-    switch (dialect) {
-      case GOOGLE_STANDARD_SQL:
-        return Statement.of(
-            "WITH placementkeycolumns AS ("
-                + "      SELECT c.table_name, c.column_name, c.constraint_name"
-                + "      FROM information_schema.constraint_column_usage AS c"
-                + "    WHERE c.constraint_name = CONCAT('PLACEMENT_KEY_', c.table_name)"
-                + "  ) "
-          + "SELECT c.table_schema, c.table_name, c.column_name,"
-                + " c.ordinal_position, c.spanner_type, c.is_nullable,"
-                + " c.is_generated, c.generation_expression, c.is_stored, c.column_default,"
-                + " pkc.constraint_name IS NOT NULL AS is_placement_key"
-                + " FROM information_schema.columns as c"
-                + " LEFT JOIN placementkeycolumns AS pkc"
-                + " ON c.table_name = pkc.table_name AND c.column_name = pkc.column_name"
-                + " WHERE c.table_schema NOT IN"
-                + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
-                + " AND c.spanner_state = 'COMMITTED' "
-                + " ORDER BY c.table_name, c.ordinal_position");
-      case POSTGRESQL:
-        return Statement.of(
-            "WITH placementkeycolumns AS ("
-                + "      SELECT c.table_name, c.column_name, c.constraint_name"
-                + "      FROM information_schema.constraint_column_usage AS c"
-                + "    WHERE c.constraint_name = CONCAT('PLACEMENT_KEY_', c.table_name)"
-                + "  ) "
-          + "SELECT c.table_schema, c.table_name, c.column_name,"
-                + " c.ordinal_position, c.spanner_type, c.is_nullable,"
-                + " c.is_generated, c.generation_expression, c.is_stored, c.column_default,"
-                + " pkc.constraint_name IS NOT NULL AS is_placement_key"
-                + " FROM information_schema.columns as c"
-                + " LEFT JOIN placementkeycolumns AS pkc"
-                + " ON c.table_name = pkc.table_name AND c.column_name = pkc.column_name"
-                + " WHERE c.table_schema NOT IN "
-                + " ('information_schema', 'spanner_sys', 'pg_catalog') "
-                + " AND c.spanner_state = 'COMMITTED' "
-                + " ORDER BY c.table_name, c.ordinal_position");
-      default:
-        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    if (dialect != Dialect.GOOGLE_STANDARD_SQL && dialect != Dialect.POSTGRESQL) {
+      throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
     }
+    return Statement.of(String.format(
+            "WITH placementkeycolumns AS ("
+                + "      SELECT c.table_name, c.column_name, c.constraint_name"
+                + "      FROM information_schema.constraint_column_usage AS c"
+                + "    WHERE c.constraint_name = CONCAT('PLACEMENT_KEY_', c.table_name)"
+                + "  ) "
+          + "SELECT c.table_schema, c.table_name, c.column_name,"
+                + " c.ordinal_position, c.spanner_type, c.is_nullable,"
+                + " c.is_generated, c.generation_expression, c.is_stored, c.column_default,"
+                + " pkc.constraint_name IS NOT NULL AS is_placement_key"
+                + " FROM information_schema.columns as c"
+                + " LEFT JOIN placementkeycolumns AS pkc"
+                + " ON c.table_name = pkc.table_name AND c.column_name = pkc.column_name"
+                + " WHERE c.table_schema NOT IN (%s)"
+                + " AND c.spanner_state = 'COMMITTED' "
+                + " ORDER BY c.table_name, c.ordinal_position",
+                dialect == Dialect.GOOGLE_STANDARD_SQL ? "'INFORMATION_SCHEMA', 'SPANNER_SYS'" : "'information_schema', 'spanner_sys', 'pg_catalog'"));
   }
 
   private void listIndexes(Map<String, NavigableMap<String, Index.Builder>> indexes) {

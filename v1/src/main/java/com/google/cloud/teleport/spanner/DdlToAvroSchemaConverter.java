@@ -152,6 +152,9 @@ public class DdlToAvroSchemaConverter {
         for (int i = 0; i < cm.columnOptions().size(); i++) {
           fieldBuilder.prop(SPANNER_OPTION + i, cm.columnOptions().get(i));
         }
+        if (cm.isPlacementKey()) {
+          fieldBuilder.prop(SPANNER_PLACEMENT_KEY, Boolean.toString(cm.isPlacementKey()));
+        }
         if (cm.isGenerated()) {
           fieldBuilder.prop(NOT_NULL, Boolean.toString(cm.notNull()));
           fieldBuilder.prop(GENERATION_EXPRESSION, cm.generationExpression());
@@ -168,9 +171,6 @@ public class DdlToAvroSchemaConverter {
             avroType = wrapAsNullable(avroType);
           }
           fieldBuilder.type(avroType).noDefault();
-        }
-        if (cm.isPlacementKey()) {
-          fieldBuilder.prop(SPANNER_PLACEMENT_KEY, Boolean.toString(cm.isPlacementKey()));
         }
       }
       Schema schema = fieldsAssembler.endRecord();

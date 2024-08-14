@@ -970,4 +970,138 @@ public class AvroSchemaToDdlConverterTest {
     timestampSchema.addProp("logicalType", "timestamp-micros");
     assertEquals(Type.pgTimestamptz(), avroSchemaToDdlConverter.inferType(timestampSchema, false));
   }
+
+  @Test
+  public void placementTable() {
+    String placementKeyAsPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"PlacementKeyAsPrimaryKey\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"val\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`location` ASC\""
+            + "}";
+
+    String placementKeyAsNonPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"UsersWithPlacement\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"INT64\""
+            + "  }, {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`id` ASC\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(placementKeyAsPrimaryKeyAvroString));
+    schemas.add(parser.parse(placementKeyAsNonPrimaryKeyAvroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.allTables(), hasSize(2));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `PlacementKeyAsPrimaryKey` (\n\t"
+                + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n\t"
+                + "`val`                                   STRING(MAX) NOT NULL,\n"
+                + ") PRIMARY KEY (`location` ASC)\n\n\n"
+            + "CREATE TABLE `UsersWithPlacement` (\n\t"
+                + "`id`                                    INT64 NOT NULL,\n\t"
+                + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n"
+                + ") PRIMARY KEY (`id` ASC)\n\n"));
+  }
+
+  @Test
+  public void pgPlacementTable() {
+    String placementKeyAsPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"PlacementKeyAsPrimaryKey\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"val\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"location ASC\""
+            + "}";
+
+    String placementKeyAsNonPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"UsersWithPlacement\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"bigint\""
+            + "  }, {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"id ASC\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(placementKeyAsPrimaryKeyAvroString));
+    schemas.add(parser.parse(placementKeyAsNonPrimaryKeyAvroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.allTables(), hasSize(2));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"PlacementKeyAsPrimaryKey\" (\n\t"
+                + "\"location\"                              character varying NOT NULL PLACEMENT KEY,\n\t"
+                + "\"val\"                                   character varying NOT NULL,\n\t"
+                + "PRIMARY KEY (\"location\")\n)\n\n\n"
+            + "CREATE TABLE \"UsersWithPlacement\" (\n\t"
+                + "\"id\"                                    bigint NOT NULL,\n\t"
+                + "\"location\"                              character varying NOT NULL PLACEMENT KEY,\n\t"
+                + "PRIMARY KEY (\"id\")\n)\n\n"));
+  }
 }
