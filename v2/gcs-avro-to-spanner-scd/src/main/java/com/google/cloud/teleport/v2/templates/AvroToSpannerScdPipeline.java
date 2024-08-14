@@ -143,7 +143,9 @@ public class AvroToSpannerScdPipeline {
             "ReadAvroRecordsAsStruct",
             AvroIO.parseGenericRecords(new AvroToStructFn()).from(options.getInputFilePattern()))
         .apply(
-            "BatchRowsIntoGroups", MakeBatchesTransform.create(options.getSpannerBatchSize().get()))
+            "BatchRowsIntoGroups",
+MakeBatchesTransform.create(
+options.getSpannerBatchSize().get(), options.getPrimaryKeyColumnNames().get()))
         .apply(
             "WriteScdChangesToSpanner",
             SpannerScdMutationTransform.builder()

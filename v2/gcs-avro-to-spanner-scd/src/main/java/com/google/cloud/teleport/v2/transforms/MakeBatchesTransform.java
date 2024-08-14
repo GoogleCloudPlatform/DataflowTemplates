@@ -17,10 +17,17 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.v2.utils.StructHelper;
+import java.util.ArrayList;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.GroupByKey;
 import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.transforms.WithKeys;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 
 /** Batches individual rows (Structs) into groups of the given size. */
@@ -28,17 +35,49 @@ import org.apache.beam.sdk.values.PCollection;
 public abstract class MakeBatchesTransform
     extends PTransform<PCollection<Struct>, PCollection<Iterable<Struct>>> {
 
-  public static MakeBatchesTransform create(Integer batchSize) {
-    return new AutoValue_MakeBatchesTransform(batchSize);
+  public static MakeBatchesTransform create(Integer batchSize, Iterable<String> primaryKeyColumns) {
+    return new AutoValue_MakeBatchesTransform(batchSize, primaryKeyColumns);
   }
 
   abstract Integer batchSize();
 
+  abstract Iterable<String> primaryKeyColumns();
+
   @Override
   public PCollection<Iterable<Struct>> expand(PCollection<Struct> input) {
     return input
-        .apply("CreateArbitraryBatchKey", WithKeys.of(1))
-        .apply("GroupRowsIntoBatches", GroupIntoBatches.ofSize(batchSize()))
-        .apply("RemoveArbitraryBatchKey", Values.create());
+        .apply("AddPrimaryKey", WithKeys.of(new ExtractPrimaryKey()))
+        .apply("GroupByPrimaryKey", GroupByKey.create())
+        .apply("GroupArbitrarilyForBatchSize", WithKeys.of(1))
+        .apply("GroupIntoBatchesOfPrimaryKey", GroupIntoBatches.ofSize(batchSize()))
+        .apply("RemoveArbitraryBatchKey", Values.create())
+        .apply("RemovePrimaryKeyFromBatch", ParDo.of(new UngroupPrimaryKey()));
+  }
+
+  private class ExtractPrimaryKey implements SerializableFunction<Struct, String> {
+    @Override
+    public String apply(Struct record) {
+      // Cannot use Key directly as order is non-deterministic.
+      // TODO(Nito): verify that this works when end_date is not present.
+      return StructHelper.of(record).keyMaker(primaryKeyColumns()).createKeyString();
+    }
+  }
+
+  private class UngroupPrimaryKey
+      extends DoFn<Iterable<KV<String, Iterable<Struct>>>, Iterable<Struct>> {
+
+    @ProcessElement
+    public void ungroup(
+        @Element Iterable<KV<String, Iterable<Struct>>> inputBatch,
+        OutputReceiver<Iterable<Struct>> output) {
+      // TODO(Nito): add orderBy logic.
+      ArrayList<Struct> batchWithoutKeys = new ArrayList<>();
+      inputBatch.forEach(
+          kvBatch -> {
+            Iterable<Struct> batch = kvBatch.getValue();
+            batch.forEach(batchWithoutKeys::add);
+          });
+      output.output(batchWithoutKeys);
+    }
   }
 }
