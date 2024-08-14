@@ -141,7 +141,7 @@ public class AvroToSpannerScdPipeline {
     pipeline
         .apply(
             "ReadAvroRecordsAsStruct",
-            AvroIO.parseGenericRecords(new AvroToStructFn()).from(options.getInputFilePattern()))
+            AvroIO.parseGenericRecords(AvroToStructFn.create()).from(options.getInputFilePattern()))
         .apply(
             "BatchRowsIntoGroups",
 MakeBatchesTransform.create(
