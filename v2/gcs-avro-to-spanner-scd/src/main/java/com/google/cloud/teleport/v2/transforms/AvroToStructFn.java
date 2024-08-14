@@ -19,6 +19,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper.NullTypes;
+import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericRecord;
@@ -67,29 +69,51 @@ public class AvroToStructFn extends SimpleFunction<GenericRecord, Struct> {
         case MAP:
         case NULL:
         case RECORD:
-        case UNION:
-          // TODO: implement support for Union when it's type + null.
           throw new UnsupportedOperationException(
               String.format("Avro field type %s is not supported.", fieldType));
         case BOOLEAN:
-          return Value.bool((Boolean) fieldValue);
+          return Value.bool(fieldValue == null ? NullTypes.NULL_BOOLEAN : (Boolean) fieldValue);
         case BYTES:
         case FIXED:
           // TODO: Implement FIXED and BYTES including LogicalTypes.
           throw new UnsupportedOperationException(
               String.format("Support for Avro field type %s is not implemented yet.", fieldType));
         case DOUBLE:
-          return Value.float64((Double) fieldValue);
+          return Value.float64(fieldValue == null ? NullTypes.NULL_FLOAT64 : (Double) fieldValue);
         case FLOAT:
-          return Value.float32((Float) fieldValue);
+          return Value.float32(fieldValue == null ? NullTypes.NULL_FLOAT32 : (Float) fieldValue);
         case INT:
-          return Value.int64(new Long((Integer) fieldValue));
+          return Value.int64(
+              fieldValue == null ? NullTypes.NULL_INT64 : new Long((Integer) fieldValue));
         case LONG:
           // TODO: Implement Logical Type for Long timestamp
-          return Value.int64((Long) fieldValue);
+          return Value.int64(fieldValue == null ? NullTypes.NULL_INT64 : (Long) fieldValue);
         case STRING:
-          return Value.string(fieldValue.toString());
+          return Value.string(fieldValue == null ? NullTypes.NULL_STRING : fieldValue.toString());
+        case UNION:
+          return getUnionFieldValue(field);
       }
+    }
+
+    private Value getUnionFieldValue(Field field) {
+      List<Schema> unionTypes = field.schema().getTypes();
+      if (unionTypes.size() != 2) {
+        throw new UnsupportedOperationException(
+            String.format(
+                "UNION is only supported for nullable fields. Got: %s.", unionTypes.toString()));
+      }
+
+      // It is not possible to have UNION of same type (e.g. NULL, NULL).
+      if (unionTypes.get(0).getType() == Schema.Type.NULL) {
+        return getFieldValue(new Field(field.name(), Schema.create(unionTypes.get(1).getType())));
+      }
+      if (unionTypes.get(1).getType() == Schema.Type.NULL) {
+        return getFieldValue(new Field(field.name(), Schema.create(unionTypes.get(0).getType())));
+      }
+
+      throw new UnsupportedOperationException(
+          String.format(
+              "UNION is only supported for nullable fields. Got: %s.", unionTypes.toString()));
     }
   }
 }

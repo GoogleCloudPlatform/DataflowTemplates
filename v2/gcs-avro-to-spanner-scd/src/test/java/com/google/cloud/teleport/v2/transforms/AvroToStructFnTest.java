@@ -20,6 +20,7 @@ import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.ByteArray;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper.NullTypes;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import org.apache.avro.Schema;
@@ -89,7 +90,129 @@ public final class AvroToStructFnTest {
     }
 
     @Test
-    public void testApply_throwsForUnsupportedTypes() {
+    public void testApply_castsAllNullableDataTypes() {
+      Schema inputSchema =
+          Schema.createRecord(
+              ImmutableList.<Field>builder()
+                  .add(
+                      new Field(
+                          "nullableNullBoolean",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.BOOLEAN), Schema.create(Schema.Type.NULL))))
+                  .add(
+                      new Field(
+                          "nullableTrueBoolean",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.BOOLEAN))))
+                  .add(
+                      new Field(
+                          "nullableFalseBoolean",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.BOOLEAN), Schema.create(Schema.Type.NULL))))
+                  .add(
+                      new Field(
+                          "nullableNullDouble",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.DOUBLE))))
+                  .add(
+                      new Field(
+                          "nullableDouble",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.DOUBLE))))
+                  .add(
+                      new Field(
+                          "nullableFloat",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.FLOAT), Schema.create(Schema.Type.NULL))))
+                  .add(
+                      new Field(
+                          "nullableNullFloat",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.FLOAT), Schema.create(Schema.Type.NULL))))
+                  .add(
+                      new Field(
+                          "nullableNullInt",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.INT))))
+                  .add(
+                      new Field(
+                          "nullableInt",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.INT))))
+                  .add(
+                      new Field(
+                          "nullableNullLong",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.LONG), Schema.create(Schema.Type.NULL))))
+                  .add(
+                      new Field(
+                          "nullableLong",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.LONG), Schema.create(Schema.Type.NULL))))
+                  .add(
+                      new Field(
+                          "nullableNullString",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING))))
+                  .add(
+                      new Field(
+                          "nullableString",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING))))
+                  .build());
+      GenericRecord input =
+          new GenericRecordBuilder(inputSchema)
+              .set("nullableNullBoolean", NullTypes.NULL_BOOLEAN)
+              .set("nullableTrueBoolean", Boolean.TRUE)
+              .set("nullableFalseBoolean", Boolean.FALSE)
+              .set("nullableNullDouble", NullTypes.NULL_FLOAT64)
+              .set("nullableDouble", 7.0)
+              .set("nullableFloat", NullTypes.NULL_FLOAT32)
+              .set("nullableNullFloat", 7.0F)
+              .set("nullableNullInt", NullTypes.NULL_INT64)
+              .set("nullableInt", 7)
+              .set("nullableNullLong", NullTypes.NULL_INT64)
+              .set("nullableLong", 7L)
+              .set("nullableNullString", NullTypes.NULL_STRING)
+              .set("nullableString", "text")
+              .build();
+      Struct expectedOutput =
+          Struct.newBuilder()
+              .set("nullableNullBoolean")
+              .to(NullTypes.NULL_BOOLEAN)
+              .set("nullableTrueBoolean")
+              .to(Boolean.TRUE)
+              .set("nullableFalseBoolean")
+              .to(Boolean.FALSE)
+              .set("nullableNullDouble")
+              .to(NullTypes.NULL_FLOAT64)
+              .set("nullableDouble")
+              .to(7.0)
+              .set("nullableFloat")
+              .to(NullTypes.NULL_FLOAT32)
+              .set("nullableNullFloat")
+              .to(7.0F)
+              .set("nullableNullInt")
+              .to(NullTypes.NULL_INT64)
+              .set("nullableInt")
+              .to(7)
+              .set("nullableNullLong")
+              .to(NullTypes.NULL_INT64)
+              .set("nullableLong")
+              .to(7L)
+              .set("nullableNullString")
+              .to(NullTypes.NULL_STRING)
+              .set("nullableString")
+              .to("text")
+              .build();
+
+      Struct output = AvroToStructFn.create().apply(input);
+
+      assertThat(output).isEqualTo(expectedOutput);
+    }
+
+    @Test
+    public void testApply_throwsForUnsupportedDataTypes() {
       Schema inputSchema =
           Schema.createRecord(
               ImmutableList.<Field>builder()
@@ -105,6 +228,56 @@ public final class AvroToStructFnTest {
               UnsupportedOperationException.class, () -> AvroToStructFn.create().apply(input));
 
       assertThat(thrown).hasMessageThat().contains("Avro field type ARRAY is not supported.");
+    }
+
+    @Test
+    public void testApply_throwsForUnsupportedUnionTypes_tripleUnion() {
+      Schema inputSchema =
+          Schema.createRecord(
+              ImmutableList.<Field>builder()
+                  .add(
+                      new Field(
+                          "tripleUnion",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.BOOLEAN),
+                              Schema.create(Schema.Type.NULL),
+                              Schema.create(Schema.Type.LONG))))
+                  .build());
+      GenericRecord input =
+          new GenericRecordBuilder(inputSchema).set("tripleUnion", Boolean.TRUE).build();
+
+      UnsupportedOperationException thrown =
+          assertThrows(
+              UnsupportedOperationException.class, () -> AvroToStructFn.create().apply(input));
+
+      assertThat(thrown)
+          .hasMessageThat()
+          .contains(
+              "UNION is only supported for nullable fields. Got: [\"boolean\", \"null\", \"long\"]");
+    }
+
+    @Test
+    public void testApply_throwsForUnsupportedUnionTypes_doubleUnionNonNull() {
+      Schema inputSchema =
+          Schema.createRecord(
+              ImmutableList.<Field>builder()
+                  .add(
+                      new Field(
+                          "nonNullableUnion",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.BOOLEAN),
+                              Schema.create(Schema.Type.DOUBLE))))
+                  .build());
+      GenericRecord input =
+          new GenericRecordBuilder(inputSchema).set("nonNullableUnion", Boolean.TRUE).build();
+
+      UnsupportedOperationException thrown =
+          assertThrows(
+              UnsupportedOperationException.class, () -> AvroToStructFn.create().apply(input));
+
+      assertThat(thrown)
+          .hasMessageThat()
+          .contains("UNION is only supported for nullable fields. Got: [\"boolean\", \"double\"].");
     }
 
     @Test
