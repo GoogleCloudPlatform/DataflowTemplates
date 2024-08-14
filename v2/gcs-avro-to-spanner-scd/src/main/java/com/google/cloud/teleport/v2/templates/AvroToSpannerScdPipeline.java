@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-// TODO(Nito): add JavaDoc.
-
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.ResultSet;
@@ -144,8 +142,8 @@ public class AvroToSpannerScdPipeline {
             AvroIO.parseGenericRecords(AvroToStructFn.create()).from(options.getInputFilePattern()))
         .apply(
             "BatchRowsIntoGroups",
-MakeBatchesTransform.create(
-options.getSpannerBatchSize().get(), options.getPrimaryKeyColumnNames().get()))
+            MakeBatchesTransform.create(
+                options.getSpannerBatchSize().get(), options.getPrimaryKeyColumnNames().get()))
         .apply(
             "WriteScdChangesToSpanner",
             SpannerScdMutationTransform.builder()
