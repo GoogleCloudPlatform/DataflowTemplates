@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.schema;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
@@ -65,8 +66,14 @@ public abstract class SourceTableSchema implements Serializable {
    * primary keys, indexing information, foreign key constraints etc.
    */
 
-  public static Builder builder() {
-    return builder(MapperType.MYSQL);
+  public static Builder builder(SQLDialect dialect) {
+    switch (dialect) {
+      case MYSQL:
+        return builder(MapperType.MYSQL);
+      case POSTGRESQL:
+        return builder(MapperType.POSTGRESQL);
+    }
+    throw new IllegalArgumentException("Unknown mapper type for dialect: " + dialect);
   }
 
   public static Builder builder(MapperType mapperType) {

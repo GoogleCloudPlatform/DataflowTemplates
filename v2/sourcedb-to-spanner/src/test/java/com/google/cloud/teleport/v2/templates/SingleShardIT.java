@@ -48,7 +48,7 @@ public class SingleShardIT extends SourceDbToSpannerITBase {
   public static SpannerResourceManager spannerResourceManager;
 
   private static final String MYSQL_DUMP_FILE_RESOURCE =
-      "SingleShardWithTransformation/source-schema.sql";
+      "SingleShardWithTransformation/mysql-schema.sql";
 
   private static final String SPANNER_DDL_RESOURCE =
       "SingleShardWithTransformation/spanner-schema.sql";

@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
 
 /** Implement the {@link org.apache.beam.sdk.io.jdbc.JdbcIO.RowMapper} interface. */
 public final class JdbcSourceRowMapper implements JdbcIO.RowMapper<SourceRow> {
-
   private final JdbcValueMappingsProvider mappingsProvider;
 
   private final SourceSchemaReference sourceSchemaReference;
@@ -103,7 +102,8 @@ public final class JdbcSourceRowMapper implements JdbcIO.RowMapper<SourceRow> {
                     entry.getKey(),
                     this.mappingsProvider
                         .getMappings()
-                        .getOrDefault(entry.getValue().getName(), JdbcValueMapper.UNSUPPORTED)
+                        .getOrDefault(
+                            entry.getValue().getName().toUpperCase(), JdbcValueMapper.UNSUPPORTED)
                         .mapValue(resultSet, entry.getKey(), schema));
               } catch (SQLException e) {
                 mapperErrors.inc();

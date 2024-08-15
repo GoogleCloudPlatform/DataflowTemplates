@@ -68,7 +68,7 @@ public class NameUtils {
     return schemaName + "." + shortName;
   }
 
-  private static String identifierQuote(Dialect dialect) {
+  public static String identifierQuote(Dialect dialect) {
     switch (dialect) {
       case POSTGRESQL:
         return POSTGRESQL_IDENTIFIER_QUOTE;

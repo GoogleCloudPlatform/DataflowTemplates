@@ -102,10 +102,10 @@ public class SourceDbToSpanner {
     SpannerConfig spannerConfig = createSpannerConfig(options);
 
     // Decide type and source of migration
-    if (options.getSourceDbURL().startsWith("gs://")) {
+    if (options.getSourceConfigURL().startsWith("gs://")) {
       List<Shard> shards =
           new ShardFileReader(new SecretManagerAccessorImpl())
-              .readForwardMigrationShardingConfig(options.getSourceDbURL());
+              .readForwardMigrationShardingConfig(options.getSourceConfigURL());
       return PipelineController.executeShardedMigration(options, pipeline, shards, spannerConfig);
     } else {
       return PipelineController.executeSingleInstanceMigration(options, pipeline, spannerConfig);

@@ -59,17 +59,19 @@ public class SourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
 
   private static final String SPANNER_DDL_RESOURCE = "SourceDbToSpannerSimpleIT/spanner-schema.sql";
 
-  private static final String TABLE = "SimpleTable";
+  private static final String TABLE1 = "SimpleTable";
+
+  private static final String TABLE2 = "StringTable";
 
   private static final String ID = "id";
 
   private static final String NAME = "name";
 
-  private JDBCResourceManager.JDBCSchema getMySQLSchema() {
+  private JDBCResourceManager.JDBCSchema getMySQLSchema(String idCol) {
     HashMap<String, String> columns = new HashMap<>();
     columns.put(ID, "INTEGER NOT NULL");
     columns.put(NAME, "VARCHAR(200)");
-    return new JDBCResourceManager.JDBCSchema(columns, ID);
+    return new JDBCResourceManager.JDBCSchema(columns, idCol);
   }
 
   private List<Map<String, Object>> getMySQLData() {
@@ -101,8 +103,10 @@ public class SourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
   @Test
   public void simpleTest() throws IOException {
     List<Map<String, Object>> mySQLData = getMySQLData();
-    mySQLResourceManager.createTable(TABLE, getMySQLSchema());
-    mySQLResourceManager.write(TABLE, mySQLData);
+    mySQLResourceManager.createTable(TABLE1, getMySQLSchema(ID));
+    mySQLResourceManager.createTable(TABLE2, getMySQLSchema(NAME));
+    mySQLResourceManager.write(TABLE1, mySQLData);
+    mySQLResourceManager.write(TABLE2, mySQLData);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =
         launchDataflowJob(
@@ -115,7 +119,9 @@ public class SourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
-    SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE, ID, NAME))
+    SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE1, ID, NAME))
+        .hasRecordsUnorderedCaseInsensitiveColumns(mySQLData);
+    SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE2, ID, NAME))
         .hasRecordsUnorderedCaseInsensitiveColumns(mySQLData);
   }
 }

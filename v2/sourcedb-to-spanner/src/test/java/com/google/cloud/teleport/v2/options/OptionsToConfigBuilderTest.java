@@ -19,6 +19,8 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -44,7 +46,8 @@ public class OptionsToConfigBuilderTest {
     final String testpassword = "password";
     SourceDbToSpannerOptions sourceDbToSpannerOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
-    sourceDbToSpannerOptions.setSourceDbURL(testUrl);
+    sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
+    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
     sourceDbToSpannerOptions.setJdbcDriverClassName(testdriverClassName);
     sourceDbToSpannerOptions.setMaxConnections(150);
     sourceDbToSpannerOptions.setNumPartitions(4000);
@@ -54,13 +57,47 @@ public class OptionsToConfigBuilderTest {
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
     JdbcIOWrapperConfig config =
-        OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
+        OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
             sourceDbToSpannerOptions, List.of("table1", "table2"), null, Wait.on(dummyPCollection));
     assertThat(config.jdbcDriverClassName()).isEqualTo(testdriverClassName);
-    assertThat(config.sourceDbURL()).isEqualTo(testUrl);
+    assertThat(config.sourceDbURL())
+        .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testuser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testpassword);
+    assertThat(config.waitOn()).isNotNull();
+  }
+
+  @Test
+  public void testConfigWithPostgreSQLDefaultsFromOptions() {
+    final String testDriverClassName = "org.apache.derby.jdbc.EmbeddedDriver";
+    final String testUrl = "jdbc:postgresql://localhost:5432/testDB";
+    final String testUser = "user";
+    final String testPassword = "password";
+    SourceDbToSpannerOptions sourceDbToSpannerOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.POSTGRESQL.name());
+    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
+    sourceDbToSpannerOptions.setJdbcDriverClassName(testDriverClassName);
+    sourceDbToSpannerOptions.setMaxConnections(150);
+    sourceDbToSpannerOptions.setNumPartitions(4000);
+    sourceDbToSpannerOptions.setUsername(testUser);
+    sourceDbToSpannerOptions.setPassword(testPassword);
+    sourceDbToSpannerOptions.setTables("table1,table2,table3");
+    PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
+    JdbcIOWrapperConfig config =
+        OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
+            sourceDbToSpannerOptions,
+            List.of("table1", "table2", "table3"),
+            null,
+            Wait.on(dummyPCollection));
+    assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
+    assertThat(config.sourceDbURL()).isEqualTo(testUrl);
+    assertThat(config.tables())
+        .containsExactlyElementsIn(new String[] {"table1", "table2", "table3"});
+    assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
+    assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
     assertThat(config.waitOn()).isNotNull();
   }
 
@@ -69,11 +106,48 @@ public class OptionsToConfigBuilderTest {
     final String testUrl = "jd#bc://localhost";
     SourceDbToSpannerOptions sourceDbToSpannerOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
-    sourceDbToSpannerOptions.setSourceDbURL(testUrl);
+    sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
+    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
     assertThrows(
         RuntimeException.class,
         () ->
-            OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
+            OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
                 sourceDbToSpannerOptions, new ArrayList<>(), null, null));
+  }
+
+  @Test
+  public void testaddParamToJdbcUrl() throws URISyntaxException {
+    // No Parameters initially.
+    assertThat(
+            OptionsToConfigBuilder.addParamToJdbcUrl(
+                "jdbc:mysql://localhost:3306/testDB", "allowMultiQueries", "true"))
+        .isEqualTo("jdbc:mysql://localhost:3306/testDB?allowMultiQueries=true");
+    assertThat(
+            OptionsToConfigBuilder.addParamToJdbcUrl(
+                "jdbc:mysql://localhost:3306/testDB?", "allowMultiQueries", "true"))
+        .isEqualTo("jdbc:mysql://localhost:3306/testDB?allowMultiQueries=true");
+    // Other Parameters present.
+    assertThat(
+            OptionsToConfigBuilder.addParamToJdbcUrl(
+                "jdbc:mysql://localhost:3306/testDB?useSSL=true&autoReconnect=true",
+                "allowMultiQueries",
+                "true"))
+        .isEqualTo(
+            "jdbc:mysql://localhost:3306/testDB?useSSL=true&autoReconnect=true&allowMultiQueries=true");
+    // Parameter present with same value.
+    assertThat(
+            OptionsToConfigBuilder.addParamToJdbcUrl(
+                "jdbc:mysql://localhost:3306/testDB?useSSL=true&autoReconnect=true&allowMultiQueries=true",
+                "allowMultiQueries",
+                "true"))
+        .isEqualTo(
+            "jdbc:mysql://localhost:3306/testDB?useSSL=true&autoReconnect=true&allowMultiQueries=true");
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            OptionsToConfigBuilder.addParamToJdbcUrl(
+                "jdbc:mysql://localhost:3306/testDB?useSSL=true&autoReconnect=true&allowMultiQueries=false",
+                "allowMultiQueries",
+                "true"));
   }
 }

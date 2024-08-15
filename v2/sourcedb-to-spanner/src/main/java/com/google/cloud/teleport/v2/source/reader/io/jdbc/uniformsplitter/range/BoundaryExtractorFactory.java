@@ -98,7 +98,7 @@ public class BoundaryExtractorFactory {
         .setPartitionColumn(partitionColumn)
         .setStart(resultSet.getString(1))
         .setEnd(resultSet.getString(2))
-        .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+        .setBoundarySplitter(BoundarySplitterFactory.create(String.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
   }

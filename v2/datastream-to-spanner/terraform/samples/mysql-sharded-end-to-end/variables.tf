@@ -40,6 +40,10 @@ variable "common_params" {
         directory_watch_duration_in_minutes = optional(string)
         spanner_priority                    = optional(string)
         local_session_file_path             = optional(string)
+        transformation_jar_path             = optional(string)
+        transformation_custom_parameters    = optional(string)
+        transformation_class_name           = optional(string)
+        filtered_events_directory           = optional(string)
       })
       runner_params = object({
         additional_experiments = optional(set(string), [

@@ -47,18 +47,19 @@
     <jacoco.version>0.8.8</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.57.0</beam.version>
-    <beam-python.version>2.57.0</beam-python.version>
+    <beam.version>2.58.0</beam.version>
+    <beam-python.version>2.58.0</beam-python.version>
     <beam-maven-repo></beam-maven-repo>
 
     <!-- Common dependency versions -->
     <autovalue.version>1.10.4</autovalue.version>
+    <autovalue.service.version>1.0.2</autovalue.service.version>
     <avro.version>1.11.3</avro.version>
     <caffeine.version>3.1.8</caffeine.version>
     <checkstyle.version>10.7.0</checkstyle.version>
     <commons-codec.version>1.16.0</commons-codec.version>
     <commons-io.version>2.11.0</commons-io.version>
-    <commons-lang3.version>3.12.0</commons-lang3.version>
+    <commons-lang3.version>3.14.0</commons-lang3.version>
     <conscrypt.version>2.5.2</conscrypt.version>
     <derby.version>10.14.2.0</derby.version>
     <grpc.gen.version>1.13.1</grpc.gen.version>
@@ -68,7 +69,7 @@
     <hbase.client.version>2.5.3-hadoop3</hbase.client.version>
     <mockito.version>4.11.0</mockito.version>
     <log4j-2.version>2.17.2</log4j-2.version>
-    <jackson.version>2.14.1</jackson.version>
+    <jackson.version>2.15.4</jackson.version>
     <jettison.version>1.5.4</jettison.version>
     <json.version>20231013</json.version>
     <junit.version>4.13.2</junit.version>
@@ -81,7 +82,7 @@
     <truth.version>1.1.5</truth.version>
 
     <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam gets the latest version of gax. -->
-    <gax.version>2.45.0</gax.version>
+    <gax.version>2.48.0</gax.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
@@ -390,7 +391,19 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-report-plugin</artifactId>
+        <version>2.6</version>
+      </plugin>
     </plugins>
+    <extensions>
+      <extension>
+        <groupId>com.google.cloud.artifactregistry</groupId>
+        <artifactId>artifactregistry-maven-wagon</artifactId>
+        <version>2.2.0</version>
+      </extension>
+    </extensions>
   </build>
 
   <profiles>
@@ -600,9 +613,31 @@
       </repositories>
     </profile>
     <profile>
+      <id>internalMaven</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <repositories>
+        <repository>
+          <id>central</id>
+          <name>Maven Central remote repository</name>
+          <url>artifactregistry://us-maven.pkg.dev/artifact-foundry-prod/maven-3p</url>
+          <layout>default</layout>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>
+        </repository>
+      </repositories>
+    </profile>
+    <profile>
       <id>splunkDeps</id>
       <activation>
-        <activeByDefault>true</activeByDefault>
+        <property>
+          <name>!skipSplunkDeps</name>
+        </property>
       </activation>
       <repositories>
         <repository>
@@ -621,6 +656,21 @@
           <url>https://oss.sonatype.org/content/repositories/snapshots</url>
         </pluginRepository>
       </pluginRepositories>
+    </profile>
+    <profile>
+      <id>confluentDeps</id>
+      <activation>
+        <property>
+          <name>!skipConfluentDeps</name>
+        </property>
+      </activation>
+      <repositories>
+        <repository>
+          <!-- Required for io.confluent:kafka-avro-serializer artifact -->
+          <id>confluent</id>
+          <url>https://packages.confluent.io/maven/</url>
+        </repository>
+      </repositories>
     </profile>
     <profile>
       <!-- mvn clean deploy -Prelease -pl plugins/templates-maven-plugin -pl v2/common -am -->

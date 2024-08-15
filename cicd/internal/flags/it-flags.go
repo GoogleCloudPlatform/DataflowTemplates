@@ -41,7 +41,7 @@ var (
 	dCloudOracleSysPassword string
 )
 
-// Registers all common flags. Must be called before flag.Parse().
+// Registers all it flags. Must be called before flag.Parse().
 func RegisterItFlags() {
 	flag.StringVar(&dRegion, "it-region", "", "The GCP region to use for storing test artifacts")
 	flag.StringVar(&dProject, "it-project", "", "The GCP project to run the integration tests in")

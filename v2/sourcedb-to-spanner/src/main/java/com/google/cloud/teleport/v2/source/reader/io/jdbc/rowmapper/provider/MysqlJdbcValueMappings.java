@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMap
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueExtractor;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueMapper;
+import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomLogical.TimeIntervalMicros;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.Interval;
 import com.google.common.base.Preconditions;
@@ -113,8 +114,9 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
       Pattern.compile("^(-)?(\\d+):(\\d+):(\\d+)(\\.(\\d+))?$");
 
   /**
-   * Map Time type to {@link Interval#SCHEMA}. Note Time type records an interval between 2
-   * timestamps, and is independent of timezone.
+   * DEPRECATED: Unified type interval is no longer utilized for MySQL. However, this can be reused
+   * for Postgres, whenever the support is added. Map Time type to {@link Interval#SCHEMA}. Note
+   * Time type records an interval between 2 timestamps, and is independent of timezone.
    */
   private static final ResultSetValueMapper<String> timeStringToAvroInterval =
       (value, schema) -> {
@@ -154,6 +156,35 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
       (value, schema) -> instantToMicro(value.toInstant());
 
   /**
+   * Map Time type to {@link TimeIntervalMicros}. Note Time type records an interval between 2
+   * timestamps in microseconds, and is independent of timezone.
+   */
+  private static final ResultSetValueMapper<String> timeStringToAvroTimeInterval =
+      (value, schema) -> {
+        /* MySQL output is always hours:minutes:seconds.fractionalSeconds */
+        Matcher matcher = TIME_STRING_PATTERN.matcher(value);
+        Preconditions.checkArgument(
+            matcher.matches(),
+            "The time string " + value + " does not match " + TIME_STRING_PATTERN);
+        boolean isNegative = matcher.group(1) != null;
+        int hours = Integer.parseInt(matcher.group(2));
+        int minutes = Integer.parseInt(matcher.group(3));
+        int seconds = Integer.parseInt(matcher.group(4));
+        long nanoSeconds =
+            matcher.group(5) == null
+                ? 0
+                : Long.parseLong(StringUtils.rightPad(matcher.group(6), 9, '0'));
+        Long micros =
+            TimeUnit.NANOSECONDS.toMicros(
+                TimeUnit.HOURS.toNanos(hours)
+                    + TimeUnit.MINUTES.toNanos(minutes)
+                    + TimeUnit.SECONDS.toNanos(seconds)
+                    + nanoSeconds);
+        // Negate if negative.
+        return isNegative ? -1 * micros : micros;
+      };
+
+  /**
    * Static mapping of SourceColumnType to {@link ResultSetValueExtractor} and {@link
    * ResultSetValueMapper}.
    */
@@ -183,7 +214,7 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
           .put("SET", Pair.of(ResultSet::getString, valuePassThrough))
           .put("SMALLINT", Pair.of(ResultSet::getInt, valuePassThrough))
           .put("TEXT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("TIME", Pair.of(ResultSet::getString, timeStringToAvroInterval))
+          .put("TIME", Pair.of(ResultSet::getString, timeStringToAvroTimeInterval))
           .put("TIMESTAMP", Pair.of(utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros))
           .put("TINYBLOB", Pair.of(ResultSet::getBlob, blobToHexString))
           .put("TINYINT", Pair.of(ResultSet::getInt, valuePassThrough))

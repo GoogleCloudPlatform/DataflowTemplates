@@ -17,8 +17,6 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
 
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SuitableIndexNotFoundException;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
@@ -37,6 +35,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -44,7 +43,6 @@ import javax.sql.DataSource;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.DataSourceConfiguration;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.ReadWithPartitions;
-import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -171,7 +169,8 @@ public final class JdbcIoWrapper implements IoWrapper {
         .map(
             tableEntry -> {
               SourceTableSchema.Builder sourceTableSchemaBuilder =
-                  SourceTableSchema.builder().setTableName(tableEntry.getKey());
+                  SourceTableSchema.builder(config.sourceDbDialect())
+                      .setTableName(tableEntry.getKey());
               tableEntry
                   .getValue()
                   .entrySet()
@@ -240,32 +239,26 @@ public final class JdbcIoWrapper implements IoWrapper {
                         .findFirst()
                         .get())
             .sorted()
-            .map(
-                idxInfo ->
-                    PartitionColumn.builder()
-                        .setColumnName(idxInfo.columnName())
-                        // TODO(vardhanvthigle): add the class to idxInfo.
-                        .setColumnClass(Integer.class)
-                        .build())
+            .map(JdbcIoWrapper::partitionColumnFromIndexInfo)
             .forEach(tableConfigBuilder::withPartitionColum);
       } else {
+        ImmutableSet<IndexType> supportedIndexTypes =
+            ImmutableSet.of(IndexType.NUMERIC, IndexType.STRING);
         // As of now only Primary key index with Numeric type is supported.
         // TODO:
         //    1. support non-primary unique indexes.
         //        Note: most of the implementation is generic for any unique index.
         //        Need to benchmark and do the end to end implementation.
         //    2. support for DateTime type
-        //    3. support for String type.
+        //    3. support for composite indexes
+        //       Note: though we have most of the code for composite index, since we cap the
+        // splitting stages to 1, additional indexes will not be considered for splitting as of now.
         tableIndexInfo.stream()
-            .filter(idxInfo -> (idxInfo.isPrimary() && idxInfo.indexType() == IndexType.NUMERIC))
-            .sorted()
-            .map(
+            .filter(
                 idxInfo ->
-                    PartitionColumn.builder()
-                        .setColumnName(idxInfo.columnName())
-                        // TODO(vardhanvthigle): add the class to idxInfo.
-                        .setColumnClass(Long.class)
-                        .build())
+                    (idxInfo.isPrimary() && supportedIndexTypes.contains(idxInfo.indexType())))
+            .sorted()
+            .map(JdbcIoWrapper::partitionColumnFromIndexInfo)
             .forEach(tableConfigBuilder::withPartitionColum);
       }
       TableConfig tableConfig = tableConfigBuilder.build();
@@ -279,6 +272,16 @@ public final class JdbcIoWrapper implements IoWrapper {
       throw new SuitableIndexNotFoundException(
           new Throwable("No Index Found for partition column inference for table " + tableName));
     }
+  }
+
+  private static PartitionColumn partitionColumnFromIndexInfo(SourceColumnIndexInfo idxInfo) {
+    return PartitionColumn.builder()
+        .setColumnName(idxInfo.columnName())
+        // TODO(vardhanvthigle): handle other types
+        .setColumnClass((idxInfo.indexType() == IndexType.NUMERIC) ? Long.class : String.class)
+        .setStringCollation(idxInfo.collationReference())
+        .setStringMaxLength(idxInfo.stringMaxLength())
+        .build();
   }
 
   @VisibleForTesting
@@ -352,7 +355,7 @@ public final class JdbcIoWrapper implements IoWrapper {
             .setTableName(tableConfig.tableName())
             .setPartitionColumns(tableConfig.partitionColumns())
             .setDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
-            .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
+            .setDbAdapter(config.dialectAdapter())
             .setApproxTotalRowCount(tableConfig.approxRowCount())
             .setRowMapper(
                 new JdbcSourceRowMapper(
@@ -384,27 +387,8 @@ public final class JdbcIoWrapper implements IoWrapper {
    * @return {@link DataSourceConfiguration}
    */
   private static DataSourceConfiguration getDataSourceConfiguration(JdbcIOWrapperConfig config) {
-
     DataSourceConfiguration dataSourceConfig =
-        JdbcIO.DataSourceConfiguration.create(
-                StaticValueProvider.of(config.jdbcDriverClassName()),
-                StaticValueProvider.of(config.sourceDbURL()))
-            .withMaxConnections(Math.toIntExact(config.maxConnections()));
-
-    if (!config.sqlInitSeq().isEmpty()) {
-      dataSourceConfig = dataSourceConfig.withConnectionInitSqls(config.sqlInitSeq());
-    }
-
-    if (config.jdbcDriverJars() != null && !config.jdbcDriverJars().isEmpty()) {
-      dataSourceConfig = dataSourceConfig.withDriverJars(config.jdbcDriverJars());
-    }
-    if (!config.dbAuth().getUserName().get().isBlank()) {
-      dataSourceConfig = dataSourceConfig.withUsername(config.dbAuth().getUserName().get());
-    }
-    if (!config.dbAuth().getPassword().get().isBlank()) {
-      dataSourceConfig = dataSourceConfig.withPassword(config.dbAuth().getPassword().get());
-    }
-
+        DataSourceConfiguration.create(new JdbcDataSource(config));
     LOG.info("Final DatasourceConfiguration: {}", dataSourceConfig);
     return dataSourceConfig;
   }

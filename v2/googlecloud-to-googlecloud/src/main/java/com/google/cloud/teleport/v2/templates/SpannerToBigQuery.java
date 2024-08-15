@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.options.SpannerToBigQueryOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.SpannerToBigQueryTransform.StructToJson;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
+import com.google.common.base.Strings;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
@@ -69,12 +70,17 @@ public final class SpannerToBigQuery {
             .withInstanceId(options.getSpannerInstanceId())
             .withRpcPriority(options.getSpannerRpcPriority());
 
+    SpannerIO.Read read = SpannerIO.read().withSpannerConfig(spannerConfig);
+
+    if (!Strings.isNullOrEmpty(options.getSqlQuery())) {
+      read = read.withQuery(options.getSqlQuery());
+    } else if (!Strings.isNullOrEmpty(options.getSpannerTableId())) {
+      read = read.withTable(options.getSpannerTableId());
+    } else {
+      throw new IllegalArgumentException("either sqlQuery or spannerTableId required");
+    }
     pipeline
-        .apply(
-            SpannerIO.read()
-                .withTable(options.getSpannerTableId())
-                .withSpannerConfig(spannerConfig)
-                .withQuery(options.getSqlQuery()))
+        .apply(read)
         .apply(new StructToJson())
         .apply("Write To BigQuery", writeToBigQuery(options));
 

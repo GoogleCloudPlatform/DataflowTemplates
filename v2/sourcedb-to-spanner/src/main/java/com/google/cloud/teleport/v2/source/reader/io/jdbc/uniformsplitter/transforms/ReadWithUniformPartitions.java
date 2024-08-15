@@ -22,10 +22,14 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.RangePreparedStatementSetter;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.BoundaryTypeMapperImpl;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationMapper;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import java.util.Map;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
@@ -42,6 +46,7 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -174,8 +179,11 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
 
   @Override
   public PCollection<T> expand(PBegin input) {
-    // TODO(vardhanvthigle): Implement mapper for strings of various collations as side input.
-    BoundaryTypeMapper typeMapper = null;
+    // TODO(vardhanvthigle): Move this side-input generation out to DB level.
+    PCollectionView<Map<CollationReference, CollationMapper>> collationMapperView =
+        getCollationMapperView(input);
+    BoundaryTypeMapper typeMapper =
+        BoundaryTypeMapperImpl.builder().setCollationMapperView(collationMapperView).build();
     // Generate Initial Ranges with liner splits (No need to do execute count queries the DB here)
     PCollection<ImmutableList<Range>> ranges = initialSplit(input, typeMapper);
     // Classify Ranges to count or get new columns and perform the operations.
@@ -195,14 +203,18 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
         ranges.apply(
             getTransformName("RangeMerge", null),
             ParDo.of(
-                MergeRangesDoFn.builder()
-                    .setApproxTotalRowCount(approxTotalRowCount())
-                    .setMaxPartitionHint(maxPartitionsHint())
-                    .setAutoAdjustMaxPartitions(autoAdjustMaxPartitions())
-                    .setTableName(tableName())
-                    .build()));
+                    MergeRangesDoFn.builder()
+                        .setApproxTotalRowCount(approxTotalRowCount())
+                        .setMaxPartitionHint(maxPartitionsHint())
+                        .setAutoAdjustMaxPartitions(autoAdjustMaxPartitions())
+                        .setTableName(tableName())
+                        .build())
+                .withSideInputs(typeMapper.getCollationMapperView()));
     PCollection<Range> rangesToRead =
-        peekRanges(mergedRanges).apply(ParDo.of(new UnflattenRangesDoFn()));
+        peekRanges(mergedRanges)
+            .apply(
+                ParDo.of(new UnflattenRangesDoFn())
+                    .withSideInputs(typeMapper.getCollationMapperView()));
     return rangesToRead
         .apply(
             getTransformName("ReshuffleFinal", null),
@@ -229,6 +241,21 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
   @VisibleForTesting
   protected static long logToBaseTwo(long value) {
     return value == 0L ? 0L : 64L - Long.numberOfLeadingZeros(value - 1);
+  }
+
+  private PCollectionView<Map<CollationReference, CollationMapper>> getCollationMapperView(
+      PBegin input) {
+    ImmutableList<CollationReference> collationReferences =
+        this.partitionColumns().stream()
+            .filter(c -> c.stringCollation() != null)
+            .map(PartitionColumn::stringCollation)
+            .collect(ImmutableList.toImmutableList());
+    return input.apply(
+        CollationMapperTransform.builder()
+            .setCollationReferences(collationReferences)
+            .setDbAdapter(dbAdapter())
+            .setDataSourceProviderFn(dataSourceProviderFn())
+            .build());
   }
 
   private PCollection<ImmutableList<Range>> initialSplit(
@@ -265,10 +292,11 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
     return initialRange.apply(
         getTransformName("InitialRangeSplit", null),
         ParDo.of(
-            InitialSplitRangeDoFn.builder()
-                .setSplitHeight(splitHeight)
-                .setTableName(tableName())
-                .build()));
+                InitialSplitRangeDoFn.builder()
+                    .setSplitHeight(splitHeight)
+                    .setTableName(tableName())
+                    .build())
+            .withSideInputs(typeMapper.getCollationMapperView()));
   }
 
   private PCollection<ImmutableList<Range>> addStage(
@@ -291,6 +319,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
                 partitionColumns().stream()
                     .map(c -> c.columnName())
                     .collect(ImmutableList.toImmutableList()))
+            .setBoundaryTypeMapper(typeMapper)
             .setTableName(tableName())
             .setTimeoutMillis(countQueryTimeoutMillis())
             .build();
@@ -313,7 +342,8 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
                 .withOutputTags(
                     RangeClassifierDoFn.TO_COUNT_TAG,
                     TupleTagList.of(RangeClassifierDoFn.TO_ADD_COLUMN_TAG)
-                        .and(RangeClassifierDoFn.TO_RETAIN_TAG)));
+                        .and(RangeClassifierDoFn.TO_RETAIN_TAG))
+                .withSideInputs(typeMapper.getCollationMapperView()));
     PCollection<Range> countedRanges =
         classifiedRanges
             .get(RangeClassifierDoFn.TO_COUNT_TAG)
@@ -332,7 +362,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
             .apply(getTransformName("RangeBoundary", stageIdx), rangeBoundaryTransform)
             .apply(
                 getTransformName("RangeSplitterAfterColumnAddition", stageIdx),
-                ParDo.of(new SplitRangeDoFn()))
+                ParDo.of(new SplitRangeDoFn()).withSideInputs(typeMapper.getCollationMapperView()))
             .apply(getTransformName("CountAfterColumnAddition", stageIdx), rangeCountTransform);
     PCollection<Range> retainedRanges = classifiedRanges.get(RangeClassifierDoFn.TO_RETAIN_TAG);
 

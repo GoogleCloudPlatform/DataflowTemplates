@@ -190,7 +190,7 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
         createRows("mediumtext", "mediumtext", repeatString("a", 33) + "...", "NULL"));
     expectedData.put("smallint", createRows("smallint", "15", "32767", "-32768", "NULL"));
     expectedData.put("text", createRows("text", "xyz", repeatString("a", 33) + "...", "NULL"));
-    expectedData.put("time", createRows("time", "15:50:00", "NULL"));
+    expectedData.put("time", createRows("time", "15:50:00", "838:59:59", "-838:59:59", "NULL"));
     expectedData.put(
         "timestamp",
         createRows(
