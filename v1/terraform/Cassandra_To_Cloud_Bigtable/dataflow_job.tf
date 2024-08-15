@@ -93,9 +93,11 @@ variable "splitLargeRows" {
   default     = null
 }
 
-variable "cassandraColumnSchema" {
+variable "writetimeCassandraColumnSchema" {
   type        = string
-  description = "GCS path to schema to copy Cassandra writetimes to Bigtable. The command to generate this schema is `select json * from system_schema.columns where keyspace_name=$CASSANDRA_KEYSPACE and table_name=$CASSANDRA_TABLE`, refer to the template README for more details. Requires Cassandra version 2.2 onwards for JSON support."
+  description = <<EOT
+GCS path to schema to copy Cassandra writetimes to Bigtable. The command to generate this schema is ```cqlsh -e "select json * from system_schema.columns where keyspace_name='$CASSANDRA_KEYSPACE' and table_name='$CASSANDRA_TABLE'`" > column_schema.json```. Set $CASSANDRA_COLUMN_SCHEMA to a GCS path, e.g. `gs://$BUCKET_NAME/column_schema.json`. Then upload the schema to GCS: `gcloud storage cp column_schema.json $CASSANDRA_COLUMN_SCHEMA`. Requires Cassandra version 2.2 onwards for JSON support.
+EOT
   default     = null
 }
 
@@ -202,18 +204,18 @@ resource "google_dataflow_job" "generated" {
   provider          = google
   template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Cassandra_To_Cloud_Bigtable"
   parameters = {
-    cassandraHosts        = var.cassandraHosts
-    cassandraPort         = tostring(var.cassandraPort)
-    cassandraKeyspace     = var.cassandraKeyspace
-    cassandraTable        = var.cassandraTable
-    bigtableProjectId     = var.bigtableProjectId
-    bigtableInstanceId    = var.bigtableInstanceId
-    bigtableTableId       = var.bigtableTableId
-    defaultColumnFamily   = var.defaultColumnFamily
-    rowKeySeparator       = var.rowKeySeparator
-    splitLargeRows        = tostring(var.splitLargeRows)
-    cassandraColumnSchema = var.cassandraColumnSchema
-    setZeroTimestamp      = tostring(var.setZeroTimestamp)
+    cassandraHosts                 = var.cassandraHosts
+    cassandraPort                  = tostring(var.cassandraPort)
+    cassandraKeyspace              = var.cassandraKeyspace
+    cassandraTable                 = var.cassandraTable
+    bigtableProjectId              = var.bigtableProjectId
+    bigtableInstanceId             = var.bigtableInstanceId
+    bigtableTableId                = var.bigtableTableId
+    defaultColumnFamily            = var.defaultColumnFamily
+    rowKeySeparator                = var.rowKeySeparator
+    splitLargeRows                 = tostring(var.splitLargeRows)
+    writetimeCassandraColumnSchema = var.writetimeCassandraColumnSchema
+    setZeroTimestamp               = tostring(var.setZeroTimestamp)
   }
 
   additional_experiments       = var.additional_experiments
