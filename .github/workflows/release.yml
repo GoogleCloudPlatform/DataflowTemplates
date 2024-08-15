@@ -37,7 +37,7 @@ jobs:
       env:
         CANDIDATE_NAME: ${{ inputs.candidateName }}
     - name: Checkout code
-      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
       with:
         fetch-depth: 0
         token: ${{ secrets.RELEASE_TOKEN }}
@@ -91,16 +91,14 @@ jobs:
         --it-spanner-host="https://staging-wrenchworks.sandbox.googleapis.com/" \
         --it-release=true \
         --it-retry-failures=2
-    - name: Upload Tests Report
-      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-      if: always() # always run even if previous step fails
+    - name: Upload Unit Tests Site Report
+      uses: ./.github/actions/publish-site-report
       with:
-        name: surefire-test-results
-        path: '**/surefire-reports/TEST-*.xml'
-        retention-days: 1
+        output-zip-file: test-report
+      if: always()
     - name: Create artifacts and push
       run: |
-        mvn verify -PtemplatesRelease,splunkDeps,missing-artifact-repos \
+        mvn verify -PtemplatesRelease \
         -DprojectId="dataflow-templates" \
         -DbucketName="dataflow-templates-staging" \
         -DlibrariesBucketName="dataflow-templates-libraries" \

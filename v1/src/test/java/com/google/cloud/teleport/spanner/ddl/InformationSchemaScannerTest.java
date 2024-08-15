@@ -50,7 +50,7 @@ public class InformationSchemaScannerTest {
         googleSQLInfoScanner.listColumnsSQL().getSql(),
         equalToCompressingWhiteSpace(
             "SELECT c.table_schema, c.table_name, c.column_name, c.ordinal_position, c.spanner_type, c.is_nullable,"
-                + " c.is_generated, c.generation_expression, c.is_stored, c.column_default"
+                + " c.is_generated, c.generation_expression, c.is_stored, c.column_default, c.is_hidden"
                 + " FROM information_schema.columns as c WHERE c.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') AND c.spanner_state = 'COMMITTED' "
                 + " ORDER BY c.table_name, c.ordinal_position"));
@@ -71,11 +71,11 @@ public class InformationSchemaScannerTest {
         googleSQLInfoScanner.listIndexesSQL().getSql(),
         equalToCompressingWhiteSpace(
             "SELECT t.table_schema, t.table_name, t.index_name, t.parent_table_name, t.is_unique,"
-                + " t.is_null_filtered"
+                + " t.is_null_filtered, t.index_type, t.search_partition_by, t.search_order_by"
                 + " FROM information_schema.indexes AS t"
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') AND"
-                + " t.index_type='INDEX' AND t.spanner_is_managed = FALSE"
+                + " (t.index_type='INDEX' OR t.index_type='SEARCH') AND t.spanner_is_managed = FALSE"
                 + " ORDER BY t.table_name, t.index_name"));
 
     assertThat(
@@ -94,7 +94,8 @@ public class InformationSchemaScannerTest {
     assertThat(
         googleSQLInfoScanner.listIndexColumnsSQL().getSql(),
         equalToCompressingWhiteSpace(
-            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name "
+            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name, "
+                + "t.index_type, t.spanner_type "
                 + "FROM information_schema.index_columns AS t "
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"

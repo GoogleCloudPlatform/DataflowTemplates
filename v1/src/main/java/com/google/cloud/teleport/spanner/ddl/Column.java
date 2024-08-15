@@ -57,6 +57,8 @@ public abstract class Column implements Serializable {
 
   public abstract Dialect dialect();
 
+  public abstract boolean isHidden();
+
   @Nullable
   public abstract String defaultExpression();
 
@@ -66,6 +68,7 @@ public abstract class Column implements Serializable {
         .columnOptions(ImmutableList.of())
         .notNull(false)
         .isGenerated(false)
+        .isHidden(false)
         .generationExpression("")
         .isStored(false)
         .isPlacementKey(false);
@@ -104,6 +107,11 @@ public abstract class Column implements Serializable {
     }
     if (isPlacementKey()) {
       appendable.append(" PLACEMENT KEY");
+    }
+    if (isHidden()) {
+      if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
+        appendable.append(" HIDDEN");
+      }
     }
     if (columnOptions() == null) {
       return;
@@ -174,6 +182,8 @@ public abstract class Column implements Serializable {
     public Builder notNull() {
       return notNull(true);
     }
+
+    public abstract Builder isHidden(boolean hidden);
 
     public abstract Builder isGenerated(boolean generated);
 
@@ -249,6 +259,10 @@ public abstract class Column implements Serializable {
 
     public Builder pgBytea() {
       return type(Type.pgBytea()).max();
+    }
+
+    public Builder tokenlist() {
+      return type(Type.tokenlist());
     }
 
     public Builder timestamp() {

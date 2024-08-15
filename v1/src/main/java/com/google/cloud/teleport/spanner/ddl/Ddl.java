@@ -363,11 +363,12 @@ public class Ddl implements Serializable {
 
   public String createProtoBundleStatement() {
     StringBuilder appendable = new StringBuilder();
+    String quote = NameUtils.identifierQuote(dialect);
     if (!protoBundle.isEmpty()) {
       appendable.append("CREATE PROTO BUNDLE (");
       for (String protoTypeFqn : protoBundle()) {
         appendable.append("\n\t");
-        appendable.append(protoTypeFqn);
+        appendable.append(quote + protoTypeFqn + quote);
         appendable.append(",");
       }
       appendable.append(")");

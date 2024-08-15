@@ -40,14 +40,16 @@ public class SpannerSchemaTest {
             .addColumn("test", "jsonVal", "JSON")
             .addColumn("test", "arrayVal", "ARRAY<FLOAT64>")
             .addColumn("test", "embeddingVectorVal", "ARRAY<FLOAT64>(VECTOR_LENGTH=>128)")
+            .addColumn("test", "tokens", "TOKENLIST")
             .build();
 
     assertEquals(1, schema.getTables().size());
-    assertEquals(6, schema.getColumns("test").size());
+    assertEquals(7, schema.getColumns("test").size());
     assertEquals(1, schema.getKeyParts("test").size());
     assertEquals(Type.json(), schema.getColumns("test").get(3).getType());
     assertEquals(Type.array(Type.float64()), schema.getColumns("test").get(4).getType());
     assertEquals(Type.array(Type.float64()), schema.getColumns("test").get(5).getType());
+    assertEquals(Type.bytes(), schema.getColumns("test").get(6).getType());
   }
 
   @Test

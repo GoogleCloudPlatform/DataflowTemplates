@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.DEFAULT_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GENERATION_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GOOGLE_FORMAT_VERSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GOOGLE_STORAGE;
+import static com.google.cloud.teleport.spanner.AvroUtil.HIDDEN;
 import static com.google.cloud.teleport.spanner.AvroUtil.INPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
 import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
@@ -159,6 +160,7 @@ public class DdlToAvroSchemaConverter {
           fieldBuilder.prop(NOT_NULL, Boolean.toString(cm.notNull()));
           fieldBuilder.prop(GENERATION_EXPRESSION, cm.generationExpression());
           fieldBuilder.prop(STORED, Boolean.toString(cm.isStored()));
+          fieldBuilder.prop(HIDDEN, Boolean.toString(cm.isHidden()));
           // Make the type null to allow us not export the generated column values,
           // which are semantically logical entities.
           fieldBuilder.type(SchemaBuilder.builder().nullType()).withDefault(null);
@@ -338,6 +340,7 @@ public class DdlToAvroSchemaConverter {
       case BYTES:
       case PG_BYTEA:
       case PROTO:
+      case TOKENLIST:
         return SchemaBuilder.builder().bytesType();
       case TIMESTAMP:
       case PG_TIMESTAMPTZ:

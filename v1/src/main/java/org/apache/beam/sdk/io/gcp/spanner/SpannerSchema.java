@@ -193,6 +193,9 @@ abstract class SpannerSchema implements Serializable {
           if (spannerType.startsWith("BYTES")) {
             return Type.bytes();
           }
+          if ("TOKENLIST".equals(spannerType)) {
+            return Type.bytes();
+          }
           if ("TIMESTAMP".equals(spannerType)) {
             return Type.timestamp();
           }

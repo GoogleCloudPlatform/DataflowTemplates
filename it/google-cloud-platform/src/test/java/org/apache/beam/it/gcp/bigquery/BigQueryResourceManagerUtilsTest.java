@@ -55,4 +55,9 @@ public class BigQueryResourceManagerUtilsTest {
     checkValidTableId("a");
     checkValidTableId("this-is_a_valid-id-1");
   }
+
+  @Test
+  public void testCheckValidTableIdWhenIdContainsUnicodeChars() {
+    checkValidTableId("unicóde_table");
+  }
 }

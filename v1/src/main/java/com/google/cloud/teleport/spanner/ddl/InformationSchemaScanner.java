@@ -40,10 +40,13 @@ import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
 import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
 import com.google.protobuf.DescriptorProtos.MessageOptions;
 import com.google.protobuf.InvalidProtocolBufferException;
+import java.util.ArrayDeque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.values.KV;
@@ -100,6 +103,9 @@ public class InformationSchemaScanner {
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
     listIndexes(indexes);
     listIndexColumns(builder, indexes);
+    if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
+      listIndexOptions(builder, indexes);
+    }
 
     for (Map.Entry<String, NavigableMap<String, Index.Builder>> tableEntry : indexes.entrySet()) {
       String tableName = tableEntry.getKey();
@@ -299,13 +305,19 @@ public class InformationSchemaScanner {
       String generationExpression = resultSet.isNull(7) ? "" : resultSet.getString(7);
       boolean isStored = !resultSet.isNull(8) && resultSet.getString(8).equalsIgnoreCase("YES");
       String defaultExpression = resultSet.isNull(9) ? null : resultSet.getString(9);
-      boolean isPlacementKey = resultSet.getBoolean(10);
+      boolean isHidden = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getBoolean(10) : false;
+      boolean isPlacementKey =
+          dialect == Dialect.GOOGLE_STANDARD_SQL
+              ? resultSet.getBoolean(11)
+              : resultSet.getBoolean(10);
+
       builder
           .createTable(tableName)
           .column(columnName)
           .parseType(spannerType)
           .notNull(!nullable)
           .isGenerated(isGenerated)
+          .isHidden(isHidden)
           .generationExpression(generationExpression)
           .isStored(isStored)
           .defaultExpression(defaultExpression)
@@ -317,29 +329,47 @@ public class InformationSchemaScanner {
 
   @VisibleForTesting
   Statement listColumnsSQL() {
-    if (dialect != Dialect.GOOGLE_STANDARD_SQL && dialect != Dialect.POSTGRESQL) {
-      throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
-    }
-    return Statement.of(
-        String.format(
-            "WITH placementkeycolumns AS ("
-                + "      SELECT c.table_name, c.column_name, c.constraint_name"
-                + "      FROM information_schema.constraint_column_usage AS c"
-                + "    WHERE c.constraint_name = CONCAT('PLACEMENT_KEY_', c.table_name)"
-                + "  ) "
-                + "SELECT c.table_schema, c.table_name, c.column_name,"
+    StringBuilder sb = new StringBuilder();
+    sb.append(
+        "WITH placementkeycolumns AS ("
+            + "      SELECT c.table_name, c.column_name, c.constraint_name"
+            + "      FROM information_schema.constraint_column_usage AS c"
+            + "    WHERE c.constraint_name = CONCAT('PLACEMENT_KEY_', c.table_name)"
+            + "  ) ");
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        sb.append(
+            "SELECT c.table_schema, c.table_name, c.column_name,"
+                + " c.ordinal_position, c.spanner_type, c.is_nullable,"
+                + " c.is_generated, c.generation_expression, c.is_stored,"
+                + " c.column_default, c.is_hidden,"
+                + " pkc.constraint_name IS NOT NULL AS is_placement_key"
+                + " FROM information_schema.columns as c"
+                + " LEFT JOIN placementkeycolumns AS pkc"
+                + " ON c.table_name = pkc.table_name AND c.column_name = pkc.column_name"
+                + " WHERE c.table_schema NOT IN"
+                + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                + " AND c.spanner_state = 'COMMITTED' "
+                + " ORDER BY c.table_name, c.ordinal_position");
+        break;
+      case POSTGRESQL:
+        sb.append(
+            "SELECT c.table_schema, c.table_name, c.column_name,"
                 + " c.ordinal_position, c.spanner_type, c.is_nullable,"
                 + " c.is_generated, c.generation_expression, c.is_stored, c.column_default,"
                 + " pkc.constraint_name IS NOT NULL AS is_placement_key"
                 + " FROM information_schema.columns as c"
                 + " LEFT JOIN placementkeycolumns AS pkc"
                 + " ON c.table_name = pkc.table_name AND c.column_name = pkc.column_name"
-                + " WHERE c.table_schema NOT IN (%s)"
+                + " WHERE c.table_schema NOT IN "
+                + " ('information_schema', 'spanner_sys', 'pg_catalog') "
                 + " AND c.spanner_state = 'COMMITTED' "
-                + " ORDER BY c.table_name, c.ordinal_position",
-            dialect == Dialect.GOOGLE_STANDARD_SQL
-                ? "'INFORMATION_SCHEMA', 'SPANNER_SYS'"
-                : "'information_schema', 'spanner_sys', 'pg_catalog'"));
+                + " ORDER BY c.table_name, c.ordinal_position");
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+    return Statement.of(sb.toString());
   }
 
   private void listIndexes(Map<String, NavigableMap<String, Index.Builder>> indexes) {
@@ -370,6 +400,23 @@ public class InformationSchemaScanner {
               ? null
               : resultSet.getString(6);
 
+      // Note that 'type' is only queried from GoogleSQL and is not from Postgres and
+      // the number of columns will be different.
+      String type =
+          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(6))
+              ? resultSet.getString(6)
+              : null;
+
+      ImmutableList<String> searchPartitionBy =
+          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(7))
+              ? ImmutableList.<String>builder().addAll(resultSet.getStringList(7)).build()
+              : null;
+
+      ImmutableList<String> searchOrderBy =
+          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(8))
+              ? ImmutableList.<String>builder().addAll(resultSet.getStringList(8)).build()
+              : null;
+
       Map<String, Index.Builder> tableIndexes =
           indexes.computeIfAbsent(tableName, k -> Maps.newTreeMap());
 
@@ -381,6 +428,9 @@ public class InformationSchemaScanner {
               .unique(unique)
               .nullFiltered(nullFiltered)
               .interleaveIn(parent)
+              .type(type)
+              .partitionBy(searchPartitionBy)
+              .orderBy(searchOrderBy)
               .filter(filter));
     }
   }
@@ -391,11 +441,11 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.index_name, t.parent_table_name, t.is_unique,"
-                + " t.is_null_filtered"
+                + " t.is_null_filtered, t.index_type, t.search_partition_by, t.search_order_by"
                 + " FROM information_schema.indexes AS t"
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') AND"
-                + " t.index_type='INDEX' AND t.spanner_is_managed = FALSE"
+                + " (t.index_type='INDEX' OR t.index_type='SEARCH') AND t.spanner_is_managed = FALSE"
                 + " ORDER BY t.table_name, t.index_name");
       case POSTGRESQL:
         return Statement.of(
@@ -420,6 +470,8 @@ public class InformationSchemaScanner {
       String columnName = resultSet.getString(2);
       String ordering = resultSet.isNull(3) ? null : resultSet.getString(3);
       String indexLocalName = resultSet.getString(4);
+      String indexType = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getString(5) : null;
+      String spannerType = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getString(6) : null;
 
       if (indexLocalName.equals("PRIMARY_KEY")) {
         IndexColumn.IndexColumnsBuilder<Table.Builder> pkBuilder =
@@ -430,6 +482,32 @@ public class InformationSchemaScanner {
           pkBuilder.desc(columnName).end();
         }
         pkBuilder.end().endTable();
+      } else if (indexType != null && indexType.equals("SEARCH")) {
+        if (!spannerType.equals("TOKENLIST") && ordering != null) {
+          continue;
+        }
+        Map<String, Index.Builder> tableIndexes = indexes.get(tableName);
+        if (tableIndexes == null) {
+          continue;
+        }
+        String indexName =
+            dialect == Dialect.POSTGRESQL
+                ? indexLocalName
+                : getQualifiedName(resultSet.getString(0), indexLocalName);
+        Index.Builder indexBuilder = tableIndexes.get(indexName);
+        if (indexBuilder == null) {
+          LOG.warn("Can not find index using name {}", indexName);
+          continue;
+        }
+        IndexColumn.IndexColumnsBuilder<Index.Builder> indexColumnsBuilder =
+            indexBuilder.columns().create().name(columnName);
+
+        if (spannerType.equals("TOKENLIST")) {
+          indexColumnsBuilder.asc();
+        } else if (ordering == null) {
+          indexColumnsBuilder.storing();
+        }
+        indexColumnsBuilder.endIndexColumn().end();
       } else {
         Map<String, Index.Builder> tableIndexes = indexes.get(tableName);
         if (tableIndexes == null) {
@@ -473,7 +551,8 @@ public class InformationSchemaScanner {
     switch (dialect) {
       case GOOGLE_STANDARD_SQL:
         return Statement.of(
-            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name "
+            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name,"
+                + " t.index_type, t.spanner_type "
                 + "FROM information_schema.index_columns AS t "
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
@@ -485,6 +564,70 @@ public class InformationSchemaScanner {
                 + "WHERE t.table_schema NOT IN "
                 + "('information_schema', 'spanner_sys', 'pg_catalog') "
                 + "ORDER BY t.table_name, t.index_name, t.ordinal_position");
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+  }
+
+  private void listIndexOptions(
+      Ddl.Builder builder, Map<String, NavigableMap<String, Index.Builder>> indexes) {
+    Statement statement = listIndexOptionsSQL();
+
+    ResultSet resultSet = context.executeQuery(statement);
+
+    Map<KV<String, String>, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
+    while (resultSet.next()) {
+      String tableName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
+      String indexName = resultSet.getString(2);
+      String indexType = resultSet.getString(3);
+      String optionName = resultSet.getString(4);
+      String optionType = resultSet.getString(5);
+      String optionValue = resultSet.getString(6);
+
+      KV<String, String> kv = KV.of(tableName, indexName);
+      ImmutableList.Builder<String> options =
+          allOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
+
+      if (optionType.equalsIgnoreCase("STRING")) {
+        options.add(optionName + "=\"" + OPTION_STRING_ESCAPER.escape(optionValue) + "\"");
+      } else if (optionType.equalsIgnoreCase("character varying")) {
+        options.add(optionName + "='" + OPTION_STRING_ESCAPER.escape(optionValue) + "'");
+      } else {
+        options.add(optionName + "=" + optionValue);
+      }
+    }
+
+    for (Map.Entry<KV<String, String>, ImmutableList.Builder<String>> entry :
+        allOptions.entrySet()) {
+      String tableName = entry.getKey().getKey();
+      String indexName = entry.getKey().getValue();
+      ImmutableList<String> options = entry.getValue().build();
+
+      Map<String, Index.Builder> tableIndexes = indexes.get(tableName);
+      if (tableIndexes == null) {
+        continue;
+      }
+      Index.Builder indexBuilder = tableIndexes.get(indexName);
+      if (indexBuilder == null) {
+        LOG.warn("Can not find index using name {}", indexName);
+        continue;
+      }
+
+      indexBuilder.options(options);
+    }
+  }
+
+  @VisibleForTesting
+  Statement listIndexOptionsSQL() {
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        return Statement.of(
+            "SELECT t.table_schema, t.table_name, t.index_name, t.index_type,"
+                + " t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.index_options AS t"
+                + " WHERE t.table_schema NOT IN"
+                + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                + " ORDER BY t.table_name, t.index_name, t.option_name");
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
     }
@@ -1288,21 +1431,63 @@ public class InformationSchemaScanner {
     return messageOptions.getUnknownFields().hasField(14004);
   }
 
+  private Set<String> collectEnumTypes(
+      String rootPackage, List<EnumDescriptorProto> enumDescriptors) {
+    Set<String> enums = new HashSet<>();
+    String typePrefix = rootPackage.isEmpty() ? "" : rootPackage + ".";
+    for (EnumDescriptorProto enumDescriptor : enumDescriptors) {
+      String qualifiedName = typePrefix + enumDescriptor.getName();
+      enums.add(qualifiedName);
+    }
+    return enums;
+  }
+
+  private Set<String> collectAllTypes(String rootPackage, List<DescriptorProto> descriptors) {
+    Set<String> result = new HashSet<>();
+
+    Map<String, DescriptorProto> messageTypes = new HashMap<>();
+    Queue<String> queue = new ArrayDeque<>();
+
+    String typePrefix = rootPackage.isEmpty() ? "" : rootPackage + ".";
+    for (DescriptorProto descriptor : descriptors) {
+      if (isUnknownType(descriptor)) {
+        continue;
+      }
+
+      String qualifiedName = typePrefix + descriptor.getName();
+      if (!messageTypes.containsKey(qualifiedName)) {
+        messageTypes.put(qualifiedName, descriptor);
+        queue.add(qualifiedName);
+      }
+    }
+
+    while (!queue.isEmpty()) {
+      String type = queue.poll();
+      DescriptorProto currentDescriptor = messageTypes.get(type);
+      result.addAll(collectEnumTypes(type, currentDescriptor.getEnumTypeList()));
+
+      for (DescriptorProto child : currentDescriptor.getNestedTypeList()) {
+        if (isUnknownType(child)) {
+          continue;
+        }
+        String childName = type + "." + child.getName();
+        if (!messageTypes.containsKey(childName)) {
+          messageTypes.put(childName, child);
+          queue.add(childName);
+        }
+      }
+    }
+
+    result.addAll(messageTypes.keySet());
+    return result;
+  }
+
   private Set<String> collectBundleTypes(FileDescriptorSet fds) {
     Set<String> result = new HashSet<>();
     for (FileDescriptorProto file : fds.getFileList()) {
-      String filePackage = file.hasPackage() ? file.getPackage() + "." : "";
-      for (DescriptorProto descriptor : file.getMessageTypeList()) {
-        if (isUnknownType(descriptor)) {
-          continue;
-        }
-        String descriptorName = filePackage + descriptor.getName();
-        result.add(descriptorName);
-      }
-      for (EnumDescriptorProto enumDescriptor : file.getEnumTypeList()) {
-        String descriptorName = filePackage + enumDescriptor.getName();
-        result.add(descriptorName);
-      }
+      String filePackage = file.hasPackage() ? file.getPackage() : "";
+      result.addAll(collectAllTypes(filePackage, file.getMessageTypeList()));
+      result.addAll(collectEnumTypes(filePackage, file.getEnumTypeList()));
     }
     return result;
   }

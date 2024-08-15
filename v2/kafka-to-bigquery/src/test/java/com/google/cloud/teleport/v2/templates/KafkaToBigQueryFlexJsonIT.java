@@ -90,6 +90,7 @@ public final class KafkaToBigQueryFlexJsonIT extends TemplateTestBase {
   }
 
   @Test
+  @TemplateIntegrationTest(value = KafkaToBigQueryFlex.class, template = "Kafka_to_BigQuery_Flex")
   public void testKafkaToBigQueryWithExistingDLQ() throws IOException {
     TableId deadletterTableId =
         bigQueryClient.createTable(testName + "_dlq", getDeadletterSchema());
@@ -171,8 +172,7 @@ public final class KafkaToBigQueryFlexJsonIT extends TemplateTestBase {
       publish(kafkaProducer, topicName, i + "1", "{\"id\": " + i + "1, \"name\": \"Dataflow\"}");
       publish(kafkaProducer, topicName, i + "2", "{\"id\": " + i + "2, \"name\": \"Pub/Sub\"}");
       // Invalid schema to test the DLQ
-      publish(
-          kafkaProducer, topicName, i + "3", "{\"id\": " + i + "3, \"description\": \"Pub/Sub\"}");
+      publish(kafkaProducer, topicName, i + "3", "bad json string");
 
       try {
         TimeUnit.SECONDS.sleep(3);
@@ -194,9 +194,12 @@ public final class KafkaToBigQueryFlexJsonIT extends TemplateTestBase {
     assertThatResult(result).meetsConditions();
 
     TableResult tableRows = bigQueryClient.readTable(bqTable);
+    TableResult dlqRows = bigQueryClient.readTable(deadletterTableId);
+
     assertThatBigQueryRecords(tableRows)
         .hasRecordsUnordered(
             List.of(Map.of("id", 11, "name", "Dataflow"), Map.of("id", 12, "name", "Pub/Sub")));
+    assertThatBigQueryRecords(dlqRows).hasRecordsWithStrings(List.of("bad json string"));
   }
 
   private void publish(
