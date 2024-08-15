@@ -313,7 +313,6 @@ public class CassandraToBigtableIT extends TemplateTestBase {
     for (Row row : rows) {
       // Only one cell per row should be present. This timestamp is of microsecond format.
       long timestamp = row.getCells().get(0).getTimestamp();
-      System.out.println("timestamp " + timestamp);
       assertTrue(timestamp == 0);
     }
   }
