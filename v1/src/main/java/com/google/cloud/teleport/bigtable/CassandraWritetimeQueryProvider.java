@@ -30,13 +30,13 @@ class CassandraColumnSchemaProcessor implements ValueProcessor {
 
   @Override
   public String process(String fileString) {
-    LOG.info("Cassandra column schema provided, parsing file string: " + fileString);
+    LOG.debug("Cassandra column schema provided, parsing file string: " + fileString);
     // Parse Cassandra column schema to generate writetime-enriched CassandraIO query.
     CassandraColumnSchema schema = new CassandraColumnSchema(fileString);
 
     // Add writetime query to CassandraIO.
     String writetimeQuery = schema.createWritetimeQuery();
-    LOG.info("Write time query generated: " + writetimeQuery);
+    LOG.debug("Write time query generated: " + writetimeQuery);
     return writetimeQuery;
   }
 }
@@ -83,7 +83,7 @@ public class CassandraWritetimeQueryProvider extends GCSAwareValueProvider {
       // Construct select-all statement in case column schema is not provided.
       Select selectAll = selectFrom(cassandraKeyspace.get(), cassandraTable.get()).all();
 
-      LOG.info("No column schema provided, returning selectAll query " + selectAll.asCql());
+      LOG.debug("No column schema provided, returning selectAll query " + selectAll.asCql());
       query = selectAll.asCql();
     }
     return query;
