@@ -1,0 +1,361 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.transforms;
+
+import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.Key;
+import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.TransactionContext;
+import com.google.cloud.spanner.TransactionRunner;
+import com.google.cloud.teleport.v2.templates.AvroToSpannerScdPipeline.AvroToSpannerScdOptions.ScdType;
+import com.google.cloud.teleport.v2.transforms.SpannerScdMutationDoFn.CurrentTimestampGetter;
+import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper.NullTypes;
+import com.google.common.collect.ImmutableList;
+import java.util.List;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+
+@RunWith(JUnit4.class)
+public final class SpannerScdMutationTypeDoFn {
+
+  private CurrentTimestampGetter timestampMock;
+  private SpannerConfig spannerConfigMock;
+  private SpannerAccessor spannerAccessorMock;
+  private TransactionContext transactionContextMock;
+
+  private ResultSet resultSetMock;
+
+  @Before
+  public void setUp() {
+    timestampMock = mock(CurrentTimestampGetter.class);
+
+    spannerConfigMock = mock(SpannerConfig.class);
+    when(spannerConfigMock.withExecuteStreamingSqlRetrySettings(any()))
+        .thenReturn(spannerConfigMock);
+
+    spannerAccessorMock = mock(SpannerAccessor.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    when(spannerAccessorMock.getDatabaseClient()).thenReturn(databaseClientMock);
+
+    TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
+    when(databaseClientMock.readWriteTransaction()).thenReturn(transactionCallableMock);
+    when(transactionCallableMock.allowNestedTransaction()).thenReturn(transactionCallableMock);
+
+    transactionContextMock = mock(TransactionContext.class);
+    when(transactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable<Void> callable = invocation.getArgument(0);
+              return callable.run(transactionContextMock);
+            });
+
+    resultSetMock = mock(ResultSet.class);
+    when(transactionContextMock.read(any(), any(), any())).thenReturn(resultSetMock);
+  }
+
+  @Test
+  public void testProcessElement_scdType1_createsInsertOrUpdateMutation() {
+    ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
+    Iterable<Struct> input =
+        ImmutableList.of(
+            Struct.newBuilder().set("id").to(1).set("name").to("Nito").build(),
+            Struct.newBuilder().set("id").to(2).set("name").to("Beam").build());
+
+    SpannerScdMutationDoFn spannerScdMutationTransform =
+        SpannerScdMutationDoFn.builder()
+            .setScdType(ScdType.TYPE_1)
+            .setSpannerConfig(spannerConfigMock)
+            .setTableName("tableName")
+            .setTableColumnNames(ImmutableList.of("id", "name"))
+            /* Not required for SCD TYPE_1. */
+            .setPrimaryKeyColumnNames(null)
+            .setStartDateColumnName(null)
+            .setEndDateColumnName(null)
+            .build()
+            .setSpannerAccessor(spannerAccessorMock);
+    spannerScdMutationTransform.writeBatchChanges(input);
+
+    verify(transactionContextMock, times(2)).buffer(mutationBufferCapture.capture());
+    List<Mutation> outputMutations = mutationBufferCapture.getAllValues();
+    assertThat(outputMutations)
+        .containsExactly(
+            Mutation.newInsertOrUpdateBuilder("tableName")
+                .set("id")
+                .to(1)
+                .set("name")
+                .to("Nito")
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("tableName")
+                .set("id")
+                .to(2)
+                .set("name")
+                .to("Beam")
+                .build());
+  }
+
+  @Test
+  public void testProcessElement_scdType2_createsInsertWhenRowsNotExisting_withEndDate() {
+    ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
+    when(resultSetMock.next()).thenReturn(Boolean.FALSE); // No results.
+    Iterable<Struct> input =
+        ImmutableList.of(
+            Struct.newBuilder().set("id").to(1).set("name").to("Nito").build(),
+            Struct.newBuilder().set("id").to(2).set("name").to("Beam").build());
+
+    SpannerScdMutationDoFn spannerScdMutationTransform =
+        SpannerScdMutationDoFn.builder()
+            .setScdType(ScdType.TYPE_2)
+            .setSpannerConfig(spannerConfigMock)
+            .setTableName("tableName")
+            .setPrimaryKeyColumnNames(ImmutableList.of("id", "end_date"))
+            .setStartDateColumnName(null)
+            .setEndDateColumnName("end_date")
+            .setTableColumnNames(ImmutableList.of("id", "name"))
+            .build()
+            .setSpannerAccessor(spannerAccessorMock);
+    spannerScdMutationTransform.writeBatchChanges(input);
+
+    verify(transactionContextMock, times(2)).buffer(mutationBufferCapture.capture());
+    List<Mutation> outputMutations = mutationBufferCapture.getAllValues();
+    assertThat(outputMutations)
+        .containsExactly(
+            Mutation.newInsertBuilder("tableName")
+                .set("id")
+                .to(1)
+                .set("name")
+                .to("Nito")
+                .set("end_date")
+                .to(NullTypes.NULL_TIMESTAMP)
+                .build(),
+            Mutation.newInsertBuilder("tableName")
+                .set("id")
+                .to(2)
+                .set("name")
+                .to("Beam")
+                .set("end_date")
+                .to(NullTypes.NULL_TIMESTAMP)
+                .build());
+  }
+
+  @Test
+  public void testProcessElement_scdType2_createsInsertWhenRowsNotExisting_withStartAndEndDate() {
+    when(timestampMock.get()).thenReturn(Timestamp.ofTimeMicroseconds(777));
+    ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
+    when(resultSetMock.next()).thenReturn(Boolean.FALSE); // No results.
+    Iterable<Struct> input =
+        ImmutableList.of(
+            Struct.newBuilder().set("id").to(1).set("name").to("Nito").build(),
+            Struct.newBuilder().set("id").to(2).set("name").to("Beam").build());
+
+    SpannerScdMutationDoFn spannerScdMutationTransform =
+        SpannerScdMutationDoFn.builder()
+            .setScdType(ScdType.TYPE_2)
+            .setSpannerConfig(spannerConfigMock)
+            .setTableName("tableName")
+            .setPrimaryKeyColumnNames(ImmutableList.of("id", "end_date"))
+            .setStartDateColumnName("start_date")
+            .setEndDateColumnName("end_date")
+            .setTableColumnNames(ImmutableList.of("id", "name"))
+            .build()
+            .setSpannerAccessor(spannerAccessorMock)
+            .setCurrentTimestampGetter(timestampMock);
+    spannerScdMutationTransform.writeBatchChanges(input);
+
+    verify(transactionContextMock, times(2)).buffer(mutationBufferCapture.capture());
+    List<Mutation> outputMutations = mutationBufferCapture.getAllValues();
+    assertThat(outputMutations)
+        .containsExactly(
+            Mutation.newInsertBuilder("tableName")
+                .set("id")
+                .to(1)
+                .set("name")
+                .to("Nito")
+                .set("start_date")
+                .to(Timestamp.ofTimeMicroseconds(777))
+                .set("end_date")
+                .to(NullTypes.NULL_TIMESTAMP)
+                .build(),
+            Mutation.newInsertBuilder("tableName")
+                .set("id")
+                .to(2)
+                .set("name")
+                .to("Beam")
+                .set("start_date")
+                .to(Timestamp.ofTimeMicroseconds(777))
+                .set("end_date")
+                .to(NullTypes.NULL_TIMESTAMP)
+                .build());
+  }
+
+  @Test
+  public void testProcessElement_scdType2_createsUpdatesWhenRowsMatch_withEndDate() {
+    when(timestampMock.get()).thenReturn(Timestamp.ofTimeMicroseconds(777));
+    ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
+    when(resultSetMock.next()).thenReturn(Boolean.TRUE, Boolean.FALSE);
+    when(resultSetMock.getCurrentRowAsStruct())
+        .thenReturn(
+            Struct.newBuilder()
+                .set("id")
+                .to(1)
+                .set("name")
+                .to("Nito")
+                .set("end_date")
+                .to(NullTypes.NULL_TIMESTAMP)
+                .build());
+    Iterable<Struct> input =
+        ImmutableList.of(
+            Struct.newBuilder().set("id").to(1).set("name").to("NewName").build(),
+            Struct.newBuilder().set("id").to(2).set("name").to("Beam").build());
+
+    SpannerScdMutationDoFn spannerScdMutationTransform =
+        SpannerScdMutationDoFn.builder()
+            .setScdType(ScdType.TYPE_2)
+            .setSpannerConfig(spannerConfigMock)
+            .setTableName("tableName")
+            .setPrimaryKeyColumnNames(ImmutableList.of("id", "end_date"))
+            .setStartDateColumnName(null)
+            .setEndDateColumnName("end_date")
+            .setTableColumnNames(ImmutableList.of("id", "name"))
+            .build()
+            .setSpannerAccessor(spannerAccessorMock)
+            .setCurrentTimestampGetter(timestampMock);
+    spannerScdMutationTransform.writeBatchChanges(input);
+
+    verify(transactionContextMock, times(4)).buffer(mutationBufferCapture.capture());
+    List<Mutation> outputMutations = mutationBufferCapture.getAllValues();
+    assertThat(outputMutations)
+        .containsExactly(
+            // Updates via delete and 2x insert.
+            Mutation.delete(
+                "tableName", Key.newBuilder().append(1).append(NullTypes.NULL_TIMESTAMP).build()),
+            Mutation.newInsertBuilder("tableName")
+                .set("id")
+                .to(1)
+                .set("name")
+                .to("Nito")
+                .set("end_date")
+                .to(Timestamp.ofTimeMicroseconds(777))
+                .build(),
+            Mutation.newInsertBuilder("tableName")
+                .set("id")
+                .to(1)
+                .set("name")
+                .to("NewName")
+                .set("end_date")
+                .to(NullTypes.NULL_TIMESTAMP)
+                .build(),
+            // Inserts non-existing row.
+            Mutation.newInsertBuilder("tableName")
+                .set("id")
+                .to(2)
+                .set("name")
+                .to("Beam")
+                .set("end_date")
+                .to(NullTypes.NULL_TIMESTAMP)
+                .build());
+  }
+
+  @Test
+  public void testProcessElement_scdType2_createsUpdatesWhenRowsMatch_withStartAndEndDate() {
+    when(timestampMock.get()).thenReturn(Timestamp.ofTimeMicroseconds(777));
+    ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
+    when(resultSetMock.next()).thenReturn(Boolean.TRUE, Boolean.FALSE);
+    when(resultSetMock.getCurrentRowAsStruct())
+        .thenReturn(
+            Struct.newBuilder()
+                .set("id")
+                .to(1)
+                .set("name")
+                .to("Nito")
+                .set("start_date")
+                .to(Timestamp.ofTimeMicroseconds(123))
+                .set("end_date")
+                .to(NullTypes.NULL_TIMESTAMP)
+                .build());
+    Iterable<Struct> input =
+        ImmutableList.of(
+            Struct.newBuilder().set("id").to(1).set("name").to("NewName").build(),
+            Struct.newBuilder().set("id").to(2).set("name").to("Beam").build());
+
+    SpannerScdMutationDoFn spannerScdMutationTransform =
+        SpannerScdMutationDoFn.builder()
+            .setScdType(ScdType.TYPE_2)
+            .setSpannerConfig(spannerConfigMock)
+            .setTableName("tableName")
+            .setPrimaryKeyColumnNames(ImmutableList.of("id", "end_date"))
+            .setStartDateColumnName("start_date")
+            .setEndDateColumnName("end_date")
+            .setTableColumnNames(ImmutableList.of("id", "name"))
+            .build()
+            .setSpannerAccessor(spannerAccessorMock)
+            .setCurrentTimestampGetter(timestampMock);
+    spannerScdMutationTransform.writeBatchChanges(input);
+
+    verify(transactionContextMock, times(4)).buffer(mutationBufferCapture.capture());
+    List<Mutation> outputMutations = mutationBufferCapture.getAllValues();
+    assertThat(outputMutations)
+        .containsExactly(
+            // Updates via delete and 2x insert.
+            Mutation.delete(
+                "tableName", Key.newBuilder().append(1).append(NullTypes.NULL_TIMESTAMP).build()),
+            Mutation.newInsertBuilder("tableName")
+                .set("id")
+                .to(1)
+                .set("name")
+                .to("Nito")
+                .set("start_date")
+                .to(Timestamp.ofTimeMicroseconds(123))
+                .set("end_date")
+                .to(Timestamp.ofTimeMicroseconds(777))
+                .build(),
+            Mutation.newInsertBuilder("tableName")
+                .set("id")
+                .to(1)
+                .set("name")
+                .to("NewName")
+                .set("start_date")
+                .to(Timestamp.ofTimeMicroseconds(777))
+                .set("end_date")
+                .to(NullTypes.NULL_TIMESTAMP)
+                .build(),
+            // Inserts non-existing row.
+            Mutation.newInsertBuilder("tableName")
+                .set("id")
+                .to(2)
+                .set("name")
+                .to("Beam")
+                .set("start_date")
+                .to(Timestamp.ofTimeMicroseconds(777))
+                .set("end_date")
+                .to(NullTypes.NULL_TIMESTAMP)
+                .build());
+  }
+}
