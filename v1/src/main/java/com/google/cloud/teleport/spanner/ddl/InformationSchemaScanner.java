@@ -332,10 +332,10 @@ public class InformationSchemaScanner {
     StringBuilder sb = new StringBuilder();
     sb.append(
         "WITH placementkeycolumns AS ("
-            + "      SELECT c.table_name, c.column_name, c.constraint_name"
-            + "      FROM information_schema.constraint_column_usage AS c"
-            + "    WHERE c.constraint_name = CONCAT('PLACEMENT_KEY_', c.table_name)"
-            + "  ) ");
+            + " SELECT c.table_name, c.column_name, c.constraint_name"
+            + " FROM information_schema.constraint_column_usage AS c"
+            + " WHERE c.constraint_name = CONCAT('PLACEMENT_KEY_', c.table_name)"
+            + ") ");
     switch (dialect) {
       case GOOGLE_STANDARD_SQL:
         sb.append(
