@@ -21,6 +21,7 @@ import static org.junit.Assert.assertThrows;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import java.net.URISyntaxException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
