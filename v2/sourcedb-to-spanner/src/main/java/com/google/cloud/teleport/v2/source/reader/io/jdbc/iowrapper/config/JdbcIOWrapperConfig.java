@@ -31,6 +31,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.Wait.OnSignal;
 import org.apache.beam.sdk.util.FluentBackoff;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.commons.dbcp2.BasicDataSource;
 
 /**
  * Configuration for {@link
@@ -153,6 +154,76 @@ public abstract class JdbcIOWrapperConfig {
   @Nullable
   public abstract PTransform<PCollection<ImmutableList<Range>>, ?> additionalOperationsOnRanges();
 
+  /**
+   * Sets the {@code testOnBorrow} property. This property determines whether or not the pool will
+   * validate objects before they are borrowed from the pool. Defaults to True.
+   */
+  public abstract Boolean testOnBorrow();
+
+  private static final Boolean DEFAULT_TEST_ON_BORROW = true;
+
+  /**
+   * Sets the {@code testOnCreate} property. This property determines whether or not the pool will
+   * validate objects immediately after they are created by the pool. Defaults to True.
+   */
+  public abstract Boolean testOnCreate();
+
+  private static final Boolean DEFAULT_TEST_ON_CREATE = true;
+
+  /**
+   * Sets the {@code testOnReturn} property. This property determines whether or not the pool will
+   * validate objects before they are returned to the pool. Defaults to True.
+   */
+  public abstract Boolean testOnReturn();
+
+  private static final Boolean DEFAULT_TEST_ON_RETURN = true;
+
+  /**
+   * Sets the {@code testWhileIdle} property. This property determines whether or not the idle
+   * object evictor will validate connections. Defaults to True.
+   */
+  public abstract Boolean testWhileIdle();
+
+  private static final Boolean DEFAULT_TEST_WILE_IDLE = true;
+
+  /** Sets the {@code validationQuery}. */
+  public abstract String validationQuery();
+
+  private static final String DEFAULT_VALIDATEION_QUERY = "SELECT 1";
+
+  /**
+   * The timeout in seconds before an abandoned connection can be removed.
+   *
+   * <p>Creating a Statement, PreparedStatement or CallableStatement or using one of these to
+   * execute a query (using one of the execute methods) resets the lastUsed property of the parent
+   * connection.
+   *
+   * <p>Abandoned connection cleanup happens when:
+   *
+   * <ul>
+   *   <li>{@link BasicDataSource#getRemoveAbandonedOnBorrow()} or {@link
+   *       BasicDataSource#getRemoveAbandonedOnMaintenance()} = true
+   *   <li>{@link BasicDataSource#getNumIdle() numIdle} &lt; 2
+   *   <li>{@link BasicDataSource#getNumActive() numActive} &gt; {@link
+   *       BasicDataSource#getMaxTotal() maxTotal} - 3
+   * </ul>
+   *
+   * Defaults to hours.
+   *
+   * <p>
+   */
+  public abstract Integer removeAbandonedTimeout();
+
+  private static final Integer DEFAULT_REMOVE_ABANDONED_TIMEOUT = 8 * 3600;
+
+  /**
+   * The minimum amount of time an object may sit idle in the pool before it is eligible for
+   * eviction by the idle object evictor. Defaults to hours.
+   */
+  public abstract Integer minEvictableIdleTimeMillis();
+
+  private static final Integer DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS = 8 * 3600 * 1000;
+
   public abstract Builder toBuilder();
 
   public static Builder builderWithMySqlDefaults() {
@@ -170,7 +241,14 @@ public abstract class JdbcIOWrapperConfig {
         .setMaxFetchSize(null)
         .setDbParallelizationForReads(null)
         .setDbParallelizationForSplitProcess(DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
-        .setReadWithUniformPartitionsFeatureEnabled(true);
+        .setReadWithUniformPartitionsFeatureEnabled(true)
+        .setTestOnBorrow(DEFAULT_TEST_ON_BORROW)
+        .setTestOnCreate(DEFAULT_TEST_ON_CREATE)
+        .setTestOnReturn(DEFAULT_TEST_ON_RETURN)
+        .setTestWhileIdle(DEFAULT_TEST_WILE_IDLE)
+        .setValidationQuery(DEFAULT_VALIDATEION_QUERY)
+        .setRemoveAbandonedTimeout(DEFAULT_REMOVE_ABANDONED_TIMEOUT)
+        .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS);
   }
 
   @AutoValue.Builder
@@ -217,6 +295,20 @@ public abstract class JdbcIOWrapperConfig {
 
     public abstract Builder setAdditionalOperationsOnRanges(
         @Nullable PTransform<PCollection<ImmutableList<Range>>, ?> value);
+
+    public abstract Builder setTestOnBorrow(Boolean value);
+
+    public abstract Builder setTestOnCreate(Boolean value);
+
+    public abstract Builder setTestOnReturn(Boolean value);
+
+    public abstract Builder setTestWhileIdle(Boolean value);
+
+    public abstract Builder setValidationQuery(String value);
+
+    public abstract Builder setRemoveAbandonedTimeout(Integer value);
+
+    public abstract Builder setMinEvictableIdleTimeMillis(Integer value);
 
     public abstract Builder setMaxConnections(Long value);
 
