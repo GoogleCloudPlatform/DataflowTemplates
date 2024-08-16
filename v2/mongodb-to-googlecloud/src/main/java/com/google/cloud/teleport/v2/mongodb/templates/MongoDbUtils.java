@@ -21,6 +21,7 @@ import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -144,7 +145,8 @@ public class MongoDbUtils implements Serializable {
       row.set("timestamp", localdate.format(TIMEFORMAT));
     } else {
       LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
-      String sourceData = GSON.toJson(document);
+      // String sourceData = GSON.toJson(document);
+      JsonObject sourceData = GSON.toJsonTree(document).getAsJsonObject();
       row.set("id", document.get("_id").toString())
           .set("source_data", sourceData)
           .set("timestamp", localdate.format(TIMEFORMAT));
