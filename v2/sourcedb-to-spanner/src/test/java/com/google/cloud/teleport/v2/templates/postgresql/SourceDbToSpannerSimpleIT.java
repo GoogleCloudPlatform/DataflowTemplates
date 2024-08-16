@@ -59,6 +59,8 @@ public class SourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
   private static final String TABLE1 = "SimpleTable";
 
   private static final String TABLE2 = "StringTable";
+  private static final String PG_TABLE1 = "\"" + TABLE1 + "\"";
+  private static final String PG_TABLE2 = "\"" + TABLE2 + "\"";
 
   private static final String ID = "id";
 
@@ -100,10 +102,10 @@ public class SourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
   @Test
   public void simpleTest() throws IOException {
     List<Map<String, Object>> postgreSQLData = getPostgreSQLData();
-    postgreSQLResourceManager.createTable(TABLE1, getPostgreSQLSchema(ID));
-    postgreSQLResourceManager.createTable(TABLE2, getPostgreSQLSchema(NAME));
-    postgreSQLResourceManager.write(TABLE1, postgreSQLData);
-    postgreSQLResourceManager.write(TABLE2, postgreSQLData);
+    postgreSQLResourceManager.createTable(PG_TABLE1, getPostgreSQLSchema(ID));
+    postgreSQLResourceManager.createTable(PG_TABLE2, getPostgreSQLSchema(NAME));
+    postgreSQLResourceManager.write(PG_TABLE1, postgreSQLData);
+    postgreSQLResourceManager.write(PG_TABLE2, postgreSQLData);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =
         launchDataflowJob(
