@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
@@ -23,9 +25,12 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Type.StructField;
 import com.google.cloud.spanner.Value;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.stream.StreamSupport;
 import javax.annotation.Nullable;
 
 /** Provides functionality to interact with Struct values. */
@@ -45,6 +50,11 @@ public class StructHelper {
     return new KeyMaker(primaryKeyColumnNames);
   }
 
+  public KeyMaker keyMaker(
+      Iterable<String> primaryKeyColumnNames, Iterable<String> omittedColumnNames) {
+    return new KeyMaker(primaryKeyColumnNames, omittedColumnNames);
+  }
+
   /** Creates Keys for Structs. */
   public class KeyMaker {
 
@@ -56,7 +66,16 @@ public class StructHelper {
      * @param primaryKeyColumnNames
      */
     public KeyMaker(Iterable<String> primaryKeyColumnNames) {
-      this.primaryKeyColumnNames = primaryKeyColumnNames;
+      this(primaryKeyColumnNames, ImmutableList.of());
+    }
+
+    public KeyMaker(Iterable<String> primaryKeyColumnNames, Iterable<String> omittedColumnNames) {
+      ImmutableSet<String> omittedColumns =
+          omittedColumnNames == null ? ImmutableSet.of() : ImmutableSet.copyOf(omittedColumnNames);
+      this.primaryKeyColumnNames =
+          StreamSupport.stream(primaryKeyColumnNames.spliterator(), false)
+              .filter(col -> !omittedColumns.contains(col))
+              .collect(toImmutableList());
     }
 
     /**

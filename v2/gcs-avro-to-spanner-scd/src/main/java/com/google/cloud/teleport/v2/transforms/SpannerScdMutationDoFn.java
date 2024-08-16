@@ -29,7 +29,6 @@ import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper;
 import com.google.common.collect.ImmutableList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -57,7 +56,7 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
 
   private transient SpannerAccessor spannerAccessor;
 
-  private transient CurrentTimestampGetter currentTimestampGetter = new CurrentTimestampGetter();
+  private transient CurrentTimestampGetter currentTimestampGetter;
 
   @AutoValue.Builder
   public abstract static class Builder {
@@ -124,6 +123,10 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
     spannerAccessor =
         SpannerAccessor.getOrCreate(
             spannerConfig().withExecuteStreamingSqlRetrySettings(retrySettings));
+
+    if (currentTimestampGetter == null) {
+      currentTimestampGetter = new CurrentTimestampGetter();
+    }
   }
 
   @Teardown
@@ -216,10 +219,7 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
                 getMatchingRecords(recordBatch, transaction);
             com.google.cloud.spanner.Key recordKey =
                 StructHelper.of(record)
-                    .keyMaker(
-                        primaryKeyColumnNames().stream()
-                            .filter(columnName -> columnName != endDateColumnName())
-                            .collect(Collectors.toList()))
+                    .keyMaker(primaryKeyColumnNames(), ImmutableList.of(endDateColumnName()))
                     .createKeyWithExtraValues(
                         /* endTimestamp= */ Value.timestamp(ValueHelper.NullTypes.NULL_TIMESTAMP));
 
@@ -247,10 +247,7 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
           record -> {
             com.google.cloud.spanner.Key recordQueryKey =
                 StructHelper.of(record)
-                    .keyMaker(
-                        primaryKeyColumnNames().stream()
-                            .filter(columnName -> columnName != endDateColumnName())
-                            .collect(Collectors.toList()))
+                    .keyMaker(primaryKeyColumnNames(), ImmutableList.of(endDateColumnName()))
                     .createKeyWithExtraValues(
                         /* endTimestamp= */ Value.timestamp(ValueHelper.NullTypes.NULL_TIMESTAMP));
             keySetBuilder.addKey(recordQueryKey);

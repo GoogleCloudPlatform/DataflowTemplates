@@ -18,9 +18,9 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.v2.utils.StructHelper;
+import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
+import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.GroupByKey;
@@ -39,13 +39,13 @@ public abstract class MakeBatchesTransform
     extends PTransform<PCollection<Struct>, PCollection<Iterable<Struct>>> {
 
   public static MakeBatchesTransform create(
-      Integer batchSize, Iterable<String> primaryKeyColumns, String endDateColumnName) {
+      Integer batchSize, List<String> primaryKeyColumns, String endDateColumnName) {
     return new AutoValue_MakeBatchesTransform(batchSize, primaryKeyColumns, endDateColumnName);
   }
 
   abstract Integer batchSize();
 
-  abstract Iterable<String> primaryKeyColumns();
+  abstract List<String> primaryKeyColumns();
 
   @Nullable
   abstract String endDateColumnName();
@@ -67,11 +67,10 @@ public abstract class MakeBatchesTransform
       // Cannot use Key directly as order is non-deterministic.
       return StructHelper.of(record)
           .keyMaker(
-              StreamSupport.stream(primaryKeyColumns().spliterator(), false)
-                  .filter(
-                      columnName ->
-                          endDateColumnName() == null || columnName != endDateColumnName())
-                  .collect(Collectors.toList()))
+              primaryKeyColumns(),
+              endDateColumnName() == null
+                  ? ImmutableList.of()
+                  : ImmutableList.of(endDateColumnName()))
           .createKeyString();
     }
   }
