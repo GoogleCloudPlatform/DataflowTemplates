@@ -45,7 +45,6 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
 
   abstract String tableName();
 
-  @Nullable
   abstract List<String> primaryKeyColumnNames();
 
   @Nullable

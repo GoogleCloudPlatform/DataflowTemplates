@@ -18,7 +18,9 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.v2.utils.StructHelper;
+import com.google.common.collect.Iterables;
 import java.util.ArrayList;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.GroupByKey;
 import org.apache.beam.sdk.transforms.GroupIntoBatches;
@@ -35,13 +37,17 @@ import org.apache.beam.sdk.values.PCollection;
 public abstract class MakeBatchesTransform
     extends PTransform<PCollection<Struct>, PCollection<Iterable<Struct>>> {
 
-  public static MakeBatchesTransform create(Integer batchSize, Iterable<String> primaryKeyColumns) {
-    return new AutoValue_MakeBatchesTransform(batchSize, primaryKeyColumns);
+  public static MakeBatchesTransform create(
+      Integer batchSize, Iterable<String> primaryKeyColumns, String endDateColumnName) {
+    return new AutoValue_MakeBatchesTransform(batchSize, primaryKeyColumns, endDateColumnName);
   }
 
   abstract Integer batchSize();
 
   abstract Iterable<String> primaryKeyColumns();
+
+  @Nullable
+  abstract String endDateColumnName();
 
   @Override
   public PCollection<Iterable<Struct>> expand(PCollection<Struct> input) {
@@ -58,8 +64,13 @@ public abstract class MakeBatchesTransform
     @Override
     public String apply(Struct record) {
       // Cannot use Key directly as order is non-deterministic.
-      // TODO(Nito): verify that this works when end_date is not present.
-      return StructHelper.of(record).keyMaker(primaryKeyColumns()).createKeyString();
+      return StructHelper.of(record)
+          .keyMaker(
+              Iterables.filter(
+                  primaryKeyColumns(),
+                  (String columnName) ->
+                      endDateColumnName() == null || columnName != endDateColumnName()))
+          .createKeyString();
     }
   }
 

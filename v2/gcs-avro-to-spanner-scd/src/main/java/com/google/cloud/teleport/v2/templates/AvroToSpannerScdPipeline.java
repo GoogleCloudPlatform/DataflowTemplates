@@ -143,7 +143,9 @@ public class AvroToSpannerScdPipeline {
         .apply(
             "BatchRowsIntoGroups",
             MakeBatchesTransform.create(
-                options.getSpannerBatchSize().get(), options.getPrimaryKeyColumnNames().get()))
+                options.getSpannerBatchSize().get(),
+                options.getPrimaryKeyColumnNames().get(),
+                options.getEndDateColumnName().get()))
         .apply(
             "WriteScdChangesToSpanner",
             SpannerScdMutationTransform.builder()
@@ -297,11 +299,10 @@ public class AvroToSpannerScdPipeline {
     @TemplateParameter.Text(
         groupName = "Schema",
         order = 10,
-        optional = true,
         description = "Primary key column name(s)",
         helpText =
             "Name of column(s) for the primary key(s). If more than one, enter as CSV with no"
-                + " spaces (e.g. column1,column2). Only required for SCD-Type=2.")
+                + " spaces (e.g. column1,column2).")
     ValueProvider<List<String>> getPrimaryKeyColumnNames();
 
     void setPrimaryKeyColumnNames(ValueProvider<List<String>> value);

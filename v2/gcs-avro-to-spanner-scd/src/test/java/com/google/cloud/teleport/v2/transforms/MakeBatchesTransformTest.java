@@ -67,7 +67,7 @@ public final class MakeBatchesTransformTest {
     PCollection<Struct> input = pipeline.apply(Create.of(inputRecords));
 
     PCollection<Iterable<Struct>> output =
-        input.apply(MakeBatchesTransform.create(batchSize, PRIMARY_KEYS));
+        input.apply(MakeBatchesTransform.create(batchSize, PRIMARY_KEYS, null));
 
     PAssert.thatSingletonIterable(output).containsInAnyOrder(inputRecords);
     PAssert.that(output)
@@ -86,7 +86,7 @@ public final class MakeBatchesTransformTest {
     List<Struct> inputRecords = SampleCreator.create().createSamples(25);
     PCollection<Struct> input = pipeline.apply(Create.of(inputRecords));
     PCollection<Iterable<Struct>> output =
-        input.apply(MakeBatchesTransform.create(batchSize, PRIMARY_KEYS));
+        input.apply(MakeBatchesTransform.create(batchSize, PRIMARY_KEYS, null));
 
     PAssert.that(output)
         .satisfies(
@@ -111,7 +111,7 @@ public final class MakeBatchesTransformTest {
     PCollection<Struct> input = pipeline.apply(Create.of(inputRecords));
 
     PCollection<Iterable<Struct>> output =
-        input.apply(MakeBatchesTransform.create(batchSize, PRIMARY_KEYS));
+        input.apply(MakeBatchesTransform.create(batchSize, PRIMARY_KEYS, null));
 
     PAssert.thatSingletonIterable(output).containsInAnyOrder(inputRecords);
     PAssert.that(output)
@@ -138,7 +138,7 @@ public final class MakeBatchesTransformTest {
     PCollection<Struct> input = pipeline.apply(Create.of(inputRecords));
 
     PCollection<Iterable<Struct>> output =
-        input.apply(MakeBatchesTransform.create(batchSize, PRIMARY_KEYS));
+        input.apply(MakeBatchesTransform.create(batchSize, PRIMARY_KEYS, null));
 
     PAssert.that(output)
         .satisfies(
@@ -166,6 +166,27 @@ public final class MakeBatchesTransformTest {
                                   .equals(repeatedKey))
                       .count();
               assertThat(countRepeated).isEqualTo(4);
+              return null;
+            });
+    pipeline.run().waitUntilFinish();
+  }
+
+  @Test
+  public void testExpand_createsBatches_ignoresEndDateColumn() {
+    int batchSize = 10;
+    var inputRecords = SampleCreator.create().createSamples(5);
+    PCollection<Struct> input = pipeline.apply(Create.of(inputRecords));
+
+    PCollection<Iterable<Struct>> output =
+        input.apply(
+            MakeBatchesTransform.create(batchSize, ImmutableList.of("id", "end_date"), "end_date"));
+
+    PAssert.thatSingletonIterable(output).containsInAnyOrder(inputRecords);
+    PAssert.that(output)
+        .satisfies(
+            collection -> {
+              ImmutableList<Iterable<Struct>> listOfBatches = ImmutableList.copyOf(collection);
+              assertThat(listOfBatches).hasSize(1);
               return null;
             });
     pipeline.run().waitUntilFinish();
