@@ -1,9 +1,9 @@
-CREATE TABLE IF NOT EXISTS SimpleTable (
+CREATE TABLE IF NOT EXISTS simple_table (
   id INT64 NOT NULL,
   name STRING(200),
 ) PRIMARY KEY(id);
 
-CREATE TABLE IF NOT EXISTS StringTable (
+CREATE TABLE IF NOT EXISTS string_table (
   id INT64 NOT NULL,
   name STRING(200),
 ) PRIMARY KEY(name);

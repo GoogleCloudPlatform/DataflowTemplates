@@ -59,9 +59,9 @@ public class SourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
 
   private static final String SPANNER_DDL_RESOURCE = "SourceDbToSpannerSimpleIT/spanner-schema.sql";
 
-  private static final String TABLE1 = "SimpleTable";
+  private static final String TABLE1 = "simple_table";
 
-  private static final String TABLE2 = "StringTable";
+  private static final String TABLE2 = "string_table";
 
   private static final String ID = "id";
 
