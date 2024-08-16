@@ -229,7 +229,7 @@ public class PostgreSQLDialectAdapterTest {
                     .setIsPrimary(false)
                     .setCardinality(1L)
                     .setOrdinalPosition(1L)
-                    .setIndexType(SourceColumnIndexInfo.IndexType.OTHER)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.STRING)
                     .build(),
                 SourceColumnIndexInfo.builder()
                     .setColumnName("col2")
