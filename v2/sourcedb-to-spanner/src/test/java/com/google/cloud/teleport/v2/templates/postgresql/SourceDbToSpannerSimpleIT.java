@@ -67,7 +67,7 @@ public class SourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
   private JDBCResourceManager.JDBCSchema getPostgreSQLSchema(String idCol) {
     HashMap<String, String> columns = new HashMap<>();
     columns.put(ID, "INT8 NOT NULL");
-    columns.put(NAME, "VARCHAR(200)");
+    columns.put(NAME, "TEXT");
     return new JDBCResourceManager.JDBCSchema(columns, idCol);
   }
 
