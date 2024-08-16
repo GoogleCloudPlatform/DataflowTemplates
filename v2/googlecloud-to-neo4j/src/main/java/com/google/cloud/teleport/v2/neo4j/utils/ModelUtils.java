@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.neo4j.utils;
 
+import com.google.cloud.teleport.v2.neo4j.database.CypherPatterns;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -119,7 +120,8 @@ public class ModelUtils {
                       Collectors.toMap(
                           PropertyMapping::getTargetProperty, PropertyMapping::getSourceField));
           for (String key : endNodeTarget.getKeyProperties()) {
-            String field = escapeField(reversedMappings.get(key));
+            String keyField = reversedMappings.get(key);
+            String field = CypherPatterns.sanitize(keyField);
             orderBy.add(
                 new OrderByElement().withExpression(CCJSqlParserUtil.parseExpression(field)));
           }
@@ -146,7 +148,7 @@ public class ModelUtils {
               allProperties.stream()
                   .map(PropertyMapping::getSourceField)
                   .filter(fieldNameMap::contains)
-                  .map(field -> new Column(escapeField(field)))
+                  .map(field -> new Column(CypherPatterns.sanitize(field)))
                   .toArray(Column[]::new);
           if (groupByFields.length == 0) {
             throw new RuntimeException(
@@ -157,9 +159,10 @@ public class ModelUtils {
           statement.addSelectItems(groupByFields);
           if (!aggregations.isEmpty()) {
             for (Aggregation aggregation : aggregations) {
+              String keyField = aggregation.getFieldName();
               statement.addSelectItem(
                   CCJSqlParserUtil.parseExpression(aggregation.getExpression()),
-                  new Alias(escapeField(aggregation.getFieldName())));
+                  new Alias(CypherPatterns.sanitize(keyField)));
             }
           }
 
@@ -199,10 +202,6 @@ public class ModelUtils {
       result.addAll(endNodeTarget.getProperties());
     }
     return result;
-  }
-
-  private static String escapeField(String keyField) {
-    return String.format("`%s`", keyField);
   }
 
   public static String replaceVariableTokens(String text, Map<String, String> replacements) {

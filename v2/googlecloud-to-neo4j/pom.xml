@@ -64,6 +64,11 @@
       <artifactId>jsqlparser</artifactId>
       <version>4.9</version>
     </dependency>
+    <dependency>
+      <groupId>org.neo4j</groupId>
+      <artifactId>neo4j-cypher-dsl-schema-name-support</artifactId>
+      <version>2022.9.2</version>
+    </dependency>
 
     <!-- Test dependencies -->
     <dependency>
