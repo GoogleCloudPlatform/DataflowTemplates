@@ -19,15 +19,29 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.ByteArray;
+import com.google.cloud.Date;
+import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper.NullTypes;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.util.Base64;
+import org.apache.avro.Conversions;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
+import org.apache.avro.Schema.Parser;
+import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.avro.io.DatumReader;
+import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
+import org.apache.beam.sdk.extensions.avro.io.AvroSource.DatumReaderFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.values.PCollection;
@@ -44,13 +58,15 @@ public final class AvroToStructFnTest {
   public static final class UnitTests {
 
     @Test
-    public void testApply_castsAllDataTypes() {
+    public void testApply_castsAllPrimitiveDataTypes() {
       Schema inputSchema =
           Schema.createRecord(
               ImmutableList.<Field>builder()
                   .add(new Field("boolTrue", Schema.create(Schema.Type.BOOLEAN)))
                   .add(new Field("boolFalse", Schema.create(Schema.Type.BOOLEAN)))
+                  .add(new Field("bytes", Schema.create(Schema.Type.BYTES)))
                   .add(new Field("double", Schema.create(Schema.Type.DOUBLE)))
+                  .add(new Field("fixed", Schema.createFixed("fixed", "doc", "namespace", 4)))
                   .add(new Field("float", Schema.create(Schema.Type.FLOAT)))
                   .add(new Field("int", Schema.create(Schema.Type.INT)))
                   .add(new Field("long", Schema.create(Schema.Type.LONG)))
@@ -60,7 +76,9 @@ public final class AvroToStructFnTest {
           new GenericRecordBuilder(inputSchema)
               .set("boolTrue", Boolean.TRUE)
               .set("boolFalse", Boolean.FALSE)
+              .set("bytes", ByteArray.fromBase64("Tml0bw=="))
               .set("double", 7.0)
+              .set("fixed", ByteArray.fromBase64("Tml0bw=="))
               .set("float", 7.0F)
               .set("int", 7)
               .set("long", 7L)
@@ -72,8 +90,12 @@ public final class AvroToStructFnTest {
               .to(Boolean.TRUE)
               .set("boolFalse")
               .to(Boolean.FALSE)
+              .set("bytes")
+              .to(ByteArray.fromBase64("Tml0bw=="))
               .set("double")
               .to(7.0)
+              .set("fixed")
+              .to(ByteArray.fromBase64("Tml0bw=="))
               .set("float")
               .to(7.0F)
               .set("int")
@@ -82,6 +104,80 @@ public final class AvroToStructFnTest {
               .to(7L)
               .set("string")
               .to("text")
+              .build();
+
+      Struct output = AvroToStructFn.create().apply(input);
+
+      assertThat(output).isEqualTo(expectedOutput);
+    }
+
+    @Test
+    public void testApply_castsAllLogicalDataTypes() {
+      Schema inputSchema =
+          Schema.createRecord(
+              ImmutableList.<Field>builder()
+                  .add(
+                      new Field(
+                          "date",
+                          new Schema.Parser()
+                              .parse("{\"type\": \"int\", \"logicalType\": \"date\"}")))
+                  .add(
+                      new Field(
+                          "decimal",
+                          new Schema.Parser()
+                              .parse(
+                                  "{\"type\": \"bytes\", \"logicalType\": \"decimal\", \"precision\": 7, \"scale\": 6}")))
+                  .add(
+                      new Field(
+                          "localTimestampMillis",
+                          new Schema.Parser()
+                              .parse(
+                                  "{\"type\": \"long\", \"logicalType\": \"local-timestamp-millis\"}")))
+                  .add(
+                      new Field(
+                          "timestampMillis",
+                          new Schema.Parser()
+                              .parse(
+                                  "{\"type\": \"long\", \"logicalType\": \"timestamp-millis\"}")))
+                  .add(
+                      new Field(
+                          "localTimestampMicros",
+                          new Schema.Parser()
+                              .parse(
+                                  "{\"type\": \"long\", \"logicalType\": \"local-timestamp-micros\"}")))
+                  .add(
+                      new Field(
+                          "timestampMicros",
+                          new Schema.Parser()
+                              .parse(
+                                  "{\"type\": \"long\", \"logicalType\": \"timestamp-micros\"}")))
+                  .build());
+      GenericRecord input =
+          new GenericRecordBuilder(inputSchema)
+              .set("date", 7499L) // Days since epoch.
+              .set("decimal", ByteArray.copyFrom(new Conversions.DecimalConversion().toBytes(
+                  BigDecimal.valueOf(3141592L, 6),
+                  new Schema.Parser().parse("{\"type\": \"bytes\", \"logicalType\": \"decimal\", \"precision\": 7, \"scale\": 6}"),
+                  LogicalTypes.fromSchema(new Schema.Parser().parse("{\"type\": \"bytes\", \"logicalType\": \"decimal\", \"precision\": 7, \"scale\": 6}"))))) // 3141592
+              .set("localTimestampMillis", 647917261000L)
+              .set("timestampMillis", 647917261000L)
+              .set("localTimestampMicros", 647917261000000L)
+              .set("timestampMicros", 647917261000000L)
+              .build();
+      Struct expectedOutput =
+          Struct.newBuilder()
+              .set("date")
+              .to(Date.fromYearMonthDay(1990, 7, 14))
+              .set("decimal")
+              .to(BigDecimal.valueOf(3141592, 6))
+              .set("localTimestampMillis")
+              .to(Timestamp.ofTimeMicroseconds(647917261000000L))
+              .set("timestampMillis")
+              .to(Timestamp.ofTimeMicroseconds(647917261000000L))
+              .set("localTimestampMicros")
+              .to(Timestamp.ofTimeMicroseconds(647917261000000L))
+              .set("timestampMicros")
+              .to(Timestamp.ofTimeMicroseconds(647917261000000L))
               .build();
 
       Struct output = AvroToStructFn.create().apply(input);
@@ -278,27 +374,6 @@ public final class AvroToStructFnTest {
       assertThat(thrown)
           .hasMessageThat()
           .contains("UNION is only supported for nullable fields. Got: [\"boolean\", \"double\"].");
-    }
-
-    @Test
-    public void testApply_throwsForNotYetImplementedTypes() {
-      Schema inputSchema =
-          Schema.createRecord(
-              ImmutableList.<Field>builder()
-                  .add(new Field("bytes", Schema.create(Schema.Type.BYTES)))
-                  .build());
-      GenericRecord input =
-          new GenericRecordBuilder(inputSchema)
-              .set("bytes", ByteArray.fromBase64("Tml0byBidWlsdCB0aGlzLg=="))
-              .build();
-
-      UnsupportedOperationException thrown =
-          assertThrows(
-              UnsupportedOperationException.class, () -> AvroToStructFn.create().apply(input));
-
-      assertThat(thrown)
-          .hasMessageThat()
-          .contains("Support for Avro field type BYTES is not implemented yet.");
     }
   }
 

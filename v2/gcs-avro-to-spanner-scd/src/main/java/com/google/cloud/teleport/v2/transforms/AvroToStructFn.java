@@ -17,10 +17,17 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import com.google.cloud.ByteArray;
+import com.google.cloud.Date;
+import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper.NullTypes;
+import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.util.List;
+import org.apache.avro.Conversions;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericRecord;
@@ -60,8 +67,13 @@ public class AvroToStructFn extends SimpleFunction<GenericRecord, Struct> {
     }
 
     private Value getFieldValue(Field field) {
+      if (field.schema().getLogicalType() != null) {
+        return getLogicalFieldValue(field);
+      }
+
       Schema.Type fieldType = field.schema().getType();
       Object fieldValue = record.get(field.name());
+
       switch (fieldType) {
         default:
         case ARRAY:
@@ -75,9 +87,7 @@ public class AvroToStructFn extends SimpleFunction<GenericRecord, Struct> {
           return Value.bool(fieldValue == null ? NullTypes.NULL_BOOLEAN : (Boolean) fieldValue);
         case BYTES:
         case FIXED:
-          // TODO: Implement FIXED and BYTES including LogicalTypes.
-          throw new UnsupportedOperationException(
-              String.format("Support for Avro field type %s is not implemented yet.", fieldType));
+          return Value.bytes(fieldValue == null ? NullTypes.NULL_BYTES : (ByteArray) fieldValue);
         case DOUBLE:
           return Value.float64(fieldValue == null ? NullTypes.NULL_FLOAT64 : (Double) fieldValue);
         case FLOAT:
@@ -86,12 +96,53 @@ public class AvroToStructFn extends SimpleFunction<GenericRecord, Struct> {
           return Value.int64(
               fieldValue == null ? NullTypes.NULL_INT64 : new Long((Integer) fieldValue));
         case LONG:
-          // TODO: Implement Logical Type for Long timestamp
           return Value.int64(fieldValue == null ? NullTypes.NULL_INT64 : (Long) fieldValue);
         case STRING:
           return Value.string(fieldValue == null ? NullTypes.NULL_STRING : fieldValue.toString());
         case UNION:
           return getUnionFieldValue(field);
+      }
+    }
+
+    private Value getLogicalFieldValue(Field field) {
+      String logicalTypeName = field.schema().getLogicalType().getName();
+      Object fieldValue = record.get(field.name());
+
+      switch (logicalTypeName) {
+        case "duration":
+        case "time-micros":
+        case "time-millis":
+        case "uuid":
+        default:
+          throw new UnsupportedOperationException(
+              String.format(
+                  "Support for Avro field of logical type %s is not supported.", logicalTypeName));
+        case "date":
+          return Value.date(
+              fieldValue == null
+                  ? NullTypes.NULL_DATE
+                  : Date.fromJavaUtilDate(
+                      // value is the number of days since epoch - which is cast to micros.
+                      Timestamp.ofTimeMicroseconds((Long) fieldValue * 24L * 60L * 60L * 1_000_000L)
+                          .toDate()));
+        case "decimal":
+          return Value.numeric(
+              fieldValue == null ? NullTypes.NULL_NUMERIC : new Conversions.DecimalConversion().fromBytes(
+                  ByteBuffer.wrap(((ByteArray) fieldValue).toByteArray()),
+                  field.schema(),
+                  LogicalTypes.fromSchema(field.schema())));
+        case "local-timestamp-millis":
+        case "timestamp-millis":
+          return Value.timestamp(
+              fieldValue == null
+                  ? NullTypes.NULL_TIMESTAMP
+                  : Timestamp.ofTimeMicroseconds((Long) fieldValue * 1000L));
+        case "local-timestamp-micros":
+        case "timestamp-micros":
+          return Value.timestamp(
+              fieldValue == null
+                  ? NullTypes.NULL_TIMESTAMP
+                  : Timestamp.ofTimeMicroseconds((Long) fieldValue));
       }
     }
 
@@ -105,10 +156,10 @@ public class AvroToStructFn extends SimpleFunction<GenericRecord, Struct> {
 
       // It is not possible to have UNION of same type (e.g. NULL, NULL).
       if (unionTypes.get(0).getType() == Schema.Type.NULL) {
-        return getFieldValue(new Field(field.name(), Schema.create(unionTypes.get(1).getType())));
+        return getFieldValue(new Field(field.name(), unionTypes.get(1), field.doc()));
       }
       if (unionTypes.get(1).getType() == Schema.Type.NULL) {
-        return getFieldValue(new Field(field.name(), Schema.create(unionTypes.get(0).getType())));
+        return getFieldValue(new Field(field.name(), unionTypes.get(0), field.doc()));
       }
 
       throw new UnsupportedOperationException(
