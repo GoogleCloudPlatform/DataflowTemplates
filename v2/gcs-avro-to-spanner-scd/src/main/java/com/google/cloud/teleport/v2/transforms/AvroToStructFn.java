@@ -23,7 +23,6 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper.NullTypes;
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.List;
 import org.apache.avro.Conversions;
@@ -108,6 +107,7 @@ public class AvroToStructFn extends SimpleFunction<GenericRecord, Struct> {
       String logicalTypeName = field.schema().getLogicalType().getName();
       Object fieldValue = record.get(field.name());
 
+      // TODO: refactor to leverage Avro Conversion classes.
       switch (logicalTypeName) {
         case "duration":
         case "time-micros":
@@ -127,10 +127,13 @@ public class AvroToStructFn extends SimpleFunction<GenericRecord, Struct> {
                           .toDate()));
         case "decimal":
           return Value.numeric(
-              fieldValue == null ? NullTypes.NULL_NUMERIC : new Conversions.DecimalConversion().fromBytes(
-                  ByteBuffer.wrap(((ByteArray) fieldValue).toByteArray()),
-                  field.schema(),
-                  LogicalTypes.fromSchema(field.schema())));
+              fieldValue == null
+                  ? NullTypes.NULL_NUMERIC
+                  : new Conversions.DecimalConversion()
+                      .fromBytes(
+                          ByteBuffer.wrap(((ByteArray) fieldValue).toByteArray()),
+                          field.schema(),
+                          LogicalTypes.fromSchema(field.schema())));
         case "local-timestamp-millis":
         case "timestamp-millis":
           return Value.timestamp(

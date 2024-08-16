@@ -22,26 +22,17 @@ import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper.NullTypes;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.util.Base64;
 import org.apache.avro.Conversions;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
-import org.apache.avro.Schema.Parser;
-import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.avro.io.DatumReader;
-import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
-import org.apache.beam.sdk.extensions.avro.io.AvroSource.DatumReaderFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.values.PCollection;
@@ -155,10 +146,19 @@ public final class AvroToStructFnTest {
       GenericRecord input =
           new GenericRecordBuilder(inputSchema)
               .set("date", 7499L) // Days since epoch.
-              .set("decimal", ByteArray.copyFrom(new Conversions.DecimalConversion().toBytes(
-                  BigDecimal.valueOf(3141592L, 6),
-                  new Schema.Parser().parse("{\"type\": \"bytes\", \"logicalType\": \"decimal\", \"precision\": 7, \"scale\": 6}"),
-                  LogicalTypes.fromSchema(new Schema.Parser().parse("{\"type\": \"bytes\", \"logicalType\": \"decimal\", \"precision\": 7, \"scale\": 6}"))))) // 3141592
+              .set(
+                  "decimal",
+                  ByteArray.copyFrom(
+                      new Conversions.DecimalConversion()
+                          .toBytes(
+                              BigDecimal.valueOf(3141592L, 6),
+                              new Schema.Parser()
+                                  .parse(
+                                      "{\"type\": \"bytes\", \"logicalType\": \"decimal\", \"precision\": 7, \"scale\": 6}"),
+                              LogicalTypes.fromSchema(
+                                  new Schema.Parser()
+                                      .parse(
+                                          "{\"type\": \"bytes\", \"logicalType\": \"decimal\", \"precision\": 7, \"scale\": 6}"))))) // 3141592
               .set("localTimestampMillis", 647917261000L)
               .set("timestampMillis", 647917261000L)
               .set("localTimestampMicros", 647917261000000L)
