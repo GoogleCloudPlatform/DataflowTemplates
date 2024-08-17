@@ -163,6 +163,7 @@ public class MongoDbToBigQuery {
                   @ProcessElement
                   public void process(ProcessContext c) {
                     Document document = c.element();
+                    System.out.println(document);
                     TableRow row = MongoDbUtils.getTableSchema(document, userOption);
                     c.output(row);
                   }

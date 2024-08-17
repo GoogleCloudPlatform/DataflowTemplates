@@ -84,7 +84,7 @@ public class MongoDbUtils implements Serializable {
           });
     } else {
       bigquerySchemaFields.add(new TableFieldSchema().setName("id").setType("STRING"));
-      bigquerySchemaFields.add(new TableFieldSchema().setName("source_data").setType("STRING"));
+      bigquerySchemaFields.add(new TableFieldSchema().setName("source_data").setType("JSON"));
     }
     bigquerySchemaFields.add(new TableFieldSchema().setName("timestamp").setType("TIMESTAMP"));
     TableSchema bigquerySchema = new TableSchema().setFields(bigquerySchemaFields);
@@ -136,23 +136,19 @@ public class MongoDbUtils implements Serializable {
                 row.set(key, value);
                 break;
               case "org.bson.Document":
-                // String data = GSON.toJson(value);
-                JsonObject sourceDataJsonObject = GSON.toJsonTree(value).getAsJsonObject();
-                Map<String, Object> sourceDataMap =GSON.fromJson(sourceDataJsonObject, new TypeToken<Map<String, Object>>() {}.getType());
-                row.set(key, sourceDataMap);
+                String data = GSON.toJson(value);
+                row.set(key, data);
                 break;
               default:
-                row.set(key, value);
+                row.set(key, value.toString());
             }
           });
       LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
       row.set("timestamp", localdate.format(TIMEFORMAT));
     } else {
       LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
-
-      // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-      // String sourceData = GSON.toJson(document);
-      // JsonObject sourceData = GSON.toJsonTree(document).getAsJsonObject();
+      System.out.println(document);
+      String sourceData = GSON.toJson(document);
       JsonObject sourceDataJsonObject = GSON.toJsonTree(document).getAsJsonObject();
 
       // Convert to a Map
@@ -209,7 +205,7 @@ public class MongoDbUtils implements Serializable {
           });
     } else {
       bigquerySchemaFields.add(new TableFieldSchema().setName("id").setType("STRING"));
-      bigquerySchemaFields.add(new TableFieldSchema().setName("source_data").setType("STRING"));
+      bigquerySchemaFields.add(new TableFieldSchema().setName("source_data").setType("JSON"));
     }
 
     bigquerySchemaFields.add(new TableFieldSchema().setName("timestamp").setType("TIMESTAMP"));
