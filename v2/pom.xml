@@ -85,7 +85,7 @@
             <!-- Direct runner included for local development and testing. -->
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-runners-direct-java</artifactId>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
 
         <!-- hamcrest is a transitive dependency for beam-io-gcp and also needed in test -->
