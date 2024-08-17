@@ -147,7 +147,6 @@ public class MongoDbUtils implements Serializable {
       row.set("timestamp", localdate.format(TIMEFORMAT));
     } else {
       LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
-      System.out.println(document);
       String sourceData = GSON.toJson(document);
       JsonObject sourceDataJsonObject = GSON.toJsonTree(document).getAsJsonObject();
 
