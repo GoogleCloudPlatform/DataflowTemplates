@@ -469,11 +469,11 @@ public class FormatDatastreamRecordToJson
         jsonObject.put(fieldName, resultString);
         return true;
       } else if (fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.NUMBER)) {
-        String number = (String) element.get(fieldName);
+        String number = element.get(fieldName).toString();
         jsonObject.put(fieldName, number);
         return true;
       } else if (fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.VARCHAR)) {
-        String varcharValue = (String) element.get(fieldName);
+        String varcharValue = element.get(fieldName).toString();
         jsonObject.put(fieldName, varcharValue);
         return true;
       }
