@@ -88,6 +88,12 @@ public abstract class SpannerScdMutationTransform
     return new AutoValue_SpannerScdMutationTransform.Builder();
   }
 
+  /**
+   * Writes data to Spanner using the required SCD Type.
+   *
+   * @param input
+   * @return Pipeline is completed.
+   */
   @Override
   public PDone expand(PCollection<Iterable<Struct>> input) {
     String scdTypeName = scdType().toString().toLowerCase().replace("_", "");

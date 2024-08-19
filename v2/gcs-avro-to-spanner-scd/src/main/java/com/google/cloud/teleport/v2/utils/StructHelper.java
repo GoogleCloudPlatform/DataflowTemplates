@@ -50,10 +50,23 @@ public class StructHelper {
     return struct;
   }
 
+  /**
+   * Creates a copy of the StructHelper where the Struct is a copy without the ommited column names.
+   *
+   * @param omittedColumnNames Column names to remove from the struct.
+   * @return StructHelper with a Struct without the ommited columns.
+   */
   public StructHelper omitColumNames(Iterable<String> omittedColumnNames) {
     return new StructHelper(copyAsBuilderInternal(omittedColumnNames).build());
   }
 
+  /**
+   * Gets a copy of the struct as a builder.
+   *
+   * <p>This allows adding and removing fields from the original struct by other applications.
+   *
+   * @return Struct as a Struct.Builder.
+   */
   public Struct.Builder copyAsBuilder() {
     return copyAsBuilderInternal(null);
   }
@@ -148,7 +161,7 @@ public class StructHelper {
      * @param record
      * @param columnNames to add to the Key.
      * @param keyBuilder
-     * @return
+     * @return KeyBuilder for the Key with the requested fields.
      */
     private Key.Builder addRecordFieldsToKeyBuilder(
         Struct record, Iterable<String> columnNames, Key.Builder keyBuilder) {

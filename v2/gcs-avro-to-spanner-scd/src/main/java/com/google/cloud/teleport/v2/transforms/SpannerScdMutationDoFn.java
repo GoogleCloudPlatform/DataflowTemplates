@@ -134,6 +134,13 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
     spannerAccessor.close();
   }
 
+  /**
+   * Writes mutations for the current batch.
+   *
+   * <p>Creates all the required for mutations and buffers them as a single transaction.
+   *
+   * @param recordBatch
+   */
   @ProcessElement
   public void writeBatchChanges(@Element Iterable<Struct> recordBatch) {
     spannerAccessor
@@ -326,6 +333,11 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
     }
   }
 
+  /**
+   * Getter that it used to get the current Timestamp.
+   *
+   * <p>This is mainly used for dependency injection during testing.
+   */
   public static class CurrentTimestampGetter {
     public com.google.cloud.Timestamp get() {
       return com.google.cloud.Timestamp.now();

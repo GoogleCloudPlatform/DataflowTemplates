@@ -64,13 +64,13 @@ public abstract class MakeBatchesTransform
   private class ExtractPrimaryKey implements SerializableFunction<Struct, String> {
     @Override
     public String apply(Struct record) {
-      // Cannot use Key directly as order is non-deterministic.
       return StructHelper.of(record)
           .keyMaker(
               primaryKeyColumns(),
               endDateColumnName() == null
                   ? ImmutableList.of()
                   : ImmutableList.of(endDateColumnName()))
+          // Cannot use Key directly as order is non-deterministic.
           .createKeyString();
     }
   }
@@ -78,6 +78,12 @@ public abstract class MakeBatchesTransform
   private class UngroupPrimaryKey
       extends DoFn<Iterable<KV<String, Iterable<Struct>>>, Iterable<Struct>> {
 
+    /**
+     * Ungroups data in a double batch (batch by size and primary key) into a single iterable.
+     *
+     * @param inputBatch
+     * @param output Output receiver.
+     */
     @ProcessElement
     public void ungroup(
         @Element Iterable<KV<String, Iterable<Struct>>> inputBatch,

@@ -56,8 +56,13 @@ public class AvroToStructFn extends SimpleFunction<GenericRecord, Struct> {
       return new GenericRecordConverter(record);
     }
 
+    /**
+     * Creates a Struct from the GenericRecord.
+     *
+     * @return Struct for the GenericRecord with matching data and data types.
+     */
     public Struct toStruct() {
-      var structBuilder = Struct.newBuilder();
+      Struct.Builder structBuilder = Struct.newBuilder();
       Schema avroSchema = checkNotNull(record.getSchema(), "Input file Avro Schema is null.");
       avroSchema
           .getFields()
