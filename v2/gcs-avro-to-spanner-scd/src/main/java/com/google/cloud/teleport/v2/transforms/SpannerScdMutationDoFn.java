@@ -160,6 +160,49 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
   }
 
   /**
+   * Creates an insert mutation for the given record.
+   *
+   * @return Spanner insert mutation.
+   */
+  private Mutation createInsertMutation(Struct record) {
+    Mutation.WriteBuilder insertMutationBuilder = Mutation.newInsertBuilder(tableName());
+    record
+        .getType()
+        .getStructFields()
+        .forEach(
+            field ->
+                insertMutationBuilder.set(field.getName()).to(record.getValue(field.getName())));
+    return insertMutationBuilder.build();
+  }
+
+  /**
+   * Creates an upsert (insertOrUpdate) mutation for the given record.
+   *
+   * @return Spanner upsert mutation.
+   */
+  private Mutation createUpsertMutation(Struct record) {
+    Mutation.WriteBuilder upsertMutationBuilder = Mutation.newInsertOrUpdateBuilder(tableName());
+    record
+        .getType()
+        .getStructFields()
+        .forEach(
+            field ->
+                upsertMutationBuilder.set(field.getName()).to(record.getValue(field.getName())));
+    return upsertMutationBuilder.build();
+  }
+
+  /**
+   * Creates a deletion mutation for the existing given record.
+   *
+   * @return Spanner delete mutation.
+   */
+  private Mutation createDeleteMutation(Struct record) {
+    com.google.cloud.spanner.Key recordKey =
+        StructHelper.of(record).keyMaker(primaryKeyColumnNames()).createKey();
+    return Mutation.delete(tableName(), recordKey);
+  }
+
+  /**
    * Runs SCD Type 1 mutations to Spanner.
    *
    * <p>If primary key(s) exist, updates the existing row; it inserts a new row otherwise.
@@ -177,21 +220,6 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
       return null;
     }
 
-    /**
-     * Creates an upsert (insertOrUpdate) mutation for the given record.
-     *
-     * @return Spanner upsert mutation performed within the transaction.
-     */
-    private Mutation createUpsertMutation(Struct record) {
-      Mutation.WriteBuilder upsertMutationBuilder = Mutation.newInsertOrUpdateBuilder(tableName());
-      record
-          .getType()
-          .getStructFields()
-          .forEach(
-              field ->
-                  upsertMutationBuilder.set(field.getName()).to(record.getValue(field.getName())));
-      return upsertMutationBuilder.build();
-    }
   }
 
   /**
@@ -212,11 +240,12 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
      */
     @Override
     public Void bufferMutations(TransactionContext transaction, Iterable<Struct> recordBatch) {
+      HashMap<com.google.cloud.spanner.Key, Struct> existingRows =
+          getMatchingRecords(recordBatch, transaction);
+
       recordBatch.forEach(
           record -> {
             com.google.cloud.Timestamp currentTimestamp = currentTimestampGetter.get();
-            HashMap<com.google.cloud.spanner.Key, Struct> existingRows =
-                getMatchingRecords(recordBatch, transaction);
             com.google.cloud.spanner.Key recordKey =
                 StructHelper.of(record)
                     .keyMaker(primaryKeyColumnNames(), ImmutableList.of(endDateColumnName()))
@@ -225,11 +254,15 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
 
             if (existingRows.containsKey(recordKey)) {
               Struct existingRow = existingRows.get(recordKey);
-              transaction.buffer(createDeleteOldRowMutation(existingRow));
-              transaction.buffer(createInsertOldRowMutation(existingRow, currentTimestamp));
+              transaction.buffer(createDeleteMutation(existingRow));
+
+              Struct updatedRecord = updateOldRecord(existingRow, currentTimestamp);
+              transaction.buffer(createInsertMutation(updatedRecord));
             }
 
-            transaction.buffer(createInsertNewDataMutation(record, currentTimestamp));
+            Struct newRecord = createNewRecord(record, currentTimestamp);
+            transaction.buffer(createInsertMutation(newRecord));
+            existingRows.put(recordKey, newRecord);
           });
       return null;
     }
@@ -267,55 +300,31 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
       return existingRows;
     }
 
-    /**
-     * Creates a deletion mutation for the existing given record. Required since it is not possible
-     * to update primary keys.
-     *
-     * @return Spanner mutation performed within the transaction.
-     */
-    private Mutation createDeleteOldRowMutation(Struct record) {
-      com.google.cloud.spanner.Key recordKey =
-          StructHelper.of(record).keyMaker(primaryKeyColumnNames()).createKey();
-      return Mutation.delete(tableName(), recordKey);
-    }
-
-    /**
-     * Creates an insert mutation for the existing given record. Required since it is not possible
-     * to update primary keys.
-     *
-     * @return Spanner mutation performed within the transaction.
-     */
-    private Mutation createInsertOldRowMutation(
-        Struct record, com.google.cloud.Timestamp currentTimestamp) {
-      Mutation.WriteBuilder insertMutationBuilder = Mutation.newInsertBuilder(tableName());
-      record.getType().getStructFields().stream()
-          .filter(field -> !field.getName().equals(endDateColumnName()))
-          .forEach(
-              field ->
-                  insertMutationBuilder.set(field.getName()).to(record.getValue(field.getName())));
-      insertMutationBuilder.set(endDateColumnName()).to(currentTimestamp);
-      return insertMutationBuilder.build();
-    }
-
-    /**
-     * Creates an insert mutation for the new given record.
-     *
-     * @return Spanner mutation performed within the transaction.
-     */
-    private Mutation createInsertNewDataMutation(
-        Struct record, com.google.cloud.Timestamp currentTimestamp) {
-      Mutation.WriteBuilder insertMutationBuilder = Mutation.newInsertBuilder(tableName());
+    private Struct.Builder copyRecordAsStructBuilder(Struct record) {
+      Struct.Builder recordBuilder = Struct.newBuilder();
       record
           .getType()
           .getStructFields()
           .forEach(
               field ->
-                  insertMutationBuilder.set(field.getName()).to(record.getValue(field.getName())));
+                  recordBuilder
+                      .set(field.getName()).to(record.getValue(field.getName())));
+      return recordBuilder;
+    }
+
+    private Struct createNewRecord(Struct record, com.google.cloud.Timestamp currentTimestamp) {
+      Struct.Builder newRecordBuilder = StructHelper.of(record).copyAsBuilder();
       if (startDateColumnName() != null) {
-        insertMutationBuilder.set(startDateColumnName()).to(currentTimestamp);
+        newRecordBuilder.set(startDateColumnName()).to(currentTimestamp);
       }
-      insertMutationBuilder.set(endDateColumnName()).to(ValueHelper.NullTypes.NULL_TIMESTAMP);
-      return insertMutationBuilder.build();
+      newRecordBuilder.set(endDateColumnName()).to(ValueHelper.NullTypes.NULL_TIMESTAMP);
+      return newRecordBuilder.build();
+    }
+
+    private Struct updateOldRecord(Struct record, com.google.cloud.Timestamp currentTimestamp) {
+      Struct.Builder updatedRecordBuilder = StructHelper.of(record).omitColumNames(ImmutableList.of("end_date")).copyAsBuilder();
+      updatedRecordBuilder.set(endDateColumnName()).to(currentTimestamp);
+      return updatedRecordBuilder.build();
     }
   }
 

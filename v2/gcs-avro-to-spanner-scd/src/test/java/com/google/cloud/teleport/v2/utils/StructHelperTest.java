@@ -26,6 +26,7 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper;
 import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper.NullTypes;
+import com.google.common.collect.ImmutableList;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.Test;
@@ -34,6 +35,54 @@ import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
 public class StructHelperTest {
+
+  @Test
+  public void testOmitColumns_createsCopyOfRecordWithoutOmittedColumns() {
+    Timestamp timestamp = Timestamp.now();
+    Struct inputRecord =
+        Struct.newBuilder()
+            .set("pk1")
+            .to(777)
+            .set("pk2")
+            .to(timestamp)
+            .set("pk3")
+            .to("value")
+            .set("column1")
+            .to("Nito")
+            .build();
+    Struct expectedOutputRecord =
+        Struct.newBuilder()
+            .set("pk1")
+            .to(777)
+            .set("column1")
+            .to("Nito")
+            .build();
+
+    StructHelper structHelper = StructHelper.of(inputRecord).omitColumNames(
+        ImmutableList.of("pk2", "pk3"));
+
+    assertThat(structHelper.getStruct()).isEqualTo(expectedOutputRecord);
+  }
+
+  @Test
+  public void testCopyAsBuilder_createsCopyOnBuilder() {
+    Timestamp timestamp = Timestamp.now();
+    Struct record =
+        Struct.newBuilder()
+            .set("pk1")
+            .to(777)
+            .set("pk2")
+            .to(timestamp)
+            .set("pk3")
+            .to("value")
+            .set("column1")
+            .to("Nito")
+            .build();
+
+    Struct.Builder structBuilder = StructHelper.of(record).copyAsBuilder();
+
+    assertThat(structBuilder.build()).isEqualTo(record);
+  }
 
   @Test
   public void testKeyMaker_createKey_forOneKey() {

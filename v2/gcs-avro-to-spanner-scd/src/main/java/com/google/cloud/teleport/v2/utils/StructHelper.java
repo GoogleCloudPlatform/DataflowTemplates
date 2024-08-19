@@ -46,6 +46,29 @@ public class StructHelper {
     return new StructHelper(struct);
   }
 
+  public Struct getStruct() { return struct; }
+
+  public StructHelper omitColumNames(Iterable<String> omittedColumnNames) {
+    return new StructHelper(copyAsBuilderInternal(omittedColumnNames).build());
+  }
+
+  public Struct.Builder copyAsBuilder() {
+    return copyAsBuilderInternal(null);
+  }
+
+  private Struct.Builder copyAsBuilderInternal(Iterable<String> omittedColumnNames) {
+    Struct.Builder recordBuilder = Struct.newBuilder();
+    ImmutableSet<String> omittedColumnNamesSet =
+        omittedColumnNames == null ? ImmutableSet.of() : ImmutableSet.copyOf(omittedColumnNames);
+    struct
+        .getType()
+        .getStructFields()
+        .stream()
+        .filter(field -> !omittedColumnNamesSet.contains(field.getName()))
+        .forEach(field -> recordBuilder .set(field.getName()).to(struct.getValue(field.getName())));
+    return recordBuilder;
+  }
+
   public KeyMaker keyMaker(Iterable<String> primaryKeyColumnNames) {
     return new KeyMaker(primaryKeyColumnNames);
   }
