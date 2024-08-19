@@ -62,7 +62,7 @@ public class JobSpecMapper {
 
   @Deprecated
   private static ImportSpecification parseLegacyJobSpec(OptionsParams options, JSONObject spec) {
-    LOG.info("Converting legacy JSON job spec to new import specification format");
+    LOG.debug("Converting legacy JSON job spec to new import specification format");
     var configuration = parseConfig(spec);
     var targets = extractTargets(spec);
     var actions = extractActions(spec);
