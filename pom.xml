@@ -603,7 +603,9 @@
     <profile>
       <id>splunkDeps</id>
       <activation>
-        <activeByDefault>true</activeByDefault>
+        <property>
+          <name>!skipSplunkDeps</name>
+        </property>
       </activation>
       <repositories>
         <repository>
@@ -622,6 +624,21 @@
           <url>https://oss.sonatype.org/content/repositories/snapshots</url>
         </pluginRepository>
       </pluginRepositories>
+    </profile>
+    <profile>
+      <id>confluentDeps</id>
+      <activation>
+        <property>
+          <name>!skipConfluentDeps</name>
+        </property>
+      </activation>
+      <repositories>
+        <repository>
+          <!-- Required for io.confluent:kafka-avro-serializer artifact -->
+          <id>confluent</id>
+          <url>https://packages.confluent.io/maven/</url>
+        </repository>
+      </repositories>
     </profile>
     <profile>
       <!-- mvn clean deploy -Prelease -pl plugins/templates-maven-plugin -pl v2/common -am -->
