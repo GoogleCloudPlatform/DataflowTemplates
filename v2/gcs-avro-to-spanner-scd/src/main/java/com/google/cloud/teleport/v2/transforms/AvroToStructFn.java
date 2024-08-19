@@ -121,7 +121,8 @@ public class AvroToStructFn extends SimpleFunction<GenericRecord, Struct> {
         default:
           throw new UnsupportedOperationException(
               String.format(
-                  "Support for Avro field of logical type %s is not supported.", logicalTypeName));
+                  "Avro logical field type %s on column %s is not supported.",
+                  logicalTypeName, field.name()));
         case "date":
           return Value.date(
               fieldValue == null

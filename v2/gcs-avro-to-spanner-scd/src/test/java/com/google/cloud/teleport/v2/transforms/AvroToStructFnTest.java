@@ -190,6 +190,7 @@ public final class AvroToStructFnTest {
       Schema inputSchema =
           Schema.createRecord(
               ImmutableList.<Field>builder()
+                  // Primitive types.
                   .add(
                       new Field(
                           "nullableNullBoolean",
@@ -255,9 +256,105 @@ public final class AvroToStructFnTest {
                           "nullableString",
                           Schema.createUnion(
                               Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING))))
+                  // Logical types.
+                  .add(
+                      new Field(
+                          "nullableDate",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL),
+                              new Schema.Parser()
+                                  .parse("{\"type\": \"int\", \"logicalType\": \"date\"}"))))
+                  .add(
+                      new Field(
+                          "nullableNullDate",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL),
+                              new Schema.Parser()
+                                  .parse("{\"type\": \"int\", \"logicalType\": \"date\"}"))))
+                  .add(
+                      new Field(
+                          "nullableDecimal",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL),
+                              new Schema.Parser()
+                                  .parse(
+                                      "{\"type\": \"bytes\", \"logicalType\": \"decimal\", \"precision\": 7, \"scale\": 6}"))))
+                  .add(
+                      new Field(
+                          "nullableNullDecimal",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL),
+                              new Schema.Parser()
+                                  .parse(
+                                      "{\"type\": \"bytes\", \"logicalType\": \"decimal\", \"precision\": 7, \"scale\": 6}"))))
+                  .add(
+                      new Field(
+                          "nullableLocalTimestampMillis",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL),
+                              new Schema.Parser()
+                                  .parse(
+                                      "{\"type\": \"long\", \"logicalType\": \"local-timestamp-millis\"}"))))
+                  .add(
+                      new Field(
+                          "nullableNullLocalTimestampMillis",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL),
+                              new Schema.Parser()
+                                  .parse(
+                                      "{\"type\": \"long\", \"logicalType\": \"local-timestamp-millis\"}"))))
+                  .add(
+                      new Field(
+                          "nullableTimestampMillis",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL),
+                              new Schema.Parser()
+                                  .parse(
+                                      "{\"type\": \"long\", \"logicalType\": \"timestamp-millis\"}"))))
+                  .add(
+                      new Field(
+                          "nullableNullTimestampMillis",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL),
+                              new Schema.Parser()
+                                  .parse(
+                                      "{\"type\": \"long\", \"logicalType\": \"timestamp-millis\"}"))))
+                  .add(
+                      new Field(
+                          "nullableLocalTimestampMicros",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL),
+                              new Schema.Parser()
+                                  .parse(
+                                      "{\"type\": \"long\", \"logicalType\": \"local-timestamp-micros\"}"))))
+                  .add(
+                      new Field(
+                          "nullableNullLocalTimestampMicros",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL),
+                              new Schema.Parser()
+                                  .parse(
+                                      "{\"type\": \"long\", \"logicalType\": \"local-timestamp-micros\"}"))))
+                  .add(
+                      new Field(
+                          "nullableTimestampMicros",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL),
+                              new Schema.Parser()
+                                  .parse(
+                                      "{\"type\": \"long\", \"logicalType\": \"timestamp-micros\"}"))))
+                  .add(
+                      new Field(
+                          "nullableNullTimestampMicros",
+                          Schema.createUnion(
+                              Schema.create(Schema.Type.NULL),
+                              new Schema.Parser()
+                                  .parse(
+                                      "{\"type\": \"long\", \"logicalType\": \"timestamp-micros\"}"))))
                   .build());
       GenericRecord input =
           new GenericRecordBuilder(inputSchema)
+              // Primitive types.
               .set("nullableNullBoolean", NullTypes.NULL_BOOLEAN)
               .set("nullableTrueBoolean", Boolean.TRUE)
               .set("nullableFalseBoolean", Boolean.FALSE)
@@ -271,9 +368,35 @@ public final class AvroToStructFnTest {
               .set("nullableLong", 7L)
               .set("nullableNullString", NullTypes.NULL_STRING)
               .set("nullableString", "text")
+              // Logical types.
+              .set("nullableDate", 7499L)
+              .set("nullableNullDate", NullTypes.NULL_INT64)
+              .set(
+                  "nullableDecimal",
+                  ByteArray.copyFrom(
+                      new Conversions.DecimalConversion()
+                          .toBytes(
+                              BigDecimal.valueOf(3141592L, 6),
+                              new Schema.Parser()
+                                  .parse(
+                                      "{\"type\": \"bytes\", \"logicalType\": \"decimal\", \"precision\": 7, \"scale\": 6}"),
+                              LogicalTypes.fromSchema(
+                                  new Schema.Parser()
+                                      .parse(
+                                          "{\"type\": \"bytes\", \"logicalType\": \"decimal\", \"precision\": 7, \"scale\": 6}"))))) // 3141592
+              .set("nullableNullDecimal", NullTypes.NULL_BYTES)
+              .set("nullableLocalTimestampMillis", 647917261000L)
+              .set("nullableNullLocalTimestampMillis", NullTypes.NULL_INT64)
+              .set("nullableTimestampMillis", 647917261000L)
+              .set("nullableNullTimestampMillis", NullTypes.NULL_INT64)
+              .set("nullableLocalTimestampMicros", 647917261000000L)
+              .set("nullableNullLocalTimestampMicros", NullTypes.NULL_INT64)
+              .set("nullableTimestampMicros", 647917261000000L)
+              .set("nullableNullTimestampMicros", NullTypes.NULL_INT64)
               .build();
       Struct expectedOutput =
           Struct.newBuilder()
+              // Primitive types.
               .set("nullableNullBoolean")
               .to(NullTypes.NULL_BOOLEAN)
               .set("nullableTrueBoolean")
@@ -300,6 +423,31 @@ public final class AvroToStructFnTest {
               .to(NullTypes.NULL_STRING)
               .set("nullableString")
               .to("text")
+              // Logical types.
+              .set("nullableDate")
+              .to(Date.fromYearMonthDay(1990, 7, 14))
+              .set("nullableNullDate")
+              .to(NullTypes.NULL_DATE)
+              .set("nullableDecimal")
+              .to(BigDecimal.valueOf(3141592, 6))
+              .set("nullableNullDecimal")
+              .to(NullTypes.NULL_NUMERIC)
+              .set("nullableLocalTimestampMillis")
+              .to(Timestamp.ofTimeMicroseconds(647917261000000L))
+              .set("nullableNullLocalTimestampMillis")
+              .to(NullTypes.NULL_TIMESTAMP)
+              .set("nullableTimestampMillis")
+              .to(Timestamp.ofTimeMicroseconds(647917261000000L))
+              .set("nullableNullTimestampMillis")
+              .to(NullTypes.NULL_TIMESTAMP)
+              .set("nullableLocalTimestampMicros")
+              .to(Timestamp.ofTimeMicroseconds(647917261000000L))
+              .set("nullableNullLocalTimestampMicros")
+              .to(NullTypes.NULL_TIMESTAMP)
+              .set("nullableTimestampMicros")
+              .to(Timestamp.ofTimeMicroseconds(647917261000000L))
+              .set("nullableNullTimestampMicros")
+              .to(NullTypes.NULL_TIMESTAMP)
               .build();
 
       Struct output = AvroToStructFn.create().apply(input);
@@ -324,6 +472,29 @@ public final class AvroToStructFnTest {
               UnsupportedOperationException.class, () -> AvroToStructFn.create().apply(input));
 
       assertThat(thrown).hasMessageThat().contains("Avro field type ARRAY is not supported.");
+    }
+
+    @Test
+    public void testApply_throwsForUnsupportedLogicalDataTypes() {
+      Schema inputSchema =
+          Schema.createRecord(
+              ImmutableList.<Field>builder()
+                  .add(
+                      new Field(
+                          "timeMicros",
+                          new Schema.Parser()
+                              .parse("{\"type\": \"long\", \"logicalType\": \"time-micros\"}")))
+                  .build());
+      GenericRecord input =
+          new GenericRecordBuilder(inputSchema).set("timeMicros", 647917261000000L).build();
+
+      UnsupportedOperationException thrown =
+          assertThrows(
+              UnsupportedOperationException.class, () -> AvroToStructFn.create().apply(input));
+
+      assertThat(thrown)
+          .hasMessageThat()
+          .contains("Avro logical field type time-micros on column timeMicros is not supported.");
     }
 
     @Test
