@@ -49,6 +49,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
   private static final ImmutableMap<String, JdbcValueMapper<?>> SCHEMA_MAPPINGS =
       ImmutableMap.<String, Pair<ResultSetValueExtractor<?>, ResultSetValueMapper<?>>>builder()
           .put("BIGINT", Pair.of(ResultSet::getLong, valuePassThrough))
+          .put("CHARACTER VARYING", Pair.of(ResultSet::getString, valuePassThrough))
           .put("DATE", Pair.of(utcDateExtractor, sqlDateToAvroTimestampMicros))
           .put("INT8", Pair.of(ResultSet::getLong, valuePassThrough))
           .put("TEXT", Pair.of(ResultSet::getString, valuePassThrough))

@@ -98,17 +98,13 @@ public final class JdbcSourceRowMapper implements JdbcIO.RowMapper<SourceRow> {
                 if (schema.isUnion()) {
                   schema = schema.getTypes().get(1);
                 }
-                JdbcValueMapper<?> mapper =
+                builder.setField(
+                    entry.getKey(),
                     this.mappingsProvider
                         .getMappings()
                         .getOrDefault(
-                            entry.getValue().getName().toUpperCase(), JdbcValueMapper.UNSUPPORTED);
-                Object value = mapper.mapValue(resultSet, entry.getKey(), schema);
-                logger.info(
-                    "Mapper for {}, mapped value {}",
-                    entry.getValue().getName().toUpperCase(),
-                    value);
-                builder.setField(entry.getKey(), value);
+                            entry.getValue().getName().toUpperCase(), JdbcValueMapper.UNSUPPORTED)
+                        .mapValue(resultSet, entry.getKey(), schema));
               } catch (SQLException e) {
                 mapperErrors.inc();
                 logger.error(

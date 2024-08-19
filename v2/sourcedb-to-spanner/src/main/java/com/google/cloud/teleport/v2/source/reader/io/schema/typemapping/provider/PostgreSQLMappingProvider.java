@@ -33,6 +33,7 @@ public final class PostgreSQLMappingProvider {
   private static final ImmutableMap<String, UnifiedTypeMapping> MAPPING =
       ImmutableMap.<String, UnifiedMappingProvider.Type>builder()
           .put("BIGINT", UnifiedMappingProvider.Type.LONG)
+          .put("CHARACTER VARYING", UnifiedMappingProvider.Type.STRING)
           .put("DATE", UnifiedMappingProvider.Type.TIMESTAMP)
           .put("INT8", UnifiedMappingProvider.Type.LONG)
           .put("TEXT", UnifiedMappingProvider.Type.STRING)

@@ -44,6 +44,7 @@ public class PostgreSQLMappingProviderTest {
   private ImmutableMap<String, String> expectedMapping() {
     return ImmutableMap.<String, String>builder()
         .put("BIGINT", "\"long\"")
+        .put("CHARACTER VARYING", "\"string\"")
         .put("DATE", "{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}")
         .put("INT8", "\"long\"")
         .put("TEXT", "\"string\"")
