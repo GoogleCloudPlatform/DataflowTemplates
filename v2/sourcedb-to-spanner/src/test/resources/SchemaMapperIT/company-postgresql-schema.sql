@@ -1,6 +1,6 @@
 CREATE TABLE "company" (
     "company_id" int8 PRIMARY KEY NOT NULL,
-    "company_name" varchar(100) DEFAULT NULL,
+    "company_name" varchar DEFAULT NULL,
     "created_on" date
 );
 
@@ -12,8 +12,8 @@ INSERT INTO "company" VALUES
 CREATE TABLE "employee" (
     "employee_id" int8 PRIMARY KEY NOT NULL,
     "company_id" int8 DEFAULT NULL,
-    "employee_name" varchar(100) DEFAULT NULL,
-    "employee_address" varchar(100) DEFAULT NULL,
+    "employee_name" varchar DEFAULT NULL,
+    "employee_address" varchar DEFAULT NULL,
     "created_on" date
 );
 

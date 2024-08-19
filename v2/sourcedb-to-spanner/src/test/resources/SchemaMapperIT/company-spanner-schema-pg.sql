@@ -2,7 +2,7 @@ CREATE TABLE
     company
 (
     company_id      INT64 NOT NULL,
-    company_name    STRING(100),
+    company_name    STRING(MAX),
     created_on      DATE,
 ) PRIMARY KEY
   (company_id);
@@ -11,8 +11,8 @@ CREATE TABLE
 (
     employee_id         INT64 NOT NULL,
     company_id          INT64,
-    employee_name       STRING(100),
-    employee_address    STRING(100),
+    employee_name       STRING(MAX),
+    employee_address    STRING(MAX),
     created_on          DATE,
 ) PRIMARY KEY
   (employee_id);
