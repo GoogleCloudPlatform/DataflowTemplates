@@ -306,16 +306,6 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
       return existingRows;
     }
 
-    private Struct.Builder copyRecordAsStructBuilder(Struct record) {
-      Struct.Builder recordBuilder = Struct.newBuilder();
-      record
-          .getType()
-          .getStructFields()
-          .forEach(
-              field -> recordBuilder.set(field.getName()).to(record.getValue(field.getName())));
-      return recordBuilder;
-    }
-
     private Struct createNewRecord(Struct record, com.google.cloud.Timestamp currentTimestamp) {
       Struct.Builder newRecordBuilder = StructHelper.of(record).copyAsBuilder();
       if (startDateColumnName() != null) {
