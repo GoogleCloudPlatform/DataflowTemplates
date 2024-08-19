@@ -107,22 +107,24 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
 
   @Setup
   public void setup() throws Exception {
-    RetrySettings retrySettings =
-        RetrySettings.newBuilder()
-            .setInitialRpcTimeout(Duration.ofHours(2))
-            .setMaxRpcTimeout(Duration.ofHours(2))
-            .setTotalTimeout(Duration.ofHours(2))
-            .setRpcTimeoutMultiplier(1.0)
-            .setInitialRetryDelay(Duration.ofSeconds(2))
-            .setMaxRetryDelay(Duration.ofSeconds(60))
-            .setRetryDelayMultiplier(1.5)
-            .setMaxAttempts(100)
-            .build();
-    // This property sets the default timeout between 2 response packets in the client library.
-    System.setProperty("com.google.cloud.spanner.watchdogTimeoutSeconds", "7200");
-    spannerAccessor =
-        SpannerAccessor.getOrCreate(
-            spannerConfig().withExecuteStreamingSqlRetrySettings(retrySettings));
+    if (spannerAccessor == null) {
+      RetrySettings retrySettings =
+          RetrySettings.newBuilder()
+              .setInitialRpcTimeout(Duration.ofHours(2))
+              .setMaxRpcTimeout(Duration.ofHours(2))
+              .setTotalTimeout(Duration.ofHours(2))
+              .setRpcTimeoutMultiplier(1.0)
+              .setInitialRetryDelay(Duration.ofSeconds(2))
+              .setMaxRetryDelay(Duration.ofSeconds(60))
+              .setRetryDelayMultiplier(1.5)
+              .setMaxAttempts(100)
+              .build();
+      // This property sets the default timeout between 2 response packets in the client library.
+      System.setProperty("com.google.cloud.spanner.watchdogTimeoutSeconds", "7200");
+      spannerAccessor =
+          SpannerAccessor.getOrCreate(
+              spannerConfig().withExecuteStreamingSqlRetrySettings(retrySettings));
+    }
 
     if (currentTimestampGetter == null) {
       currentTimestampGetter = new CurrentTimestampGetter();
@@ -161,6 +163,7 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
       case TYPE_2:
         return new SpannerSpannerScdType2TypeRunner();
       default:
+        // This should not happen as SCD Types should be expanded when added to the enum.
         throw new UnsupportedOperationException(
             String.format("Only SCD Type 1 and 2 are supported. Found %s.", scdType()));
     }
