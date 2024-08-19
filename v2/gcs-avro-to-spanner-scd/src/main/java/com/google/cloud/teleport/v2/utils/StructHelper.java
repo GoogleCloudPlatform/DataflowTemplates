@@ -46,7 +46,9 @@ public class StructHelper {
     return new StructHelper(struct);
   }
 
-  public Struct getStruct() { return struct; }
+  public Struct getStruct() {
+    return struct;
+  }
 
   public StructHelper omitColumNames(Iterable<String> omittedColumnNames) {
     return new StructHelper(copyAsBuilderInternal(omittedColumnNames).build());
@@ -60,12 +62,9 @@ public class StructHelper {
     Struct.Builder recordBuilder = Struct.newBuilder();
     ImmutableSet<String> omittedColumnNamesSet =
         omittedColumnNames == null ? ImmutableSet.of() : ImmutableSet.copyOf(omittedColumnNames);
-    struct
-        .getType()
-        .getStructFields()
-        .stream()
+    struct.getType().getStructFields().stream()
         .filter(field -> !omittedColumnNamesSet.contains(field.getName()))
-        .forEach(field -> recordBuilder .set(field.getName()).to(struct.getValue(field.getName())));
+        .forEach(field -> recordBuilder.set(field.getName()).to(struct.getValue(field.getName())));
     return recordBuilder;
   }
 

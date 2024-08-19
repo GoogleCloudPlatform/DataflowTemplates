@@ -51,15 +51,10 @@ public class StructHelperTest {
             .to("Nito")
             .build();
     Struct expectedOutputRecord =
-        Struct.newBuilder()
-            .set("pk1")
-            .to(777)
-            .set("column1")
-            .to("Nito")
-            .build();
+        Struct.newBuilder().set("pk1").to(777).set("column1").to("Nito").build();
 
-    StructHelper structHelper = StructHelper.of(inputRecord).omitColumNames(
-        ImmutableList.of("pk2", "pk3"));
+    StructHelper structHelper =
+        StructHelper.of(inputRecord).omitColumNames(ImmutableList.of("pk2", "pk3"));
 
     assertThat(structHelper.getStruct()).isEqualTo(expectedOutputRecord);
   }

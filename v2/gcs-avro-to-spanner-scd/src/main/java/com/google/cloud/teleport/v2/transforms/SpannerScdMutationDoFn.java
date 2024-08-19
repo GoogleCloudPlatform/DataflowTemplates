@@ -219,7 +219,6 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
       recordBatch.forEach(record -> transaction.buffer(createUpsertMutation(record)));
       return null;
     }
-
   }
 
   /**
@@ -306,9 +305,7 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
           .getType()
           .getStructFields()
           .forEach(
-              field ->
-                  recordBuilder
-                      .set(field.getName()).to(record.getValue(field.getName())));
+              field -> recordBuilder.set(field.getName()).to(record.getValue(field.getName())));
       return recordBuilder;
     }
 
@@ -322,7 +319,8 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
     }
 
     private Struct updateOldRecord(Struct record, com.google.cloud.Timestamp currentTimestamp) {
-      Struct.Builder updatedRecordBuilder = StructHelper.of(record).omitColumNames(ImmutableList.of("end_date")).copyAsBuilder();
+      Struct.Builder updatedRecordBuilder =
+          StructHelper.of(record).omitColumNames(ImmutableList.of("end_date")).copyAsBuilder();
       updatedRecordBuilder.set(endDateColumnName()).to(currentTimestamp);
       return updatedRecordBuilder.build();
     }
