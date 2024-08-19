@@ -17,8 +17,6 @@ package com.google.cloud.teleport.bigtable;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.gcp.bigtable.matchers.BigtableAsserts.assertThatBigtableRecords;
-import static org.apache.beam.it.gcp.bigtable.matchers.BigtableAsserts.createWritetimeSchema;
-import static org.apache.beam.it.gcp.bigtable.matchers.BigtableAsserts.toEpochMicros;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertTrue;
@@ -64,6 +62,30 @@ public class CassandraToBigtableIT extends TemplateTestBase {
   private CassandraResourceManager cassandraResourceManager;
   private BigtableResourceManager bigtableResourceManager;
   private GcsResourceManager gcsResourceManager;
+
+  private String createWritetimeSchema(Map... entries) {
+
+    ArrayList<String> schema = new ArrayList<>();
+    for (Map entry : entries) {
+      ArrayList<String> schemaRow = new ArrayList<>();
+      for (Object key : entry.keySet()) {
+        schemaRow.add(String.format("%s: %s", doubleQuote(key), doubleQuote(entry.get(key))));
+      }
+
+      String rowString = String.format("{%s}", String.join(", ", schemaRow));
+      schema.add(rowString);
+    }
+    return String.join("\n", schema);
+  }
+
+  private String doubleQuote(Object string) {
+    return '"' + (String) string + '"';
+  }
+
+  // Convert Instant timestamp to epoch microsecond format.
+  private long toEpochMicros(Instant time) {
+    return time.toEpochMilli() * 1000;
+  }
 
   @Before
   public void setup() throws IOException {

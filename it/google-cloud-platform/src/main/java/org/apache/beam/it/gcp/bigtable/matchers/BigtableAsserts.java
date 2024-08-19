@@ -21,7 +21,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatRecords
 
 import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.bigtable.data.v2.models.RowCell;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -67,29 +66,5 @@ public class BigtableAsserts {
    */
   public static RecordsSubject assertThatBigtableRecords(Iterable<Row> rows, String family) {
     return assertThatRecords(bigtableRowsToRecords(rows, family));
-  }
-
-  public static String createWritetimeSchema(Map... entries) {
-
-    ArrayList<String> schema = new ArrayList<>();
-    for (Map entry : entries) {
-      ArrayList<String> schemaRow = new ArrayList<>();
-      for (Object key : entry.keySet()) {
-        schemaRow.add(String.format("%s: %s", doubleQuote(key), doubleQuote(entry.get(key))));
-      }
-
-      String rowString = String.format("{%s}", String.join(", ", schemaRow));
-      schema.add(rowString);
-    }
-    return String.join("\n", schema);
-  }
-
-  public static String doubleQuote(Object string) {
-    return '"' + (String) string + '"';
-  }
-
-  // Convert Instant timestamp to epoch microsecond format.
-  public static long toEpochMicros(Instant time) {
-    return time.toEpochMilli() * 1000;
   }
 }
