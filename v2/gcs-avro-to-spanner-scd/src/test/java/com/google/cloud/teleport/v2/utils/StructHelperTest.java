@@ -91,6 +91,71 @@ public class StructHelperTest {
   }
 
   @Test
+  public void testKeyMaker_createKey_forAllDataTypes() {
+    Timestamp timestamp = Timestamp.now();
+    Struct record =
+        Struct.newBuilder()
+            .set("pkBoolean")
+            .to(Value.bool(Boolean.TRUE))
+            .set("pkBytes")
+            .to(Value.bytes(ByteArray.fromBase64("Tml0bw==")))
+            .set("pkDate")
+            .to(Value.date(Date.fromYearMonthDay(1990, 7, 14)))
+            .set("pkFloat32")
+            .to(Value.float32(3.14F))
+            .set("pkFloat64")
+            .to(Value.float64(3.14))
+            .set("pkInt64")
+            .to(Value.int64(777L))
+            .set("pkJson")
+            .to(Value.json("{\"name\": \"Nito\"}"))
+            .set("pkNumeric")
+            .to(Value.numeric(BigDecimal.valueOf(3.14)))
+            .set("pkPgNumeric")
+            .to(Value.pgNumeric("3.14"))
+            .set("pkJsonb")
+            .to(Value.pgJsonb("{\"name\": \"Nito\"}"))
+            .set("pkString")
+            .to(Value.string("string"))
+            .set("pkTimestamp")
+            .to(Value.timestamp(timestamp))
+            .build();
+    List<String> primaryKeys =
+        List.of(
+            "pkBoolean",
+            "pkBytes",
+            "pkDate",
+            "pkFloat32",
+            "pkFloat64",
+            "pkInt64",
+            "pkJson",
+            "pkNumeric",
+            "pkPgNumeric",
+            "pkJsonb",
+            "pkString",
+            "pkTimestamp");
+    Key expectedKey =
+        Key.newBuilder()
+            .append(Boolean.TRUE)
+            .append(ByteArray.fromBase64("Tml0bw=="))
+            .append(Date.fromYearMonthDay(1990, 7, 14))
+            .append(3.14F)
+            .append(3.14)
+            .append(777L)
+            .append("{\"name\": \"Nito\"}")
+            .append(BigDecimal.valueOf(3.14))
+            .append(BigDecimal.valueOf(3.14))
+            .append("{\"name\": \"Nito\"}")
+            .append("string")
+            .append(timestamp)
+            .build();
+
+    Key returnKey = StructHelper.of(record).keyMaker(primaryKeys).createKey();
+
+    assertThat(returnKey).isEqualTo(expectedKey);
+  }
+
+  @Test
   public void testKeyMaker_createKey_forMultipleKeys_inOrder() {
     Timestamp timestamp = Timestamp.now();
     Struct record =
@@ -136,7 +201,53 @@ public class StructHelperTest {
   }
 
   @Test
-  public void testKeyMaker_createKey_throwsForNonSupportedTye() {
+  public void testKeyMaker_createKey_forMultipleKeys_outOfOrder_withOmittedColumns() {
+    Timestamp timestamp = Timestamp.now();
+    Struct record =
+        Struct.newBuilder()
+            // Columns are intentionally out of order.
+            .set("pk1")
+            .to(777)
+            .set("column1")
+            .to("Nito")
+            .set("pk3")
+            .to("value")
+            .set("pk2")
+            .to(timestamp)
+            .build();
+    List<String> primaryKeys = List.of("pk1", "pk2", "pk3");
+    List<String> omittedColumnNames = List.of("pk3", "nonExistingPk");
+    Key expectedKey = Key.newBuilder().append(777).append(timestamp).build();
+
+    Key returnKey = StructHelper.of(record).keyMaker(primaryKeys, omittedColumnNames).createKey();
+
+    assertThat(returnKey).isEqualTo(expectedKey);
+  }
+
+  @Test
+  public void testKeyMaker_createKey_throwsForNonExistingPrimaryKey() {
+    Struct structField = Struct.newBuilder().set("abc").to(123).build();
+    Struct record =
+        Struct.newBuilder()
+            .set("pk1")
+            .to(structField) // Struct (Record) is not supported.
+            .set("column1")
+            .to("Nito")
+            .build();
+    List<String> primaryKeys = List.of("pk2");
+
+    RuntimeException thrown =
+        assertThrows(
+            RuntimeException.class,
+            () -> StructHelper.of(record).keyMaker(primaryKeys).createKey());
+
+    assertThat(thrown)
+        .hasMessageThat()
+        .contains("Primary key name pk2 not found in record. Unable to create Key.");
+  }
+
+  @Test
+  public void testKeyMaker_createKey_throwsForNonSupportedType() {
     Struct structField = Struct.newBuilder().set("abc").to(123).build();
     Struct record =
         Struct.newBuilder()
@@ -204,6 +315,73 @@ public class StructHelperTest {
             .createKeyWithExtraValues(Value.timestamp(extraValue1), Value.string(extraValue2));
 
     assertThat(returnKey).isEqualTo(expectedKey);
+  }
+
+  @Test
+  public void testKeyMaker_createKeyWithExtraValues_addsValues_forAllDataTypes() {
+    Timestamp timestamp = Timestamp.now();
+    Struct record = Struct.newBuilder().set("column1").to("Nito").build();
+    List<String> primaryKeys = List.of();
+    Key expectedKey =
+        Key.newBuilder()
+            .append(Boolean.TRUE)
+            .append(ByteArray.fromBase64("Tml0bw=="))
+            .append(Date.fromYearMonthDay(1990, 7, 14))
+            .append(3.14F)
+            .append(3.14)
+            .append(777L)
+            .append("{\"name\": \"Nito\"}")
+            .append(BigDecimal.valueOf(3.14))
+            .append(BigDecimal.valueOf(3.14))
+            .append("{\"name\": \"Nito\"}")
+            .append("string")
+            .append(timestamp)
+            .build();
+
+    Key returnKey =
+        StructHelper.of(record)
+            .keyMaker(primaryKeys)
+            .createKeyWithExtraValues(
+                Value.bool(Boolean.TRUE),
+                Value.bytes(ByteArray.fromBase64("Tml0bw==")),
+                Value.date(Date.fromYearMonthDay(1990, 7, 14)),
+                Value.float32(3.14F),
+                Value.float64(3.14),
+                Value.int64(777L),
+                Value.json("{\"name\": \"Nito\"}"),
+                Value.numeric(BigDecimal.valueOf(3.14)),
+                Value.pgNumeric("3.14"),
+                Value.pgJsonb("{\"name\": \"Nito\"}"),
+                Value.string("string"),
+                Value.timestamp(timestamp));
+
+    assertThat(returnKey).isEqualTo(expectedKey);
+  }
+
+  @Test
+  public void testKeyMaker_createKeyWithExtraValues_throwsForNonExistingPrimaryKey() {
+    Struct structField = Struct.newBuilder().set("abc").to(123).build();
+    Struct record =
+        Struct.newBuilder()
+            .set("pk1")
+            .to(structField) // Struct (Record) is not supported.
+            .set("column1")
+            .to("Nito")
+            .build();
+    List<String> primaryKeys = List.of("pk2");
+    Timestamp extraValue = Timestamp.now();
+
+    RuntimeException thrown =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                StructHelper.of(record)
+                    .keyMaker(primaryKeys)
+                    .createKeyWithExtraValues(Value.timestamp(extraValue)));
+
+    assertThat(thrown)
+        .hasMessageThat()
+        .contains("Primary key name pk2 not found in record. Unable to create Key.");
   }
 
   @Test
