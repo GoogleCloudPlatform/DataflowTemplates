@@ -53,6 +53,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   private static final Logger logger = LoggerFactory.getLogger(PostgreSQLDialectAdapter.class);
 
   private static final String NO_PAD = "NO PAD";
+  private static final int VARCHAR_MAX_LENGTH = 65535;
 
   // SQLState / Error codes
   // Ref: <a href="https://www.postgresql.org/docs/current/errcodes-appendix.html"></a>
@@ -307,18 +308,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         ImmutableList.Builder<SourceColumnIndexInfo> indexInfosBuilder = ImmutableList.builder();
         try (ResultSet resultSet = statement.executeQuery()) {
           while (resultSet.next()) {
-            CollationReference collationReference = null;
-            String collation = resultSet.getString("collation");
-            if (collation != null) {
-              collationReference =
-                  CollationReference.builder()
-                      // TODO(thiagotnunes)
-                      .setDbCharacterSet("UNKNOWN")
-                      .setDbCollation(collation)
-                      .setPadSpace(shouldPadSpace(resultSet.getString("pad")))
-                      .build();
-            }
-            indexInfosBuilder.add(
+            SourceColumnIndexInfo.Builder indexBuilder =
                 SourceColumnIndexInfo.builder()
                     .setColumnName(resultSet.getString("column_name"))
                     .setIndexName(resultSet.getString("index_name"))
@@ -326,11 +316,22 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                     .setIsPrimary(resultSet.getBoolean("is_primary"))
                     .setCardinality(resultSet.getLong("cardinality"))
                     .setOrdinalPosition(resultSet.getLong("ordinal_position"))
-                    .setIndexType(indexTypeFrom(resultSet.getString("type_category")))
-                    .setCollationReference(collationReference)
-                    // TODO(thiagotnunes)
-                    .setStringMaxLength(null)
-                    .build());
+                    .setIndexType(indexTypeFrom(resultSet.getString("type_category")));
+
+            // TODO(thiagotnunes): Collation support and string max length
+            String collation = resultSet.getString("collation");
+            if (collation != null) {
+              indexBuilder.setCollationReference(
+                  CollationReference.builder()
+                      // FIXME: Character set being hardcoded as collation
+                      .setDbCharacterSet(collation)
+                      .setDbCollation(collation)
+                      .setPadSpace(shouldPadSpace(resultSet.getString("pad")))
+                      .build());
+              // FIXME: String max length being hardcoded as varchar max length
+              indexBuilder.setStringMaxLength(VARCHAR_MAX_LENGTH);
+            }
+            indexInfosBuilder.add(indexBuilder.build());
           }
         }
         tableIndexesBuilder.put(table, indexInfosBuilder.build());
