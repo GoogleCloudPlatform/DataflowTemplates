@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.constants;
 
+import org.apache.beam.sdk.values.TupleTag;
+
 /** A single class to store all constants. */
 public class Constants {
 
@@ -41,4 +43,13 @@ public class Constants {
 
   // Commit timestamp column name in shadow table
   public static final String PROCESSED_COMMIT_TS_COLUMN_NAME = "processed_commit_ts";
+
+  /* The tag for events failed with non-retryable errors. */
+  public static final TupleTag<String> PERMANENT_ERROR_TAG = new TupleTag<String>() {};
+
+  /* The Tag for retryable Failed writes. */
+  public static final TupleTag<String> RETRYABLE_ERROR_TAG = new TupleTag<String>() {};
+
+  // output tag for successful write
+  public static final TupleTag<String> SUCCESS_TAG = new TupleTag<String>() {};
 }

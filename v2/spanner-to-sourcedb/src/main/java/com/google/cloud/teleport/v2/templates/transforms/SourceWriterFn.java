@@ -19,18 +19,23 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.utils.MySqlDao;
 import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
 import com.google.common.collect.ImmutableList;
+import com.google.gson.Gson;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -45,16 +50,23 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.TupleTag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** This class writes to source based on commit timestamp captured in shadow table. */
-public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord>, Void> {
+public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord>, String>
+    implements Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(SourceWriterFn.class);
+  private static Gson gson = new Gson();
+
   private transient ObjectMapper mapper;
 
-  private final Counter numRecProcessedMetric =
-      Metrics.counter(SourceWriterFn.class, "records_processed");
+  private final Counter successRecordCountMetric =
+      Metrics.counter(SourceWriterFn.class, "success_record_count");
+
+  private final Counter retryableRecordCountMetric =
+      Metrics.counter(SourceWriterFn.class, "retryable_record_count");
 
   private final Distribution lagMetric =
       Metrics.distribution(SourceWriterFn.class, "replication_lag_in_milli");
@@ -156,17 +168,37 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         InputRecordProcessor.processRecord(
             spannerRec, schema, mySqlDao, shardId, sourceDbTimezoneOffset);
 
-        try {
-          spannerDao.updateProcessedCommitTimestamp(
-              getShadowTableMutation(
-                  tableName, shadowTableName, keysJson, spannerRec.getCommitTimestamp()));
-        } catch (Exception e) {
-          LOG.error("Failed to update last commit timestamp", e);
-          // TODO DLQ handling
-        }
+        spannerDao.updateProcessedCommitTimestamp(
+            getShadowTableMutation(
+                tableName, shadowTableName, keysJson, spannerRec.getCommitTimestamp()));
       }
-    } catch (Exception e) {
-      LOG.error("Failed to write to source", e);
+      successRecordCountMetric.inc();
+      if (spannerRec.isRetryRecord()) {
+        retryableRecordCountMetric.dec();
+      }
+      com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
+      c.output(Constants.SUCCESS_TAG, timestamp.toString());
+    } catch (ChangeEventConvertorException ex) {
+      outputWithErrorTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
+    } catch (SpannerException | IllegalStateException ex) {
+      if (!spannerRec.isRetryRecord()) {
+        retryableRecordCountMetric.inc();
+      }
+      outputWithErrorTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
+    } catch (Exception ex) {
+      LOG.error("Failed to write to source", ex);
+      // we are only interested in the retryable errors
+      // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
+      // Error 1452 and 1451
+
+      if (ex.getMessage().contains("a foreign key constraint fails")) {
+        if (!spannerRec.isRetryRecord()) {
+          retryableRecordCountMetric.inc();
+        }
+        outputWithErrorTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
+      } else {
+        outputWithErrorTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
+      }
     }
   }
 
@@ -174,26 +206,36 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       String tableName,
       String shadowTableName,
       JsonNode keysJson,
-      com.google.cloud.Timestamp commitTimestamp) {
+      com.google.cloud.Timestamp commitTimestamp)
+      throws ChangeEventConvertorException {
     Mutation.WriteBuilder mutationBuilder = null;
-    try {
-      Table table = ddl.table(tableName);
-      ImmutableList<IndexColumn> keyColumns = table.primaryKeys();
-      List<String> keyColumnNames =
-          keyColumns.stream().map(k -> k.name()).collect(Collectors.toList());
-      Set<String> keyColumnNamesSet = new HashSet<>(keyColumnNames);
-      mutationBuilder =
-          ChangeEventSpannerConvertor.mutationBuilderFromEvent(
-              shadowTableName,
-              table,
-              keysJson,
-              keyColumnNames,
-              keyColumnNamesSet,
-              /* convertNameToLowerCase= */ false);
-      mutationBuilder.set(Constants.PROCESSED_COMMIT_TS_COLUMN_NAME).to(commitTimestamp);
-    } catch (Exception e) {
-      LOG.error("Failed to update last commit timestamp", e);
-    }
+
+    Table table = ddl.table(tableName);
+    ImmutableList<IndexColumn> keyColumns = table.primaryKeys();
+    List<String> keyColumnNames =
+        keyColumns.stream().map(k -> k.name()).collect(Collectors.toList());
+    Set<String> keyColumnNamesSet = new HashSet<>(keyColumnNames);
+    mutationBuilder =
+        ChangeEventSpannerConvertor.mutationBuilderFromEvent(
+            shadowTableName,
+            table,
+            keysJson,
+            keyColumnNames,
+            keyColumnNamesSet,
+            /* convertNameToLowerCase= */ false);
+    mutationBuilder.set(Constants.PROCESSED_COMMIT_TS_COLUMN_NAME).to(commitTimestamp);
+
     return mutationBuilder.build();
+  }
+
+  void outputWithErrorTag(
+      ProcessContext c,
+      TupleTag<String> tag,
+      String message,
+      TrimmedShardedDataChangeRecord record) {
+    record.setRetryRecord(true);
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord = new ChangeStreamErrorRecord(jsonRec, message);
+    c.output(tag, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
   }
 }
