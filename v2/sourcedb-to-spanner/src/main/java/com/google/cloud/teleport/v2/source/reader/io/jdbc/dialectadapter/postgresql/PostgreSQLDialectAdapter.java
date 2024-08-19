@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryEx
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
@@ -35,6 +36,7 @@ import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -49,6 +51,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   }
 
   private static final Logger logger = LoggerFactory.getLogger(PostgreSQLDialectAdapter.class);
+
+  private static final String NO_PAD = "NO PAD";
 
   // SQLState / Error codes
   // Ref: <a href="https://www.postgresql.org/docs/current/errcodes-appendix.html"></a>
@@ -280,12 +284,16 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                 + "  ix.indisprimary as is_primary,"
                 + "  ix.indnkeyatts as cardinality,"
                 + "  a.attnum as ordinal_position,"
-                + "  t.typcategory as type_category"
+                + "  t.typcategory as type_category,"
+                + "  ico.collation_name as collation,"
+                + "  ico.pad_attribute as pad"
                 + " FROM pg_catalog.pg_indexes ixs"
-                + "  JOIN pg_catalog.pg_class c on c.relname = ixs.indexname"
-                + "  JOIN pg_catalog.pg_index ix on c.oid = ix.indexrelid"
-                + "  JOIN pg_catalog.pg_attribute a on c.oid = a.attrelid"
-                + "  JOIN pg_catalog.pg_type t on t.oid = a.atttypid"
+                + "  JOIN pg_catalog.pg_class c ON c.relname = ixs.indexname"
+                + "  JOIN pg_catalog.pg_index ix ON c.oid = ix.indexrelid"
+                + "  JOIN pg_catalog.pg_attribute a ON c.oid = a.attrelid"
+                + "  JOIN pg_catalog.pg_type t ON t.oid = a.atttypid"
+                + "  LEFT OUTER JOIN pg_catalog.pg_collation co ON co.oid = ix.indcollation[a.attnum - 1]"
+                + "  LEFT OUTER JOIN information_schema.collations ico ON ico.collation_name = co.collname"
                 + " WHERE ixs.tablename = ?"
                 + "  AND ixs.schemaname NOT LIKE 'pg_%%'"
                 + "  AND ixs.schemaname NOT IN (%s)"
@@ -299,6 +307,17 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         ImmutableList.Builder<SourceColumnIndexInfo> indexInfosBuilder = ImmutableList.builder();
         try (ResultSet resultSet = statement.executeQuery()) {
           while (resultSet.next()) {
+            CollationReference collationReference = null;
+            String collation = resultSet.getString("collation");
+            if (collation != null) {
+              collationReference =
+                  CollationReference.builder()
+                      // TODO(thiagotnunes)
+                      .setDbCharacterSet("UNKNOWN")
+                      .setDbCollation(collation)
+                      .setPadSpace(shouldPadSpace(resultSet.getString("pad")))
+                      .build();
+            }
             indexInfosBuilder.add(
                 SourceColumnIndexInfo.builder()
                     .setColumnName(resultSet.getString("column_name"))
@@ -308,6 +327,9 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                     .setCardinality(resultSet.getLong("cardinality"))
                     .setOrdinalPosition(resultSet.getLong("ordinal_position"))
                     .setIndexType(indexTypeFrom(resultSet.getString("type_category")))
+                    .setCollationReference(collationReference)
+                    // TODO(thiagotnunes)
+                    .setStringMaxLength(null)
                     .build());
           }
         }
@@ -464,5 +486,9 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       default:
         return SourceColumnIndexInfo.IndexType.OTHER;
     }
+  }
+
+  private boolean shouldPadSpace(@Nullable String pad) throws SQLException {
+    return pad != null && !pad.equals(NO_PAD);
   }
 }
