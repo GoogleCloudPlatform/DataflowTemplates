@@ -363,7 +363,6 @@ public final class SpannerScdMutationTypeDoFnTest {
 
   @Test
   public void testProcessElement_scdType2_withNoRowMatch_handlesSequentialUpdates() {
-    // TODO: WIP.
     when(timestampMock.get()).thenReturn(Timestamp.ofTimeMicroseconds(777));
     ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
     when(resultSetMock.next()).thenReturn(Boolean.FALSE); // No results.
@@ -428,7 +427,6 @@ public final class SpannerScdMutationTypeDoFnTest {
 
   @Test
   public void testProcessElement_scdType2_withRowMatch_handlesSequentialUpdates() {
-    // TODO: WIP.
     when(timestampMock.get()).thenReturn(Timestamp.ofTimeMicroseconds(777));
     ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
     when(resultSetMock.next()).thenReturn(Boolean.TRUE, Boolean.FALSE);
