@@ -320,7 +320,9 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
 
     private Struct updateOldRecord(Struct record, com.google.cloud.Timestamp currentTimestamp) {
       Struct.Builder updatedRecordBuilder =
-          StructHelper.of(record).omitColumNames(ImmutableList.of("end_date")).copyAsBuilder();
+          StructHelper.of(record)
+              .omitColumNames(ImmutableList.of(endDateColumnName()))
+              .copyAsBuilder();
       updatedRecordBuilder.set(endDateColumnName()).to(currentTimestamp);
       return updatedRecordBuilder.build();
     }
