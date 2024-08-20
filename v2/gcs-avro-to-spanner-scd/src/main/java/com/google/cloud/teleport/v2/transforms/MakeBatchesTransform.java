@@ -88,7 +88,12 @@ public abstract class MakeBatchesTransform
     public void ungroup(
         @Element Iterable<KV<String, Iterable<Struct>>> inputBatch,
         OutputReceiver<Iterable<Struct>> output) {
-      // TODO(Nito): add orderBy logic.
+      // TODO: add orderBy logic to handle rows with the same primary keys.
+      //  At the moment, the pipeline assumes that the rows are in update order where the first row
+      //  seen is the first row updated. However, this might not be the right order as readers,
+      //  writers and grouping logic may not guarantee order. Instead, Avro may contain a column
+      //  that indicates the order in which updates happened if the same row is updated more than
+      //  once.
       ArrayList<Struct> batchWithoutKeys = new ArrayList<>();
       inputBatch.forEach(
           kvBatch -> {
