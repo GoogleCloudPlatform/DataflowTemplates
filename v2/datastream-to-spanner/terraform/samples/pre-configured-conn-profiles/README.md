@@ -40,6 +40,9 @@ Following permissions are required -
 - resourcemanager.projects.setIamPolicy
 - storage.buckets.update
 - storage.objects.delete
+- storage.objects.create
+- serviceusage.services.use
+- serviceusage.services.enable
 ```
 
 **Note**: Add the `roles/viewer` role as well to the service account.

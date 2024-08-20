@@ -26,6 +26,7 @@ provider "google" {
 #Enable the APIs
 resource "google_project_service" "enabled_apis" {
   for_each = toset([
+    "iam.googleapis.com",
     "dataflow.googleapis.com",
     "datastream.googleapis.com",
     "storage.googleapis.com",

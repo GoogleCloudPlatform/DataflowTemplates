@@ -60,6 +60,9 @@ Following permissions are required -
 - storage.buckets.delete
 - storage.buckets.update
 - storage.objects.delete
+- storage.objects.create
+- serviceusage.services.use
+- serviceusage.services.enable
 ```
 
 **Note**: Add the `roles/viewer` role as well to the service account.
