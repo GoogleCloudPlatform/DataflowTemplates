@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import com.google.api.gax.retrying.RetrySettings;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
@@ -24,16 +23,15 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.AvroToSpannerScdPipeline.AvroToSpannerScdOptions.ScdType;
+import com.google.cloud.teleport.v2.utils.SpannerFactory;
 import com.google.cloud.teleport.v2.utils.StructHelper;
 import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper;
 import com.google.common.collect.ImmutableList;
 import java.util.HashMap;
 import java.util.List;
 import javax.annotation.Nullable;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.threeten.bp.Duration;
 
 @AutoValue
 abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
@@ -54,7 +52,7 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
 
   abstract ImmutableList<String> tableColumnNames();
 
-  private transient SpannerAccessor spannerAccessor;
+  private transient SpannerFactory spannerFactory;
 
   private transient CurrentTimestampGetter currentTimestampGetter;
 
@@ -82,8 +80,8 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
     return new AutoValue_SpannerScdMutationDoFn.Builder();
   }
 
-  SpannerScdMutationDoFn setSpannerAccessor(SpannerAccessor spannerAccessor) {
-    this.spannerAccessor = spannerAccessor;
+  SpannerScdMutationDoFn setSpannerFactory(SpannerFactory spannerFactory) {
+    this.spannerFactory = spannerFactory;
     return this;
   }
 
@@ -107,23 +105,8 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
 
   @Setup
   public void setup() throws Exception {
-    if (spannerAccessor == null) {
-      RetrySettings retrySettings =
-          RetrySettings.newBuilder()
-              .setInitialRpcTimeout(Duration.ofHours(2))
-              .setMaxRpcTimeout(Duration.ofHours(2))
-              .setTotalTimeout(Duration.ofHours(2))
-              .setRpcTimeoutMultiplier(1.0)
-              .setInitialRetryDelay(Duration.ofSeconds(2))
-              .setMaxRetryDelay(Duration.ofSeconds(60))
-              .setRetryDelayMultiplier(1.5)
-              .setMaxAttempts(100)
-              .build();
-      // This property sets the default timeout between 2 response packets in the client library.
-      System.setProperty("com.google.cloud.spanner.watchdogTimeoutSeconds", "7200");
-      spannerAccessor =
-          SpannerAccessor.getOrCreate(
-              spannerConfig().withExecuteStreamingSqlRetrySettings(retrySettings));
+    if (spannerFactory == null) {
+      spannerFactory = SpannerFactory.withSpannerConfig(spannerConfig());
     }
 
     if (currentTimestampGetter == null) {
@@ -133,7 +116,7 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
 
   @Teardown
   public void teardown() throws Exception {
-    spannerAccessor.close();
+    spannerFactory.close();
   }
 
   /**
@@ -145,7 +128,7 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
    */
   @ProcessElement
   public void writeBatchChanges(@Element Iterable<Struct> recordBatch) {
-    spannerAccessor
+    spannerFactory
         .getDatabaseClient()
         .readWriteTransaction()
         .allowNestedTransaction()

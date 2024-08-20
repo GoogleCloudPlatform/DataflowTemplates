@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerOptions;
@@ -29,13 +28,13 @@ import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.transforms.AvroToStructFn;
 import com.google.cloud.teleport.v2.transforms.MakeBatchesTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerScdMutationTransform;
+import com.google.cloud.teleport.v2.utils.SpannerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
@@ -154,14 +153,17 @@ public class AvroToSpannerScdPipeline {
 
   private static Iterable<String> getTableColumnNames(
       SpannerConfig spannerConfig, String tableName) {
-    SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-    DatabaseClient spannerClient = spannerAccessor.getDatabaseClient();
+    SpannerFactory spannerFactory = SpannerFactory.withSpannerConfig(spannerConfig);
 
     String schemaQuery =
         String.format(
             "SELECT COLUMN_NAME FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE TABLE_NAME = \"%s\"",
             tableName);
-    ResultSet results = spannerClient.readOnlyTransaction().executeQuery(Statement.of(schemaQuery));
+    ResultSet results =
+        spannerFactory
+            .getDatabaseClient()
+            .readOnlyTransaction()
+            .executeQuery(Statement.of(schemaQuery));
 
     ArrayList<String> columnNames = new ArrayList<>();
     while (results.next()) {
@@ -169,7 +171,7 @@ public class AvroToSpannerScdPipeline {
       columnNames.add(rowStruct.getString("COLUMN_NAME"));
     }
 
-    spannerAccessor.close();
+    spannerFactory.close();
     return columnNames;
   }
 

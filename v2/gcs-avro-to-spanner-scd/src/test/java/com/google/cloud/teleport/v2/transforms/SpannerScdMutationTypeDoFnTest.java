@@ -32,6 +32,7 @@ import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.templates.AvroToSpannerScdPipeline.AvroToSpannerScdOptions.ScdType;
 import com.google.cloud.teleport.v2.transforms.SpannerScdMutationDoFn.CurrentTimestampGetter;
+import com.google.cloud.teleport.v2.utils.SpannerFactory;
 import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper.NullTypes;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
@@ -48,6 +49,7 @@ public final class SpannerScdMutationTypeDoFnTest {
 
   private CurrentTimestampGetter timestampMock;
   private SpannerConfig spannerConfigMock;
+  private SpannerFactory spannerFactoryMock;
   private SpannerAccessor spannerAccessorMock;
   private TransactionContext transactionContextMock;
 
@@ -61,9 +63,10 @@ public final class SpannerScdMutationTypeDoFnTest {
     when(spannerConfigMock.withExecuteStreamingSqlRetrySettings(any()))
         .thenReturn(spannerConfigMock);
 
-    spannerAccessorMock = mock(SpannerAccessor.class);
+    spannerFactoryMock = mock(SpannerFactory.class);
+
     DatabaseClient databaseClientMock = mock(DatabaseClient.class);
-    when(spannerAccessorMock.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(spannerFactoryMock.getDatabaseClient()).thenReturn(databaseClientMock);
 
     TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
     when(databaseClientMock.readWriteTransaction()).thenReturn(transactionCallableMock);
@@ -100,7 +103,7 @@ public final class SpannerScdMutationTypeDoFnTest {
             .setStartDateColumnName(null)
             .setEndDateColumnName(null)
             .build()
-            .setSpannerAccessor(spannerAccessorMock)
+            .setSpannerFactory(spannerFactoryMock)
             .setCurrentTimestampGetter(timestampMock);
     spannerScdMutationTransform.writeBatchChanges(input);
 
@@ -141,7 +144,7 @@ public final class SpannerScdMutationTypeDoFnTest {
             .setEndDateColumnName("end_date")
             .setTableColumnNames(ImmutableList.of("id", "name"))
             .build()
-            .setSpannerAccessor(spannerAccessorMock)
+            .setSpannerFactory(spannerFactoryMock)
             .setCurrentTimestampGetter(timestampMock);
     spannerScdMutationTransform.writeBatchChanges(input);
 
@@ -187,7 +190,7 @@ public final class SpannerScdMutationTypeDoFnTest {
             .setEndDateColumnName("end_date")
             .setTableColumnNames(ImmutableList.of("id", "name"))
             .build()
-            .setSpannerAccessor(spannerAccessorMock)
+            .setSpannerFactory(spannerFactoryMock)
             .setCurrentTimestampGetter(timestampMock);
     spannerScdMutationTransform.writeBatchChanges(input);
 
@@ -247,7 +250,7 @@ public final class SpannerScdMutationTypeDoFnTest {
             .setEndDateColumnName("end_date")
             .setTableColumnNames(ImmutableList.of("id", "name"))
             .build()
-            .setSpannerAccessor(spannerAccessorMock)
+            .setSpannerFactory(spannerFactoryMock)
             .setCurrentTimestampGetter(timestampMock);
     spannerScdMutationTransform.writeBatchChanges(input);
 
@@ -317,7 +320,7 @@ public final class SpannerScdMutationTypeDoFnTest {
             .setEndDateColumnName("end_date")
             .setTableColumnNames(ImmutableList.of("id", "name"))
             .build()
-            .setSpannerAccessor(spannerAccessorMock)
+            .setSpannerFactory(spannerFactoryMock)
             .setCurrentTimestampGetter(timestampMock);
     spannerScdMutationTransform.writeBatchChanges(input);
 
@@ -381,7 +384,7 @@ public final class SpannerScdMutationTypeDoFnTest {
             .setEndDateColumnName("end_date")
             .setTableColumnNames(ImmutableList.of("id", "name"))
             .build()
-            .setSpannerAccessor(spannerAccessorMock)
+            .setSpannerFactory(spannerFactoryMock)
             .setCurrentTimestampGetter(timestampMock);
     spannerScdMutationTransform.writeBatchChanges(input);
 
@@ -457,7 +460,7 @@ public final class SpannerScdMutationTypeDoFnTest {
             .setEndDateColumnName("end_date")
             .setTableColumnNames(ImmutableList.of("id", "name"))
             .build()
-            .setSpannerAccessor(spannerAccessorMock)
+            .setSpannerFactory(spannerFactoryMock)
             .setCurrentTimestampGetter(timestampMock);
     spannerScdMutationTransform.writeBatchChanges(input);
 
