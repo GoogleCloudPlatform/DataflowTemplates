@@ -60,6 +60,9 @@ Following permissions are required -
 - storage.buckets.delete
 - storage.buckets.update
 - storage.objects.delete
+- storage.objects.create
+- serviceusage.services.use
+- serviceusage.services.enable
 ```
 
 **Note**: Add the `roles/viewer` role as well to the service account.
@@ -438,19 +441,30 @@ In `variables.tf`, following definition exists -
 
 ```shell
 postgresql_database = object({
-      database = string
-      tables   = optional(list(string))
-    })
+database = string
+schemas = list(object({
+   schema_name = string
+   tables      = optional(list(string))
+}))
+})
 ```
 
 To configure, create `*.tfvars` as follows -
 
 ```shell
 postgresql_database = {
-      database = "<YOUR_DATABASE_NAME>"
-      tables   = ["TABLE_1", "TABLE_2"]
-      # Optionally list specific tables, or remove "tables" all together for all tables
-    }
+   database = "<YOUR_DATABASE_NAME>"
+   schemas = [
+   {
+      schema_name = "<YOUR_SCHEMA_NAME>"
+      tables      = [] # List specific tables to replicate (optional)
+   },
+   {
+      schema_name = "test_schema"
+      tables      = [] # List specific tables to replicate (optional)
+   }
+   ]
+}
 ```
 
 ### Specifying schema overrides
