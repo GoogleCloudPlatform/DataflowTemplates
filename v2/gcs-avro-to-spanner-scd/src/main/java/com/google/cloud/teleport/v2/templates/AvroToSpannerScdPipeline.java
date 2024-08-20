@@ -42,8 +42,6 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 
 /**
  * Represents an Apache Beam batch pipeline to insert data in Avro format into Spanner using the
@@ -120,18 +118,11 @@ public class AvroToSpannerScdPipeline {
 
     SpannerConfig spannerConfig =
         SpannerConfig.create()
-            // Temporary fix explicitly setting SpannerConfig.projectId to the default project
-            // if spannerProjectId is not provided as a parameter. Required as of Beam 2.38,
-            // which no longer accepts null label values on metrics, and SpannerIO#setup() has
-            // a bug resulting in the label value being set to the original` parameter value,
-            // with no fallback to the default project.
-            // TODO: remove NestedValueProvider when this is fixed in Beam.
             .withProjectId(
-                NestedValueProvider.of(
-                    options.getSpannerProjectId(),
-                    (SerializableFunction<String, String>)
-                        input -> input != null ? input : SpannerOptions.getDefaultProjectId()))
-            .withHost(options.getSpannerHost())
+                options.getSpannerProjectId() != null
+                    ? options.getSpannerProjectId()
+                    : SpannerOptions.getDefaultProjectId())
+            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withInstanceId(options.getInstanceId())
             .withDatabaseId(options.getDatabaseId())
             .withRpcPriority(options.getSpannerPriority());
@@ -143,20 +134,19 @@ public class AvroToSpannerScdPipeline {
         .apply(
             "BatchRowsIntoGroups",
             MakeBatchesTransform.create(
-                options.getSpannerBatchSize().get(),
-                options.getPrimaryKeyColumnNames().get(),
-                options.getEndDateColumnName().get()))
+                options.getSpannerBatchSize(),
+                options.getPrimaryKeyColumnNames(),
+                options.getEndDateColumnName()))
         .apply(
             "WriteScdChangesToSpanner",
             SpannerScdMutationTransform.builder()
-                .setScdType(options.getScdType().get())
+                .setScdType(options.getScdType())
                 .setSpannerConfig(spannerConfig)
-                .setTableName(options.getTableName().get())
-                .setPrimaryKeyColumnNames(options.getPrimaryKeyColumnNames().get())
-                .setStartDateColumnName(options.getStartDateColumnName().get())
-                .setEndDateColumnName(options.getEndDateColumnName().get())
-                .setTableColumnNames(
-                    getTableColumnNames(spannerConfig, options.getTableName().get()))
+                .setTableName(options.getTableName())
+                .setPrimaryKeyColumnNames(options.getPrimaryKeyColumnNames())
+                .setStartDateColumnName(options.getStartDateColumnName())
+                .setEndDateColumnName(options.getEndDateColumnName())
+                .setTableColumnNames(getTableColumnNames(spannerConfig, options.getTableName()))
                 .build());
 
     return pipeline;
@@ -195,9 +185,9 @@ public class AvroToSpannerScdPipeline {
         order = 1,
         description = "Cloud storage file pattern",
         helpText = "The Cloud Storage file pattern where the Avro files are imported from.")
-    ValueProvider<String> getInputFilePattern();
+    String getInputFilePattern();
 
-    void setInputFilePattern(ValueProvider<String> value);
+    void setInputFilePattern(String value);
 
     @TemplateParameter.ProjectId(
         groupName = "Target",
@@ -207,9 +197,9 @@ public class AvroToSpannerScdPipeline {
         helpText =
             "The ID of the Google Cloud project that contains the Spanner database. If not set, the"
                 + " default Google Cloud project is used.")
-    ValueProvider<String> getSpannerProjectId();
+    String getSpannerProjectId();
 
-    void setSpannerProjectId(ValueProvider<String> value);
+    void setSpannerProjectId(String value);
 
     @TemplateParameter.Text(
         groupName = "Target",
@@ -217,9 +207,9 @@ public class AvroToSpannerScdPipeline {
         regexes = {"^[a-z0-9\\-]+$"},
         description = "Cloud Spanner instance ID",
         helpText = "The instance ID of the Spanner database.")
-    ValueProvider<String> getInstanceId();
+    String getInstanceId();
 
-    void setInstanceId(ValueProvider<String> value);
+    void setInstanceId(String value);
 
     @TemplateParameter.Text(
         groupName = "Target",
@@ -227,9 +217,9 @@ public class AvroToSpannerScdPipeline {
         regexes = {"^[a-z_0-9\\-]+$"},
         description = "Cloud Spanner database ID",
         helpText = "The database ID of the Spanner database.")
-    ValueProvider<String> getDatabaseId();
+    String getDatabaseId();
 
-    void setDatabaseId(ValueProvider<String> value);
+    void setDatabaseId(String value);
 
     @TemplateParameter.Text(
         groupName = "Target",
@@ -239,9 +229,9 @@ public class AvroToSpannerScdPipeline {
         helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
         example = "https://batch-spanner.googleapis.com")
     @Default.String("https://batch-spanner.googleapis.com")
-    ValueProvider<String> getSpannerHost();
+    String getSpannerHost();
 
-    void setSpannerHost(ValueProvider<String> value);
+    void setSpannerHost(String value);
 
     @TemplateParameter.Enum(
         groupName = "Target",
@@ -256,9 +246,9 @@ public class AvroToSpannerScdPipeline {
         helpText =
             "The request priority for Spanner calls. Possible values are `HIGH`, `MEDIUM`, and"
                 + " `LOW`. The default value is `MEDIUM`.")
-    ValueProvider<RpcPriority> getSpannerPriority();
+    RpcPriority getSpannerPriority();
 
-    void setSpannerPriority(ValueProvider<RpcPriority> value);
+    void setSpannerPriority(RpcPriority value);
 
     @TemplateParameter.Integer(
         groupName = "Target",
@@ -268,18 +258,18 @@ public class AvroToSpannerScdPipeline {
         helpText = "How many rows to process on each batch. The default value is 100.",
         example = "100")
     @Default.Integer(100)
-    ValueProvider<Integer> getSpannerBatchSize();
+    Integer getSpannerBatchSize();
 
-    void setSpannerBatchSize(ValueProvider<Integer> value);
+    void setSpannerBatchSize(Integer value);
 
     @TemplateParameter.Text(
         groupName = "Schema",
         order = 8,
         description = "Cloud Spanner table name",
         helpText = "Name of the Spanner table where to upsert data.")
-    ValueProvider<String> getTableName();
+    String getTableName();
 
-    void setTableName(ValueProvider<String> value);
+    void setTableName(String value);
 
     @TemplateParameter.Enum(
         groupName = "Schema",
@@ -292,9 +282,9 @@ public class AvroToSpannerScdPipeline {
                 + " TYPE_1.",
         example = "TYPE_1 or TYPE_2")
     @Default.Enum("TYPE_1")
-    ValueProvider<AvroToSpannerScdOptions.ScdType> getScdType();
+    AvroToSpannerScdOptions.ScdType getScdType();
 
-    void setScdType(ValueProvider<AvroToSpannerScdOptions.ScdType> value);
+    void setScdType(AvroToSpannerScdOptions.ScdType value);
 
     @TemplateParameter.Text(
         groupName = "Schema",
@@ -303,9 +293,9 @@ public class AvroToSpannerScdPipeline {
         helpText =
             "Name of column(s) for the primary key(s). If more than one, enter as CSV with no"
                 + " spaces (e.g. column1,column2).")
-    ValueProvider<List<String>> getPrimaryKeyColumnNames();
+    List<String> getPrimaryKeyColumnNames();
 
-    void setPrimaryKeyColumnNames(ValueProvider<List<String>> value);
+    void setPrimaryKeyColumnNames(List<String> value);
 
     @TemplateParameter.Text(
         groupName = "Schema",
@@ -313,9 +303,9 @@ public class AvroToSpannerScdPipeline {
         optional = true,
         description = "Start date column name",
         helpText = "Name of column name for the start date (TIMESTAMP). Only used for SCD-Type=2.")
-    ValueProvider<String> getStartDateColumnName();
+    String getStartDateColumnName();
 
-    void setStartDateColumnName(ValueProvider<String> value);
+    void setStartDateColumnName(String value);
 
     @TemplateParameter.Text(
         groupName = "Schema",
@@ -324,9 +314,9 @@ public class AvroToSpannerScdPipeline {
         description = "End date column name",
         helpText =
             "Name of column name for the end date (TIMESTAMP). Only required for" + " SCD-Type=2.")
-    ValueProvider<String> getEndDateColumnName();
+    String getEndDateColumnName();
 
-    void setEndDateColumnName(ValueProvider<String> value);
+    void setEndDateColumnName(String value);
 
     @TemplateCreationParameter(value = "false")
     @Description("If true, wait for job finish.")
