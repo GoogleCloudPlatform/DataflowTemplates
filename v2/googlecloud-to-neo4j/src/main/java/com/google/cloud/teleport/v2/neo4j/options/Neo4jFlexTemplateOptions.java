@@ -30,7 +30,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
       order = 1,
       description = "Path to the job specification file",
       helpText =
-          "The path to the job specification file, which contains the configuration for source and target metadata.")
+          "The path to the job specification file, which contains the JSON description of data sources, Neo4j targets and actions.")
   @Validation.Required
   String getJobSpecUri();
 
@@ -39,8 +39,8 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
   @TemplateParameter.GcsReadFile(
       order = 2,
       optional = true,
-      description = "Path to the Neo4j connection metadata",
-      helpText = "The path to the Neo4j connection metadata JSON file.")
+      description = "Path to the Neo4j connection JSON file, hosted on GCS.",
+      helpText = "The path to the Neo4j connection JSON file.")
   @Validation.Required(groups = "connection")
   String getNeo4jConnectionUri();
 
@@ -49,9 +49,10 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
   @TemplateParameter.Text(
       order = 3,
       optional = true,
-      description = "Secret ID for the Neo4j connection metadata",
+      description =
+          "Secret ID for the Neo4j connection information. This is encoded as JSON (same schema as neo4jConnectionUri).",
       helpText =
-          "The secret ID for the Neo4j connection metadata. This is an alternative to the GCS path option.")
+          "The secret ID for the Neo4j connection metadata. This is an alternative to neo4jConnectionUri.")
   @Validation.Required(groups = "connection")
   String getNeo4jConnectionSecretId();
 
@@ -60,9 +61,10 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
   @TemplateParameter.Text(
       order = 4,
       optional = true,
-      description = "Options JSON",
-      helpText = "Options JSON. Use runtime tokens.",
-      example = "{token1:value1,token2:value2}")
+      description =
+          "JSON object also called \"runtime tokens\", defining named values interpolated into the specification URIs and queries.",
+      helpText = "JSON object also called \"runtime tokens\"",
+      example = "{token1:value1,token2:value2}. Spec can refer to $token1 and $token2.")
   @Default.String("")
   String getOptionsJson();
 
@@ -71,8 +73,8 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
   @TemplateParameter.Text(
       order = 5,
       optional = true,
-      description = "Query SQL",
-      helpText = "Override SQL query.")
+      description = "SQL query override for all BigQuery sources",
+      helpText = "SQL query override.")
   @Default.String("")
   String getReadQuery();
 
@@ -81,8 +83,8 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
   @TemplateParameter.GcsReadFile(
       order = 6,
       optional = true,
-      description = "Path to Text File",
-      helpText = "Override text file pattern",
+      description = "Text File Path override for all Text sources",
+      helpText = "Text File Path override",
       example = "gs://your-bucket/path/*.json")
   @Default.String("")
   String getInputFilePattern();
