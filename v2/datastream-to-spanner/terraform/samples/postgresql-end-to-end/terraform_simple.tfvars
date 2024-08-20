@@ -16,8 +16,17 @@ datastream_params = {
   postgresql_port             = 3306
   postgresql_database = {
     database = "<YOUR_DATABASE_NAME>"
-    tables   = []
-    # Optionally list specific tables, or remove "tables" all together for all tables
+    schemas = [
+      {
+        schema_name = "<YOUR_SCHEMA_NAME>"
+        tables      = [] # List specific tables to replicate (optional)
+      },
+      {
+        schema_name = "test_schema"
+        tables      = [] # List specific tables to replicate (optional)
+      }
+    ]
+
   }
   private_connectivity_id = "<YOUR_PRIVATE_CONNECTIVITY_ID>"
   # Only one of `private_connectivity_id` or `private_connectivity` block

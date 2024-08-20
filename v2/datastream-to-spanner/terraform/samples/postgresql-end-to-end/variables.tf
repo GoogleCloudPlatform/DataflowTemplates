@@ -34,11 +34,15 @@ variable "datastream_params" {
     stream_id                     = optional(string, "postgresql-stream")
     max_concurrent_cdc_tasks      = optional(number, 5)
     max_concurrent_backfill_tasks = optional(number, 20)
+
     postgresql_database = object({
       database = string
-      schema   = string
-      tables   = optional(list(string))
+      schemas = list(object({
+        schema_name = string
+        tables      = optional(list(string))
+      }))
     })
+
   })
   validation {
     condition = (
@@ -51,7 +55,7 @@ variable "datastream_params" {
 }
 
 variable "dataflow_params" {
-  description = "Parameters for the Dataflow job. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/README_Sourcedb_to_Spanner_Flex.md for the description of the parameters below."
+  description = "Parameters for the Dataflow job. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md for the description of the parameters below."
   type = object({
     template_params = object({
       shadow_table_prefix                 = optional(string)
