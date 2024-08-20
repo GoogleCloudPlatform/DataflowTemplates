@@ -57,9 +57,9 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class})
 @TemplateIntegrationTest(AvroToSpannerScdPipeline.class)
 @RunWith(JUnit4.class)
-public final class AvroToSpannerScdPipelineITTest extends TemplateTestBase {
+public final class AvroToSpannerScdPipelineIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(AvroToSpannerScdPipelineITTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AvroToSpannerScdPipelineIT.class);
 
   @Rule public TestPipeline testPipeline = TestPipeline.create();
 
