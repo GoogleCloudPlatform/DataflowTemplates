@@ -31,7 +31,6 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.stream.StreamSupport;
-import javax.annotation.Nullable;
 
 /** Provides functionality to interact with Struct values. */
 public class StructHelper {
@@ -51,10 +50,10 @@ public class StructHelper {
   }
 
   /**
-   * Creates a copy of the StructHelper where the Struct is a copy without the ommited column names.
+   * Creates a copy of the StructHelper where the Struct is a copy without the omitted column names.
    *
    * @param omittedColumnNames Column names to remove from the struct.
-   * @return StructHelper with a Struct without the ommited columns.
+   * @return StructHelper with a Struct without the omitted columns.
    */
   public StructHelper omitColumNames(Iterable<String> omittedColumnNames) {
     return new StructHelper(copyAsBuilderInternal(omittedColumnNames).build());
@@ -98,7 +97,7 @@ public class StructHelper {
     /**
      * Initializes KeyMaker with primary key column names, which will be added to the key.
      *
-     * @param primaryKeyColumnNames
+     * @param primaryKeyColumnNames List of primary key column names.
      */
     public KeyMaker(Iterable<String> primaryKeyColumnNames) {
       this(primaryKeyColumnNames, ImmutableList.of());
@@ -158,15 +157,16 @@ public class StructHelper {
      *
      * <p>Used to generate Keys for records.
      *
-     * @param record
+     * @param record Row in Struct format for which to create Key.
      * @param columnNames to add to the Key.
-     * @param keyBuilder
-     * @return KeyBuilder for the Key with the requested fields.
+     * @param keyBuilder Key Builder where key will be created.
      */
-    private Key.Builder addRecordFieldsToKeyBuilder(
+    private void addRecordFieldsToKeyBuilder(
         Struct record, Iterable<String> columnNames, Key.Builder keyBuilder) {
       HashMap<String, StructField> structFieldMap = new HashMap<>();
-      record.getType().getStructFields().stream()
+      record
+          .getType()
+          .getStructFields()
           .forEach(field -> structFieldMap.put(field.getName(), field));
 
       columnNames.forEach(
@@ -182,8 +182,6 @@ public class StructHelper {
             Value fieldValue = record.getValue(field.getName());
             addValueToKeyBuilder(keyBuilder, fieldValue);
           });
-
-      return keyBuilder;
     }
 
     private void addValueToKeyBuilder(Key.Builder keyBuilder, Value fieldValue) {
@@ -234,12 +232,12 @@ public class StructHelper {
   /** Provides functionality to get and work with Values for Structs. */
   public static class ValueHelper {
 
-    @Nullable private final Value value;
+    private final Value value;
 
     /**
      * Initializes ValueHelper with a Value.
      *
-     * @param value
+     * @param value Value for which to create ValueHelper.
      */
     public static ValueHelper of(Value value) {
       return new ValueHelper(value);
@@ -248,7 +246,7 @@ public class StructHelper {
     /**
      * Initializes ValueHelper with a Value.
      *
-     * @param value
+     * @param value Value for which to create ValueHelper.
      */
     public ValueHelper(Value value) {
       this.value = value;
