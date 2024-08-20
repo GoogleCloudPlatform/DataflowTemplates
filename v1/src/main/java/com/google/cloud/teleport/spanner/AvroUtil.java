@@ -35,6 +35,7 @@ public class AvroUtil {
   public static final String SPANNER_CHANGE_STREAM_FOR_CLAUSE = "spannerChangeStreamForClause";
   public static final String SPANNER_ENTITY = "spannerEntity";
   public static final String SPANNER_ENTITY_MODEL = "Model";
+  public static final String SPANNER_ENTITY_PLACEMENT = "Placement";
   public static final String SPANNER_FOREIGN_KEY = "spannerForeignKey_";
   public static final String SPANNER_INDEX = "spannerIndex_";
   public static final String SPANNER_ON_DELETE_ACTION = "spannerOnDeleteAction";
