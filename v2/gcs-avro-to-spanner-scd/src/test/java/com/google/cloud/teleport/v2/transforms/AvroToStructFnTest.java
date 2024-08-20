@@ -145,7 +145,7 @@ public final class AvroToStructFnTest {
                   .build());
       GenericRecord input =
           new GenericRecordBuilder(inputSchema)
-              .set("date", 7499L) // Days since epoch.
+              .set("date", 7499) // Days since epoch.
               .set(
                   "decimal",
                   ByteArray.copyFrom(
@@ -369,8 +369,8 @@ public final class AvroToStructFnTest {
               .set("nullableNullString", NullTypes.NULL_STRING)
               .set("nullableString", "text")
               // Logical types.
-              .set("nullableDate", 7499L)
-              .set("nullableNullDate", NullTypes.NULL_INT64)
+              .set("nullableDate", 7499)
+              .set("nullableNullDate", NullTypes.NULL_INT32)
               .set(
                   "nullableDecimal",
                   ByteArray.copyFrom(

@@ -24,11 +24,13 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper.NullTypes;
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
 import java.util.List;
 import org.apache.avro.Conversions;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
+import org.apache.avro.data.TimeConversions;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 
@@ -112,7 +114,6 @@ public class AvroToStructFn extends SimpleFunction<GenericRecord, Struct> {
       String logicalTypeName = field.schema().getLogicalType().getName();
       Object fieldValue = record.get(field.name());
 
-      // TODO: refactor to leverage Avro Conversion classes.
       switch (logicalTypeName) {
         case "duration":
         case "time-micros":
@@ -128,9 +129,15 @@ public class AvroToStructFn extends SimpleFunction<GenericRecord, Struct> {
               fieldValue == null
                   ? NullTypes.NULL_DATE
                   : Date.fromJavaUtilDate(
-                      // value is the number of days since epoch - which is cast to micros.
-                      Timestamp.ofTimeMicroseconds((Long) fieldValue * 24L * 60L * 60L * 1_000_000L)
-                          .toDate()));
+                      java.util.Date.from(
+                          new TimeConversions.DateConversion()
+                              .fromInt(
+                                  (Integer) fieldValue,
+                                  field.schema(),
+                                  LogicalTypes.fromSchema(field.schema()))
+                              .atStartOfDay()
+                              .atZone(ZoneId.systemDefault())
+                              .toInstant())));
         case "decimal":
           return Value.numeric(
               fieldValue == null
@@ -145,13 +152,27 @@ public class AvroToStructFn extends SimpleFunction<GenericRecord, Struct> {
           return Value.timestamp(
               fieldValue == null
                   ? NullTypes.NULL_TIMESTAMP
-                  : Timestamp.ofTimeMicroseconds((Long) fieldValue * 1000L));
+                  : Timestamp.ofTimeMicroseconds(
+                      new TimeConversions.TimestampMillisConversion()
+                              .fromLong(
+                                  (Long) fieldValue,
+                                  field.schema(),
+                                  LogicalTypes.fromSchema(field.schema()))
+                              .toEpochMilli()
+                          * 1000L));
         case "local-timestamp-micros":
         case "timestamp-micros":
           return Value.timestamp(
               fieldValue == null
                   ? NullTypes.NULL_TIMESTAMP
-                  : Timestamp.ofTimeMicroseconds((Long) fieldValue));
+                  : Timestamp.ofTimeMicroseconds(
+                      new TimeConversions.TimestampMicrosConversion()
+                              .fromLong(
+                                  (Long) fieldValue,
+                                  field.schema(),
+                                  LogicalTypes.fromSchema(field.schema()))
+                              .toEpochMilli()
+                          * 1000L));
       }
     }
 

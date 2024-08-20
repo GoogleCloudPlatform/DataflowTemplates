@@ -262,6 +262,8 @@ public class StructHelper {
       public static final Date NULL_DATE = null;
       public static final Float NULL_FLOAT32 = null;
       public static final Double NULL_FLOAT64 = null;
+
+      public static final Integer NULL_INT32 = null;
       public static final Long NULL_INT64 = null;
       public static final String NULL_JSON = null;
       public static final BigDecimal NULL_NUMERIC = null;
