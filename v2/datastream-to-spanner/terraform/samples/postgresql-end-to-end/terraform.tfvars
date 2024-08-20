@@ -32,7 +32,7 @@ datastream_params = {
         tables      = [] # List specific tables to replicate (optional)
       },
       {
-        schema_name = "test_schema"
+        schema_name = "<YOUR_SCHEMA_NAME>"
         tables      = [] # List specific tables to replicate (optional)
       }
     ]
