@@ -25,6 +25,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHANGE_STREAM_F
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHECK_CONSTRAINT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_MODEL;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_FOREIGN_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAMED_SCHEMA;
@@ -54,6 +55,7 @@ import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.NamedSchema;
+import com.google.cloud.teleport.spanner.ddl.Placement;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
@@ -98,6 +100,8 @@ public class AvroSchemaToDdlConverter {
         builder.addSequence(toSequence(null, schema));
       } else if (SPANNER_NAMED_SCHEMA.equals(schema.getProp(SPANNER_ENTITY))) {
         builder.addSchema(toSchema(null, schema));
+      } else if (SPANNER_ENTITY_PLACEMENT.equals(schema.getProp(SPANNER_ENTITY))) {
+        builder.addPlacement(toPlacement(null, schema));
       } else {
         builder.addTable(toTable(null, schema));
       }
@@ -224,6 +228,27 @@ public class AvroSchemaToDdlConverter {
       sequenceOptions.add(schema.getProp(SPANNER_SEQUENCE_OPTION + i));
     }
     builder.options(sequenceOptions.build());
+
+    return builder.build();
+  }
+
+  public Placement toPlacement(String placementName, Schema schema) {
+    if (placementName == null) {
+      placementName = getSpannerObjectName(schema);
+    }
+    LOG.debug("Converting to Ddl placementName {}", placementName);
+
+    Placement.Builder builder = Placement.builder(dialect).name(placementName);
+
+    ImmutableList.Builder<String> placementOptions = ImmutableList.builder();
+    for (int i = 0; ; i++) {
+      String spannerOption = schema.getProp(SPANNER_OPTION + i);
+      if (spannerOption == null) {
+        break;
+      }
+      placementOptions.add(spannerOption);
+    }
+    builder.options(placementOptions.build());
 
     return builder.build();
   }

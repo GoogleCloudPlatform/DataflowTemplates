@@ -27,6 +27,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHANGE_STREAM_F
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHECK_CONSTRAINT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_MODEL;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_FOREIGN_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ON_DELETE_ACTION;
@@ -1437,6 +1438,57 @@ public class DdlToAvroSchemaConverterTest {
     Schema avroSchema3 = it.next();
     assertThat(avroSchema3.getName(), equalTo("PGSequence3"));
     assertThat(avroSchema3.getProp(SPANNER_SEQUENCE_KIND), equalTo("bit_reversed_positive"));
+  }
+
+  @Test
+  public void placements() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    String placementName1 = "pl1";
+    String placementName2 = "pl2";
+    String instancePartition = "mr-partition";
+    String defaultLeader = "us-central1";
+    Ddl ddl =
+        Ddl.builder()
+            .createPlacement(placementName1)
+            .options(ImmutableList.of("instance_partition=\"" + instancePartition + "\""))
+            .endPlacement()
+            .createPlacement(placementName2)
+            .options(
+                ImmutableList.of(
+                    "instance_partition=\"" + instancePartition + "\"",
+                    "default_leader=\"" + defaultLeader + "\""))
+            .endPlacement()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(2));
+
+    Iterator<Schema> it = result.iterator();
+    Schema avroSchema1 = it.next();
+    assertThat(avroSchema1.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema1.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema1.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroSchema1.getProp(SPANNER_ENTITY), equalTo(SPANNER_ENTITY_PLACEMENT));
+    assertThat(avroSchema1.getFields(), empty());
+    assertThat(avroSchema1.getName(), equalTo(placementName1));
+    assertThat(
+        avroSchema1.getProp(SPANNER_OPTION + "0"),
+        equalTo("instance_partition=\"" + instancePartition + "\""));
+
+    Schema avroSchema2 = it.next();
+    assertThat(avroSchema2.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema2.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema2.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroSchema2.getProp(SPANNER_ENTITY), equalTo(SPANNER_ENTITY_PLACEMENT));
+    assertThat(avroSchema2.getFields(), empty());
+    assertThat(avroSchema2.getName(), equalTo(placementName2));
+    assertThat(
+        avroSchema2.getProp(SPANNER_OPTION + "0"),
+        equalTo("instance_partition=\"" + instancePartition + "\""));
+    assertThat(
+        avroSchema2.getProp(SPANNER_OPTION + "1"),
+        equalTo("default_leader=\"" + defaultLeader + "\""));
   }
 
   @Test

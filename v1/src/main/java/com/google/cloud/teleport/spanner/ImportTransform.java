@@ -24,6 +24,7 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.NamedSchema;
+import com.google.cloud.teleport.spanner.ddl.Placement;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
@@ -488,13 +489,15 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           List<KV<String, Schema>> missingViews = new ArrayList<>();
                           List<KV<String, Schema>> missingChangeStreams = new ArrayList<>();
                           List<KV<String, Schema>> missingSequences = new ArrayList<>();
+                          List<KV<String, Schema>> missingPlacements = new ArrayList<>();
                           for (KV<String, String> kv : avroSchemas) {
                             if (informationSchemaDdl.schema(kv.getKey()) == null
                                 && informationSchemaDdl.table(kv.getKey()) == null
                                 && informationSchemaDdl.model(kv.getKey()) == null
                                 && informationSchemaDdl.view(kv.getKey()) == null
                                 && informationSchemaDdl.changeStream(kv.getKey()) == null
-                                && informationSchemaDdl.sequence(kv.getKey()) == null) {
+                                && informationSchemaDdl.sequence(kv.getKey()) == null
+                                && informationSchemaDdl.placement(kv.getKey()) == null) {
                               Schema schema = parser.parse(kv.getValue());
                               if (schema.getProp(AvroUtil.SPANNER_CHANGE_STREAM_FOR_CLAUSE)
                                   != null) {
@@ -509,6 +512,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                               } else if ("spannerNamedSchema"
                                   .equals(schema.getProp("spannerEntity"))) {
                                 missingNamedSchemas.add(KV.of(kv.getKey(), schema));
+                              } else if ("Placement".equals(schema.getProp("spannerEntity"))) {
+                                missingPlacements.add(KV.of(kv.getKey(), schema));
                               } else {
                                 missingTables.add(KV.of(kv.getKey(), schema));
                               }
@@ -520,6 +525,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           List<String> createForeignKeyStatements = new ArrayList<>();
                           List<String> createChangeStreamStatements = new ArrayList<>();
                           List<String> createSequenceStatements = new ArrayList<>();
+                          List<String> createPlacementStatements = new ArrayList<>();
 
                           Ddl.Builder mergedDdl = informationSchemaDdl.toBuilder();
                           List<String> ddlStatements = new ArrayList<>();
@@ -569,6 +575,18 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             }
                             Ddl newDdl = builder.build();
                             ddlStatements.addAll(newDdl.createSequenceStatements());
+                          }
+
+                          if (!missingPlacements.isEmpty()) {
+                            Ddl.Builder builder = Ddl.builder(dialect);
+                            for (KV<String, Schema> kv : missingPlacements) {
+                              Placement placement =
+                                  converter.toPlacement(kv.getKey(), kv.getValue());
+                              builder.addPlacement(placement);
+                              mergedDdl.addPlacement(placement);
+                            }
+                            Ddl newDdl = builder.build();
+                            ddlStatements.addAll(newDdl.createPlacementStatements());
                           }
 
                           if (!missingTables.isEmpty()
@@ -764,6 +782,12 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           c.output(KV.of(sequence.getName(), fullPath));
                         }
                       }
+                      for (Export.Table placement : proto.getPlacementsList()) {
+                        for (String f : placement.getDataFilesList()) {
+                          String fullPath = GcsUtil.joinPath(importDirectory.get(), f);
+                          c.output(KV.of(placement.getName(), fullPath));
+                        }
+                      }
                     }
                   }));
 
@@ -789,6 +813,11 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                       for (Export.Table sequence : proto.getSequencesList()) {
                         if (!Strings.isNullOrEmpty(sequence.getManifestFile())) {
                           c.output(KV.of(sequence.getName(), sequence.getManifestFile()));
+                        }
+                      }
+                      for (Export.Table placement : proto.getPlacementsList()) {
+                        if (!Strings.isNullOrEmpty(placement.getManifestFile())) {
+                          c.output(KV.of(placement.getName(), placement.getManifestFile()));
                         }
                       }
                     }

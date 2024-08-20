@@ -25,6 +25,7 @@ import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.NamedSchema;
+import com.google.cloud.teleport.spanner.ddl.Placement;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.proto.ExportProtos;
@@ -364,6 +365,21 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<String> allPlacementNames =
+        ddl.apply(
+            "List all placement names",
+            ParDo.of(
+                new DoFn<Ddl, String>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Ddl ddl = c.element();
+                    for (Placement placement : ddl.placements()) {
+                      c.output(placement.name());
+                    }
+                  }
+                }));
+
     // Generate a unique output directory name.
     final PCollectionView<String> outputDirectoryName =
         p.apply(Create.of(1))
@@ -553,6 +569,24 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<KV<String, Iterable<String>>> placements =
+        allPlacementNames.apply(
+            "Export placements",
+            ParDo.of(
+                new DoFn<String, KV<String, Iterable<String>>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String placementName = c.element();
+                    LOG.info("Exporting placement: " + placementName);
+                    // This file will contain the schema definition for the placement.
+                    c.output(
+                        KV.of(
+                            placementName,
+                            Collections.singleton(placementName + ".avro-00000-of-00001")));
+                  }
+                }));
+
     // Empty tables, views, models, change streams, sequences and named schema are handled together,
     // because we export them as empty Avro files that only contain the Avro schemas.
     PCollection<KV<String, Iterable<String>>> emptySchemaFiles =
@@ -561,6 +595,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .and(changeStreams)
             .and(sequences)
             .and(namedSchemas)
+            .and(placements)
             .apply("Combine all empty schema files", Flatten.pCollections());
 
     emptySchemaFiles =
@@ -902,6 +937,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
           exportManifest.addChangeStreams(obj);
         } else if (ddl.sequence(obj.getName()) != null) {
           exportManifest.addSequences(obj);
+        } else if (ddl.placement(obj.getName()) != null) {
+          exportManifest.addPlacements(obj);
         } else {
           exportManifest.addTables(obj);
         }
