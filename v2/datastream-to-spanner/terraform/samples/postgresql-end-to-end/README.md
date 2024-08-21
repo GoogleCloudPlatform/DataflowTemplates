@@ -1,8 +1,8 @@
-## Sample Scenario: Sharded MySQL to Spanner production live migration using MySQL source configuration
+## Sample Scenario: PostgreSQL to Spanner production live migration using PostgreSQL source configuration
 
 > **_SCENARIO:_** This Terraform example illustrates launching a live migration
-> jobs for a sharded MySQL source, setting up all the required cloud infrastructure.
-> **Only the source details of physical shards are needed as input.**
+> job for a PostgreSQL source, setting up all the required cloud infrastructure.
+> **Only the source details are needed as input.**
 
 ## Terraform permissions
 
@@ -141,18 +141,18 @@ provides instructions to add these roles to an existing service account.
 
 It takes the following assumptions -
 
-1. MySQL source is accessible via Datastream either via
+1. PostgreSQL source is accessible via Datastream either via
    [IP Allowlisting guide](https://cloud.google.com/datastream/docs/network-connectivity-options#ipallowlists)
    or [Private connectivity](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration).
 2. If using a VPC, VPC has already been configured to work with Datastream.
-3. MySQL source has been configured to be read by Datastream by following
-   [configure your source MySQL guide](https://cloud.google.com/datastream/docs/configure-your-source-mysql-database).
+3. PostgreSQL source has been configured to be read by Datastream by following
+   [configure your source PostgreSQL guide](https://cloud.google.com/datastream/docs/configure-your-source-postgresql-database).
 4. A Spanner instance with database containing the data-migration compatible
    schema is created.
 
 > **_NOTE:_**
 [SMT](https://googlecloudplatform.github.io/spanner-migration-tool/quickstart.html)
-> can be used for converting a MySQL schema to a Spanner compatible schema.
+> can be used for converting a PostgreSQL schema to a Spanner compatible schema.
 
 ## Description
 
@@ -177,24 +177,24 @@ configuration and creates the following resources -
 
 1. **Datastream private connection** - If configured, a Datastream private
    connection will be deployed for your configured VPC. If not configured, IP
-   allowlisting will be assumed as the mode of Datastream access. A single private connection is created for all shards.
-2. **Source datastream connection profiles** - This allows Datastream to connect
-   to the MySQL instance (using IP allowlisting or private connectivity). A source connection profile is created per physical shard.
-3. **GCS buckets** - A GCS bucket to for Datastream to write the source data to. A bucket is created per physical shard.
-4. **Target datastream connection profiles** - The connection profile to
-   configure the created bucket in Datastream. A target connection profile is created per physical shard.
-5. **Pubsub topics and subscriptions** - This contains GCS object notifications as
-   files are written to GCS for consumption by the Dataflow job. A pubsub topic & subscription is created per physical shard.
-6. **Datastream streams** - A datastream stream which reads from the source
+   allowlisting will be assumed as the mode of Datastream access.
+2. **Source datastream connection profile** - This allows Datastream to connect
+   to the PostgreSQL instance (using IP allowlisting).
+3. **GCS bucket** - A GCS bucket to for Datastream to write the source data to.
+4. **Target datastream connection profile** - The connection profile to
+   configure the created bucket in Datastream.
+5. **Pubsub topic and subscription** - This contains GCS object notifications as
+   files are written to GCS for consumption by the Dataflow job.
+6. **Datastream stream** - A datastream stream which reads from the source
    specified in the source connection profile and writes the data to the bucket
    specified in the target connection profile. Note that it uses a mandatory
    prefix path inside the bucket where it will write the data to. The default
-   prefix path is `data` (can be overridden). A stream is created per physical shard.
-7. **Bucket notifications** - Creates the GCS bucket notification which publish
+   prefix path is `data` (can be overridden).
+7. **Bucket notification** - Creates the GCS bucket notification which publish
    to the pubsub topic created. Note that the bucket notification is created on
-   the mandatory prefix path specified for the stream above. A notification is created per bucket.
+   the mandatory prefix path specified for the stream above.
 8. **Dataflow job** - The Dataflow job which reads from GCS and writes to
-   Spanner. A dataflow job is created per shard.
+   Spanner.
 9. **Permissions** - It adds the required roles to the specified (or the
    default) service accounts for the live migration to work.
 
@@ -235,45 +235,25 @@ terraform apply --var-file=terraform_simple.tfvars
 This will launch the configured jobs and produce an output like below -
 
 ```shell
+Outputs:
+
 resource_ids = {
-  "smt-neat-walrus" = {
-    "dataflow_job" = "2024-06-27_01_16_13-12477287004098198325"
-    "datastream_source_connection_profile" = "smt-neat-walrus-source-mysql"
-    "datastream_stream" = "-smt-neat-walrus-mysql-stream"
-    "datastream_target_connection_profile" = "smt-neat-walrus-target-gcs"
-    "gcs_bucket" = "smt-neat-walrus-live-migration"
-    "pubsub_subscription" = "smt-neat-walrus-live-migration-sub"
-    "pubsub_topic" = "smt-neat-walrus-live-migration"
-  }
-  "smt-suitable-platypus" = {
-    "dataflow_job" = "2024-06-27_01_16_13-4726070354537731492"
-    "datastream_source_connection_profile" = "smt-suitable-platypus-source-mysql"
-    "datastream_stream" = "-smt-suitable-platypus-mysql-stream"
-    "datastream_target_connection_profile" = "smt-suitable-platypus-target-gcs"
-    "gcs_bucket" = "smt-suitable-platypus-live-migration"
-    "pubsub_subscription" = "smt-suitable-platypus-live-migration-sub"
-    "pubsub_topic" = "smt-suitable-platypus-live-migration"
-  }
+  "dataflow_job" = "2024-06-14_03_01_00-3421054840094926119"
+  "datastream_source_connection_profile" = "source-postgresql-thorough-wombat"
+  "datastream_stream" = "postgresql-stream-thorough-wombat"
+  "datastream_target_connection_profile" = "target-gcs-thorough-wombat"
+  "gcs_bucket" = "live-migration-thorough-wombat"
+  "pubsub_subscription" = "live-migration-thorough-wombat-sub"
+  "pubsub_topic" = "live-migration-thorough-wombat"
 }
 resource_urls = {
-  "smt-neat-walrus" = {
-    "dataflow_job" = "https://console.cloud.google.com/dataflow/jobs/us-central1/2024-06-27_01_16_13-12477287004098198325?project=your-project-here"
-    "datastream_source_connection_profile" = "https://console.cloud.google.com/datastream/connection-profiles/locations/us-central1/instances/smt-neat-walrus-source-mysql?project=your-project-here"
-    "datastream_stream" = "https://console.cloud.google.com/datastream/streams/locations/us-central1/instances/-smt-neat-walrus-mysql-stream?project=your-project-here"
-    "datastream_target_connection_profile" = "https://console.cloud.google.com/datastream/connection-profiles/locations/us-central1/instances/smt-neat-walrus-target-gcs?project=your-project-here"
-    "gcs_bucket" = "https://console.cloud.google.com/storage/browser/smt-neat-walrus-live-migration?project=your-project-here"
-    "pubsub_subscription" = "https://console.cloud.google.com/cloudpubsub/subscription/detail/smt-neat-walrus-live-migration-sub?project=your-project-here"
-    "pubsub_topic" = "https://console.cloud.google.com/cloudpubsub/topic/detail/smt-neat-walrus-live-migration?project=your-project-here"
-  }
-  "smt-suitable-platypus" = {
-    "dataflow_job" = "https://console.cloud.google.com/dataflow/jobs/us-central1/2024-06-27_01_16_13-4726070354537731492?project=your-project-here"
-    "datastream_source_connection_profile" = "https://console.cloud.google.com/datastream/connection-profiles/locations/us-central1/instances/smt-suitable-platypus-source-mysql?project=your-project-here"
-    "datastream_stream" = "https://console.cloud.google.com/datastream/streams/locations/us-central1/instances/-smt-suitable-platypus-mysql-stream?project=your-project-here"
-    "datastream_target_connection_profile" = "https://console.cloud.google.com/datastream/connection-profiles/locations/us-central1/instances/smt-suitable-platypus-target-gcs?project=your-project-here"
-    "gcs_bucket" = "https://console.cloud.google.com/storage/browser/smt-suitable-platypus-live-migration?project=your-project-here"
-    "pubsub_subscription" = "https://console.cloud.google.com/cloudpubsub/subscription/detail/smt-suitable-platypus-live-migration-sub?project=your-project-here"
-    "pubsub_topic" = "https://console.cloud.google.com/cloudpubsub/topic/detail/smt-suitable-platypus-live-migration?project=your-project-here"
-  }
+  "dataflow_job" = "https://console.cloud.google.com/dataflow/jobs/us-central1/2024-06-14_03_01_00-3421054840094926119?project=your-project-here"
+  "datastream_source_connection_profile" = "https://console.cloud.google.com/datastream/connection-profiles/locations/us-central1/instances/source-postgresql-thorough-wombat?project=your-project-here"
+  "datastream_stream" = "https://console.cloud.google.com/datastream/streams/locations/us-central1/instances/postgresql-stream-thorough-wombat?project=your-project-here"
+  "datastream_target_connection_profile" = "https://console.cloud.google.com/datastream/connection-profiles/locations/us-central1/instances/target-gcs-thorough-wombat?project=your-project-here"
+  "gcs_bucket" = "https://console.cloud.google.com/storage/browser/live-migration-thorough-wombat?project=your-project-here"
+  "pubsub_subscription" = "https://console.cloud.google.com/cloudpubsub/subscription/detail/live-migration-thorough-wombat-sub?project=your-project-here"
+  "pubsub_topic" = "https://console.cloud.google.com/cloudpubsub/topic/detail/live-migration-thorough-wombat?project=your-project-here"
 }
 ```
 
@@ -301,14 +281,14 @@ can exclude it from the state file using `terraform state rm` command.
 #### Specifying a shared VPC
 
 You can specify the shared VPC using the `host_project` configuration.
-This will result in -
+This will result in - 
 
 1. Datastream private connectivity link will be created in the shared VPC.
 2. Dataflow jobs will be launched inside the shared VPC.
 
 > **_NOTE:_** Usage of shared VPC requires cross-project permissions. They
 > are available as a Terraform template [here](../../../../spanner-common/terraform/samples/configure-shared-vpc/README.md).
->
+> 
 > 1. Datastream service account permissions are documented [here](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration#shared-vpc).
 > 2. Dataflow service account permissions are documented [here](https://cloud.google.com/dataflow/docs/guides/specifying-networks#shared).
 
@@ -326,7 +306,7 @@ private_connectivity = optional(object({
     }))
 ```
 
-and
+and 
 
 ```shell
 private_connectivity_id = optional(string)
@@ -343,7 +323,7 @@ configuration in your `*.tfvars`. For example -
 
 ```shell
  ...
- mysql_databases = [
+ postgresql_databases = [
     {
       database = "lorem"
     }
@@ -359,7 +339,7 @@ configuration in your `*.tfvars`. For example -
 Note that `vpc_name` and `range` are mandatory and for the [private connectivity
 configuration](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration).
 
-In the `mysql_host` configuration, specify the private IP instead of the
+In the `postgresql_host` configuration, specify the private IP instead of the
 public IP.
 
 This configuration creates a private connection configuration in Datastream
@@ -460,27 +440,31 @@ variable definition -
 In `variables.tf`, following definition exists -
 
 ```shell
-mysql_databases = list(object({
-      database = string
-      tables   = optional(list(string))
-    }))
+postgresql_database = object({
+database = string
+schemas = list(object({
+   schema_name = string
+   tables      = optional(list(string))
+}))
+})
 ```
 
 To configure, create `*.tfvars` as follows -
 
 ```shell
-mysql_databases = [
-    {
-      database = "<YOUR_DATABASE_NAME>"
-      tables   = ["TABLE_1", "TABLE_2"]
-      # Optionally list specific tables, or remove "tables" all together for all tables
-    },
-    {
-      database = "<YOUR_DATABASE_NAME>"
-      tables   = ["TABLE_1", "TABLE_2"]
-      # Optionally list specific tables, or remove "tables" all together for all tables
-    },
-  ]
+postgresql_database = {
+   database = "<YOUR_DATABASE_NAME>"
+   schemas = [
+   {
+      schema_name = "<YOUR_SCHEMA_NAME>"
+      tables      = [] # List specific tables to replicate (optional)
+   },
+   {
+      schema_name = "test_schema"
+      tables      = [] # List specific tables to replicate (optional)
+   }
+   ]
+}
 ```
 
 ### Specifying schema overrides
@@ -489,45 +473,14 @@ By default, the Dataflow job performs a like-like mapping between
 source and Spanner. Any schema changes between source and Spanner can be
 specified using the `session file`. To specify a session file -
 
-1. Copy the SMT generated `session file` to the Terraform working directory. 
-   Name this file `session.json`.
+1. Copy the
+   contents of the SMT generated `session file` to the `session.json` file.
 2. Set
-   the `var.common_params.dataflow_params.template_params.local_session_file_path`
-   variable to `"session.json"` (or the relative path to the name of the
-   session file).
+   the `var.dataflow_params.template_params.local_session_file_path`
+   variable to `"session.json"`.
 
 This will automatically upload the GCS bucket and configure it in the Dataflow
 job.
-
-### Specifying transformation context
-
-Transformation context is used to populate the `migration_shard_id` column
-added by SMT to each table of your schema. This allows the customer to trace
-the source of each record in Spanner, back to the source shards.
-
-By default, `migration_shard_id` is populated with
-the `"${mysql_host_ip}-${dbName}"`.
-Alternatively, for each shard, a transformation context file can be specified.
-To
-specify a transformation context file -
-
-1. Create a transformation context file per shard.
-2. Set
-   the `var.shard_list[*].dataflow_params.template_params.local_transformation_context_path`
-   variable to the relative path from working directory to the transformation
-   context file.
-
-### Overriding Dataflow workers per shard
-
-The values configured in `var.common_params.dataflow_params.runner_params`
-define
-the `num_workers`, `max_workers` and `machine_type` for all the Dataflow jobs.
-This can be overridden by specifying the same values at the shard level.
-Do so by specifying the same values
-in `var.shard_list[*].dataflow_params.runner_params`.
-
-This can be useful when trying to provide asymmetric resources to different
-shards as well as selective update scenarios.
 
 ### Cross project writes to Spanner
 
@@ -662,54 +615,3 @@ the recommended approach.
    ```shell
    gcloud auth application-default login --impersonate-service-account <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com
    ```
-
-## Advanced Topics
-
-### Specifying parallelism for Terraform
-
-Terraform limits the number of concurrent operations while walking the graph.
-[The default](https://developer.hashicorp.com/terraform/cli/commands/apply#parallelism-n)
-is 10.
-
-Increasing this value can
-potentially speed up orchestration execution
-when orchestrating a large sharded migration. We strongly recommend against
-setting this value > 20. In most cases, the default value should suffice.
-
-### Correlating the `count.index` with the `shard_id`
-
-In the Terraform output, you should see resources being referred to by their
-index. This is how Terraform works internally when it has to create multiple
-resources of the same type. 
-
-In order to correlate the `count.index` with the `shard_id` that is either
-user specified or auto-generated, `terraform.tf.state` can be used. 
-
-For example, a snippet of XX looks like - 
-
-```json
-{
-      "mode": "managed",
-      "type": "google_datastream_connection_profile",
-      "name": "source_mysql",
-      "provider": "provider[\"registry.terraform.io/hashicorp/google\"]",
-      "instances": [
-        {
-          "index_key": 0,
-          "schema_version": 0,
-          "attributes": {
-            "bigquery_profile": [],
-            "connection_profile_id": "smt-elegant-ape-source-mysql",
-            "create_without_validation": false,
-            "display_name": "smt-elegant-ape-source-mysql",
-            "effective_labels": {
-               "migration_id": "smt-elegant-ape"
-            }
-          }
-        }
-      ]
-    }
-```
-
-As you can see in this example, the `index_key` = `0`, correlates with the
-auto-generated `shard_id` = `smt-elegant-ape`.

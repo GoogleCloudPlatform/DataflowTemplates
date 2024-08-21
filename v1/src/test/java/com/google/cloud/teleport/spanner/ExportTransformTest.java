@@ -145,7 +145,9 @@ public class ExportTransformTest {
             "changeStream",
             "changeStream manifest",
             "sequence",
-            "sequence manifest");
+            "sequence manifest",
+            "placement",
+            "placement manifest");
 
     FileDescriptorProto.Builder builder = FileDescriptorProto.newBuilder();
     builder
@@ -177,6 +179,11 @@ public class ExportTransformTest {
     ddlBuilder.createModel("model1").remote(true).endModel();
     ddlBuilder.createChangeStream("changeStream").endChangeStream();
     ddlBuilder.createSequence("sequence").endSequence();
+    ddlBuilder
+        .createPlacement("placement")
+        .options(
+            ImmutableList.of("instance_partition=\"mr-partition\"", "default_leader=\"us-east1\""))
+        .endPlacement();
     ddlBuilder.mergeProtoBundle(protoBundle);
     ddlBuilder.mergeProtoDescriptors(protoDescriptors);
     Ddl ddl = ddlBuilder.build();
@@ -228,6 +235,12 @@ public class ExportTransformTest {
                   assertThat(
                       manifestProto.getChangeStreams(0).getManifestFile(),
                       is("changeStream-manifest.json"));
+
+                  assertThat(manifestProto.getPlacementsCount(), is(1));
+                  assertThat(manifestProto.getPlacements(0).getName(), is("placement"));
+                  assertThat(
+                      manifestProto.getPlacements(0).getManifestFile(),
+                      is("placement-manifest.json"));
 
                   assertThat(manifestProto.getSequencesCount(), is(1));
                   assertThat(manifestProto.getSequences(0).getName(), is("sequence"));

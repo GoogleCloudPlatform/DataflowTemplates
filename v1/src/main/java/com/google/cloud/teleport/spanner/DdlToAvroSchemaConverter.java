@@ -27,6 +27,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHANGE_STREAM_F
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHECK_CONSTRAINT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_MODEL;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_FOREIGN_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAME;
@@ -56,6 +57,7 @@ import com.google.cloud.teleport.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.ModelColumn;
 import com.google.cloud.teleport.spanner.ddl.NamedSchema;
+import com.google.cloud.teleport.spanner.ddl.Placement;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
@@ -297,6 +299,21 @@ public class DdlToAvroSchemaConverter {
       schemas.add(recordBuilder.fields().endRecord());
     }
 
+    for (Placement placement : ddl.placements()) {
+      LOG.info("DdlToAvro placement {}", placement.name());
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(generateAvroSchemaName(placement.name())).namespace(this.namespace);
+      recordBuilder.prop(SPANNER_NAME, placement.name());
+      recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
+      recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
+      recordBuilder.prop(SPANNER_ENTITY, SPANNER_ENTITY_PLACEMENT);
+      if (placement.options() != null) {
+        for (int i = 0; i < placement.options().size(); i++) {
+          recordBuilder.prop(SPANNER_OPTION + i, placement.options().get(i));
+        }
+      }
+      schemas.add(recordBuilder.fields().endRecord());
+    }
     return schemas;
   }
 
