@@ -81,7 +81,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
 
   /**
    * Discover Tables to migrate. This method could be used to auto infer tables to migrate if not
-   * passed via options.
+   * passed via options. You could try this in <a
+   * href="https://www.db-fiddle.com/f/kWijwWoQLf1obsovToWiV2/0">db-fiddle</a>.
    *
    * @param dataSource Provider for JDBC connection.
    * @return The list of table names for the given database.
@@ -139,7 +140,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   }
 
   /**
-   * Discover the schema of tables to migrate.
+   * Discover the schema of tables to migrate. You could try this in <a
+   * href="https://www.db-fiddle.com/f/vYbnwUtfoXaKHkV7PMKxa/1">db-fiddle</a>.
    *
    * @param dataSource Provider for JDBC connection.
    * @param sourceSchemaReference Source database name and (optionally namespace)
@@ -256,7 +258,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   }
 
   /**
-   * Discover the indexes of tables to migrate.
+   * Discover the indexes of tables to migrate. You can try this in <a
+   * href="https://www.db-fiddle.com/f/bWFaWkW6dMw1tcNDaFnChc/0">db-fiddle</a>.
    *
    * @param dataSource Provider for JDBC connection.
    * @param sourceSchemaReference Source database name and (optionally namespace)
@@ -277,17 +280,20 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         sourceSchemaReference,
         tables);
 
+    // TODO(thiagotnunes): Fix the query to work with PG versions < 11
     final String query =
         String.format(
-            "SELECT a.attname as column_name,"
-                + "  ixs.indexname as index_name,"
-                + "  ix.indisunique as is_unique,"
-                + "  ix.indisprimary as is_primary,"
-                + "  ix.indnkeyatts as cardinality,"
-                + "  a.attnum as ordinal_position,"
-                + "  t.typcategory as type_category,"
-                + "  ico.collation_name as collation,"
-                + "  ico.pad_attribute as pad"
+            "SELECT a.attname AS column_name,"
+                + "  ixs.indexname AS index_name,"
+                + "  ix.indisunique AS is_unique,"
+                + "  ix.indisprimary AS is_primary,"
+                + "  ix.indnkeyatts AS cardinality,"
+                + "  a.attnum AS ordinal_position,"
+                + "  t.typname AS type_name,"
+                + "  information_schema._pg_char_max_length(a.atttypid, a.atttypmod) AS type_length,"
+                + "  t.typcategory AS type_category,"
+                + "  ico.collation_name AS collation,"
+                + "  ico.pad_attribute AS pad"
                 + " FROM pg_catalog.pg_indexes ixs"
                 + "  JOIN pg_catalog.pg_class c ON c.relname = ixs.indexname"
                 + "  JOIN pg_catalog.pg_index ix ON c.oid = ix.indexrelid"
@@ -321,12 +327,19 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
             // TODO(thiagotnunes): Collation support and string max length
             String collation = resultSet.getString("collation");
             if (collation != null) {
+              Integer typeLength = resultSet.getInt("type_length");
+              if (resultSet.wasNull()) {
+                typeLength = null;
+              }
+              boolean shouldPadSpace =
+                  isBlankPaddedType(resultSet.getString("type_name"), typeLength)
+                      || isPadSpace(resultSet.getString("pad"));
               indexBuilder.setCollationReference(
                   CollationReference.builder()
                       // FIXME: Character set being hardcoded as collation
                       .setDbCharacterSet(collation)
                       .setDbCollation(collation)
-                      .setPadSpace(shouldPadSpace(resultSet.getString("pad")))
+                      .setPadSpace(shouldPadSpace)
                       .build());
               // FIXME: String max length being hardcoded as varchar max length
               indexBuilder.setStringMaxLength(VARCHAR_MAX_LENGTH);
@@ -489,7 +502,17 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     }
   }
 
-  private boolean shouldPadSpace(@Nullable String pad) throws SQLException {
+  /** Ref <a href="https://www.postgresql.org/docs/16/infoschema-collations.html"></a>. */
+  private boolean isPadSpace(@Nullable String pad) throws SQLException {
     return pad != null && !pad.equals(NO_PAD);
+  }
+
+  /** Ref <a href="https://www.postgresql.org/docs/current/datatype-character.html"></a>. */
+  private boolean isBlankPaddedType(String typeName, @Nullable Integer typeLength) {
+    String upperTypeName = typeName.toUpperCase();
+    return typeLength != null
+        && (upperTypeName.equals("CHARACTER")
+            || upperTypeName.equals("CHAR")
+            || upperTypeName.equals("BPCHAR"));
   }
 }

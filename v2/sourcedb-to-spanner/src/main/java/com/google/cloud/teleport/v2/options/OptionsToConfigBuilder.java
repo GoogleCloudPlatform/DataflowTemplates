@@ -214,13 +214,10 @@ public final class OptionsToConfigBuilder {
   }
 
   private static JdbcIOWrapperConfig.Builder builderWithDefaultsFor(SQLDialect dialect) {
-    switch (dialect) {
-      case MYSQL:
-        return builderWithMySqlDefaults();
-      case POSTGRESQL:
-        return builderWithPostgreSQLDefaults();
+    if (dialect == SQLDialect.POSTGRESQL) {
+      return builderWithPostgreSQLDefaults();
     }
-    return null;
+    return builderWithMySqlDefaults();
   }
 
   private OptionsToConfigBuilder() {}

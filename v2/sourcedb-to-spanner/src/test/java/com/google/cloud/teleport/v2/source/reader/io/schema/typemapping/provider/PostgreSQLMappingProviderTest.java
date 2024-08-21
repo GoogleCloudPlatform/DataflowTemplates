@@ -45,7 +45,7 @@ public class PostgreSQLMappingProviderTest {
     return ImmutableMap.<String, String>builder()
         .put("BIGINT", "\"long\"")
         .put("CHARACTER VARYING", "\"string\"")
-        .put("DATE", "{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}")
+        .put("DATE", "{\"type\":\"int\",\"logicalType\":\"date\"}")
         .put("INT8", "\"long\"")
         .put("TEXT", "\"string\"")
         .put("VARCHAR", "\"string\"")

@@ -67,13 +67,10 @@ public abstract class SourceTableSchema implements Serializable {
    */
 
   public static Builder builder(SQLDialect dialect) {
-    switch (dialect) {
-      case MYSQL:
-        return builder(MapperType.MYSQL);
-      case POSTGRESQL:
-        return builder(MapperType.POSTGRESQL);
+    if (dialect == SQLDialect.POSTGRESQL) {
+      return builder(MapperType.POSTGRESQL);
     }
-    throw new IllegalArgumentException("Unknown mapper type for dialect: " + dialect);
+    return builder(MapperType.MYSQL);
   }
 
   public static Builder builder(MapperType mapperType) {

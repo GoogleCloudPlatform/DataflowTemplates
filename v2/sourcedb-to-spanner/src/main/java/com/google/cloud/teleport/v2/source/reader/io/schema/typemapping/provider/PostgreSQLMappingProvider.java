@@ -33,10 +33,19 @@ public final class PostgreSQLMappingProvider {
   private static final ImmutableMap<String, UnifiedTypeMapping> MAPPING =
       ImmutableMap.<String, UnifiedMappingProvider.Type>builder()
           .put("BIGINT", UnifiedMappingProvider.Type.LONG)
+          // TODO(thiagotnunes): Refine mapping type according to
+          // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
+          // for length we should use varchar instead)
           .put("CHARACTER VARYING", UnifiedMappingProvider.Type.STRING)
-          .put("DATE", UnifiedMappingProvider.Type.TIMESTAMP)
+          .put("DATE", UnifiedMappingProvider.Type.DATE)
           .put("INT8", UnifiedMappingProvider.Type.LONG)
+          // TODO(thiagotnunes): Refine mapping type according to
+          // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
+          // for length we should use varchar instead)
           .put("TEXT", UnifiedMappingProvider.Type.STRING)
+          // TODO(thiagotnunes): Refine mapping type according to
+          // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
+          // for length we should use varchar instead)
           .put("VARCHAR", UnifiedMappingProvider.Type.STRING)
           .build()
           .entrySet()
