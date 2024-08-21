@@ -64,7 +64,6 @@ public final class AvroToSpannerScdPipelineIT extends TemplateTestBase {
   @Rule public TestPipeline testPipeline = TestPipeline.create();
 
   public static SpannerResourceManager spannerResourceManager;
-  public static SpannerAccessor spannerAccessor;
 
   private static final String RESOURCE_DIR = "AvroToSpannerScdPipelineITTest";
 
@@ -74,15 +73,10 @@ public final class AvroToSpannerScdPipelineIT extends TemplateTestBase {
   @Before
   public void setUp() {
     spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
-
-    SpannerConfig spannerConfig =
-        SpannerConfig.create()
-            .withDatabaseId(spannerResourceManager.getDatabaseId())
-            .withInstanceId(spannerResourceManager.getInstanceId())
-            .withEmulatorHost(
-                ValueProvider.StaticValueProvider.of(spannerResourceManager.getSpannerHost()));
-    spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+        SpannerResourceManager.builder(testName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .maybeUseCustomHost()
+            .build();
   }
 
   @After
