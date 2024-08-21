@@ -84,7 +84,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
       order = 6,
       optional = true,
       description = "Text File Path override for all Text sources",
-      helpText = "Text File Path override",
+      helpText = "The text file path override",
       example = "gs://your-bucket/path/*.json")
   @Default.String("")
   String getInputFilePattern();
