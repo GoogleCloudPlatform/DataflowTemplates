@@ -21,11 +21,9 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetVal
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueMapper;
 import com.google.common.collect.ImmutableMap;
 import java.sql.ResultSet;
-import java.time.Instant;
 import java.util.Calendar;
 import java.util.Map;
 import java.util.TimeZone;
-import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.tuple.Pair;
 
 /** PostgreSQL data type mapping to AVRO types. */
@@ -34,23 +32,15 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
 
   private static final Calendar utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
 
-  private static long instantToMicro(Instant instant) {
-    return TimeUnit.SECONDS.toMicros(instant.getEpochSecond())
-        + TimeUnit.NANOSECONDS.toMicros(instant.getNano());
-  }
-
   private static final ResultSetValueExtractor<java.sql.Date> utcDateExtractor =
       (rs, fieldName) -> rs.getDate(fieldName, utcCalendar);
-
-  private static final ResultSetValueMapper<java.sql.Date> sqlDateToAvroTimestampMicros =
-      (value, schema) -> TimeUnit.DAYS.toMicros(value.toLocalDate().toEpochDay());
 
   // TODO(thiagotnunes): Add missing type mappings
   private static final ImmutableMap<String, JdbcValueMapper<?>> SCHEMA_MAPPINGS =
       ImmutableMap.<String, Pair<ResultSetValueExtractor<?>, ResultSetValueMapper<?>>>builder()
           .put("BIGINT", Pair.of(ResultSet::getLong, valuePassThrough))
           .put("CHARACTER VARYING", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("DATE", Pair.of(utcDateExtractor, sqlDateToAvroTimestampMicros))
+          .put("DATE", Pair.of(utcDateExtractor, valuePassThrough))
           .put("INT8", Pair.of(ResultSet::getLong, valuePassThrough))
           .put("TEXT", Pair.of(ResultSet::getString, valuePassThrough))
           .put("VARCHAR", Pair.of(ResultSet::getString, valuePassThrough))
