@@ -293,6 +293,17 @@ public class PostgreSQLDialectAdapterTest {
   }
 
   @Test
+  public void testBoundaryQuery() {
+    assertThat(adapter.getBoundaryQuery("my_schema.table1", ImmutableList.of(), "id"))
+        .isEqualTo("SELECT MIN(id), MAX(id) FROM my_schema.table1");
+    assertThat(adapter.getBoundaryQuery("my_schema.table1", ImmutableList.of("col1", "col2"), "id"))
+        .isEqualTo(
+            "SELECT MIN(id), MAX(id) FROM my_schema.table1 "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+  }
+
+  @Test
   public void testReadQuery() {
     assertThat(adapter.getReadQuery("my_schema.table1", ImmutableList.of()))
         .isEqualTo("SELECT * FROM my_schema.table1");
