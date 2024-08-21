@@ -63,7 +63,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
       optional = true,
       description =
           "A JSON object that defines named values interpolated into the specification URIs and queries. Also known as runtime tokens.",
-      helpText = "JSON object also called \"runtime tokens\"",
+      helpText = "A JSON object that is also called runtime tokens",
       example = "{token1:value1,token2:value2}. Spec can refer to $token1 and $token2.")
   @Default.String("")
   String getOptionsJson();
