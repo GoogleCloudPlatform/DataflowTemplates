@@ -73,7 +73,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
   @TemplateParameter.Text(
       order = 5,
       optional = true,
-      description = "SQL query override for all BigQuery sources",
+      description = "The SQL query override for all BigQuery sources.",
       helpText = "SQL query override.")
   @Default.String("")
   String getReadQuery();
