@@ -50,7 +50,10 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
             GraphDatabase.driver(
                 settings.getServerUrl(),
                 settings.asAuthToken(),
-                Config.builder().withUserAgent(Neo4jTelemetry.userAgent(templateVersion)).build()));
+                Config.builder()
+                    .withTrustStrategy(settings.asTrustStrategy())
+                    .withUserAgent(Neo4jTelemetry.userAgent(templateVersion))
+                    .build()));
   }
 
   @VisibleForTesting
