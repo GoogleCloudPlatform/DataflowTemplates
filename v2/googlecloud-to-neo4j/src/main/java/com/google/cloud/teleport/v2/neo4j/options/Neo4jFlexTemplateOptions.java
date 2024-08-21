@@ -52,7 +52,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
       description =
           "The secret ID for the Neo4j connection information. This value is encoded in JSON, using the same schema as the `neo4jConnectionUri`.",
       helpText =
-          "The secret ID for the Neo4j connection metadata. This is an alternative to neo4jConnectionUri.")
+          "The secret ID for the Neo4j connection metadata. You can use this value as an alternative to the `neo4jConnectionUri`.")
   @Validation.Required(groups = "connection")
   String getNeo4jConnectionSecretId();
 
