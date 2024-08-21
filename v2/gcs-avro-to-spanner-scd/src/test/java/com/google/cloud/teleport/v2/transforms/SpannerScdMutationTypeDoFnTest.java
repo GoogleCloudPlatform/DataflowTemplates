@@ -26,6 +26,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
@@ -38,6 +39,7 @@ import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper.NullTypes;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -61,16 +63,20 @@ public final class SpannerScdMutationTypeDoFnTest {
     spannerConfigMock = mock(SpannerConfig.class);
     when(spannerConfigMock.withExecuteStreamingSqlRetrySettings(any()))
         .thenReturn(spannerConfigMock);
+    when(spannerConfigMock.getRpcPriority())
+        .thenReturn(ValueProvider.StaticValueProvider.of(RpcPriority.HIGH));
 
     spannerFactoryMock = mock(SpannerFactory.class);
     DatabaseClientManager databaseClientManagerMock = mock(DatabaseClientManager.class);
     when(spannerFactoryMock.getDatabaseClientManager()).thenReturn(databaseClientManagerMock);
+    when(spannerFactoryMock.getSpannerConfig()).thenReturn(spannerConfigMock);
 
     DatabaseClient databaseClientMock = mock(DatabaseClient.class);
     when(databaseClientManagerMock.getDatabaseClient()).thenReturn(databaseClientMock);
 
     TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
     when(databaseClientMock.readWriteTransaction()).thenReturn(transactionCallableMock);
+    when(databaseClientMock.readWriteTransaction(any())).thenReturn(transactionCallableMock);
     when(transactionCallableMock.allowNestedTransaction()).thenReturn(transactionCallableMock);
 
     transactionContextMock = mock(TransactionContext.class);

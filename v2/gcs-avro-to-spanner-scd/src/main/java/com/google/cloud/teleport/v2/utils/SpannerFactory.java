@@ -19,6 +19,7 @@ import com.google.api.gax.retrying.RetrySettings;
 import com.google.api.gax.rpc.FixedHeaderProvider;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -47,11 +48,16 @@ public class SpannerFactory {
     return new DatabaseClientManager(createSpannerService(), spannerConfig);
   }
 
+  public SpannerConfig getSpannerConfig() {
+    return spannerConfig;
+  }
+
   private Spanner createSpannerService() {
     SpannerOptions.Builder optionsBuilder =
         SpannerOptions.newBuilder()
             .setHeaderProvider(
-                FixedHeaderProvider.create("User-Agent", "cloud-solutions/gcs-avro-to-spanner-scd"))
+                FixedHeaderProvider.create(
+                    "User-Agent", "cloud-solutions/dataflow-gcs-avro-to-spanner-scd-v2"))
             .setHost(spannerConfig.getHost().get())
             .setProjectId(spannerConfig.getProjectId().get());
 
@@ -68,6 +74,8 @@ public class SpannerFactory {
             .build();
 
     optionsBuilder.getSpannerStubSettingsBuilder().readSettings().setRetrySettings(retrySettings);
+
+    RpcPriority rpcPriority = spannerConfig.getRpcPriority().get();
 
     optionsBuilder
         .getSpannerStubSettingsBuilder()

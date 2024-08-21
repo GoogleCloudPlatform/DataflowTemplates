@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
@@ -123,7 +124,8 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
   public void writeBatchChanges(@Element Iterable<Struct> recordBatch) {
     databaseClientManager
         .getDatabaseClient()
-        .readWriteTransaction()
+        .readWriteTransaction(
+            Options.priority(spannerFactory().getSpannerConfig().getRpcPriority().get()))
         .allowNestedTransaction()
         .run(
             transaction -> {
