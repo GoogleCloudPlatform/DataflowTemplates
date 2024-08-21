@@ -28,7 +28,10 @@ import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.transforms.AvroToStructFn;
 import com.google.cloud.teleport.v2.transforms.MakeBatchesTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerScdMutationTransform;
+import com.google.cloud.teleport.v2.utils.CurrentTimestampGetter;
 import com.google.cloud.teleport.v2.utils.SpannerFactory;
+import com.google.cloud.teleport.v2.utils.SpannerFactory.DatabaseClientManager;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -68,19 +71,31 @@ import org.apache.beam.sdk.options.ValueProvider;
       "If using SCD Type 2, (start and) end date must be a TIMESTAMP.",
     })
 public class AvroToSpannerScdPipeline {
-
   private final Pipeline pipeline;
-  private final AvroToSpannerScdPipeline.AvroToSpannerScdOptions options;
+  private final AvroToSpannerScdOptions pipelineOptions;
+  private final SpannerConfig spannerConfig;
+  private final SpannerFactory spannerFactory;
+
+  private final CurrentTimestampGetter currentTimestampGetter;
 
   /**
    * Initializes the pipeline.
    *
    * @param pipeline the Apache Beam pipeline
-   * @param options the Apache Beam pipeline options to configure the pipeline
+   * @param pipelineOptions the Apache Beam pipeline options to configure the pipeline
    */
-  public AvroToSpannerScdPipeline(Pipeline pipeline, AvroToSpannerScdOptions options) {
+  @VisibleForTesting
+  public AvroToSpannerScdPipeline(
+      Pipeline pipeline,
+      AvroToSpannerScdOptions pipelineOptions,
+      SpannerConfig spannerConfig,
+      SpannerFactory spannerFactory,
+      CurrentTimestampGetter currentTimestampGetter) {
     this.pipeline = pipeline;
-    this.options = options;
+    this.pipelineOptions = pipelineOptions;
+    this.spannerConfig = spannerConfig;
+    this.spannerFactory = spannerFactory;
+    this.currentTimestampGetter = currentTimestampGetter;
   }
 
   /**
@@ -94,8 +109,7 @@ public class AvroToSpannerScdPipeline {
             .withValidation()
             .as(AvroToSpannerScdPipeline.AvroToSpannerScdOptions.class);
 
-    PipelineResult result =
-        new AvroToSpannerScdPipeline(Pipeline.create(options), options).makePipeline().run();
+    PipelineResult result = run(options);
 
     if (options.getWaitUntilFinish()
         &&
@@ -107,6 +121,38 @@ public class AvroToSpannerScdPipeline {
     }
   }
 
+  @VisibleForTesting
+  static void validateOptions(AvroToSpannerScdOptions pipelineOptions) {
+    // TODO: validate if options are as expected.
+  }
+
+  private static PipelineResult run(AvroToSpannerScdOptions pipelineOptions) {
+    validateOptions(pipelineOptions);
+
+    SpannerConfig spannerConfig =
+        SpannerConfig.create()
+            .withProjectId(
+                pipelineOptions.getSpannerProjectId() != null
+                    ? pipelineOptions.getSpannerProjectId()
+                    : SpannerOptions.getDefaultProjectId())
+            .withHost(ValueProvider.StaticValueProvider.of(pipelineOptions.getSpannerHost()))
+            .withInstanceId(pipelineOptions.getInstanceId())
+            .withDatabaseId(pipelineOptions.getDatabaseId())
+            .withRpcPriority(pipelineOptions.getSpannerPriority());
+
+    SpannerFactory spannerFactory = SpannerFactory.withSpannerConfig(spannerConfig);
+    CurrentTimestampGetter currentTimestampGetter = CurrentTimestampGetter.create();
+
+    return new AvroToSpannerScdPipeline(
+            Pipeline.create(pipelineOptions),
+            pipelineOptions,
+            spannerConfig,
+            spannerFactory,
+            currentTimestampGetter)
+        .makePipeline()
+        .run();
+  }
+
   /**
    * Creates the Apache Beam pipeline that write data from Avro to Spanner using SCD Type 2.
    *
@@ -114,38 +160,30 @@ public class AvroToSpannerScdPipeline {
    * @see org.apache.beam.sdk.Pipeline
    */
   private Pipeline makePipeline() {
-
-    SpannerConfig spannerConfig =
-        SpannerConfig.create()
-            .withProjectId(
-                options.getSpannerProjectId() != null
-                    ? options.getSpannerProjectId()
-                    : SpannerOptions.getDefaultProjectId())
-            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
-            .withInstanceId(options.getInstanceId())
-            .withDatabaseId(options.getDatabaseId())
-            .withRpcPriority(options.getSpannerPriority());
-
     pipeline
         .apply(
             "ReadAvroRecordsAsStruct",
-            AvroIO.parseGenericRecords(AvroToStructFn.create()).from(options.getInputFilePattern()))
+            AvroIO.parseGenericRecords(AvroToStructFn.create())
+                .from(pipelineOptions.getInputFilePattern()))
         .apply(
             "BatchRowsIntoGroups",
             MakeBatchesTransform.create(
-                options.getSpannerBatchSize(),
-                options.getPrimaryKeyColumnNames(),
-                options.getEndDateColumnName()))
+                pipelineOptions.getSpannerBatchSize(),
+                pipelineOptions.getPrimaryKeyColumnNames(),
+                pipelineOptions.getEndDateColumnName()))
         .apply(
             "WriteScdChangesToSpanner",
             SpannerScdMutationTransform.builder()
-                .setScdType(options.getScdType())
+                .setScdType(pipelineOptions.getScdType())
                 .setSpannerConfig(spannerConfig)
-                .setTableName(options.getTableName())
-                .setPrimaryKeyColumnNames(options.getPrimaryKeyColumnNames())
-                .setStartDateColumnName(options.getStartDateColumnName())
-                .setEndDateColumnName(options.getEndDateColumnName())
-                .setTableColumnNames(getTableColumnNames(spannerConfig, options.getTableName()))
+                .setTableName(pipelineOptions.getTableName())
+                .setPrimaryKeyColumnNames(pipelineOptions.getPrimaryKeyColumnNames())
+                .setStartDateColumnName(pipelineOptions.getStartDateColumnName())
+                .setEndDateColumnName(pipelineOptions.getEndDateColumnName())
+                .setTableColumnNames(
+                    getTableColumnNames(spannerConfig, pipelineOptions.getTableName()))
+                .setSpannerFactory(spannerFactory)
+                .setCurrentTimestampGetter(currentTimestampGetter)
                 .build());
 
     return pipeline;
@@ -153,14 +191,15 @@ public class AvroToSpannerScdPipeline {
 
   private static Iterable<String> getTableColumnNames(
       SpannerConfig spannerConfig, String tableName) {
-    SpannerFactory spannerFactory = SpannerFactory.withSpannerConfig(spannerConfig);
+    DatabaseClientManager databaseClientManager =
+        SpannerFactory.withSpannerConfig(spannerConfig).getDatabaseClientManager();
 
     String schemaQuery =
         String.format(
             "SELECT COLUMN_NAME FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE TABLE_NAME = \"%s\"",
             tableName);
     ResultSet results =
-        spannerFactory
+        databaseClientManager
             .getDatabaseClient()
             .readOnlyTransaction()
             .executeQuery(Statement.of(schemaQuery));
@@ -171,7 +210,7 @@ public class AvroToSpannerScdPipeline {
       columnNames.add(rowStruct.getString("COLUMN_NAME"));
     }
 
-    spannerFactory.close();
+    databaseClientManager.close();
     return columnNames;
   }
 

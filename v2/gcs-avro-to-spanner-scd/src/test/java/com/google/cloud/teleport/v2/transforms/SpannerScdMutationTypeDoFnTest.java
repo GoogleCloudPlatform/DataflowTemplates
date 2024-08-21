@@ -31,12 +31,12 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.templates.AvroToSpannerScdPipeline.AvroToSpannerScdOptions.ScdType;
-import com.google.cloud.teleport.v2.transforms.SpannerScdMutationDoFn.CurrentTimestampGetter;
+import com.google.cloud.teleport.v2.utils.CurrentTimestampGetter;
 import com.google.cloud.teleport.v2.utils.SpannerFactory;
+import com.google.cloud.teleport.v2.utils.SpannerFactory.DatabaseClientManager;
 import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper.NullTypes;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,7 +50,6 @@ public final class SpannerScdMutationTypeDoFnTest {
   private CurrentTimestampGetter timestampMock;
   private SpannerConfig spannerConfigMock;
   private SpannerFactory spannerFactoryMock;
-  private SpannerAccessor spannerAccessorMock;
   private TransactionContext transactionContextMock;
 
   private ResultSet resultSetMock;
@@ -64,9 +63,11 @@ public final class SpannerScdMutationTypeDoFnTest {
         .thenReturn(spannerConfigMock);
 
     spannerFactoryMock = mock(SpannerFactory.class);
+    DatabaseClientManager databaseClientManagerMock = mock(DatabaseClientManager.class);
+    when(spannerFactoryMock.getDatabaseClientManager()).thenReturn(databaseClientManagerMock);
 
     DatabaseClient databaseClientMock = mock(DatabaseClient.class);
-    when(spannerFactoryMock.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(databaseClientManagerMock.getDatabaseClient()).thenReturn(databaseClientMock);
 
     TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
     when(databaseClientMock.readWriteTransaction()).thenReturn(transactionCallableMock);
@@ -85,7 +86,7 @@ public final class SpannerScdMutationTypeDoFnTest {
   }
 
   @Test
-  public void testProcessElement_scdType1_createsInsertOrUpdateMutation() {
+  public void testProcessElement_scdType1_createsInsertOrUpdateMutation() throws Exception {
     ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
     Iterable<Struct> input =
         ImmutableList.of(
@@ -102,10 +103,12 @@ public final class SpannerScdMutationTypeDoFnTest {
             /* Not required for SCD TYPE_1. */
             .setStartDateColumnName(null)
             .setEndDateColumnName(null)
-            .build()
             .setSpannerFactory(spannerFactoryMock)
-            .setCurrentTimestampGetter(timestampMock);
+            .setCurrentTimestampGetter(timestampMock)
+            .build();
+    spannerScdMutationTransform.setup();
     spannerScdMutationTransform.writeBatchChanges(input);
+    spannerScdMutationTransform.teardown();
 
     verify(transactionContextMock, times(2)).buffer(mutationBufferCapture.capture());
     List<Mutation> outputMutations = mutationBufferCapture.getAllValues();
@@ -126,7 +129,8 @@ public final class SpannerScdMutationTypeDoFnTest {
   }
 
   @Test
-  public void testProcessElement_scdType2_withEndDate_withNoRowMatch_createsInserts() {
+  public void testProcessElement_scdType2_withEndDate_withNoRowMatch_createsInserts()
+      throws Exception {
     ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
     when(resultSetMock.next()).thenReturn(Boolean.FALSE); // No results.
     Iterable<Struct> input =
@@ -143,10 +147,12 @@ public final class SpannerScdMutationTypeDoFnTest {
             .setStartDateColumnName(null)
             .setEndDateColumnName("end_date")
             .setTableColumnNames(ImmutableList.of("id", "name"))
-            .build()
             .setSpannerFactory(spannerFactoryMock)
-            .setCurrentTimestampGetter(timestampMock);
+            .setCurrentTimestampGetter(timestampMock)
+            .build();
+    spannerScdMutationTransform.setup();
     spannerScdMutationTransform.writeBatchChanges(input);
+    spannerScdMutationTransform.teardown();
 
     verify(transactionContextMock, times(2)).buffer(mutationBufferCapture.capture());
     List<Mutation> outputMutations = mutationBufferCapture.getAllValues();
@@ -171,8 +177,9 @@ public final class SpannerScdMutationTypeDoFnTest {
   }
 
   @Test
-  public void testProcessElement_scdType2_withStartAndEndDate_withNoRowMatch_createsInserts() {
-    when(timestampMock.get()).thenReturn(Timestamp.ofTimeMicroseconds(777));
+  public void testProcessElement_scdType2_withStartAndEndDate_withNoRowMatch_createsInserts()
+      throws Exception {
+    when(timestampMock.now()).thenReturn(Timestamp.ofTimeMicroseconds(777));
     ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
     when(resultSetMock.next()).thenReturn(Boolean.FALSE); // No results.
     Iterable<Struct> input =
@@ -189,10 +196,12 @@ public final class SpannerScdMutationTypeDoFnTest {
             .setStartDateColumnName("start_date")
             .setEndDateColumnName("end_date")
             .setTableColumnNames(ImmutableList.of("id", "name"))
-            .build()
             .setSpannerFactory(spannerFactoryMock)
-            .setCurrentTimestampGetter(timestampMock);
+            .setCurrentTimestampGetter(timestampMock)
+            .build();
+    spannerScdMutationTransform.setup();
     spannerScdMutationTransform.writeBatchChanges(input);
+    spannerScdMutationTransform.teardown();
 
     verify(transactionContextMock, times(2)).buffer(mutationBufferCapture.capture());
     List<Mutation> outputMutations = mutationBufferCapture.getAllValues();
@@ -221,8 +230,9 @@ public final class SpannerScdMutationTypeDoFnTest {
   }
 
   @Test
-  public void testProcessElement_scdType2_withEndDate_withRowMatch_createsUpdates() {
-    when(timestampMock.get()).thenReturn(Timestamp.ofTimeMicroseconds(777));
+  public void testProcessElement_scdType2_withEndDate_withRowMatch_createsUpdates()
+      throws Exception {
+    when(timestampMock.now()).thenReturn(Timestamp.ofTimeMicroseconds(777));
     ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
     when(resultSetMock.next()).thenReturn(Boolean.TRUE, Boolean.FALSE);
     when(resultSetMock.getCurrentRowAsStruct())
@@ -249,10 +259,12 @@ public final class SpannerScdMutationTypeDoFnTest {
             .setStartDateColumnName(null)
             .setEndDateColumnName("end_date")
             .setTableColumnNames(ImmutableList.of("id", "name"))
-            .build()
             .setSpannerFactory(spannerFactoryMock)
-            .setCurrentTimestampGetter(timestampMock);
+            .setCurrentTimestampGetter(timestampMock)
+            .build();
+    spannerScdMutationTransform.setup();
     spannerScdMutationTransform.writeBatchChanges(input);
+    spannerScdMutationTransform.teardown();
 
     verify(transactionContextMock, times(4)).buffer(mutationBufferCapture.capture());
     List<Mutation> outputMutations = mutationBufferCapture.getAllValues();
@@ -289,8 +301,9 @@ public final class SpannerScdMutationTypeDoFnTest {
   }
 
   @Test
-  public void testProcessElement_scdType2_withStartAndEndDate_withRowMatch_createsUpdates() {
-    when(timestampMock.get()).thenReturn(Timestamp.ofTimeMicroseconds(777));
+  public void testProcessElement_scdType2_withStartAndEndDate_withRowMatch_createsUpdates()
+      throws Exception {
+    when(timestampMock.now()).thenReturn(Timestamp.ofTimeMicroseconds(777));
     ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
     when(resultSetMock.next()).thenReturn(Boolean.TRUE, Boolean.FALSE);
     when(resultSetMock.getCurrentRowAsStruct())
@@ -319,10 +332,12 @@ public final class SpannerScdMutationTypeDoFnTest {
             .setStartDateColumnName("start_date")
             .setEndDateColumnName("end_date")
             .setTableColumnNames(ImmutableList.of("id", "name"))
-            .build()
             .setSpannerFactory(spannerFactoryMock)
-            .setCurrentTimestampGetter(timestampMock);
+            .setCurrentTimestampGetter(timestampMock)
+            .build();
+    spannerScdMutationTransform.setup();
     spannerScdMutationTransform.writeBatchChanges(input);
+    spannerScdMutationTransform.teardown();
 
     verify(transactionContextMock, times(4)).buffer(mutationBufferCapture.capture());
     List<Mutation> outputMutations = mutationBufferCapture.getAllValues();
@@ -365,8 +380,9 @@ public final class SpannerScdMutationTypeDoFnTest {
   }
 
   @Test
-  public void testProcessElement_scdType2_withNoRowMatch_handlesSequentialUpdates() {
-    when(timestampMock.get()).thenReturn(Timestamp.ofTimeMicroseconds(777));
+  public void testProcessElement_scdType2_withNoRowMatch_handlesSequentialUpdates()
+      throws Exception {
+    when(timestampMock.now()).thenReturn(Timestamp.ofTimeMicroseconds(777));
     ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
     when(resultSetMock.next()).thenReturn(Boolean.FALSE); // No results.
     Iterable<Struct> input =
@@ -383,10 +399,12 @@ public final class SpannerScdMutationTypeDoFnTest {
             .setStartDateColumnName("start_date")
             .setEndDateColumnName("end_date")
             .setTableColumnNames(ImmutableList.of("id", "name"))
-            .build()
             .setSpannerFactory(spannerFactoryMock)
-            .setCurrentTimestampGetter(timestampMock);
+            .setCurrentTimestampGetter(timestampMock)
+            .build();
+    spannerScdMutationTransform.setup();
     spannerScdMutationTransform.writeBatchChanges(input);
+    spannerScdMutationTransform.teardown();
 
     verify(transactionContextMock, times(4)).buffer(mutationBufferCapture.capture());
     List<Mutation> outputMutations = mutationBufferCapture.getAllValues();
@@ -429,8 +447,8 @@ public final class SpannerScdMutationTypeDoFnTest {
   }
 
   @Test
-  public void testProcessElement_scdType2_withRowMatch_handlesSequentialUpdates() {
-    when(timestampMock.get()).thenReturn(Timestamp.ofTimeMicroseconds(777));
+  public void testProcessElement_scdType2_withRowMatch_handlesSequentialUpdates() throws Exception {
+    when(timestampMock.now()).thenReturn(Timestamp.ofTimeMicroseconds(777));
     ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
     when(resultSetMock.next()).thenReturn(Boolean.TRUE, Boolean.FALSE);
     when(resultSetMock.getCurrentRowAsStruct())
@@ -459,10 +477,12 @@ public final class SpannerScdMutationTypeDoFnTest {
             .setStartDateColumnName("start_date")
             .setEndDateColumnName("end_date")
             .setTableColumnNames(ImmutableList.of("id", "name"))
-            .build()
             .setSpannerFactory(spannerFactoryMock)
-            .setCurrentTimestampGetter(timestampMock);
+            .setCurrentTimestampGetter(timestampMock)
+            .build();
+    spannerScdMutationTransform.setup();
     spannerScdMutationTransform.writeBatchChanges(input);
+    spannerScdMutationTransform.teardown();
 
     verify(transactionContextMock, times(6)).buffer(mutationBufferCapture.capture());
     List<Mutation> outputMutations = mutationBufferCapture.getAllValues();

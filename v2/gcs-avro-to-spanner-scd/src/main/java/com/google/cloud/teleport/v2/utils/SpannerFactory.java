@@ -28,7 +28,6 @@ import org.threeten.bp.Duration;
 public class SpannerFactory {
 
   private transient SpannerConfig spannerConfig;
-  private transient Spanner spanner;
 
   SpannerFactory(SpannerConfig spannerConfig) {
     this.spannerConfig = spannerConfig;
@@ -44,76 +43,76 @@ public class SpannerFactory {
     return new SpannerFactory(spannerConfig);
   }
 
-  private Spanner getOrCreateSpannerService() {
-    if (spanner == null) {
-      SpannerOptions.Builder optionsBuilder =
-          SpannerOptions.newBuilder()
-              .setHeaderProvider(
-                  FixedHeaderProvider.create(
-                      "User-Agent", "cloud-solutions/gcs-avro-to-spanner-scd"))
-              .setHost(spannerConfig.getHost().get())
-              .setProjectId(spannerConfig.getProjectId().get());
+  public DatabaseClientManager getDatabaseClientManager() {
+    return new DatabaseClientManager(createSpannerService(), spannerConfig);
+  }
 
-      RetrySettings retrySettings =
-          RetrySettings.newBuilder()
-              .setInitialRpcTimeout(Duration.ofHours(2))
-              .setMaxRpcTimeout(Duration.ofHours(2))
-              .setTotalTimeout(Duration.ofHours(2))
-              .setRpcTimeoutMultiplier(1.0)
-              .setInitialRetryDelay(Duration.ofSeconds(2))
-              .setMaxRetryDelay(Duration.ofSeconds(60))
-              .setRetryDelayMultiplier(1.5)
-              .setMaxAttempts(100)
-              .build();
+  private Spanner createSpannerService() {
+    SpannerOptions.Builder optionsBuilder =
+        SpannerOptions.newBuilder()
+            .setHeaderProvider(
+                FixedHeaderProvider.create("User-Agent", "cloud-solutions/gcs-avro-to-spanner-scd"))
+            .setHost(spannerConfig.getHost().get())
+            .setProjectId(spannerConfig.getProjectId().get());
 
-      optionsBuilder.getSpannerStubSettingsBuilder().readSettings().setRetrySettings(retrySettings);
+    RetrySettings retrySettings =
+        RetrySettings.newBuilder()
+            .setInitialRpcTimeout(Duration.ofHours(2))
+            .setMaxRpcTimeout(Duration.ofHours(2))
+            .setTotalTimeout(Duration.ofHours(2))
+            .setRpcTimeoutMultiplier(1.0)
+            .setInitialRetryDelay(Duration.ofSeconds(2))
+            .setMaxRetryDelay(Duration.ofSeconds(60))
+            .setRetryDelayMultiplier(1.5)
+            .setMaxAttempts(100)
+            .build();
 
-      optionsBuilder
-          .getSpannerStubSettingsBuilder()
-          .batchWriteSettings()
-          .setRetrySettings(retrySettings);
+    optionsBuilder.getSpannerStubSettingsBuilder().readSettings().setRetrySettings(retrySettings);
 
-      // This property sets the default timeout between 2 response packets in the client library.
-      System.setProperty("com.google.cloud.spanner.watchdogTimeoutSeconds", "7200");
+    optionsBuilder
+        .getSpannerStubSettingsBuilder()
+        .batchWriteSettings()
+        .setRetrySettings(retrySettings);
 
-      spanner = optionsBuilder.build().getService();
+    // This property sets the default timeout between 2 response packets in the client library.
+    System.setProperty("com.google.cloud.spanner.watchdogTimeoutSeconds", "7200");
+
+    return optionsBuilder.build().getService();
+  }
+
+  public class DatabaseClientManager {
+
+    private transient Spanner spanner;
+    private transient SpannerConfig spannerConfig;
+
+    DatabaseClientManager(Spanner spanner, SpannerConfig spannerConfig) {
+      this.spanner = spanner;
+      this.spannerConfig = spannerConfig;
     }
 
-    return spanner;
-  }
+    /**
+     * Gets or creates a Spanner Database client.
+     *
+     * <p>The client is configured using SpannerConfig variables and with additional retry logic.
+     *
+     * @return DatabaseClient to connect to Spanner.
+     */
+    public DatabaseClient getDatabaseClient() {
+      return spanner.getDatabaseClient(
+          DatabaseId.of(
+              spannerConfig.getProjectId().get(),
+              spannerConfig.getInstanceId().get(),
+              spannerConfig.getDatabaseId().get()));
+    }
 
-  /**
-   * Gets or creates a Spanner Database client.
-   *
-   * <p>The client is configured using SpannerConfig variables and with additional retry logic.
-   *
-   * @return DatabaseClient to connect to Spanner.
-   */
-  public DatabaseClient getDatabaseClient() {
-    return getOrCreateSpannerService()
-        .getDatabaseClient(
-            DatabaseId.of(
-                spannerConfig.getProjectId().get(),
-                spannerConfig.getInstanceId().get(),
-                spannerConfig.getDatabaseId().get()));
-  }
-
-  /** Closes Spanner client. */
-  public void close() {
-    if (spanner != null) {
+    /** Closes Spanner client. */
+    public void close() {
       spanner.close();
     }
-  }
 
-  /**
-   * Returns whether Spanner client is closed.
-   *
-   * @return True if the Spanner client is closed. False otherwise.
-   */
-  public boolean isClosed() {
-    if (spanner == null) {
-      return true;
+    /** Returns whether the Spanner client is closed. */
+    public boolean isClosed() {
+      return spanner.isClosed();
     }
-    return spanner.isClosed();
   }
 }

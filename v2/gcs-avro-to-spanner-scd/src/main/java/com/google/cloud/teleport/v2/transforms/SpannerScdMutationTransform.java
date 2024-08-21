@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.v2.templates.AvroToSpannerScdPipeline.AvroToSpannerScdOptions.ScdType;
+import com.google.cloud.teleport.v2.utils.CurrentTimestampGetter;
+import com.google.cloud.teleport.v2.utils.SpannerFactory;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
 import javax.annotation.Nullable;
@@ -60,6 +62,10 @@ public abstract class SpannerScdMutationTransform
 
   abstract ImmutableList<String> tableColumnNames();
 
+  abstract SpannerFactory spannerFactory();
+
+  abstract CurrentTimestampGetter currentTimestampGetter();
+
   @AutoValue.Builder
   public abstract static class Builder {
 
@@ -80,6 +86,11 @@ public abstract class SpannerScdMutationTransform
     public Builder setTableColumnNames(Iterable<String> columnNames) {
       return setTableColumnNames(ImmutableList.copyOf(columnNames));
     }
+
+    public abstract Builder setSpannerFactory(SpannerFactory spannerFactory);
+
+    public abstract Builder setCurrentTimestampGetter(
+        CurrentTimestampGetter currentTimestampGetter);
 
     public abstract SpannerScdMutationTransform build();
   }
@@ -113,6 +124,8 @@ public abstract class SpannerScdMutationTransform
                 .setStartDateColumnName(startDateColumnName())
                 .setEndDateColumnName(endDateColumnName())
                 .setTableColumnNames(tableColumnNames())
+                .setSpannerFactory(spannerFactory())
+                .setCurrentTimestampGetter(currentTimestampGetter())
                 .build()));
     return PDone.in(input.getPipeline());
   }

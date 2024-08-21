@@ -23,7 +23,9 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.AvroToSpannerScdPipeline.AvroToSpannerScdOptions.ScdType;
+import com.google.cloud.teleport.v2.utils.CurrentTimestampGetter;
 import com.google.cloud.teleport.v2.utils.SpannerFactory;
+import com.google.cloud.teleport.v2.utils.SpannerFactory.DatabaseClientManager;
 import com.google.cloud.teleport.v2.utils.StructHelper;
 import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper;
 import com.google.common.collect.ImmutableList;
@@ -52,9 +54,11 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
 
   abstract ImmutableList<String> tableColumnNames();
 
-  private transient SpannerFactory spannerFactory;
+  abstract SpannerFactory spannerFactory();
 
-  private transient CurrentTimestampGetter currentTimestampGetter;
+  abstract CurrentTimestampGetter currentTimestampGetter();
+
+  private transient DatabaseClientManager databaseClientManager;
 
   @AutoValue.Builder
   public abstract static class Builder {
@@ -73,21 +77,16 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
 
     public abstract Builder setTableColumnNames(ImmutableList<String> value);
 
+    public abstract Builder setSpannerFactory(SpannerFactory spannerFactory);
+
+    public abstract Builder setCurrentTimestampGetter(
+        CurrentTimestampGetter currentTimestampGetter);
+
     public abstract SpannerScdMutationDoFn build();
   }
 
   public static Builder builder() {
     return new AutoValue_SpannerScdMutationDoFn.Builder();
-  }
-
-  SpannerScdMutationDoFn setSpannerFactory(SpannerFactory spannerFactory) {
-    this.spannerFactory = spannerFactory;
-    return this;
-  }
-
-  SpannerScdMutationDoFn setCurrentTimestampGetter(CurrentTimestampGetter currentTimestampGetter) {
-    this.currentTimestampGetter = currentTimestampGetter;
-    return this;
   }
 
   interface SpannerScdTypeRunner {
@@ -105,18 +104,12 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
 
   @Setup
   public void setup() throws Exception {
-    if (spannerFactory == null) {
-      spannerFactory = SpannerFactory.withSpannerConfig(spannerConfig());
-    }
-
-    if (currentTimestampGetter == null) {
-      currentTimestampGetter = new CurrentTimestampGetter();
-    }
+    databaseClientManager = spannerFactory().getDatabaseClientManager();
   }
 
   @Teardown
   public void teardown() throws Exception {
-    spannerFactory.close();
+    databaseClientManager.close();
   }
 
   /**
@@ -128,7 +121,7 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
    */
   @ProcessElement
   public void writeBatchChanges(@Element Iterable<Struct> recordBatch) {
-    spannerFactory
+    databaseClientManager
         .getDatabaseClient()
         .readWriteTransaction()
         .allowNestedTransaction()
@@ -237,7 +230,7 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
 
       recordBatch.forEach(
           record -> {
-            com.google.cloud.Timestamp currentTimestamp = currentTimestampGetter.get();
+            com.google.cloud.Timestamp currentTimestamp = currentTimestampGetter().now();
             com.google.cloud.spanner.Key recordKey =
                 StructHelper.of(record)
                     .keyMaker(primaryKeyColumnNames(), ImmutableList.of(endDateColumnName()))
@@ -308,17 +301,6 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
               .copyAsBuilder();
       updatedRecordBuilder.set(endDateColumnName()).to(currentTimestamp);
       return updatedRecordBuilder.build();
-    }
-  }
-
-  /**
-   * Getter that it used to get the current Timestamp.
-   *
-   * <p>This is mainly used for dependency injection during testing.
-   */
-  public static class CurrentTimestampGetter {
-    public com.google.cloud.Timestamp get() {
-      return com.google.cloud.Timestamp.now();
     }
   }
 }

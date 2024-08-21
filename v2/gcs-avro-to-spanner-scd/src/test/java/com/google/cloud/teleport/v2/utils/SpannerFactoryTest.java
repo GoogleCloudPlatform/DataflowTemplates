@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.utils;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.teleport.v2.utils.SpannerFactory.DatabaseClientManager;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.junit.Before;
@@ -42,50 +43,29 @@ public class SpannerFactoryTest {
 
   @Test
   public void testGetDatabaseClient() {
-    DatabaseClient databaseClient =
-        SpannerFactory.withSpannerConfig(spannerConfig).getDatabaseClient();
+    DatabaseClientManager databaseClientManager =
+        SpannerFactory.withSpannerConfig(spannerConfig).getDatabaseClientManager();
+
+    DatabaseClient databaseClient = databaseClientManager.getDatabaseClient();
 
     assertThat(databaseClient).isInstanceOf(DatabaseClient.class);
   }
 
   @Test
-  public void testCloseDatabaseClient_beforeDatabaseClientCreation() {
-    SpannerFactory spannerFactory = SpannerFactory.withSpannerConfig(spannerConfig);
-    spannerFactory.close();
+  public void testIsClosed_beforeClosing() {
+    DatabaseClientManager databaseClientManager =
+        SpannerFactory.withSpannerConfig(spannerConfig).getDatabaseClientManager();
 
-    assertThat(spannerFactory.isClosed()).isTrue();
-  }
-
-  @Test
-  public void testCloseDatabaseClient_afterDatabaseClientCreation() {
-    SpannerFactory spannerFactory = SpannerFactory.withSpannerConfig(spannerConfig);
-    spannerFactory.getDatabaseClient();
-    spannerFactory.close();
-
-    assertThat(spannerFactory.isClosed()).isTrue();
-  }
-
-  @Test
-  public void testIsClosed_beforeCreation() {
-    SpannerFactory spannerFactory = SpannerFactory.withSpannerConfig(spannerConfig);
-
-    assertThat(spannerFactory.isClosed()).isTrue();
-  }
-
-  @Test
-  public void testIsClosed_afterCreation() {
-    SpannerFactory spannerFactory = SpannerFactory.withSpannerConfig(spannerConfig);
-    spannerFactory.getDatabaseClient();
-
-    assertThat(spannerFactory.isClosed()).isFalse();
+    assertThat(databaseClientManager.isClosed()).isFalse();
   }
 
   @Test
   public void testIsClosed_afterClosing() {
-    SpannerFactory spannerFactory = SpannerFactory.withSpannerConfig(spannerConfig);
-    spannerFactory.getDatabaseClient();
-    spannerFactory.close();
+    DatabaseClientManager databaseClientManager =
+        SpannerFactory.withSpannerConfig(spannerConfig).getDatabaseClientManager();
 
-    assertThat(spannerFactory.isClosed()).isTrue();
+    databaseClientManager.close();
+
+    assertThat(databaseClientManager.isClosed()).isTrue();
   }
 }
