@@ -83,7 +83,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
   @TemplateParameter.GcsReadFile(
       order = 6,
       optional = true,
-      description = "Text File Path override for all Text sources",
+      description = "The text file path override for all text sources.",
       helpText = "The text file path override",
       example = "gs://your-bucket/path/*.json")
   @Default.String("")
