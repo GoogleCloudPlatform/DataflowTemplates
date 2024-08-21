@@ -1469,10 +1469,18 @@ public class InformationSchemaScanner {
     Map<String, ImmutableList.Builder<String>> placementNameToOptions = Maps.newHashMap();
     while (resultSet.next()) {
       String name = resultSet.getString(0);
-      boolean isDefault = resultSet.getBoolean(1);
-      if (isDefault) {
-        // Skip `default` placement as this is not created by user DDL.
-        continue;
+      if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
+        boolean isDefault = resultSet.getBoolean(1);
+        if (isDefault) {
+          // Skip `default` placement as this is not created by user DDL.
+          continue;
+        }
+      } else {
+        String isDefault = resultSet.getString(1);
+        if (isDefault.equals("YES")) {
+          // Skip `default` placement as this is not created by user DDL.
+          continue;
+        }
       }
       String optionName = resultSet.getString(2);
       String optionType = resultSet.getString(3);
