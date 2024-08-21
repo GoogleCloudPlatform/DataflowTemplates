@@ -39,7 +39,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
   @TemplateParameter.GcsReadFile(
       order = 2,
       optional = true,
-      description = "Path to the Neo4j connection JSON file, hosted on GCS.",
+      description = "The path to the Neo4j connection JSON file, which is hosted on Google Cloud Storage.",
       helpText = "The path to the Neo4j connection JSON file.")
   @Validation.Required(groups = "connection")
   String getNeo4jConnectionUri();
