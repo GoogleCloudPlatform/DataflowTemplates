@@ -19,11 +19,13 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMap
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueExtractor;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueMapper;
+import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.Date;
 import com.google.common.collect.ImmutableMap;
 import java.sql.ResultSet;
 import java.util.Calendar;
 import java.util.Map;
 import java.util.TimeZone;
+import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.lang3.tuple.Pair;
 
 /** PostgreSQL data type mapping to AVRO types. */
@@ -35,12 +37,18 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
   private static final ResultSetValueExtractor<java.sql.Date> utcDateExtractor =
       (rs, fieldName) -> rs.getDate(fieldName, utcCalendar);
 
+  private static final ResultSetValueMapper<java.sql.Date> sqlDateToAvro =
+      (value, schema) ->
+          new GenericRecordBuilder(Date.SCHEMA)
+              .set(Date.DATE_FIELD_NAME, (int) value.toLocalDate().toEpochDay())
+              .build();
+
   // TODO(thiagotnunes): Add missing type mappings
   private static final ImmutableMap<String, JdbcValueMapper<?>> SCHEMA_MAPPINGS =
       ImmutableMap.<String, Pair<ResultSetValueExtractor<?>, ResultSetValueMapper<?>>>builder()
           .put("BIGINT", Pair.of(ResultSet::getLong, valuePassThrough))
           .put("CHARACTER VARYING", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("DATE", Pair.of(utcDateExtractor, valuePassThrough))
+          .put("DATE", Pair.of(utcDateExtractor, sqlDateToAvro))
           .put("INT8", Pair.of(ResultSet::getLong, valuePassThrough))
           .put("TEXT", Pair.of(ResultSet::getString, valuePassThrough))
           .put("VARCHAR", Pair.of(ResultSet::getString, valuePassThrough))
