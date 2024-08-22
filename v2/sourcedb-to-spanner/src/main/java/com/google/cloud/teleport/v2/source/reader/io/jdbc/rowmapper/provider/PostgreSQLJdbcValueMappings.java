@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.TimeZone;
 import org.apache.commons.lang3.tuple.Pair;
 
+// TODO(thiagotnunes): Increase test coverage
 /** PostgreSQL data type mapping to AVRO types. */
 public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
   private static final ResultSetValueMapper<?> valuePassThrough = (value, schema) -> value;
@@ -38,7 +39,6 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
   private static final ResultSetValueMapper<java.sql.Date> sqlDateToAvro =
       (value, schema) -> (int) value.toLocalDate().toEpochDay();
 
-  // TODO(thiagotnunes): Increase test coverage
   // TODO(thiagotnunes): Add missing type mappings
   private static final ImmutableMap<String, JdbcValueMapper<?>> SCHEMA_MAPPINGS =
       ImmutableMap.<String, Pair<ResultSetValueExtractor<?>, ResultSetValueMapper<?>>>builder()
