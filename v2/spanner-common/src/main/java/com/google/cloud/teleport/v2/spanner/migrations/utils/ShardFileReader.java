@@ -80,6 +80,7 @@ public class ShardFileReader {
                   + "  for shard "
                   + shard.getLogicalShardId());
         }
+        shard.setPassword(password);
       }
 
       Collections.sort(
