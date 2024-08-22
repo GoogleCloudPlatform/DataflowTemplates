@@ -35,6 +35,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAMED_SCHEMA;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ON_DELETE_ACTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PLACEMENT_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
@@ -153,6 +154,9 @@ public class DdlToAvroSchemaConverter {
         fieldBuilder.prop(SQL_TYPE, cm.typeString());
         for (int i = 0; i < cm.columnOptions().size(); i++) {
           fieldBuilder.prop(SPANNER_OPTION + i, cm.columnOptions().get(i));
+        }
+        if (cm.isPlacementKey()) {
+          fieldBuilder.prop(SPANNER_PLACEMENT_KEY, Boolean.toString(cm.isPlacementKey()));
         }
         if (cm.isGenerated()) {
           fieldBuilder.prop(NOT_NULL, Boolean.toString(cm.notNull()));

@@ -1014,4 +1014,59 @@ public class InformationSchemaScannerIT {
   }
 
   // TODO: Add PG test once placements and placement_options are available.
+
+  // TODO: Re-enable once placement table constraints are available.
+  // @Test
+  public void placementTables() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "ALTER DATABASE `" + dbId + "` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n",
+            "CREATE TABLE `PlacementKeyAsPrimaryKey` (\n\t"
+                + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n\t"
+                + "`val`                                   STRING(MAX),\n"
+                + ") PRIMARY KEY (`location` ASC)\n\n\n",
+            "CREATE TABLE `PlacedUsers` (\n\t"
+                + "`location`                              STRING(MAX) NOT NULL,\n\t"
+                + "`user_id`                               INT64 NOT NULL,\n"
+                + ") PRIMARY KEY (`location` ASC, `user_id` ASC),\n"
+                + "INTERLEAVE IN PARENT `PlacementKeyAsPrimaryKey`\n\n\n",
+            "CREATE TABLE `UsersByPlacement` (\n\t"
+                + "`user_id`                               INT64 NOT NULL,\n\t"
+                + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n"
+                + ") PRIMARY KEY (`user_id` ASC)\n\n");
+
+    // Validate the PLACEMENT KEY constraint is available in placement tables.
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  // TODO: Re-enable once placement table constraints are available.
+  // @Test
+  public void pgPlacementTables() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "ALTER DATABASE \"" + dbId + "\" SET spanner.opt_in_dataplacement_preview = TRUE\n",
+            " CREATE TABLE \"PlacementKeyAsPrimaryKey\" ("
+                + " \"location\"                              character varying NOT NULL PLACEMENT KEY,"
+                + " \"val\"                                   character varying,"
+                + " PRIMARY KEY (\"location\")"
+                + " )",
+            " CREATE TABLE \"PlacedUsers\" ("
+                + " \"location\"                              character varying NOT NULL,"
+                + " \"user_id\"                               character varying NOT NULL,"
+                + " PRIMARY KEY (\"location\", \"user_id\") "
+                + ") INTERLEAVE IN PARENT \"PlacementKeyAsPrimaryKey\"",
+            " CREATE TABLE \"UsersWithPlacement\" ("
+                + " \"user_id\"                               bigint NOT NULL,"
+                + " \"location\"                              character varying NOT NULL PLACEMENT KEY,"
+                + " PRIMARY KEY (\"user_id\")"
+                + " )");
+    // Validate the PLACEMENT KEY constraint is available in placement tables.
+    SPANNER_SERVER.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
+    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
 }

@@ -53,6 +53,8 @@ public abstract class Column implements Serializable {
 
   public abstract boolean isStored();
 
+  public abstract boolean isPlacementKey();
+
   public abstract Dialect dialect();
 
   public abstract boolean isHidden();
@@ -68,7 +70,8 @@ public abstract class Column implements Serializable {
         .isGenerated(false)
         .isHidden(false)
         .generationExpression("")
-        .isStored(false);
+        .isStored(false)
+        .isPlacementKey(false);
   }
 
   public static Builder builder() {
@@ -101,6 +104,9 @@ public abstract class Column implements Serializable {
       if (isStored()) {
         appendable.append(" STORED");
       }
+    }
+    if (isPlacementKey()) {
+      appendable.append(" PLACEMENT KEY");
     }
     if (isHidden()) {
       if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
@@ -193,6 +199,12 @@ public abstract class Column implements Serializable {
 
     public Builder stored() {
       return isStored(true);
+    }
+
+    public abstract Builder isPlacementKey(boolean isPlacementKey);
+
+    public Builder placementKey() {
+      return isPlacementKey(true);
     }
 
     public abstract Column autoBuild();
