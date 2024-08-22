@@ -38,6 +38,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
   private static final ResultSetValueMapper<java.sql.Date> sqlDateToAvro =
       (value, schema) -> value.toLocalDate().toEpochDay();
 
+  // TODO(thiagotnunes): Increase test coverage
   // TODO(thiagotnunes): Add missing type mappings
   private static final ImmutableMap<String, JdbcValueMapper<?>> SCHEMA_MAPPINGS =
       ImmutableMap.<String, Pair<ResultSetValueExtractor<?>, ResultSetValueMapper<?>>>builder()
