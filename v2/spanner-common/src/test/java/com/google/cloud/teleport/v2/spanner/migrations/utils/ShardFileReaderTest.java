@@ -161,10 +161,26 @@ public final class ShardFileReaderTest {
     List<Shard> shards =
         shardFileReader.readForwardMigrationShardingConfig(
             "src/test/resources/bulk-migration-shards-secret.json");
-    Shard shard1 = new Shard("", "1.1.1.1", "3306", "test1", "secretA", "", "projects/123/secrets/secretA/versions/latest");
+    Shard shard1 =
+        new Shard(
+            "",
+            "1.1.1.1",
+            "3306",
+            "test1",
+            "secretA",
+            "",
+            "projects/123/secrets/secretA/versions/latest");
     shard1.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-1-person");
     shard1.getDbNameToLogicalShardIdMap().put("person2", "1-1-1-1-person2");
-    Shard shard2 = new Shard("", "1.1.1.2", "3306", "test1", "secretB", "", "projects/123/secrets/secretB/versions/latest");
+    Shard shard2 =
+        new Shard(
+            "",
+            "1.1.1.2",
+            "3306",
+            "test1",
+            "secretB",
+            "",
+            "projects/123/secrets/secretB/versions/latest");
     shard2.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-2-person");
     shard2.getDbNameToLogicalShardIdMap().put("person20", "1-1-1-2-person2");
     List<Shard> expectedShards = new ArrayList<>(Arrays.asList(shard1, shard2));
