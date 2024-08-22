@@ -338,7 +338,9 @@ public class SpannerToSourceDb {
         optional = true,
         description = "Run mode - currently supported are : regular or retryDLQ",
         enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
-        helpText = "This is the run mode type, whether regular or with retryDLQ.")
+        helpText =
+            "This is the run mode type, whether regular or with retryDLQ. retryDLQ is used to retry"
+                + " the severe DLQ records only.")
     @Default.String("regular")
     String getRunMode();
 
@@ -429,20 +431,6 @@ public class SpannerToSourceDb {
     if (shards.size() > 1) {
       shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
     }
-
-    PCollection<TrimmedShardedDataChangeRecord> changeRecordsFromDB =
-        pipeline
-            .apply(
-                getReadChangeStreamDoFn(
-                    options,
-                    spannerConfig)) // This emits PCollection<DataChangeRecord> which is Spanner
-            // change
-            // stream data
-            .apply("Reshuffle", Reshuffle.viaRandomKey())
-            .apply("Filteration", ParDo.of(new FilterRecordsFn(options.getFiltrationMode())))
-            .apply("Preprocess", ParDo.of(new PreprocessRecordsFn()))
-            .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
-
     boolean isRegularMode = "regular".equals(options.getRunMode());
     PCollectionTuple reconsumedElements = null;
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
@@ -456,7 +444,13 @@ public class SpannerToSourceDb {
                       options.getDlqGcsPubSubSubscription(),
                       // file paths to ignore when re-consuming for retry
                       new ArrayList<String>(
-                          Arrays.asList("/severe/", "/tmp_retry", "/tmp_severe/", ".temp")))));
+                          Arrays.asList(
+                              "/severe/",
+                              "/tmp_retry",
+                              "/tmp_severe/",
+                              ".temp",
+                              "/tmp_skip/",
+                              "/" + options.getSkipDirectoryName())))));
     } else {
       reconsumedElements =
           dlqManager.getReconsumerDataTransform(
@@ -474,12 +468,28 @@ public class SpannerToSourceDb {
                 "Convert DLQ records to TrimmedShardedDataChangeRecord",
                 ParDo.of(new ConvertDlqRecordToTrimmedShardedDataChangeRecordFn()))
             .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
-
-    PCollection<TrimmedShardedDataChangeRecord> mergedRecords =
-        PCollectionList.of(changeRecordsFromDB)
-            .and(dlqRecords)
-            .apply("Flatten", Flatten.pCollections())
-            .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
+    PCollection<TrimmedShardedDataChangeRecord> mergedRecords = null;
+    if (isRegularMode) {
+      PCollection<TrimmedShardedDataChangeRecord> changeRecordsFromDB =
+          pipeline
+              .apply(
+                  getReadChangeStreamDoFn(
+                      options,
+                      spannerConfig)) // This emits PCollection<DataChangeRecord> which is Spanner
+              // change
+              // stream data
+              .apply("Reshuffle", Reshuffle.viaRandomKey())
+              .apply("Filteration", ParDo.of(new FilterRecordsFn(options.getFiltrationMode())))
+              .apply("Preprocess", ParDo.of(new PreprocessRecordsFn()))
+              .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
+      mergedRecords =
+          PCollectionList.of(changeRecordsFromDB)
+              .and(dlqRecords)
+              .apply("Flatten", Flatten.pCollections())
+              .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
+    } else {
+      mergedRecords = dlqRecords;
+    }
 
     SourceWriterTransform.Result sourceWriterOutput =
         mergedRecords
@@ -513,14 +523,15 @@ public class SpannerToSourceDb {
                     spannerMetadataConfig,
                     options.getSourceDbTimezoneOffset(),
                     ddl,
-                    options.getShadowTablePrefix()));
+                    options.getShadowTablePrefix(),
+                    options.getSkipDirectoryName()));
 
     PCollection<FailsafeElement<String, String>> dlqPermErrorRecords =
         reconsumedElements
             .get(DeadLetterQueueManager.PERMANENT_ERRORS)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
-    PCollection<FailsafeElement<String, String>> premErrorsFromSourceWriter =
+    PCollection<FailsafeElement<String, String>> permErrorsFromSourceWriter =
         sourceWriterOutput
             .permanentErrors()
             .setCoder(StringUtf8Coder.of())
@@ -531,7 +542,7 @@ public class SpannerToSourceDb {
 
     PCollection<FailsafeElement<String, String>> permanentErrors =
         PCollectionList.of(dlqPermErrorRecords)
-            .and(premErrorsFromSourceWriter)
+            .and(permErrorsFromSourceWriter)
             .apply(Flatten.pCollections())
             .apply("Reshuffle", Reshuffle.viaRandomKey());
 
@@ -568,6 +579,28 @@ public class SpannerToSourceDb {
             DLQWriteTransform.WriteDLQ.newBuilder()
                 .withDlqDirectory(dlqManager.getRetryDlqDirectoryWithDateTime())
                 .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_retry/")
+                .setIncludePaneInfo(true)
+                .build());
+
+    PCollection<FailsafeElement<String, String>> skippedRecords =
+        sourceWriterOutput
+            .skippedSourceWrites()
+            .setCoder(StringUtf8Coder.of())
+            .apply(
+                "Convert skipped records from source writer to DLQ format",
+                ParDo.of(new ConvertChangeStreamErrorRecordToFailsafeElementFn()))
+            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    skippedRecords
+        .apply(
+            "Write skipped records to GCS", MapElements.via(new StringDeadLetterQueueSanitizer()))
+        .setCoder(StringUtf8Coder.of())
+        .apply(
+            "Writing skipped records to GCS",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(
+                    options.getDeadLetterQueueDirectory() + "/" + options.getSkipDirectoryName())
+                .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_skip/")
                 .setIncludePaneInfo(true)
                 .build());
 

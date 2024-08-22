@@ -49,6 +49,7 @@ public class SourceWriterTransform
   private final SpannerConfig spannerConfig;
   private final Ddl ddl;
   private final String shadowTablePrefix;
+  private final String skipDirName;
 
   public SourceWriterTransform(
       List<Shard> shards,
@@ -56,7 +57,8 @@ public class SourceWriterTransform
       SpannerConfig spannerConfig,
       String sourceDbTimezoneOffset,
       Ddl ddl,
-      String shadowTablePrefix) {
+      String shadowTablePrefix,
+      String skipDirName) {
 
     this.schema = schema;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
@@ -64,6 +66,7 @@ public class SourceWriterTransform
     this.spannerConfig = spannerConfig;
     this.ddl = ddl;
     this.shadowTablePrefix = shadowTablePrefix;
+    this.skipDirName = skipDirName;
   }
 
   @Override
@@ -79,16 +82,19 @@ public class SourceWriterTransform
                         this.spannerConfig,
                         this.sourceDbTimezoneOffset,
                         this.ddl,
-                        this.shadowTablePrefix))
+                        this.shadowTablePrefix,
+                        this.skipDirName))
                 .withOutputTags(
                     Constants.SUCCESS_TAG,
                     TupleTagList.of(Constants.PERMANENT_ERROR_TAG)
-                        .and(Constants.RETRYABLE_ERROR_TAG)));
+                        .and(Constants.RETRYABLE_ERROR_TAG)
+                        .and(Constants.SKIPPED_TAG)));
 
     return Result.create(
         sourceWriteResults.get(Constants.SUCCESS_TAG),
         sourceWriteResults.get(Constants.PERMANENT_ERROR_TAG),
-        sourceWriteResults.get(Constants.RETRYABLE_ERROR_TAG));
+        sourceWriteResults.get(Constants.RETRYABLE_ERROR_TAG),
+        sourceWriteResults.get(Constants.SKIPPED_TAG));
   }
 
   /** Container class for the results of this transform. */
@@ -98,12 +104,14 @@ public class SourceWriterTransform
     private static Result create(
         PCollection<String> successfulSourceWrites,
         PCollection<String> permanentErrors,
-        PCollection<String> retryableErrors) {
+        PCollection<String> retryableErrors,
+        PCollection<String> skippedSourceWrites) {
       Preconditions.checkNotNull(successfulSourceWrites);
       Preconditions.checkNotNull(permanentErrors);
       Preconditions.checkNotNull(retryableErrors);
+      Preconditions.checkNotNull(skippedSourceWrites);
       return new AutoValue_SourceWriterTransform_Result(
-          successfulSourceWrites, permanentErrors, retryableErrors);
+          successfulSourceWrites, permanentErrors, retryableErrors, skippedSourceWrites);
     }
 
     public abstract PCollection<String> successfulSourceWrites();
@@ -111,6 +119,8 @@ public class SourceWriterTransform
     public abstract PCollection<String> permanentErrors();
 
     public abstract PCollection<String> retryableErrors();
+
+    public abstract PCollection<String> skippedSourceWrites();
 
     @Override
     public void finishSpecifyingOutput(
@@ -131,7 +141,9 @@ public class SourceWriterTransform
           Constants.PERMANENT_ERROR_TAG,
           permanentErrors(),
           Constants.RETRYABLE_ERROR_TAG,
-          retryableErrors());
+          retryableErrors(),
+          Constants.SKIPPED_TAG,
+          skippedSourceWrites());
     }
   }
 }
