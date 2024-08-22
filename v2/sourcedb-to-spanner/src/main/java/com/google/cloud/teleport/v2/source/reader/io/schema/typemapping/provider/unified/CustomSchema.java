@@ -25,23 +25,6 @@ import org.apache.avro.SchemaBuilder;
  */
 public final class CustomSchema {
 
-  public static final class Date {
-    public static final String RECORD_NAME = "date";
-    public static final String DATE_FIELD_NAME = "date";
-
-    public static final Schema SCHEMA =
-        SchemaBuilder.builder()
-            .record(RECORD_NAME)
-            .fields()
-            .name(DATE_FIELD_NAME)
-            .type(LogicalTypes.date().addToSchema(Schema.create(Schema.Type.INT)))
-            .noDefault()
-            .endRecord();
-
-    /** Static final class wrapping only constants. * */
-    private Date() {}
-  }
-
   public static final class DateTime {
     public static final String RECORD_NAME = "datetime";
     public static final String DATE_FIELD_NAME = "date";
