@@ -40,32 +40,57 @@ public class OptionsToConfigBuilderTest {
 
   @Test
   public void testConfigWithMySqlDefaultsFromOptions() {
-    final String testdriverClassName = "org.apache.derby.jdbc.EmbeddedDriver";
+    final String testDriverClassName = "org.apache.derby.jdbc.EmbeddedDriver";
     final String testUrl = "jdbc:mysql://localhost:3306/testDB";
-    final String testuser = "user";
-    final String testpassword = "password";
+    final String testUser = "user";
+    final String testPassword = "password";
     SourceDbToSpannerOptions sourceDbToSpannerOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
     sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
-    sourceDbToSpannerOptions.setJdbcDriverClassName(testdriverClassName);
+    sourceDbToSpannerOptions.setJdbcDriverClassName(testDriverClassName);
     sourceDbToSpannerOptions.setMaxConnections(150);
     sourceDbToSpannerOptions.setNumPartitions(4000);
-    sourceDbToSpannerOptions.setUsername(testuser);
-    sourceDbToSpannerOptions.setPassword(testpassword);
+    sourceDbToSpannerOptions.setUsername(testUser);
+    sourceDbToSpannerOptions.setPassword(testPassword);
     sourceDbToSpannerOptions.setTables("table1,table2");
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
     JdbcIOWrapperConfig config =
         OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
             sourceDbToSpannerOptions, List.of("table1", "table2"), null, Wait.on(dummyPCollection));
-    assertThat(config.jdbcDriverClassName()).isEqualTo(testdriverClassName);
+    assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
     assertThat(config.sourceDbURL())
         .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
-    assertThat(config.dbAuth().getUserName().get()).isEqualTo(testuser);
-    assertThat(config.dbAuth().getPassword().get()).isEqualTo(testpassword);
+    assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
+    assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
     assertThat(config.waitOn()).isNotNull();
+  }
+
+  @Test
+  public void testConfigWithMySqlUrlFromOptions() {
+    PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
+    JdbcIOWrapperConfig config =
+        OptionsToConfigBuilder.getJdbcIOWrapperConfig(
+            SQLDialect.MYSQL,
+            List.of("table1", "table2"),
+            null,
+            "myhost",
+            3306,
+            "myuser",
+            "mypassword",
+            "mydb",
+            null,
+            "com.mysql.jdbc.Driver",
+            "mysql-jar",
+            10,
+            0,
+            Wait.on(dummyPCollection));
+    assertThat(config.sourceDbURL())
+        .isEqualTo(
+            "jdbc:mysql://myhost:3306/mydb?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
   }
 
   @Test
@@ -99,6 +124,29 @@ public class OptionsToConfigBuilderTest {
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
     assertThat(config.waitOn()).isNotNull();
+  }
+
+  @Test
+  public void testConfigWithPostgreSqlUrlFromOptions() {
+    PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
+    JdbcIOWrapperConfig config =
+        OptionsToConfigBuilder.getJdbcIOWrapperConfig(
+            SQLDialect.POSTGRESQL,
+            List.of("table1", "table2"),
+            null,
+            "myhost",
+            5432,
+            "myuser",
+            "mypassword",
+            "mydb",
+            null,
+            "com.mysql.jdbc.Driver",
+            "mysql-jar",
+            10,
+            0,
+            Wait.on(dummyPCollection));
+    assertThat(config.sourceDbURL()).isEqualTo("jdbc:postgresql://myhost:5432/mydb");
   }
 
   @Test
