@@ -36,7 +36,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
       (rs, fieldName) -> rs.getDate(fieldName, utcCalendar);
 
   private static final ResultSetValueMapper<java.sql.Date> sqlDateToAvro =
-      (value, schema) -> value.toLocalDate().toEpochDay();
+      (value, schema) -> (int) value.toLocalDate().toEpochDay();
 
   // TODO(thiagotnunes): Increase test coverage
   // TODO(thiagotnunes): Add missing type mappings
