@@ -339,8 +339,8 @@ public class SpannerToSourceDb {
         description = "Run mode - currently supported are : regular or retryDLQ",
         enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
         helpText =
-            "This is the run mode type, whether regular or with retryDLQ. retryDLQ is used to retry"
-                + " the severe DLQ records only.")
+            "This is the run mode type, whether regular or with retryDLQ.Default is regular."
+                + " retryDLQ is used to retry the severe DLQ records only.")
     @Default.String("regular")
     String getRunMode();
 
