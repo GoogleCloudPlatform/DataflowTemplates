@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source.reader.io.schema;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import junit.framework.TestCase;
 import org.apache.avro.SchemaBuilder;
 import org.junit.Assert;
@@ -64,5 +65,16 @@ public class SourceTableSchemaTest extends TestCase {
     Assert.assertThrows(
         java.lang.IllegalStateException.class,
         () -> SourceTableSchema.builder(SQLDialect.MYSQL).setTableName(tableName).build());
+  }
+
+  @Test
+  public void testMySqlMapperType() {
+    assertThat(SourceTableSchema.builder(SQLDialect.MYSQL).mapperType).isEqualTo(MapperType.MYSQL);
+  }
+
+  @Test
+  public void testPostgreSqlMapperType() {
+    assertThat(SourceTableSchema.builder(SQLDialect.POSTGRESQL).mapperType)
+        .isEqualTo(MapperType.POSTGRESQL);
   }
 }

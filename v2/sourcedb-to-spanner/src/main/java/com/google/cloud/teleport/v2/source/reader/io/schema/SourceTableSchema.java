@@ -28,6 +28,7 @@ import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder.FieldAssembler;
 import org.apache.avro.SchemaBuilder.RecordDefault;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
 
 /**
  * Value class that encloses both the source table schema as read from the source database's system
@@ -85,7 +86,7 @@ public abstract class SourceTableSchema implements Serializable {
 
     public abstract Builder setTableName(String value);
 
-    private UnifiedTypeMapper.MapperType mapperType;
+    @VisibleForTesting protected UnifiedTypeMapper.MapperType mapperType;
 
     abstract ImmutableMap.Builder<String, SourceColumnType>
         sourceColumnNameToSourceColumnTypeBuilder();
