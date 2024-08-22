@@ -49,18 +49,32 @@ public class InformationSchemaScannerTest {
     assertThat(
         googleSQLInfoScanner.listColumnsSQL().getSql(),
         equalToCompressingWhiteSpace(
-            "SELECT c.table_schema, c.table_name, c.column_name, c.ordinal_position, c.spanner_type, c.is_nullable,"
-                + " c.is_generated, c.generation_expression, c.is_stored, c.column_default, c.is_hidden"
-                + " FROM information_schema.columns as c WHERE c.table_schema NOT IN"
+            "WITH placementkeycolumns AS ( SELECT c.table_name, c.column_name, c.constraint_name"
+                + " FROM information_schema.constraint_column_usage AS c"
+                + " WHERE c.constraint_name = CONCAT('PLACEMENT_KEY_', c.table_name))"
+                + " SELECT c.table_schema, c.table_name, c.column_name, c.ordinal_position, c.spanner_type, c.is_nullable,"
+                + " c.is_generated, c.generation_expression, c.is_stored, c.column_default, c.is_hidden,"
+                + " pkc.constraint_name IS NOT NULL AS is_placement_key"
+                + " FROM information_schema.columns as c"
+                + " LEFT JOIN placementkeycolumns AS pkc"
+                + " ON c.table_name = pkc.table_name AND c.column_name = pkc.column_name"
+                + " WHERE c.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') AND c.spanner_state = 'COMMITTED' "
                 + " ORDER BY c.table_name, c.ordinal_position"));
 
     assertThat(
         postgresSQLInfoScanner.listColumnsSQL().getSql(),
         equalToCompressingWhiteSpace(
-            "SELECT c.table_schema, c.table_name, c.column_name, c.ordinal_position, c.spanner_type, c.is_nullable,"
-                + " c.is_generated, c.generation_expression, c.is_stored, c.column_default FROM"
-                + " information_schema.columns as c WHERE c.table_schema NOT IN "
+            "WITH placementkeycolumns AS ( SELECT c.table_name, c.column_name, c.constraint_name"
+                + " FROM information_schema.constraint_column_usage AS c"
+                + " WHERE c.constraint_name = CONCAT('PLACEMENT_KEY_', c.table_name))"
+                + " SELECT c.table_schema, c.table_name, c.column_name, c.ordinal_position, c.spanner_type, c.is_nullable,"
+                + " c.is_generated, c.generation_expression, c.is_stored, c.column_default,"
+                + " pkc.constraint_name IS NOT NULL AS is_placement_key"
+                + " FROM information_schema.columns as c"
+                + " LEFT JOIN placementkeycolumns AS pkc"
+                + " ON c.table_name = pkc.table_name AND c.column_name = pkc.column_name"
+                + " WHERE c.table_schema NOT IN "
                 + " ('information_schema', 'spanner_sys', 'pg_catalog')  AND c.spanner_state ="
                 + " 'COMMITTED'  ORDER BY c.table_name, c.ordinal_position"));
   }
