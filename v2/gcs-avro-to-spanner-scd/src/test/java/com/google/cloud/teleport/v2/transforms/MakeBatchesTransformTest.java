@@ -17,8 +17,11 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.v2.templates.AvroToSpannerScdPipeline.AvroToSpannerScdOptions.OrderByOrder;
 import com.google.cloud.teleport.v2.utils.StructHelper;
+import com.google.cloud.teleport.v2.utils.StructHelper.ValueHelper.NullTypes;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -67,7 +70,11 @@ public final class MakeBatchesTransformTest {
     PCollection<Struct> input = pipeline.apply(Create.of(inputRecords));
 
     PCollection<Iterable<Struct>> output =
-        input.apply(MakeBatchesTransform.create(batchSize, PRIMARY_KEYS, null));
+        input.apply(
+            MakeBatchesTransform.builder()
+                .setBatchSize(batchSize)
+                .setPrimaryKeyColumns(PRIMARY_KEYS)
+                .build());
 
     PAssert.thatSingletonIterable(output).containsInAnyOrder(inputRecords);
     PAssert.that(output)
@@ -86,7 +93,11 @@ public final class MakeBatchesTransformTest {
     List<Struct> inputRecords = SampleCreator.create().createSamples(25);
     PCollection<Struct> input = pipeline.apply(Create.of(inputRecords));
     PCollection<Iterable<Struct>> output =
-        input.apply(MakeBatchesTransform.create(batchSize, PRIMARY_KEYS, null));
+        input.apply(
+            MakeBatchesTransform.builder()
+                .setBatchSize(batchSize)
+                .setPrimaryKeyColumns(PRIMARY_KEYS)
+                .build());
 
     PAssert.that(output)
         .satisfies(
@@ -111,7 +122,11 @@ public final class MakeBatchesTransformTest {
     PCollection<Struct> input = pipeline.apply(Create.of(inputRecords));
 
     PCollection<Iterable<Struct>> output =
-        input.apply(MakeBatchesTransform.create(batchSize, PRIMARY_KEYS, null));
+        input.apply(
+            MakeBatchesTransform.builder()
+                .setBatchSize(batchSize)
+                .setPrimaryKeyColumns(PRIMARY_KEYS)
+                .build());
 
     PAssert.thatSingletonIterable(output).containsInAnyOrder(inputRecords);
     PAssert.that(output)
@@ -138,7 +153,11 @@ public final class MakeBatchesTransformTest {
     PCollection<Struct> input = pipeline.apply(Create.of(inputRecords));
 
     PCollection<Iterable<Struct>> output =
-        input.apply(MakeBatchesTransform.create(batchSize, PRIMARY_KEYS, null));
+        input.apply(
+            MakeBatchesTransform.builder()
+                .setBatchSize(batchSize)
+                .setPrimaryKeyColumns(PRIMARY_KEYS)
+                .build());
 
     PAssert.that(output)
         .satisfies(
@@ -179,7 +198,11 @@ public final class MakeBatchesTransformTest {
 
     PCollection<Iterable<Struct>> output =
         input.apply(
-            MakeBatchesTransform.create(batchSize, ImmutableList.of("id", "end_date"), "end_date"));
+            MakeBatchesTransform.builder()
+                .setBatchSize(batchSize)
+                .setPrimaryKeyColumns(ImmutableList.of("id", "end_date"))
+                .setEndDateColumnName("end_date")
+                .build());
 
     PAssert.thatSingletonIterable(output).containsInAnyOrder(inputRecords);
     PAssert.that(output)
@@ -187,6 +210,152 @@ public final class MakeBatchesTransformTest {
             collection -> {
               ImmutableList<Iterable<Struct>> listOfBatches = ImmutableList.copyOf(collection);
               assertThat(listOfBatches).hasSize(1);
+              return null;
+            });
+    pipeline.run().waitUntilFinish();
+  }
+
+  @Test
+  public void testExpand_sortsBatches_default() {
+    Struct r1 =
+        Struct.newBuilder()
+            .set("orderColumn")
+            .to(NullTypes.NULL_TIMESTAMP)
+            .set("other")
+            .to("g")
+            .build();
+    Struct r2 =
+        Struct.newBuilder()
+            .set("orderColumn")
+            .to(Timestamp.ofTimeMicroseconds(10))
+            .set("other")
+            .to("z")
+            .build();
+    Struct r3 =
+        Struct.newBuilder()
+            .set("orderColumn")
+            .to(Timestamp.ofTimeMicroseconds(1000))
+            .set("other")
+            .to("f")
+            .build();
+    var inputRecords = ImmutableList.of(r2, r3, r1); // Out of order.
+    var expectedOutputRecords = ImmutableList.of(r1, r2, r3);
+    PCollection<Struct> input = pipeline.apply(Create.of(inputRecords));
+
+    PCollection<Iterable<Struct>> output =
+        input.apply(
+            MakeBatchesTransform.builder()
+                .setBatchSize(3)
+                .setPrimaryKeyColumns(ImmutableList.of("other"))
+                .setOrderByColumnName("orderColumn")
+                .build());
+
+    PAssert.that(output)
+        .satisfies(
+            collection -> {
+              ImmutableList<Iterable<Struct>> listOfBatches = ImmutableList.copyOf(collection);
+              assertThat(listOfBatches).hasSize(1);
+
+              Iterable<Struct> batch = listOfBatches.get(0);
+              assertThat(batch).containsExactlyElementsIn(expectedOutputRecords).inOrder();
+              return null;
+            });
+    pipeline.run().waitUntilFinish();
+  }
+
+  @Test
+  public void testExpand_sortsBatches_asc() {
+    Struct r1 =
+        Struct.newBuilder()
+            .set("orderColumn")
+            .to(NullTypes.NULL_TIMESTAMP)
+            .set("other")
+            .to("g")
+            .build();
+    Struct r2 =
+        Struct.newBuilder()
+            .set("orderColumn")
+            .to(Timestamp.ofTimeMicroseconds(10))
+            .set("other")
+            .to("z")
+            .build();
+    Struct r3 =
+        Struct.newBuilder()
+            .set("orderColumn")
+            .to(Timestamp.ofTimeMicroseconds(1000))
+            .set("other")
+            .to("f")
+            .build();
+    var inputRecords = ImmutableList.of(r2, r3, r1); // Out of order.
+    var expectedOutputRecords = ImmutableList.of(r1, r2, r3);
+    PCollection<Struct> input = pipeline.apply(Create.of(inputRecords));
+
+    PCollection<Iterable<Struct>> output =
+        input.apply(
+            MakeBatchesTransform.builder()
+                .setBatchSize(3)
+                .setPrimaryKeyColumns(ImmutableList.of("other"))
+                .setOrderByColumnName("orderColumn")
+                .setOrderByOrder(OrderByOrder.ASC)
+                .build());
+
+    PAssert.that(output)
+        .satisfies(
+            collection -> {
+              ImmutableList<Iterable<Struct>> listOfBatches = ImmutableList.copyOf(collection);
+              assertThat(listOfBatches).hasSize(1);
+
+              Iterable<Struct> batch = listOfBatches.get(0);
+              assertThat(batch).containsExactlyElementsIn(expectedOutputRecords).inOrder();
+              return null;
+            });
+    pipeline.run().waitUntilFinish();
+  }
+
+  @Test
+  public void testExpand_sortsBatches_desc() {
+    Struct r1 =
+        Struct.newBuilder()
+            .set("orderColumn")
+            .to(NullTypes.NULL_TIMESTAMP)
+            .set("other")
+            .to("g")
+            .build();
+    Struct r2 =
+        Struct.newBuilder()
+            .set("orderColumn")
+            .to(Timestamp.ofTimeMicroseconds(10))
+            .set("other")
+            .to("z")
+            .build();
+    Struct r3 =
+        Struct.newBuilder()
+            .set("orderColumn")
+            .to(Timestamp.ofTimeMicroseconds(1000))
+            .set("other")
+            .to("f")
+            .build();
+    var inputRecords = ImmutableList.of(r2, r3, r1); // Out of order.
+    var expectedOutputRecords = ImmutableList.of(r3, r2, r1); // Inverse order.
+    PCollection<Struct> input = pipeline.apply(Create.of(inputRecords));
+
+    PCollection<Iterable<Struct>> output =
+        input.apply(
+            MakeBatchesTransform.builder()
+                .setBatchSize(3)
+                .setPrimaryKeyColumns(ImmutableList.of("other"))
+                .setOrderByColumnName("orderColumn")
+                .setOrderByOrder(OrderByOrder.DESC)
+                .build());
+
+    PAssert.that(output)
+        .satisfies(
+            collection -> {
+              ImmutableList<Iterable<Struct>> listOfBatches = ImmutableList.copyOf(collection);
+              assertThat(listOfBatches).hasSize(1);
+
+              Iterable<Struct> batch = listOfBatches.get(0);
+              assertThat(batch).containsExactlyElementsIn(expectedOutputRecords).inOrder();
               return null;
             });
     pipeline.run().waitUntilFinish();

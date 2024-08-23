@@ -167,10 +167,13 @@ public class AvroToSpannerScdPipeline {
                 .from(pipelineOptions.getInputFilePattern()))
         .apply(
             "BatchRowsIntoGroups",
-            MakeBatchesTransform.create(
-                pipelineOptions.getSpannerBatchSize(),
-                pipelineOptions.getPrimaryKeyColumnNames(),
-                pipelineOptions.getEndDateColumnName()))
+            MakeBatchesTransform.builder()
+                .setBatchSize(pipelineOptions.getSpannerBatchSize())
+                .setPrimaryKeyColumns(pipelineOptions.getPrimaryKeyColumnNames())
+                .setOrderByColumnName(pipelineOptions.getOrderByColumnName())
+                .setEndDateColumnName(pipelineOptions.getEndDateColumnName())
+                .setOrderByOrder(pipelineOptions.getOrderByOrder())
+                .build())
         .apply(
             "WriteScdChangesToSpanner",
             SpannerScdMutationTransform.builder()
@@ -342,6 +345,31 @@ public class AvroToSpannerScdPipeline {
         groupName = "Schema",
         order = 11,
         optional = true,
+        description = "Order by column name",
+        helpText =
+            "Name of column that will be used to order when there are multiple updates for "
+                + "the same primary key within the same file.")
+    String getOrderByColumnName();
+
+    void setOrderByColumnName(String value);
+
+    @TemplateParameter.Enum(
+        groupName = "Schema",
+        order = 12,
+optional = true,
+        enumOptions = {@TemplateEnumOption("ASC"), @TemplateEnumOption("DESC")},
+        description = "Order in Ascending (ASC) or Descending (DESC) order",
+        helpText = "Whether to use ASC or DESC when sorting the records by order by column name.",
+        example = "ASC")
+    @Default.Enum("ASC")
+    OrderByOrder getOrderByOrder();
+
+    void setOrderByOrder(OrderByOrder value);
+
+    @TemplateParameter.Text(
+        groupName = "Schema",
+        order = 13,
+        optional = true,
         description = "Start date column name",
         helpText = "Name of column name for the start date (TIMESTAMP). Only used for SCD-Type=2.")
     String getStartDateColumnName();
@@ -350,7 +378,7 @@ public class AvroToSpannerScdPipeline {
 
     @TemplateParameter.Text(
         groupName = "Schema",
-        order = 13,
+        order = 14,
         optional = true,
         description = "End date column name",
         helpText =
@@ -369,6 +397,11 @@ public class AvroToSpannerScdPipeline {
     enum ScdType {
       TYPE_1,
       TYPE_2,
+    }
+
+    enum OrderByOrder {
+      ASC,
+      DESC,
     }
   }
 }

@@ -17,10 +17,15 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.v2.templates.AvroToSpannerScdPipeline.AvroToSpannerScdOptions.OrderByOrder;
+import com.google.cloud.teleport.v2.utils.StructComparator;
 import com.google.cloud.teleport.v2.utils.StructHelper;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.GroupByKey;
@@ -38,17 +43,38 @@ import org.apache.beam.sdk.values.PCollection;
 public abstract class MakeBatchesTransform
     extends PTransform<PCollection<Struct>, PCollection<Iterable<Struct>>> {
 
-  public static MakeBatchesTransform create(
-      Integer batchSize, List<String> primaryKeyColumns, String endDateColumnName) {
-    return new AutoValue_MakeBatchesTransform(batchSize, primaryKeyColumns, endDateColumnName);
-  }
-
   abstract Integer batchSize();
 
   abstract List<String> primaryKeyColumns();
 
   @Nullable
+  abstract String orderByColumnName();
+
+  @Nullable
+  abstract OrderByOrder orderByOrder();
+
+  @Nullable
   abstract String endDateColumnName();
+
+  @AutoValue.Builder
+  public abstract static class Builder {
+
+    public abstract Builder setBatchSize(Integer value);
+
+    public abstract Builder setPrimaryKeyColumns(List<String> value);
+
+    public abstract Builder setOrderByColumnName(String value);
+
+    public abstract Builder setOrderByOrder(OrderByOrder value);
+
+    public abstract Builder setEndDateColumnName(String value);
+
+    public abstract MakeBatchesTransform build();
+  }
+
+  public static MakeBatchesTransform.Builder builder() {
+    return new AutoValue_MakeBatchesTransform.Builder();
+  }
 
   @Override
   public PCollection<Iterable<Struct>> expand(PCollection<Struct> input) {
@@ -58,7 +84,8 @@ public abstract class MakeBatchesTransform
         .apply("GroupArbitrarilyForBatchSize", WithKeys.of(1))
         .apply("GroupIntoBatchesOfPrimaryKey", GroupIntoBatches.ofSize(batchSize()))
         .apply("RemoveArbitraryBatchKey", Values.create())
-        .apply("RemovePrimaryKeyFromBatch", ParDo.of(new UngroupPrimaryKey()));
+        .apply("RemovePrimaryKeyFromBatch", ParDo.of(new UngroupPrimaryKey()))
+        .apply("OrderByColumnName", ParDo.of(new OrderByColumnName()));
   }
 
   private class ExtractPrimaryKey implements SerializableFunction<Struct, String> {
@@ -81,19 +108,13 @@ public abstract class MakeBatchesTransform
     /**
      * Ungroups data in a double batch (batch by size and primary key) into a single iterable.
      *
-     * @param inputBatch
+     * @param inputBatch Batch to ungroup.
      * @param output Output receiver.
      */
     @ProcessElement
     public void ungroup(
         @Element Iterable<KV<String, Iterable<Struct>>> inputBatch,
         OutputReceiver<Iterable<Struct>> output) {
-      // TODO: add orderBy logic to handle rows with the same primary keys.
-      //  At the moment, the pipeline assumes that the rows are in update order where the first row
-      //  seen is the first row updated. However, this might not be the right order as readers,
-      //  writers and grouping logic may not guarantee order. Instead, Avro may contain a column
-      //  that indicates the order in which updates happened if the same row is updated more than
-      //  once.
       ArrayList<Struct> batchWithoutKeys = new ArrayList<>();
       inputBatch.forEach(
           kvBatch -> {
@@ -101,6 +122,35 @@ public abstract class MakeBatchesTransform
             batch.forEach(batchWithoutKeys::add);
           });
       output.output(batchWithoutKeys);
+    }
+  }
+
+  private class OrderByColumnName extends DoFn<Iterable<Struct>, Iterable<Struct>> {
+
+    /**
+     * Orders iterable of structs by the requested orderByColumnName.
+     *
+     * @param inputBatch Batch to sort.
+     * @param output Output receiver.
+     */
+    @ProcessElement
+    public void sortIterable(
+        @Element Iterable<Struct> inputBatch, OutputReceiver<Iterable<Struct>> output) {
+
+      if (orderByColumnName() == null) {
+        output.output(inputBatch);
+      } else {
+        List<Struct> orderedBatch =
+            StreamSupport.stream(inputBatch.spliterator(), false)
+                .sorted(StructComparator.create(orderByColumnName()))
+                .collect(Collectors.toList());
+
+        if (orderByOrder() == OrderByOrder.DESC) {
+          Collections.reverse(orderedBatch);
+        }
+
+        output.output(orderedBatch);
+      }
     }
   }
 }
