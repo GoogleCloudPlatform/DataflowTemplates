@@ -34,4 +34,10 @@ public class CurrentTimestampGetter implements Serializable {
   public Timestamp now() {
     return Timestamp.now();
   }
+
+  public Timestamp nowPlusNanos(Integer nanos) {
+    Timestamp currentTimestamp = Timestamp.now();
+    return Timestamp.ofTimeSecondsAndNanos(
+        currentTimestamp.getSeconds(), currentTimestamp.getNanos() + nanos);
+  }
 }

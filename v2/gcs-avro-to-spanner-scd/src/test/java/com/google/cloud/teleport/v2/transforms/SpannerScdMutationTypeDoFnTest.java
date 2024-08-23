@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -59,6 +60,9 @@ public final class SpannerScdMutationTypeDoFnTest {
   @Before
   public void setUp() {
     timestampMock = mock(CurrentTimestampGetter.class);
+    when(timestampMock.now()).thenReturn(Timestamp.ofTimeMicroseconds(777));
+    when(timestampMock.nowPlusNanos(anyInt()))
+        .thenAnswer(call -> Timestamp.ofTimeMicroseconds(777 + (Integer) call.getArgument(0)));
 
     spannerConfigMock = mock(SpannerConfig.class);
     when(spannerConfigMock.withExecuteStreamingSqlRetrySettings(any()))
@@ -185,7 +189,6 @@ public final class SpannerScdMutationTypeDoFnTest {
   @Test
   public void testProcessElement_scdType2_withStartAndEndDate_withNoRowMatch_createsInserts()
       throws Exception {
-    when(timestampMock.now()).thenReturn(Timestamp.ofTimeMicroseconds(777));
     ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
     when(resultSetMock.next()).thenReturn(Boolean.FALSE); // No results.
     Iterable<Struct> input =
@@ -229,7 +232,7 @@ public final class SpannerScdMutationTypeDoFnTest {
                 .set("name")
                 .to("Beam")
                 .set("start_date")
-                .to(Timestamp.ofTimeMicroseconds(777))
+                .to(Timestamp.ofTimeMicroseconds(778))
                 .set("end_date")
                 .to(NullTypes.NULL_TIMESTAMP)
                 .build());
@@ -238,7 +241,6 @@ public final class SpannerScdMutationTypeDoFnTest {
   @Test
   public void testProcessElement_scdType2_withEndDate_withRowMatch_createsUpdates()
       throws Exception {
-    when(timestampMock.now()).thenReturn(Timestamp.ofTimeMicroseconds(777));
     ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
     when(resultSetMock.next()).thenReturn(Boolean.TRUE, Boolean.FALSE);
     when(resultSetMock.getCurrentRowAsStruct())
@@ -309,7 +311,6 @@ public final class SpannerScdMutationTypeDoFnTest {
   @Test
   public void testProcessElement_scdType2_withStartAndEndDate_withRowMatch_createsUpdates()
       throws Exception {
-    when(timestampMock.now()).thenReturn(Timestamp.ofTimeMicroseconds(777));
     ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
     when(resultSetMock.next()).thenReturn(Boolean.TRUE, Boolean.FALSE);
     when(resultSetMock.getCurrentRowAsStruct())
@@ -379,7 +380,7 @@ public final class SpannerScdMutationTypeDoFnTest {
                 .set("name")
                 .to("Beam")
                 .set("start_date")
-                .to(Timestamp.ofTimeMicroseconds(777))
+                .to(Timestamp.ofTimeMicroseconds(778))
                 .set("end_date")
                 .to(NullTypes.NULL_TIMESTAMP)
                 .build());
@@ -388,7 +389,6 @@ public final class SpannerScdMutationTypeDoFnTest {
   @Test
   public void testProcessElement_scdType2_withNoRowMatch_handlesSequentialUpdates()
       throws Exception {
-    when(timestampMock.now()).thenReturn(Timestamp.ofTimeMicroseconds(777));
     ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
     when(resultSetMock.next()).thenReturn(Boolean.FALSE); // No results.
     Iterable<Struct> input =
@@ -438,7 +438,7 @@ public final class SpannerScdMutationTypeDoFnTest {
                 .set("start_date")
                 .to(Timestamp.ofTimeMicroseconds(777))
                 .set("end_date")
-                .to(Timestamp.ofTimeMicroseconds(777))
+                .to(Timestamp.ofTimeMicroseconds(778))
                 .build(),
             Mutation.newInsertBuilder("tableName")
                 .set("id")
@@ -446,7 +446,7 @@ public final class SpannerScdMutationTypeDoFnTest {
                 .set("name")
                 .to("OtherNewName")
                 .set("start_date")
-                .to(Timestamp.ofTimeMicroseconds(777))
+                .to(Timestamp.ofTimeMicroseconds(778))
                 .set("end_date")
                 .to(NullTypes.NULL_TIMESTAMP)
                 .build());
@@ -454,7 +454,6 @@ public final class SpannerScdMutationTypeDoFnTest {
 
   @Test
   public void testProcessElement_scdType2_withRowMatch_handlesSequentialUpdates() throws Exception {
-    when(timestampMock.now()).thenReturn(Timestamp.ofTimeMicroseconds(777));
     ArgumentCaptor<Mutation> mutationBufferCapture = ArgumentCaptor.forClass(Mutation.class);
     when(resultSetMock.next()).thenReturn(Boolean.TRUE, Boolean.FALSE);
     when(resultSetMock.getCurrentRowAsStruct())
@@ -528,7 +527,7 @@ public final class SpannerScdMutationTypeDoFnTest {
                 .set("start_date")
                 .to(Timestamp.ofTimeMicroseconds(777))
                 .set("end_date")
-                .to(Timestamp.ofTimeMicroseconds(777))
+                .to(Timestamp.ofTimeMicroseconds(778))
                 .build(),
             Mutation.newInsertBuilder("tableName")
                 .set("id")
@@ -536,7 +535,7 @@ public final class SpannerScdMutationTypeDoFnTest {
                 .set("name")
                 .to("OtherNewName")
                 .set("start_date")
-                .to(Timestamp.ofTimeMicroseconds(777))
+                .to(Timestamp.ofTimeMicroseconds(778))
                 .set("end_date")
                 .to(NullTypes.NULL_TIMESTAMP)
                 .build());

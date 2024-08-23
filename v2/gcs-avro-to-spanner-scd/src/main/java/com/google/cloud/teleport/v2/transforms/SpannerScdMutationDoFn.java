@@ -231,38 +231,31 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
     public Void bufferMutations(TransactionContext transaction, Iterable<Struct> recordBatch) {
       HashMap<com.google.cloud.spanner.Key, Struct> existingRows =
           getMatchingRecords(recordBatch, transaction);
+      int i = 0;
+      for (Struct record : recordBatch) {
+        com.google.cloud.spanner.Key recordKey =
+            StructHelper.of(record)
+                .keyMaker(primaryKeyColumnNames(), ImmutableList.of(endDateColumnName()))
+                .createKeyWithExtraValues(
+                    /* endTimestamp= */ Value.timestamp(ValueHelper.NullTypes.NULL_TIMESTAMP));
 
-      recordBatch.forEach(
-          record -> {
-            com.google.cloud.spanner.Key recordKey =
-                StructHelper.of(record)
-                    .keyMaker(primaryKeyColumnNames(), ImmutableList.of(endDateColumnName()))
-                    .createKeyWithExtraValues(
-                        /* endTimestamp= */ Value.timestamp(ValueHelper.NullTypes.NULL_TIMESTAMP));
+        // Add additional nanoseconds to avoid two records from having exactly the same
+        // currentTimestamp. Since end time is usually a primary key, having the same end time
+        // would result in a failure.
+        com.google.cloud.Timestamp currentTimestamp = currentTimestampGetter().nowPlusNanos(i++);
 
-            // Wait for one nanosecond to avoid two records from having the same currentTimestamp,
-            // which is measured in nanoseconds. Since end time is usually a primary key, having
-            // the same end time would result in a failure. This adds some delay, but it is only
-            // one second per each 1M records, which is reasonable.
-            try {
-              Thread.sleep(0, 1);
-            } catch (InterruptedException e) {
-              throw new RuntimeException(e);
-            }
+        if (existingRows.containsKey(recordKey)) {
+          Struct existingRow = existingRows.get(recordKey);
+          transaction.buffer(createDeleteMutation(existingRow));
 
-            com.google.cloud.Timestamp currentTimestamp = currentTimestampGetter().now();
-            if (existingRows.containsKey(recordKey)) {
-              Struct existingRow = existingRows.get(recordKey);
-              transaction.buffer(createDeleteMutation(existingRow));
+          Struct updatedRecord = updateOldRecord(existingRow, currentTimestamp);
+          transaction.buffer(createInsertMutation(updatedRecord));
+        }
 
-              Struct updatedRecord = updateOldRecord(existingRow, currentTimestamp);
-              transaction.buffer(createInsertMutation(updatedRecord));
-            }
-
-            Struct newRecord = createNewRecord(record, currentTimestamp);
-            transaction.buffer(createInsertMutation(newRecord));
-            existingRows.put(recordKey, newRecord);
-          });
+        Struct newRecord = createNewRecord(record, currentTimestamp);
+        transaction.buffer(createInsertMutation(newRecord));
+        existingRows.put(recordKey, newRecord);
+      }
       return null;
     }
 
