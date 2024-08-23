@@ -211,6 +211,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
       String gcsPrefix,
       JDBCSource jdbcSource,
       DatastreamResourceManager datastreamResourceManager) {
+    // To-do, for future postgres load testing, add a parameter to accept other sources
     SourceConfig sourceConfig =
         datastreamResourceManager.buildJDBCSourceConfig("mysql", jdbcSource);
 
