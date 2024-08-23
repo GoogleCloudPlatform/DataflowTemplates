@@ -389,7 +389,6 @@ public final class JdbcIoWrapper implements IoWrapper {
   private static DataSourceConfiguration getDataSourceConfiguration(JdbcIOWrapperConfig config) {
     DataSourceConfiguration dataSourceConfig =
         DataSourceConfiguration.create(new JdbcDataSource(config));
-    LOG.info("Final DatasourceConfiguration: {}", dataSourceConfig);
     return dataSourceConfig;
   }
 

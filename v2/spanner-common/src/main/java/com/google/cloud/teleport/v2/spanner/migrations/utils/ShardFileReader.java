@@ -40,6 +40,11 @@ import org.slf4j.LoggerFactory;
 public class ShardFileReader {
 
   private static final Logger LOG = LoggerFactory.getLogger(ShardFileReader.class);
+
+  private static final Pattern partialPattern = Pattern.compile("projects/.*/secrets/.*");
+  private static final Pattern fullPattern = Pattern.compile("projects/.*/secrets/.*/versions/.*");
+  private static final Pattern partialWithSlash = Pattern.compile("projects/.*/secrets/.*/");
+
   private ISecretManagerAccessor secretManagerAccessor;
 
   public ShardFileReader(ISecretManagerAccessor secretManagerAccessor) {
@@ -59,69 +64,23 @@ public class ShardFileReader {
               .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
               .create()
               .fromJson(result, listOfShardObject);
-      Pattern partialPattern = Pattern.compile("projects/.*/secrets/.*");
-      Pattern fullPattern = Pattern.compile("projects/.*/secrets/.*/versions/.*");
-      Pattern partialWithSlash = Pattern.compile("projects/.*/secrets/.*/");
 
       for (Shard shard : shardList) {
         LOG.info(" The shard is: {} ", shard);
-        String secretManagerUri = shard.getSecretManagerUri();
-        if (secretManagerUri != null && !secretManagerUri.isEmpty()) {
-          LOG.info(
-              "Secret Manager will be used to get password for shard {} having secret {}",
-              shard.getLogicalShardId(),
-              secretManagerUri);
-          if (partialPattern.matcher(secretManagerUri).matches()) {
-            LOG.info(
-                "The matched secret for shard {} is : {}",
+        String password =
+            resolvePassword(
+                sourceShardsFilePath,
+                shard.getSecretManagerUri(),
                 shard.getLogicalShardId(),
-                secretManagerUri);
-            if (fullPattern.matcher(secretManagerUri).matches()) {
-              LOG.info(
-                  "The secret for shard {} is : {}", shard.getLogicalShardId(), secretManagerUri);
-              shard.setPassword(secretManagerAccessor.getSecret(secretManagerUri));
-            } else {
-              // partial match hence get the latest version
-              String versionToAppend = "versions/latest";
-              if (partialWithSlash.matcher(secretManagerUri).matches()) {
-                secretManagerUri += versionToAppend;
-              } else {
-                secretManagerUri += "/" + versionToAppend;
-              }
-
-              LOG.info(
-                  "The generated secret for shard {} is : {}",
-                  shard.getLogicalShardId(),
-                  secretManagerUri);
-              shard.setPassword(secretManagerAccessor.getSecret(secretManagerUri));
-            }
-          } else {
-            LOG.error(
-                "The secretManagerUri field with value {} for shard {} , specified in file {} does"
-                    + " not adhere to expected pattern projects/.*/secrets/.*/versions/.*",
-                secretManagerUri,
-                shard.getLogicalShardId(),
-                sourceShardsFilePath);
-            throw new RuntimeException(
-                "The secretManagerUri field with value "
-                    + secretManagerUri
-                    + " for shard "
-                    + shard.getLogicalShardId()
-                    + ", specified in file "
-                    + sourceShardsFilePath
-                    + " does not adhere to expected pattern"
-                    + " projects/.*/secrets/.*/versions/.*");
-          }
-        } else {
-          String password = shard.getPassword();
-          if (password == null || password.isEmpty()) {
-            throw new RuntimeException(
-                "Neither password nor secretManagerUri was found in the shard file "
-                    + sourceShardsFilePath
-                    + "  for shard "
-                    + shard.getLogicalShardId());
-          }
+                shard.getPassword());
+        if (password == null || password.isEmpty()) {
+          throw new RuntimeException(
+              "Neither password nor secretManagerUri was found in the shard file "
+                  + sourceShardsFilePath
+                  + "  for shard "
+                  + shard.getLogicalShardId());
         }
+        shard.setPassword(password);
       }
 
       Collections.sort(
@@ -144,6 +103,55 @@ public class ShardFileReader {
               + " well-formed JSON string.",
           e);
     }
+  }
+
+  private String resolvePassword(
+      String sourceShardsFilePath,
+      String secretManagerUri,
+      String logicalShardId,
+      String password) {
+    if (secretManagerUri != null && !secretManagerUri.isEmpty()) {
+      LOG.info(
+          "Secret Manager will be used to get password for shard {} having secret {}",
+          logicalShardId,
+          secretManagerUri);
+      if (partialPattern.matcher(secretManagerUri).matches()) {
+        LOG.info("The matched secret for shard {} is : {}", logicalShardId, secretManagerUri);
+        if (fullPattern.matcher(secretManagerUri).matches()) {
+          LOG.info("The secret for shard {} is : {}", logicalShardId, secretManagerUri);
+          return secretManagerAccessor.getSecret(secretManagerUri);
+        } else {
+          // partial match hence get the latest version
+          String versionToAppend = "versions/latest";
+          if (partialWithSlash.matcher(secretManagerUri).matches()) {
+            secretManagerUri += versionToAppend;
+          } else {
+            secretManagerUri += "/" + versionToAppend;
+          }
+
+          LOG.info("The generated secret for shard {} is : {}", logicalShardId, secretManagerUri);
+          return secretManagerAccessor.getSecret(secretManagerUri);
+        }
+      } else {
+        LOG.error(
+            "The secretManagerUri field with value {} for shard {} , specified in file {} does"
+                + " not adhere to expected pattern projects/.*/secrets/.*/versions/.*",
+            secretManagerUri,
+            logicalShardId,
+            sourceShardsFilePath);
+        throw new RuntimeException(
+            "The secretManagerUri field with value "
+                + secretManagerUri
+                + " for shard "
+                + logicalShardId
+                + ", specified in file "
+                + sourceShardsFilePath
+                + " does not adhere to expected pattern"
+                + " projects/.*/secrets/.*/versions/.*");
+      }
+    }
+    LOG.info("using plaintext password for shard: {}", logicalShardId);
+    return password;
   }
 
   /**
@@ -171,7 +179,6 @@ public class ShardFileReader {
           e);
     }
 
-    // TODO - add secret manager integration
     // TODO - create a structure for the shard config and map directly to the object
     Type shardConfiguration = new TypeToken<Map>() {}.getType();
     Map shardConfigMap =
@@ -189,13 +196,34 @@ public class ShardFileReader {
     for (Map dataShard : dataShards) {
       List<Map> databases = (List) (dataShard.getOrDefault("databases", new ArrayList<>()));
 
+      String host = (String) (dataShard.get("host"));
+      if (databases.isEmpty()) {
+        LOG.warn("no databases found for host: {}", host);
+        throw new RuntimeException("no databases found for host: " + String.valueOf(host));
+      }
+
+      String password =
+          resolvePassword(
+              sourceShardsFilePath,
+              (String) dataShard.get("secretManagerUri"),
+              host,
+              (String) dataShard.get("password"));
+      if (password == null || password.isEmpty()) {
+        LOG.warn("could not fetch password for host: {}", host);
+        throw new RuntimeException(
+            "Neither password nor secretManagerUri was found in the shard file "
+                + sourceShardsFilePath
+                + "  for host "
+                + host);
+      }
+
       Shard shard =
           new Shard(
               "",
-              (String) (dataShard.get("host")),
+              host,
               dataShard.getOrDefault("port", 0).toString(),
               (String) (dataShard.get("user")),
-              (String) (dataShard.get("password")),
+              password,
               "",
               (String) (dataShard.get("secretManagerUri")));
 

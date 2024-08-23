@@ -81,6 +81,8 @@ jobs:
         --it-spanner-host="https://staging-wrenchworks.sandbox.googleapis.com/" \
         --it-release=true \
         --it-retry-failures=2
+    # TODO(https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/1807) - Remove once Staging Spanner tests
+    #   are fixed
     - name: Run Integration Tests
       run: |
         ./cicd/run-it-tests \
@@ -88,7 +90,7 @@ jobs:
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-private-connect-us-central1" \
-        --it-spanner-host="https://staging-wrenchworks.sandbox.googleapis.com/" \
+        --it-spanner-host="https://batch-spanner.googleapis.com" \
         --it-release=true \
         --it-retry-failures=2
     - name: Upload Unit Tests Site Report
