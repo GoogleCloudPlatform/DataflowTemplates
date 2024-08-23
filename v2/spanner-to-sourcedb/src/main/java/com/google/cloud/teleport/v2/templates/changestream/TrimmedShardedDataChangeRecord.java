@@ -18,8 +18,6 @@ package com.google.cloud.teleport.v2.templates.changestream;
 import com.google.cloud.Timestamp;
 import java.io.Serializable;
 import java.util.Objects;
-import org.apache.beam.sdk.coders.DefaultCoder;
-import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 
@@ -28,7 +26,6 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
  * this pipeline.
  */
 @SuppressWarnings("initialization.fields.uninitialized") // Avro requires the default constructor
-@DefaultCoder(value = AvroCoder.class)
 public class TrimmedShardedDataChangeRecord extends java.lang.Object implements Serializable {
   private Timestamp commitTimestamp;
   private String serverTransactionId;
@@ -39,6 +36,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
   private long numberOfRecordsInTransaction;
   private String transactionTag;
   private String shard;
+  private boolean isRetryRecord;
 
   public TrimmedShardedDataChangeRecord(
       com.google.cloud.Timestamp commitTimestamp,
@@ -57,6 +55,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     this.modType = modType;
     this.numberOfRecordsInTransaction = numberOfRecordsInTransaction;
     this.transactionTag = transactionTag;
+    this.isRetryRecord = false;
   }
 
   public TrimmedShardedDataChangeRecord(TrimmedShardedDataChangeRecord other) {
@@ -69,6 +68,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     this.numberOfRecordsInTransaction = other.numberOfRecordsInTransaction;
     this.transactionTag = other.transactionTag;
     this.shard = other.shard;
+    this.isRetryRecord = other.isRetryRecord;
   }
 
   public Timestamp getCommitTimestamp() {
@@ -111,6 +111,14 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     return shard;
   }
 
+  public boolean isRetryRecord() {
+    return isRetryRecord;
+  }
+
+  public void setRetryRecord(boolean isRetryRecord) {
+    this.isRetryRecord = isRetryRecord;
+  }
+
   @Override
   public boolean equals(@javax.annotation.Nullable Object o) {
     if (this == o) {
@@ -128,7 +136,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         && modType == that.modType
         && numberOfRecordsInTransaction == that.numberOfRecordsInTransaction
         && Objects.equals(transactionTag, that.transactionTag)
-        && Objects.equals(shard, that.shard);
+        && Objects.equals(shard, that.shard)
+        && isRetryRecord == that.isRetryRecord;
   }
 
   @Override
@@ -142,7 +151,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         modType,
         numberOfRecordsInTransaction,
         transactionTag,
-        shard);
+        shard,
+        isRetryRecord);
   }
 
   @Override
@@ -169,6 +179,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         + transactionTag
         + ", shard="
         + shard
+        + ", isRetryRecord="
+        + isRetryRecord
         + '}';
   }
 }

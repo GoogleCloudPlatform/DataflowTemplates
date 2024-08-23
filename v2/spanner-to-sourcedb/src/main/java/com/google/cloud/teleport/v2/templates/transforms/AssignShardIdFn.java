@@ -238,7 +238,10 @@ public class AssignShardIdFn
       StringWriter errors = new StringWriter();
       e.printStackTrace(new PrintWriter(errors));
       LOG.error("Error fetching shard Id column: " + e.getMessage() + ": " + errors.toString());
-      throw e;
+      // The record has no shard hence will be sent to DLQ in subsequent steps
+      String finalKeyString = record.getTableName() + "_" + keysJsonStr + "_" + skipDirName;
+      Long finalKey = finalKeyString.hashCode() % maxConnectionsPerShard;
+      c.output(KV.of(finalKey, record));
     }
   }
 

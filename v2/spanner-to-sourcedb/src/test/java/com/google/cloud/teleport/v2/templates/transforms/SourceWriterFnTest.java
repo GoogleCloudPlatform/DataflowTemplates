@@ -98,7 +98,8 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
-            "shadow_");
+            "shadow_",
+            "skip");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -122,7 +123,8 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
-            "shadow_");
+            "shadow_",
+            "skip");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
