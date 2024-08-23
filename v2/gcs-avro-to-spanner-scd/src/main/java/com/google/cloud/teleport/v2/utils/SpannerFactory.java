@@ -19,7 +19,6 @@ import com.google.api.gax.retrying.RetrySettings;
 import com.google.api.gax.rpc.FixedHeaderProvider;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
-import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import java.io.Serializable;
@@ -29,7 +28,7 @@ import org.threeten.bp.Duration;
 /** Creates Spanner and DatabaseClient instances to access Spanner data. */
 public class SpannerFactory implements Serializable {
 
-  private transient SpannerConfig spannerConfig;
+  private SpannerConfig spannerConfig;
 
   SpannerFactory(SpannerConfig spannerConfig) {
     this.spannerConfig = spannerConfig;
@@ -58,9 +57,15 @@ public class SpannerFactory implements Serializable {
         SpannerOptions.newBuilder()
             .setHeaderProvider(
                 FixedHeaderProvider.create(
-                    "User-Agent", "cloud-solutions/dataflow-gcs-avro-to-spanner-scd-v2"))
-            .setHost(spannerConfig.getHost().get())
-            .setProjectId(spannerConfig.getProjectId().get());
+                    "User-Agent", "cloud-solutions/dataflow-gcs-avro-to-spanner-scd-v2"));
+
+    if (spannerConfig.getHost().get() != null) {
+      optionsBuilder.setHost(spannerConfig.getHost().get());
+    }
+
+    if (spannerConfig.getProjectId().get() != null) {
+      optionsBuilder.setProjectId(spannerConfig.getProjectId().get());
+    }
 
     RetrySettings retrySettings =
         RetrySettings.newBuilder()
@@ -75,8 +80,6 @@ public class SpannerFactory implements Serializable {
             .build();
 
     optionsBuilder.getSpannerStubSettingsBuilder().readSettings().setRetrySettings(retrySettings);
-
-    RpcPriority rpcPriority = spannerConfig.getRpcPriority().get();
 
     optionsBuilder
         .getSpannerStubSettingsBuilder()

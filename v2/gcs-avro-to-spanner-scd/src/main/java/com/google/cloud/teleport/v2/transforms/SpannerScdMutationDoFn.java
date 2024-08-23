@@ -110,7 +110,9 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
 
   @Teardown
   public void teardown() throws Exception {
-    databaseClientManager.close();
+    if (databaseClientManager != null && !databaseClientManager.isClosed()) {
+      databaseClientManager.close();
+    }
   }
 
   /**
