@@ -113,7 +113,7 @@ public class AvroToSpannerScdPipeline {
 
     if (options.getWaitUntilFinish()
         &&
-        /* Only if template location is null, there is a dataflow job to wait for. Otherwise it's
+        /* Only if template location is null, there is a dataflow job to wait for. Otherwise, it's
          * template generation, which doesn't start a dataflow job.
          */
         options.as(DataflowPipelineOptions.class).getTemplateLocation() == null) {
@@ -123,7 +123,73 @@ public class AvroToSpannerScdPipeline {
 
   @VisibleForTesting
   static void validateOptions(AvroToSpannerScdOptions pipelineOptions) {
-    // TODO: validate if options are as expected.
+    if (pipelineOptions.getSpannerProjectId() != null
+        && pipelineOptions.getSpannerProjectId().equals("")) {
+      throw new IllegalArgumentException("When provided, Spanner project id must not be empty.");
+    }
+
+    if (pipelineOptions.getInstanceId() == null || pipelineOptions.getInstanceId().equals("")) {
+      throw new IllegalArgumentException("Spanner instance id must not be empty.");
+    }
+
+    if (pipelineOptions.getDatabaseId() == null || pipelineOptions.getDatabaseId().equals("")) {
+      throw new IllegalArgumentException("Spanner database id must not be empty.");
+    }
+
+    if (pipelineOptions.getSpannerBatchSize() <= 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Batch size must be greater than 0. Provided: %s.",
+              pipelineOptions.getSpannerBatchSize()));
+    }
+
+    if (pipelineOptions.getTableName() == null || pipelineOptions.getTableName().equals("")) {
+      throw new IllegalArgumentException("Spanner table name must not be empty.");
+    }
+
+    if (pipelineOptions.getPrimaryKeyColumnNames().size() == 0) {
+      throw new IllegalArgumentException("Spanner primary key column names must not be empty.");
+    }
+
+    if (pipelineOptions.getOrderByColumnName() != null
+        && pipelineOptions.getOrderByColumnName().equals("")) {
+      throw new IllegalArgumentException("When provided, order by column name must not be empty.");
+    }
+
+    switch (pipelineOptions.getScdType()) {
+      case TYPE_1:
+        if (pipelineOptions.getStartDateColumnName() != null) {
+          throw new IllegalArgumentException(
+              "When using SCD Type 1, start date column name is not used.");
+        }
+
+        if (pipelineOptions.getEndDateColumnName() != null) {
+          throw new IllegalArgumentException(
+              "When using SCD Type 1, end date column name is not used.");
+        }
+
+        break;
+
+      case TYPE_2:
+        if (pipelineOptions.getStartDateColumnName() != null
+            && pipelineOptions.getStartDateColumnName().equals("")) {
+          throw new IllegalArgumentException(
+              "When provided, start date column name must not be empty.");
+        }
+
+        if (pipelineOptions.getEndDateColumnName() == null) {
+          throw new IllegalArgumentException(
+              "When using SCD Type 2, end date column name must be provided.");
+        } else if (pipelineOptions.getEndDateColumnName().equals("")) {
+          throw new IllegalArgumentException(
+              "When using SCD Type 2, end date column name must not be empty.");
+        }
+
+        break;
+
+      default:
+        break;
+    }
   }
 
   private static PipelineResult run(AvroToSpannerScdOptions pipelineOptions) {
@@ -356,7 +422,7 @@ public class AvroToSpannerScdPipeline {
     @TemplateParameter.Enum(
         groupName = "Schema",
         order = 12,
-optional = true,
+        optional = true,
         enumOptions = {@TemplateEnumOption("ASC"), @TemplateEnumOption("DESC")},
         description = "Order in Ascending (ASC) or Descending (DESC) order",
         helpText = "Whether to use ASC or DESC when sorting the records by order by column name.",
