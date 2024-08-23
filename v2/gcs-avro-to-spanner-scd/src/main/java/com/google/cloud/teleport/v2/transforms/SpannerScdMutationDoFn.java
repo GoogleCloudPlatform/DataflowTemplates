@@ -234,13 +234,23 @@ abstract class SpannerScdMutationDoFn extends DoFn<Iterable<Struct>, Void> {
 
       recordBatch.forEach(
           record -> {
-            com.google.cloud.Timestamp currentTimestamp = currentTimestampGetter().now();
             com.google.cloud.spanner.Key recordKey =
                 StructHelper.of(record)
                     .keyMaker(primaryKeyColumnNames(), ImmutableList.of(endDateColumnName()))
                     .createKeyWithExtraValues(
                         /* endTimestamp= */ Value.timestamp(ValueHelper.NullTypes.NULL_TIMESTAMP));
 
+            // Wait for one nanosecond to avoid two records from having the same currentTimestamp,
+            // which is measured in nanoseconds. Since end time is usually a primary key, having
+            // the same end time would result in a failure. This adds some delay, but it is only
+            // one second per each 1M records, which is reasonable.
+            try {
+              Thread.sleep(0, 1);
+            } catch (InterruptedException e) {
+              throw new RuntimeException(e);
+            }
+
+            com.google.cloud.Timestamp currentTimestamp = currentTimestampGetter().now();
             if (existingRows.containsKey(recordKey)) {
               Struct existingRow = existingRows.get(recordKey);
               transaction.buffer(createDeleteMutation(existingRow));

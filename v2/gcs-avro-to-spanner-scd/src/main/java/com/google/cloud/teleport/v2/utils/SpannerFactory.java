@@ -86,6 +86,19 @@ public class SpannerFactory implements Serializable {
         .batchWriteSettings()
         .setRetrySettings(retrySettings);
 
+    optionsBuilder
+        .getSpannerStubSettingsBuilder()
+        .beginTransactionSettings()
+        .setRetrySettings(retrySettings);
+
+    optionsBuilder
+        .getSpannerStubSettingsBuilder()
+        .applyToAllUnaryMethods(
+            builder -> {
+              builder.setRetrySettings(retrySettings);
+              return null;
+            });
+
     // This property sets the default timeout between 2 response packets in the client library.
     System.setProperty("com.google.cloud.spanner.watchdogTimeoutSeconds", "7200");
 
