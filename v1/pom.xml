@@ -54,7 +54,6 @@
     <cassandra.driver.version>3.6.0</cassandra.driver.version>
     <kms.version>1.40.0</kms.version>
     <proto-kms.version>0.87.0</proto-kms.version>
-    <jacoco.version>0.8.8</jacoco.version>
     <excluded.spanner.tests>com.google.cloud.teleport.spanner.IntegrationTest</excluded.spanner.tests>
   </properties>
 
@@ -943,6 +942,7 @@
                   </limits>
                 </rule>
               </rules>
+              <skip>${jacoco.check.skip}</skip>
             </configuration>
           </execution>
         </executions>
