@@ -22,11 +22,12 @@ import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
+import java.io.Serializable;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.threeten.bp.Duration;
 
 /** Creates Spanner and DatabaseClient instances to access Spanner data. */
-public class SpannerFactory {
+public class SpannerFactory implements Serializable {
 
   private transient SpannerConfig spannerConfig;
 
@@ -88,7 +89,7 @@ public class SpannerFactory {
     return optionsBuilder.build().getService();
   }
 
-  public class DatabaseClientManager {
+  public class DatabaseClientManager implements Serializable {
 
     private transient Spanner spanner;
     private transient SpannerConfig spannerConfig;

@@ -16,13 +16,14 @@
 package com.google.cloud.teleport.v2.utils;
 
 import com.google.cloud.Timestamp;
+import java.io.Serializable;
 
 /**
  * Getter that it used to get the current Timestamp.
  *
  * <p>This is mainly used for dependency injection during testing.
  */
-public class CurrentTimestampGetter {
+public class CurrentTimestampGetter implements Serializable {
 
   CurrentTimestampGetter() {}
 
