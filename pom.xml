@@ -677,10 +677,6 @@
           <id>ossrh</id>
           <url>https://oss.sonatype.org/content/repositories/snapshots</url>
         </repository>
-        <repository>
-          <id>confluent</id>
-          <url>https://packages.confluent.io/maven/</url>
-        </repository>
       </repositories>
       <pluginRepositories>
         <pluginRepository>
