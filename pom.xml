@@ -493,6 +493,34 @@
       </build>
     </profile>
     <profile>
+      <id>templatesLoadTestObserve</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <!-- Skip coverage checks, unit tests are skipped -->
+        <jacoco.skip>true</jacoco.skip>
+        <!-- Some modules may yield no load tests -->
+        <failIfNoTests>false</failIfNoTests>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration combine.self="override">
+              <includes>
+                <include>**/*LTObserver.java</include>
+              </includes>
+              <excludedGroups></excludedGroups>
+              <trimStackTrace>false</trimStackTrace>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
       <id>templatesIntegrationDirectTests</id>
       <activation>
         <activeByDefault>false</activeByDefault>
@@ -649,6 +677,10 @@
           <id>ossrh</id>
           <url>https://oss.sonatype.org/content/repositories/snapshots</url>
         </repository>
+        <repository>
+          <id>confluent</id>
+          <url>https://packages.confluent.io/maven/</url>
+        </repository>
       </repositories>
       <pluginRepositories>
         <pluginRepository>
@@ -710,6 +742,7 @@
     <module>metadata</module>
     <module>plugins</module>
     <module>it</module>
+    <module>lt</module>
     <module>v1</module>
     <module>v2</module>
     <module>structured-logging</module>

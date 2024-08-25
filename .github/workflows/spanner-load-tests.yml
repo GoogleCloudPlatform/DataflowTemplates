@@ -22,7 +22,7 @@ on:
   - cron: '0 2 * * *'
   workflow_dispatch:
 
-permissions: read-all
+permissions: write-all
 
 jobs:
   load_tests:
@@ -49,8 +49,56 @@ jobs:
         --lt-export-project="cloud-teleport-testing" \
         --lt-export-dataset="performance_tests" \
         --lt-export-table="template_performance_metrics" \
-
+    - name: Create Github issue on failure
+      if: failure()
+      uses: JasonEtco/create-an-issue@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      with:
+        filename: .github/ISSUE_TEMPLATE/spanner-load-test-failure-issue-template.md
     - name: Upload Load Tests Report
+      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      if: always() # always run even if the previous step fails
+      with:
+        name: surefire-test-results
+        path: '**/surefire-reports/TEST-*.xml'
+        retention-days: 1
+    - name: Cleanup Java Environment
+      uses: ./.github/actions/cleanup-java-env
+  observe_load_tests:
+    name: Observe Spanner Dataflow Templates Load tests
+    needs: [load_tests]
+    timeout-minutes: 60
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [ self-hosted, perf ]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      with:
+        fetch-depth: 0
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Run Load Test Observers
+      run: |
+        ./cicd/run-load-test-observer \
+        --modules-to-build="lt/observability" \
+        --it-region="us-central1" \
+        --it-project="cloud-teleport-testing" \
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+        --lt-export-project="cloud-teleport-testing" \
+        --lt-export-dataset="performance_tests" \
+        --lt-export-table="template_performance_metrics"
+    - name: Create Github issue on failure
+      if: failure()
+      uses: JasonEtco/create-an-issue@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      with:
+        filename: .github/ISSUE_TEMPLATE/spanner-load-test-failure-issue-template.md
+    - name: Upload Load Test Observer Report
       uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
       if: always() # always run even if the previous step fails
       with:
