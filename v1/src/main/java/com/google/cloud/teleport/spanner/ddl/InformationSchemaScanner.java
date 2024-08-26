@@ -290,6 +290,33 @@ public class InformationSchemaScanner {
     }
   }
 
+  private Long updateCounterForIdentityColumn(Long initialCounter, String qualifiedColumnName) {
+    Statement sequenceCounterStatement;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        sequenceCounterStatement =
+            Statement.of("SELECT GET_TABLE_COLUMN_IDENTITY_STATE('" + qualifiedColumnName + "')");
+        break;
+      case POSTGRESQL:
+        sequenceCounterStatement =
+            Statement.of(
+                "SELECT spanner.GET_TABLE_COLUMN_IDENTITY_STATE('"
+                    + quoteIdentifier(qualifiedColumnName, dialect)
+                    + "')");
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+    ResultSet resultSetForCounter = context.executeQuery(sequenceCounterStatement);
+    if (resultSetForCounter.next() && !resultSetForCounter.isNull(0)) {
+      // Add a buffer to accommodate writes that may happen after import
+      // is run. Note that this is not 100% failproof, since more writes may
+      // happen and they will make the sequence advances past the buffer.
+      return resultSetForCounter.getLong(0) + Sequence.SEQUENCE_COUNTER_BUFFER;
+    }
+    return initialCounter;
+  }
+
   private void listColumns(Ddl.Builder builder) {
     Statement statement = listColumnsSQL();
 
@@ -309,11 +336,27 @@ public class InformationSchemaScanner {
       String generationExpression = resultSet.isNull(7) ? "" : resultSet.getString(7);
       boolean isStored = !resultSet.isNull(8) && resultSet.getString(8).equalsIgnoreCase("YES");
       String defaultExpression = resultSet.isNull(9) ? null : resultSet.getString(9);
-      boolean isHidden = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getBoolean(10) : false;
+      boolean isIdentity = resultSet.getString(10).equalsIgnoreCase("YES");
+      String identityKind = resultSet.isNull(11) ? null : resultSet.getString(11);
+      // The start_with_counter value is the initial value and cannot represent the actual state of
+      // the counter. We need to apply the current counter to the DDL builder, instead of the one
+      // retrieved from Information Schema.
+      Long identityStartWithCounter =
+          resultSet.isNull(12) ? null : Long.valueOf(resultSet.getString(12));
+      if (isIdentity) {
+        identityStartWithCounter =
+            updateCounterForIdentityColumn(
+                identityStartWithCounter, tableSchema + "." + columnName);
+      }
+      Long identitySkipRangeMin =
+          resultSet.isNull(13) ? null : Long.valueOf(resultSet.getString(13));
+      Long identitySkipRangeMax =
+          resultSet.isNull(14) ? null : Long.valueOf(resultSet.getString(14));
+      boolean isHidden = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getBoolean(15) : false;
       boolean isPlacementKey =
           dialect == Dialect.GOOGLE_STANDARD_SQL
-              ? resultSet.getBoolean(11)
-              : resultSet.getBoolean(10);
+              ? resultSet.getBoolean(16)
+              : resultSet.getBoolean(15);
 
       builder
           .createTable(tableName)
@@ -325,6 +368,11 @@ public class InformationSchemaScanner {
           .generationExpression(generationExpression)
           .isStored(isStored)
           .defaultExpression(defaultExpression)
+          .isIdentityColumn(isIdentity)
+          .sequenceKind(identityKind)
+          .counterStartValue(identityStartWithCounter)
+          .skipRangeMin(identitySkipRangeMin)
+          .skipRangeMax(identitySkipRangeMax)
           .isPlacementKey(isPlacementKey)
           .endColumn()
           .endTable();
@@ -346,7 +394,8 @@ public class InformationSchemaScanner {
             "SELECT c.table_schema, c.table_name, c.column_name,"
                 + " c.ordinal_position, c.spanner_type, c.is_nullable,"
                 + " c.is_generated, c.generation_expression, c.is_stored,"
-                + " c.column_default, c.is_hidden,"
+                + " c.column_default, c.is_identity, c.identity_kind, c.identity_start_with_counter,"
+                + " c.identity_skip_range_min, c.identity_skip_range_max, c.is_hidden,"
                 + " pkc.constraint_name IS NOT NULL AS is_placement_key"
                 + " FROM information_schema.columns as c"
                 + " LEFT JOIN placementkeycolumns AS pkc"
@@ -361,6 +410,8 @@ public class InformationSchemaScanner {
             "SELECT c.table_schema, c.table_name, c.column_name,"
                 + " c.ordinal_position, c.spanner_type, c.is_nullable,"
                 + " c.is_generated, c.generation_expression, c.is_stored, c.column_default,"
+                + " c.is_identity, c.identity_kind, c.identity_start_with_counter,"
+                + " c.identity_skip_range_min, c.identity_skip_range_max,"
                 + " pkc.constraint_name IS NOT NULL AS is_placement_key"
                 + " FROM information_schema.columns as c"
                 + " LEFT JOIN placementkeycolumns AS pkc"

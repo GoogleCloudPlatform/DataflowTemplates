@@ -20,6 +20,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.GENERATION_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GOOGLE_FORMAT_VERSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GOOGLE_STORAGE;
 import static com.google.cloud.teleport.spanner.AvroUtil.HIDDEN;
+import static com.google.cloud.teleport.spanner.AvroUtil.IDENTITY_COLUMN;
 import static com.google.cloud.teleport.spanner.AvroUtil.INPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
 import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
@@ -126,6 +127,14 @@ public class DdlToAvroSchemaConverterTest {
             .type(Type.array(Type.float32()))
             .arrayLength(Integer.valueOf(128))
             .endColumn()
+            .column("identity_column")
+            .type(Type.int64())
+            .isIdentityColumn(true)
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+            .endColumn()
             .primaryKey()
             .asc("id")
             .asc("gen_id")
@@ -221,6 +230,16 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(6).getProp(NOT_NULL), equalTo(null));
     assertThat(fields.get(6).getProp(STORED), equalTo(null));
 
+    assertThat(fields.get(7).name(), equalTo("identity_column"));
+    assertThat(fields.get(7).schema(), equalTo(nullableUnion(Schema.Type.LONG)));
+    assertThat(fields.get(7).getProp(SQL_TYPE), equalTo("INT64"));
+    assertThat(fields.get(7).getProp(NOT_NULL), equalTo(null));
+    assertThat(fields.get(7).getProp(IDENTITY_COLUMN), equalTo("true"));
+    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_KIND), equalTo("bit_reversed_positive"));
+    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("1000"));
+    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("2000"));
+    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("3000"));
+
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("`id` ASC"));
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_1"), equalTo("`gen_id` ASC"));
@@ -285,6 +304,14 @@ public class DdlToAvroSchemaConverterTest {
             .generatedAs("MOD(id+1, 64)")
             .stored()
             .endColumn()
+            .column("identity_column")
+            .type(Type.int64())
+            .isIdentityColumn(true)
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+            .endColumn()
             .primaryKey()
             .asc("id")
             .asc("gen_id")
@@ -315,7 +342,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(5));
+    assertThat(fields, hasSize(6));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -359,6 +386,16 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(4).getProp(GENERATION_EXPRESSION), equalTo("MOD(id+1, 64)"));
     assertThat(fields.get(4).getProp(STORED), equalTo("true"));
     assertThat(fields.get(4).getProp(DEFAULT_EXPRESSION), equalTo(null));
+
+    assertThat(fields.get(5).name(), equalTo("identity_column"));
+    assertThat(fields.get(5).schema(), equalTo(nullableUnion(Schema.Type.LONG)));
+    assertThat(fields.get(5).getProp(SQL_TYPE), equalTo("INT64"));
+    assertThat(fields.get(5).getProp(NOT_NULL), equalTo(null));
+    assertThat(fields.get(5).getProp(IDENTITY_COLUMN), equalTo("true"));
+    assertThat(fields.get(5).getProp(SPANNER_SEQUENCE_KIND), equalTo("bit_reversed_positive"));
+    assertThat(fields.get(5).getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("1000"));
+    assertThat(fields.get(5).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("2000"));
+    assertThat(fields.get(5).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("3000"));
 
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("\"id\" ASC"));

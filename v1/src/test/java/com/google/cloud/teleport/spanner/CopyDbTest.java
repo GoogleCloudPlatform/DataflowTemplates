@@ -905,6 +905,98 @@ public class CopyDbTest {
   }
 
   @Test
+  public void identityColumn() throws Exception {
+    // spotless:off
+    Ddl.Builder ddlBuilder = Ddl.builder();
+    List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("default_sequence_kind")
+            .setOptionValue("\"bit_reversed_positive\"")
+            .build());
+    ddlBuilder.mergeDatabaseOptions(dbOptionList);
+    Ddl ddl = ddlBuilder
+        .createTable("IdentityTable")
+          .column("id")
+            .int64()
+            .isIdentityColumn(true)
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+          .endColumn()
+          .column("non_key_column")
+            .int64()
+            .isIdentityColumn(true)
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+          .endColumn()
+          .column("no_sequence_kind_column")
+            .int64()
+            .isIdentityColumn(true)
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+          .endColumn()
+          .column("value").int64().endColumn()
+          .primaryKey().asc("id").end()
+        .endTable()
+        .build();
+    // spotless:on
+
+    createAndPopulate(ddl, 10);
+    runTest();
+  }
+
+  @Test
+  public void pgIdentityColumn() throws Exception {
+    // spotless:off
+    Ddl.Builder ddlBuilder = Ddl.builder();
+    List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("default_sequence_kind")
+            .setOptionValue("\"bit_reversed_positive\"")
+            .build());
+    ddlBuilder.mergeDatabaseOptions(dbOptionList);
+    Ddl ddl = ddlBuilder
+        .createTable("IdentityTable")
+          .column("id")
+            .int64()
+            .isIdentityColumn(true)
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+          .endColumn()
+          .column("non_key_column")
+            .int64()
+            .isIdentityColumn(true)
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+          .endColumn()
+          .column("no_sequence_kind_column")
+            .int64()
+            .isIdentityColumn(true)
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+          .endColumn()
+          .column("value").int64().endColumn()
+          .primaryKey().asc("id").end()
+        .endTable()
+        .build();
+    // spotless:on
+
+    createAndPopulate(ddl, 10);
+    runTest(Dialect.POSTGRESQL);
+  }
+
+  @Test
   public void sequences() throws Exception {
     Ddl ddl =
         Ddl.builder()
