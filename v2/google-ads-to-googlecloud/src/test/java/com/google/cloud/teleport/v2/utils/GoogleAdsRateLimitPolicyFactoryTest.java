@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.utils;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 
-import org.apache.beam.sdk.io.googleads.GoogleAdsV14.RateLimitPolicy;
+import org.apache.beam.sdk.io.googleads.GoogleAdsV17.RateLimitPolicy;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
