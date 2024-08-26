@@ -38,7 +38,7 @@ public abstract class BigQueryPerfDatasetFetcher {
       }
       perfResultRows.add(newPerfRow);
     }
-    return BigQueryPerfDataset.builder().setRows(perfResultRows).build();
+    return BigQueryPerfDataset.builder().setRows(perfResultRows).setQuery(query()).build();
   }
 
   public Object getValue(Field columnSchema, FieldValue value) {
