@@ -27,6 +27,7 @@ public class AvroUtil {
   public static final String GENERATION_EXPRESSION = "generationExpression";
   public static final String GOOGLE_FORMAT_VERSION = "googleFormatVersion";
   public static final String GOOGLE_STORAGE = "googleStorage";
+  public static final String IDENTITY_COLUMN = "identityColumn";
   public static final String INPUT = "Input";
   public static final String NOT_NULL = "notNull";
   public static final String OUTPUT = "Output";
