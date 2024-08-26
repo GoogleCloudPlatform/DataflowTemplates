@@ -3,6 +3,9 @@ package com.google.cloud.teleport.lt.rules;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.lt.dataset.bigquery.BigQueryPerfDataset;
 import com.google.cloud.teleport.lt.dataset.bigquery.PerfResultRow;
+import java.util.List;
+import java.util.Map;
+import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,15 +35,20 @@ public abstract class DetectMetricDeviationConditionCheck extends ConditionCheck
   @Override
   protected CheckResult check() {
     double totalMetricValue = 0.0;
-    for (PerfResultRow perfResultRow : dataset().previousRows()) {
-      totalMetricValue += perfResultRow.metrics.get(metricName());
+    PerfResultRow latestRow = null;
+    for (PerfResultRow perfResultRow : dataset().rows()) {
+      if (latestRow == null) {
+        latestRow = perfResultRow;
+      } else {
+        totalMetricValue += getMetricValue(perfResultRow, metricName());
+      }
     }
-    double average = totalMetricValue / dataset().previousRows().size();
+    double average = totalMetricValue / (dataset().rows().size() - 1.0);
 
     // Deviating more than x% of average
-    if ((dataset().latestRow().metrics.get(metricName())
+    if ((getMetricValue(latestRow, metricName())
             > average * (100.0 + percentageDeviation()) / 100.0)
-        || (dataset().latestRow().metrics.get(metricName())
+        || (getMetricValue(latestRow, metricName())
             < average * (100.0 - percentageDeviation()) / 100.0)) {
       return new ConditionCheck.CheckResult(
           false,
@@ -49,15 +57,43 @@ public abstract class DetectMetricDeviationConditionCheck extends ConditionCheck
               metricName(),
               percentageDeviation(),
               metricName(),
-              dataset().latestRow().metrics.get(metricName()),
+              getMetricValue(latestRow, metricName()),
               average));
     }
 
     return new ConditionCheck.CheckResult(true);
   }
 
+  public double getMetricValue(PerfResultRow resultRow, String metricName) {
+    if (resultRow.row.containsKey("metrics")) {
+      List<Object> metrics = (List<Object>) resultRow.row.get("metrics");
+      for (Object metric : metrics) {
+        Map<String, Object> metricMap = (Map<String, Object>) metric;
+        if (metricName.equals(metricMap.get("name"))) {
+          return (double) metricMap.get("value");
+        }
+      }
+    }
+    throw new IllegalArgumentException("Metric " + metricName + " not found!");
+  }
+
   public static Builder builder() {
     return new AutoValue_DetectMetricDeviationConditionCheck.Builder();
+  }
+
+  public static String constructQuery(String templateName, String testName, String numRows) {
+    String query =
+        "SELECT `timestamp`, template_name, test_name, metrics "
+            + "FROM `%s.%s.%s` "
+            + "WHERE template_name = \"%s\" and test_name = \"%s\" order by `timestamp` desc LIMIT %s";
+    return String.format(
+        query,
+        TestProperties.exportProject(),
+        TestProperties.exportDataset(),
+        TestProperties.exportTable(),
+        templateName,
+        testName,
+        numRows);
   }
 
   @AutoValue.Builder

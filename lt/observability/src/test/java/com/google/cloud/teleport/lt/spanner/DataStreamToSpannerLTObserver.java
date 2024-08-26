@@ -35,12 +35,13 @@ public class DataStreamToSpannerLTObserver {
 
   @Test
   public void observeDSToSpanner100GBLT() throws MultipleFailureException {
+    String query =
+        DetectMetricDeviationConditionCheck.constructQuery(
+            "cloud_datastream_to_spanner", "backfill100Gb", "11");
     // Fetch data
     BigQueryPerfDatasetFetcher datasetFetcher =
         BigQueryPerfDatasetFetcher.builder()
-            .setTemplateName("cloud_datastream_to_spanner")
-            .setTestName("backfill100Gb")
-            .setNumRows(11)
+            .setQuery(query)
             .setBigQueryResourceManager(bigQueryResourceManager)
             .build();
     BigQueryPerfDataset dataset = datasetFetcher.fetch();
