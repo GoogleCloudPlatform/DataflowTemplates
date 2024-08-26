@@ -300,9 +300,7 @@ public class InformationSchemaScanner {
       case POSTGRESQL:
         sequenceCounterStatement =
             Statement.of(
-                "SELECT spanner.GET_TABLE_COLUMN_IDENTITY_STATE('"
-                    + quoteIdentifier(qualifiedColumnName, dialect)
-                    + "')");
+                "SELECT spanner.GET_TABLE_COLUMN_IDENTITY_STATE('" + qualifiedColumnName + "')");
         break;
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
