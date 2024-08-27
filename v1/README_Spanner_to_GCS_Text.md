@@ -52,7 +52,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
 
 ### Building Template
 
@@ -179,6 +179,17 @@ mvn clean package -PtemplatesRun \
 -Dparameters="csvTempDirectory=$CSV_TEMP_DIRECTORY,spannerPriority=$SPANNER_PRIORITY,spannerTable=$SPANNER_TABLE,spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabaseId=$SPANNER_DATABASE_ID,spannerHost=$SPANNER_HOST,spannerSnapshotTime=$SPANNER_SNAPSHOT_TIME,dataBoostEnabled=$DATA_BOOST_ENABLED,textWritePrefix=$TEXT_WRITE_PREFIX" \
 -f v1
 ```
+
+#### Troubleshooting
+If there are compilation errors related to template metadata or template plugin framework,
+make sure the plugin dependencies are up-to-date by running:
+```
+mvn clean install -pl plugins/templates-maven-plugin,metadata -am
+```
+See [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin)
+for more information.
+
+
 
 ## Terraform
 

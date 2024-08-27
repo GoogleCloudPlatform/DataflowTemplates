@@ -4,7 +4,7 @@ Pub/Sub to Datadog template
 The Pub/Sub to Datadog template is a streaming pipeline that reads messages from
 a Pub/Sub subscription and writes the message payload to Datadog by using a
 Datadog endpoint. The most common use case for this template is to export log
-files to Datadog. For more information check out <a href="https://docs.datadoghq.com/integrations/google_cloud_platform/?tab=project#log-collection">Datadog's log collection process</a>.
+files to Datadog.
 
 Before writing to Datadog, you can apply a JavaScript user-defined function to
 the message payload. Any messages that experience processing failures are
@@ -40,7 +40,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **apiKey** : The Datadog API key. You must provide this value if the `apiKeySource` is set to `PLAINTEXT` or `KMS`. For more information, see API and Application Keys (https://docs.datadoghq.com/account_management/api-app-keys/) in the Datadog documentation.
 * **batchCount** : The batch size for sending multiple events to Datadog. The default is `1` (no batching).
 * **parallelism** : The maximum number of parallel requests. The default is `1` (no parallelism).
-* **includePubsubMessage** : Whether to include the full Pub/Sub message in the payload. The default is `true` (all elements, including data element, are included in the payload).
+* **includePubsubMessage** : Whether to include the full Pub/Sub message in the payload. The default is `true` (all elements, including the data element, are included in the payload).
 * **apiKeyKMSEncryptionKey** : The Cloud KMS key to use to decrypt the API Key. You must provide this parameter if the `apiKeySource` is set to `KMS`. If the Cloud KMS key is provided, you must pass in an encrypted API Key. (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).
 * **apiKeySecretId** : The Secret Manager secret ID for the API Key. You must provide this parameter if the `apiKeySource` is set to `SECRET_MANAGER`. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
 * **apiKeySource** : The source of the API key. The following values are supported: `PLAINTEXT`, `KMS`, and `SECRET_MANAGER`. You must provide this parameter if you're using Secret Manager. If `apiKeySource` is set to `KMS`, you must also provide `apiKeyKMSEncryptionKey` and encrypted `API Key`. If `apiKeySource` is set to `SECRET_MANAGER`, you must also provide `apiKeySecretId`. If `apiKeySource` is set to `PLAINTEXT`, you must also provide `apiKey`.
@@ -78,7 +78,7 @@ for more information about how to create and test those functions.
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
 
 ### Building Template
 
@@ -145,7 +145,7 @@ export OUTPUT_DEADLETTER_TOPIC=<outputDeadletterTopic>
 export API_KEY=<apiKey>
 export BATCH_COUNT=<batchCount>
 export PARALLELISM=<parallelism>
-export INCLUDE_PUBSUB_MESSAGE=<includePubsubMessage>
+export INCLUDE_PUBSUB_MESSAGE=true
 export API_KEY_KMSENCRYPTION_KEY=<apiKeyKMSEncryptionKey>
 export API_KEY_SECRET_ID=<apiKeySecretId>
 export API_KEY_SOURCE=<apiKeySource>
@@ -196,7 +196,7 @@ export OUTPUT_DEADLETTER_TOPIC=<outputDeadletterTopic>
 export API_KEY=<apiKey>
 export BATCH_COUNT=<batchCount>
 export PARALLELISM=<parallelism>
-export INCLUDE_PUBSUB_MESSAGE=<includePubsubMessage>
+export INCLUDE_PUBSUB_MESSAGE=true
 export API_KEY_KMSENCRYPTION_KEY=<apiKeyKMSEncryptionKey>
 export API_KEY_SECRET_ID=<apiKeySecretId>
 export API_KEY_SOURCE=<apiKeySource>
@@ -214,6 +214,17 @@ mvn clean package -PtemplatesRun \
 -Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,apiKey=$API_KEY,url=$URL,batchCount=$BATCH_COUNT,parallelism=$PARALLELISM,includePubsubMessage=$INCLUDE_PUBSUB_MESSAGE,apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY,apiKeySecretId=$API_KEY_SECRET_ID,apiKeySource=$API_KEY_SOURCE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,outputDeadletterTopic=$OUTPUT_DEADLETTER_TOPIC" \
 -f v1
 ```
+
+#### Troubleshooting
+If there are compilation errors related to template metadata or template plugin framework,
+make sure the plugin dependencies are up-to-date by running:
+```
+mvn clean install -pl plugins/templates-maven-plugin,metadata -am
+```
+See [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin)
+for more information.
+
+
 
 ## Terraform
 
@@ -263,7 +274,7 @@ resource "google_dataflow_job" "cloud_pubsub_to_datadog" {
     # apiKey = "<apiKey>"
     # batchCount = "<batchCount>"
     # parallelism = "<parallelism>"
-    # includePubsubMessage = "<includePubsubMessage>"
+    # includePubsubMessage = "true"
     # apiKeyKMSEncryptionKey = "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name"
     # apiKeySecretId = "projects/your-project-id/secrets/your-secret/versions/your-secret-version"
     # apiKeySource = "<apiKeySource>"

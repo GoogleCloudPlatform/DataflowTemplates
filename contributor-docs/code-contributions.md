@@ -135,7 +135,7 @@ gcloud auth application-default login
 After authenticated, install the plugin into your local repository:
 
 ```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
+mvn clean install -pl plugins/templates-maven-plugin,metadata -am
 ```
 
 ### Staging (Deploying) Templates
@@ -431,6 +431,9 @@ mvn clean prepare-package \
   -DskipTests \
   -PtemplatesSpec
 ```
+
+This command will not only generate each template's README file, but will also generate the site docs.
+The site docs can be found under `target/site/` from the root project directory.
 
 ## Release Process
 

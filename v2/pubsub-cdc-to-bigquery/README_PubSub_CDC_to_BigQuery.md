@@ -16,16 +16,16 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required parameters
 
 * **inputSubscription** : Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **outputDatasetTemplate** : The name for the dataset to contain the replica table. Defaults to: {_metadata_dataset}.
 * **outputTableNameTemplate** : The location of the BigQuery table to write the output to. If a table does not already exist one will be created automatically. Defaults to: _metadata_table.
 
 ### Optional parameters
 
 * **autoMapTables** : Determines if new columns and tables should be automatically created in BigQuery. Defaults to: true.
 * **schemaFilePath** : This is the file location that contains the table definition to be used when creating the table in BigQuery. If left blank the table will get created with generic string typing.
+* **outputDatasetTemplate** : The name for the dataset to contain the replica table. Defaults to: {_metadata_dataset}.
 * **outputTableSpec** : BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
 * **outputDeadletterTable** : BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
-* **deadLetterQueueDirectory** : The name of the directory on Cloud Storage you want to write dead letters messages to. Defaults to empty.
+* **deadLetterQueueDirectory** : The name of the directory on Cloud Storage you want to write dead letters messages to.
 * **windowDuration** : The window duration/size in which DLQ data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 5s.
 * **threadCount** : The number of parallel threads you want to split your data into. Defaults to: 100.
 * **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js).
@@ -70,7 +70,7 @@ for more information about how to create and test those functions.
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
 
 ### Building Template
 
@@ -128,15 +128,15 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_CDC_to_Big
 
 ### Required
 export INPUT_SUBSCRIPTION=<inputSubscription>
-export OUTPUT_DATASET_TEMPLATE={_metadata_dataset}
 export OUTPUT_TABLE_NAME_TEMPLATE=_metadata_table
 
 ### Optional
 export AUTO_MAP_TABLES=true
 export SCHEMA_FILE_PATH=<schemaFilePath>
+export OUTPUT_DATASET_TEMPLATE={_metadata_dataset}
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
-export DEAD_LETTER_QUEUE_DIRECTORY=""
+export DEAD_LETTER_QUEUE_DIRECTORY=<deadLetterQueueDirectory>
 export WINDOW_DURATION=5s
 export THREAD_COUNT=100
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
@@ -195,15 +195,15 @@ export REGION=us-central1
 
 ### Required
 export INPUT_SUBSCRIPTION=<inputSubscription>
-export OUTPUT_DATASET_TEMPLATE={_metadata_dataset}
 export OUTPUT_TABLE_NAME_TEMPLATE=_metadata_table
 
 ### Optional
 export AUTO_MAP_TABLES=true
 export SCHEMA_FILE_PATH=<schemaFilePath>
+export OUTPUT_DATASET_TEMPLATE={_metadata_dataset}
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
-export DEAD_LETTER_QUEUE_DIRECTORY=""
+export DEAD_LETTER_QUEUE_DIRECTORY=<deadLetterQueueDirectory>
 export WINDOW_DURATION=5s
 export THREAD_COUNT=100
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
@@ -228,6 +228,17 @@ mvn clean package -PtemplatesRun \
 -Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,autoMapTables=$AUTO_MAP_TABLES,schemaFilePath=$SCHEMA_FILE_PATH,outputDatasetTemplate=$OUTPUT_DATASET_TEMPLATE,outputTableNameTemplate=$OUTPUT_TABLE_NAME_TEMPLATE,outputTableSpec=$OUTPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,windowDuration=$WINDOW_DURATION,threadCount=$THREAD_COUNT,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,pythonTextTransformGcsPath=$PYTHON_TEXT_TRANSFORM_GCS_PATH,pythonRuntimeVersion=$PYTHON_RUNTIME_VERSION,pythonTextTransformFunctionName=$PYTHON_TEXT_TRANSFORM_FUNCTION_NAME,runtimeRetries=$RUNTIME_RETRIES,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
 -f v2/pubsub-cdc-to-bigquery
 ```
+
+#### Troubleshooting
+If there are compilation errors related to template metadata or template plugin framework,
+make sure the plugin dependencies are up-to-date by running:
+```
+mvn clean install -pl plugins/templates-maven-plugin,metadata -am
+```
+See [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin)
+for more information.
+
+
 
 ## Terraform
 
@@ -271,13 +282,13 @@ resource "google_dataflow_flex_template_job" "pubsub_cdc_to_bigquery" {
   region            = var.region
   parameters        = {
     inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
-    outputDatasetTemplate = "{_metadata_dataset}"
     outputTableNameTemplate = "_metadata_table"
     # autoMapTables = "true"
     # schemaFilePath = "<schemaFilePath>"
+    # outputDatasetTemplate = "{_metadata_dataset}"
     # outputTableSpec = "<outputTableSpec>"
     # outputDeadletterTable = "your-project-id:your-dataset.your-table-name"
-    # deadLetterQueueDirectory = ""
+    # deadLetterQueueDirectory = "<deadLetterQueueDirectory>"
     # windowDuration = "5m"
     # threadCount = "100"
     # javascriptTextTransformGcsPath = "gs://my-bucket/my-udfs/my_file.js"
