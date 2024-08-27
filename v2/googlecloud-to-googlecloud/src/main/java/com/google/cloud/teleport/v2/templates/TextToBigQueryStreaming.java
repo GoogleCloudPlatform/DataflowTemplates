@@ -286,7 +286,7 @@ public class TextToBigQueryStreaming {
             .withValidation()
             .as(TextToBigQueryStreamingOptions.class);
     BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
-
+    PythonExternalTextTransformer.overwritepyVersion(options);
     run(options);
   }
 

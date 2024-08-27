@@ -161,7 +161,7 @@ public class FirestoreToBigQuery {
   public static void main(String[] args) {
     FirestoreToBigQueryOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(FirestoreToBigQueryOptions.class);
-
+    PythonExternalTextTransformer.overwritepyVersion(options);
     Pipeline pipeline = Pipeline.create(options);
 
     boolean useJavascriptUdf = !Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath());

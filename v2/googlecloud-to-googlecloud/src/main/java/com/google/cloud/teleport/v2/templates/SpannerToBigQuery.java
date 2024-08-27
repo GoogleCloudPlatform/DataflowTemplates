@@ -23,6 +23,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SpannerToBigQueryOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer;
 import com.google.cloud.teleport.v2.transforms.SpannerToBigQueryTransform.StructToJson;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.common.base.Strings;
@@ -55,7 +56,7 @@ public final class SpannerToBigQuery {
     PipelineOptionsFactory.register(SpannerToBigQueryOptions.class);
     SpannerToBigQueryOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(SpannerToBigQueryOptions.class);
-
+    PythonExternalTextTransformer.overwritepyVersion(options);
     BigQueryIOUtils.validateBQStorageApiOptionsBatch(options);
 
     Pipeline pipeline = Pipeline.create(options);

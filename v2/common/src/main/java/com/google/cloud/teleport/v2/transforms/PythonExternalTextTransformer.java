@@ -26,7 +26,9 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.extensions.python.PythonExternalTransform;
+import org.apache.beam.sdk.extensions.python.PythonExternalTransformOptions;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -338,5 +340,9 @@ public abstract class PythonExternalTextTransformer {
       assert payload != null;
       return new PubsubMessage(payload.getBytes(), attributeMap, messageId);
     }
+  }
+
+  public static void overwritepyVersion(PipelineOptions options) {
+    options.as(PythonExternalTransformOptions.class).setCustomBeamRequirement("2.59.0rc1");
   }
 }

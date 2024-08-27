@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.elasticsearch.transforms.ProcessEventMetadat
 import com.google.cloud.teleport.v2.elasticsearch.transforms.PubSubMessageToJsonDocument;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIndex;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -191,7 +192,7 @@ public class PubSubToElasticsearch {
    * @return The result of the pipeline execution.
    */
   public static PipelineResult run(PubSubToElasticsearchOptions options) {
-
+    PythonExternalTextTransformer.overwritepyVersion(options);
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 

@@ -325,7 +325,7 @@ public class PubSubToMongoDB {
    * @return The result of the pipeline execution.
    */
   public static PipelineResult run(Options options) {
-
+    PythonExternalTextTransformer.overwritepyVersion(options);
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 

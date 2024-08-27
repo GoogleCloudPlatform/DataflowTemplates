@@ -304,7 +304,7 @@ public class TextIOToBigQuery {
   @VisibleForTesting
   static PipelineResult run(Options options, Supplier<Write<TableRow>> writeToBQ) {
     BigQueryIOUtils.validateBQStorageApiOptionsBatch(options);
-
+    PythonExternalTextTransformer.overwritepyVersion(options);
     Pipeline pipeline = Pipeline.create(options);
 
     boolean useJavascriptUdf = !Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath());

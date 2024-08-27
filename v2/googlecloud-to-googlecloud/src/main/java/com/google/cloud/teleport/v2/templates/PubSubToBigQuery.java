@@ -263,7 +263,7 @@ public class PubSubToBigQuery {
     //    options.setWorkerDiskType(
     //
     // "compute.googleapis.com/projects/cloud-teleport-testing/zones/us-central1-a/diskTypes/t2a-test");
-
+    PythonExternalTextTransformer.overwritepyVersion(options);
     run(options);
   }
 
