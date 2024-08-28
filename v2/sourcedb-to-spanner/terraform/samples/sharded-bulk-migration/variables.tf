@@ -1,30 +1,42 @@
 variable "common_params" {
   type = object({
-    project                  = string
-    region                   = string
-    working_directory_prefix = string
-    working_directory_bucket = string
-    jdbcDriverJars           = string
-    jdbcDriverClassName      = string
-    num_partitions           = number
-    max_connections          = number
-    instanceId               = string
-    databaseId               = string
-    projectId                = string
-    spannerHost              = string
-    local_session_file_path  = string
-    additional_experiments   = list(string)
-    network                  = string
-    subnetwork               = string
-    service_account_email    = string
-    launcher_machine_type    = string
-    machine_type             = string
-    max_workers              = number
-    ip_configuration         = string
-    num_workers              = number
-    defaultLogLevel          = string
-    local_sharding_config    = string
-    batch_size               = number
+    # Template parameters
+    project                          = string
+    region                           = string
+    working_directory_bucket         = string # example "test-bucket"
+    working_directory_prefix         = string # should not start or end with a '/'
+    jdbcDriverJars                   = optional(string)
+    jdbcDriverClassName              = optional(string)
+    num_partitions                   = optional(number)
+    max_connections                  = optional(number)
+    instanceId                       = string
+    databaseId                       = string
+    projectId                        = string
+    spannerHost                      = optional(string)
+    local_session_file_path          = string
+    local_sharding_config            = string
+    transformation_jar_path          = optional(string)
+    transformation_custom_parameters = optional(string)
+    transformation_class_name        = optional(string)
+
+    # Dataflow runtime parameters
+    additional_experiments = list(string) # disable_runner_v2 experiment is a must for bulk jobs.
+    network                = optional(string)
+    subnetwork             = optional(string)
+    service_account_email  = optional(string)
+    # Recommend using larger launcher VMs. Machine with >= 16 vCPUs should be safe.
+    launcher_machine_type  = optional(string, "n1-highmem-32")
+    machine_type           = optional(string, "n1-highmem-4")
+    max_workers            = optional(number)
+    ip_configuration       = optional(string)
+    num_workers            = optional(number)
+    defaultLogLevel        = optional(string)
+
+    # This parameters decides the number of physical shards to migrate using a single dataflow job.
+    # Set this in a way that restricts the total number of tables to 150 within a single job.
+    # Ex: if each physical shard has 2 logical shards, and each logical shard has 15 tables,
+    # the batch size should not exceed 5.
+    batch_size = optional(number, 1)
   })
-  description = "Common parameters shared across multiple Dataflow jobs."
+  description = "Parameters which are common across jobs. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/README_Sourcedb_to_Spanner_Flex.md for the description of the parameters below."
 }

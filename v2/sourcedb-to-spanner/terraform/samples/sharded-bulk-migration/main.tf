@@ -1,7 +1,7 @@
 locals {
   sharding_config = jsondecode(file(var.common_params.local_sharding_config))
   dataShards      = local.sharding_config.shardConfigurationBulk.dataShards
-  # Generate individual source configs for each data shard
+  # Generate individual source configs for each group of data shards based on batch size.
   source_configs  = [
     for batch_start in range(0, length(local.dataShards), var.common_params.batch_size) : {
       configType : "dataflow",
@@ -15,10 +15,14 @@ locals {
   working_directory_gcs = "gs://${var.common_params.working_directory_bucket}/${var.common_params.working_directory_prefix}"
 }
 
+resource "random_pet" "job_names" {
+  count = length(local.source_configs)
+}
+
 resource "google_storage_bucket_object" "source_config_upload" {
-  for_each   = {for idx, config in local.source_configs : idx => config}
-  name       = "${var.common_params.working_directory_prefix}/${local.dataShards[each.key].dataShardId}/sourceConfig.json"
-  content    = jsonencode(each.value)
+  count      = length(local.source_configs)
+  name       = "${var.common_params.working_directory_prefix}/${random_pet.job_names[count.index].id}/sourceConfig.json"
+  content    = jsonencode(local.source_configs[count.index])
   bucket     = var.common_params.working_directory_bucket
   depends_on = [google_project_service.enabled_apis]
 }
@@ -32,12 +36,8 @@ resource "google_storage_bucket_object" "session_file_object" {
   bucket       = var.common_params.working_directory_bucket
 }
 
-resource "random_pet" "job_name_suffix" {
-  count = length(local.dataShards)
-}
-
 resource "google_dataflow_flex_template_job" "generated" {
-  count      = length(local.dataShards)
+  count      = length(local.source_configs)
   depends_on = [
     google_project_service.enabled_apis, google_storage_bucket_object.source_config_upload,
     google_storage_bucket_object.session_file_object
@@ -46,26 +46,31 @@ resource "google_dataflow_flex_template_job" "generated" {
   container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Sourcedb_to_Spanner_Flex"
 
   parameters = {
-    #jdbcDriverJars            = var.common_params.jdbcDriverJars
-    #jdbcDriverClassName       = var.common_params.jdbcDriverClassName
-    sourceConfigURL           = "${local.working_directory_gcs}/${local.dataShards[count.index].dataShardId}/sourceConfig.json"
-    numPartitions             = tostring(var.common_params.num_partitions)
-    instanceId                = var.common_params.instanceId
-    databaseId                = var.common_params.databaseId
-    projectId                 = var.common_params.projectId
-    spannerHost               = var.common_params.spannerHost
-    #maxConnections            = tostring(var.common_params.max_connections)
-    sessionFilePath           = "${local.working_directory_gcs}/session.json"
-    outputDirectory           = "${local.working_directory_gcs}/${local.dataShards[count.index].dataShardId}/output/"
-    defaultSdkHarnessLogLevel = var.common_params.defaultLogLevel
+    # Uncomment these optional parameters to use custom options.
+    jdbcDriverJars                 = var.common_params.jdbcDriverJars
+    jdbcDriverClassName            = var.common_params.jdbcDriverClassName
+    maxConnections                 = tostring(var.common_params.max_connections)
+    sourceConfigURL                = "${local.working_directory_gcs}/${random_pet.job_names[count.index].id}/sourceConfig.json"
+    numPartitions                  = tostring(var.common_params.num_partitions)
+    instanceId                     = var.common_params.instanceId
+    databaseId                     = var.common_params.databaseId
+    projectId                      = var.common_params.projectId
+    spannerHost                    = var.common_params.spannerHost
+    sessionFilePath                = "${local.working_directory_gcs}/session.json"
+    outputDirectory                = "${local.working_directory_gcs}/${random_pet.job_names[count.index].id}/output/"
+    transformationJarPath          = var.common_params.transformation_jar_path
+    transformationClassName        = var.common_params.transformation_class_name
+    transformationCustomParameters = var.common_params.transformation_custom_parameters
+    defaultSdkHarnessLogLevel      = var.common_params.defaultLogLevel
   }
 
+  service_account_email  = var.common_params.service_account_email
   additional_experiments = var.common_params.additional_experiments
-  ip_configuration       = var.common_params.ip_configuration
   launcher_machine_type  = var.common_params.launcher_machine_type
   machine_type           = var.common_params.machine_type
   max_workers            = var.common_params.max_workers
-  name                   = "${random_pet.job_name_suffix[count.index].id}-${local.dataShards[count.index].dataShardId}"
+  name                   = "${random_pet.job_names[count.index].id}"
+  ip_configuration       = var.common_params.ip_configuration
   network                = var.common_params.network
   subnetwork             = var.common_params.subnetwork
   num_workers            = var.common_params.num_workers

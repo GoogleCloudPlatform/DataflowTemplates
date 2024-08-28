@@ -1,11 +1,12 @@
 ## Scenario
 
-This Terraform example illustrates launching multiple bulk migration Datafllow jobs for a MySQL to Spanner migration with the following assumptions -
+This Terraform example illustrates launching bulk migration Dataflow jobs for a Sharded MySQL to Spanner migration with
+the following assumptions -
 
-1. MySQL source can establish network connectivity with Dataflow.
+1. MySQL source shards can establish network connectivity with Dataflow.
 2. Appropriate permissions are added to the service account running Terraform to allow resource creation.
 3. Appropriate permissions are provided to the service account running Dataflow to write to Spanner.
-4. A GCS bucket has been provided to write the DLQ records to.
+4. A GCS bucket has been provided to write the output records to.
 
 Given these assumptions, it copies data from multiple source MySQL databases to the configured Spanner database(s).
 
@@ -19,11 +20,12 @@ This sample contains the following files -
 4. `terraform.tf` - This contains the required providers for this sample.
 5. `terraform.tfvars` - This contains the dummy inputs that need to be populated to run this example.
 
-## How to run 
+## How to run
 
-1. Clone this repository or the sample locally. 
-2. Edit the `terraform.tfvars` file and replace the dummy variables with real values. Extend the configuration to meet your needs.
-3. Run the following commands - 
+1. Clone this repository or the sample locally.
+2. Edit the `terraform.tfvars` file and replace the dummy variables with real values. Extend the configuration to meet
+   your needs.
+3. Run the following commands -
 
 ### Initialise Terraform
 
@@ -32,15 +34,15 @@ This sample contains the following files -
 terraform init
 ```
 
-### Run `plan` and `apply` 
+### Run `plan` and `apply`
 
-Validate the terraform files with - 
+Validate the terraform files with -
 
 ```shell
 terraform plan
 ```
 
-Run the terraform script with - 
+Run the terraform script with -
 
 ```shell
 terraform apply
@@ -61,11 +63,17 @@ dataflow_job_urls = [
 ]
 ```
 
-**Note:** Each of the jobs will have a random suffix added to it to prevent name collisions. 
+**Note 1:** Each of the jobs will have a random name which will be migrating 1 or more physical shards.
+
+**Note 2:** If you want to run more than 10 dataflow jobs in parallel, run terraform using the `-parallelism=n` flag.
+
+```shell
+terraform apply -parallelism=30
+```
 
 ### Cleanup
 
-Once the jobs have finished running, you can cleanup by running - 
+Once the jobs have finished running, you can cleanup by running -
 
 ```shell
 terraform destroy
