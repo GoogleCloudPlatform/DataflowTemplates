@@ -19,6 +19,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.DbAuth;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.PostgreSQLConfigDefaults;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
@@ -39,6 +40,8 @@ import org.apache.commons.dbcp2.BasicDataSource;
  */
 @AutoValue
 public abstract class JdbcIOWrapperConfig {
+  /** Dialect of the database. */
+  public abstract SQLDialect sourceDbDialect();
 
   /** Source URL. */
   public abstract String sourceDbURL();
@@ -228,6 +231,7 @@ public abstract class JdbcIOWrapperConfig {
 
   public static Builder builderWithMySqlDefaults() {
     return new AutoValue_JdbcIOWrapperConfig.Builder()
+        .setSourceDbDialect(SQLDialect.MYSQL)
         .setSchemaMapperType(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_MAPPER_TYPE)
         .setDialectAdapter(MySqlConfigDefaults.DEFAULT_MYSQL_DIALECT_ADAPTER)
         .setValueMappingsProvider(MySqlConfigDefaults.DEFAULT_MYSQL_VALUE_MAPPING_PROVIDER)
@@ -251,8 +255,37 @@ public abstract class JdbcIOWrapperConfig {
         .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS);
   }
 
+  public static Builder builderWithPostgreSQLDefaults() {
+    return new AutoValue_JdbcIOWrapperConfig.Builder()
+        .setSourceDbDialect(SQLDialect.POSTGRESQL)
+        .setSchemaMapperType(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_SCHEMA_MAPPER_TYPE)
+        .setDialectAdapter(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_DIALECT_ADAPTER)
+        .setValueMappingsProvider(
+            PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_VALUE_MAPPING_PROVIDER)
+        .setMaxConnections(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_MAX_CONNECTIONS)
+        .setSqlInitSeq(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_INIT_SEQ)
+        .setSchemaDiscoveryBackOff(
+            PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_SCHEMA_DISCOVERY_BACKOFF)
+        .setTables(ImmutableList.of())
+        .setTableVsPartitionColumns(ImmutableMap.of())
+        .setMaxPartitions(null)
+        .setWaitOn(null)
+        .setMaxFetchSize(null)
+        .setDbParallelizationForReads(null)
+        .setDbParallelizationForSplitProcess(DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
+        .setReadWithUniformPartitionsFeatureEnabled(true)
+        .setTestOnBorrow(DEFAULT_TEST_ON_BORROW)
+        .setTestOnCreate(DEFAULT_TEST_ON_CREATE)
+        .setTestOnReturn(DEFAULT_TEST_ON_RETURN)
+        .setTestWhileIdle(DEFAULT_TEST_WILE_IDLE)
+        .setValidationQuery(DEFAULT_VALIDATEION_QUERY)
+        .setRemoveAbandonedTimeout(DEFAULT_REMOVE_ABANDONED_TIMEOUT)
+        .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS);
+  }
+
   @AutoValue.Builder
   public abstract static class Builder {
+    public abstract Builder setSourceDbDialect(SQLDialect value);
 
     public abstract Builder setSourceDbURL(String value);
 

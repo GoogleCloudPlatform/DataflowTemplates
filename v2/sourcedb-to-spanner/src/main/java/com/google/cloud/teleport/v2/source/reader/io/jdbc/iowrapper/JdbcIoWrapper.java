@@ -17,8 +17,6 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
 
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SuitableIndexNotFoundException;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
@@ -171,7 +169,8 @@ public final class JdbcIoWrapper implements IoWrapper {
         .map(
             tableEntry -> {
               SourceTableSchema.Builder sourceTableSchemaBuilder =
-                  SourceTableSchema.builder().setTableName(tableEntry.getKey());
+                  SourceTableSchema.builder(config.sourceDbDialect())
+                      .setTableName(tableEntry.getKey());
               tableEntry
                   .getValue()
                   .entrySet()
@@ -356,7 +355,7 @@ public final class JdbcIoWrapper implements IoWrapper {
             .setTableName(tableConfig.tableName())
             .setPartitionColumns(tableConfig.partitionColumns())
             .setDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
-            .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
+            .setDbAdapter(config.dialectAdapter())
             .setApproxTotalRowCount(tableConfig.approxRowCount())
             .setRowMapper(
                 new JdbcSourceRowMapper(

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.schema;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 
 /** Test Utility class for Generating test schema. */
@@ -28,7 +29,7 @@ public class SchemaTestUtils {
   }
 
   public static SourceTableSchema generateTestTableSchema(String tableName) {
-    return SourceTableSchema.builder()
+    return SourceTableSchema.builder(SQLDialect.MYSQL)
         .setTableName(tableName)
         .addSourceColumnNameToSourceColumnType(
             TEST_FIELD_NAME_1, new SourceColumnType("varchar", new Long[] {20L}, null))

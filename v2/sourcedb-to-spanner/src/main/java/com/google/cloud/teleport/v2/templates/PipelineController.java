@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
@@ -117,7 +118,7 @@ public class PipelineController {
       ReaderImpl reader =
           ReaderImpl.of(
               JdbcIoWrapper.of(
-                  OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
+                  OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
                       options, List.of(srcTable), null, Wait.on(parentOutputs))));
       String suffix = generateSuffix("", srcTable);
       PCollection<Void> output =
@@ -158,6 +159,7 @@ public class PipelineController {
     // Take connection properties map
     // Write to common DLQ ?
 
+    SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(options, ddl);
 
@@ -206,6 +208,7 @@ public class PipelineController {
               ReaderImpl.of(
                   JdbcIoWrapper.of(
                       OptionsToConfigBuilder.getJdbcIOWrapperConfig(
+                          sqlDialect,
                           List.of(srcTable),
                           null,
                           shard.getHost(),

@@ -16,9 +16,11 @@
 package com.google.cloud.teleport.v2.options;
 
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig.builderWithMySqlDefaults;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig.builderWithPostgreSQLDefaults;
 
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.common.annotations.VisibleForTesting;
@@ -37,54 +39,42 @@ import org.slf4j.LoggerFactory;
 public final class OptionsToConfigBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(OptionsToConfigBuilder.class);
 
-  public static final class MySql {
+  public static JdbcIOWrapperConfig getJdbcIOWrapperConfigWithDefaults(
+      SourceDbToSpannerOptions options,
+      List<String> tables,
+      String shardId,
+      Wait.OnSignal<?> waitOn) {
+    SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
+    String sourceDbURL = options.getSourceConfigURL();
+    String dbName = extractDbFromURL(sourceDbURL);
+    String username = options.getUsername();
+    String password = options.getPassword();
 
-    private static String extractDbFromURL(String sourceDbUrl) {
-      URI uri;
-      try {
-        // Strip off the prefix 'jdbc:' which the library cannot handle.
-        uri = new URI(sourceDbUrl.substring(5));
-      } catch (URISyntaxException e) {
-        throw new RuntimeException(String.format("Unable to parse url: %s", sourceDbUrl), e);
-      }
-      // Remove '/' before returning.
-      return uri.getPath().substring(1);
-    }
+    String jdbcDriverClassName = options.getJdbcDriverClassName();
+    String jdbcDriverJars = options.getJdbcDriverJars();
+    long maxConnections =
+        options.getMaxConnections() > 0 ? (long) (options.getMaxConnections()) : 0;
+    Integer numPartitions = options.getNumPartitions();
 
-    public static JdbcIOWrapperConfig configWithMySqlDefaultsFromOptions(
-        SourceDbToSpannerOptions options,
-        List<String> tables,
-        String shardId,
-        Wait.OnSignal<?> waitOn) {
-      String sourceDbURL = options.getSourceConfigURL();
-      String dbName = extractDbFromURL(sourceDbURL);
-      String username = options.getUsername();
-      String password = options.getPassword();
-
-      String jdbcDriverClassName = options.getJdbcDriverClassName();
-      String jdbcDriverJars = options.getJdbcDriverJars();
-      long maxConnections =
-          options.getMaxConnections() > 0 ? (long) (options.getMaxConnections()) : 0;
-      Integer numPartitions = options.getNumPartitions();
-
-      return getJdbcIOWrapperConfig(
-          tables,
-          sourceDbURL,
-          null,
-          0,
-          username,
-          password,
-          dbName,
-          shardId,
-          jdbcDriverClassName,
-          jdbcDriverJars,
-          maxConnections,
-          numPartitions,
-          waitOn);
-    }
+    return getJdbcIOWrapperConfig(
+        sqlDialect,
+        tables,
+        sourceDbURL,
+        null,
+        0,
+        username,
+        password,
+        dbName,
+        shardId,
+        jdbcDriverClassName,
+        jdbcDriverJars,
+        maxConnections,
+        numPartitions,
+        waitOn);
   }
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfig(
+      SQLDialect sqlDialect,
       List<String> tables,
       String sourceDbURL,
       String host,
@@ -98,7 +88,7 @@ public final class OptionsToConfigBuilder {
       long maxConnections,
       Integer numPartitions,
       Wait.OnSignal<?> waitOn) {
-    JdbcIOWrapperConfig.Builder builder = builderWithMySqlDefaults();
+    JdbcIOWrapperConfig.Builder builder = builderWithDefaultsFor(sqlDialect);
     builder =
         builder
             .setSourceSchemaReference(SourceSchemaReference.builder().setDbName(dbName).build())
@@ -114,14 +104,21 @@ public final class OptionsToConfigBuilder {
       builder = builder.setMaxConnections(maxConnections);
     }
 
-    // TODO - add mysql specific method in mysql class.
-    if (sourceDbURL == null) {
-      sourceDbURL = "jdbc:mysql://" + host + ":" + port + "/" + dbName;
-    }
-
-    for (Entry<String, String> entry :
-        MySqlConfigDefaults.DEFAULT_MYSQL_URL_PROPERTIES.entrySet()) {
-      sourceDbURL = addParamToJdbcUrl(sourceDbURL, entry.getKey(), entry.getValue());
+    switch (sqlDialect) {
+      case MYSQL:
+        if (sourceDbURL == null) {
+          sourceDbURL = "jdbc:mysql://" + host + ":" + port + "/" + dbName;
+        }
+        for (Entry<String, String> entry :
+            MySqlConfigDefaults.DEFAULT_MYSQL_URL_PROPERTIES.entrySet()) {
+          sourceDbURL = addParamToJdbcUrl(sourceDbURL, entry.getKey(), entry.getValue());
+        }
+        break;
+      case POSTGRESQL:
+        if (sourceDbURL == null) {
+          sourceDbURL = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
+        }
+        break;
     }
 
     builder.setSourceDbURL(sourceDbURL);
@@ -202,6 +199,25 @@ public final class OptionsToConfigBuilder {
 
       return baseUrl + "?" + newQuery;
     }
+  }
+
+  private static String extractDbFromURL(String sourceDbUrl) {
+    URI uri;
+    try {
+      // Strip off the prefix 'jdbc:' which the library cannot handle.
+      uri = new URI(sourceDbUrl.substring(5));
+    } catch (URISyntaxException e) {
+      throw new RuntimeException(String.format("Unable to parse url: %s", sourceDbUrl), e);
+    }
+    // Remove '/' before returning.
+    return uri.getPath().substring(1);
+  }
+
+  private static JdbcIOWrapperConfig.Builder builderWithDefaultsFor(SQLDialect dialect) {
+    if (dialect == SQLDialect.POSTGRESQL) {
+      return builderWithPostgreSQLDefaults();
+    }
+    return builderWithMySqlDefaults();
   }
 
   private OptionsToConfigBuilder() {}

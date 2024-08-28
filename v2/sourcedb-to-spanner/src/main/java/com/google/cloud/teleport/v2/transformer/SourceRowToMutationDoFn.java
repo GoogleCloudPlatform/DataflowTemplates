@@ -106,6 +106,7 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
           .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS)
           .output(RowContext.builder().setRow(sourceRow).setMutation(mutation).build());
     } catch (Exception e) {
+      LOG.error("Error while processing element", e);
       transformerErrors.inc();
       output
           .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_ERROR)
