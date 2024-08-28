@@ -28,30 +28,11 @@ func main() {
 	flags.RegisterCommonFlags()
 	flag.Parse()
 
-	// Run mvn install before running integration tests
 	mvnFlags := workflows.NewMavenFlags()
-	err := workflows.MvnCleanInstall().Run(
-		mvnFlags.IncludeDependencies(),
-		mvnFlags.IncludeDependents(),
-		mvnFlags.SkipDependencyAnalysis(),
-		mvnFlags.SkipCheckstyle(),
-		mvnFlags.SetupReportModule(),
-		mvnFlags.SkipJib(),
-		mvnFlags.SkipTests(),
-		mvnFlags.SkipJacoco(),
-		mvnFlags.SkipShade(),
-		mvnFlags.ThreadCount(8))
-	if err != nil {
-		log.Fatalf("%v\n", err)
-	}
-
-	// Run unit tests
-	mvnFlags = workflows.NewMavenFlags()
-	err = workflows.MvnCleanVerify().Run(
+	err := workflows.MvnCleanVerify().Run(
 		// mvnFlags.IncludeDependencies(),
 		// mvnFlags.IncludeDependents(),
 		mvnFlags.SkipCheckstyle(),
-		mvnFlags.SetupReportModule(),
 		mvnFlags.SkipJib(),
 		mvnFlags.SkipShade(),
 		mvnFlags.SkipSpotlessCheck(),

@@ -36,7 +36,6 @@ func main() {
 		mvnFlags.IncludeDependents(),
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
-		mvnFlags.SetupReportModule(),
 		mvnFlags.SkipJib(),
 		mvnFlags.SkipTests(),
 		mvnFlags.SkipJacoco(),

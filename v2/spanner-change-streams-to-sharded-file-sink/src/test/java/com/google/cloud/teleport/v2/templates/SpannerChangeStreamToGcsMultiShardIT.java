@@ -21,7 +21,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.gson.Gson;
@@ -54,7 +53,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Integration test for simple test of single shard,single table. */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(SpannerChangeStreamsToShardedFileSink.class)
 @RunWith(JUnit4.class)
 public class SpannerChangeStreamToGcsMultiShardIT extends SpannerChangeStreamToGcsITBase {

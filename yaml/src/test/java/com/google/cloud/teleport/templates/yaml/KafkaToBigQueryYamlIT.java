@@ -24,7 +24,6 @@ import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.List;
@@ -54,7 +53,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(KafkaToBigQueryYaml.class)
 @RunWith(JUnit4.class)
 public final class KafkaToBigQueryYamlIT extends TemplateTestBase {

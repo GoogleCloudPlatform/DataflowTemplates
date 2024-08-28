@@ -99,8 +99,6 @@
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.15.2</postgres-socket-factory.version>
 
-    <jacoco.check.skip>false</jacoco.check.skip>
-
     <!-- Test categories -->
     <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
     <load.tests>com.google.cloud.teleport.metadata.TemplateLoadTest</load.tests>
@@ -416,7 +414,7 @@
       </activation>
       <properties>
         <!-- Skip coverage checks, unit tests are skipped -->
-        <jacoco.check.skip>true</jacoco.check.skip>
+        <jacoco.skip>true</jacoco.skip>
         <!-- Some modules may yield no integration tests -->
         <failIfNoTests>false</failIfNoTests>
         <!-- Parallelism settings. Default is 2, set to consider methods -->
@@ -501,7 +499,7 @@
       </activation>
       <properties>
         <!-- Skip coverage checks, unit tests are skipped -->
-        <jacoco.check.skip>true</jacoco.check.skip>
+        <jacoco.skip>true</jacoco.skip>
         <!-- Skip shade for faster runs -->
         <skipShade>true</skipShade>
         <!-- Some modules may yield no integration tests -->
@@ -550,7 +548,7 @@
       </activation>
       <properties>
         <!-- Skip coverage checks, unit tests are skipped -->
-        <jacoco.check.skip>true</jacoco.check.skip>
+        <jacoco.skip>true</jacoco.skip>
         <!-- Some modules may not have integration tests -->
         <failIfNoTests>false</failIfNoTests>
         <!-- Parallelism settings. Default is 2, set to consider methods -->
@@ -718,6 +716,5 @@
     <module>plaintext-logging</module>
     <module>python</module>
     <module>yaml</module>
-    <module>report-coverage</module>
   </modules>
 </project>

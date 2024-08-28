@@ -34,7 +34,6 @@ import com.google.cloud.teleport.bigtable.ChangelogEntryMessageProto.ChangelogEn
 import com.google.cloud.teleport.bigtable.ChangelogEntryMessageText;
 import com.google.cloud.teleport.bigtable.ChangelogEntryMessageText.ChangelogEntryText;
 import com.google.cloud.teleport.bigtable.ChangelogEntryMessageText.ChangelogEntryText.ModType;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
@@ -84,7 +83,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link BigtableChangeStreamsToPubSub}. */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(BigtableChangeStreamsToPubSub.class)
 @RunWith(Parameterized.class)
 public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {

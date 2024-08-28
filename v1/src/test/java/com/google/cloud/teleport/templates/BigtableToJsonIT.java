@@ -24,6 +24,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import com.google.cloud.teleport.bigtable.BigtableToJson;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
@@ -43,7 +44,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link BigtableToJson} classic template. */
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(BigtableToJson.class)
 @RunWith(JUnit4.class)
 public class BigtableToJsonIT extends TemplateTestBase {

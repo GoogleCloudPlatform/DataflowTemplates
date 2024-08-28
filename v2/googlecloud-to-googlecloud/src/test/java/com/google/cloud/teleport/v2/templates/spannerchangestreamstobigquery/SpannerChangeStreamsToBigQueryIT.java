@@ -24,7 +24,6 @@ import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.Arrays;
@@ -58,7 +57,7 @@ import org.slf4j.LoggerFactory;
  * Integration test for {@link SpannerChangeStreamsToBigQuery Spanner Change Streams to BigQuery}
  * template.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(SpannerChangeStreamsToBigQuery.class)
 @RunWith(JUnit4.class)
 public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {

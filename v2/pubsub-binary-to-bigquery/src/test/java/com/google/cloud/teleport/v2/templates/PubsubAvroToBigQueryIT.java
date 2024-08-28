@@ -23,7 +23,6 @@ import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
@@ -64,7 +63,7 @@ import org.junit.runners.JUnit4;
 
 /** Integration test for {@link PubsubAvroToBigQuery}. */
 // SkipDirectRunnerTest: PubsubIO doesn't trigger panes on the DirectRunner.
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(PubsubAvroToBigQuery.class)
 @RunWith(JUnit4.class)
 public final class PubsubAvroToBigQueryIT extends TemplateTestBase {

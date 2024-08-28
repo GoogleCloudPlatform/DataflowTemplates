@@ -23,7 +23,6 @@ import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import com.google.cloud.teleport.bigtable.ChangelogEntry;
 import com.google.cloud.teleport.bigtable.ChangelogEntryJson;
 import com.google.cloud.teleport.bigtable.ModType;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
@@ -61,7 +60,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link BigtableChangeStreamsToGcs}. */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(BigtableChangeStreamsToGcs.class)
 @RunWith(JUnit4.class)
 public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {

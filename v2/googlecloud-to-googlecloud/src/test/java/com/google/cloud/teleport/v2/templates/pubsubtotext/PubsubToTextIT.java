@@ -20,7 +20,6 @@ import static org.apache.beam.it.gcp.artifacts.matchers.ArtifactAsserts.assertTh
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -47,7 +46,7 @@ import org.junit.runners.JUnit4;
 
 /** Integration test for {@link PubsubToText} (Cloud_PubSub_to_GCS_Text_Flex). */
 // SkipDirectRunnerTest: PubsubIO doesn't trigger panes on the DirectRunner.
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(PubsubToText.class)
 @RunWith(JUnit4.class)
 public final class PubsubToTextIT extends TemplateTestBase {

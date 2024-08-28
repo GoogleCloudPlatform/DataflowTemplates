@@ -41,7 +41,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -160,7 +159,6 @@ public class ExportPipelineIT extends TemplateTestBase {
   }
 
   @Test
-  @Ignore("Broken")
   public void testSpannerToGCSAvroStaging() throws IOException {
     spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)

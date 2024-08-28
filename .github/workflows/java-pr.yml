@@ -110,22 +110,13 @@ jobs:
           name: surefire-test-results
           path: '**/surefire-reports/TEST-*.xml'
           retention-days: 1
-      - name: Upload Unit Tests Jacoco Report
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-        if: always() # always run even if the previous step fails
-        with:
-          name: unit-jacoco-report
-          path: '**/report-coverage/target/site'
-          retention-days: 1
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
-        if: always()
         with:
-          name: Unit tests code coverage
+          name: Unit test report
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: GoogleCloudPlatform/DataflowTemplates
-          file: 'report-coverage/target/site/jacoco-aggregate/jacoco.xml'
-          disable_search: true
+          files: 'target/site/jacoco-aggregate/jacoco.xml'
           # Temp fix for https://github.com/codecov/codecov-action/issues/1487
           version: v0.6.0
       - name: Cleanup Java Environment
@@ -144,7 +135,7 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Smoke Tests
-        run: |
+        run: | 
           ./cicd/run-it-smoke-tests \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
@@ -157,22 +148,13 @@ jobs:
           name: surefire-test-results
           path: '**/surefire-reports/TEST-*.xml'
           retention-days: 1
-      - name: Upload Smoke Tests Jacoco Report
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-        if: always() # always run even if the previous step fails
-        with:
-          name: smoke-jacoco-report
-          path: '**/report-coverage/target/site'
-          retention-days: 1
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
-        if: always()
         with:
-          name: Smoke tests code coverage
+          name: Smoke test report
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: GoogleCloudPlatform/DataflowTemplates
-          file: 'report-coverage/target/site/jacoco-aggregate/jacoco.xml'
-          disable_search: true
+          files: 'target/site/jacoco-aggregate/jacoco.xml'
           # Temp fix for https://github.com/codecov/codecov-action/issues/1487
           version: v0.6.0
       - name: Cleanup Java Environment
@@ -191,13 +173,12 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Tests
-        run: |
+        run: | 
           ./cicd/run-it-tests \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-          --it-private-connectivity="datastream-private-connect-us-central1" \
-          --it-retry-failures=2
+          --it-private-connectivity="datastream-private-connect-us-central1"
       - name: Upload Integration Tests Report
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails
@@ -205,22 +186,13 @@ jobs:
           name: surefire-test-results
           path: '**/surefire-reports/TEST-*.xml'
           retention-days: 1
-      - name: Upload Integration Tests Jacoco Report
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-        if: always() # always run even if the previous step fails
-        with:
-          name: integration-jacoco-report
-          path: '**/report-coverage/target/site'
-          retention-days: 1
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
-        if: always()
         with:
-          name: Integration tests code coverage
+          name: Integration test report
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: GoogleCloudPlatform/DataflowTemplates
-          file: 'report-coverage/target/site/jacoco-aggregate/jacoco.xml'
-          disable_search: true
+          files: 'target/site/jacoco-aggregate/jacoco.xml'
           # Temp fix for https://github.com/codecov/codecov-action/issues/1487
           version: v0.6.0
       - name: Cleanup Java Environment
