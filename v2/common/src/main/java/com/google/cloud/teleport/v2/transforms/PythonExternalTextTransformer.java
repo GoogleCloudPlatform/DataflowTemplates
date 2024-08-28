@@ -343,6 +343,8 @@ public abstract class PythonExternalTextTransformer {
   }
 
   public static void overwritepyVersion(PipelineOptions options) {
-    options.as(PythonExternalTransformOptions.class).setCustomBeamRequirement("2.59.0rc1");
+    if(Strings.isNullOrEmpty(options.as(PythonExternalTransformOptions.class).getCustomBeamRequirement())) {
+      throw new UnsupportedOperationException("short cut, fail launch");
+    }
   }
 }
