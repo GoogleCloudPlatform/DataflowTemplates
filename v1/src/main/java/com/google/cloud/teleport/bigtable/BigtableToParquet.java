@@ -196,7 +196,7 @@ public class BigtableToParquet {
      * Steps: 1) Read records from Bigtable. 2) Convert a Bigtable Row to a GenericRecord. 3) Write
      * GenericRecord(s) to GCS in parquet format.
      */
-    FileIO<GenericRecord> write =
+    FileIO.Write<Void, GenericRecord> write =
         FileIO.<GenericRecord>write()
             .via(ParquetIO.sink(BigtableRow.getClassSchema()))
             .to(options.getOutputDirectory())
