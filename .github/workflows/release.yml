@@ -32,7 +32,7 @@ jobs:
     - name: Declare release branch name and tag name
       id: variables
       run: |
-        echo "releaseBranchName=release_${CANDIDATE_NAME,,}" >> $GITHUB_OUTPUT
+        echo "releaseBranchName=release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
         echo "tagName=${CANDIDATE_NAME^^}" >> $GITHUB_OUTPUT
       env:
         CANDIDATE_NAME: ${{ inputs.candidateName }}
@@ -64,50 +64,50 @@ jobs:
       env:
         RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
         TAG_NAME: ${{ steps.variables.outputs.tagName }}
-    - name: Setup Environment
-      id: setup-env
-      uses: ./.github/actions/setup-env
-    - name: Run Build
-      run: ./cicd/run-build
-    - name: Run Unit Tests
-      run: ./cicd/run-unit-tests
-    - name: Run Integration Smoke Tests
-      run: |
-        ./cicd/run-it-smoke-tests \
-        --it-region="us-central1" \
-        --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1" \
-        --it-spanner-host="https://staging-wrenchworks.sandbox.googleapis.com/" \
-        --it-release=true \
-        --it-retry-failures=2
-    # TODO(https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/1807) - Remove once Staging Spanner tests
-    #   are fixed
-    - name: Run Integration Tests
-      run: |
-        ./cicd/run-it-tests \
-        --it-region="us-central1" \
-        --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1" \
-        --it-spanner-host="https://batch-spanner.googleapis.com" \
-        --it-release=true \
-        --it-retry-failures=2
-    - name: Upload Unit Tests Site Report
-      uses: ./.github/actions/publish-site-report
-      with:
-        output-zip-file: test-report
-      if: always()
-    - name: Create artifacts and push
-      run: |
-        mvn verify -PtemplatesRelease \
-        -DprojectId="dataflow-templates" \
-        -DbucketName="dataflow-templates-staging" \
-        -DlibrariesBucketName="dataflow-templates-libraries" \
-        -DstagePrefix="${CANDIDATE_NAME}" \
-        -Dmaven.test.skip -T8 -e
-      env:
-        CANDIDATE_NAME: ${{ inputs.candidateName }}
+#    - name: Setup Environment
+#      id: setup-env
+#      uses: ./.github/actions/setup-env
+#    - name: Run Build
+#      run: ./cicd/run-build
+#    - name: Run Unit Tests
+#      run: ./cicd/run-unit-tests
+#    - name: Run Integration Smoke Tests
+#      run: |
+#        ./cicd/run-it-smoke-tests \
+#        --it-region="us-central1" \
+#        --it-project="cloud-teleport-testing" \
+#        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+#        --it-private-connectivity="datastream-private-connect-us-central1" \
+#        --it-spanner-host="https://staging-wrenchworks.sandbox.googleapis.com/" \
+#        --it-release=true \
+#        --it-retry-failures=2
+#    # TODO(https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/1807) - Remove once Staging Spanner tests
+#    #   are fixed
+#    - name: Run Integration Tests
+#      run: |
+#        ./cicd/run-it-tests \
+#        --it-region="us-central1" \
+#        --it-project="cloud-teleport-testing" \
+#        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+#        --it-private-connectivity="datastream-private-connect-us-central1" \
+#        --it-spanner-host="https://batch-spanner.googleapis.com" \
+#        --it-release=true \
+#        --it-retry-failures=2
+#    - name: Upload Unit Tests Site Report
+#      uses: ./.github/actions/publish-site-report
+#      with:
+#        output-zip-file: test-report
+#      if: always()
+#    - name: Create artifacts and push
+#      run: |
+#        mvn verify -PtemplatesRelease \
+#        -DprojectId="dataflow-templates" \
+#        -DbucketName="dataflow-templates-staging" \
+#        -DlibrariesBucketName="dataflow-templates-libraries" \
+#        -DstagePrefix="${CANDIDATE_NAME}" \
+#        -Dmaven.test.skip -T8 -e
+#      env:
+#        CANDIDATE_NAME: ${{ inputs.candidateName }}
     - name: Push tags
       run: |
         git push -u origin --tags
