@@ -342,8 +342,6 @@ public abstract class PythonExternalTextTransformer {
   }
 
   public static void overwritepyVersion(PipelineOptions options) {
-    if (options.getRunner().toString().toLowerCase().contains("dataflow")) {
-      throw new UnsupportedOperationException("short cut, fail launch");
-    }
+    // no-op
   }
 }
