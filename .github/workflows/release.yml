@@ -110,7 +110,7 @@ jobs:
 #        CANDIDATE_NAME: ${{ inputs.candidateName }}
     - name: Push tags
       run: |
-        git push -u origin --tags
+        git push -u origin --all
     - name: Release
       run: |
         gh release create $TAG_NAME --title "Dataflow Templates $TAG_NAME" --notes ""
