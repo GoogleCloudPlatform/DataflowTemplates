@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.extensions.python.PythonExternalTransform;
-import org.apache.beam.sdk.extensions.python.PythonExternalTransformOptions;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.schemas.Schema;
@@ -343,8 +342,7 @@ public abstract class PythonExternalTextTransformer {
   }
 
   public static void overwritepyVersion(PipelineOptions options) {
-    if (Strings.isNullOrEmpty(
-        options.as(PythonExternalTransformOptions.class).getCustomBeamRequirement())) {
+    if (options.getRunner().toString().toLowerCase().contains("dataflow")) {
       throw new UnsupportedOperationException("short cut, fail launch");
     }
   }
