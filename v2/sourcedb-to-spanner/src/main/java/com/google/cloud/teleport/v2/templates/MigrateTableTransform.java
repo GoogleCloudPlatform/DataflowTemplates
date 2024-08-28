@@ -107,7 +107,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
       outputDirectory += "/";
     }
     // Dump Failed rows to DLQ
-    String dlqDirectory = outputDirectory + "dlq/" + shardId;
+    String dlqDirectory = outputDirectory + "dlq/severe/" + shardId;
     LOG.info("DLQ directory: {}", dlqDirectory);
     DeadLetterQueue dlq = DeadLetterQueue.create(dlqDirectory, ddl);
     dlq.failedMutationsToDLQ(failedMutations);
