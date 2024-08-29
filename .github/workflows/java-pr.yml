@@ -153,7 +153,7 @@ jobs:
   java_integration_tests_templates:
     name: Dataflow Templates Integration Tests
     needs: [java_integration_smoke_tests_templates]
-    timeout-minutes: 240
+    timeout-minutes: 360
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, it]
     steps:
