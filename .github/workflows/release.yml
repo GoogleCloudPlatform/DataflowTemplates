@@ -64,6 +64,12 @@ jobs:
         env:
           RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
           TAG_NAME: ${{ steps.variables.outputs.tagName }}
+      - name: Push release branch
+        run: |
+          git push origin --delete $RELEASE_BRANCH_NAME || true  
+          git push -u origin $RELEASE_BRANCH_NAME
+        env:
+          RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -93,14 +99,13 @@ jobs:
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
           --it-retry-failures=2
-      - name: Upload Unit Tests Site Report
+      - name: Upload Test Site Report
         uses: ./.github/actions/publish-site-report
         with:
           output-zip-file: test-report
         if: always()
-      - name: Push changes
+      - name: Push tag
         run: |
-          git push -u origin --all
           git push -u origin --tags
       - name: Release
         run: |
