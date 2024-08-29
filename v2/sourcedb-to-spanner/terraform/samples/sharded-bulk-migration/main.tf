@@ -2,7 +2,7 @@ locals {
   sharding_config = jsondecode(file(var.common_params.local_sharding_config))
   dataShards      = local.sharding_config.shardConfigurationBulk.dataShards
   # Generate individual source configs for each group of data shards based on batch size.
-  source_configs  = [
+  source_configs = [
     for batch_start in range(0, length(local.dataShards), var.common_params.batch_size) : {
       configType : "dataflow",
       shardConfigurationBulk : {
@@ -37,7 +37,7 @@ resource "google_storage_bucket_object" "session_file_object" {
 }
 
 resource "google_dataflow_flex_template_job" "generated" {
-  count      = length(local.source_configs)
+  count = length(local.source_configs)
   depends_on = [
     google_project_service.enabled_apis, google_storage_bucket_object.source_config_upload,
     google_storage_bucket_object.session_file_object
@@ -69,7 +69,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   launcher_machine_type  = var.common_params.launcher_machine_type
   machine_type           = var.common_params.machine_type
   max_workers            = var.common_params.max_workers
-  name                   = "${random_pet.job_names[count.index].id}"
+  name                   = random_pet.job_names[count.index].id
   ip_configuration       = var.common_params.ip_configuration
   network                = var.common_params.network
   subnetwork             = var.common_params.subnetwork

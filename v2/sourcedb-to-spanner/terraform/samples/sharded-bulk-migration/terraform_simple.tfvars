@@ -3,8 +3,8 @@
 
 common_params = {
   project                  = "project-name"
-  region                   = "us-central1" # Or your desired region
-  working_directory_bucket = "bucket-name" # example "test-bucket"
+  region                   = "us-central1"               # Or your desired region
+  working_directory_bucket = "bucket-name"               # example "test-bucket"
   working_directory_prefix = "path/to/working/directory" # should not start or end with a '/'
   instanceId               = "my-spanner-instance"
   databaseId               = "my-spanner-database"
@@ -13,6 +13,6 @@ common_params = {
   local_sharding_config    = "/Users/deepchowdhury/Downloads/128shardconfig.json"
 
   additional_experiments = ["disable_runner_v2"] # This option is required for bulk jobs. Do not remove.
-  
+
   batch_size = 1
 }

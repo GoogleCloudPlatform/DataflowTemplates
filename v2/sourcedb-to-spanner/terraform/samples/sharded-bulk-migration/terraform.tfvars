@@ -1,7 +1,7 @@
 common_params = {
   project                  = "project-name"
-  region                   = "us-central1" # Or your desired region
-  working_directory_bucket = "bucket-name" # example "test-bucket"
+  region                   = "us-central1"               # Or your desired region
+  working_directory_bucket = "bucket-name"               # example "test-bucket"
   working_directory_prefix = "path/to/working/directory" # should not start or end with a '/'
   jdbcDriverJars           = "gs://path/to/driver/jars"
   jdbcDriverClassName      = "com.mysql.jdbc.driver"
