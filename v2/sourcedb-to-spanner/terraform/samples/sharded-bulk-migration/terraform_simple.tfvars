@@ -10,7 +10,7 @@ common_params = {
   databaseId               = "my-spanner-database"
   projectId                = "my-spanner-project"
   local_session_file_path  = "/local/path/to/smt/session/file"
-  local_sharding_config    = "/Users/deepchowdhury/Downloads/128shardconfig.json"
+  local_sharding_config    = "/local/path/to/shardconfig.json"
 
   additional_experiments = ["disable_runner_v2"] # This option is required for bulk jobs. Do not remove.
 

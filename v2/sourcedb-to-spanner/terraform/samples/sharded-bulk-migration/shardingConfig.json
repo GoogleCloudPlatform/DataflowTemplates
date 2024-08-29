@@ -1,0 +1,51 @@
+{
+  "configType": "dataflow",
+  "shardConfigurationBulk": {
+    "schemaSource": {
+      "dataShardId": "",
+      "host": "",
+      "user": "",
+      "password": "",
+      "port": "",
+      "dbName": ""
+    },
+    "dataShards": [
+      {
+        "dataShardId": "data-shard1",
+        "host": "10.1.1.1",
+        "user": "username",
+        "password": "password",
+        "port": "3306",
+        "dbName": "",
+        "databases": [
+          {
+            "dbName": "db1",
+            "databaseId": "logicaldb1",
+            "refDataShardId": "data-shard1"
+          },
+          {
+            "dbName": "db2",
+            "databaseId": "logicaldb2",
+            "refDataShardId": "data-shard1"
+          }
+        ]
+      },
+      {
+        "dataShardId": "data-shard2",
+        "host": "10.1.1.2",
+        "user": "username",
+        "password": "password",
+        "port": "3306",
+        "dbName": "",
+        "databases": [
+          {
+            "dbName": "db3",
+            "databaseId": "logicaldb3",
+            "refDataShardId": "data-shard2"
+          }
+        ]
+      }
+    ]
+  }
+}
+

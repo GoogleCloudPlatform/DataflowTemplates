@@ -74,21 +74,23 @@ roles. Also ensure that the workers can access the source shards.
 
 ## Assumptions
 
-It takes the following assumptions -
+It makes the following assumptions -
 
 > **_NOTE:_**
 [SMT](https://googlecloudplatform.github.io/spanner-migration-tool/quickstart.html)
 > can be used for converting a MySQL schema to a Spanner compatible schema.
 
-1. MySQL source shards can establish network connectivity with Dataflow.
+1. Dataflow can establish network connectivity with the MySQL source shards.
 2. Appropriate permissions are added to the service account running Terraform to allow resource creation.
 3. Appropriate permissions are provided to the service account running Dataflow to write to Spanner.
 4. A GCS directory has been provided to write the output records (DLQ/filtered events) to.
 5. A Spanner instance with database containing the data-migration compatible schema is created. This includes a
    migration_shard_id column being present in the Spanner schema.
 6. An SMT generated session file is provided containing the schema mapping information is created locally. This is
-   mandatory for sharded migrations.
+   mandatory for sharded migrations. Check out the FAQ
+   on [how to generate a session file](#specifying-schema-overrides).
 7. A sharding config containing source connection information of all the physical and logical shards is created locally.
+8. The Source Schema should be the same across all shards.
 
 Given these assumptions, it copies data from multiple source MySQL databases to the configured Spanner database.
 
@@ -107,6 +109,8 @@ This sample contains the following files -
    to run this example.
 6. `terraform_simple.tfvars` - This contains the minimal list of dummy inputs
    that need to be populated to run this example.
+7. `shardingConfig.json` - This contains a sample sharding config that need to be populated with the source shards
+   connection details.
 
 ## Resources Created
 
@@ -166,7 +170,10 @@ dataflow_job_urls = [
 
 **Note 1:** Each of the jobs will have a random name which will be migrating 1 or more physical shards.
 
-**Note 2:** If you want to run more than 10 dataflow jobs in parallel, run terraform using the `-parallelism=n` flag.
+**Note 2:** Terraform, by default, creates at most 10 resources in parallel. If you want to run more than 10 dataflow
+jobs in parallel, run terraform using the `-parallelism=n` flag. However, more parallel dataflow jobs linearly increases
+load on Spanner.
+If Spanner is not sized sufficiently, all the jobs will slow down.
 
 ```shell
 terraform apply -parallelism=30
@@ -210,7 +217,7 @@ THere can be multiple reasons for this.
 - **Check Spanner metrics:** Are memory/CPU limits being hit? Consider increasing the number of nodes.
 - **Check Dataflow metrics:** Are memory/CPU limits being hit? Dataflow should autoscale to required number of
   nodes.
-    - CPU/memory limits being hit means the `max-workers` parameter might be too low. It is recommened to use smaller
+    - CPU/memory limits being hit means the `max-workers` parameter might be too low. It is recommended to use smaller
       machines (`Ex: n1-highmem-4`) for most workloads. However, if you have tall tables (singe table larger than 1tb),
       we recommend using larger machine sizes (`n1-highmem-32`).
     - For tables with `string` primary keys, the throughput is expected to be lower than tables with `int` primary keys.
@@ -253,7 +260,7 @@ support updating the workers of a Dataflow job.
 If the worker counts are changed in `tfvars` and a Terraform apply is run,
 Terraform will attempt to cancel the existing Dataflow job and replace it
 with a new one.
-**This is not recommended**. Instead use the `gcloud` CLI to update the worker
+**This is not recommended**. Instead, use the `gcloud` CLI to update the worker
 counts of a launched Dataflow job.
 
 ```shell
@@ -269,7 +276,17 @@ gcloud dataflow jobs update-options \                                           
 By default, the bulk job performs a like-like mapping between
 source and Spanner. However, for a sharded migration, a session file is mandatory for migration.
 Any schema changes between source and Spanner can be
-specified using the `session file`. To specify a session file -
+specified using the `session file`.
+
+To generate a session file:
+
+1. Setup SMT
+   and [launch the UI](https://googlecloudplatform.github.io/spanner-migration-tool/ui#launching-the-web-ui-for-spanner-migration-tool).
+2. Perform
+   a [sharded schema conversion](https://googlecloudplatform.github.io/spanner-migration-tool/ui/schema-conv/sharded-migration.html#sharded-migration-schema-changes)
+   and download the session file locally.
+
+To specify a session file -
 
 1. Copy the SMT generated `session file` to the Terraform working directory.
    Name this file `session.json`.
