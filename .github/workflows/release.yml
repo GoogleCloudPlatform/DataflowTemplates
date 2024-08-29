@@ -108,9 +108,10 @@ jobs:
 #        -Dmaven.test.skip -T8 -e
 #      env:
 #        CANDIDATE_NAME: ${{ inputs.candidateName }}
-    - name: Push tags
+    - name: Push changes
       run: |
         git push -u origin --all
+        git push -u origin --tags
     - name: Release
       run: |
         gh release create $TAG_NAME --title "Dataflow Templates $TAG_NAME" --notes ""
