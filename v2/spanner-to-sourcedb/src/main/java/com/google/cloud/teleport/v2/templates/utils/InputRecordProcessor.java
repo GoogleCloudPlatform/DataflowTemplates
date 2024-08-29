@@ -37,7 +37,8 @@ public class InputRecordProcessor {
       Schema schema,
       MySqlDao dao,
       String shardId,
-      String sourceDbTimezoneOffset) {
+      String sourceDbTimezoneOffset)
+      throws java.sql.SQLException {
 
     try {
 
@@ -66,7 +67,8 @@ public class InputRecordProcessor {
               + ChronoUnit.MILLIS.between(daoStartTime, daoEndTime)
               + " milliseconds ");
 
-      Counter numRecProcessedMetric = Metrics.counter(shardId, "records_processed_" + shardId);
+      Counter numRecProcessedMetric =
+          Metrics.counter(shardId, "records_written_to_source_" + shardId);
 
       numRecProcessedMetric.inc(1); // update the number of records processed metric
       Distribution lagMetric =
@@ -83,7 +85,7 @@ public class InputRecordProcessor {
           "The exception while processing shardId: {} is {} ",
           shardId,
           ExceptionUtils.getStackTrace(e));
-      throw new RuntimeException("Failed to process records: ", e);
+      throw e; // throw the original exception since it needs to go to DLQ
     }
   }
 }

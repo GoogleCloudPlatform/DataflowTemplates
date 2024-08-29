@@ -64,7 +64,7 @@
             <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam is updated to 2.56. -->
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-spanner-bom</artifactId>
-            <version>6.61.0</version>
+            <version>6.71.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -638,6 +638,9 @@
                   com.google.api.grpc:proto-google-cloud-spanner-admin-database-v1
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
+                  com.google.api.grpc:proto-google-cloud-spanner-admin-instance-v1
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
                   com.google.protobuf:protobuf-java-util
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
@@ -948,19 +951,6 @@
   </build>
 
   <profiles>
-    <profile>
-      <id>missing-artifact-repos</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <repositories>
-        <repository>
-          <!-- Required for io.confluent:kafka-avro-serializer artifact -->
-          <id>confluent</id>
-          <url>https://packages.confluent.io/maven/</url>
-        </repository>
-      </repositories>
-    </profile>
     <profile>
       <id>shade</id>
       <activation>

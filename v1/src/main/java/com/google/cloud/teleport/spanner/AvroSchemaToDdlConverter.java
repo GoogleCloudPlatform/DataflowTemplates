@@ -17,6 +17,7 @@ package com.google.cloud.teleport.spanner;
 
 import static com.google.cloud.teleport.spanner.AvroUtil.DEFAULT_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GENERATION_EXPRESSION;
+import static com.google.cloud.teleport.spanner.AvroUtil.HIDDEN;
 import static com.google.cloud.teleport.spanner.AvroUtil.INPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
 import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
@@ -24,12 +25,14 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHANGE_STREAM_F
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHECK_CONSTRAINT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_MODEL;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_FOREIGN_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAMED_SCHEMA;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ON_DELETE_ACTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PLACEMENT_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
@@ -52,6 +55,7 @@ import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.NamedSchema;
+import com.google.cloud.teleport.spanner.ddl.Placement;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
@@ -96,6 +100,8 @@ public class AvroSchemaToDdlConverter {
         builder.addSequence(toSequence(null, schema));
       } else if (SPANNER_NAMED_SCHEMA.equals(schema.getProp(SPANNER_ENTITY))) {
         builder.addSchema(toSchema(null, schema));
+      } else if (SPANNER_ENTITY_PLACEMENT.equals(schema.getProp(SPANNER_ENTITY))) {
+        builder.addPlacement(toPlacement(null, schema));
       } else {
         builder.addTable(toTable(null, schema));
       }
@@ -226,6 +232,27 @@ public class AvroSchemaToDdlConverter {
     return builder.build();
   }
 
+  public Placement toPlacement(String placementName, Schema schema) {
+    if (placementName == null) {
+      placementName = getSpannerObjectName(schema);
+    }
+    LOG.debug("Converting to Ddl placementName {}", placementName);
+
+    Placement.Builder builder = Placement.builder(dialect).name(placementName);
+
+    ImmutableList.Builder<String> placementOptions = ImmutableList.builder();
+    for (int i = 0; ; i++) {
+      String spannerOption = schema.getProp(SPANNER_OPTION + i);
+      if (spannerOption == null) {
+        break;
+      }
+      placementOptions.add(spannerOption);
+    }
+    builder.options(placementOptions.build());
+
+    return builder.build();
+  }
+
   public Table toTable(String tableName, Schema schema) {
     if (tableName == null) {
       tableName = getSpannerObjectName(schema);
@@ -258,6 +285,10 @@ public class AvroSchemaToDdlConverter {
         if (Boolean.parseBoolean(stored)) {
           column.stored();
         }
+        String hidden = f.getProp(HIDDEN);
+        if (Boolean.parseBoolean(hidden)) {
+          column.isHidden(true);
+        }
       } else {
         boolean nullable = false;
         Schema avroType = f.schema();
@@ -274,6 +305,10 @@ public class AvroSchemaToDdlConverter {
         }
         String defaultExpression = f.getProp(DEFAULT_EXPRESSION);
         column.parseType(sqlType).notNull(!nullable).defaultExpression(defaultExpression);
+      }
+      String placementKey = f.getProp(SPANNER_PLACEMENT_KEY);
+      if (placementKey != null) {
+        column.isPlacementKey(Boolean.parseBoolean(placementKey));
       }
       ImmutableList.Builder<String> columnOptions = ImmutableList.builder();
       for (int i = 0; ; i++) {

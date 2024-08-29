@@ -15,7 +15,7 @@ their functionality.
 
 ## Note on Default Branch
 
-As of November 18, 2021, our default branch is now named "main". This does not
+As of November 18, 2021, our default branch is now named `main`. This does not
 affect forks. If you would like your fork and its local clone to reflect these
 changes you can
 follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch).
@@ -116,6 +116,69 @@ follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/
 
 For documentation on each template's usage and parameters, please see the
 official [docs](https://cloud.google.com/dataflow/docs/templates/provided-templates).
+
+## Using UDFs
+
+User-defined functions (UDFs) allow you to customize a template's functionality
+by providing a short JavaScript function without having to maintain the entire
+codebase. This is useful in situations which you'd like to rename fields, filter
+values, or even transform data formats before output to the destination. All
+UDFs are executed by providing the payload of the element as a string to the
+JavaScript function. You can then use JavaScript's in-built JSON parser or other
+system functions to transform the data prior to the pipeline's output. The
+return statement of a UDF specifies the payload to pass forward in the pipeline.
+This should always return a string value. If no value is returned or the
+function returns undefined, the incoming record will be filtered from the
+output.
+
+### UDF Function Specification
+
+| Template              | UDF Input Type | Input Description                               | UDF Output Type | Output Description                                                                                     |
+|-----------------------|----------------|-------------------------------------------------|-----------------|--------------------------------------------------------------------------------------------------------|
+| Datastore Bulk Delete | String         | A JSON string of the entity                     | String          | A JSON string of the entity to delete; filter entities by returning undefined                          |
+| Datastore to Pub/Sub  | String         | A JSON string of the entity                     | String          | The payload to publish to Pub/Sub                                                                      |
+| Datastore to GCS Text | String         | A JSON string of the entity                     | String          | A single-line within the output file                                                                   |
+| GCS Text to BigQuery  | String         | A single-line within the input file             | String          | A JSON string which matches the destination table's schema                                             |
+| Pub/Sub to BigQuery   | String         | A string representation of the incoming payload | String          | A JSON string which matches the destination table's schema                                             |
+| Pub/Sub to Datastore  | String         | A string representation of the incoming payload | String          | A JSON string of the entity to write to Datastore                                                      |
+| Pub/Sub to Splunk     | String         | A string representation of the incoming payload | String          | The event data to be sent to Splunk HEC events endpoint. Must be a string or a stringified JSON object |
+
+## UDF Examples
+
+For a comprehensive list of samples, please check our [udf-samples](v2/common/src/main/resources/udf-samples) folder.
+
+### Adding fields
+
+```js
+/**
+ * A transform which adds a field to the incoming data.
+ * @param {string} inJson
+ * @return {string} outJson
+ */
+function transform(inJson) {
+  var obj = JSON.parse(inJson);
+  obj.dataFeed = "Real-time Transactions";
+  obj.dataSource = "POS";
+  return JSON.stringify(obj);
+}
+```
+
+### Filtering records
+
+```js
+/**
+ * A transform function which only accepts 42 as the answer to life.
+ * @param {string} inJson
+ * @return {string} outJson
+ */
+function transform(inJson) {
+  var obj = JSON.parse(inJson);
+  // only output objects which have an answer to life of 42.
+  if (obj.hasOwnProperty('answerToLife') && obj.answerToLife === 42) {
+    return JSON.stringify(obj);
+  }
+}
+```
 
 ## Contributing
 

@@ -15,10 +15,12 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
@@ -116,7 +118,7 @@ public class PipelineController {
       ReaderImpl reader =
           ReaderImpl.of(
               JdbcIoWrapper.of(
-                  OptionsToConfigBuilder.MySql.configWithMySqlDefaultsFromOptions(
+                  OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
                       options, List.of(srcTable), null, Wait.on(parentOutputs))));
       String suffix = generateSuffix("", srcTable);
       PCollection<Void> output =
@@ -157,6 +159,7 @@ public class PipelineController {
     // Take connection properties map
     // Write to common DLQ ?
 
+    SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(options, ddl);
 
@@ -205,6 +208,7 @@ public class PipelineController {
               ReaderImpl.of(
                   JdbcIoWrapper.of(
                       OptionsToConfigBuilder.getJdbcIOWrapperConfig(
+                          sqlDialect,
                           List.of(srcTable),
                           null,
                           shard.getHost(),
@@ -244,7 +248,8 @@ public class PipelineController {
         .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
         .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
         .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
+        .withRpcPriority(RpcPriority.HIGH);
   }
 
   @VisibleForTesting
@@ -265,7 +270,7 @@ public class PipelineController {
   static List<String> listTablesToMigrate(String tableList, ISchemaMapper mapper, Ddl ddl) {
     List<String> tablesFromOptions =
         StringUtils.isNotBlank(tableList)
-            ? Arrays.stream(tableList.split(",")).collect(Collectors.toList())
+            ? Arrays.stream(tableList.split("\\:|,")).collect(Collectors.toList())
             : new ArrayList<String>();
 
     List<String> sourceTablesConfigured = null;

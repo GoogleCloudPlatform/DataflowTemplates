@@ -19,6 +19,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.DbAuth;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.PostgreSQLConfigDefaults;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
@@ -31,6 +32,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.Wait.OnSignal;
 import org.apache.beam.sdk.util.FluentBackoff;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.commons.dbcp2.BasicDataSource;
 
 /**
  * Configuration for {@link
@@ -38,6 +40,8 @@ import org.apache.beam.sdk.values.PCollection;
  */
 @AutoValue
 public abstract class JdbcIOWrapperConfig {
+  /** Dialect of the database. */
+  public abstract SQLDialect sourceDbDialect();
 
   /** Source URL. */
   public abstract String sourceDbURL();
@@ -153,10 +157,81 @@ public abstract class JdbcIOWrapperConfig {
   @Nullable
   public abstract PTransform<PCollection<ImmutableList<Range>>, ?> additionalOperationsOnRanges();
 
+  /**
+   * Sets the {@code testOnBorrow} property. This property determines whether or not the pool will
+   * validate objects before they are borrowed from the pool. Defaults to True.
+   */
+  public abstract Boolean testOnBorrow();
+
+  private static final Boolean DEFAULT_TEST_ON_BORROW = true;
+
+  /**
+   * Sets the {@code testOnCreate} property. This property determines whether or not the pool will
+   * validate objects immediately after they are created by the pool. Defaults to True.
+   */
+  public abstract Boolean testOnCreate();
+
+  private static final Boolean DEFAULT_TEST_ON_CREATE = true;
+
+  /**
+   * Sets the {@code testOnReturn} property. This property determines whether or not the pool will
+   * validate objects before they are returned to the pool. Defaults to True.
+   */
+  public abstract Boolean testOnReturn();
+
+  private static final Boolean DEFAULT_TEST_ON_RETURN = true;
+
+  /**
+   * Sets the {@code testWhileIdle} property. This property determines whether or not the idle
+   * object evictor will validate connections. Defaults to True.
+   */
+  public abstract Boolean testWhileIdle();
+
+  private static final Boolean DEFAULT_TEST_WILE_IDLE = true;
+
+  /** Sets the {@code validationQuery}. */
+  public abstract String validationQuery();
+
+  private static final String DEFAULT_VALIDATEION_QUERY = "SELECT 1";
+
+  /**
+   * The timeout in seconds before an abandoned connection can be removed.
+   *
+   * <p>Creating a Statement, PreparedStatement or CallableStatement or using one of these to
+   * execute a query (using one of the execute methods) resets the lastUsed property of the parent
+   * connection.
+   *
+   * <p>Abandoned connection cleanup happens when:
+   *
+   * <ul>
+   *   <li>{@link BasicDataSource#getRemoveAbandonedOnBorrow()} or {@link
+   *       BasicDataSource#getRemoveAbandonedOnMaintenance()} = true
+   *   <li>{@link BasicDataSource#getNumIdle() numIdle} &lt; 2
+   *   <li>{@link BasicDataSource#getNumActive() numActive} &gt; {@link
+   *       BasicDataSource#getMaxTotal() maxTotal} - 3
+   * </ul>
+   *
+   * Defaults to hours.
+   *
+   * <p>
+   */
+  public abstract Integer removeAbandonedTimeout();
+
+  private static final Integer DEFAULT_REMOVE_ABANDONED_TIMEOUT = 8 * 3600;
+
+  /**
+   * The minimum amount of time an object may sit idle in the pool before it is eligible for
+   * eviction by the idle object evictor. Defaults to hours.
+   */
+  public abstract Integer minEvictableIdleTimeMillis();
+
+  private static final Integer DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS = 8 * 3600 * 1000;
+
   public abstract Builder toBuilder();
 
   public static Builder builderWithMySqlDefaults() {
     return new AutoValue_JdbcIOWrapperConfig.Builder()
+        .setSourceDbDialect(SQLDialect.MYSQL)
         .setSchemaMapperType(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_MAPPER_TYPE)
         .setDialectAdapter(MySqlConfigDefaults.DEFAULT_MYSQL_DIALECT_ADAPTER)
         .setValueMappingsProvider(MySqlConfigDefaults.DEFAULT_MYSQL_VALUE_MAPPING_PROVIDER)
@@ -170,11 +245,47 @@ public abstract class JdbcIOWrapperConfig {
         .setMaxFetchSize(null)
         .setDbParallelizationForReads(null)
         .setDbParallelizationForSplitProcess(DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
-        .setReadWithUniformPartitionsFeatureEnabled(true);
+        .setReadWithUniformPartitionsFeatureEnabled(true)
+        .setTestOnBorrow(DEFAULT_TEST_ON_BORROW)
+        .setTestOnCreate(DEFAULT_TEST_ON_CREATE)
+        .setTestOnReturn(DEFAULT_TEST_ON_RETURN)
+        .setTestWhileIdle(DEFAULT_TEST_WILE_IDLE)
+        .setValidationQuery(DEFAULT_VALIDATEION_QUERY)
+        .setRemoveAbandonedTimeout(DEFAULT_REMOVE_ABANDONED_TIMEOUT)
+        .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS);
+  }
+
+  public static Builder builderWithPostgreSQLDefaults() {
+    return new AutoValue_JdbcIOWrapperConfig.Builder()
+        .setSourceDbDialect(SQLDialect.POSTGRESQL)
+        .setSchemaMapperType(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_SCHEMA_MAPPER_TYPE)
+        .setDialectAdapter(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_DIALECT_ADAPTER)
+        .setValueMappingsProvider(
+            PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_VALUE_MAPPING_PROVIDER)
+        .setMaxConnections(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_MAX_CONNECTIONS)
+        .setSqlInitSeq(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_INIT_SEQ)
+        .setSchemaDiscoveryBackOff(
+            PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_SCHEMA_DISCOVERY_BACKOFF)
+        .setTables(ImmutableList.of())
+        .setTableVsPartitionColumns(ImmutableMap.of())
+        .setMaxPartitions(null)
+        .setWaitOn(null)
+        .setMaxFetchSize(null)
+        .setDbParallelizationForReads(null)
+        .setDbParallelizationForSplitProcess(DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
+        .setReadWithUniformPartitionsFeatureEnabled(true)
+        .setTestOnBorrow(DEFAULT_TEST_ON_BORROW)
+        .setTestOnCreate(DEFAULT_TEST_ON_CREATE)
+        .setTestOnReturn(DEFAULT_TEST_ON_RETURN)
+        .setTestWhileIdle(DEFAULT_TEST_WILE_IDLE)
+        .setValidationQuery(DEFAULT_VALIDATEION_QUERY)
+        .setRemoveAbandonedTimeout(DEFAULT_REMOVE_ABANDONED_TIMEOUT)
+        .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS);
   }
 
   @AutoValue.Builder
   public abstract static class Builder {
+    public abstract Builder setSourceDbDialect(SQLDialect value);
 
     public abstract Builder setSourceDbURL(String value);
 
@@ -217,6 +328,20 @@ public abstract class JdbcIOWrapperConfig {
 
     public abstract Builder setAdditionalOperationsOnRanges(
         @Nullable PTransform<PCollection<ImmutableList<Range>>, ?> value);
+
+    public abstract Builder setTestOnBorrow(Boolean value);
+
+    public abstract Builder setTestOnCreate(Boolean value);
+
+    public abstract Builder setTestOnReturn(Boolean value);
+
+    public abstract Builder setTestWhileIdle(Boolean value);
+
+    public abstract Builder setValidationQuery(String value);
+
+    public abstract Builder setRemoveAbandonedTimeout(Integer value);
+
+    public abstract Builder setMinEvictableIdleTimeMillis(Integer value);
 
     public abstract Builder setMaxConnections(Long value);
 

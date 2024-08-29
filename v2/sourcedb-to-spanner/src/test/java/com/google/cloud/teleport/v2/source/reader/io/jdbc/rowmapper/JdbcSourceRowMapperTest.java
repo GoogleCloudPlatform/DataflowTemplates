@@ -28,6 +28,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider.Mys
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
@@ -116,7 +117,8 @@ public class JdbcSourceRowMapperTest {
     }
 
     // Build SourceRowMapper.
-    var sourceTableSchemaBuilder = SourceTableSchema.builder().setTableName(testTable);
+    var sourceTableSchemaBuilder =
+        SourceTableSchema.builder(MapperType.MYSQL).setTableName(testTable);
     testCols.stream()
         .forEach(
             col ->
@@ -164,7 +166,8 @@ public class JdbcSourceRowMapperTest {
     String testTable = "test_table";
 
     var testCols = getTestCols();
-    var sourceTableSchemaBuilder = SourceTableSchema.builder().setTableName(testTable);
+    var sourceTableSchemaBuilder =
+        SourceTableSchema.builder(MapperType.MYSQL).setTableName(testTable);
     testCols.stream()
         .forEach(
             col ->
@@ -217,7 +220,7 @@ public class JdbcSourceRowMapperTest {
                     }));
 
     var sourceTableSchema =
-        SourceTableSchema.builder()
+        SourceTableSchema.builder(MapperType.MYSQL)
             .setTableName(testTable)
             .addSourceColumnNameToSourceColumnType(
                 "unsupported_col", new SourceColumnType("UNSUPPORTED", new Long[] {}, null))

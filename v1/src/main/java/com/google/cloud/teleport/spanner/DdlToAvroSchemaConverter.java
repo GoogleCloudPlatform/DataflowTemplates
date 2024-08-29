@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.DEFAULT_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GENERATION_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GOOGLE_FORMAT_VERSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GOOGLE_STORAGE;
+import static com.google.cloud.teleport.spanner.AvroUtil.HIDDEN;
 import static com.google.cloud.teleport.spanner.AvroUtil.INPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
 import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
@@ -26,6 +27,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHANGE_STREAM_F
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHECK_CONSTRAINT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_MODEL;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_FOREIGN_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAME;
@@ -33,6 +35,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAMED_SCHEMA;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ON_DELETE_ACTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PLACEMENT_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
@@ -55,6 +58,7 @@ import com.google.cloud.teleport.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.ModelColumn;
 import com.google.cloud.teleport.spanner.ddl.NamedSchema;
+import com.google.cloud.teleport.spanner.ddl.Placement;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
@@ -151,10 +155,14 @@ public class DdlToAvroSchemaConverter {
         for (int i = 0; i < cm.columnOptions().size(); i++) {
           fieldBuilder.prop(SPANNER_OPTION + i, cm.columnOptions().get(i));
         }
+        if (cm.isPlacementKey()) {
+          fieldBuilder.prop(SPANNER_PLACEMENT_KEY, Boolean.toString(cm.isPlacementKey()));
+        }
         if (cm.isGenerated()) {
           fieldBuilder.prop(NOT_NULL, Boolean.toString(cm.notNull()));
           fieldBuilder.prop(GENERATION_EXPRESSION, cm.generationExpression());
           fieldBuilder.prop(STORED, Boolean.toString(cm.isStored()));
+          fieldBuilder.prop(HIDDEN, Boolean.toString(cm.isHidden()));
           // Make the type null to allow us not export the generated column values,
           // which are semantically logical entities.
           fieldBuilder.type(SchemaBuilder.builder().nullType()).withDefault(null);
@@ -295,6 +303,21 @@ public class DdlToAvroSchemaConverter {
       schemas.add(recordBuilder.fields().endRecord());
     }
 
+    for (Placement placement : ddl.placements()) {
+      LOG.info("DdlToAvro placement {}", placement.name());
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(generateAvroSchemaName(placement.name())).namespace(this.namespace);
+      recordBuilder.prop(SPANNER_NAME, placement.name());
+      recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
+      recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
+      recordBuilder.prop(SPANNER_ENTITY, SPANNER_ENTITY_PLACEMENT);
+      if (placement.options() != null) {
+        for (int i = 0; i < placement.options().size(); i++) {
+          recordBuilder.prop(SPANNER_OPTION + i, placement.options().get(i));
+        }
+      }
+      schemas.add(recordBuilder.fields().endRecord());
+    }
     return schemas;
   }
 
@@ -334,6 +357,7 @@ public class DdlToAvroSchemaConverter {
       case BYTES:
       case PG_BYTEA:
       case PROTO:
+      case TOKENLIST:
         return SchemaBuilder.builder().bytesType();
       case TIMESTAMP:
       case PG_TIMESTAMPTZ:

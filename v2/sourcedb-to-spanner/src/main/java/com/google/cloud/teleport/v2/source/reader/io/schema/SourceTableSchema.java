@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.schema;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
@@ -27,6 +28,7 @@ import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder.FieldAssembler;
 import org.apache.avro.SchemaBuilder.RecordDefault;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
 
 /**
  * Value class that encloses both the source table schema as read from the source database's system
@@ -65,7 +67,10 @@ public abstract class SourceTableSchema implements Serializable {
    * primary keys, indexing information, foreign key constraints etc.
    */
 
-  public static Builder builder() {
+  public static Builder builder(SQLDialect dialect) {
+    if (dialect == SQLDialect.POSTGRESQL) {
+      return builder(MapperType.POSTGRESQL);
+    }
     return builder(MapperType.MYSQL);
   }
 
@@ -81,7 +86,7 @@ public abstract class SourceTableSchema implements Serializable {
 
     public abstract Builder setTableName(String value);
 
-    private UnifiedTypeMapper.MapperType mapperType;
+    @VisibleForTesting protected UnifiedTypeMapper.MapperType mapperType;
 
     abstract ImmutableMap.Builder<String, SourceColumnType>
         sourceColumnNameToSourceColumnTypeBuilder();

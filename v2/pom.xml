@@ -468,19 +468,6 @@
 
     <profiles>
         <profile>
-            <id>missing-artifact-repos</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <repositories>
-                <repository>
-                    <!-- Required for io.confluent:kafka-avro-serializer artifact -->
-                    <id>confluent</id>
-                    <url>https://packages.confluent.io/maven/</url>
-                </repository>
-            </repositories>
-        </profile>
-        <profile>
             <id>shade</id>
             <activation>
                 <property>

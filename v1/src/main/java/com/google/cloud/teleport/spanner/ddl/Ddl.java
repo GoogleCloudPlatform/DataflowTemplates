@@ -53,6 +53,7 @@ public class Ddl implements Serializable {
   private ImmutableSortedMap<String, View> views;
   private ImmutableSortedMap<String, ChangeStream> changeStreams;
   private ImmutableSortedMap<String, Sequence> sequences;
+  private ImmutableSortedMap<String, Placement> placements;
   private ImmutableSortedMap<String, NamedSchema> schemas;
   private TreeMultimap<String, String> parents;
   // This is only populated by InformationSchemaScanner and not while reading from AVRO files.
@@ -68,6 +69,7 @@ public class Ddl implements Serializable {
       ImmutableSortedMap<String, View> views,
       ImmutableSortedMap<String, ChangeStream> changeStreams,
       ImmutableSortedMap<String, Sequence> sequences,
+      ImmutableSortedMap<String, Placement> placements,
       ImmutableSortedMap<String, NamedSchema> schemas,
       TreeMultimap<String, String> parents,
       TreeMultimap<String, String> referencedTables,
@@ -80,6 +82,7 @@ public class Ddl implements Serializable {
     this.views = views;
     this.changeStreams = changeStreams;
     this.sequences = sequences;
+    this.placements = placements;
     this.schemas = schemas;
     this.parents = parents;
     this.referencedTables = referencedTables;
@@ -175,6 +178,14 @@ public class Ddl implements Serializable {
     return sequences.get(sequenceName.toLowerCase());
   }
 
+  public Collection<Placement> placements() {
+    return placements.values();
+  }
+
+  public Placement placement(String placementName) {
+    return placements.get(placementName.toLowerCase());
+  }
+
   public Collection<NamedSchema> schemas() {
     return schemas.values();
   }
@@ -253,6 +264,11 @@ public class Ddl implements Serializable {
       appendable.append("\n");
       changeStream.prettyPrint(appendable);
     }
+
+    for (Placement placement : placements()) {
+      appendable.append("\n");
+      placement.prettyPrint(appendable);
+    }
   }
 
   public List<String> statements() {
@@ -271,6 +287,7 @@ public class Ddl implements Serializable {
         .addAll(createModelStatements())
         .addAll(createViewStatements())
         .addAll(createChangeStreamStatements())
+        .addAll(createPlacementStatements())
         .addAll(setOptionsStatements("%db_name%"));
     return builder.build();
   }
@@ -361,13 +378,22 @@ public class Ddl implements Serializable {
     return result;
   }
 
+  public List<String> createPlacementStatements() {
+    List<String> result = new ArrayList<>(placements.size());
+    for (Placement placement : placements()) {
+      result.add(placement.prettyPrint());
+    }
+    return result;
+  }
+
   public String createProtoBundleStatement() {
     StringBuilder appendable = new StringBuilder();
+    String quote = NameUtils.identifierQuote(dialect);
     if (!protoBundle.isEmpty()) {
       appendable.append("CREATE PROTO BUNDLE (");
       for (String protoTypeFqn : protoBundle()) {
         appendable.append("\n\t");
-        appendable.append(protoTypeFqn);
+        appendable.append(quote + protoTypeFqn + quote);
         appendable.append(",");
       }
       appendable.append(")");
@@ -458,6 +484,7 @@ public class Ddl implements Serializable {
     private Map<String, View> views = Maps.newLinkedHashMap();
     private Map<String, ChangeStream> changeStreams = Maps.newLinkedHashMap();
     private Map<String, Sequence> sequences = Maps.newLinkedHashMap();
+    private Map<String, Placement> placements = Maps.newLinkedHashMap();
     private Map<String, NamedSchema> schemas = Maps.newLinkedHashMap();
     private TreeMultimap<String, String> parents = TreeMultimap.create();
     private TreeMultimap<String, String> referencedTables = TreeMultimap.create();
@@ -554,6 +581,22 @@ public class Ddl implements Serializable {
       sequences.put(sequence.name().toLowerCase(), sequence);
     }
 
+    public Placement.Builder createPlacement(String name) {
+      Placement placement = placements.get(name.toLowerCase());
+      if (placement == null) {
+        return Placement.builder(dialect).name(name).ddlBuilder(this);
+      }
+      return placement.toBuilder().ddlBuilder(this);
+    }
+
+    public void addPlacement(Placement placement) {
+      placements.put(placement.name().toLowerCase(), placement);
+    }
+
+    public boolean hasPlacement(String name) {
+      return placements.containsKey(name.toLowerCase());
+    }
+
     public NamedSchema.Builder createSchema(String name) {
       NamedSchema schema = schemas.get(name.toLowerCase());
       if (schema == null) {
@@ -612,6 +655,7 @@ public class Ddl implements Serializable {
           ImmutableSortedMap.copyOf(views),
           ImmutableSortedMap.copyOf(changeStreams),
           ImmutableSortedMap.copyOf(sequences),
+          ImmutableSortedMap.copyOf(placements),
           ImmutableSortedMap.copyOf(schemas),
           parents,
           referencedTables,
@@ -630,6 +674,7 @@ public class Ddl implements Serializable {
     builder.views.putAll(views);
     builder.changeStreams.putAll(changeStreams);
     builder.sequences.putAll(sequences);
+    builder.placements.putAll(placements);
     builder.parents.putAll(parents);
     builder.referencedTables.putAll(referencedTables);
     builder.databaseOptions = databaseOptions;
@@ -677,6 +722,9 @@ public class Ddl implements Serializable {
     if (sequences != null ? !sequences.equals(ddl.sequences) : ddl.sequences != null) {
       return false;
     }
+    if (placements != null ? !placements.equals(ddl.placements) : ddl.placements != null) {
+      return false;
+    }
     if (protoDescriptors != null
         ? !protoDescriptors.equals(ddl.protoDescriptors)
         : ddl.protoDescriptors != null) {
@@ -695,6 +743,7 @@ public class Ddl implements Serializable {
     result = 31 * result + (views != null ? views.hashCode() : 0);
     result = 31 * result + (changeStreams != null ? changeStreams.hashCode() : 0);
     result = 31 * result + (sequences != null ? sequences.hashCode() : 0);
+    result = 31 * result + (placements != null ? placements.hashCode() : 0);
     result = 31 * result + (databaseOptions != null ? databaseOptions.hashCode() : 0);
     result = 31 * result + (protoBundle != null ? protoBundle.hashCode() : 0);
     result = 31 * result + (protoDescriptors != null ? protoDescriptors.hashCode() : 0);

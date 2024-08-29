@@ -24,6 +24,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.JdbcToBigQueryOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
+import com.google.cloud.teleport.v2.utils.GCSAwareValueProvider;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.sdk.Pipeline;
@@ -155,7 +156,7 @@ public class JdbcToBigQuery {
       JdbcIO.Read<TableRow> readIO =
           JdbcIO.<TableRow>read()
               .withDataSourceConfiguration(dataSourceConfiguration)
-              .withQuery(options.getQuery())
+              .withQuery(new GCSAwareValueProvider(options.getQuery()))
               .withCoder(TableRowJsonCoder.of())
               .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias()));
 

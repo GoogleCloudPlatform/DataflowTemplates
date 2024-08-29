@@ -17,8 +17,6 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
 
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SuitableIndexNotFoundException;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
@@ -45,7 +43,6 @@ import javax.sql.DataSource;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.DataSourceConfiguration;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.ReadWithPartitions;
-import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -172,7 +169,8 @@ public final class JdbcIoWrapper implements IoWrapper {
         .map(
             tableEntry -> {
               SourceTableSchema.Builder sourceTableSchemaBuilder =
-                  SourceTableSchema.builder().setTableName(tableEntry.getKey());
+                  SourceTableSchema.builder(config.sourceDbDialect())
+                      .setTableName(tableEntry.getKey());
               tableEntry
                   .getValue()
                   .entrySet()
@@ -357,7 +355,7 @@ public final class JdbcIoWrapper implements IoWrapper {
             .setTableName(tableConfig.tableName())
             .setPartitionColumns(tableConfig.partitionColumns())
             .setDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
-            .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
+            .setDbAdapter(config.dialectAdapter())
             .setApproxTotalRowCount(tableConfig.approxRowCount())
             .setRowMapper(
                 new JdbcSourceRowMapper(
@@ -389,28 +387,8 @@ public final class JdbcIoWrapper implements IoWrapper {
    * @return {@link DataSourceConfiguration}
    */
   private static DataSourceConfiguration getDataSourceConfiguration(JdbcIOWrapperConfig config) {
-
     DataSourceConfiguration dataSourceConfig =
-        JdbcIO.DataSourceConfiguration.create(
-                StaticValueProvider.of(config.jdbcDriverClassName()),
-                StaticValueProvider.of(config.sourceDbURL()))
-            .withMaxConnections(Math.toIntExact(config.maxConnections()));
-
-    if (!config.sqlInitSeq().isEmpty()) {
-      dataSourceConfig = dataSourceConfig.withConnectionInitSqls(config.sqlInitSeq());
-    }
-
-    if (config.jdbcDriverJars() != null && !config.jdbcDriverJars().isEmpty()) {
-      dataSourceConfig = dataSourceConfig.withDriverJars(config.jdbcDriverJars());
-    }
-    if (!config.dbAuth().getUserName().get().isBlank()) {
-      dataSourceConfig = dataSourceConfig.withUsername(config.dbAuth().getUserName().get());
-    }
-    if (!config.dbAuth().getPassword().get().isBlank()) {
-      dataSourceConfig = dataSourceConfig.withPassword(config.dbAuth().getPassword().get());
-    }
-
-    LOG.info("Final DatasourceConfiguration: {}", dataSourceConfig);
+        DataSourceConfiguration.create(new JdbcDataSource(config));
     return dataSourceConfig;
   }
 

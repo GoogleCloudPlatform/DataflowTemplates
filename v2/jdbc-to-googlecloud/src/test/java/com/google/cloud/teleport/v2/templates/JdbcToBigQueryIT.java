@@ -192,6 +192,36 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   @Test
+  public void testPostgresWithUnicodeCharactersInQuery() throws IOException {
+    String tableName = "unicóde_table";
+
+    postgresResourceManager = PostgresResourceManager.builder(testName).build();
+    gcsClient.createArtifact(
+        "input/query.sql",
+        "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+            + tableName);
+
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put(ROW_ID, "INTEGER NOT NULL");
+    columns.put(NAME, "VARCHAR(200)");
+    columns.put(AGE, "INTEGER");
+    columns.put(MEMBER, "VARCHAR(200)");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+
+    simpleJdbcToBigQueryTest(
+        testName,
+        tableName,
+        testName,
+        schema,
+        POSTGRES_DRIVER,
+        postgresDriverGCSPath(),
+        postgresResourceManager,
+        true,
+        config -> config.addParameter("query", getGcsPath("input/query.sql")));
+  }
+
+  @Test
   public void testOracleToBigQueryFlex() throws IOException {
     // Oracle image does not work on M1
     if (System.getProperty("testOnM1") != null) {
@@ -279,7 +309,30 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   private void simpleJdbcToBigQueryTest(
-      String tableName,
+      String testName,
+      JDBCResourceManager.JDBCSchema schema,
+      String driverClassName,
+      String driverJars,
+      JDBCResourceManager jdbcResourceManager,
+      boolean useColumnAlias,
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException {
+    simpleJdbcToBigQueryTest(
+        testName,
+        testName,
+        testName,
+        schema,
+        driverClassName,
+        driverJars,
+        jdbcResourceManager,
+        useColumnAlias,
+        paramsAdder);
+  }
+
+  private void simpleJdbcToBigQueryTest(
+      String testName,
+      String sourceTableName,
+      String targetTableName,
       JDBCResourceManager.JDBCSchema schema,
       String driverClassName,
       String driverJars,
@@ -291,8 +344,8 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Arrange
     List<Map<String, Object>> jdbcData =
         getJdbcData(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED));
-    jdbcResourceManager.createTable(tableName, schema);
-    jdbcResourceManager.write(tableName, jdbcData);
+    jdbcResourceManager.createTable(sourceTableName, schema);
+    jdbcResourceManager.write(sourceTableName, jdbcData);
 
     List<Field> bqSchemaFields =
         Arrays.asList(
@@ -304,7 +357,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     bigQueryResourceManager.createDataset(REGION);
-    TableId table = bigQueryResourceManager.createTable(tableName, bqSchema);
+    TableId table = bigQueryResourceManager.createTable(targetTableName, bqSchema);
 
     Function<String, String> encrypt =
         message -> kmsResourceManager.encrypt(KEYRING_ID, CRYPTO_KEY_NAME, message);
@@ -312,7 +365,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
-            PipelineLauncher.LaunchConfig.builder(tableName, specPath)
+            PipelineLauncher.LaunchConfig.builder(testName, specPath)
                 .addParameter("connectionURL", encrypt.apply(jdbcResourceManager.getUri()))
                 .addParameter("driverClassName", driverClassName)
                 .addParameter("outputTable", toTableSpecLegacy(table))
@@ -342,7 +395,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
             row.put("is_member", row.remove("member"));
           });
     }
-    assertThatBigQueryRecords(bigQueryResourceManager.readTable(tableName))
+    assertThatBigQueryRecords(bigQueryResourceManager.readTable(targetTableName))
         .hasRecordsUnorderedCaseInsensitiveColumns(jdbcData);
   }
 

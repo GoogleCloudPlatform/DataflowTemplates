@@ -218,7 +218,7 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
       "-pl",
       moduleBuild,
       "-am",
-      "-PtemplatesStage,pluginOutputDir,splunkDeps,missing-artifact-repos",
+      "-PtemplatesStage,pluginOutputDir",
       // Skip shading for now due to flakiness / slowness in the process.
       "-DskipShade=" + true,
       "-DskipTests",

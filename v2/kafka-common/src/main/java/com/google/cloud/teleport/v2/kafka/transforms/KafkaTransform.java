@@ -51,7 +51,7 @@ public class KafkaTransform {
    * @param config configuration for the Kafka consumer
    * @return PCollection of Kafka Key & Value Pair deserialized in string format
    */
-  public static PTransform<PBegin, PCollection<KV<String, String>>> readStringFromKafka(
+  public static KafkaIO.Read<String, String> readStringFromKafka(
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
@@ -72,7 +72,8 @@ public class KafkaTransform {
     if (enableCommitOffsets) {
       kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
     }
-    return kafkaRecords.withoutMetadata();
+    return kafkaRecords;
+    // topic, partition, source offset
   }
 
   /**
