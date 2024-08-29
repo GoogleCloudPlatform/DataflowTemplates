@@ -34,7 +34,11 @@
    </properties>
 
   <dependencies>
-
+    <dependency>
+      <groupId>com.google.cloud.teleport.metadata</groupId>
+      <artifactId>metadata</artifactId>
+      <version>${project.version}</version>
+    </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
       <artifactId>common</artifactId>
@@ -45,12 +49,23 @@
       <artifactId>jdbc-common</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <!-- Kafka -->
     <dependency>
-      <groupId>com.google.cloud.teleport.v2</groupId>
-      <artifactId>kafka-common</artifactId>
-      <version>${project.version}</version>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-kafka</artifactId>
+      <version>${beam.version}</version>
     </dependency>
-
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${kafka-clients.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.xerial.snappy</groupId>
+          <artifactId>snappy-java</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <!-- Json -->
     <dependency>
       <groupId>com.github.vincentrussell</groupId>
