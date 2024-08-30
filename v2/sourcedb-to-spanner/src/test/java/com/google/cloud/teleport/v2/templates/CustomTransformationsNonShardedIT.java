@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import java.util.ArrayList;
@@ -42,7 +41,7 @@ import org.slf4j.LoggerFactory;
  * An integration test for {@link SourceDbToSpanner} Flex template which tests migrations using a
  * custom transformation jar.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class CustomTransformationsNonShardedIT extends SourceDbToSpannerITBase {

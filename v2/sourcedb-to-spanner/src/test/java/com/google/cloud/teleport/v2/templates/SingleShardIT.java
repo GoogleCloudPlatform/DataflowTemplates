@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +37,7 @@ import org.junit.runners.JUnit4;
  * An integration test for {@link SourceDbToSpanner} Flex template which tests a single sharded
  * migration on a simple schema.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class SingleShardIT extends SourceDbToSpannerITBase {

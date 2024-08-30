@@ -25,7 +25,6 @@ import com.google.cloud.teleport.it.datadog.DatadogLogEntry;
 import com.google.cloud.teleport.it.datadog.DatadogResourceManager;
 import com.google.cloud.teleport.it.datadog.conditions.DatadogLogEntriesCheck;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -203,7 +202,7 @@ public class PubSubToDatadogIT extends TemplateTestBase {
 
   @Test
   // TODO: Skip DirectRunner because batching/timers are not working appropriately
-  @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+  @Category(TemplateIntegrationTest.class)
   public void testPubSubToDatadogWithBatchAndParallelism() throws IOException {
     PipelineLauncher.LaunchConfig.Builder parameters =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)

@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.time.Duration;
@@ -48,7 +47,7 @@ import org.slf4j.LoggerFactory;
  * Sharded data migration Integration test without any migration_shard_id column transformation for
  * {@link DataStreamToSpanner} Flex template.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT

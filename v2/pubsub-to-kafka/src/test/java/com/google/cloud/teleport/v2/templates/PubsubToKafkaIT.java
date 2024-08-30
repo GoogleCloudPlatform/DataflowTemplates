@@ -19,7 +19,6 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -56,7 +55,7 @@ import org.slf4j.LoggerFactory;
 /** Integration test for {@link PubsubToKafka}. */
 @TemplateIntegrationTest(PubsubToKafka.class)
 // SkipDirectRunnerTest: PubsubIO doesn't trigger panes on the DirectRunner.
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
 public final class PubsubToKafkaIT extends TemplateTestBase {
 
