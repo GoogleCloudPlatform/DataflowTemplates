@@ -30,9 +30,11 @@ import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardingContextReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
@@ -454,6 +456,17 @@ public class DataStreamToSpanner {
     String getFilteredEventsDirectory();
 
     void setFilteredEventsDirectory(String value);
+
+    @TemplateParameter.GcsReadFile(
+            order = 29,
+            optional = true,
+            helpText =
+                    "Sharding context file path in cloud storage is used to populate the shard id in spanner database for each source shard."
+                            + "It is of the format Map<stream_name, Map<db_name, shard_id>>",
+            description = "Sharding context file path in cloud storage")
+    String getShardingContextFilePath();
+
+    void setShardingContextFilePath(String value);
   }
 
   private static void validateSourceType(Options options) {
@@ -622,6 +635,11 @@ public class DataStreamToSpanner {
         TransformationContextReader.getTransformationContext(
             options.getTransformationContextFilePath());
 
+    // Ingest sharding context file into memory.
+    ShardingContext shardingContext =
+            ShardingContextReader.getShardingContext(
+                    options.getShardingContextFilePath());
+
     CustomTransformation customTransformation =
         CustomTransformation.builder(
                 options.getTransformationJarPath(), options.getTransformationClassName())
@@ -632,6 +650,7 @@ public class DataStreamToSpanner {
         ChangeEventTransformerDoFn.create(
             schema,
             transformationContext,
+            shardingContext,
             options.getDatastreamSourceType(),
             customTransformation,
             options.getRoundJsonDecimals(),
