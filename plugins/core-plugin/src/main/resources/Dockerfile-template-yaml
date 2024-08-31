@@ -21,7 +21,9 @@ RUN if ! [ -f requirements.txt ] ; then echo "$BEAM_PACKAGE" > requirements.txt 
 
 # Install dependencies to launch the pipeline and download to reduce startup time
 # Remove Jinja2 dependency once YAML templatization support is added to Beam
+# TODO - remove `pip uninstall apache-beam` line when repo is upgraded to Beam 2.59.0
 RUN python -m venv /venv \
+    && /venv/bin/pip uninstall apache-beam -y \
     && /venv/bin/pip install --no-cache-dir --upgrade pip setuptools \
     && /venv/bin/pip install --no-cache-dir -U -r $REQUIREMENTS_FILE \
     && /venv/bin/pip install --no-cache-dir -U Jinja2 \
