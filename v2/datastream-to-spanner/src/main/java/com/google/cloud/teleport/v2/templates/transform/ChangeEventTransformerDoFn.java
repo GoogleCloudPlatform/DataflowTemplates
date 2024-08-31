@@ -15,7 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates.transform;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.*;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_SCHEMA_KEY;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.STREAM_NAME;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_CHANGE_TYPE_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_TABLE_NAME_KEY;
 
@@ -144,7 +146,11 @@ public abstract class ChangeEventTransformerDoFn
         CustomTransformationImplFetcher.getCustomTransformationLogicImpl(customTransformation());
     changeEventSessionConvertor =
         new ChangeEventSessionConvertor(
-            schema(), transformationContext(),shardingContext(), sourceType(), roundJsonDecimals());
+            schema(),
+            transformationContext(),
+            shardingContext(),
+            sourceType(),
+            roundJsonDecimals());
     spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig());
   }
 
@@ -223,7 +229,8 @@ public abstract class ChangeEventTransformerDoFn
 
     // Fetch shard id from sharding/transformation context.
     if (shardingContext() != null && MYSQL_SOURCE_TYPE.equals(sourceType())) {
-      Map<String, Map<String,String>> streamToDbAndShardMap = shardingContext().getStreamToDbAndShardMap();
+      Map<String, Map<String, String>> streamToDbAndShardMap =
+          shardingContext().getStreamToDbAndShardMap();
       if (streamToDbAndShardMap != null && !streamToDbAndShardMap.isEmpty()) {
         String streamName = changeEvent.get(STREAM_NAME).asText();
         Map<String, String> schemaToShardId = streamToDbAndShardMap.get(streamName);

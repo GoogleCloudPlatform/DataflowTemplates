@@ -39,6 +39,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefin
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import java.io.IOException;
 import java.util.HashMap;
@@ -85,7 +86,8 @@ public class ChangeEventSessionConvertorTest {
   public void transformChangeEventViaSessionFileNamesTest() {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
+        new ChangeEventSessionConvertor(
+            schema, new TransformationContext(), new ShardingContext(), "", false);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("product_id", "A");
@@ -109,7 +111,8 @@ public class ChangeEventSessionConvertorTest {
   public void transformChangeEventViaSessionFileSynthPKTest() {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
+        new ChangeEventSessionConvertor(
+            schema, new TransformationContext(), new ShardingContext(), "", false);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");
@@ -132,7 +135,8 @@ public class ChangeEventSessionConvertorTest {
   public void transformChangeEventDataTest() throws Exception {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", true);
+        new ChangeEventSessionConvertor(
+            schema, new TransformationContext(), new ShardingContext(), "", true);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
@@ -301,7 +305,8 @@ public class ChangeEventSessionConvertorTest {
   public void shardedConfigDataTest() throws Exception {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", true);
+        new ChangeEventSessionConvertor(
+            schema, new TransformationContext(), new ShardingContext(), "", true);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
@@ -326,7 +331,8 @@ public class ChangeEventSessionConvertorTest {
     Schema schema = getShardedSchemaObject();
     TransformationContext transformationContext = getTransformationContext();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, transformationContext, "mysql", false);
+        new ChangeEventSessionConvertor(
+            schema, transformationContext, new ShardingContext(), "mysql", false);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");

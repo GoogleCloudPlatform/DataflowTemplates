@@ -458,12 +458,12 @@ public class DataStreamToSpanner {
     void setFilteredEventsDirectory(String value);
 
     @TemplateParameter.GcsReadFile(
-            order = 29,
-            optional = true,
-            helpText =
-                    "Sharding context file path in cloud storage is used to populate the shard id in spanner database for each source shard."
-                            + "It is of the format Map<stream_name, Map<db_name, shard_id>>",
-            description = "Sharding context file path in cloud storage")
+        order = 29,
+        optional = true,
+        helpText =
+            "Sharding context file path in cloud storage is used to populate the shard id in spanner database for each source shard."
+                + "It is of the format Map<stream_name, Map<db_name, shard_id>>",
+        description = "Sharding context file path in cloud storage")
     String getShardingContextFilePath();
 
     void setShardingContextFilePath(String value);
@@ -637,8 +637,7 @@ public class DataStreamToSpanner {
 
     // Ingest sharding context file into memory.
     ShardingContext shardingContext =
-            ShardingContextReader.getShardingContext(
-                    options.getShardingContextFilePath());
+        ShardingContextReader.getShardingContext(options.getShardingContextFilePath());
 
     CustomTransformation customTransformation =
         CustomTransformation.builder(

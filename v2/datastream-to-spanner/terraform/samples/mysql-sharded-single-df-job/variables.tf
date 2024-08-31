@@ -8,7 +8,12 @@ variable "common_params" {
     # Will be auto-generated if not specified
     add_policies_to_service_account = optional(bool, true)
     datastream_params = object({
+      gcs_bucket_name               = optional(string, "live-migration")
+      pubsub_topic_name             = optional(string, "live-migration")
       stream_prefix_path            = optional(string, "data")
+      target_connection_profile_id  = optional(string, "target-gcs")
+      gcs_root_path                = optional(string, "/")
+      source_type = optional(string,"mysql")
       max_concurrent_cdc_tasks      = optional(number, 5)
       max_concurrent_backfill_tasks = optional(number, 20)
       private_connectivity_id       = optional(string)
@@ -44,6 +49,9 @@ variable "common_params" {
         transformation_custom_parameters    = optional(string)
         transformation_class_name           = optional(string)
         filtered_events_directory           = optional(string)
+        run_mode                     = optional(string)
+        local_sharding_context_path  = optional(string)
+        dlq_gcs_pub_sub_subscription = optional(string)
       })
       runner_params = object({
         additional_experiments = optional(set(string), [
@@ -83,18 +91,13 @@ variable "shard_list" {
       mysql_username               = string
       mysql_password               = string
       mysql_port                   = number
-      target_connection_profile_id = optional(string, "target-gcs")
-      gcs_bucket_name              = optional(string, "live-migration")
-      gcs_root_path                = optional(string, "/")
-
-      pubsub_topic_name = optional(string, "live-migration")
-      stream_id         = optional(string, "mysql-stream")
+      stream_id                    = optional(string, "mysql-stream")
     })
     dataflow_params = object({
       template_params = object({
-        run_mode                          = optional(string)
-        local_transformation_context_path = optional(string)
-        dlq_gcs_pub_sub_subscription      = optional(string)
+        run_mode                     = optional(string)
+        local_sharding_context_path  = optional(string)
+        dlq_gcs_pub_sub_subscription = optional(string)
       })
       runner_params = object({
         max_workers  = optional(number)
