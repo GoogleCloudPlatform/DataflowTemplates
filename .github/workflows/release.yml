@@ -32,7 +32,7 @@ jobs:
       - name: Declare release branch name and tag name
         id: variables
         run: |
-          echo "releaseBranchName=release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
+          echo "releaseBranchName=release_${CANDIDATE_NAME,,}" >> $GITHUB_OUTPUT
           echo "tagName=${CANDIDATE_NAME^^}" >> $GITHUB_OUTPUT
         env:
           CANDIDATE_NAME: ${{ inputs.candidateName }}
@@ -64,12 +64,6 @@ jobs:
         env:
           RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
           TAG_NAME: ${{ steps.variables.outputs.tagName }}
-      - name: Push release branch
-        run: |
-          git push origin --delete $RELEASE_BRANCH_NAME || true  
-          git push -u origin $RELEASE_BRANCH_NAME
-        env:
-          RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -77,6 +71,8 @@ jobs:
         run: ./cicd/run-build
       - name: Run Unit Tests
         run: ./cicd/run-unit-tests
+      # TODO(https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/1807) - Remove once Staging Spanner tests
+      #   are fixed
       - name: Run Integration Smoke Tests
         run: |
           ./cicd/run-it-smoke-tests \
@@ -84,7 +80,7 @@ jobs:
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-private-connect-us-central1" \
-          --it-spanner-host="https://staging-wrenchworks.sandbox.googleapis.com/" \
+          --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
           --it-retry-failures=2
       # TODO(https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/1807) - Remove once Staging Spanner tests
@@ -99,12 +95,22 @@ jobs:
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
           --it-retry-failures=2
-      - name: Upload Test Site Report
+      - name: Upload Site Report
         uses: ./.github/actions/publish-site-report
         with:
           output-zip-file: test-report
         if: always()
-      - name: Push tag
+      - name: Create artifacts and push
+        run: |
+          mvn verify -PtemplatesRelease \
+          -DprojectId="dataflow-templates" \
+          -DbucketName="dataflow-templates-staging" \
+          -DlibrariesBucketName="dataflow-templates-libraries" \
+          -DstagePrefix="${CANDIDATE_NAME}" \
+          -Dmaven.test.skip -T8 -e
+        env:
+          CANDIDATE_NAME: ${{ inputs.candidateName }}
+      - name: Push tags
         run: |
           git push -u origin --tags
       - name: Release
