@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.templates.transforms;
 
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -61,7 +61,7 @@ public class ConvertChangeStreamErrorRecordToFailsafeElementFnTest {
     when(processContext.element())
         .thenReturn(gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
     convertChangeStreamErrorRecordToFailsafeElementFn.processElement(processContext);
-    verify(processContext, atLeast(1)).output(eq(failsafeElement));
+    verify(processContext, times(1)).output(eq(failsafeElement));
   }
 
   private TrimmedShardedDataChangeRecord getTrimmedDataChangeRecord(String shardId) {

@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.templates.transforms;
 
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -61,7 +61,7 @@ public class ConvertDlqRecordToTrimmedShardedDataChangeRecordFnTest {
     when(processContext.element()).thenReturn(failsafeElement);
     convertDlqRecordToTrimmedShardedDataChangeRecordFn.processElement(processContext);
     record.setRetryRecord(true);
-    verify(processContext, atLeast(1)).output(eq(record));
+    verify(processContext, times(1)).output(eq(record));
   }
 
   private TrimmedShardedDataChangeRecord getTrimmedDataChangeRecord(String shardId) {
