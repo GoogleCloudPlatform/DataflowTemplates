@@ -1,5 +1,5 @@
 ---
-title: Spanner templates Load test failure!
+title: Spanner templates Load test failure! {{ env.DATE }}
 labels: bug
 ---
-Check: {{ env.JOB_URL }}
+{{ env.DATE }} Check: {{ env.JOB_URL }}
