@@ -87,7 +87,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
         createAndUploadJarToGcs("DatatypeIT");
         CustomTransformation customTransformation =
             CustomTransformation.builder(
-                    "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
+                    "customTransformation.jar", "com.custom.CustomTransformationWithShardForLiveIT")
                 .build();
         jobInfo =
             launchDataflowJob(

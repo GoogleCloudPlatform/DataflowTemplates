@@ -33,7 +33,7 @@ import java.util.TimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class CustomTransformationWithShardForIT implements ISpannerMigrationTransformer {
+public class CustomTransformationWithShardForLiveIT implements ISpannerMigrationTransformer {
 
   private static final Logger LOG = LoggerFactory.getLogger(CustomShardIdFetcher.class);
 

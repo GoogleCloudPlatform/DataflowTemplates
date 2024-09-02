@@ -359,16 +359,6 @@ public class FormatDatastreamRecordToJson
 
     static void putField(
         String fieldName, Schema fieldSchema, GenericRecord record, ObjectNode jsonObject) {
-
-      LOG.info(
-          "LOG!!! "
-              + fieldSchema
-              + "----"
-              + fieldSchema.getType()
-              + "----"
-              + fieldSchema.getLogicalType()
-              + "----"
-              + fieldSchema.getProp(LOGICAL_TYPE));
       // fieldSchema.getLogicalType() returns object of type org.apache.avro.LogicalType,
       // therefore, is null for custom logical types
       if (fieldSchema.getLogicalType() != null) {
