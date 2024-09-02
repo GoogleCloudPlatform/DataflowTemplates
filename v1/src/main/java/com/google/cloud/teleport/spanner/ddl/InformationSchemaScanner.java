@@ -1686,6 +1686,16 @@ public class InformationSchemaScanner {
         options.add(optionName + "=" + optionValue);
       }
     }
+    // If the sequence kind is not specified, assign it to 'default'.
+    for (var entry : allOptions.entrySet()) {
+      if (!entry.getValue().toString().contains(Sequence.SEQUENCE_KIND)) {
+        entry.getValue().add(Sequence.SEQUENCE_KIND
+            + "="
+            + GSQL_LITERAL_QUOTE
+            + "default"
+            + GSQL_LITERAL_QUOTE);
+      }
+    }
 
     // Inject the current counter value to sequences that are in use.
     for (Map.Entry<String, Long> entry : currentCounters.entrySet()) {
@@ -1733,8 +1743,7 @@ public class InformationSchemaScanner {
       Long skipRangeMax = resultSet.isNull(5) ? null : resultSet.getLong(5);
 
       if (sequenceKind == null) {
-        throw new IllegalArgumentException(
-            "Sequence kind for sequence " + sequenceName + " cannot be null");
+        sequenceKind = "default";
       }
       if (currentCounters.containsKey(sequenceName)) {
         // The sequence is in use, we need to apply the current counter to

@@ -31,6 +31,7 @@ public abstract class Sequence implements Serializable {
   private static final long serialVersionUID = 1L;
   public static final long SEQUENCE_COUNTER_BUFFER = 1000L;
   public static final String SEQUENCE_START_WITH_COUNTER = "start_with_counter";
+  public static final String SEQUENCE_KIND = "sequence_kind";
 
   public abstract String name();
 
@@ -75,11 +76,14 @@ public abstract class Sequence implements Serializable {
     }
 
     if (dialect() == Dialect.POSTGRESQL) {
-      if (!sequenceKind().equalsIgnoreCase("bit_reversed_positive")) {
-        throw new IllegalArgumentException(
-            String.format("Unrecognized sequence kind: %s.", sequenceKind()));
+      if (sequenceKind() != null && !sequenceKind().equalsIgnoreCase("default")) {
+        if (sequenceKind().equalsIgnoreCase("bit_reversed_positive")) {
+          appendable.append(" BIT_REVERSED_POSITIVE");
+        } else {
+          throw new IllegalArgumentException(
+              String.format("Unrecognized sequence kind: %s.", sequenceKind()));
+        }
       }
-      appendable.append(" BIT_REVERSED_POSITIVE");
       if (skipRangeMin() != null && skipRangeMax() != null) {
         appendable
             .append(" SKIP RANGE ")

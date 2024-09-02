@@ -152,6 +152,13 @@ public class DdlToAvroSchemaConverterTest {
             .skipRangeMin(2000L)
             .skipRangeMax(3000L)
             .endColumn()
+            .column("identity_column_no_kind")
+            .type(Type.int64())
+            .isIdentityColumn(true)
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+            .endColumn()
             .primaryKey()
             .asc("id")
             .asc("gen_id")
@@ -271,6 +278,16 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(8).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("2000"));
     assertThat(fields.get(8).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("3000"));
 
+    assertThat(fields.get(7).name(), equalTo("identity_column_no_kind"));
+    assertThat(fields.get(7).schema(), equalTo(nullableUnion(Schema.Type.LONG)));
+    assertThat(fields.get(7).getProp(SQL_TYPE), equalTo("INT64"));
+    assertThat(fields.get(7).getProp(NOT_NULL), equalTo(null));
+    assertThat(fields.get(7).getProp(IDENTITY_COLUMN), equalTo("true"));
+    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_KIND), equalTo(null));
+    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("1000"));
+    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("2000"));
+    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("3000"));
+
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("`id` ASC"));
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_1"), equalTo("`gen_id` ASC"));
@@ -353,6 +370,13 @@ public class DdlToAvroSchemaConverterTest {
             .skipRangeMin(2000L)
             .skipRangeMax(3000L)
             .endColumn()
+            .column("identity_column_no_kind")
+            .type(Type.int64())
+            .isIdentityColumn(true)
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+            .endColumn()
             .primaryKey()
             .asc("id")
             .asc("gen_id")
@@ -383,7 +407,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(6));
+    assertThat(fields, hasSize(7));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -437,6 +461,16 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(5).getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("1000"));
     assertThat(fields.get(5).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("2000"));
     assertThat(fields.get(5).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("3000"));
+
+    assertThat(fields.get(6).name(), equalTo("identity_column_no_kind"));
+    assertThat(fields.get(6).schema(), equalTo(nullableUnion(Schema.Type.LONG)));
+    assertThat(fields.get(6).getProp(SQL_TYPE), equalTo("INT64"));
+    assertThat(fields.get(6).getProp(NOT_NULL), equalTo(null));
+    assertThat(fields.get(6).getProp(IDENTITY_COLUMN), equalTo("true"));
+    assertThat(fields.get(6).getProp(SPANNER_SEQUENCE_KIND), equalTo(null));
+    assertThat(fields.get(6).getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("1000"));
+    assertThat(fields.get(6).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("2000"));
+    assertThat(fields.get(6).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("3000"));
 
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("\"id\" ASC"));
@@ -1594,10 +1628,13 @@ public class DdlToAvroSchemaConverterTest {
             .createSequence("Sequence3")
             .options(ImmutableList.of("sequence_kind=\"bit_reversed_positive\""))
             .endSequence()
+            .createSequence("Sequence4")
+            .options(ImmutableList.of("sequence_kind=\"default\""))
+            .endSequence()
             .build();
 
     Collection<Schema> result = converter.convert(ddl);
-    assertThat(result, hasSize(3));
+    assertThat(result, hasSize(4));
     for (Schema s : result) {
       assertThat(s.getNamespace(), equalTo("spannertest"));
       assertThat(s.getProp("googleFormatVersion"), equalTo("booleans"));
@@ -1627,6 +1664,12 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(
         avroSchema3.getProp("sequenceOption_0"),
         equalTo("sequence_kind=\"bit_reversed_positive\""));
+
+    Schema avroSchema4 = it.next();
+    assertThat(avroSchema4.getName(), equalTo("Sequence4"));
+    assertThat(
+            avroSchema4.getProp("sequenceOption_0"),
+            equalTo("sequence_kind=\"default\""));
   }
 
   @Test
@@ -1648,10 +1691,13 @@ public class DdlToAvroSchemaConverterTest {
             .createSequence("PGSequence3")
             .sequenceKind("bit_reversed_positive")
             .endSequence()
+            .createSequence("PGSequence4")
+            .sequenceKind("default")
+            .endSequence()
             .build();
 
     Collection<Schema> result = converter.convert(ddl);
-    assertThat(result, hasSize(3));
+    assertThat(result, hasSize(4));
     for (Schema s : result) {
       assertThat(s.getNamespace(), equalTo("spannertest"));
       assertThat(s.getProp("googleFormatVersion"), equalTo("booleans"));
@@ -1675,6 +1721,10 @@ public class DdlToAvroSchemaConverterTest {
     Schema avroSchema3 = it.next();
     assertThat(avroSchema3.getName(), equalTo("PGSequence3"));
     assertThat(avroSchema3.getProp(SPANNER_SEQUENCE_KIND), equalTo("bit_reversed_positive"));
+
+    Schema avroSchema4 = it.next();
+    assertThat(avroSchema4.getName(), equalTo("PGSequence4"));
+    assertThat(avroSchema4.getProp(SPANNER_SEQUENCE_KIND), equalTo("default"));
   }
 
   @Test

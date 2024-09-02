@@ -24,8 +24,8 @@ public class DatabaseOptionAllowlist {
   // allow list.
   private DatabaseOptionAllowlist() {}
 
-  // Only those databse options whose name are included in the allowlist will be processed in
+  // Only those database options whose name are included in the allowlist will be processed in
   // export/import pipelines.
-  public static final ImmutableList<String> DATABASE_OPTION_ALLOWLIST =
-      ImmutableList.of("version_retention_period", "opt_in_dataplacement_preview");
+  public static final ImmutableList<String> DATABASE_OPTION_ALLOWLIST = ImmutableList.of("version_retention_period",
+      "opt_in_dataplacement_preview", "default_sequence_kind");
 }
