@@ -1667,9 +1667,7 @@ public class DdlToAvroSchemaConverterTest {
 
     Schema avroSchema4 = it.next();
     assertThat(avroSchema4.getName(), equalTo("Sequence4"));
-    assertThat(
-            avroSchema4.getProp("sequenceOption_0"),
-            equalTo("sequence_kind=\"default\""));
+    assertThat(avroSchema4.getProp("sequenceOption_0"), equalTo("sequence_kind=\"default\""));
   }
 
   @Test

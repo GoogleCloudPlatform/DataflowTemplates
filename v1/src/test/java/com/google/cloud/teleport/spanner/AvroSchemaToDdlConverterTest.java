@@ -981,15 +981,15 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"sequenceOption_0\" : \"sequence_kind=\\\"bit_reversed_positive\\\"\""
             + "}";
     String avroString4 =
-    "{"
-        + "  \"type\" : \"record\","
-        + "  \"name\" : \"Sequence4\","
-        + "  \"fields\" : [],"
-        + "  \"namespace\" : \"spannertest\","
-        + "  \"googleStorage\" : \"CloudSpanner\","
-        + "  \"googleFormatVersion\" : \"booleans\","
-        + "  \"sequenceOption_0\" : \"sequence_kind=default\""
-        + "}";
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Sequence4\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"sequenceOption_0\" : \"sequence_kind=default\""
+            + "}";
     Collection<Schema> schemas = new ArrayList<>();
     Schema.Parser parser = new Schema.Parser();
     schemas.add(parser.parse(avroString1));
@@ -1051,15 +1051,15 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"sequenceKind\" : \"bit_reversed_positive\""
             + "}";
     String avroString4 =
-    "{"
-        + "  \"type\" : \"record\","
-        + "  \"name\" : \"Sequence4\","
-        + "  \"fields\" : [],"
-        + "  \"namespace\" : \"spannertest\","
-        + "  \"googleStorage\" : \"CloudSpanner\","
-        + "  \"googleFormatVersion\" : \"booleans\","
-        + "  \"sequenceKind\" : \"default\""
-        + "}";
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Sequence4\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"sequenceKind\" : \"default\""
+            + "}";
     Collection<Schema> schemas = new ArrayList<>();
     Schema.Parser parser = new Schema.Parser();
     schemas.add(parser.parse(avroString1));

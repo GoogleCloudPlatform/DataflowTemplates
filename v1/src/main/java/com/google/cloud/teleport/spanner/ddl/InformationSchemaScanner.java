@@ -1689,11 +1689,10 @@ public class InformationSchemaScanner {
     // If the sequence kind is not specified, assign it to 'default'.
     for (var entry : allOptions.entrySet()) {
       if (!entry.getValue().toString().contains(Sequence.SEQUENCE_KIND)) {
-        entry.getValue().add(Sequence.SEQUENCE_KIND
-            + "="
-            + GSQL_LITERAL_QUOTE
-            + "default"
-            + GSQL_LITERAL_QUOTE);
+        entry
+            .getValue()
+            .add(
+                Sequence.SEQUENCE_KIND + "=" + GSQL_LITERAL_QUOTE + "default" + GSQL_LITERAL_QUOTE);
       }
     }
 
