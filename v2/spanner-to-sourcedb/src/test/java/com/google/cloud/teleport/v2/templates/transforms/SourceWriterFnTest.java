@@ -16,9 +16,11 @@
 package com.google.cloud.teleport.v2.templates.transforms;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,10 +32,14 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.MySqlDao;
 import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
 import com.google.common.collect.ImmutableList;
+import com.google.gson.Gson;
+import java.sql.SQLException;
 import java.util.HashMap;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
@@ -59,6 +65,7 @@ public class SourceWriterFnTest {
   @Mock HashMap<String, MySqlDao> mockMySqlDaoMap;
   @Mock private SpannerConfig mockSpannerConfig;
   @Mock private DoFn.ProcessContext processContext;
+  private static Gson gson = new Gson();
 
   private Shard testShard;
   private Schema testSchema;
@@ -69,10 +76,16 @@ public class SourceWriterFnTest {
   public void doBeforeEachTest() throws Exception {
     when(mockMySqlDaoMap.get(any())).thenReturn(mockMySqlDao);
     when(mockSpannerDao.getProcessedCommitTimestamp(eq("shadow_parent1"), any())).thenReturn(null);
+    when(mockSpannerDao.getProcessedCommitTimestamp(eq("shadow_parent2"), any()))
+        .thenThrow(new IllegalStateException("Test exception"));
     when(mockSpannerDao.getProcessedCommitTimestamp(eq("shadow_child11"), any()))
         .thenReturn(Timestamp.parseTimestamp("2025-02-02T00:00:00Z"));
+    when(mockSpannerDao.getProcessedCommitTimestamp(eq("shadow_child21"), any())).thenReturn(null);
     doNothing().when(mockSpannerDao).updateProcessedCommitTimestamp(any());
-    doNothing().when(mockMySqlDao).write(any());
+    doThrow(new SQLException("a foreign key constraint fails"))
+        .when(mockMySqlDao)
+        .write(contains("child21"));
+    doNothing().when(mockMySqlDao).write(contains("parent1"));
     testShard = new Shard();
     testShard.setLogicalShardId("shardA");
     testShard.setUser("test");
@@ -136,6 +149,147 @@ public class SourceWriterFnTest {
     verify(mockSpannerDao, atLeast(1)).updateProcessedCommitTimestamp(any());
   }
 
+  @Test
+  public void testNoShard() throws Exception {
+    TrimmedShardedDataChangeRecord record = getParent1TrimmedDataChangeRecord("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.processElement(processContext);
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord =
+        new ChangeStreamErrorRecord(jsonRec, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE);
+    verify(processContext, atLeast(1))
+        .output(
+            Constants.PERMANENT_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
+  @Test
+  public void testSkipShard() throws Exception {
+    TrimmedShardedDataChangeRecord record = getParent1TrimmedDataChangeRecord("shardA");
+    record.setShard("skip");
+
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.processElement(processContext);
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord =
+        new ChangeStreamErrorRecord(jsonRec, Constants.SKIPPED_TAG_MESSAGE);
+    verify(processContext, atLeast(1))
+        .output(Constants.SKIPPED_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
+  @Test
+  public void testPermanentError() throws Exception {
+    TrimmedShardedDataChangeRecord record = getParent1IncorrectTrimmedDataChangeRecord("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.processElement(processContext);
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord =
+        new ChangeStreamErrorRecord(
+            jsonRec,
+            "com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException:"
+                + " Required key id not found in change event");
+    verify(processContext, atLeast(1))
+        .output(
+            Constants.PERMANENT_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
+  @Test
+  public void testRetryableError() throws Exception {
+    TrimmedShardedDataChangeRecord record = getParent2TrimmedDataChangeRecord("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.processElement(processContext);
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord = new ChangeStreamErrorRecord(jsonRec, "Test exception");
+    verify(processContext, atLeast(1))
+        .output(
+            Constants.RETRYABLE_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
+  @Test
+  public void testRetryableErrorForForeignKey() throws Exception {
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.processElement(processContext);
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord =
+        new ChangeStreamErrorRecord(jsonRec, "a foreign key constraint fails");
+    verify(processContext, atLeast(1))
+        .output(
+            Constants.RETRYABLE_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
   static Ddl getTestDdl() {
     Ddl ddl =
         Ddl.builder()
@@ -153,7 +307,9 @@ public class SourceWriterFnTest {
             .string()
             .max()
             .endColumn()
-            //  .primaryKeys(ImmutableList.of(IndexColumn.create("id", IndexColumn.Order.ASC)))
+            .primaryKey()
+            .asc("id")
+            .end()
             .endTable()
             .createTable("child11")
             .column("child_id")
@@ -172,6 +328,46 @@ public class SourceWriterFnTest {
             .string()
             .max()
             .endColumn()
+            .endTable()
+            .createTable("parent2")
+            .column("id")
+            .int64()
+            .endColumn()
+            .column("update_ts")
+            .timestamp()
+            .endColumn()
+            .column("in_ts")
+            .timestamp()
+            .endColumn()
+            .column("migration_shard_id")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("child21")
+            .column("child_id")
+            .int64()
+            .endColumn()
+            .column("parent_id")
+            .int64()
+            .endColumn()
+            .column("update_ts")
+            .timestamp()
+            .endColumn()
+            .column("in_ts")
+            .timestamp()
+            .endColumn()
+            .column("migration_shard_id")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("child_id")
+            .asc("parent_id")
+            .end()
             .endTable()
             .build();
     return ddl;
@@ -199,6 +395,47 @@ public class SourceWriterFnTest {
         "recordSeq",
         "parent1",
         new Mod("{\"id\": \"42\"}", "{}", "{ \"migration_shard_id\": \"" + shardId + "\"}"),
+        ModType.valueOf("INSERT"),
+        1,
+        "");
+  }
+
+  private TrimmedShardedDataChangeRecord getParent1IncorrectTrimmedDataChangeRecord(
+      String shardId) {
+    return new TrimmedShardedDataChangeRecord(
+        Timestamp.parseTimestamp("2020-12-01T10:15:30.000Z"),
+        "serverTxnId",
+        "recordSeq",
+        "parent1",
+        new Mod(
+            "{\"junk_colm\": \"hello\"}", "{}", "{ \"migration_shard_id\": \"" + shardId + "\"}"),
+        ModType.valueOf("INSERT"),
+        1,
+        "");
+  }
+
+  private TrimmedShardedDataChangeRecord getParent2TrimmedDataChangeRecord(String shardId) {
+    return new TrimmedShardedDataChangeRecord(
+        Timestamp.parseTimestamp("2020-12-01T10:15:30.000Z"),
+        "serverTxnId",
+        "recordSeq",
+        "parent2",
+        new Mod("{\"id\": \"42\"}", "{}", "{ \"migration_shard_id\": \"" + shardId + "\"}"),
+        ModType.valueOf("INSERT"),
+        1,
+        "");
+  }
+
+  private TrimmedShardedDataChangeRecord getChild21TrimmedDataChangeRecord(String shardId) {
+    return new TrimmedShardedDataChangeRecord(
+        Timestamp.parseTimestamp("2024-12-01T10:15:30.000Z"),
+        "serverTxnId",
+        "recordSeq",
+        "child21",
+        new Mod(
+            "{\"child_id\": \"42\" , \"parent_id\": \"42\"}",
+            "{}",
+            "{ \"migration_shard_id\": \"" + shardId + "\"}"),
         ModType.valueOf("INSERT"),
         1,
         "");
