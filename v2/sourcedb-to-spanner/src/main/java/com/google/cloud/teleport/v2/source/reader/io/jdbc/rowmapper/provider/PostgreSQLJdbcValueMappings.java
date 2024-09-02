@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.TimeZone;
 import org.apache.commons.lang3.tuple.Pair;
 
-// TODO(thiagotnunes): Increase test coverage
 /** PostgreSQL data type mapping to AVRO types. */
 public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
   private static final ResultSetValueMapper<?> valuePassThrough = (value, schema) -> value;
