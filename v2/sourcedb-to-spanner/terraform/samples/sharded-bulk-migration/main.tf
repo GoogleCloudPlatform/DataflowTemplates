@@ -27,7 +27,7 @@ resource "google_storage_bucket_object" "source_config_upload" {
   depends_on = [google_project_service.enabled_apis]
 }
 
-# upload local session file to the created GCS bucket
+# upload local session file to the working GCS bucket
 resource "google_storage_bucket_object" "session_file_object" {
   depends_on   = [google_project_service.enabled_apis]
   name         = "${var.common_params.working_directory_prefix}/session.json"
@@ -46,7 +46,6 @@ resource "google_dataflow_flex_template_job" "generated" {
   container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Sourcedb_to_Spanner_Flex"
 
   parameters = {
-    # Uncomment these optional parameters to use custom options.
     jdbcDriverJars                 = var.common_params.jdbcDriverJars
     jdbcDriverClassName            = var.common_params.jdbcDriverClassName
     maxConnections                 = tostring(var.common_params.max_connections)
