@@ -140,11 +140,11 @@ public abstract class IndexColumn implements Serializable {
       return set(IndexColumn.create(name, Order.DESC, dialect));
     }
 
-
     public IndexColumnsBuilder<T> none(String name) {
       IndexColumn indexColumn = IndexColumn.create(name, Order.NONE, dialect);
       return set(indexColumn);
     }
+
     public IndexColumnsBuilder<T> storing(String name) {
       return set(IndexColumn.create(name, Order.STORING, dialect));
     }
