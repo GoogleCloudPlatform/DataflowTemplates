@@ -33,7 +33,7 @@ class CustomConnectionParams extends ConnectionParams {
   public CustomConnectionParams(
       @JsonProperty("server_url") String serverUrl,
       @JsonProperty("database") String database,
-      @JsonProperty("custom_certificate_path") String customCertificatePath,
+      @JsonProperty("custom_ca_certificate_path") String customCertificatePath,
       @JsonProperty("principal") String principal,
       @JsonProperty("credentials") String credentials,
       @JsonProperty("realm") String realm,
