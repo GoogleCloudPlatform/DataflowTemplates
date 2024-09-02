@@ -118,10 +118,6 @@ public abstract class Column implements Serializable {
       List<String> options = new ArrayList<>(3);
       if (sequenceKind() != null && sequenceKind().equalsIgnoreCase("bit_reversed_positive")) {
         options.add("BIT_REVERSED_POSITIVE");
-      } else {
-        throw new IllegalArgumentException(
-            String.format(
-                "Unrecognized sequence kind for identity column %s: %s.", name(), sequenceKind()));
       }
       if (skipRangeMin() != null && skipRangeMax() != null) {
         options.add(

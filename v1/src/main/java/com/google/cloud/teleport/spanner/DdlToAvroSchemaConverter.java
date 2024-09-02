@@ -170,7 +170,9 @@ public class DdlToAvroSchemaConverter {
         } else {
           if (cm.isIdentityColumn()) {
             fieldBuilder.prop(IDENTITY_COLUMN, Boolean.toString(cm.isIdentityColumn()));
-            fieldBuilder.prop(SPANNER_SEQUENCE_KIND, cm.sequenceKind());
+            if (cm.sequenceKind() != null) {
+              fieldBuilder.prop(SPANNER_SEQUENCE_KIND, cm.sequenceKind());
+            }
             fieldBuilder.prop(
                 SPANNER_SEQUENCE_COUNTER_START, String.valueOf(cm.counterStartValue()));
             fieldBuilder.prop(SPANNER_SEQUENCE_SKIP_RANGE_MIN, String.valueOf(cm.skipRangeMin()));

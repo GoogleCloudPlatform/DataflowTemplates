@@ -95,9 +95,6 @@ public class AvroSchemaToDdlConverter {
         builder.addChangeStream(toChangeStream(null, schema));
       } else if (schema.getProp(SPANNER_SEQUENCE_OPTION + "0") != null
           || schema.getProp(SPANNER_SEQUENCE_KIND) != null) {
-        // Cloud Sequence always requires at least one option,
-        // `sequence_kind='bit_reversed_positive`, so `sequenceOption_0` must
-        // always be valid.
         builder.addSequence(toSequence(null, schema));
       } else if (SPANNER_NAMED_SCHEMA.equals(schema.getProp(SPANNER_ENTITY))) {
         builder.addSchema(toSchema(null, schema));
@@ -211,7 +208,8 @@ public class AvroSchemaToDdlConverter {
     LOG.debug("Converting to Ddl sequenceName {}", sequenceName);
     Sequence.Builder builder = Sequence.builder(dialect).name(sequenceName);
 
-    if (schema.getProp(SPANNER_SEQUENCE_KIND) != null) {
+    if (schema.getProp(SPANNER_SEQUENCE_KIND) != null
+        && schema.getProp(SPANNER_SEQUENCE_KIND).equals("bit_reversed_positive")) {
       builder.sequenceKind(schema.getProp(SPANNER_SEQUENCE_KIND));
     }
     if (schema.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN) != null
@@ -226,7 +224,12 @@ public class AvroSchemaToDdlConverter {
 
     ImmutableList.Builder<String> sequenceOptions = ImmutableList.builder();
     for (int i = 0; schema.getProp(SPANNER_SEQUENCE_OPTION + i) != null; i++) {
-      sequenceOptions.add(schema.getProp(SPANNER_SEQUENCE_OPTION + i));
+      String prop = schema.getProp(SPANNER_SEQUENCE_OPTION + i);
+      if (prop.equals("sequence_kind=default")) {
+        // Specify no sequence kind by using the default_sequence_kind database option.
+        continue;
+      }
+      sequenceOptions.add(prop);
     }
     builder.options(sequenceOptions.build());
 
