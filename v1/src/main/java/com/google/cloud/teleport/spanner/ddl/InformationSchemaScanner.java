@@ -507,7 +507,7 @@ public class InformationSchemaScanner {
             indexBuilder.columns().create().name(columnName);
 
         if (spannerType.equals("TOKENLIST")) {
-          indexColumnsBuilder.asc();
+          indexColumnsBuilder.none();
         } else if (ordering == null) {
           indexColumnsBuilder.storing();
         }
