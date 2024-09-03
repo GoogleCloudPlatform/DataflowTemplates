@@ -121,10 +121,12 @@ public class PipelineController {
                   OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
                       options, List.of(srcTable), null, Wait.on(parentOutputs))));
       String suffix = generateSuffix("", srcTable);
+      String shardIdColumn = "";
       PCollection<Void> output =
           pipeline.apply(
               "Migrate" + suffix,
-              new MigrateTableTransform(options, spannerConfig, ddl, schemaMapper, reader, ""));
+              new MigrateTableTransform(
+                  options, spannerConfig, ddl, schemaMapper, reader, "", shardIdColumn));
       outputs.put(srcTable, output);
     }
 
@@ -223,11 +225,14 @@ public class PipelineController {
                           options.getNumPartitions(),
                           Wait.on(parentOutputs))));
           String suffix = generateSuffix(shardId, srcTable);
+          String shardIdColumn =
+              schemaMapper.getShardIdColumnName(
+                  reader.getSourceSchema().schemaReference().namespace(), srcTable);
           PCollection<Void> output =
               pipeline.apply(
                   "Migrate" + suffix,
                   new MigrateTableTransform(
-                      options, spannerConfig, ddl, schemaMapper, reader, shardId));
+                      options, spannerConfig, ddl, schemaMapper, reader, shardId, shardIdColumn));
           outputs.put(srcTable, output);
         }
         // Add transform to increment table counter
