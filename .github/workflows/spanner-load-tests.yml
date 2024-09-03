@@ -18,8 +18,8 @@ name: Spanner Load Tests
 
 on:
   schedule:
-  # at 02:00 every Day.
-  - cron: '0 2 * * *'
+  # at 02:00 weekly on every Monday.
+  - cron: '0 2 * * 1'
   workflow_dispatch:
 
 permissions: write-all
