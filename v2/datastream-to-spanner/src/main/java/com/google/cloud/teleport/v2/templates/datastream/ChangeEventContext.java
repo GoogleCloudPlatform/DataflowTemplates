@@ -92,6 +92,11 @@ public abstract class ChangeEventContext {
     return shadowTableMutation;
   }
 
+  // Getter method for data mutation.
+  public Iterable<Mutation> getDataTableMutations() {
+    return Arrays.asList(dataMutation);
+  }
+
   // Getter method for the shadow table.
   public String getShadowTable() {
     return shadowTable;

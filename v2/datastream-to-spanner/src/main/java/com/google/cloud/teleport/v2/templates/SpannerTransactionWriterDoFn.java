@@ -145,7 +145,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     try {
 
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
-
+      Boolean isBackfill =
+          changeEvent.get("_metadata_read_method").textValue().contains("backfill");
       JsonNode retryCount = changeEvent.get("_metadata_retry_count");
 
       if (retryCount != null) {
@@ -184,7 +185,13 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                     }
 
                     // Apply shadow and data table mutations.
-                    transaction.buffer(changeEventContext.getMutations());
+                    if (isBackfill) {
+                      transaction.buffer(changeEventContext.getDataTableMutations());
+                      System.out.println(changeEventContext.getDataTableMutations());
+                    } else {
+                      transaction.buffer(changeEventContext.getMutations());
+                      System.out.println(changeEventContext.getMutations());
+                    }
                     return null;
                   });
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
