@@ -117,8 +117,8 @@ public class DatastreamRow {
         if (primaryKeysObj instanceof List) {
           primaryKeys = (List<String>) primaryKeysObj;
         } else if (primaryKeysObj instanceof String) {
-          // Fixed because we have seen this once at issue b/358606362
-          // not clear how it can be as DS template always set a List on this field.
+          // Fixed since we have seen this once.
+          // the reason isn't clear as DS template always set a List on this field.
           // we saw this happens  on "UDF to TableRow/Oracle Cleaner" or "BigQuery Merge/Build"
           // steps.
           LOG.info("primaryKeysObj is String type {}", primaryKeysObj);
