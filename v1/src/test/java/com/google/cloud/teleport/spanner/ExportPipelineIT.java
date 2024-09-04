@@ -200,7 +200,7 @@ public class ExportPipelineIT extends TemplateTestBase {
     String createSearchIndexStatement =
         String.format(
             "CREATE SEARCH INDEX `%s_SearchIndex`\n"
-                + " ON `%s_Singers`(`MyTokens` ASC)\n"
+                + " ON `%s_Singers`(`MyTokens`)\n"
                 + " OPTIONS (sort_order_sharding=TRUE)",
             testName, testName);
 

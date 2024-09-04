@@ -601,7 +601,7 @@ public class InformationSchemaScannerIT {
                 + "  `Body_Tokens`                           TOKENLIST AS (TOKENIZE_FULLTEXT(`Body`)) HIDDEN,"
                 + "  `Data`                                  STRING(MAX),"
                 + " ) PRIMARY KEY (`UserId` ASC, `MessageId` ASC), INTERLEAVE IN PARENT `Users`",
-            " CREATE SEARCH INDEX `SearchIndex` ON `Messages`(`Subject_Tokens` ASC, `Body_Tokens` ASC)"
+            " CREATE SEARCH INDEX `SearchIndex` ON `Messages`(`Subject_Tokens` , `Body_Tokens` )"
                 + " STORING (`Data`)"
                 + " PARTITION BY `UserId`,"
                 + " INTERLEAVE IN `Users`"
