@@ -1,13 +1,10 @@
 locals {
-  sharding_config = jsondecode(file(var.common_params.local_sharding_config))
-  dataShards      = local.sharding_config.shardConfigurationBulk.dataShards
   # Generate individual source configs for each group of data shards based on batch size.
   source_configs = [
-    for batch_start in range(0, length(local.dataShards), var.common_params.batch_size) : {
+    for batch_start in range(0, length(var.data_shards), var.common_params.batch_size) : {
       configType : "dataflow",
       shardConfigurationBulk : {
-        schemaSource : local.sharding_config.shardConfigurationBulk.schemaSource,
-        dataShards : slice(local.dataShards, batch_start, min(batch_start + var.common_params.batch_size, length(local.dataShards)))
+        dataShards : slice(var.data_shards, batch_start, min(batch_start + var.common_params.batch_size, length(var.data_shards)))
       }
     }
   ]
@@ -15,13 +12,14 @@ locals {
   working_directory_gcs = "gs://${var.common_params.working_directory_bucket}/${var.common_params.working_directory_prefix}"
 }
 
-resource "random_pet" "job_names" {
-  count = length(local.source_configs)
+resource "random_pet" "job_prefixes" {
+  count  = length(local.source_configs)
+  prefix = "smt"
 }
 
 resource "google_storage_bucket_object" "source_config_upload" {
   count      = length(local.source_configs)
-  name       = "${var.common_params.working_directory_prefix}/${random_pet.job_names[count.index].id}/sourceConfig.json"
+  name       = "${var.common_params.working_directory_prefix}/${random_pet.job_names[count.index].id}/shardConfig.json"
   content    = jsonencode(local.source_configs[count.index])
   bucket     = var.common_params.working_directory_bucket
   depends_on = [google_project_service.enabled_apis]
@@ -37,7 +35,7 @@ resource "google_storage_bucket_object" "session_file_object" {
 }
 
 resource "google_dataflow_flex_template_job" "generated" {
-  count = length(local.source_configs)
+  count      = length(local.source_configs)
   depends_on = [
     google_project_service.enabled_apis, google_storage_bucket_object.source_config_upload,
     google_storage_bucket_object.session_file_object
@@ -46,21 +44,21 @@ resource "google_dataflow_flex_template_job" "generated" {
   container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Sourcedb_to_Spanner_Flex"
 
   parameters = {
-    jdbcDriverJars                 = var.common_params.jdbcDriverJars
-    jdbcDriverClassName            = var.common_params.jdbcDriverClassName
+    jdbcDriverJars                 = var.common_params.jdbc_driver_jars
+    jdbcDriverClassName            = var.common_params.jdbc_driver_class_name
     maxConnections                 = tostring(var.common_params.max_connections)
-    sourceConfigURL                = "${local.working_directory_gcs}/${random_pet.job_names[count.index].id}/sourceConfig.json"
+    sourceConfigURL                = "${local.working_directory_gcs}/${random_pet.job_names[count.index].id}/shardConfig.json"
     numPartitions                  = tostring(var.common_params.num_partitions)
-    instanceId                     = var.common_params.instanceId
-    databaseId                     = var.common_params.databaseId
-    projectId                      = var.common_params.projectId
-    spannerHost                    = var.common_params.spannerHost
+    instanceId                     = var.common_params.instance_id
+    databaseId                     = var.common_params.database_id
+    projectId                      = var.common_params.project_id
+    spannerHost                    = var.common_params.spanner_host
     sessionFilePath                = "${local.working_directory_gcs}/session.json"
     outputDirectory                = "${local.working_directory_gcs}/${random_pet.job_names[count.index].id}/output/"
     transformationJarPath          = var.common_params.transformation_jar_path
     transformationClassName        = var.common_params.transformation_class_name
     transformationCustomParameters = var.common_params.transformation_custom_parameters
-    defaultSdkHarnessLogLevel      = var.common_params.defaultLogLevel
+    defaultSdkHarnessLogLevel      = var.common_params.default_log_level
   }
 
   service_account_email  = var.common_params.service_account_email
@@ -68,11 +66,15 @@ resource "google_dataflow_flex_template_job" "generated" {
   launcher_machine_type  = var.common_params.launcher_machine_type
   machine_type           = var.common_params.machine_type
   max_workers            = var.common_params.max_workers
-  name                   = random_pet.job_names[count.index].id
+  name                   = "${random_pet.job_prefixes[count.index].id}-${var.common_params.run_id}"
   ip_configuration       = var.common_params.ip_configuration
   network                = var.common_params.network
   subnetwork             = var.common_params.subnetwork
   num_workers            = var.common_params.num_workers
   project                = var.common_params.project
   region                 = var.common_params.region
+
+  labels = {
+    "migration_id" = "${random_pet.job_prefixes[count.index].id}-${var.common_params.run_id}"
+  }
 }

@@ -83,7 +83,8 @@ It makes the following assumptions -
 1. Dataflow can establish network connectivity with the MySQL source shards.
 2. Appropriate permissions are added to the service account running Terraform to allow resource creation.
 3. Appropriate permissions are provided to the service account running Dataflow to write to Spanner.
-4. A GCS directory has been provided to write the output records (DLQ/filtered events) to.
+4. A GCS working directory has been created for the terraform template. The dataflow jobs will write the output
+   records (DLQ/filtered events) in this working directory.
 5. A Spanner instance with database containing the data-migration compatible schema is created. This includes a
    migration_shard_id column being present in the Spanner schema.
 6. An SMT generated session file is provided containing the schema mapping information is created locally. This is
