@@ -65,7 +65,9 @@ class TestUtils {
   static final String FLOAT64_COL = "Float64Col";
   static final String INT64_COL = "Int64Col";
   static final String JSON_COL = "JsonCol";
+  static final String PG_JSON_COL = "PgJsonCol";
   static final String NUMERIC_COL = "NumericCol";
+  static final String PG_NUMERIC_COL = "PgNumericCol";
   static final String STRING_COL = "StringCol";
   static final String TIMESTAMP_COL = "TimestampCol";
 
