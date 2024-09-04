@@ -21,14 +21,20 @@ on:
     branches:
     - 'main'
     paths:
-      # Include spanner paths only
-      - '.github/workflows/spanner-pr.yml'
-      - 'v2/datastream-to-spanner/**'
+      # Template wide common modules
+      - 'v2/common/**'
+      - 'v2/datastream-common/**'
+      - 'it/google-cloud-platform/**'
+      - 'it/conditions/**'
+      # Component common modules
       - 'v2/spanner-common/**'
-      - 'v2/spanner-change-streams-to-sharded-file-sink/**'
-      - 'v2/gcs-to-sourcedb/**'
       - 'v2/spanner-migrations-sdk/**'
       - 'v2/spanner-custom-shard/**'
+      # Include spanner paths
+      - '.github/workflows/spanner-pr.yml'
+      - 'v2/datastream-to-spanner/**'
+      - 'v2/spanner-change-streams-to-sharded-file-sink/**'
+      - 'v2/gcs-to-sourcedb/**'
       - 'v2/sourcedb-to-spanner/**'
       - 'v2/spanner-to-sourcedb/**'
   schedule:
