@@ -187,10 +187,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                     // Apply shadow and data table mutations.
                     if (isBackfill) {
                       transaction.buffer(changeEventContext.getDataTableMutations());
-                      System.out.println(changeEventContext.getDataTableMutations());
                     } else {
                       transaction.buffer(changeEventContext.getMutations());
-                      System.out.println(changeEventContext.getMutations());
                     }
                     return null;
                   });
