@@ -19,7 +19,7 @@ resource "random_pet" "job_prefixes" {
 
 resource "google_storage_bucket_object" "source_config_upload" {
   count      = length(local.source_configs)
-  name       = "${var.common_params.working_directory_prefix}/${random_pet.job_names[count.index].id}/shardConfig.json"
+  name       = "${var.common_params.working_directory_prefix}/${random_pet.job_prefixes[count.index].id}/shardConfig.json"
   content    = jsonencode(local.source_configs[count.index])
   bucket     = var.common_params.working_directory_bucket
   depends_on = [google_project_service.enabled_apis]
@@ -35,7 +35,7 @@ resource "google_storage_bucket_object" "session_file_object" {
 }
 
 resource "google_dataflow_flex_template_job" "generated" {
-  count      = length(local.source_configs)
+  count = length(local.source_configs)
   depends_on = [
     google_project_service.enabled_apis, google_storage_bucket_object.source_config_upload,
     google_storage_bucket_object.session_file_object
@@ -47,14 +47,14 @@ resource "google_dataflow_flex_template_job" "generated" {
     jdbcDriverJars                 = var.common_params.jdbc_driver_jars
     jdbcDriverClassName            = var.common_params.jdbc_driver_class_name
     maxConnections                 = tostring(var.common_params.max_connections)
-    sourceConfigURL                = "${local.working_directory_gcs}/${random_pet.job_names[count.index].id}/shardConfig.json"
+    sourceConfigURL                = "${local.working_directory_gcs}/${random_pet.job_prefixes[count.index].id}/shardConfig.json"
     numPartitions                  = tostring(var.common_params.num_partitions)
     instanceId                     = var.common_params.instance_id
     databaseId                     = var.common_params.database_id
     projectId                      = var.common_params.project_id
     spannerHost                    = var.common_params.spanner_host
     sessionFilePath                = "${local.working_directory_gcs}/session.json"
-    outputDirectory                = "${local.working_directory_gcs}/${random_pet.job_names[count.index].id}/output/"
+    outputDirectory                = "${local.working_directory_gcs}/${random_pet.job_prefixes[count.index].id}/output/"
     transformationJarPath          = var.common_params.transformation_jar_path
     transformationClassName        = var.common_params.transformation_class_name
     transformationCustomParameters = var.common_params.transformation_custom_parameters

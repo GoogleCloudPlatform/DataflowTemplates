@@ -1,6 +1,6 @@
 # upload local session file to the working GCS bucket
 resource "google_storage_bucket_object" "session_file_object" {
-  count        = var.local_session_file_path!= null ? 1 : 0
+  count        = var.local_session_file_path != null ? 1 : 0
   depends_on   = [google_project_service.enabled_apis]
   name         = "${var.working_directory_prefix}/session.json"
   source       = var.local_session_file_path

@@ -171,6 +171,10 @@ Once the jobs have finished running, you can cleanup by running -
 terraform destroy
 ```
 
+## Observability
+
+TODO
+
 ## FAQ
 
 ### Dataflow job is failing with "Timeout in polling result file"
@@ -191,11 +195,12 @@ to take over 10 mins:
 ### Job graph is not loading/Custom counters not visible on Dataflow panel
 
 For very large graphs, this can happen. The graph section would be empty and the counters won't load. But worry not, the
-migration should progress nonetheless.
+migration should progress nonetheless. In such cases, the Dataflow custom metrics can be directly viewed
+on [Cloud monitoring](https://cloud.google.com/dataflow/docs/guides/using-monitoring-intf).
 
 ### Data being written to Spanner is too slow
 
-THere can be multiple reasons for this.
+There can be multiple reasons for this.
 
 - **Check source shard metrics:** Are memory/CPU limits being hit? Consider increasing the shard resources.
 - **Check Spanner metrics:** Are memory/CPU limits being hit? Consider increasing the number of nodes.

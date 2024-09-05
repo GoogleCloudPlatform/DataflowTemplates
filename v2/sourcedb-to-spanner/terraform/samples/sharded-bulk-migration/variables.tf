@@ -25,12 +25,12 @@ variable "common_params" {
     subnetwork             = optional(string)
     service_account_email  = optional(string)
     # Recommend using larger launcher VMs. Machine with >= 16 vCPUs should be safe.
-    launcher_machine_type  = optional(string, "n1-highmem-32")
-    machine_type           = optional(string, "n1-highmem-4")
-    max_workers            = optional(number)
-    ip_configuration       = optional(string)
-    num_workers            = optional(number)
-    default_log_level      = optional(string)
+    launcher_machine_type = optional(string, "n1-highmem-32")
+    machine_type          = optional(string, "n1-highmem-4")
+    max_workers           = optional(number)
+    ip_configuration      = optional(string)
+    num_workers           = optional(number)
+    default_log_level     = optional(string)
 
     # This parameters decides the number of physical shards to migrate using a single dataflow job.
     # Set this in a way that restricts the total number of tables to 150 within a single job.
@@ -48,7 +48,7 @@ variable "data_shards" {
     user          = string
     password      = string
     port          = number
-    databases     = list(object({
+    databases = list(object({
       db_name           = string
       database_id       = string
       ref_data_shard_id = string

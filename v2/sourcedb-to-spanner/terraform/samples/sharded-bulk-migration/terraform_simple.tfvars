@@ -24,7 +24,7 @@ data_shards = [
     user          = "username"
     password      = "password"
     port          = 3306
-    databases     = [
+    databases = [
       {
         db_name           = "db1"
         database_id       = "logicaldb1"
