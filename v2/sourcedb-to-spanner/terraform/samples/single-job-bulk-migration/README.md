@@ -20,21 +20,6 @@ There are two ways to add permissions -
 Following permissions are required -
 
 ```shell
-- compute.globalAddresses.create
-- compute.globalAddresses.createInternal
-- compute.globalAddresses.delete
-- compute.globalAddresses.deleteInternal
-- compute.globalAddresses.get
-- compute.globalOperations.get
-- compute.networks.addPeering
-- compute.networks.get
-- compute.networks.listPeeringRoutes
-- compute.networks.removePeering
-- compute.networks.use
-- compute.routes.get
-- compute.routes.list
-- compute.subnetworks.get
-- compute.subnetworks.list
 - dataflow.jobs.cancel
 - dataflow.jobs.create
 - dataflow.jobs.updateContents
@@ -42,6 +27,7 @@ Following permissions are required -
 - iam.serviceAccounts.actAs
 - storage.objects.delete
 - storage.objects.create
+- storage.buckets.create
 - serviceusage.services.use
 - serviceusage.services.enable
 ```
@@ -56,12 +42,10 @@ provides instructions to add these permissions to an existing service account.
 Following roles are required -
 
 ```shell
-roles/dataflow.admin 
-roles/iam.securityAdmin
+roles/dataflow.admin
 roles/iam.serviceAccountUser 
 roles/storage.admin
 roles/viewer
-roles/compute.networkAdmin
 ```
 
 [This](#adding-access-to-terraform-service-account) section in the FAQ
@@ -389,7 +373,6 @@ Sample output -
 ```shell
 ROLE
 roles/dataflow.admin
-roles/iam.securityAdmin
 roles/iam.serviceAccountUser
 roles/storage.admin
 roles/viewer
