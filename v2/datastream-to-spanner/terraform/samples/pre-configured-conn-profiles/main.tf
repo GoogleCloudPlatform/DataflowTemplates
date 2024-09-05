@@ -33,7 +33,7 @@ resource "google_storage_bucket_object" "schema_overrides_file_object" {
   name         = "schema-overrides.json"
   source       = var.dataflow_params.template_params.local_schema_overrides_file_path
   content_type = "application/json"
-  bucket       = google_storage_bucket.datastream_bucket.id
+  bucket       = var.datastream_params.target_gcs_bucket_name
 }
 
 # Configure permissions to publish Pub/Sub notifications
