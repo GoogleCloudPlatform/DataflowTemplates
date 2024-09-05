@@ -232,6 +232,7 @@ public class ChangeEventTransformerDoFnTest {
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
             schema,
+            null,
             transformationContext,
             null,
             "mysql",

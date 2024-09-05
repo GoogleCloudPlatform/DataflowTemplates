@@ -30,8 +30,11 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
@@ -48,6 +51,8 @@ import com.google.common.base.Strings;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -485,6 +490,45 @@ public class DataStreamToSpanner {
     String getShardingContextFilePath();
 
     void setShardingContextFilePath(String value);
+
+    @TemplateParameter.Text(
+        order = 30,
+        optional = true,
+        description = "Table name overrides from source to spanner",
+        example = "[{Singers, Vocalists}, {Albums, Records}]",
+        helpText =
+            "These are the table name overrides from source to spanner. They are written in the"
+                + "following format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]"
+                + "This example shows mapping Singers table to Vocalists and Albums table to Records.")
+    @Default.String("")
+    String getTableOverrides();
+
+    void setTableOverrides(String value);
+
+    @TemplateParameter.Text(
+        order = 31,
+        optional = true,
+        description = "Column name overrides from source to spanner",
+        example = "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
+        helpText =
+            "These are the column name overrides from source to spanner. They are written in the"
+                + "following format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]"
+                + "Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides."
+                + "The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively.")
+    @Default.String("")
+    String getColumnOverrides();
+
+    void setColumnOverrides(String value);
+
+    @TemplateParameter.Text(
+        order = 32,
+        optional = true,
+        description = "File based overrides from source to spanner",
+        helpText = "A file which specifies the table and the column name overrides from source to spanner.")
+    @Default.String("")
+    String getSchemaOverridesFilePath();
+
+    void setSchemaOverridesFilePath(String value);
   }
 
   private static void validateSourceType(Options options) {
@@ -682,9 +726,13 @@ public class DataStreamToSpanner {
             .setCustomParameters(options.getTransformationCustomParameters())
             .build();
 
+    // Create the overrides mapping.
+    ISchemaOverridesParser schemaOverridesParser = configureSchemaOverrides(options);
+
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
             schema,
+            schemaOverridesParser,
             transformationContext,
             shardingContext,
             options.getDatastreamSourceType(),
@@ -809,5 +857,29 @@ public class DataStreamToSpanner {
       LOG.info("Dead-letter retry directory: {}", retryDlqUri);
       return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0);
     }
+  }
+
+  private static ISchemaOverridesParser configureSchemaOverrides(Options options) {
+    //incorrect configuration
+    if (!options.getSchemaOverridesFilePath().isEmpty() && (!options.getTableOverrides().isEmpty() || !options.getColumnOverrides().isEmpty())) {
+      throw new IllegalArgumentException("Only one of file based or string based overrides must be configured! Please correct the configuration and re-run the job");
+    }
+    //string based overrides
+    if (!options.getTableOverrides().isEmpty() || !options.getColumnOverrides().isEmpty()) {
+      Map<String, String> userOptionsOverrides = new HashMap<>();
+      if (!options.getTableOverrides().isEmpty()) {
+        userOptionsOverrides.put("tableOverrides", options.getTableOverrides());
+      }
+      if (!options.getColumnOverrides().isEmpty()) {
+        userOptionsOverrides.put("columnOverrides", options.getColumnOverrides());
+      }
+      return new SchemaStringOverridesParser(userOptionsOverrides);
+    }
+    //file based overrides
+    if (!options.getSchemaOverridesFilePath().isEmpty()) {
+      return new SchemaFileOverridesParser(options.getSchemaOverridesFilePath());
+    }
+    //no overrides
+    return null;
   }
 }

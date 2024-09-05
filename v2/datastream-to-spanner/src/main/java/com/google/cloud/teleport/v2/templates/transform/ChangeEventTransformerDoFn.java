@@ -28,6 +28,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSes
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventToMapConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
@@ -76,6 +77,9 @@ public abstract class ChangeEventTransformerDoFn
   public abstract Schema schema();
 
   @Nullable
+  public abstract ISchemaOverridesParser schemaOverridesParser();
+
+  @Nullable
   public abstract TransformationContext transformationContext();
 
   @Nullable
@@ -116,6 +120,7 @@ public abstract class ChangeEventTransformerDoFn
 
   public static ChangeEventTransformerDoFn create(
       Schema schema,
+      ISchemaOverridesParser schemaOverridesParser,
       TransformationContext transformationContext,
       ShardingContext shardingContext,
       String sourceType,
@@ -125,6 +130,7 @@ public abstract class ChangeEventTransformerDoFn
       SpannerConfig spannerConfig) {
     return new AutoValue_ChangeEventTransformerDoFn(
         schema,
+        schemaOverridesParser,
         transformationContext,
         shardingContext,
         sourceType,
@@ -143,8 +149,7 @@ public abstract class ChangeEventTransformerDoFn
         CustomTransformationImplFetcher.getCustomTransformationLogicImpl(customTransformation());
     changeEventSessionConvertor =
         new ChangeEventSessionConvertor(
-            schema(),
-            transformationContext(),
+            schema(), schemaOverridesParser(), transformationContext(),
             shardingContext(),
             sourceType(),
             roundJsonDecimals());
@@ -162,9 +167,15 @@ public abstract class ChangeEventTransformerDoFn
       Map<String, Object> sourceRecord =
           ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
 
+      //TODO: Transformation via session file should be marked deprecated and removed.
       if (!schema().isEmpty()) {
         schema().verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
         changeEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent);
+      }
+
+      //Perform mapping as per overrides
+      if (schemaOverridesParser() != null) {
+        changeEvent = changeEventSessionConvertor.transformChangeEventViaOverrides(changeEvent);
       }
 
       changeEvent =
