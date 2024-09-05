@@ -81,6 +81,7 @@ public class WriteDataChangeRecordsToAvroTest {
         converter.dataChangeRecordToAvro(dataChangeRecord);
     assertEquals(dataChangeRecordAvro.get("spannerDatabaseId"), null);
     assertEquals(dataChangeRecordAvro.get("spannerInstanceId"), null);
+    assertEquals(dataChangeRecordAvro.get("outputMessageMetadata"), null);
 
     testPipeline.run();
   }
@@ -109,6 +110,29 @@ public class WriteDataChangeRecordsToAvroTest {
         converter.dataChangeRecordToAvro(dataChangeRecord);
     assertEquals(dataChangeRecordAvro.get("spannerDatabaseId"), "test-db");
     assertEquals(dataChangeRecordAvro.get("spannerInstanceId"), "test-instance");
+    testPipeline.run();
+  }
+
+  @Test
+  public void testOutputMessageMetadata() {
+    // First run the transform in a separate pipeline.
+    DataChangeRecordToAvroFn converter =
+        new DataChangeRecordToAvroFn.Builder().setOutputMessageMetadata("test-db").build();
+    final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
+    Pipeline p = Pipeline.create(options);
+    PCollection<com.google.cloud.teleport.v2.DataChangeRecord> dataChangeRecords =
+        p.apply("CreateInput", Create.of(dataChangeRecord))
+            .apply(
+                "Write DataChangeRecord into AVRO",
+                ParDo.of(new DataChangeRecordToAvroTestFn(converter)));
+    p.run();
+
+    PAssert.that(dataChangeRecords)
+        .containsInAnyOrder(converter.dataChangeRecordToAvro(dataChangeRecord));
+
+    com.google.cloud.teleport.v2.DataChangeRecord dataChangeRecordAvro =
+        converter.dataChangeRecordToAvro(dataChangeRecord);
+    assertEquals(dataChangeRecordAvro.get("outputMessageMetadata"), "test-db");
     testPipeline.run();
   }
 

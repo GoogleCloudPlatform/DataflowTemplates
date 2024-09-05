@@ -225,4 +225,18 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   Boolean getIncludeSpannerSource();
 
   void setIncludeSpannerSource(Boolean value);
+
+  @TemplateParameter.Text(
+      order = 18,
+      optional = true,
+      description = "Custom Value for the optional field outputMessageMetadata",
+      helpText =
+          "The string value for the custom field outputMessageMetadata in output pub/sub message. "
+              + "Defaults to empty and the field outputMessageMetadata is only populated if this "
+              + "value is non-empty. Please escape any special characters when entering the value "
+              + "here(ie: double quotes).")
+  @Default.String("")
+  String getOutputMessageMetadata();
+
+  void setOutputMessageMetadata(String value);
 }

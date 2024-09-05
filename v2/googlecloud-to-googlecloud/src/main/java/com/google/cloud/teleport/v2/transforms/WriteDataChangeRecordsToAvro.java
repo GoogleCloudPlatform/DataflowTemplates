@@ -51,12 +51,18 @@ public class WriteDataChangeRecordsToAvro {
 
     private String spannerInstanceId;
 
+    private String outputMessageMetadata;
+
     public String spannerDatabaseId() {
       return spannerDatabaseId;
     }
 
     public String spannerInstanceId() {
       return spannerInstanceId;
+    }
+
+    public String outputMessageMetadata() {
+      return outputMessageMetadata;
     }
 
     @Override
@@ -69,6 +75,7 @@ public class WriteDataChangeRecordsToAvro {
     private DataChangeRecordToAvroFn(Builder builder) {
       this.spannerDatabaseId = builder.spannerDatabaseId;
       this.spannerInstanceId = builder.spannerInstanceId;
+      this.outputMessageMetadata = builder.outputMessageMetadata;
     }
 
     public com.google.cloud.teleport.v2.DataChangeRecord dataChangeRecordToAvro(
@@ -145,13 +152,16 @@ public class WriteDataChangeRecordsToAvro {
           metadata,
           // If includeSpannerSource is false, spannerDatabaseId() and spannerInstanceId() are null.
           spannerDatabaseId(),
-          spannerInstanceId());
+          spannerInstanceId(),
+          outputMessageMetadata());
     }
 
     static class Builder {
       private String spannerDatabaseId;
 
       private String spannerInstanceId;
+
+      private String outputMessageMetadata;
 
       public Builder setSpannerDatabaseId(String value) {
         this.spannerDatabaseId = value;
@@ -160,6 +170,11 @@ public class WriteDataChangeRecordsToAvro {
 
       public Builder setSpannerInstanceId(String value) {
         this.spannerInstanceId = value;
+        return this;
+      }
+
+      public Builder setOutputMessageMetadata(String value) {
+        this.outputMessageMetadata = value;
         return this;
       }
 

@@ -119,7 +119,8 @@ public class SpannerChangeStreamsToPubSubIT extends TemplateTestBase {
             .addParameter("pubsubTopic", outputTopic.getTopic())
             .addParameter("outputDataFormat", "JSON")
             .addParameter("rpcPriority", "HIGH")
-            .addParameter("includeSpannerSource", "true");
+            .addParameter("includeSpannerSource", "true")
+            .addParameter("outputMessageMetadata", "us-central1");
 
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
@@ -152,8 +153,10 @@ public class SpannerChangeStreamsToPubSubIT extends TemplateTestBase {
                   o.get("spannerDatabaseId").getAsString(), spannerResourceManager.getDatabaseId());
               assertEquals(
                   o.get("spannerInstanceId").getAsString(), spannerResourceManager.getInstanceId());
+              assertEquals(o.get("outputMessageMetadata").getAsString(), "us-central1");
               o.remove("spannerDatabaseId");
               o.remove("spannerInstanceId");
+              o.remove("outputMessageMetadata");
               DataChangeRecord s = new Gson().fromJson(o, DataChangeRecord.class);
               for (Mod mod : s.getMods()) {
                 Map<String, Object> record = new HashMap<>();
@@ -219,7 +222,8 @@ public class SpannerChangeStreamsToPubSubIT extends TemplateTestBase {
             .addParameter("pubsubTopic", outputTopic.getTopic())
             .addParameter("outputDataFormat", "AVRO")
             .addParameter("rpcPriority", "HIGH")
-            .addParameter("includeSpannerSource", "true");
+            .addParameter("includeSpannerSource", "true")
+            .addParameter("outputMessageMetadata", "us-central1");
 
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
@@ -253,6 +257,7 @@ public class SpannerChangeStreamsToPubSubIT extends TemplateTestBase {
                     avroRecord.get("spannerDatabaseId"), spannerResourceManager.getDatabaseId());
                 assertEquals(
                     avroRecord.get("spannerInstanceId"), spannerResourceManager.getInstanceId());
+                assertEquals(avroRecord.get("outputMessageMetadata"), "us-central1");
               } catch (IOException e) {
                 throw new RuntimeException(
                     "Error reading " + outputTopic.toString() + " as AVRO.", e);

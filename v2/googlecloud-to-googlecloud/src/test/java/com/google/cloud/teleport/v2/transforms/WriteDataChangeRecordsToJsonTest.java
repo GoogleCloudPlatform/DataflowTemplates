@@ -105,6 +105,26 @@ public class WriteDataChangeRecordsToJsonTest {
     testPipeline.run();
   }
 
+  @Test
+  public void testOutputMessageMetadataIsPopulated() {
+    DataChangeRecordToJsonTextFn converter =
+        new DataChangeRecordToJsonTextFn.Builder().setOutputMessageMetadata("test-db").build();
+    // First run the transform in a separate pipeline.
+    final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
+    Pipeline p = Pipeline.create(options);
+    PCollection<String> dataChangeRecords =
+        p.apply("CreateInput", Create.of(dataChangeRecord))
+            .apply("WriteToPubSubInJson", MapElements.via(converter));
+    p.run();
+
+    String dataChangeRecordJsonStr = converter.apply(dataChangeRecord);
+    assertThat(dataChangeRecordJsonStr, containsString("\"outputMessageMetadata\":\"test-db\""));
+
+    PAssert.that(dataChangeRecords).containsInAnyOrder(dataChangeRecordJsonStr);
+
+    testPipeline.run();
+  }
+
   private DataChangeRecord createTestDataChangeRecord() {
     return new DataChangeRecord(
         "partitionToken",

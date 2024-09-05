@@ -71,6 +71,9 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
   @Nullable
   protected abstract String spannerInstanceId();
 
+  @Nullable
+  protected abstract String outputMessageMetadata();
+
   @Override
   public PCollection<byte[]> expand(PCollection<DataChangeRecord> records) {
     PCollection<byte[]> encodedRecords = null;
@@ -82,7 +85,9 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
       case "AVRO":
         AvroCoder<com.google.cloud.teleport.v2.DataChangeRecord> coder =
             AvroCoder.of(com.google.cloud.teleport.v2.DataChangeRecord.class);
-        DataChangeRecordToAvroFn.Builder avroBuilder = new DataChangeRecordToAvroFn.Builder();
+        DataChangeRecordToAvroFn.Builder avroBuilder =
+            new DataChangeRecordToAvroFn.Builder()
+                .setOutputMessageMetadata(outputMessageMetadata());
         if (includeSpannerSource()) {
           avroBuilder
               .setSpannerDatabaseId(spannerDatabaseId())
@@ -116,7 +121,8 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
         break;
       case "JSON":
         DataChangeRecordToJsonTextFn.Builder jsonBuilder =
-            new DataChangeRecordToJsonTextFn.Builder();
+            new DataChangeRecordToJsonTextFn.Builder()
+                .setOutputMessageMetadata(outputMessageMetadata());
         if (includeSpannerSource()) {
           jsonBuilder
               .setSpannerDatabaseId(spannerDatabaseId())
@@ -207,6 +213,8 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
     public abstract WriteToPubSubBuilder setSpannerDatabaseId(String value);
 
     public abstract WriteToPubSubBuilder setSpannerInstanceId(String value);
+
+    public abstract WriteToPubSubBuilder setOutputMessageMetadata(String value);
 
     abstract FileFormatFactorySpannerChangeStreamsToPubSub autoBuild();
 

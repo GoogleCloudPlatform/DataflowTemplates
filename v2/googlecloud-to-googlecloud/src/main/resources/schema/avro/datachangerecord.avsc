@@ -85,6 +85,7 @@
         ]
         }],"default":null},
         {"name": "spannerDatabaseId", "type": ["null", "string"], "default": null },
-        {"name": "spannerInstanceId", "type": ["null", "string"], "default": null }
+        {"name": "spannerInstanceId", "type": ["null", "string"], "default": null },
+        {"name": "outputMessageMetadata", "type": ["null", "string"], "default": null }
     ]
     }
