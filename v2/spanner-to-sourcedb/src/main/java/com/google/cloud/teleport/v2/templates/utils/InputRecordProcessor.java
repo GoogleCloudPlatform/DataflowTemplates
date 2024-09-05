@@ -38,7 +38,7 @@ public class InputRecordProcessor {
       MySqlDao dao,
       String shardId,
       String sourceDbTimezoneOffset)
-      throws java.sql.SQLException {
+      throws java.sql.SQLException, ConnectionException {
 
     try {
 

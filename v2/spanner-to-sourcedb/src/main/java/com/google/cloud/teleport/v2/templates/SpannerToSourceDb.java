@@ -48,6 +48,7 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType;
@@ -490,7 +491,7 @@ public class SpannerToSourceDb {
     } else {
       mergedRecords = dlqRecords;
     }
-
+    DataflowPipelineDebugOptions debugOptions = options.as(DataflowPipelineDebugOptions.class);
     SourceWriterTransform.Result sourceWriterOutput =
         mergedRecords
             .apply(
@@ -524,7 +525,10 @@ public class SpannerToSourceDb {
                     options.getSourceDbTimezoneOffset(),
                     ddl,
                     options.getShadowTablePrefix(),
-                    options.getSkipDirectoryName()));
+                    options.getSkipDirectoryName(),
+                    debugOptions.getNumberOfWorkerHarnessThreads() > 0
+                        ? debugOptions.getNumberOfWorkerHarnessThreads()
+                        : Constants.DEFAULT_WORKER_HARNESS_THREAD_COUNT));
 
     PCollection<FailsafeElement<String, String>> dlqPermErrorRecords =
         reconsumedElements
@@ -535,6 +539,7 @@ public class SpannerToSourceDb {
         sourceWriterOutput
             .permanentErrors()
             .setCoder(StringUtf8Coder.of())
+            .apply("Reshuffle3", Reshuffle.viaRandomKey())
             .apply(
                 "Convert permanent errors from source writer to DLQ format",
                 ParDo.of(new ConvertChangeStreamErrorRecordToFailsafeElementFn()))
@@ -564,6 +569,7 @@ public class SpannerToSourceDb {
         sourceWriterOutput
             .retryableErrors()
             .setCoder(StringUtf8Coder.of())
+            .apply("Reshuffle4", Reshuffle.viaRandomKey())
             .apply(
                 "Convert retryable errors from source writer to DLQ format",
                 ParDo.of(new ConvertChangeStreamErrorRecordToFailsafeElementFn()))
@@ -586,6 +592,7 @@ public class SpannerToSourceDb {
         sourceWriterOutput
             .skippedSourceWrites()
             .setCoder(StringUtf8Coder.of())
+            .apply("Reshuffle5", Reshuffle.viaRandomKey())
             .apply(
                 "Convert skipped records from source writer to DLQ format",
                 ParDo.of(new ConvertChangeStreamErrorRecordToFailsafeElementFn()))

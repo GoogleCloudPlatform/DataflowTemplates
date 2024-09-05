@@ -50,6 +50,7 @@ public class SourceWriterTransform
   private final Ddl ddl;
   private final String shadowTablePrefix;
   private final String skipDirName;
+  private final int maxThreadPerDataflowWorker;
 
   public SourceWriterTransform(
       List<Shard> shards,
@@ -58,7 +59,8 @@ public class SourceWriterTransform
       String sourceDbTimezoneOffset,
       Ddl ddl,
       String shadowTablePrefix,
-      String skipDirName) {
+      String skipDirName,
+      int maxThreadPerDataflowWorker) {
 
     this.schema = schema;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
@@ -67,6 +69,7 @@ public class SourceWriterTransform
     this.ddl = ddl;
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
+    this.maxThreadPerDataflowWorker = maxThreadPerDataflowWorker;
   }
 
   @Override
@@ -83,7 +86,8 @@ public class SourceWriterTransform
                         this.sourceDbTimezoneOffset,
                         this.ddl,
                         this.shadowTablePrefix,
-                        this.skipDirName))
+                        this.skipDirName,
+                        this.maxThreadPerDataflowWorker))
                 .withOutputTags(
                     Constants.SUCCESS_TAG,
                     TupleTagList.of(Constants.PERMANENT_ERROR_TAG)
