@@ -149,9 +149,10 @@ public abstract class ChangeEventTransformerDoFn
         CustomTransformationImplFetcher.getCustomTransformationLogicImpl(customTransformation());
     changeEventSessionConvertor =
         new ChangeEventSessionConvertor(
-            schema(), schemaOverridesParser(), transformationContext(),
-            shardingContext(),
-            sourceType(),
+            schema(),
+            schemaOverridesParser(),
+            transformationContext(),
+           shardingContext(), sourceType(),
             roundJsonDecimals());
     spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig());
   }
@@ -167,13 +168,13 @@ public abstract class ChangeEventTransformerDoFn
       Map<String, Object> sourceRecord =
           ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
 
-      //TODO: Transformation via session file should be marked deprecated and removed.
+      // TODO: Transformation via session file should be marked deprecated and removed.
       if (!schema().isEmpty()) {
         schema().verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
         changeEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent);
       }
 
-      //Perform mapping as per overrides
+      // Perform mapping as per overrides
       if (schemaOverridesParser() != null) {
         changeEvent = changeEventSessionConvertor.transformChangeEventViaOverrides(changeEvent);
       }

@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -7,15 +22,11 @@ import java.util.Map;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
-/**
- * Encodes the user specified schema overrides for retrieval during source to spanner mapping.
- */
+/** Encodes the user specified schema overrides for retrieval during source to spanner mapping. */
 public class SchemaStringOverridesParser implements ISchemaOverridesParser, Serializable {
 
-  @VisibleForTesting
-  final Map<String, String> tableNameOverrides;
-  @VisibleForTesting
-  final Map<String, Pair<String, String>> columnNameOverrides;
+  @VisibleForTesting final Map<String, String> tableNameOverrides;
+  @VisibleForTesting final Map<String, Pair<String, String>> columnNameOverrides;
 
   public SchemaStringOverridesParser(Map<String, String> userOptionOverrides) {
     tableNameOverrides = new HashMap<>();
@@ -50,8 +61,8 @@ public class SchemaStringOverridesParser implements ISchemaOverridesParser, Seri
    * @return A pair of spannerTableName and spannerColumnName
    */
   @Override
-  public Pair<String, String> getColumnOverrideOrDefault(String sourceTableName,
-      String sourceColumnName) {
+  public Pair<String, String> getColumnOverrideOrDefault(
+      String sourceTableName, String sourceColumnName) {
     return columnNameOverrides.getOrDefault(
         String.format("%s.%s", sourceTableName, sourceColumnName),
         new ImmutablePair<>(sourceTableName, sourceColumnName));
@@ -78,9 +89,10 @@ public class SchemaStringOverridesParser implements ISchemaOverridesParser, Seri
             String destinationTable = tables[1].trim();
             tableNameOverrides.put(sourceTable, destinationTable);
           } else {
-            throw new IllegalArgumentException(String.format(
-                "Malformed pair encountered: %s, please fix the tableOverrides and rerun the job.",
-                pair));
+            throw new IllegalArgumentException(
+                String.format(
+                    "Malformed pair encountered: %s, please fix the tableOverrides and rerun the job.",
+                    pair));
           }
         }
       }
@@ -111,14 +123,16 @@ public class SchemaStringOverridesParser implements ISchemaOverridesParser, Seri
                   String.format("%s.%s", sourceTableColumn[0], sourceTableColumn[1]),
                   new ImmutablePair<>(destTableColumn[0], destTableColumn[1]));
             } else {
-              throw new IllegalArgumentException(String.format(
-                  "Malformed pair encountered: %s, please fix the columnOverrides and rerun the job.",
-                  pair));
+              throw new IllegalArgumentException(
+                  String.format(
+                      "Malformed pair encountered: %s, please fix the columnOverrides and rerun the job.",
+                      pair));
             }
           } else {
-            throw new IllegalArgumentException(String.format(
-                "Malformed pair encountered: %s, please fix the columnOverrides and rerun the job.",
-                pair));
+            throw new IllegalArgumentException(
+                String.format(
+                    "Malformed pair encountered: %s, please fix the columnOverrides and rerun the job.",
+                    pair));
           }
         }
       }
@@ -126,27 +140,33 @@ public class SchemaStringOverridesParser implements ISchemaOverridesParser, Seri
   }
 
   private void validateMapping() {
-    columnNameOverrides.keySet().forEach(sourceKey -> {
-      String[] sourceTableColumn = sourceKey.split("\\.");
-      String spTableFromColumn = columnNameOverrides.get(sourceKey).getLeft();
-      //in columns overrides, table names should not change between source and spanner.
-      if (!sourceTableColumn[0].equals(spTableFromColumn)) {
-        throw new IllegalArgumentException(String.format(
-            "tableNames have been changed between source and spanner pairs, columnOverrides should"
-                + "only be used to specify column name overrides, and the same source table name"
-                + "should be used to form the columnOverride pair. Please use tableOverrides to"
-                + "specify table name overrides."
-                + "The sourceTable is %s while the spannerTable is %s",
-            sourceTableColumn[0], spTableFromColumn));
-      }
-    });
+    columnNameOverrides
+        .keySet()
+        .forEach(
+            sourceKey -> {
+              String[] sourceTableColumn = sourceKey.split("\\.");
+              String spTableFromColumn = columnNameOverrides.get(sourceKey).getLeft();
+              // in columns overrides, table names should not change between source and spanner.
+              if (!sourceTableColumn[0].equals(spTableFromColumn)) {
+                throw new IllegalArgumentException(
+                    String.format(
+                        "tableNames have been changed between source and spanner pairs, columnOverrides should"
+                            + "only be used to specify column name overrides, and the same source table name"
+                            + "should be used to form the columnOverride pair. Please use tableOverrides to"
+                            + "specify table name overrides."
+                            + "The sourceTable is %s while the spannerTable is %s",
+                        sourceTableColumn[0], spTableFromColumn));
+              }
+            });
   }
 
   @Override
   public String toString() {
-    return "SchemaOverridesParser{" +
-        "tableNameOverrides=" + tableNameOverrides +
-        ", columnNameOverrides=" + columnNameOverrides +
-        '}';
+    return "SchemaOverridesParser{"
+        + "tableNameOverrides="
+        + tableNameOverrides
+        + ", columnNameOverrides="
+        + columnNameOverrides
+        + '}';
   }
 }

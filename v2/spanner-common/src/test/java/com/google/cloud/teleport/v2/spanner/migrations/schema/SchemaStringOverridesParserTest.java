@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import static junit.framework.TestCase.assertEquals;
@@ -14,7 +29,8 @@ public class SchemaStringOverridesParserTest {
   @Test
   public void testGetTableOverride() {
     Map<String, String> userOptionsOverrides = new HashMap<>();
-    userOptionsOverrides.put("tableOverrides", "[{Singers, Vocalists}, {Albums, Records},{Hello, World}]");
+    userOptionsOverrides.put(
+        "tableOverrides", "[{Singers, Vocalists}, {Albums, Records},{Hello, World}]");
     schemaStringOverridesParser = new SchemaStringOverridesParser(userOptionsOverrides);
     assertEquals(3, schemaStringOverridesParser.tableNameOverrides.keySet().size());
     assertEquals("Vocalists", schemaStringOverridesParser.getTableOverrideOrDefault("Singers"));
@@ -25,10 +41,14 @@ public class SchemaStringOverridesParserTest {
   @Test
   public void testGetColumnOverride() {
     Map<String, String> userOptionsOverrides = new HashMap<>();
-    userOptionsOverrides.put("columnOverrides", "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]");
+    userOptionsOverrides.put(
+        "columnOverrides",
+        "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]");
     schemaStringOverridesParser = new SchemaStringOverridesParser(userOptionsOverrides);
-    Pair<String, String> result1 = schemaStringOverridesParser.getColumnOverrideOrDefault("Singers", "SingerName");
-    Pair<String, String> result2 = schemaStringOverridesParser.getColumnOverrideOrDefault("Albums", "AlbumName");
+    Pair<String, String> result1 =
+        schemaStringOverridesParser.getColumnOverrideOrDefault("Singers", "SingerName");
+    Pair<String, String> result2 =
+        schemaStringOverridesParser.getColumnOverrideOrDefault("Albums", "AlbumName");
     assertEquals(2, schemaStringOverridesParser.columnNameOverrides.keySet().size());
     assertEquals("TalentName", result1.getRight());
     assertEquals("RecordName", result2.getRight());
@@ -37,13 +57,17 @@ public class SchemaStringOverridesParserTest {
   @Test
   public void testGetTableAndColumnOverride() {
     Map<String, String> userOptionsOverrides = new HashMap<>();
-    userOptionsOverrides.put("tableOverrides", "[{Singers, Vocalists}, {Albums, Records},{Hello, World}]");
-    userOptionsOverrides.put("columnOverrides", "[{Singers.SingerName, Vocalists.TalentName}, {Albums.AlbumName, Records.RecordName}]");
+    userOptionsOverrides.put(
+        "tableOverrides", "[{Singers, Vocalists}, {Albums, Records},{Hello, World}]");
+    userOptionsOverrides.put(
+        "columnOverrides",
+        "[{Singers.SingerName, Vocalists.TalentName}, {Albums.AlbumName, Records.RecordName}]");
     schemaStringOverridesParser = new SchemaStringOverridesParser(userOptionsOverrides);
     String sourceTableName = "Singers";
     String sourceColumnName = "SingerName";
     String tableResult = schemaStringOverridesParser.getTableOverrideOrDefault(sourceTableName);
-    Pair<String, String> columnResult = schemaStringOverridesParser.getColumnOverrideOrDefault(sourceTableName, sourceColumnName);
+    Pair<String, String> columnResult =
+        schemaStringOverridesParser.getColumnOverrideOrDefault(sourceTableName, sourceColumnName);
     assertEquals(3, schemaStringOverridesParser.tableNameOverrides.keySet().size());
     assertEquals("Vocalists", tableResult);
     assertEquals(2, schemaStringOverridesParser.columnNameOverrides.keySet().size());
@@ -64,11 +88,14 @@ public class SchemaStringOverridesParserTest {
   @Test
   public void testGetDefaultColumnOverrides() {
     Map<String, String> userOptionsOverrides = new HashMap<>();
-    userOptionsOverrides.put("columnOverrides", "[{Singers.SingerName, Vocalists.TalentName}, {Albums.AlbumName, Records.RecordName}]");
+    userOptionsOverrides.put(
+        "columnOverrides",
+        "[{Singers.SingerName, Vocalists.TalentName}, {Albums.AlbumName, Records.RecordName}]");
     schemaStringOverridesParser = new SchemaStringOverridesParser(userOptionsOverrides);
     String sourceTableName = "Labels";
     String sourceColumnName = "Owners";
-    Pair<String, String> result = schemaStringOverridesParser.getColumnOverrideOrDefault(sourceTableName, sourceColumnName);
+    Pair<String, String> result =
+        schemaStringOverridesParser.getColumnOverrideOrDefault(sourceTableName, sourceColumnName);
     assertEquals(2, schemaStringOverridesParser.columnNameOverrides.keySet().size());
     assertEquals("Labels", result.getLeft());
     assertEquals("Owners", result.getRight());
@@ -84,15 +111,19 @@ public class SchemaStringOverridesParserTest {
   @Test(expected = IllegalArgumentException.class)
   public void testMalformedGetColumnOverrides() {
     Map<String, String> userOptionsOverrides = new HashMap<>();
-    userOptionsOverrides.put("columnOverrides", "[{Singers, Vocalists}, {Albums.AlbumName, Records.RecordName}]");
+    userOptionsOverrides.put(
+        "columnOverrides", "[{Singers, Vocalists}, {Albums.AlbumName, Records.RecordName}]");
     schemaStringOverridesParser = new SchemaStringOverridesParser(userOptionsOverrides);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testConsistentTableAndColumnOverrides() {
     Map<String, String> userOptionsOverrides = new HashMap<>();
-    userOptionsOverrides.put("tableOverrides", "[{Singers, Vocalists}, {Albums, Records},{Hello, World}]");
-    userOptionsOverrides.put("columnOverrides", "[{Singers.SingerName, Pianists.TalentName}, {Albums.AlbumName, Records.RecordName}]");
+    userOptionsOverrides.put(
+        "tableOverrides", "[{Singers, Vocalists}, {Albums, Records},{Hello, World}]");
+    userOptionsOverrides.put(
+        "columnOverrides",
+        "[{Singers.SingerName, Pianists.TalentName}, {Albums.AlbumName, Records.RecordName}]");
     schemaStringOverridesParser = new SchemaStringOverridesParser(userOptionsOverrides);
   }
 }

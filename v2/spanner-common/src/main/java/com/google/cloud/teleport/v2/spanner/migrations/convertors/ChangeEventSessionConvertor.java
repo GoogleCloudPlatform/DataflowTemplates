@@ -74,7 +74,8 @@ public class ChangeEventSessionConvertor {
 
   public ChangeEventSessionConvertor(
       Schema schema,
-      ISchemaOverridesParser schemaOverridesParser, TransformationContext transformationContext,
+      ISchemaOverridesParser schemaOverridesParser,
+      TransformationContext transformationContext,
       ShardingContext shardingContext,
       String sourceType,
       boolean roundJsonDecimals) {
@@ -216,28 +217,32 @@ public class ChangeEventSessionConvertor {
     return changeEvent;
   }
 
-
   public JsonNode transformChangeEventViaOverrides(JsonNode changeEvent)
       throws InvalidChangeEventException {
     String sourceTableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
     String spTableName = schemaOverridesParser.getTableOverrideOrDefault(sourceTableName);
-    //Replace the source table name with the overridden spanner table name if the override
-    //is specified at the table level.
+    // Replace the source table name with the overridden spanner table name if the override
+    // is specified at the table level.
     if (!sourceTableName.equals(spTableName)) {
       ((ObjectNode) changeEvent).put(EVENT_TABLE_NAME_KEY, spTableName);
     }
-    //Get the list of sourceColumnNames from the event
+    // Get the list of sourceColumnNames from the event
     List<String> sourceFieldNames = ChangeEventUtils.getEventColumnKeys(changeEvent);
-    sourceFieldNames.forEach( sourceFieldName -> {
-      Pair<String, String> spannerTableColumn = schemaOverridesParser.getColumnOverrideOrDefault(sourceTableName, sourceFieldName);
-      // a valid column override for the table in this changeEvent exist
-      //1.  the table name of the source should match the one specified in the override
-      //2. the column name override should be a different value than the current source field name.
-      if (sourceTableName.equals(spannerTableColumn.getLeft()) && !sourceFieldName.equals(spannerTableColumn.getRight())) {
-        ((ObjectNode) changeEvent).set(spannerTableColumn.getRight(), changeEvent.get(sourceFieldName));
-        ((ObjectNode) changeEvent).remove(sourceFieldName);
-      }
-    });
+    sourceFieldNames.forEach(
+        sourceFieldName -> {
+          Pair<String, String> spannerTableColumn =
+              schemaOverridesParser.getColumnOverrideOrDefault(sourceTableName, sourceFieldName);
+          // a valid column override for the table in this changeEvent exist
+          // 1.  the table name of the source should match the one specified in the override
+          // 2. the column name override should be a different value than the current source field
+          // name.
+          if (sourceTableName.equals(spannerTableColumn.getLeft())
+              && !sourceFieldName.equals(spannerTableColumn.getRight())) {
+            ((ObjectNode) changeEvent)
+                .set(spannerTableColumn.getRight(), changeEvent.get(sourceFieldName));
+            ((ObjectNode) changeEvent).remove(sourceFieldName);
+          }
+        });
     return changeEvent;
   }
 

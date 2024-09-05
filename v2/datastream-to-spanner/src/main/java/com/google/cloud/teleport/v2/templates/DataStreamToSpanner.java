@@ -509,7 +509,8 @@ public class DataStreamToSpanner {
         order = 31,
         optional = true,
         description = "Column name overrides from source to spanner",
-        example = "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
+        example =
+            "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
         helpText =
             "These are the column name overrides from source to spanner. They are written in the"
                 + "following format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]"
@@ -524,7 +525,8 @@ public class DataStreamToSpanner {
         order = 32,
         optional = true,
         description = "File based overrides from source to spanner",
-        helpText = "A file which specifies the table and the column name overrides from source to spanner.")
+        helpText =
+            "A file which specifies the table and the column name overrides from source to spanner.")
     @Default.String("")
     String getSchemaOverridesFilePath();
 
@@ -860,11 +862,13 @@ public class DataStreamToSpanner {
   }
 
   private static ISchemaOverridesParser configureSchemaOverrides(Options options) {
-    //incorrect configuration
-    if (!options.getSchemaOverridesFilePath().isEmpty() && (!options.getTableOverrides().isEmpty() || !options.getColumnOverrides().isEmpty())) {
-      throw new IllegalArgumentException("Only one of file based or string based overrides must be configured! Please correct the configuration and re-run the job");
+    // incorrect configuration
+    if (!options.getSchemaOverridesFilePath().isEmpty()
+        && (!options.getTableOverrides().isEmpty() || !options.getColumnOverrides().isEmpty())) {
+      throw new IllegalArgumentException(
+          "Only one of file based or string based overrides must be configured! Please correct the configuration and re-run the job");
     }
-    //string based overrides
+    // string based overrides
     if (!options.getTableOverrides().isEmpty() || !options.getColumnOverrides().isEmpty()) {
       Map<String, String> userOptionsOverrides = new HashMap<>();
       if (!options.getTableOverrides().isEmpty()) {
@@ -875,11 +879,11 @@ public class DataStreamToSpanner {
       }
       return new SchemaStringOverridesParser(userOptionsOverrides);
     }
-    //file based overrides
+    // file based overrides
     if (!options.getSchemaOverridesFilePath().isEmpty()) {
       return new SchemaFileOverridesParser(options.getSchemaOverridesFilePath());
     }
-    //no overrides
+    // no overrides
     return null;
   }
 }

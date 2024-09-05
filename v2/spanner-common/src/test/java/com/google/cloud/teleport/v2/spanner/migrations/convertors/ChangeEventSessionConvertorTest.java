@@ -473,10 +473,12 @@ public class ChangeEventSessionConvertorTest {
   }
 
   @Test
-  public void transformChangeEventViaStringOverridesForTablesTest() throws InvalidChangeEventException {
+  public void transformChangeEventViaStringOverridesForTablesTest()
+      throws InvalidChangeEventException {
     Map<String, String> userOptionsOverrides = new HashMap<>();
     userOptionsOverrides.put("tableOverrides", "[{Singers, Vocalists}, {Albums, Records}]");
-    SchemaStringOverridesParser schemaStringOverridesParser = new SchemaStringOverridesParser(userOptionsOverrides);
+    SchemaStringOverridesParser schemaStringOverridesParser =
+        new SchemaStringOverridesParser(userOptionsOverrides);
     ChangeEventSessionConvertor changeEventSessionConvertor =
         new ChangeEventSessionConvertor(null, schemaStringOverridesParser, null, null, "mysql", false);
 
@@ -497,10 +499,14 @@ public class ChangeEventSessionConvertorTest {
   }
 
   @Test
-  public void transformChangeEventViaStringOverridesForColumnsTest() throws InvalidChangeEventException {
+  public void transformChangeEventViaStringOverridesForColumnsTest()
+      throws InvalidChangeEventException {
     Map<String, String> userOptionsOverrides = new HashMap<>();
-    userOptionsOverrides.put("columnOverrides", "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]");
-    SchemaStringOverridesParser schemaStringOverridesParser = new SchemaStringOverridesParser(userOptionsOverrides);
+    userOptionsOverrides.put(
+        "columnOverrides",
+        "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]");
+    SchemaStringOverridesParser schemaStringOverridesParser =
+        new SchemaStringOverridesParser(userOptionsOverrides);
     ChangeEventSessionConvertor changeEventSessionConvertor =
         new ChangeEventSessionConvertor(null, schemaStringOverridesParser, null, null, "mysql", false);
 
@@ -521,11 +527,15 @@ public class ChangeEventSessionConvertorTest {
   }
 
   @Test
-  public void transformChangeEventViaStringOverridesForTablesAndColumnsTest() throws InvalidChangeEventException {
+  public void transformChangeEventViaStringOverridesForTablesAndColumnsTest()
+      throws InvalidChangeEventException {
     Map<String, String> userOptionsOverrides = new HashMap<>();
     userOptionsOverrides.put("tableOverrides", "[{Singers, Vocalists}, {Albums, Records}]");
-    userOptionsOverrides.put("columnOverrides", "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]");
-    SchemaStringOverridesParser schemaStringOverridesParser = new SchemaStringOverridesParser(userOptionsOverrides);
+    userOptionsOverrides.put(
+        "columnOverrides",
+        "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]");
+    SchemaStringOverridesParser schemaStringOverridesParser =
+        new SchemaStringOverridesParser(userOptionsOverrides);
     ChangeEventSessionConvertor changeEventSessionConvertor =
         new ChangeEventSessionConvertor(null, schemaStringOverridesParser, null, null, "mysql", false);
 
@@ -548,9 +558,12 @@ public class ChangeEventSessionConvertorTest {
   }
 
   @Test
-  public void transformChangeEventViaFileOverridesForTablesTest() throws InvalidChangeEventException {
-    Path schemaOverridesFile = Paths.get(Resources.getResource("schema-overrides-tables.json").getPath());
-    SchemaFileOverridesParser schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFile.toString());
+  public void transformChangeEventViaFileOverridesForTablesTest()
+      throws InvalidChangeEventException {
+    Path schemaOverridesFile =
+        Paths.get(Resources.getResource("schema-overrides-tables.json").getPath());
+    SchemaFileOverridesParser schemaFileOverridesParser =
+        new SchemaFileOverridesParser(schemaOverridesFile.toString());
     ChangeEventSessionConvertor changeEventSessionConvertor =
         new ChangeEventSessionConvertor(null, schemaFileOverridesParser, null, null, "mysql", false);
 
@@ -571,9 +584,12 @@ public class ChangeEventSessionConvertorTest {
   }
 
   @Test
-  public void transformChangeEventViaFileOverridesForColumnsTest() throws InvalidChangeEventException {
-    Path schemaOverridesFile = Paths.get(Resources.getResource("schema-overrides-columns.json").getPath());
-    SchemaFileOverridesParser schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFile.toString());
+  public void transformChangeEventViaFileOverridesForColumnsTest()
+      throws InvalidChangeEventException {
+    Path schemaOverridesFile =
+        Paths.get(Resources.getResource("schema-overrides-columns.json").getPath());
+    SchemaFileOverridesParser schemaFileOverridesParser =
+        new SchemaFileOverridesParser(schemaOverridesFile.toString());
     ChangeEventSessionConvertor changeEventSessionConvertor =
         new ChangeEventSessionConvertor(null, schemaFileOverridesParser, null, null, "mysql", false);
 
@@ -594,9 +610,12 @@ public class ChangeEventSessionConvertorTest {
   }
 
   @Test
-  public void transformChangeEventViaFileOverridesForTablesAndColumnsTest() throws InvalidChangeEventException {
-    Path schemaOverridesFile = Paths.get(Resources.getResource("schema-overrides-cols-tables.json").getPath());
-    SchemaFileOverridesParser schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFile.toString());
+  public void transformChangeEventViaFileOverridesForTablesAndColumnsTest()
+      throws InvalidChangeEventException {
+    Path schemaOverridesFile =
+        Paths.get(Resources.getResource("schema-overrides-cols-tables.json").getPath());
+    SchemaFileOverridesParser schemaFileOverridesParser =
+        new SchemaFileOverridesParser(schemaOverridesFile.toString());
     ChangeEventSessionConvertor changeEventSessionConvertor =
         new ChangeEventSessionConvertor(null, schemaFileOverridesParser, null, null, "mysql", false);
 

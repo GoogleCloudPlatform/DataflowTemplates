@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import static junit.framework.TestCase.assertEquals;
@@ -14,7 +29,8 @@ public class SchemaFileOverridesParserTest {
 
   @Test
   public void testGetTableOverride() {
-    Path schemaOverridesFile = Paths.get(Resources.getResource("schema-overrides-tables.json").getPath());
+    Path schemaOverridesFile =
+        Paths.get(Resources.getResource("schema-overrides-tables.json").getPath());
     schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFile.toString());
     assertEquals(3, schemaFileOverridesParser.schemaFileOverride.getRenamedTables().size());
     assertEquals("Vocalists", schemaFileOverridesParser.getTableOverrideOrDefault("Singers"));
@@ -24,10 +40,13 @@ public class SchemaFileOverridesParserTest {
 
   @Test
   public void testGetColumnOverride() {
-    Path schemaOverridesFile = Paths.get(Resources.getResource("schema-overrides-columns.json").getPath());
+    Path schemaOverridesFile =
+        Paths.get(Resources.getResource("schema-overrides-columns.json").getPath());
     schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFile.toString());
-    Pair<String, String> result1 =  schemaFileOverridesParser.getColumnOverrideOrDefault("Singers", "SingerName");
-    Pair<String, String> result2 =  schemaFileOverridesParser.getColumnOverrideOrDefault("Albums", "AlbumName");
+    Pair<String, String> result1 =
+        schemaFileOverridesParser.getColumnOverrideOrDefault("Singers", "SingerName");
+    Pair<String, String> result2 =
+        schemaFileOverridesParser.getColumnOverrideOrDefault("Albums", "AlbumName");
     assertEquals(2, schemaFileOverridesParser.schemaFileOverride.getRenamedColumns().size());
     assertEquals("TalentName", result1.getRight());
     assertEquals("RecordName", result2.getRight());
@@ -35,10 +54,13 @@ public class SchemaFileOverridesParserTest {
 
   @Test
   public void testGetTableAndColumnOverride() {
-    Path schemaOverridesFile = Paths.get(Resources.getResource("schema-overrides-cols-tables.json").getPath());
+    Path schemaOverridesFile =
+        Paths.get(Resources.getResource("schema-overrides-cols-tables.json").getPath());
     schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFile.toString());
-    Pair<String, String> result1 =  schemaFileOverridesParser.getColumnOverrideOrDefault("Singers", "SingerName");
-    Pair<String, String> result2 =  schemaFileOverridesParser.getColumnOverrideOrDefault("Albums", "AlbumName");
+    Pair<String, String> result1 =
+        schemaFileOverridesParser.getColumnOverrideOrDefault("Singers", "SingerName");
+    Pair<String, String> result2 =
+        schemaFileOverridesParser.getColumnOverrideOrDefault("Albums", "AlbumName");
     assertEquals(3, schemaFileOverridesParser.schemaFileOverride.getRenamedTables().size());
     assertEquals("Vocalists", schemaFileOverridesParser.getTableOverrideOrDefault("Singers"));
     assertEquals("Records", schemaFileOverridesParser.getTableOverrideOrDefault("Albums"));
