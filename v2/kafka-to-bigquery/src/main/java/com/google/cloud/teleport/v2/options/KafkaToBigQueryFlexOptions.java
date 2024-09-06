@@ -231,6 +231,17 @@ public interface KafkaToBigQueryFlexOptions
   @Default.Boolean(false)
   @Override
   Boolean getUseStorageWriteApiAtLeastOnce();
-
   void setUseStorageWriteApiAtLeastOnce(Boolean value);
+
+  @TemplateParameter.Boolean(
+          order = 14,
+          groupName = "Destination",
+          optional = true,
+          description = "Ignore unknown values when writing to BigQuery",
+          helpText =
+                  "When true, unrecognized fields in the Kafka message are ignored when writing to BigQuery. When false, an error is thrown."
+          )
+  @Default.Boolean(false)
+  Boolean getIgnoreUnknownValues();
+  void setIgnoreUnknownValues(Boolean value);
 }

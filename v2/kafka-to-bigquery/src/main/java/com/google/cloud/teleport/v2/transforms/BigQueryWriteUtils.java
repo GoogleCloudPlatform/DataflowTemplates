@@ -69,6 +69,9 @@ public class BigQueryWriteUtils {
     private Integer storageWriteApiTriggeringFrequencySec;
 
     private Boolean useAutoSharding;
+    
+    private Boolean ignoreUnknownValues;
+    
     private Schema avroSchema;
 
     // Dead letter queue params
@@ -82,7 +85,8 @@ public class BigQueryWriteUtils {
         Integer numStorageWriteApiStreams,
         Integer storageWriteApiTriggeringFrequencySec,
         Boolean persistKafkaKey,
-        Boolean useAutoSharding) {
+        Boolean useAutoSharding,
+        Boolean ignoreUnknownValues) {
       this.avroSchema = avroSchema;
       this.outputTableSpec = outputTableSpec;
       this.writeDisposition = writeDisposition;
@@ -91,6 +95,7 @@ public class BigQueryWriteUtils {
       this.storageWriteApiTriggeringFrequencySec = storageWriteApiTriggeringFrequencySec;
       this.persistKafkaKey = persistKafkaKey;
       this.useAutoSharding = useAutoSharding;
+      this.ignoreUnknownValues = ignoreUnknownValues;
       this.errorHandler = new ErrorHandler.DefaultErrorHandler<>();
     }
 
@@ -104,6 +109,7 @@ public class BigQueryWriteUtils {
         Integer storageWriteApiTriggeringFrequencySec,
         Boolean persistKafkaKey,
         Boolean useAutoSharding,
+        Boolean ignoreUnknownValues,
         ErrorHandler<BadRecord, ?> errorHandler) {
       this.avroSchema = avroSchema;
       this.outputTableSpec = outputTableSpec;
@@ -113,6 +119,7 @@ public class BigQueryWriteUtils {
       this.storageWriteApiTriggeringFrequencySec = storageWriteApiTriggeringFrequencySec;
       this.persistKafkaKey = persistKafkaKey;
       this.useAutoSharding = useAutoSharding;
+      this.ignoreUnknownValues = ignoreUnknownValues;
       this.errorHandler = errorHandler;
     }
 
@@ -124,7 +131,8 @@ public class BigQueryWriteUtils {
         Integer numStorageWriteApiStreams,
         Integer storageWriteApiTriggeringFrequencySec,
         Boolean persistKafkaKey,
-        Boolean useAutoSharding) {
+        Boolean useAutoSharding,
+        Boolean ignoreUnknownValues) {
       return new BigQueryWriteUtils.BigQueryWrite(
           avroSchema,
           outputTableSpec,
@@ -133,7 +141,8 @@ public class BigQueryWriteUtils {
           numStorageWriteApiStreams,
           storageWriteApiTriggeringFrequencySec,
           persistKafkaKey,
-          useAutoSharding);
+          useAutoSharding,
+          ignoreUnknownValues);
     }
 
     public static BigQueryWriteUtils.BigQueryWrite of(
@@ -145,6 +154,7 @@ public class BigQueryWriteUtils {
         Integer storageWriteApiTriggeringFrequencySec,
         Boolean persistKafkaKey,
         Boolean useAutoSharding,
+        Boolean ignoreUnknownValues,
         ErrorHandler<BadRecord, ?> errorHandler) {
       return new BigQueryWriteUtils.BigQueryWrite(
           avroSchema,
@@ -155,6 +165,7 @@ public class BigQueryWriteUtils {
           storageWriteApiTriggeringFrequencySec,
           persistKafkaKey,
           useAutoSharding,
+          ignoreUnknownValues,
           errorHandler);
     }
 
@@ -221,6 +232,10 @@ public class BigQueryWriteUtils {
         writeToBigQuery = writeToBigQuery.withAutoSharding();
       }
 
+      if (this.ignoreUnknownValues) {
+        writeToBigQuery = writeToBigQuery.ignoreUnknownValues();
+      }
+
       if (this.outputTableSpec != null) {
         writeToBigQuery = writeToBigQuery.to(this.outputTableSpec);
       }
@@ -264,6 +279,8 @@ public class BigQueryWriteUtils {
 
     private Boolean useAutoSharding;
 
+    private Boolean ignoreUnknownValues;
+
     private ErrorHandler<BadRecord, ?> errorHandler;
 
     public BigQueryDynamicWrite(
@@ -275,7 +292,8 @@ public class BigQueryWriteUtils {
         Integer numStorageWriteApiStreams,
         Integer storageWriteApiTriggeringFrequencySec,
         Boolean persistKafkaKey,
-        Boolean useAutoSharding) {
+        Boolean useAutoSharding,
+        Boolean ignoreUnknownValues) {
       this.outputProject = outputProject;
       this.outputDataset = outputDataset;
       this.outputTableNamePrefix = outputTableNamePrefix;
@@ -285,6 +303,7 @@ public class BigQueryWriteUtils {
       this.storageWriteApiTriggeringFrequencySec = storageWriteApiTriggeringFrequencySec;
       this.persistKafkaKey = persistKafkaKey;
       this.useAutoSharding = useAutoSharding;
+      this.ignoreUnknownValues = ignoreUnknownValues;
       this.errorHandler = new ErrorHandler.DefaultErrorHandler<>();
     }
 
@@ -298,6 +317,7 @@ public class BigQueryWriteUtils {
         Integer storageWriteApiTriggeringFrequencySec,
         Boolean persistKafkaKey,
         Boolean useAutoSharding,
+        Boolean ignoreUnknownValues,
         ErrorHandler<BadRecord, ?> errorHandler) {
       this.outputProject = outputProject;
       this.outputDataset = outputDataset;
@@ -308,6 +328,7 @@ public class BigQueryWriteUtils {
       this.storageWriteApiTriggeringFrequencySec = storageWriteApiTriggeringFrequencySec;
       this.persistKafkaKey = persistKafkaKey;
       this.useAutoSharding = useAutoSharding;
+      this.ignoreUnknownValues = ignoreUnknownValues;
       this.errorHandler = errorHandler;
     }
 
@@ -320,7 +341,8 @@ public class BigQueryWriteUtils {
         Integer numStorageWriteApiStreams,
         Integer storageWriteApiTriggeringFrequencySec,
         Boolean persistKafkaKey,
-        Boolean useAutoSharding) {
+        Boolean useAutoSharding,
+        Boolean ignoreUnknownValues) {
       return new BigQueryDynamicWrite(
           outputProject,
           outputDataset,
@@ -330,7 +352,8 @@ public class BigQueryWriteUtils {
           numStorageWriteApiStreams,
           storageWriteApiTriggeringFrequencySec,
           persistKafkaKey,
-          useAutoSharding);
+          useAutoSharding,
+          ignoreUnknownValues);
     }
 
     public static BigQueryDynamicWrite of(
@@ -343,6 +366,7 @@ public class BigQueryWriteUtils {
         Integer storageWriteApiTriggeringFrequencySec,
         Boolean persistKafkaKey,
         Boolean useAutoSharding,
+        Boolean ignoreUnknownValues,
         ErrorHandler<BadRecord, ?> errorHandler) {
       return new BigQueryDynamicWrite(
           outputProject,
@@ -354,6 +378,7 @@ public class BigQueryWriteUtils {
           storageWriteApiTriggeringFrequencySec,
           persistKafkaKey,
           useAutoSharding,
+          ignoreUnknownValues,
           errorHandler);
     }
 
@@ -387,6 +412,11 @@ public class BigQueryWriteUtils {
       if (this.useAutoSharding) {
         writeToBigQuery = writeToBigQuery.withAutoSharding();
       }
+
+      if (this.ignoreUnknownValues) {
+        writeToBigQuery = writeToBigQuery.ignoreUnknownValues();
+      }
+      
       writeResult =
           input
               .apply(

@@ -313,6 +313,7 @@ public class KafkaToBigQueryFlex {
               options.getStorageWriteApiTriggeringFrequencySec(),
               options.getPersistKafkaKey(),
               options.getUseAutoSharding(),
+              options.getIgnoreUnknownValues(),
               errorHandler);
     } else {
       bigQueryWrite =
@@ -324,7 +325,8 @@ public class KafkaToBigQueryFlex {
               options.getNumStorageWriteApiStreams(),
               options.getStorageWriteApiTriggeringFrequencySec(),
               options.getPersistKafkaKey(),
-              options.getUseAutoSharding());
+              options.getUseAutoSharding(),
+              options.getIgnoreUnknownValues());
     }
     writeResult =
         kafkaRecords
@@ -369,6 +371,7 @@ public class KafkaToBigQueryFlex {
               options.getStorageWriteApiTriggeringFrequencySec(),
               options.getPersistKafkaKey(),
               options.getUseAutoSharding(),
+              options.getIgnoreUnknownValues(),
               errorHandler);
     } else {
       bigQueryWrite =
@@ -380,7 +383,8 @@ public class KafkaToBigQueryFlex {
               options.getNumStorageWriteApiStreams(),
               options.getStorageWriteApiTriggeringFrequencySec(),
               options.getPersistKafkaKey(),
-              options.getUseAutoSharding());
+              options.getUseAutoSharding(),
+              options.getIgnoreUnknownValues());
     }
     writeResult =
         kafkaRecords
@@ -414,6 +418,7 @@ public class KafkaToBigQueryFlex {
               options.getStorageWriteApiTriggeringFrequencySec(),
               options.getPersistKafkaKey(),
               options.getUseAutoSharding(),
+              options.getIgnoreUnknownValues(),
               errorHandler);
     } else {
       bigQueryWrite =
@@ -426,7 +431,8 @@ public class KafkaToBigQueryFlex {
               options.getNumStorageWriteApiStreams(),
               options.getStorageWriteApiTriggeringFrequencySec(),
               options.getPersistKafkaKey(),
-              options.getUseAutoSharding());
+              options.getUseAutoSharding(),
+              options.getIgnoreUnknownValues());
     }
     writeResult =
         kafkaRecords

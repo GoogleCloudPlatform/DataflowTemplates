@@ -83,6 +83,7 @@ public class GCSUtilsTest {
             + "    }\n"
             + "  ]\n"
             + "}\n";
+    expectedContent = expectedContent.replaceAll("\n", System.lineSeparator());
     String actualContent = GCSUtils.getGcsFileAsString(AVRO_SCHEMA_FILE_PATH);
 
     assertEquals(expectedContent, actualContent);
