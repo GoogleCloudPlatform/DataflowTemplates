@@ -48,7 +48,7 @@ public class KafkaRecordToGenericRecordFailsafeElementFn
   private Schema schema;
   private final String topicName = "fake_topic";
   private String schemaRegistryConnectionUrl;
-  private Map<String, Object> schemaRegistrySslConfig;
+  private Map<String, Object> schemaRegistryAuthenticationConfig;
   private String messageFormat; // "AVRO_BINARY_ENCODING" or "AVRO_CONFLUENT_WIRE_FORMAT"
   private static final int DEFAULT_CACHE_CAPACITY = 1000;
   private BadRecordRouter badRecordRouter;
@@ -58,12 +58,12 @@ public class KafkaRecordToGenericRecordFailsafeElementFn
   // Constructors for different configurations
   public KafkaRecordToGenericRecordFailsafeElementFn(
       String schemaRegistryConnectionUrl,
-      Map<String, Object> schemaRegistrySslConfig,
+      Map<String, Object> schemaRegistryAuthenticationConfig,
       BadRecordRouter badRecordRouter,
       TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
           successGenericRecordTag) {
     this.schemaRegistryConnectionUrl = schemaRegistryConnectionUrl;
-    this.schemaRegistrySslConfig = schemaRegistrySslConfig;
+    this.schemaRegistryAuthenticationConfig = schemaRegistryAuthenticationConfig;
     this.badRecordRouter = badRecordRouter;
     this.successGenericRecordTag = successGenericRecordTag;
   }
@@ -89,7 +89,7 @@ public class KafkaRecordToGenericRecordFailsafeElementFn
           new CachedSchemaRegistryClient(
               this.schemaRegistryConnectionUrl,
               DEFAULT_CACHE_CAPACITY,
-              processor.apply(this.schemaRegistrySslConfig));
+              processor.apply(this.schemaRegistryAuthenticationConfig));
       this.kafkaDeserializer = new KafkaAvroDeserializer(this.schemaRegistryClient);
     } else if (schema != null && messageFormat.equals("AVRO_BINARY_ENCODING")) {
       this.binaryDeserializer = new BinaryAvroDeserializer(schema);

@@ -67,7 +67,8 @@ public abstract class WriteTransform
                   .setNumShards(options().getNumShards())
                   .setMessageFormat(options().getMessageFormat())
                   .setSchemaRegistryURL(options().getSchemaRegistryConnectionUrl())
-                  .setSchemaRegistrySslConfig(KafkaConfig.fromSchemaRegistryOptions(options()))
+                  .setSchemaRegistryAuthenticationConfig(
+                      KafkaConfig.fromSchemaRegistryOptions(options()))
                   .setConfluentSchemaPath(options().getConfluentAvroSchemaPath())
                   .setBinaryAvroSchemaPath(options().getBinaryAvroSchemaPath())
                   .setSchemaFormat(options().getSchemaFormat())

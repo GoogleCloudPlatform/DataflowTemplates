@@ -44,7 +44,7 @@ public class AvroDynamicTransform
         PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>> {
   private String schemaRegistryConnectionUrl;
 
-  private Map<String, Object> schemaRegistrySslConfig;
+  private Map<String, Object> schemaRegistryAuthenticationConfig;
 
   private ErrorHandler<BadRecord, ?> errorHandler;
   private BadRecordRouter badRecordRouter;
@@ -53,36 +53,37 @@ public class AvroDynamicTransform
 
   private AvroDynamicTransform(
       String schemaRegistryConnectionUrl,
-      Map<String, Object> schemaRegistrySslConfig,
+      Map<String, Object> schemaRegistryAuthenticationConfig,
       ErrorHandler<BadRecord, ?> errorHandler,
       BadRecordRouter badRecordRouter) {
     this.schemaRegistryConnectionUrl = schemaRegistryConnectionUrl;
-    this.schemaRegistrySslConfig = schemaRegistrySslConfig;
+    this.schemaRegistryAuthenticationConfig = schemaRegistryAuthenticationConfig;
     this.errorHandler = errorHandler;
     this.badRecordRouter = badRecordRouter;
   }
 
   private AvroDynamicTransform(
-      String schemaRegistryConnectionUrl, Map<String, Object> schemaRegistrySslConfig) {
+      String schemaRegistryConnectionUrl, Map<String, Object> schemaRegistryAuthenticationConfig) {
     this.schemaRegistryConnectionUrl = schemaRegistryConnectionUrl;
-    this.schemaRegistrySslConfig = schemaRegistrySslConfig;
+    this.schemaRegistryAuthenticationConfig = schemaRegistryAuthenticationConfig;
     this.errorHandler = new ErrorHandler.DefaultErrorHandler<>();
     this.badRecordRouter = BadRecordRouter.THROWING_ROUTER;
   }
 
   public static AvroDynamicTransform of(
-      String schemaRegistryConnectionUrl, Map<String, Object> schemaRegistrySslConfig) {
-    return new AvroDynamicTransform(schemaRegistryConnectionUrl, schemaRegistrySslConfig);
+      String schemaRegistryConnectionUrl, Map<String, Object> schemaRegistryAuthenticationConfig) {
+    return new AvroDynamicTransform(
+        schemaRegistryConnectionUrl, schemaRegistryAuthenticationConfig);
   }
 
   public static AvroDynamicTransform of(
       String schemaRegistryConnectionUrl,
-      Map<String, Object> schemaRegistrySslConfig,
+      Map<String, Object> schemaRegistryAuthenticationConfig,
       ErrorHandler<BadRecord, ?> badRecordErrorHandler,
       BadRecordRouter badRecordRouter) {
     return new AvroDynamicTransform(
         schemaRegistryConnectionUrl,
-        schemaRegistrySslConfig,
+        schemaRegistryAuthenticationConfig,
         badRecordErrorHandler,
         badRecordRouter);
   }
@@ -96,7 +97,7 @@ public class AvroDynamicTransform
             ParDo.of(
                     new KafkaRecordToGenericRecordFailsafeElementFn(
                         this.schemaRegistryConnectionUrl,
-                        this.schemaRegistrySslConfig,
+                        this.schemaRegistryAuthenticationConfig,
                         this.badRecordRouter,
                         SUCCESS_GENERIC_RECORDS))
                 .withOutputTags(

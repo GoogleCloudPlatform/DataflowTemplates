@@ -73,7 +73,7 @@ public abstract class AvroWriteTransform
 
   public abstract @Nullable String schemaRegistryURL();
 
-  public abstract Map<String, Object> schemaRegistrySslConfig();
+  public abstract Map<String, Object> schemaRegistryAuthenticationConfig();
 
   public abstract @Nullable String confluentSchemaPath();
 
@@ -109,7 +109,7 @@ public abstract class AvroWriteTransform
             records.apply(
                 AvroDynamicTransform.of(
                     schemaRegistryURL(),
-                    schemaRegistrySslConfig(),
+                    schemaRegistryAuthenticationConfig(),
                     errorHandler(),
                     badRecordRouter()));
       } else {
@@ -160,8 +160,8 @@ public abstract class AvroWriteTransform
     public abstract AvroWriteTransformBuilder setSchemaRegistryURL(
         @Nullable String schemaRegistryURL);
 
-    public abstract AvroWriteTransformBuilder setSchemaRegistrySslConfig(
-        Map<String, Object> schemaRegistrySslConfig);
+    public abstract AvroWriteTransformBuilder setSchemaRegistryAuthenticationConfig(
+        Map<String, Object> schemaRegistryAuthenticationConfig);
 
     public abstract AvroWriteTransformBuilder setConfluentSchemaPath(String value);
 
