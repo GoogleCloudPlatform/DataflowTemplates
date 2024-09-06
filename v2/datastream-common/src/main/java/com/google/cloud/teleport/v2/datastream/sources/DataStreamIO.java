@@ -116,6 +116,8 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   private Duration directoryWatchDuration = Duration.standardMinutes(10);
   PCollection<String> directories = null;
 
+  private Boolean applyReshuffle = true;
+
   public DataStreamIO() {}
 
   public DataStreamIO(
@@ -172,6 +174,11 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
     return this;
   }
 
+  public DataStreamIO withoutDatastreamRecordsReshuffle() {
+    this.applyReshuffle = false;
+    return this;
+  }
+
   @Override
   public PCollection<FailsafeElement<String, String>> expand(PBegin input) {
     PCollection<ReadableFile> datastreamFiles =
@@ -223,7 +230,11 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
                           new ReadFileRangesFn.ReadFileRangesFnExceptionHandler())))
               .setCoder(coder);
     }
-    return datastreamRecords.apply("Reshuffle", Reshuffle.viaRandomKey());
+    if (applyReshuffle) {
+      return datastreamRecords.apply("Reshuffle", Reshuffle.viaRandomKey());
+    } else {
+      return datastreamRecords;
+    }
   }
 
   private static class CreateParseSourceFn

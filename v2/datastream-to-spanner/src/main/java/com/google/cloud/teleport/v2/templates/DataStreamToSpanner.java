@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.api.gax.retrying.RetrySettings;
 import com.google.api.services.datastream.v1.model.SourceConfig;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
@@ -48,6 +49,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -139,7 +141,8 @@ public class DataStreamToSpanner {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions {
+  public interface Options
+      extends PipelineOptions, StreamingOptions, DataflowPipelineWorkerPoolOptions {
     @Deprecated
     @TemplateParameter.GcsReadFile(
         order = 1,
@@ -231,6 +234,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 9,
+        optional = true,
         groupName = "Source",
         description = "Datastream stream name.",
         helpText =
@@ -563,7 +567,18 @@ public class DataStreamToSpanner {
             .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
             .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
-            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()))
+            .withCommitRetrySettings(
+                RetrySettings.newBuilder()
+                    .setTotalTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setInitialRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
+                    .setRetryDelayMultiplier(1)
+                    .setMaxRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
+                    .setInitialRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setRpcTimeoutMultiplier(1)
+                    .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setMaxAttempts(1)
+                    .build());
     /* Process information schema
      * 1) Read information schema from destination Cloud Spanner database
      * 2) Check if shadow tables are present and create if necessary
@@ -613,12 +628,18 @@ public class DataStreamToSpanner {
                       options.getInputFileFormat(),
                       options.getGcsPubSubSubscription(),
                       options.getRfcStartDateTime())
-                  .withFileReadConcurrency(options.getFileReadConcurrency()));
+                  .withFileReadConcurrency(options.getFileReadConcurrency())
+                  .withoutDatastreamRecordsReshuffle());
       jsonRecords =
           PCollectionList.of(datastreamJsonRecords)
               .and(dlqJsonRecords)
               .apply(Flatten.pCollections())
-              .apply("Reshuffle", Reshuffle.viaRandomKey());
+              .apply(
+                  "Reshuffle",
+                  Reshuffle.<FailsafeElement<String, String>>viaRandomKey()
+                      .withNumBuckets(
+                          options.getMaxNumWorkers()
+                              * DatastreamToSpannerConstants.MAX_DOFN_PER_WORKER));
     } else {
       LOG.info("DLQ retry flow");
       jsonRecords =
@@ -732,8 +753,7 @@ public class DataStreamToSpanner {
         PCollectionList.of(dlqErrorRecords)
             .and(spannerWriteResults.permanentErrors())
             .and(transformedRecords.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))
-            .apply(Flatten.pCollections())
-            .apply("Reshuffle", Reshuffle.viaRandomKey());
+            .apply(Flatten.pCollections());
     // increment the metrics
     permanentErrors
         .apply("Update metrics", ParDo.of(new MetricUpdaterDoFn(isRegularMode)))

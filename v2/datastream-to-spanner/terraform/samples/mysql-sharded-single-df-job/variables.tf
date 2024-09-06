@@ -93,17 +93,5 @@ variable "shard_list" {
       mysql_port                   = number
       stream_id                    = optional(string, "mysql-stream")
     })
-    dataflow_params = object({
-      template_params = object({
-        run_mode                     = optional(string)
-        local_sharding_context_path  = optional(string)
-        dlq_gcs_pub_sub_subscription = optional(string)
-      })
-      runner_params = object({
-        max_workers  = optional(number)
-        num_workers  = optional(number)
-        machine_type = optional(string)
-      })
-    })
   }))
 }

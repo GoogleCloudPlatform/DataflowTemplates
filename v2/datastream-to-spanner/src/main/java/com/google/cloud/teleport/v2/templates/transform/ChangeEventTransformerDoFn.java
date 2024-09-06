@@ -15,9 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.transform;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_SCHEMA_KEY;
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.STREAM_NAME;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_CHANGE_TYPE_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_TABLE_NAME_KEY;
 
@@ -224,28 +221,8 @@ public abstract class ChangeEventTransformerDoFn
   MigrationTransformationResponse getCustomTransformationResponse(
       JsonNode changeEvent, Map<String, Object> sourceRecord)
       throws InvalidTransformationException {
-    String shardId = "";
+    String shardId = changeEventSessionConvertor.getShardId(changeEvent);
     String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
-
-    // Fetch shard id from sharding/transformation context.
-    if (shardingContext() != null && MYSQL_SOURCE_TYPE.equals(sourceType())) {
-      Map<String, Map<String, String>> streamToDbAndShardMap =
-          shardingContext().getStreamToDbAndShardMap();
-      if (streamToDbAndShardMap != null && !streamToDbAndShardMap.isEmpty()) {
-        String streamName = changeEvent.get(STREAM_NAME).asText();
-        Map<String, String> schemaToShardId = streamToDbAndShardMap.get(streamName);
-        if (schemaToShardId != null && !schemaToShardId.isEmpty()) {
-          String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
-          shardId = schemaToShardId.getOrDefault(schemaName, "");
-        }
-      }
-    } else if (transformationContext() != null && MYSQL_SOURCE_TYPE.equals(sourceType())) {
-      Map<String, String> schemaToShardId = transformationContext().getSchemaToShardId();
-      if (schemaToShardId != null && !schemaToShardId.isEmpty()) {
-        String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
-        shardId = schemaToShardId.getOrDefault(schemaName, "");
-      }
-    }
     Instant startTimestamp = Instant.now();
     MigrationTransformationRequest migrationTransformationRequest =
         new MigrationTransformationRequest(

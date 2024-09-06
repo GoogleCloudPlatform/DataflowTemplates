@@ -41,4 +41,7 @@ public class DatastreamToSpannerConstants {
 
   /* The Tag for Successful mutations. */
   public static final TupleTag<Timestamp> SUCCESSFUL_EVENT_TAG = new TupleTag<Timestamp>() {};
+
+  /* Max DoFns per dataflow worker. */
+  public static final int MAX_DOFN_PER_WORKER = 500;
 }

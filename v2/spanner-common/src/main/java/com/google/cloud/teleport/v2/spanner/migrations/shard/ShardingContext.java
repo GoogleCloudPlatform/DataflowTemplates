@@ -15,10 +15,11 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.shard;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ShardingContext {
+public class ShardingContext implements Serializable {
 
   private Map<String, Map<String, String>> streamToDbAndShardMap;
 

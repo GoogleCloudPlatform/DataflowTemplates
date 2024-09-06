@@ -102,6 +102,39 @@ public class ChangeEventSessionConvertor {
     return changeEvent;
   }
 
+  public String getShardId(JsonNode changeEvent) {
+    if (!MYSQL_SOURCE_TYPE.equals(this.sourceType)
+        || ((shardingContext.getStreamToDbAndShardMap() == null
+                || shardingContext.getStreamToDbAndShardMap().isEmpty())
+            && (transformationContext.getSchemaToShardId() == null
+                || transformationContext.getSchemaToShardId().isEmpty()))) {
+      return "";
+    }
+    String shardId = "";
+    // Fetch shard id from sharding/transformation context.
+    if (shardingContext != null) {
+      Map<String, Map<String, String>> streamToDbAndShardMap =
+          shardingContext.getStreamToDbAndShardMap();
+      if (streamToDbAndShardMap != null && !streamToDbAndShardMap.isEmpty()) {
+        String streamName =
+            changeEvent
+                .get(STREAM_NAME)
+                .asText()
+                .substring(changeEvent.get(STREAM_NAME).asText().lastIndexOf('/') + 1);
+        Map<String, String> schemaToShardId = streamToDbAndShardMap.get(streamName);
+        if (schemaToShardId != null && !schemaToShardId.isEmpty()) {
+          String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
+          shardId = schemaToShardId.getOrDefault(schemaName, "");
+        }
+      }
+    } else {
+      Map<String, String> schemaToShardId = transformationContext.getSchemaToShardId();
+      String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
+      shardId = schemaToShardId.get(schemaName);
+    }
+    return shardId;
+  }
+
   JsonNode populateShardId(JsonNode changeEvent, String tableId) {
     if (!MYSQL_SOURCE_TYPE.equals(this.sourceType)
         || ((shardingContext.getStreamToDbAndShardMap() == null
@@ -120,23 +153,7 @@ public class ChangeEventSessionConvertor {
     if (shardIdColDef == null) {
       return changeEvent;
     }
-    String shardId = "";
-    if (shardingContext != null) {
-      Map<String, Map<String, String>> streamToDbAndShardMap =
-          shardingContext.getStreamToDbAndShardMap();
-      if (streamToDbAndShardMap != null && !streamToDbAndShardMap.isEmpty()) {
-        String streamName = changeEvent.get(STREAM_NAME).asText();
-        Map<String, String> schemaToShardId = streamToDbAndShardMap.get(streamName);
-        if (schemaToShardId != null && !schemaToShardId.isEmpty()) {
-          String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
-          shardId = schemaToShardId.getOrDefault(schemaName, "");
-        }
-      }
-    } else {
-      Map<String, String> schemaToShardId = transformationContext.getSchemaToShardId();
-      String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
-      shardId = schemaToShardId.get(schemaName);
-    }
+    String shardId = getShardId(changeEvent);
     ((ObjectNode) changeEvent).put(shardIdColDef.getName(), shardId);
     return changeEvent;
   }
