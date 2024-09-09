@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import com.google.gson.Gson;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.channels.Channels;

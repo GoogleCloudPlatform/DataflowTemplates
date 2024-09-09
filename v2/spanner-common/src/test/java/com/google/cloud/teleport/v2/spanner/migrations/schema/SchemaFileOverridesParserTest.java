@@ -71,7 +71,7 @@ public class SchemaFileOverridesParserTest {
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testMalformedSchemaOverridesFile(){
+  public void testMalformedSchemaOverridesFile() {
     Path schemaOverridesFile =
         Paths.get(Resources.getResource("schema-overrides-malformed.json").getPath());
     schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFile.toString());
