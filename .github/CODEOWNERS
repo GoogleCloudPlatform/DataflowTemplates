@@ -26,7 +26,7 @@ v2/datastream-to-sql/ @GoogleCloudPlatform/datastream
 v2/datastream-to-bigquery/ @GoogleCloudPlatform/datastream
 v2/datastream-to-postgres/ @GoogleCloudPlatform/datastream
 v2/datastream-to-mongodb/ @GoogleCloudPlatform/datastream
-v2/datastream-common/ @GoogleCloudPlatform/datastream @GoogleCloudPlatform/spanner-migrations-team
+v2/datastream-common/ @GoogleCloudPlatform/datastream
 
 # Spanner Bulk migration template
 v2/sourcedb-to-spanner/ @GoogleCloudPlatform/spanner-migrations-team
