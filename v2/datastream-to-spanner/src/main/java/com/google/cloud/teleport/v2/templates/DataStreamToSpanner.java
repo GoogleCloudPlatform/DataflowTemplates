@@ -630,6 +630,8 @@ public class DataStreamToSpanner {
                       options.getRfcStartDateTime())
                   .withFileReadConcurrency(options.getFileReadConcurrency())
                   .withoutDatastreamRecordsReshuffle());
+      int maxNumWorkers = options.getMaxNumWorkers() != 0 ? options.getMaxNumWorkers() : 1;
+      LOG.info("max buckets" + maxNumWorkers);
       jsonRecords =
           PCollectionList.of(datastreamJsonRecords)
               .and(dlqJsonRecords)
@@ -638,8 +640,7 @@ public class DataStreamToSpanner {
                   "Reshuffle",
                   Reshuffle.<FailsafeElement<String, String>>viaRandomKey()
                       .withNumBuckets(
-                          options.getMaxNumWorkers()
-                              * DatastreamToSpannerConstants.MAX_DOFN_PER_WORKER));
+                          maxNumWorkers * DatastreamToSpannerConstants.MAX_DOFN_PER_WORKER));
     } else {
       LOG.info("DLQ retry flow");
       jsonRecords =

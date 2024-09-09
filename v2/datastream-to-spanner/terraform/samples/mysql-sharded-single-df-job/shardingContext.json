@@ -1,0 +1,6 @@
+{
+  "StreamToDbAndShardMap": {
+    "34.30.181.51": {"member01":"s1m1", "member02":"s1m2", "member03":"s1m3"},
+    "34.135.96.114": {"member01":"s2m1", "member02":"s2m2", "member03":"s2m3"}
+  }
+}

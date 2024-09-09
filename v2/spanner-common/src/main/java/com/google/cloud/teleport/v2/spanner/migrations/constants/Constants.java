@@ -39,5 +39,6 @@ public class Constants {
   /* The prefix for all metadata keys in the event json */
   public static final String EVENT_METADATA_KEY_PREFIX = "_metadata";
 
-  public static final String STREAM_NAME = "_metadata_stream";
+  /* The key for the stream name in the event json */
+  public static final String EVENT_STREAM_NAME = "_metadata_stream";
 }

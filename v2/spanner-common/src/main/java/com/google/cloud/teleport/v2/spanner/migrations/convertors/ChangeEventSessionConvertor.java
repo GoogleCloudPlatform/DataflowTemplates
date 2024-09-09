@@ -17,10 +17,10 @@ package com.google.cloud.teleport.v2.spanner.migrations.convertors;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_METADATA_KEY_PREFIX;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_SCHEMA_KEY;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_STREAM_NAME;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_TABLE_NAME_KEY;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_UUID_KEY;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.STREAM_NAME;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -118,9 +118,9 @@ public class ChangeEventSessionConvertor {
       if (streamToDbAndShardMap != null && !streamToDbAndShardMap.isEmpty()) {
         String streamName =
             changeEvent
-                .get(STREAM_NAME)
+                .get(EVENT_STREAM_NAME)
                 .asText()
-                .substring(changeEvent.get(STREAM_NAME).asText().lastIndexOf('/') + 1);
+                .substring(changeEvent.get(EVENT_STREAM_NAME).asText().lastIndexOf('/') + 1);
         Map<String, String> schemaToShardId = streamToDbAndShardMap.get(streamName);
         if (schemaToShardId != null && !schemaToShardId.isEmpty()) {
           String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();

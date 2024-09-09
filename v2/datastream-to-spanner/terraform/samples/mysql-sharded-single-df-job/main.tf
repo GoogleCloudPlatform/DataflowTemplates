@@ -76,6 +76,13 @@ resource "google_storage_bucket_object" "session_file_object" {
   bucket       = google_storage_bucket.datastream_bucket.id
 }
 
+locals {
+  host_to_stream_map = {
+    for shard in var.shard_list :
+    shard.datastream_params.mysql_host => shard.datastream_params.stream_id
+  }
+}
+
 # if the sharding context file is specified, use that, otherwise
 # auto-generate sharding context on basis of stream names, MySQL db names and logical
 # shard names.
@@ -86,18 +93,14 @@ resource "google_storage_bucket_object" "sharding_context_file_object" {
   bucket       = google_storage_bucket.datastream_bucket.id
 
   content = (
-    #  var.common_params.dataflow_params.template_params.local_sharding_context_path != null
-    #  ? jsonencode({
-    #    "StreamToDbAndShardMap": {
-    #      for shard in var.shard_list : shard.datastream_params.stream_id => (
-    #    {
-    #    for host, db_map in jsondecode(file(var.common_params.dataflow_params.template_params.local_sharding_context_path)).streamToDbAndShardMap :
-    #    host == shard.datastream_params.mysql_host ? shard.datastream_params.stream_id => db_map : null
-    #    }
-    #    )[shard.datastream_params.stream_id] # Only add this entry if there's a match
-    #  }
-    #    })
-    #  :
+    var.common_params.dataflow_params.template_params.local_sharding_context_path != null
+    ? jsonencode({
+      "StreamToDbAndShardMap" = {
+        for host_ip, db_map in jsondecode(file(var.common_params.dataflow_params.template_params.local_sharding_context_path)).StreamToDbAndShardMap :
+        contains(keys(local.host_to_stream_map), host_ip) ? local.host_to_stream_map[host_ip] : host_ip => db_map
+      }
+    })
+    :
     jsonencode({
       "StreamToDbAndShardMap" : {
         for idx, shard in var.shard_list : "${shard.shard_id != null ? shard.shard_id : random_pet.migration_id[idx].id}-${shard.datastream_params.stream_id}" => {
@@ -250,7 +253,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     google_project_service.enabled_apis, google_project_iam_member.live_migration_roles
   ] # Launch the template once the stream is created.
   provider                = google-beta
-  container_spec_gcs_path = "gs://khajanchi-gsql/templates/flex/Cloud_Datastream_to_Spanner"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Cloud_Datastream_to_Spanner"
 
   # Parameters from Dataflow Template
   parameters = {
