@@ -186,8 +186,8 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
     if (shardingContextFileResourceName != null) {
       gcsClient.uploadArtifact(
-              gcsPathPrefix + "/shardingContext.json",
-              Resources.getResource(shardingContextFileResourceName).getPath());
+          gcsPathPrefix + "/shardingContext.json",
+          Resources.getResource(shardingContextFileResourceName).getPath());
     }
 
     String gcsPrefix =

@@ -103,7 +103,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
                   }
                 },
                 customTransformation,
-                    null);
+                null);
       }
     }
   }
