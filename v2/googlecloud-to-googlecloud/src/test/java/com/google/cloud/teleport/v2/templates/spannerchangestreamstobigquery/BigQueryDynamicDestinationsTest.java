@@ -15,15 +15,64 @@
  */
 package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery;
 
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BOOLEAN_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BOOLEAN_ARRAY_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BOOLEAN_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BOOLEAN_PK_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BOOLEAN_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BYTES_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BYTES_ARRAY_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BYTES_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BYTES_PK_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BYTES_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.DATE_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.DATE_ARRAY_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.DATE_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.DATE_PK_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.DATE_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT32_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT32_ARRAY_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT32_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT32_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT64_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT64_ARRAY_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT64_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT64_PK_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT64_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.INT64_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.INT64_ARRAY_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.INT64_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.INT64_PK_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.INT64_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.JSON_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.JSON_ARRAY_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.JSON_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.JSON_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.NUMERIC_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.NUMERIC_ARRAY_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.NUMERIC_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.NUMERIC_PK_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.NUMERIC_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.STRING_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.STRING_ARRAY_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.STRING_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.STRING_PK_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.STRING_RAW_VAL;
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TEST_BIG_QUERY_DATESET;
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TEST_PROJECT;
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TEST_SPANNER_CHANGE_STREAM;
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TEST_SPANNER_TABLE;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TIMESTAMP_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TIMESTAMP_ARRAY_RAW_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TIMESTAMP_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TIMESTAMP_PK_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TIMESTAMP_RAW_VAL;
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.createSpannerDatabase;
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.dropSpannerDatabase;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.Timestamp;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.spanner.IntegrationTest;
 import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
@@ -52,6 +101,8 @@ public final class BigQueryDynamicDestinationsTest {
   private static TableRow tableRow;
   private static KV<TableId, TableRow> tableIdToTableRow;
   private static String spannerDatabaseName;
+
+  private static final String typePrefix = "_type_";
 
   /** Rule for Spanner server resource. */
   @ClassRule public static final SpannerServerResource SPANNER_SERVER = new SpannerServerResource();
@@ -85,6 +136,66 @@ public final class BigQueryDynamicDestinationsTest {
     dropSpannerDatabase(SPANNER_SERVER, spannerDatabaseName);
   }
 
+  public static void fillTableRow() {
+    tableRow = new TableRow();
+    tableRow.set(BOOLEAN_PK_COL, BOOLEAN_RAW_VAL);
+    tableRow.set("_type_" + BOOLEAN_PK_COL, "BOOL");
+    tableRow.set(BYTES_PK_COL, BYTES_RAW_VAL.toBase64());
+    tableRow.set("_type_" + BYTES_PK_COL, "BYTES");
+    tableRow.set(DATE_PK_COL, DATE_RAW_VAL.toString());
+    tableRow.set("_type_" + DATE_PK_COL, "DATE");
+    tableRow.set(FLOAT64_PK_COL, FLOAT64_RAW_VAL);
+    tableRow.set("_type_" + FLOAT64_PK_COL, "FLOAT64");
+    tableRow.set(INT64_PK_COL, INT64_RAW_VAL);
+    tableRow.set("_type_" + INT64_PK_COL, "INT64");
+    tableRow.set(NUMERIC_PK_COL, 10.0);
+    tableRow.set("_type_" + NUMERIC_PK_COL, "NUMERIC");
+    tableRow.set(STRING_PK_COL, STRING_RAW_VAL);
+    tableRow.set("_type_" + STRING_PK_COL, "STRING");
+    tableRow.set(TIMESTAMP_PK_COL, TIMESTAMP_RAW_VAL.toString());
+    tableRow.set("_type_" + TIMESTAMP_PK_COL, "TIMESTAMP");
+    tableRow.set(BOOLEAN_ARRAY_COL, BOOLEAN_ARRAY_RAW_VAL);
+    tableRow.set("_type_" + BOOLEAN_ARRAY_COL, "ARRAY<BOOL>");
+    tableRow.set(BYTES_ARRAY_COL, BYTES_ARRAY_RAW_VAL);
+    tableRow.set("_type_" + BYTES_ARRAY_COL, "ARRAY<BYTES>");
+    tableRow.set(DATE_ARRAY_COL, DATE_ARRAY_RAW_VAL);
+    tableRow.set("_type_" + DATE_ARRAY_COL, "ARRAY<DATE>");
+    tableRow.set(FLOAT32_ARRAY_COL, FLOAT32_ARRAY_RAW_VAL);
+    tableRow.set("_type_" + FLOAT32_ARRAY_COL, "ARRAY<FLOAT32>");
+    tableRow.set(FLOAT64_ARRAY_COL, FLOAT64_ARRAY_RAW_VAL);
+    tableRow.set("_type_" + FLOAT64_ARRAY_COL, "ARRAY<FLOAT64>");
+    tableRow.set(INT64_ARRAY_COL, INT64_ARRAY_RAW_VAL);
+    tableRow.set("_type_" + INT64_ARRAY_COL, "ARRAY<INT64>");
+    tableRow.set(JSON_ARRAY_COL, JSON_ARRAY_RAW_VAL);
+    tableRow.set("_type_" + JSON_ARRAY_COL, "ARRAY<JSON>");
+    tableRow.set(NUMERIC_ARRAY_COL, NUMERIC_ARRAY_RAW_VAL);
+    tableRow.set("_type_" + NUMERIC_ARRAY_COL, "ARRAY<NUMERIC>");
+    tableRow.set(STRING_ARRAY_COL, STRING_ARRAY_RAW_VAL);
+    tableRow.set("_type_" + STRING_ARRAY_COL, "ARRAY<STRING>");
+    tableRow.set(TIMESTAMP_ARRAY_COL, TIMESTAMP_ARRAY_RAW_VAL);
+    tableRow.set("_type_" + TIMESTAMP_ARRAY_COL, "ARRAY<TIMESTAMP>");
+    tableRow.set(BOOLEAN_COL, BOOLEAN_RAW_VAL);
+    tableRow.set("_type_" + BOOLEAN_COL, "BOOL");
+    tableRow.set(BYTES_COL, BYTES_RAW_VAL.toBase64());
+    tableRow.set("_type_" + BYTES_COL, "BYTES");
+    tableRow.set(DATE_COL, DATE_RAW_VAL.toString());
+    tableRow.set("_type_" + DATE_COL, "DATE");
+    tableRow.set(FLOAT32_COL, FLOAT32_RAW_VAL);
+    tableRow.set("_type_" + FLOAT32_COL, "FLOAT32");
+    tableRow.set(FLOAT64_COL, FLOAT64_RAW_VAL);
+    tableRow.set("_type_" + FLOAT64_COL, "FLOAT64");
+    tableRow.set(INT64_COL, INT64_RAW_VAL);
+    tableRow.set("_type_" + INT64_COL, "INT64");
+    tableRow.set(JSON_COL, JSON_RAW_VAL);
+    tableRow.set("_type_" + JSON_COL, "JSON");
+    tableRow.set(NUMERIC_COL, NUMERIC_RAW_VAL);
+    tableRow.set("_type_" + NUMERIC_COL, "NUMERIC");
+    tableRow.set(STRING_COL, STRING_RAW_VAL);
+    tableRow.set("_type_" + STRING_COL, "STRING");
+    tableRow.set(TIMESTAMP_COL, Timestamp.now().toString());
+    tableRow.set("_type_" + TIMESTAMP_COL, "TIMESTAMP");
+  }
+
   @Test
   public void testGetDestination() {
     Instant timestamp = Instant.ofEpochSecond(1649368685L);
@@ -111,6 +222,11 @@ public final class BigQueryDynamicDestinationsTest {
   // INFORMATION_SCHEMA.
   @Test
   public void testGetSchema() {
+    fillTableRow();
+    tableIdToTableRow =
+        KV.of(
+            TableId.of(TEST_PROJECT, TEST_BIG_QUERY_DATESET, TEST_SPANNER_TABLE + "_changelog"),
+            tableRow);
     String schemaStr = bigQueryDynamicDestinations.getSchema(tableIdToTableRow).toString();
     schemaStr =
         schemaStr.replace(
