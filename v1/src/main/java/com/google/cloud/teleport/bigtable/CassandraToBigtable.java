@@ -199,7 +199,8 @@ final class CassandraToBigtable {
     @TemplateParameter.Boolean(
         order = 12,
         optional = true,
-        description = "If true, sets Bigtable cell timestamp to 0 if writetime is not present.",
+        description =
+            "If true, sets Bigtable cell timestamp to 0 if writetime is not present. Else, the Bigtable cell timestamp defaults to pipeline run time (i.e. now).",
         helpText =
             "The flag for setting Bigtable cell timestamp to 0 if Cassandra writetime is not present. The default behavior for when this flag is not set is to set the Bigtable cell timestamp as the template replication time, i.e. now.")
     @Default.Boolean(false)

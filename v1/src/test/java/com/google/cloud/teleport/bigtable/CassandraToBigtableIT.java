@@ -181,9 +181,9 @@ public class CassandraToBigtableIT extends TemplateTestBase {
         "source_table_" + RandomStringUtils.randomAlphanumeric(8).toLowerCase();
     String tableName = "test_table_" + RandomStringUtils.randomAlphanumeric(8);
     List<Map<String, Object>> records = new ArrayList<>();
-    records.add(Map.of("id", 1, "company", "Google"));
-    records.add(Map.of("id", 2, "company", "Alphabet"));
-    records.add(Map.of("id", 3, "company", "Acme Inc"));
+    records.add(Map.of("id", 1, "company", "Writetime_Google"));
+    records.add(Map.of("id", 2, "company", "Writetime_Alphabet"));
+    records.add(Map.of("id", 3, "company", "Writetime_Acme Inc"));
 
     // Write cells into Cassandra.
     Instant preCassandraWrite = Instant.now();
@@ -258,9 +258,9 @@ public class CassandraToBigtableIT extends TemplateTestBase {
     assertThatBigtableRecords(rows, colFamily)
         .hasRecordsUnordered(
             List.of(
-                Map.of("company", "Google"),
-                Map.of("company", "Alphabet"),
-                Map.of("company", "Acme Inc")));
+                Map.of("company", "Writetime_Google"),
+                Map.of("company", "Writetime_Alphabet"),
+                Map.of("company", "Writetime_Acme Inc")));
 
     // Assert that Cassandra writetimes were propagated over. We don't know what exact instant the
     // Cassandra write happened, but we can assert that it is during that timeframe.
@@ -280,9 +280,9 @@ public class CassandraToBigtableIT extends TemplateTestBase {
         "source_table_" + RandomStringUtils.randomAlphanumeric(8).toLowerCase();
     String tableName = "test_table_" + RandomStringUtils.randomAlphanumeric(8);
     List<Map<String, Object>> records = new ArrayList<>();
-    records.add(Map.of("id", 1, "company", "Google"));
-    records.add(Map.of("id", 2, "company", "Alphabet"));
-    records.add(Map.of("id", 3, "company", "Acme Inc"));
+    records.add(Map.of("id", 1, "company", "ZeroTimestamp_Google"));
+    records.add(Map.of("id", 2, "company", "ZeroTimestamp_Alphabet"));
+    records.add(Map.of("id", 3, "company", "ZeroTimestamp_Acme Inc"));
 
     try {
       cassandraResourceManager.executeStatement(
@@ -328,9 +328,9 @@ public class CassandraToBigtableIT extends TemplateTestBase {
     assertThatBigtableRecords(rows, colFamily)
         .hasRecordsUnordered(
             List.of(
-                Map.of("company", "Google"),
-                Map.of("company", "Alphabet"),
-                Map.of("company", "Acme Inc")));
+                Map.of("company", "ZeroTimestamp_Google"),
+                Map.of("company", "ZeroTimestamp_Alphabet"),
+                Map.of("company", "ZeroTimestamp_Acme Inc")));
 
     for (Row row : rows) {
       // Only one cell per row should be present. This timestamp is of microsecond format.

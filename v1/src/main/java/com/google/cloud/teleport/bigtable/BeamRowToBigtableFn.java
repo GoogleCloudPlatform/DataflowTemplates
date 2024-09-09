@@ -21,6 +21,7 @@ import com.google.protobuf.ByteString;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -144,7 +145,11 @@ public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutat
     }
     splitLargeRows = MoreObjects.firstNonNull(splitLargeRows, DEFAULT_SPLIT_LARGE_ROWS);
     // Process writetime is cassandra column schema is present and accessible to the pipeline.
-    processWritetime = cassandraColumnSchema != null && cassandraColumnSchema.isAccessible();
+    processWritetime =
+        (cassandraColumnSchema != null)
+            && cassandraColumnSchema.isAccessible()
+            && (cassandraColumnSchema.get() != null)
+            && (cassandraColumnSchema.get().length() > 0);
     if (setZeroTimestamp != null && Boolean.TRUE.equals(setZeroTimestamp.get())) {
       backfillTimestamp = 0L;
     } else {
@@ -154,6 +159,9 @@ public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutat
     }
     LOG.info("splitLargeRows set to: " + splitLargeRows);
     LOG.info("processWritetime set to: " + processWritetime);
+    if (processWritetime) {
+      LOG.info("Cassandra schema to process writetime with: " + cassandraColumnSchema.get());
+    }
     LOG.info("backfillTimestamp set to: " + backfillTimestamp);
   }
 
@@ -191,10 +199,7 @@ public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutat
     for (Field field : nonKeyColumns) {
       TypeName type = field.getType().getTypeName();
       // Get writetime for column if it exists.
-      Long timestamp =
-          columnTimestamps.containsKey(field.getName())
-              ? columnTimestamps.get(field.getName())
-              : backfillTimestamp;
+      Long timestamp = columnTimestamps.getOrDefault(field.getName(), backfillTimestamp);
 
       if (processWritetime && field.getName().contains(WRITETIME_COLUMN)) {
         // Skip writetime fields if processWritetime is on.
@@ -235,6 +240,13 @@ public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutat
   private HashMap<String, Long> getColumnWritetimes(Row row, List<Field> nonKeyColumns) {
     // Writetime values will be joined to the other mutations as timestamps.
     HashMap<String, Long> columnTimestamps = new HashMap<>();
+
+    if (!processWritetime) {
+      LOG.warn(
+          "Trying to get column writetime even though processWritetime is: " + processWritetime);
+      return columnTimestamps;
+    }
+
     Pattern writetimeColumn = Pattern.compile(String.format("%s\\((.*)\\)", WRITETIME_COLUMN));
     for (Field field : nonKeyColumns) {
       if (field.getName().contains(WRITETIME_COLUMN)) {
@@ -251,6 +263,12 @@ public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutat
         columnTimestamps.put(columnName, normalizedTimestamp);
       }
     }
+
+    if (columnTimestamps.size() == 0) {
+      LOG.warn(
+          "Could not parse timestamp column from row: " + row.toString() + " " + row.getValues());
+    }
+
     return columnTimestamps;
   }
 
@@ -268,24 +286,25 @@ public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutat
       throw new IllegalArgumentException("Timestamp " + timestamp + " is smaller than 0.");
     }
     Long newTimestamp = timestamp;
-    Long nowInMillis = Instant.now().toEpochMilli();
-    Long nowInMicros = nowInMillis * 1000;
+    // Millisecond upperbound is now + 100 years into the future. Setting future timestamps are
+    // not encouraged due to Bigtable garbage collection policy. However, there is nothing wrong
+    // with this technically so this action is not blocked.
+    Long millisecondUpperBound = Instant.now().plus(36500, ChronoUnit.DAYS).toEpochMilli();
+    Long microsecondUpperBound = millisecondUpperBound * 1000;
 
-    if (timestamp <= nowInMillis) {
+    if (timestamp <= millisecondUpperBound) {
       // Timestamp is in millisecond format. If so, pad 3 more 0s to the end.
       newTimestamp *= 1000;
-    } else if (timestamp <= nowInMicros) {
+    } else if (timestamp <= microsecondUpperBound) {
       // Time is in microsecond format. If so, set last 3 digits to 0.
       newTimestamp /= 1000;
       newTimestamp *= 1000;
     } else {
-      // In this case, the timestamp is set in the future. It is not recommended to do this due to
-      // implications around Bigtable garbage collection. However, there is nothing wrong with this
-      // technically so this action is not blocked.
+      // In this case, the timestamp is set into the far future.
       LOG.warn(
           String.format(
-              "Timestamp set into the future, current time in micros: %s, timestamp: %s",
-              nowInMicros, timestamp));
+              "Timestamp set into an un-parsable future, microsecond upper bound: %s, timestamp: %s",
+              microsecondUpperBound, timestamp));
     }
     return newTimestamp;
   }

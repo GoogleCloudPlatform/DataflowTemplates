@@ -24,6 +24,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -118,7 +119,6 @@ public class BeamRowToBigtableFnTest {
         Long inputTimestamp = inputHashes.get(key);
         Long expectedTimestamp = expectedHashes.get(key);
 
-        // TODO: generalize tolerance epochs here.
         // Get 10 seconds in microsecond format as tolerance between input and expected timestamps.
         Long tolerance = Instant.ofEpochSecond(10).toEpochMilli() * 1000;
 
@@ -744,7 +744,7 @@ public class BeamRowToBigtableFnTest {
                         ValueProvider.StaticValueProvider.of("default"),
                         StaticValueProvider.of(false),
                         -1,
-                        ValueProvider.StaticValueProvider.of(""),
+                        ValueProvider.StaticValueProvider.of("someSchema.json"),
                         null)));
 
     // Setup the expected values and match with returned values.
@@ -820,6 +820,75 @@ public class BeamRowToBigtableFnTest {
     pipeline.run();
   }
 
+  // Using future timestamps for writetimes are not encouraged.
+  @Test
+  public void processElementWithNearFutureWritetime() {
+    String columnFamily = "default";
+    String rowKeyValue = "rowkeyvalue";
+    String rowKeyColumnName = "rowkey";
+
+    // Int32
+    int int32Value = Integer.MAX_VALUE;
+    String int32ColumnName = "int32Column";
+
+    String int32WritetimeColumnName = "writetime(int32Column)";
+    // Simulate adding timestamp of 1000 days into the future.
+    Long int32Writetime = Instant.now().plus(1000, ChronoUnit.DAYS).toEpochMilli();
+    Long bigtableInt32Writetime = normalizeMillisecondTimestamp(int32Writetime);
+
+    Schema schema =
+        Schema.builder()
+            .addField(
+                Schema.Field.of(
+                    rowKeyColumnName,
+                    FieldType.STRING.withMetadata(
+                        CassandraRowMapperFn.KEY_ORDER_METADATA_KEY, "0")))
+            .addInt32Field(int32ColumnName)
+            .addInt64Field(int32WritetimeColumnName)
+            .build();
+    Row input =
+        Row.withSchema(schema)
+            .addValue(rowKeyValue)
+            .addValue(int32Value)
+            .addValue(int32Writetime)
+            .build();
+
+    final List<Row> rows = Collections.singletonList(input);
+
+    // Setup the pipeline
+    PCollection<KV<ByteString, Iterable<Mutation>>> bigtableRows =
+        pipeline
+            .apply("Create", Create.of(rows))
+            .apply(
+                "Transform to Bigtable",
+                ParDo.of(
+                    BeamRowToBigtableFn.createWithSplitLargeRows(
+                        ValueProvider.StaticValueProvider.of("#"),
+                        ValueProvider.StaticValueProvider.of("default"),
+                        StaticValueProvider.of(false),
+                        -1,
+                        ValueProvider.StaticValueProvider.of("someSchema.json"),
+                        null)));
+
+    // Setup the expected values and match with returned values.
+    List<Mutation> mutations = new ArrayList<>();
+
+    mutations.add(
+        createMutation(
+            columnFamily,
+            int32ColumnName,
+            ByteString.copyFrom(Bytes.toBytes(int32Value)),
+            bigtableInt32Writetime));
+
+    final List<KV<ByteString, Iterable<Mutation>>> expectedBigtableRows =
+        ImmutableList.of(KV.of(ByteString.copyFrom(Bytes.toBytes("rowkeyvalue")), mutations));
+
+    PAssert.that(bigtableRows).containsInAnyOrder(expectedBigtableRows);
+
+    // Run the pipeline
+    pipeline.run();
+  }
+
   @Test
   public void processElementWithBackfillNowTimestamp() {
     String columnFamily = "default";
@@ -855,16 +924,14 @@ public class BeamRowToBigtableFnTest {
                         ValueProvider.StaticValueProvider.of("default"),
                         StaticValueProvider.of(false),
                         -1,
-                        ValueProvider.StaticValueProvider.of(""),
+                        ValueProvider.StaticValueProvider.of(null),
                         // Setting this flag to false will let the pipeline create a timestamp of
-                        // now
-                        // when mutating to Bigtable.
+                        // now when mutating to Bigtable.
                         StaticValueProvider.of(false))));
 
     // Setup the expected values and match with returned values.
     List<Mutation> mutations = new ArrayList<>();
 
-    // TODO: generalize instance now epoch to a variable.
     Long nowInMicros = Instant.now().toEpochMilli() * 1000;
     mutations.add(
         createMutation(
@@ -872,6 +939,64 @@ public class BeamRowToBigtableFnTest {
             int32ColumnName,
             ByteString.copyFrom(Bytes.toBytes(int32Value)),
             nowInMicros));
+
+    final List<KV<ByteString, Iterable<Mutation>>> expectedBigtableRows =
+        ImmutableList.of(KV.of(ByteString.copyFrom(Bytes.toBytes("rowkeyvalue")), mutations));
+
+    // PAssert.that(bigtableRows).containsInAnyOrder(expectedBigtableRows);
+    PAssert.that(bigtableRows)
+        .satisfies(new VerifySetMutationsWithTimestampTolerance(expectedBigtableRows));
+
+    // Run the pipeline
+    pipeline.run();
+  }
+
+  @Test
+  public void processElementWithBackfillZeroTimestamp() {
+    String columnFamily = "default";
+    String rowKeyValue = "rowkeyvalue";
+    String rowKeyColumnName = "rowkey";
+
+    // Int32
+    int int32Value = Integer.MAX_VALUE;
+    String int32ColumnName = "int32Column";
+
+    Schema schema =
+        Schema.builder()
+            .addField(
+                Schema.Field.of(
+                    rowKeyColumnName,
+                    FieldType.STRING.withMetadata(
+                        CassandraRowMapperFn.KEY_ORDER_METADATA_KEY, "0")))
+            .addInt32Field(int32ColumnName)
+            .build();
+    Row input = Row.withSchema(schema).addValue(rowKeyValue).addValue(int32Value).build();
+
+    final List<Row> rows = Collections.singletonList(input);
+
+    // Setup the pipeline
+    PCollection<KV<ByteString, Iterable<Mutation>>> bigtableRows =
+        pipeline
+            .apply("Create", Create.of(rows))
+            .apply(
+                "Transform to Bigtable",
+                ParDo.of(
+                    BeamRowToBigtableFn.createWithSplitLargeRows(
+                        ValueProvider.StaticValueProvider.of("#"),
+                        ValueProvider.StaticValueProvider.of("default"),
+                        StaticValueProvider.of(false),
+                        -1,
+                        ValueProvider.StaticValueProvider.of(null),
+                        // Setting this flag to true will let the pipeline create a timestamp of
+                        // zero when mutating to Bigtable.
+                        StaticValueProvider.of(true))));
+
+    // Setup the expected values and match with returned values.
+    List<Mutation> mutations = new ArrayList<>();
+
+    mutations.add(
+        createMutation(
+            columnFamily, int32ColumnName, ByteString.copyFrom(Bytes.toBytes(int32Value)), 0L));
 
     final List<KV<ByteString, Iterable<Mutation>>> expectedBigtableRows =
         ImmutableList.of(KV.of(ByteString.copyFrom(Bytes.toBytes("rowkeyvalue")), mutations));
@@ -958,7 +1083,7 @@ public class BeamRowToBigtableFnTest {
                         ValueProvider.StaticValueProvider.of("default"),
                         StaticValueProvider.of(true),
                         4,
-                        ValueProvider.StaticValueProvider.of(""),
+                        ValueProvider.StaticValueProvider.of("someSchema.json"),
                         null)));
 
     // Setup the expected values and match with returned values.
