@@ -174,7 +174,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
     return this;
   }
 
-  /** Set apply reshuffle t false t skip the reshuffle step on datastream records * */
+  /** Set applyReshuffle to false inorder to skip the reshuffle step on datastream records. */
   public DataStreamIO withoutDatastreamRecordsReshuffle() {
     this.applyReshuffle = false;
     return this;
