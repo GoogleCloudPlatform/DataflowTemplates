@@ -223,9 +223,10 @@ Ensure Dataflow VMs are able to access the MySQL instance. This would require:
 
 #### Configuring connectivity on Cloud SQL
 
-Cloud SQL allows multiple ways to establish connectivity. With google
-private access enabled, Dataflow should automatically be able to [access
-the instance](https://cloud.google.com/sql/docs/mysql/authorize-networks).
+With google private access enabled, running Dataflow in a VPC that can access Cloud SQL's VPC
+should automatically be able to allow the VMs to access the database.
+
+Alternatively, one can explicitly authorize IP address in the 'Connections' tab.
 
 #### Configuring connectivity on MySQL on GCE
 
@@ -240,9 +241,6 @@ for allowing connectivity:
 - Add firewall rule that allows tcp ingress on 3306 from resources
   with the `dataflow` [network tag](https://cloud.google.com/vpc/docs/add-remove-network-tags) on targets
   with the `databases` tag.
-- Specify the Dataflow ips in source ranges to be allowlisted in the firewall rule.
-- Modify the terraform template so that the dataflow jobs are launched with the network tag. The jobs automatically
-  get the dataflow network tag if anything is specified.
 
 ### Configuring to run using a VPC
 
@@ -266,7 +264,7 @@ This will result in the Dataflow jobs being launched inside the shared VPC.
    according to the linked guidelines.
 2. Set the `ip_configuration` to `WORKER_IP_PRIVATE` to disable public IP
    addresses for the worker VMs.
-3. If only certain network tags are allowlisted via a firewall, specify the  
+3. If only certain source network tags are allowlisted via a firewall, specify the  
    network tags via
    the [additional-experiments flag](https://cloud.google.com/dataflow/docs/guides/routes-firewall#network-tags-flex).
 
