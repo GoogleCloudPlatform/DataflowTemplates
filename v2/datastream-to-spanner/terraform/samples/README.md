@@ -17,6 +17,7 @@ The following sample repositories provide additional examples -
 2. [Pre-configured Datastream connection profiles](pre-configured-conn-profiles/README.md)
 3. [MySQL sharded source to Spanner end-to-end](mysql-sharded-end-to-end/README.md)
 4. [PostgreSQL source to Spanner end-to-end](postgresql-end-to-end/README.md)
+5. [MySQL sharded source to Spanner end-to-end using single dataflow job](mysql-sharded-single-df-job/README.md)
 
 ## Sample structure
 

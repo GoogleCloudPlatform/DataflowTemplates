@@ -8,7 +8,12 @@ variable "common_params" {
     # Will be auto-generated if not specified
     add_policies_to_service_account = optional(bool, true)
     datastream_params = object({
+      gcs_bucket_name               = optional(string, "live-migration")
+      pubsub_topic_name             = optional(string, "live-migration")
       stream_prefix_path            = optional(string, "data")
+      target_connection_profile_id  = optional(string, "target-gcs")
+      gcs_root_path                 = optional(string, "/")
+      source_type                   = optional(string, "mysql")
       max_concurrent_cdc_tasks      = optional(number, 5)
       max_concurrent_backfill_tasks = optional(number, 20)
       private_connectivity_id       = optional(string)
@@ -44,18 +49,21 @@ variable "common_params" {
         transformation_custom_parameters    = optional(string)
         transformation_class_name           = optional(string)
         filtered_events_directory           = optional(string)
+        run_mode                            = optional(string)
+        local_sharding_context_path         = optional(string)
+        dlq_gcs_pub_sub_subscription        = optional(string)
       })
       runner_params = object({
         additional_experiments = optional(set(string), [
           "enable_google_cloud_profiler", "enable_stackdriver_agent_metrics",
-          "disable_runner_v2", "enable_google_cloud_heap_sampling"
+          "disable_runner_v2", "enable_google_cloud_heap_sampling", "enable_streaming_engine_resource_based_billing"
         ])
         autoscaling_algorithm        = optional(string)
         enable_streaming_engine      = optional(bool, true)
         kms_key_name                 = optional(string)
         labels                       = optional(map(string))
         launcher_machine_type        = optional(string)
-        machine_type                 = optional(string, "n2-standard-2")
+        machine_type                 = optional(string, "n1-standard-4")
         max_workers                  = number
         job_name                     = optional(string, "live-migration-job")
         network                      = optional(string)
@@ -74,7 +82,7 @@ variable "common_params" {
 }
 
 variable "shard_list" {
-  description = "Parameters for the Dataflow job. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/README_Cloud_Datastream_to_Spanner.md for the description of the parameters below."
+  description = "Parameters for the Dataflow job. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md for the description of the parameters below."
   type = list(object({
     shard_id = optional(string)
     datastream_params = object({
@@ -83,24 +91,7 @@ variable "shard_list" {
       mysql_username               = string
       mysql_password               = string
       mysql_port                   = number
-      target_connection_profile_id = optional(string, "target-gcs")
-      gcs_bucket_name              = optional(string, "live-migration")
-      gcs_root_path                = optional(string, "/")
-
-      pubsub_topic_name = optional(string, "live-migration")
-      stream_id         = optional(string, "mysql-stream")
-    })
-    dataflow_params = object({
-      template_params = object({
-        run_mode                          = optional(string)
-        local_transformation_context_path = optional(string)
-        dlq_gcs_pub_sub_subscription      = optional(string)
-      })
-      runner_params = object({
-        max_workers  = optional(number)
-        num_workers  = optional(number)
-        machine_type = optional(string)
-      })
+      stream_id                    = optional(string, "mysql-stream")
     })
   }))
 }
