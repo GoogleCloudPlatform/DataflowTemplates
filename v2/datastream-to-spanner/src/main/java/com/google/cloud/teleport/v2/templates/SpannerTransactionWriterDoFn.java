@@ -21,7 +21,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.SpannerException;
-import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
@@ -190,28 +189,24 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
               (TransactionCallable<Void>)
                   transaction -> {
                     isInTransaction.set(true);
-                    try (TransactionContext transactionContext = transaction) {
-                      transactionAttemptCount.incrementAndGet();
-                      // Sequence information for the last change event.
-                      ChangeEventSequence previousChangeEventSequence =
-                          ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-                              transactionContext, changeEventContext);
+                    transactionAttemptCount.incrementAndGet();
+                    // Sequence information for the last change event.
+                    ChangeEventSequence previousChangeEventSequence =
+                        ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
+                            transaction, changeEventContext);
 
-                      /* There was a previous event recorded with a greater sequence information
-                       * than current. Hence, skip the current event.
-                       */
-                      if (previousChangeEventSequence != null
-                          && previousChangeEventSequence.compareTo(currentChangeEventSequence)
-                              >= 0) {
-                        return null;
-                      }
-
-                      // Apply shadow and data table mutations.
-                      transactionContext.buffer(changeEventContext.getMutations());
+                    /* There was a previous event recorded with a greater sequence information
+                     * than current. Hence, skip the current event.
+                     */
+                    if (previousChangeEventSequence != null
+                        && previousChangeEventSequence.compareTo(currentChangeEventSequence) >= 0) {
                       return null;
-                    } finally {
-                      isInTransaction.set(false);
                     }
+
+                    // Apply shadow and data table mutations.
+                    transaction.buffer(changeEventContext.getMutations());
+                    isInTransaction.set(false);
+                    return null;
                   });
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
       c.output(timestamp);
@@ -291,5 +286,13 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   public void setSpannerAccessor(SpannerAccessor spannerAccessor) {
     this.spannerAccessor = spannerAccessor;
+  }
+
+  public void setTransactionAttemptCount(AtomicLong transactionAttemptCount) {
+    this.transactionAttemptCount = transactionAttemptCount;
+  }
+
+  public void setIsInTransaction(AtomicBoolean isInTransaction) {
+    this.isInTransaction = isInTransaction;
   }
 }

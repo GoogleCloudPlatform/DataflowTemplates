@@ -157,6 +157,7 @@ public class ChangeEventTransformerDoFnTest {
     when(changeEventSessionConvertor.transformChangeEventData(
             changeEvent, databaseClientMock, null))
         .thenReturn(changeEvent);
+    when(changeEventSessionConvertor.getShardId(changeEvent)).thenReturn("");
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
@@ -226,6 +227,7 @@ public class ChangeEventTransformerDoFnTest {
     when(changeEventSessionConvertor.transformChangeEventData(
             changeEvent, databaseClientMock, null))
         .thenReturn(changeEvent);
+    when(changeEventSessionConvertor.getShardId(changeEvent)).thenReturn("shard1");
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
@@ -375,6 +377,7 @@ public class ChangeEventTransformerDoFnTest {
     when(changeEventSessionConvertor.transformChangeEventData(
             changeEvent, databaseClientMock, null))
         .thenReturn(changeEvent);
+    when(changeEventSessionConvertor.getShardId(changeEvent)).thenReturn("");
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
@@ -433,6 +436,7 @@ public class ChangeEventTransformerDoFnTest {
     when(changeEventSessionConvertor.transformChangeEventData(
             changeEvent, databaseClientMock, null))
         .thenReturn(changeEvent);
+    when(changeEventSessionConvertor.getShardId(changeEvent)).thenReturn("");
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
