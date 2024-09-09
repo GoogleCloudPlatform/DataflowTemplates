@@ -104,7 +104,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
       createAndUploadJarToGcs("shard1");
       CustomTransformation customTransformation =
           CustomTransformation.builder(
-                  "customTransformation.jar", "com.custom.CustomTransformationWithShardForLiveIT")
+                  "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
               .build();
       if (jobInfo1 == null) {
         jobInfo1 =
