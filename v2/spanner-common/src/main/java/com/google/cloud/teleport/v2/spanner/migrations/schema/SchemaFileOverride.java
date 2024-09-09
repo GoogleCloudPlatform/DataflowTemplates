@@ -37,14 +37,4 @@ public class SchemaFileOverride implements Serializable {
   public Map<String, String> getRenamedTables() {
     return renamedTables;
   }
-
-  @Override
-  public String toString() {
-    return "SchemaFileOverride{"
-        + "renamedTables="
-        + renamedTables
-        + ", renamedColumns="
-        + renamedColumns
-        + '}';
-  }
 }

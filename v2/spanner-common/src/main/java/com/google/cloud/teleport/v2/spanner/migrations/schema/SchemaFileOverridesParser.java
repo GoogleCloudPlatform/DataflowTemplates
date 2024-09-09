@@ -43,7 +43,7 @@ public class SchemaFileOverridesParser implements ISchemaOverridesParser, Serial
       String result = IOUtils.toString(stream, StandardCharsets.UTF_8);
       schemaFileOverride = gson.fromJson(result, SchemaFileOverride.class);
       LOG.info("schemaFileOverride = " + schemaFileOverride.toString());
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new IllegalArgumentException(
           "Failed to read schema overrides file. Make sure it is ASCII or UTF-8 encoded and contains a"
               + " well-formed JSON string.",
@@ -85,10 +85,5 @@ public class SchemaFileOverridesParser implements ISchemaOverridesParser, Serial
         schemaFileOverride.getRenamedColumns().get(sourceTableName);
     return new ImmutablePair<>(
         sourceTableName, tableOverridesMap.getOrDefault(sourceColumnName, sourceColumnName));
-  }
-
-  @Override
-  public String toString() {
-    return "SchemaFileOverridesParser{" + "schemaFileOverride=" + schemaFileOverride + '}';
   }
 }
