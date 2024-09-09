@@ -61,7 +61,7 @@ common_params = {
 
     runner_params = {
       additional_experiments = ["enable_google_cloud_profiler", "enable_stackdriver_agent_metrics",
-        "disable_runner_v2", "enable_google_cloud_heap_sampling"]
+      "disable_runner_v2", "enable_google_cloud_heap_sampling"]
       autoscaling_algorithm        = "<YOUR_AUTOSCALING_ALGORITHM>"   # e.g., "BASIC", "NONE"
       enable_streaming_engine      = "<TRUE/FALSE>"                   # Whether to use Dataflow Streaming Engine
       kms_key_name                 = "<YOUR_KMS_KEY_NAME>"            # KMS key name for encryption (optional)

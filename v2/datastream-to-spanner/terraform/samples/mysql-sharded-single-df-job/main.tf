@@ -93,22 +93,22 @@ resource "google_storage_bucket_object" "sharding_context_file_object" {
   bucket       = google_storage_bucket.datastream_bucket.id
 
   content = (
-  var.common_params.dataflow_params.template_params.local_sharding_context_path != null
-  ? jsonencode({
-    "StreamToDbAndShardMap" = {
-      for host_ip, db_map in jsondecode(file(var.common_params.dataflow_params.template_params.local_sharding_context_path)).StreamToDbAndShardMap :
-      contains(keys(local.host_to_stream_map), host_ip) ? local.host_to_stream_map[host_ip] : host_ip => db_map
-    }
-  })
-  :
-  jsonencode({
-    "StreamToDbAndShardMap" : {
-      for idx, shard in var.shard_list : "${shard.shard_id != null ? shard.shard_id : random_pet.migration_id[idx].id}-${shard.datastream_params.stream_id}" => {
-        for db in var.common_params.datastream_params.mysql_databases :
-        db.database => "${replace(shard.datastream_params.mysql_host, ".", "-")}-${db.database}"
+    var.common_params.dataflow_params.template_params.local_sharding_context_path != null
+    ? jsonencode({
+      "StreamToDbAndShardMap" = {
+        for host_ip, db_map in jsondecode(file(var.common_params.dataflow_params.template_params.local_sharding_context_path)).StreamToDbAndShardMap :
+        contains(keys(local.host_to_stream_map), host_ip) ? local.host_to_stream_map[host_ip] : host_ip => db_map
       }
-    }
-  })
+    })
+    :
+    jsonencode({
+      "StreamToDbAndShardMap" : {
+        for idx, shard in var.shard_list : "${shard.shard_id != null ? shard.shard_id : random_pet.migration_id[idx].id}-${shard.datastream_params.stream_id}" => {
+          for db in var.common_params.datastream_params.mysql_databases :
+          db.database => "${replace(shard.datastream_params.mysql_host, ".", "-")}-${db.database}"
+        }
+      }
+    })
   )
 }
 
