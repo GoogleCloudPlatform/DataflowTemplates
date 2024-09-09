@@ -199,6 +199,37 @@ There can be multiple reasons for this.
     - Consider bumping up `maxConnection` and `numPartition` parameters when launching the jobs. We recommend `320` for
       maxConnections and `10000` for numPartitions.
 
+### Allowing network connectivity
+
+Ensure Dataflow VMs are able to access the MySQL instance. This would require:
+
+- Configuring MySQL to allow connections from the Dataflow IPs.
+- Configuring the firewall to allow ingress TCP connection on the MySQL port
+  from the Dataflow IPs.
+
+#### Configuring connectivity on Cloud SQL
+
+Cloud SQL allows multiple ways to establish connectivity. With google
+private access enabled, Dataflow should automatically be able to [access
+the instance](https://cloud.google.com/sql/docs/mysql/authorize-networks).
+
+#### Configuring connectivity on MySQL on GCE
+
+We recommend running such instances and dataflow inside a VPC ensuring Google
+private access is enabled. By default,
+the firewall is configured to allow connections between all private IPs.
+If the target does not allow the dataflow IPs, we recommend the following configurations
+for allowing connectivity:
+
+- Using network tags to configure MySQL VM. Apply the `databases` network
+  tag on the GCE VM.
+- Add firewall rule that allows tcp ingress on 3306 from resources
+  with the `dataflow` [network tag](https://cloud.google.com/vpc/docs/add-remove-network-tags) on targets
+  with the `databases` tag.
+- Specify the Dataflow ips in source ranges to be allowlisted in the firewall rule.
+- Modify the terraform template so that the dataflow jobs are launched with the network tag. The jobs automatically
+  get the dataflow network tag if anything is specified.
+
 ### Configuring to run using a VPC
 
 #### Specifying a shared VPC
@@ -221,6 +252,9 @@ This will result in the Dataflow jobs being launched inside the shared VPC.
    according to the linked guidelines.
 2. Set the `ip_configuration` to `WORKER_IP_PRIVATE` to disable public IP
    addresses for the worker VMs.
+3. If only certain network tags are allowlisted via a firewall, specify the  
+   network tags via
+   the [additional-experiments flag](https://cloud.google.com/dataflow/docs/guides/routes-firewall#network-tags-flex).
 
 > **_NOTE:_** The VPC should already exist. This template does not create a VPC.
 
