@@ -112,7 +112,7 @@ public class ChangeEventSessionConvertor {
     }
     String shardId = "";
     // Fetch shard id from sharding/transformation context.
-    if (shardingContext != null) {
+    if (shardingContext != null && !shardingContext.getStreamToDbAndShardMap().isEmpty()) {
       Map<String, Map<String, String>> streamToDbAndShardMap =
           shardingContext.getStreamToDbAndShardMap();
       if (streamToDbAndShardMap != null && !streamToDbAndShardMap.isEmpty()) {

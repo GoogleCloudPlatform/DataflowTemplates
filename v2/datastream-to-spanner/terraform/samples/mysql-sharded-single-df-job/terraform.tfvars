@@ -55,8 +55,8 @@ common_params = {
       transformation_custom_parameters    = "<YOUR_CUSTOM_PARAMETERS_FOR_JAR>"      # Custom parameters used by the transformation JAR(Optional)
       transformation_class_name           = "<YOUR_TRANSFORMATION_CLASS_NAME>"      # Fully Classified Class Name(Optional)
       filtered_events_directory           = "<YOUR_GCS_PATH_FOR_FILTERED_EVENTS>"   # GCS path to store the filtered events(Optional)
-      run_mode                          = "<YOUR_RUN_MODE>"         # Dataflow run mode ("regular" or "retryDLQ")
-      dlq_gcs_pub_sub_subscription      = "<YOUR_DLQ_SUBSCRIPTION>" # Pub/Sub subscription for the dead-letter queue (optional)
+      run_mode                            = "<YOUR_RUN_MODE>"                       # Dataflow run mode ("regular" or "retryDLQ")
+      dlq_gcs_pub_sub_subscription        = "<YOUR_DLQ_SUBSCRIPTION>"               # Pub/Sub subscription for the dead-letter queue (optional)
     }
 
     runner_params = {
