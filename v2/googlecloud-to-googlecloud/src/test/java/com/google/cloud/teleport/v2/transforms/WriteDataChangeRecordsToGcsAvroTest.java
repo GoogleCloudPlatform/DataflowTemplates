@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToAvro.DataChangeRecordToAvroFn.*;
-
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToAvro.DataChangeRecordToAvroFn;
 import java.io.IOException;

@@ -18,8 +18,8 @@ package com.google.cloud.teleport.v2.transforms;
 import static com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToAvro.DataChangeRecordToAvroFn;
 import static com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToJson.DataChangeRecordToJsonTextFn;
 
-import autovalue.shaded.org.jetbrains.annotations.Nullable;
 import com.google.auto.value.AutoValue;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
