@@ -165,6 +165,7 @@ jobs:
       - name: Run Integration Tests
         run: | 
           ./cicd/run-it-tests \
+          --modules-to-build="DEFAULT" \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
