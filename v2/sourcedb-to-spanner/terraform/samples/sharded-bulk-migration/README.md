@@ -221,39 +221,20 @@ Ensure Dataflow VMs are able to access the MySQL instance. This would require:
 - Configuring the firewall to allow ingress TCP connection on the MySQL port
   from the Dataflow IPs.
 
-#### Configuring connectivity on Cloud SQL
-
-With google private access enabled, running Dataflow in a VPC that can access Cloud SQL's VPC
-should automatically be able to allow the VMs to access the database.
-
-Alternatively, one can explicitly authorize IP address in the 'Connections' tab.
-
 #### Configuring connectivity on MySQL on GCE
 
 We recommend running such instances and dataflow inside a VPC ensuring Google
-private access is enabled. By default,
-the firewall is configured to allow connections between all private IPs.
+private access is enabled.
 If the target does not allow the dataflow IPs, we recommend the following configurations
 for allowing connectivity:
 
 - Using network tags to configure MySQL VM. Apply the `databases` network
   tag on the GCE VM.
-- Add firewall rule that allows tcp ingress on 3306 from resources
+- Add firewall rule that allows tcp ingress on port 3306 from resources
   with the `dataflow` [network tag](https://cloud.google.com/vpc/docs/add-remove-network-tags) on targets
   with the `databases` tag.
 
 ### Configuring to run using a VPC
-
-#### Specifying a shared VPC
-
-You can specify the shared VPC using the `host_project` configuration.
-This will result in the Dataflow jobs being launched inside the shared VPC.
-
-> **_NOTE:_** Usage of shared VPC requires cross-project permissions. They
-> are available as a Terraform
-> template [here](../../../../spanner-common/terraform/samples/configure-shared-vpc/README.md).
-> Dataflow service account permissions are
-> documented [here](https://cloud.google.com/dataflow/docs/guides/specifying-networks#shared).
 
 #### Dataflow
 
@@ -268,11 +249,28 @@ This will result in the Dataflow jobs being launched inside the shared VPC.
    network tags via
    the [additional-experiments flag](https://cloud.google.com/dataflow/docs/guides/routes-firewall#network-tags-flex).
 
-> **_NOTE:_** The VPC should already exist. This template does not create a VPC.
+> **_NOTE:_** You can use a shared VPC by specifying the `host_project` in the subnet path.
+> This will result in the Dataflow jobs being launched inside the shared VPC.
+> Usage of shared VPC requires cross-project permissions. They
+> are available as a Terraform
+> template [here](../../../../spanner-common/terraform/samples/configure-shared-vpc/README.md).
+> Dataflow service account permissions are
+> documented [here](https://cloud.google.com/dataflow/docs/guides/specifying-networks#shared).
 
 If you are facing issue with VPC connectivity, check the following Dataflow
 [guide](https://cloud.google.com/dataflow/docs/guides/troubleshoot-networking)
 to debug common networking issues.
+
+#### Specifying a VPC network for source
+
+The VPC subnet specified in Dataflow should be able to access the source database.
+There are different VPC network configurations possible on the source, for each of which,
+different methods exists to allow connectivity.
+
+For example, for MySQL running on GCE, one can specify the VPC network and subnetwork
+of the GCE instance hosting MySQL.
+Ensure the firewall rules are configured so that other addresses can connect
+to the source.
 
 ### Updating workers of a Dataflow job
 
