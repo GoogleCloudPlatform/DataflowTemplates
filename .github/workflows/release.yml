@@ -32,7 +32,7 @@ jobs:
       - name: Declare release branch name and tag name
         id: variables
         run: |
-          echo "releaseBranchName=release_${CANDIDATE_NAME,,}" >> $GITHUB_OUTPUT
+          echo "releaseBranchName=release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
           echo "tagName=${CANDIDATE_NAME^^}" >> $GITHUB_OUTPUT
         env:
           CANDIDATE_NAME: ${{ inputs.candidateName }}
@@ -64,6 +64,12 @@ jobs:
         env:
           RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
           TAG_NAME: ${{ steps.variables.outputs.tagName }}
+      - name: Push release branch
+        run: |
+          git push origin --delete $RELEASE_BRANCH_NAME || true  
+          git push -u origin $RELEASE_BRANCH_NAME
+        env:
+          RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -100,21 +106,12 @@ jobs:
         with:
           output-zip-file: test-report
         if: always()
-      - name: Create artifacts and push
-        run: |
-          mvn verify -PtemplatesRelease \
-          -DprojectId="dataflow-templates" \
-          -DbucketName="dataflow-templates-staging" \
-          -DlibrariesBucketName="dataflow-templates-libraries" \
-          -DstagePrefix="${CANDIDATE_NAME}" \
-          -Dmaven.test.skip -T8 -e
-        env:
-          CANDIDATE_NAME: ${{ inputs.candidateName }}
       - name: Push tags
         run: |
           git push -u origin --tags
       - name: Release
         run: |
+          gh release delete $TAG_NAME -y || true
           gh release create $TAG_NAME --title "Dataflow Templates $TAG_NAME" --notes ""
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
