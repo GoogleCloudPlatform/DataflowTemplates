@@ -399,10 +399,7 @@ public class InformationSchemaScanner {
           (dialect == Dialect.GOOGLE_STANDARD_SQL)
               ? resultSet.getBoolean(5)
               : resultSet.getString(5).equalsIgnoreCase("YES");
-      String filter =
-          resultSet.isNull(6)
-              ? null
-              : resultSet.getString(6);
+      String filter = resultSet.isNull(6) ? null : resultSet.getString(6);
 
       // Note that 'type' is only queried from GoogleSQL and is not from Postgres and
       // the number of columns will be different.
