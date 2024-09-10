@@ -181,15 +181,9 @@ public class DataStreamToSpanner100GbLT extends DataStreamToSpannerLTBase {
   }
 
   public MySQLSource getMySQLSource() {
-    String hostIp =
-        secretClient.accessSecret(
-            "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-ip-address/versions/1");
-    String username =
-        secretClient.accessSecret(
-            "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-username/versions/1");
-    String password =
-        secretClient.accessSecret(
-            "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-password/versions/1");
+    String hostIp = "34.41.46.219";
+    String username = "load-test-user";
+    String password = "|iFTkjfxKba_mzA]";
     MySQLSource mySQLSource = new MySQLSource.Builder(hostIp, username, password, 3306).build();
     return mySQLSource;
   }

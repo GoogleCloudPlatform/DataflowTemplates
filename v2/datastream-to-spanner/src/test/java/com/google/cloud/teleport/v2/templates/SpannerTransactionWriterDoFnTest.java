@@ -128,6 +128,7 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
     outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    outputObject.put(DatastreamConstants.EVENT_READ_METHOD_KEY, "mysql-cdc-binlog");
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(outputObject.toString(), outputObject.toString());
     Ddl ddl = getTestDdl();
@@ -205,6 +206,7 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
     outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 123);
+    outputObject.put(DatastreamConstants.EVENT_READ_METHOD_KEY, "mysql-backfill-fulldump");
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(outputObject.toString(), outputObject.toString());
     Ddl ddl = getTestDdl();
