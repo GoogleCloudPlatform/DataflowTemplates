@@ -87,7 +87,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
         createAndUploadJarToGcs("DatatypeIT");
         CustomTransformation customTransformation =
             CustomTransformation.builder(
-                    "customTransformation.jar", "com.custom.CustomTransformationWithShardForLiveIT")
+                    "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
                 .build();
         jobInfo =
             launchDataflowJob(
@@ -410,7 +410,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("decimal_column", "456.12");
     row.put("datetime_column", "2024-02-08T08:15:30Z");
     row.put("timestamp_column", "2024-02-08T08:15:30Z");
-    row.put("time_column", "08:15:30");
+    row.put("time_column", "29730000000");
     row.put("year_column", "2022");
     // text, char, tinytext, mediumtext, longtext are BYTE columns
     row.put("text_column", "/u/9n58P");
@@ -448,7 +448,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("decimal_column", 123.45);
     row.put("datetime_column", "2024-02-09T15:30:45Z");
     row.put("timestamp_column", "2024-02-09T15:30:45Z");
-    row.put("time_column", "15:30:45");
+    row.put("time_column", "55845000000");
     row.put("year_column", "2023");
     // text, char, tinytext, mediumtext, longtext are BYTE columns
     row.put("text_column", "/u/9n58f");
@@ -496,7 +496,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("decimal_column", "456.12");
     row.put("datetime_column", "2024-02-08T08:15:30Z");
     row.put("timestamp_column", "2024-02-08T08:15:30Z");
-    row.put("time_column", "08:15:30");
+    row.put("time_column", "29730000000");
     row.put("year_column", "2022");
     // text, char, tinytext, mediumtext, longtext are BYTE columns
     row.put("text_column", "/u/9n58P");
@@ -545,7 +545,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("decimal_column", 456.12);
     row.put("datetime_column", "2024-02-08T08:15:30Z");
     row.put("timestamp_column", "2024-02-08T08:15:30Z");
-    row.put("time_column", "08:15:30");
+    row.put("time_column", "29730000000");
     row.put("year_column", "2022");
     row.put("char_column", "char_1");
     // Source column value: 74696e79626c6f625f646174615f31 ( in BYTES, "tinyblob_data_1" in STRING)
@@ -578,7 +578,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("decimal_column", 123.45);
     row.put("datetime_column", "2024-02-09T15:30:45Z");
     row.put("timestamp_column", "2024-02-09T15:30:45Z");
-    row.put("time_column", "15:30:45");
+    row.put("time_column", "55845000000");
     row.put("year_column", "2023");
     row.put("char_column", "char_2");
     row.put("tinyblob_column", "dGlueWJsb2JfZGF0YV8y");
@@ -621,7 +621,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("decimal_column", 23457.78);
     row.put("datetime_column", "2022-12-31T23:59:58Z");
     row.put("timestamp_column", "2022-12-31T23:59:58Z");
-    row.put("time_column", "00:59:59");
+    // TODO (b/349257952): update once TIME handling is made consistent for bulk and live.
+    // row.put("time_column", "86399001000");
     row.put("year_column", "2023");
     row.put("blob_column", "V29ybWQ=");
     row.put("enum_column", "1");
@@ -642,7 +643,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("decimal_column", 34568.89);
     row.put("datetime_column", "2023-12-31T23:59:59Z");
     row.put("timestamp_column", "2023-12-31T23:59:59Z");
-    row.put("time_column", "01:00:00");
+    // TODO (b/349257952): update once TIME handling is made consistent for bulk and live.
+    // row.put("time_column", "1000");
     row.put("year_column", "2025");
     row.put("blob_column", "V29ybWQ=");
     row.put("enum_column", "1");
@@ -663,7 +665,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("decimal_column", 45679.90);
     row.put("datetime_column", "2021-11-11T11:11:10Z");
     row.put("timestamp_column", "2021-11-11T11:11:10Z");
-    row.put("time_column", "12:11:11");
+    // TODO (b/349257952): update once TIME handling is made consistent for bulk and live.
+    // row.put("time_column", "40271001000");
     row.put("year_column", "2022");
     row.put("blob_column", "V29ybWQ=");
     row.put("enum_column", "1");
@@ -674,7 +677,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery(
-                "SELECT varchar_column, tinyint_column, text_column, date_column, int_column, bigint_column, float_column, double_column, decimal_column, datetime_column, timestamp_column, time_column, year_column, blob_column, enum_column, bool_column, binary_column, bit_column FROM AllDatatypeTransformation"))
+                "SELECT varchar_column, tinyint_column, text_column, date_column, int_column, bigint_column, float_column, double_column, decimal_column, datetime_column, timestamp_column, year_column, blob_column, enum_column, bool_column, binary_column, bit_column FROM AllDatatypeTransformation"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
@@ -692,7 +695,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("decimal_column", 23456.79);
     row.put("datetime_column", "2023-01-01T12:00:00Z");
     row.put("timestamp_column", "2023-01-01T12:00:00Z");
-    row.put("time_column", "12:00:00");
+    row.put("time_column", "43200000000");
     row.put("year_column", "2023");
     row.put("blob_column", "EjRWeJCrze8=");
     row.put("enum_column", "3");
@@ -713,7 +716,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("decimal_column", 34567.90);
     row.put("datetime_column", "2024-01-02T00:00:00Z");
     row.put("timestamp_column", "2024-01-02T00:00:00Z");
-    row.put("time_column", "01:00:00");
+    row.put("time_column", "3600000000");
     row.put("year_column", "2025");
     row.put("blob_column", "q83vEjRWeJA=");
     row.put("enum_column", "1");
@@ -743,7 +746,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("decimal_column", 456.12);
     row.put("datetime_column", "2024-02-08T08:15:30Z");
     row.put("timestamp_column", "2024-02-08T08:15:30Z");
-    row.put("time_column", "08:15:30");
+    row.put("time_column", "29730000000");
     row.put("year_column", "2022");
     row.put("char_column", "char_1");
     // Source column value: 74696e79626c6f625f646174615f31 ( in BYTES, "tinyblob_data_1" in STRING)
