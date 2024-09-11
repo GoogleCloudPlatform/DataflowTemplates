@@ -161,6 +161,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
               .setMinRows(entry.getValue())
               .setMaxRows(entry.getValue())
               .build();
+      iterationCount++;
     }
 
     PipelineOperator.Result result =
