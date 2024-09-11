@@ -12,7 +12,7 @@ public class AssertAll {
     for (Runnable assertion : assertions) {
       try {
         assertion.run();
-      } catch (AssertionError e) {
+      } catch (Throwable e) {
         assertionErrors.add(e);
       }
     }
