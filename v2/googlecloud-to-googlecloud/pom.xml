@@ -151,6 +151,10 @@
           <groupId>com.google.protobuf</groupId>
           <artifactId>protobuf-java</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.apache.hadoop.thirdparty</groupId>
+          <artifactId>hadoop-shaded-guava</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -189,6 +193,10 @@
         <exclusion>
           <groupId>ch.qos.logback</groupId>
           <artifactId>logback-classic</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.hadoop.thirdparty</groupId>
+          <artifactId>hadoop-shaded-guava</artifactId>
         </exclusion>
       </exclusions>
     </dependency>

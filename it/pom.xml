@@ -78,6 +78,10 @@
           <groupId>org.apache.common3</groupId>
           <artifactId>commons-math3</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.apache.hadoop.thirdparty</groupId>
+          <artifactId>hadoop-shaded-guava</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>

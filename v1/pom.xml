@@ -178,6 +178,10 @@
           <groupId>org.codehaus.jackson</groupId>
           <artifactId>*</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.apache.hadoop.thirdparty</groupId>
+          <artifactId>hadoop-shaded-guava</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -196,6 +200,10 @@
         <exclusion>
           <groupId>asm</groupId>
           <artifactId>asm</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.hadoop.thirdparty</groupId>
+          <artifactId>hadoop-shaded-guava</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
