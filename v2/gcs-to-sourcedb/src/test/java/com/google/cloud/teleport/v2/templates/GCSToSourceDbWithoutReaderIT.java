@@ -99,7 +99,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
         createAndUploadJarToGcs(gcsResourceManager);
         CustomTransformation customTransformation =
             CustomTransformation.builder(
-                    "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
+                    "customTransformation.jar", "com.custom.CustomTransformationWithShardForLiveIT")
                 .build();
         launchWriterDataflowJob(customTransformation);
       }

@@ -81,7 +81,7 @@ public class CustomTransformationsNonShardedIT extends SourceDbToSpannerITBase {
     createAndUploadJarToGcs("CustomTransformationAllTypes");
     CustomTransformation customTransformation =
         CustomTransformation.builder(
-                "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
+                "customTransformation.jar", "com.custom.CustomTransformationWithShardForBulkIT")
             .build();
     jobInfo =
         launchDataflowJob(
