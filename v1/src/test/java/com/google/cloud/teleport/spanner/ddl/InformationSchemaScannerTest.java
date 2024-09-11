@@ -85,7 +85,7 @@ public class InformationSchemaScannerTest {
         googleSQLInfoScanner.listIndexesSQL().getSql(),
         equalToCompressingWhiteSpace(
             "SELECT t.table_schema, t.table_name, t.index_name, t.parent_table_name, t.is_unique,"
-                + " t.is_null_filtered, t.index_type, t.search_partition_by, t.search_order_by"
+                + " t.is_null_filtered, t.filter, t.index_type, t.search_partition_by, t.search_order_by"
                 + " FROM information_schema.indexes AS t"
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') AND"
