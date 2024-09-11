@@ -214,4 +214,29 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   RpcPriority getRpcPriority();
 
   void setRpcPriority(RpcPriority rpcPriority);
+
+  @TemplateParameter.Boolean(
+      order = 17,
+      optional = true,
+      description = "Include spanner database id and instance id in output message",
+      helpText =
+          "Whether or not to include the spanner database id and instance id to read the change stream from in the output message data. Defaults to: false")
+  @Default.Boolean(false)
+  Boolean getIncludeSpannerSource();
+
+  void setIncludeSpannerSource(Boolean value);
+
+  @TemplateParameter.Text(
+      order = 18,
+      optional = true,
+      description = "Custom Value for the optional field outputMessageMetadata",
+      helpText =
+          "The string value for the custom field outputMessageMetadata in output pub/sub message. "
+              + "Defaults to empty and the field outputMessageMetadata is only populated if this "
+              + "value is non-empty. Please escape any special characters when entering the value "
+              + "here(ie: double quotes).")
+  @Default.String("")
+  String getOutputMessageMetadata();
+
+  void setOutputMessageMetadata(String value);
 }
