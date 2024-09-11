@@ -74,9 +74,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Build
-        run: ./cicd/run-build
+        run: ./cicd/run-build --internal-maven=true
       - name: Run Unit Tests
-        run: ./cicd/run-unit-tests
+        run: ./cicd/run-unit-tests --internal-maven=true
       # TODO(https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/1807) - Remove once Staging Spanner tests
       #   are fixed
       - name: Run Integration Smoke Tests
@@ -88,7 +88,8 @@ jobs:
           --it-private-connectivity="datastream-private-connect-us-central1" \
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
-          --it-retry-failures=2
+          --it-retry-failures=2 \
+          --internal-maven=true
       # TODO(https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/1807) - Remove once Staging Spanner tests
       #   are fixed
       - name: Run Integration Tests
@@ -100,7 +101,8 @@ jobs:
           --it-private-connectivity="datastream-private-connect-us-central1" \
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
-          --it-retry-failures=2
+          --it-retry-failures=2 \
+          --internal-maven=true
       - name: Upload Site Report
         uses: ./.github/actions/publish-site-report
         with:

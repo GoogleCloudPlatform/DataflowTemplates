@@ -31,6 +31,7 @@ const (
 // Avoid making these vars public.
 var (
 	modulesToBuild string
+	internalMaven  string
 	moduleMap      = map[string][]string{
 		ALL:     {},
 		DEFAULT: {},
@@ -54,6 +55,7 @@ var (
 // Registers all common flags. Must be called before flag.Parse().
 func RegisterCommonFlags() {
 	flag.StringVar(&modulesToBuild, "modules-to-build", ALL, "List of modules to build/run commands against")
+	flag.StringVar(&internalMaven, "internal-maven", "false", "Whether to build using Artifact Registry packages.")
 }
 
 // Returns all modules to build.
@@ -79,4 +81,11 @@ func ModulesToBuild() []string {
 		return make([]string, 0)
 	}
 	return strings.Split(m, ",")
+}
+
+func InternalMaven() string {
+	if internalMaven == "true" {
+		return "-s .mvn/settings.xml"
+	}
+	return ""
 }
