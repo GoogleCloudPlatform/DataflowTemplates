@@ -52,13 +52,12 @@ public class ConnectionHelper {
       config.setMaximumPoolSize(maxConnections);
       config.setConnectionInitSql(
           "SET SESSION net_read_timeout=1200"); // to avoid timeouts at network level layer
-      HikariDataSource ds = new HikariDataSource(config);
       Properties jdbcProperties = new Properties();
       if (properties != null && !properties.isEmpty()) {
         try (StringReader reader = new StringReader(properties)) {
           jdbcProperties.load(reader);
         } catch (IOException e) {
-          System.err.println("Error converting string to properties: " + e.getMessage());
+          LOG.error("Error converting string to properties: {}", e.getMessage());
         }
       }
 
@@ -66,6 +65,8 @@ public class ConnectionHelper {
         String value = jdbcProperties.getProperty(key);
         config.addDataSourceProperty(key, value);
       }
+      HikariDataSource ds = new HikariDataSource(config);
+
       connectionPoolMap.put(sourceConnectionUrl + shard.getUserName() + shard.getPassword(), ds);
     }
   }

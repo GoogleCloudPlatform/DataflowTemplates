@@ -211,33 +211,24 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         c.output(Constants.SUCCESS_TAG, timestamp.toString());
       } catch (ChangeEventConvertorException ex) {
         outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (SpannerException | IllegalStateException ex) {
-        outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (com.mysql.cj.jdbc.exceptions.CommunicationsException
-          | java.sql.SQLTransientConnectionException ex) {
+      } catch (SpannerException
+          | IllegalStateException
+          | com.mysql.cj.jdbc.exceptions.CommunicationsException
+          | java.sql.SQLIntegrityConstraintViolationException
+          | java.sql.SQLTransientConnectionException
+          | ConnectionException ex) {
         outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (java.sql.SQLNonTransientConnectionException ex) {
-        if (ex.getMessage().contains("Server shutdown in progress")) {
+        // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
+        // error codes 1053,1161 and 1159 can be retried
+        if (ex.getErrorCode() == 1053 || ex.getErrorCode() == 1159 || ex.getErrorCode() == 1161) {
           outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
         } else {
           outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
         }
-      } catch (ConnectionException ex) {
-        outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (Exception ex) {
         LOG.error("Failed to write to source", ex);
-        // we are only interested in the retryable errors
-        // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
-        // Error 1452 and 1451 and transient communication errors
-
-        if (ex.getMessage().contains("a foreign key constraint fails")
-            || ex.getMessage().contains("No operations allowed after statement closed")
-            || ex.getMessage().contains("Got timeout reading communication packets")) {
-
-          outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
-        } else {
-          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
-        }
+        outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
       }
     }
   }

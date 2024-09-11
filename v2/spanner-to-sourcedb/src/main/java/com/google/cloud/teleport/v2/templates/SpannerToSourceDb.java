@@ -389,6 +389,28 @@ public class SpannerToSourceDb {
         .as(DataflowPipelineWorkerPoolOptions.class)
         .setAutoscalingAlgorithm(AutoscalingAlgorithmType.THROUGHPUT_BASED);
 
+    // calculate the max connections per worker
+    int maxNumWorkers =
+        pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getMaxNumWorkers();
+    int connectionPoolSizePerWorker = (int) (options.getMaxShardConnections() / maxNumWorkers);
+    if (connectionPoolSizePerWorker < 1) {
+      // This can happen when the number of workers is more than max.
+      // This can cause overload on the source database. Error out and let the user know.
+      LOG.error(
+          "Max workers {} is more than max shard connections {}, this can lead to more database"
+              + " connections than desired",
+          maxNumWorkers,
+          options.getMaxShardConnections());
+      throw new IllegalArgumentException(
+          "Max Dataflow workers "
+              + maxNumWorkers
+              + " is more than max per shard connections: "
+              + options.getMaxShardConnections()
+              + " this can lead to more"
+              + " database connections than desired. Either reduce the max allowed workers or"
+              + " incease the max shard connections");
+    }
+
     // Read the session file
     Schema schema = SessionFileReader.read(options.getSessionFilePath());
 
@@ -424,6 +446,8 @@ public class SpannerToSourceDb {
                 .getDialect(),
             options.getShadowTablePrefix());
 
+    DataflowPipelineDebugOptions debugOptions = options.as(DataflowPipelineDebugOptions.class);
+
     shadowTableCreator.createShadowTablesInSpanner();
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
@@ -435,6 +459,12 @@ public class SpannerToSourceDb {
     boolean isRegularMode = "regular".equals(options.getRunMode());
     PCollectionTuple reconsumedElements = null;
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
+
+    int reshuffleBucketSize =
+        maxNumWorkers
+            * (debugOptions.getNumberOfWorkerHarnessThreads() > 0
+                ? debugOptions.getNumberOfWorkerHarnessThreads()
+                : Constants.DEFAULT_WORKER_HARNESS_THREAD_COUNT);
 
     if (isRegularMode) {
       reconsumedElements =
@@ -491,7 +521,6 @@ public class SpannerToSourceDb {
     } else {
       mergedRecords = dlqRecords;
     }
-    DataflowPipelineDebugOptions debugOptions = options.as(DataflowPipelineDebugOptions.class);
     SourceWriterTransform.Result sourceWriterOutput =
         mergedRecords
             .apply(
@@ -512,9 +541,8 @@ public class SpannerToSourceDb {
                         options.getShardingCustomClassName(),
                         options.getShardingCustomParameters(),
                         options.getMaxShardConnections()
-                            * shards
-                                .size()))) // currently assuming that all shards accept the same
-                                           // number of max connections
+                            * shards.size()))) // currently assuming that all shards accept the same
+            // number of max connections
             .setCoder(
                 KvCoder.of(
                     VarLongCoder.of(), SerializableCoder.of(TrimmedShardedDataChangeRecord.class)))
@@ -529,9 +557,7 @@ public class SpannerToSourceDb {
                     ddl,
                     options.getShadowTablePrefix(),
                     options.getSkipDirectoryName(),
-                    debugOptions.getNumberOfWorkerHarnessThreads() > 0
-                        ? debugOptions.getNumberOfWorkerHarnessThreads()
-                        : Constants.DEFAULT_WORKER_HARNESS_THREAD_COUNT));
+                    connectionPoolSizePerWorker));
 
     PCollection<FailsafeElement<String, String>> dlqPermErrorRecords =
         reconsumedElements
@@ -542,7 +568,8 @@ public class SpannerToSourceDb {
         sourceWriterOutput
             .permanentErrors()
             .setCoder(StringUtf8Coder.of())
-            .apply("Reshuffle3", Reshuffle.viaRandomKey())
+            .apply(
+                "Reshuffle3", Reshuffle.<String>viaRandomKey().withNumBuckets(reshuffleBucketSize))
             .apply(
                 "Convert permanent errors from source writer to DLQ format",
                 ParDo.of(new ConvertChangeStreamErrorRecordToFailsafeElementFn()))
@@ -572,7 +599,8 @@ public class SpannerToSourceDb {
         sourceWriterOutput
             .retryableErrors()
             .setCoder(StringUtf8Coder.of())
-            .apply("Reshuffle4", Reshuffle.viaRandomKey())
+            .apply(
+                "Reshuffle4", Reshuffle.<String>viaRandomKey().withNumBuckets(reshuffleBucketSize))
             .apply(
                 "Convert retryable errors from source writer to DLQ format",
                 ParDo.of(new ConvertChangeStreamErrorRecordToFailsafeElementFn()))
@@ -595,7 +623,8 @@ public class SpannerToSourceDb {
         sourceWriterOutput
             .skippedSourceWrites()
             .setCoder(StringUtf8Coder.of())
-            .apply("Reshuffle5", Reshuffle.viaRandomKey())
+            .apply(
+                "Reshuffle5", Reshuffle.<String>viaRandomKey().withNumBuckets(reshuffleBucketSize))
             .apply(
                 "Convert skipped records from source writer to DLQ format",
                 ParDo.of(new ConvertChangeStreamErrorRecordToFailsafeElementFn()))
