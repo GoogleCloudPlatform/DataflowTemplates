@@ -37,6 +37,7 @@ import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.MetadataValidator;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Strings;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -459,6 +460,12 @@ public class KafkaToBigQueryFlex {
       throw new IllegalArgumentException(
           "Schema Registry Connection URL or Avro schema is needed in order to read confluent wire format messages.");
     }
+    if (!Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath())
+        && !Strings.isNullOrEmpty(options.getJavascriptTextTransformFunctionName())) {
+      LOG.warn(
+          "JavaScript UDF parameters are set while using Avro message format. "
+              + "UDFs are supported for JSON format only. No UDF transformation will be applied.");
+    }
 
     PCollection<KafkaRecord<byte[], byte[]>> kafkaRecords;
 
@@ -474,8 +481,7 @@ public class KafkaToBigQueryFlex {
             .setCoder(
                 KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()));
 
-    WriteResult writeResult = null;
-    writeResult = processKafkaRecords(kafkaRecords, options);
+    WriteResult writeResult = processKafkaRecords(kafkaRecords, options);
     return pipeline;
   }
 
@@ -514,7 +520,16 @@ public class KafkaToBigQueryFlex {
             /*
              * Step #2: Transform the Kafka Messages into TableRows
              */
-            .apply("ConvertMessageToTableRow", new StringMessageToTableRow());
+            .apply(
+                "ConvertMessageToTableRow",
+                StringMessageToTableRow.newBuilder()
+                    .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                    .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setReloadIntervalMinutes(
+                        options.getJavascriptTextTransformReloadIntervalMinutes())
+                    .setSuccessTag(TRANSFORM_OUT)
+                    .setFailureTag(TRANSFORM_DEADLETTER_OUT)
+                    .build());
     /*
      * Step #3: Write the successful records out to BigQuery
      */
