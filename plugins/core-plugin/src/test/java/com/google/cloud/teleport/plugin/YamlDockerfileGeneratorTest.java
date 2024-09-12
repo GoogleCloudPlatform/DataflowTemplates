@@ -41,6 +41,7 @@ public class YamlDockerfileGeneratorTest {
         "beam_version",
         "py_version",
         "word-count",
+        "/opt/google/dataflow/python_template_launcher",
         List.of(),
         outputFolder);
     File outputFile = new File(outputFolder.getAbsolutePath() + "/word-count/Dockerfile");
@@ -64,6 +65,7 @@ public class YamlDockerfileGeneratorTest {
         "beam_version",
         "py_version",
         "word-count",
+        "/opt/google/dataflow/python_template_launcher",
         List.of("other_file"),
         outputFolder);
     File outputFile = new File(outputFolder.getAbsolutePath() + "/word-count/Dockerfile");

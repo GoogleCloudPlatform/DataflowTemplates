@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.plugin;
 
+import com.google.auto.value.AutoValue;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
@@ -37,12 +38,17 @@ public class YamlDockerfileGenerator {
 
   private YamlDockerfileGenerator() {}
 
+  public static YamlDockerfileGenerator.Builder builder() {
+    return new Builder();
+  }
+
   public static void generateDockerfile(
       String baseJavaContainerImage,
       String beamVersion,
       String pythonVersion,
       String yamlTemplateName,
-      List<String> otherFiles,
+      String entryPoint,
+      List<String> filesToCopy,
       File targetDirectory)
       throws IOException, TemplateException {
     Configuration freemarkerConfig = new Configuration(Configuration.VERSION_2_3_32);
@@ -55,8 +61,9 @@ public class YamlDockerfileGenerator {
     parameters.put("baseJavaContainerImage", baseJavaContainerImage);
     parameters.put("beamVersion", beamVersion);
     parameters.put("pythonVersion", pythonVersion);
-    if (!otherFiles.isEmpty()) {
-      parameters.put("copyOtherFiles", String.join(" ", otherFiles));
+    parameters.put("entryPoint", entryPoint);
+    if (!filesToCopy.isEmpty()) {
+      parameters.put("filesToCopy", String.join(" ", filesToCopy));
     }
 
     Template template = freemarkerConfig.getTemplate("Dockerfile-template-yaml");
@@ -76,5 +83,10 @@ public class YamlDockerfileGenerator {
       LOG.warning("Unable to generate Dockerfile for " + yamlTemplateName);
       throw e;
     }
+  }
+
+  @AutoValue.Builder
+  private abstract static class Builder {
+
   }
 }

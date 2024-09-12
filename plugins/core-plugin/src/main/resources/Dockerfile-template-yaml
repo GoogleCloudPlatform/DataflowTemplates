@@ -12,8 +12,7 @@ ARG PY_VERSION=${pythonVersion}
 
 # Copy template files to /template
 RUN mkdir -p $WORKDIR
-COPY main.py requirements.txt* /template/
-<#if copyOtherFiles??>COPY ${copyOtherFiles} /template/</#if>
+COPY ${filesToCopy} /template/
 WORKDIR $WORKDIR
 
 # Create requirements.txt file if not provided
@@ -71,4 +70,4 @@ COPY --from=python-base /usr/licenses/ /usr/licenses/
 
 WORKDIR /template
 
-ENTRYPOINT ["/opt/google/dataflow/python_template_launcher"]
+ENTRYPOINT [${entryPoint}]

@@ -43,9 +43,11 @@ import java.net.MalformedURLException;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.execution.MavenSession;
@@ -116,6 +118,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       defaultValue = "gcr.io/dataflow-templates-base/python311-template-launcher-base:latest",
       required = false)
   protected String basePythonContainerImage;
+
+  // Keep pythonVersion below in sync with version in image
+  @Parameter(
+      name = "pythonTemplateLauncherEntryPoint",
+      defaultValue = "/opt/google/dataflow/python_template_launcher",
+      required = false)
+  protected String pythonTemplateLauncherEntryPoint;
 
   protected String pythonVersion = "3.11";
 
@@ -580,7 +589,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // extract image properties for Dockerfile
     String yamlTemplateName = yamlTemplateFile.replace(".yaml", "");
     String beamVersion = project.getProperties().getProperty("beam-python.version");
-    List<String> otherFiles = new ArrayList<>();
+    Set<String> otherFiles = new HashSet<>(Set.of("main.py", "requirements.txt*"));
     String filesToCopy = definition.getTemplateAnnotation().filesToCopy();
     if (!Strings.isNullOrEmpty(filesToCopy)) {
       otherFiles.addAll(List.of(filesToCopy.split(",")));
@@ -595,6 +604,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         beamVersion,
         pythonVersion,
         yamlTemplateName,
+        pythonTemplateLauncherEntryPoint,
         otherFiles,
         outputClassesDirectory);
 
