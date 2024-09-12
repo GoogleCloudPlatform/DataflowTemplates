@@ -280,14 +280,19 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         sourceSchemaReference,
         tables);
 
-    // TODO(thiagotnunes): Fix the query to work with PG versions < 11
     final String query =
         String.format(
             "SELECT a.attname AS column_name,"
                 + "  ixs.indexname AS index_name,"
                 + "  ix.indisunique AS is_unique,"
                 + "  ix.indisprimary AS is_primary,"
-                + "  ix.indnkeyatts AS cardinality,"
+                // PG < 11 does not have the indnkeyatts column (total key columns in index), since
+                // the INCLUDE SQL feature was not available then. We use the indnatts column
+                // instead (total columns in index).
+                + "  COALESCE("
+                + "    (row_to_json(ix)->>'indnkeyatts')::int8,"
+                + "    (row_to_json(ix)->>'indnatts')::int8"
+                + "  ) AS cardinality,"
                 + "  a.attnum AS ordinal_position,"
                 + "  t.typname AS type_name,"
                 + "  information_schema._pg_char_max_length(a.atttypid, a.atttypmod) AS type_length,"
