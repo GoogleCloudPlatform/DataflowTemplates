@@ -259,7 +259,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
 
   /**
    * Discover the indexes of tables to migrate. You can try this in <a
-   * href="https://www.db-fiddle.com/f/bWFaWkW6dMw1tcNDaFnChc/0">db-fiddle</a>.
+   * href="https://www.db-fiddle.com/f/kTanXYXoM2VgCjSf6NZHjD/1">db-fiddle</a>.
    *
    * @param dataSource Provider for JDBC connection.
    * @param sourceSchemaReference Source database name and (optionally namespace)
