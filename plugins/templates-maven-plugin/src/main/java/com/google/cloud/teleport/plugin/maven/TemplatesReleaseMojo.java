@@ -18,6 +18,7 @@ package com.google.cloud.teleport.plugin.maven;
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.bucketNameOnly;
 
 import com.google.api.gax.rpc.InvalidArgumentException;
+import com.google.cloud.teleport.metadata.HelperImage;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
 import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
@@ -70,18 +71,26 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${gcpTempLocation}", readonly = true, required = false)
   protected String gcpTempLocation;
 
-  @Parameter(
-      name = "baseContainerImage",
-      defaultValue =
-          "gcr.io/dataflow-templates-base/java11-template-launcher-base-distroless:latest",
-      required = false)
+  @Parameter(defaultValue = "${baseContainerImage}", readonly = true, required = false)
   protected String baseContainerImage;
 
-  @Parameter(
-      name = "basePythonContainerImage",
-      defaultValue = "gcr.io/dataflow-templates-base/python311-template-launcher-base:latest",
-      required = false)
+  @Parameter(defaultValue = "${basePythonContainerImage}", readonly = true, required = false)
   protected String basePythonContainerImage;
+
+  @Parameter(
+      defaultValue = "${pythonTemplateLauncherEntryPoint}",
+      readonly = true,
+      required = false)
+  protected String pythonTemplateLauncherEntryPoint;
+
+  @Parameter(defaultValue = "${javaTemplateLauncherEntryPoint}", readonly = true, required = false)
+  protected String javaTemplateLauncherEntryPoint;
+
+  @Parameter(defaultValue = "${pythonVersion}", readonly = true, required = false)
+  protected String pythonVersion;
+
+  @Parameter(defaultValue = "${beamVersion}", readonly = true, required = false)
+  protected String beamVersion;
 
   @Parameter(defaultValue = "${unifiedWorker}", readonly = true, required = false)
   protected boolean unifiedWorker;
@@ -148,7 +157,13 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                 gcpTempLocation,
                 baseContainerImage,
                 basePythonContainerImage,
-                unifiedWorker);
+                pythonTemplateLauncherEntryPoint,
+                javaTemplateLauncherEntryPoint,
+                pythonVersion,
+                beamVersion,
+                unifiedWorker,
+                // TODO - enable releasing helper images
+                false);
 
         String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
         LOG.info("Template staged: {}", templatePath);
@@ -157,6 +172,12 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
         generator.saveMetadata(definition, imageSpec.getMetadata(), targetDirectory);
         if (definition.isFlex()) {
           generator.saveImageSpec(definition, imageSpec, targetDirectory);
+        }
+
+        if (definition.getTemplateClass().isAnnotationPresent(HelperImage.class)) {
+
+          String imagePath = configuredMojo.stageHelperImage(definition);
+          LOG.info("Image staged: {}", imagePath);
         }
       }
 

@@ -84,18 +84,26 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${gcpTempLocation}", readonly = true, required = false)
   protected String gcpTempLocation;
 
-  @Parameter(
-      name = "baseContainerImage",
-      defaultValue =
-          "gcr.io/dataflow-templates-base/java11-template-launcher-base-distroless:latest",
-      required = false)
+  @Parameter(defaultValue = "${baseContainerImage}", readonly = true, required = false)
   protected String baseContainerImage;
 
-  @Parameter(
-      name = "basePythonContainerImage",
-      defaultValue = "gcr.io/dataflow-templates-base/python311-template-launcher-base:latest",
-      required = false)
+  @Parameter(defaultValue = "${basePythonContainerImage}", readonly = true, required = false)
   protected String basePythonContainerImage;
+
+  @Parameter(
+      defaultValue = "${pythonTemplateLauncherEntryPoint}",
+      readonly = true,
+      required = false)
+  protected String pythonTemplateLauncherEntryPoint;
+
+  @Parameter(defaultValue = "${javaTemplateLauncherEntryPoint}", readonly = true, required = false)
+  protected String javaTemplateLauncherEntryPoint;
+
+  @Parameter(defaultValue = "${pythonVersion}", readonly = true, required = false)
+  protected String pythonVersion;
+
+  @Parameter(defaultValue = "${beamVersion}", readonly = true, required = false)
+  protected String beamVersion;
 
   @Parameter(defaultValue = "${unifiedWorker}", readonly = true, required = false)
   protected boolean unifiedWorker;
@@ -157,7 +165,12 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
               gcpTempLocation,
               baseContainerImage,
               basePythonContainerImage,
-              unifiedWorker);
+              pythonTemplateLauncherEntryPoint,
+              javaTemplateLauncherEntryPoint,
+              pythonVersion,
+              beamVersion,
+              unifiedWorker,
+              false);
 
       String useJobName =
           StringUtils.isNotEmpty(jobName)
