@@ -15,14 +15,14 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
-import com.google.ads.googleads.v14.errors.GoogleAdsError;
+import com.google.ads.googleads.v17.errors.GoogleAdsError;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.protobuf.Message;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.apache.beam.sdk.io.googleads.GoogleAdsV14.RateLimitPolicy;
-import org.apache.beam.sdk.io.googleads.GoogleAdsV14.RateLimitPolicyFactory;
+import org.apache.beam.sdk.io.googleads.GoogleAdsV17.RateLimitPolicy;
+import org.apache.beam.sdk.io.googleads.GoogleAdsV17.RateLimitPolicyFactory;
 
 public class GoogleAdsRateLimitPolicyFactory implements RateLimitPolicyFactory {
   @VisibleForTesting
