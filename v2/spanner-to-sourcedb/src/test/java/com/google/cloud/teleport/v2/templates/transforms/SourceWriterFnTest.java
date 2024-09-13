@@ -40,7 +40,6 @@ import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
-import java.sql.SQLException;
 import java.util.HashMap;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
@@ -83,7 +82,7 @@ public class SourceWriterFnTest {
         .thenReturn(new ShadowTableRecord(Timestamp.parseTimestamp("2025-02-02T00:00:00Z"), 1));
     when(mockSpannerDao.getShadowTableRecord(eq("shadow_child21"), any())).thenReturn(null);
     doNothing().when(mockSpannerDao).updateShadowTable(any());
-    doThrow(new SQLException("a foreign key constraint fails"))
+    doThrow(new java.sql.SQLIntegrityConstraintViolationException("a foreign key constraint fails"))
         .when(mockMySqlDao)
         .write(contains("child21"));
     doNothing().when(mockMySqlDao).write(contains("parent1"));
