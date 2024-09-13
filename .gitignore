@@ -3,6 +3,9 @@
 **/dependency-reduced-pom.xml
 **/target/**/*
 
+# Python requirements build files
+**/__build__/**/*
+
 # IntelliJ files
 **/.idea/**/*
 **/*.iml
