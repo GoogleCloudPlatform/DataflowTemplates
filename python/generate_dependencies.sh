@@ -32,6 +32,7 @@ rm -rf "$ENV_PATH" 2>/dev/null || true
 python3 -m venv "$ENV_PATH"
 source "$ENV_PATH"/bin/activate
 pip install --upgrade pip setuptools wheel
+pip install pip-tools
 
 # Install requirements from base file
 pip install ${PIP_EXTRA_OPTIONS:+"$PIP_EXTRA_OPTIONS"}  --no-cache-dir -r $BASE_REQUIREMENTS_PATH
@@ -41,9 +42,12 @@ pip check
 echo "Installed dependencies:"
 pip freeze
 
+# Generate hashes for new requirements file
+echo "Running pip-compile to generate hashes"
+pip-compile $BASE_REQUIREMENTS_PATH -o $TARGET_REQUIREMENTS_PATH --generate-hashes
+
 PY_IMAGE="py${PY_VERSION//.}"
-REQUIREMENTS_FILE=$TARGET_REQUIREMENTS_PATH
-cat <<EOT > "$REQUIREMENTS_FILE"
+cat <<EOT > "$TARGET_REQUIREMENTS_PATH"
 # Copyright 2020 Google Inc. All Rights Reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,17 +68,8 @@ cat <<EOT > "$REQUIREMENTS_FILE"
 # or: sh python/generate_all_dependencies.sh
 # Do not edit manually, adjust the base requirements file, and regenerate the list.
 
-EOT
-# Remove pkg_resources to guard against
-# https://stackoverflow.com/questions/39577984/what-is-pkg-resources-0-0-0-in-output-of-pip-freeze-command
-pip freeze | grep -v pkg_resources >> "$REQUIREMENTS_FILE"
+$(cat $TARGET_REQUIREMENTS_PATH)
 
-if grep -q "tensorflow==" "$REQUIREMENTS_FILE"; then
-  # Get the version of tensorflow from the .txt file.
-  TF_VERSION=$(grep -Po "tensorflow==\K[^;]+" "$REQUIREMENTS_FILE")
-  TF_ENTRY="tensorflow==${TF_VERSION}"
-  TF_AARCH64_ENTRY="tensorflow-cpu-aws==${TF_VERSION};platform_machine==\"aarch64\""
-  sed -i "s/${TF_ENTRY}/${TF_ENTRY}\n${TF_AARCH64_ENTRY}/g" $REQUIREMENTS_FILE
-fi
+EOT
 
 rm -rf "$ENV_PATH"
