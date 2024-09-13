@@ -108,8 +108,10 @@ public final class JdbcSourceRowMapper implements JdbcIO.RowMapper<SourceRow> {
               } catch (SQLException e) {
                 mapperErrors.inc();
                 logger.error(
-                    "Exception while mapping jdbc ResultSet to avro. Check for potential schema changes. Exception: "
-                        + e);
+                    "Exception while mapping jdbc ResultSet to avro. Check for potential schema changes or unexpected inaccuracy in schema discovery logs. SourceSchemaReference: {},  SourceTableSchema: {}. Exception: {}",
+                    sourceSchemaReference,
+                    sourceTableSchema,
+                    e);
                 throw new ValueMappingException(e);
               }
             });

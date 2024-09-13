@@ -145,6 +145,9 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
         "bigint",
         createRows("bigint", "40", "9223372036854775807", "-9223372036854775808", "NULL"));
     expectedData.put(
+        "bigint_unsigned",
+        createRows("bigint_unsigned", "42", "0", "18446744073709551615", "NULL"));
+    expectedData.put(
         "binary",
         createRows("binary", "eDU4MD" + repeatString("A", 334), repeatString("/", 340), "NULL"));
     expectedData.put("bit", createRows("bit", "f/////////8=", "NULL"));
@@ -186,9 +189,13 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
         "mediumblob", createRows("mediumblob", "eDU4MDA=", repeatString("/", 87380), "NULL"));
     expectedData.put("mediumint", createRows("mediumint", "20", "NULL"));
     expectedData.put(
+        "mediumint_unsigned", createRows("mediumint_unsigned", "42", "0", "16777215", "NULL"));
+    expectedData.put(
         "mediumtext",
         createRows("mediumtext", "mediumtext", repeatString("a", 33) + "...", "NULL"));
     expectedData.put("smallint", createRows("smallint", "15", "32767", "-32768", "NULL"));
+    expectedData.put(
+        "smallint_unsigned", createRows("smallint_unsigned", "42", "0", "65535", "NULL"));
     expectedData.put("text", createRows("text", "xyz", repeatString("a", 33) + "...", "NULL"));
     expectedData.put("time", createRows("time", "15:50:00", "838:59:59", "-838:59:59", "NULL"));
     expectedData.put(
@@ -202,6 +209,7 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
     expectedData.put(
         "tinyblob", createRows("tinyblob", "eDU4MDA=", repeatString("/", 340), "NULL"));
     expectedData.put("tinyint", createRows("tinyint", "10", "127", "-128", "NULL"));
+    expectedData.put("tinyint_unsigned", createRows("tinyint_unsigned", "0", "255", "NULL"));
     expectedData.put(
         "tinytext",
         createRows("tinytext", "tinytext", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...", "NULL"));
@@ -211,6 +219,8 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
         "varchar", createRows("varchar", "abc", repeatString("a", 33) + "...", "NULL"));
     expectedData.put("year", createRows("year", "2022", "1901", "2155", "NULL"));
     expectedData.put("set", createRows("set", "v1,v2", "NULL"));
+    expectedData.put(
+        "integer_unsigned", createRows("integer_unsigned", "0", "42", "4294967296", "NULL"));
     return expectedData;
   }
 
