@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
-import com.google.ads.googleads.v14.services.GoogleAdsRow;
+import com.google.ads.googleads.v17.services.GoogleAdsRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.common.base.Functions;
 import com.google.common.base.Splitter;
