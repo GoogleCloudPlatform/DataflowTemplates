@@ -36,10 +36,10 @@ import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorReco
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.MySqlDao;
+import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
-import java.sql.SQLException;
 import java.util.HashMap;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
@@ -75,14 +75,14 @@ public class SourceWriterFnTest {
   @Before
   public void doBeforeEachTest() throws Exception {
     when(mockMySqlDaoMap.get(any())).thenReturn(mockMySqlDao);
-    when(mockSpannerDao.getProcessedCommitTimestamp(eq("shadow_parent1"), any())).thenReturn(null);
-    when(mockSpannerDao.getProcessedCommitTimestamp(eq("shadow_parent2"), any()))
+    when(mockSpannerDao.getShadowTableRecord(eq("shadow_parent1"), any())).thenReturn(null);
+    when(mockSpannerDao.getShadowTableRecord(eq("shadow_parent2"), any()))
         .thenThrow(new IllegalStateException("Test exception"));
-    when(mockSpannerDao.getProcessedCommitTimestamp(eq("shadow_child11"), any()))
-        .thenReturn(Timestamp.parseTimestamp("2025-02-02T00:00:00Z"));
-    when(mockSpannerDao.getProcessedCommitTimestamp(eq("shadow_child21"), any())).thenReturn(null);
-    doNothing().when(mockSpannerDao).updateProcessedCommitTimestamp(any());
-    doThrow(new SQLException("a foreign key constraint fails"))
+    when(mockSpannerDao.getShadowTableRecord(eq("shadow_child11"), any()))
+        .thenReturn(new ShadowTableRecord(Timestamp.parseTimestamp("2025-02-02T00:00:00Z"), 1));
+    when(mockSpannerDao.getShadowTableRecord(eq("shadow_child21"), any())).thenReturn(null);
+    doNothing().when(mockSpannerDao).updateShadowTable(any());
+    doThrow(new java.sql.SQLIntegrityConstraintViolationException("a foreign key constraint fails"))
         .when(mockMySqlDao)
         .write(contains("child21"));
     doNothing().when(mockMySqlDao).write(contains("parent1"));
@@ -112,16 +112,44 @@ public class SourceWriterFnTest {
             testSourceDbTimezoneOffset,
             testDdl,
             "shadow_",
-            "skip");
+            "skip",
+            500);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
     sourceWriterFn.processElement(processContext);
-    verify(mockSpannerDao, atLeast(1)).getProcessedCommitTimestamp(any(), any());
+    verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockMySqlDao, never()).write(any());
-    verify(mockSpannerDao, never()).updateProcessedCommitTimestamp(any());
+    verify(mockSpannerDao, never()).updateShadowTable(any());
+  }
+
+  @Test
+  public void testSourceIsAheadWithSameCommitTimestamp() throws Exception {
+    TrimmedShardedDataChangeRecord record =
+        getChild11TrimmedDataChangeRecordWithSameCommitTimestamp("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip",
+            500);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.processElement(processContext);
+    verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
+    verify(mockMySqlDao, never()).write(any());
+    verify(mockSpannerDao, never()).updateShadowTable(any());
   }
 
   @Test
@@ -137,16 +165,17 @@ public class SourceWriterFnTest {
             testSourceDbTimezoneOffset,
             testDdl,
             "shadow_",
-            "skip");
+            "skip",
+            500);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
     sourceWriterFn.processElement(processContext);
-    verify(mockSpannerDao, atLeast(1)).getProcessedCommitTimestamp(any(), any());
+    verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockMySqlDao, atLeast(1)).write(any());
-    verify(mockSpannerDao, atLeast(1)).updateProcessedCommitTimestamp(any());
+    verify(mockSpannerDao, atLeast(1)).updateShadowTable(any());
   }
 
   @Test
@@ -161,7 +190,8 @@ public class SourceWriterFnTest {
             testSourceDbTimezoneOffset,
             testDdl,
             "shadow_",
-            "skip");
+            "skip",
+            500);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -190,7 +220,8 @@ public class SourceWriterFnTest {
             testSourceDbTimezoneOffset,
             testDdl,
             "shadow_",
-            "skip");
+            "skip",
+            500);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -217,7 +248,8 @@ public class SourceWriterFnTest {
             testSourceDbTimezoneOffset,
             testDdl,
             "shadow_",
-            "skip");
+            "skip",
+            500);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -248,7 +280,8 @@ public class SourceWriterFnTest {
             testSourceDbTimezoneOffset,
             testDdl,
             "shadow_",
-            "skip");
+            "skip",
+            500);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -275,7 +308,8 @@ public class SourceWriterFnTest {
             testSourceDbTimezoneOffset,
             testDdl,
             "shadow_",
-            "skip");
+            "skip",
+            500);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -377,7 +411,23 @@ public class SourceWriterFnTest {
     return new TrimmedShardedDataChangeRecord(
         Timestamp.parseTimestamp("2024-12-01T10:15:30.000Z"),
         "serverTxnId",
-        "recordSeq",
+        "0",
+        "child11",
+        new Mod(
+            "{\"child_id\": \"42\" , \"parent_id\": \"42\"}",
+            "{}",
+            "{ \"migration_shard_id\": \"" + shardId + "\"}"),
+        ModType.valueOf("INSERT"),
+        1,
+        "");
+  }
+
+  private TrimmedShardedDataChangeRecord getChild11TrimmedDataChangeRecordWithSameCommitTimestamp(
+      String shardId) {
+    return new TrimmedShardedDataChangeRecord(
+        Timestamp.parseTimestamp("2025-02-02T00:00:00Z"),
+        "serverTxnId",
+        "0",
         "child11",
         new Mod(
             "{\"child_id\": \"42\" , \"parent_id\": \"42\"}",
@@ -392,7 +442,7 @@ public class SourceWriterFnTest {
     return new TrimmedShardedDataChangeRecord(
         Timestamp.parseTimestamp("2020-12-01T10:15:30.000Z"),
         "serverTxnId",
-        "recordSeq",
+        "0",
         "parent1",
         new Mod("{\"id\": \"42\"}", "{}", "{ \"migration_shard_id\": \"" + shardId + "\"}"),
         ModType.valueOf("INSERT"),
@@ -405,7 +455,7 @@ public class SourceWriterFnTest {
     return new TrimmedShardedDataChangeRecord(
         Timestamp.parseTimestamp("2020-12-01T10:15:30.000Z"),
         "serverTxnId",
-        "recordSeq",
+        "0",
         "parent1",
         new Mod(
             "{\"junk_colm\": \"hello\"}", "{}", "{ \"migration_shard_id\": \"" + shardId + "\"}"),
@@ -418,7 +468,7 @@ public class SourceWriterFnTest {
     return new TrimmedShardedDataChangeRecord(
         Timestamp.parseTimestamp("2020-12-01T10:15:30.000Z"),
         "serverTxnId",
-        "recordSeq",
+        "0",
         "parent2",
         new Mod("{\"id\": \"42\"}", "{}", "{ \"migration_shard_id\": \"" + shardId + "\"}"),
         ModType.valueOf("INSERT"),
@@ -430,7 +480,7 @@ public class SourceWriterFnTest {
     return new TrimmedShardedDataChangeRecord(
         Timestamp.parseTimestamp("2024-12-01T10:15:30.000Z"),
         "serverTxnId",
-        "recordSeq",
+        "0",
         "child21",
         new Mod(
             "{\"child_id\": \"42\" , \"parent_id\": \"42\"}",

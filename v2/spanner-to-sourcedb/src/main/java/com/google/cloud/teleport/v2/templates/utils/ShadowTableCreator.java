@@ -171,6 +171,14 @@ public class ShadowTableCreator {
     shadowTableBuilder.addColumn(
         processedCommitTimestampColumnBuilder.type(Type.timestamp()).notNull(false).autoBuild());
 
+    // Add record sequence column to hold the record sequence change stream record written
+    // to source
+    // by the pipeline.
+    Column.Builder recordSequenceColumnBuilder =
+        shadowTableBuilder.column(Constants.RECORD_SEQ_COLUMN_NAME);
+    shadowTableBuilder.addColumn(
+        recordSequenceColumnBuilder.type(Type.int64()).notNull(false).autoBuild());
+
     return shadowTableBuilder.build();
   }
 
