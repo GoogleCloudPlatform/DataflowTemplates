@@ -16,13 +16,13 @@ COPY ${containerName}-generated-metadata.json $REQUIREMENTS_FILE* /template/
 COPY ${containerName}/ /template/${containerName}/
 WORKDIR $WORKDIR
 
-# Create requirements.txt file if not provided
-RUN if ! [ -f requirements.txt ] ; then echo "$BEAM_PACKAGE" > requirements.txt ; fi
+# Throw if requirements.txt file not provided
+RUN if ! [ -f requirements.txt ] ; >&2 echo "error: no requirements.txt file found" && exit 1 ; fi
 
 # Install dependencies to launch the pipeline and download to reduce startup time
 RUN python -m venv /venv \
-    && /venv/bin/pip install --no-cache-dir --upgrade pip setuptools \
-    && /venv/bin/pip install --no-cache-dir -U -r $REQUIREMENTS_FILE \
+    && python -m ensurepip --upgrade \
+    && /venv/bin/pip install --no-cache-dir --require-hashes -U -r $REQUIREMENTS_FILE \
     && /venv/bin/pip download --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE \
     && rm -rf /usr/local/lib/python$PY_VERSION/site-packages \
     && cp -r /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/

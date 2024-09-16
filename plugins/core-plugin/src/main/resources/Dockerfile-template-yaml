@@ -16,16 +16,15 @@ COPY main.py requirements.txt* /template/
 <#if copyOtherFiles??>COPY ${copyOtherFiles} /template/</#if>
 WORKDIR $WORKDIR
 
-# Create requirements.txt file if not provided
-RUN if ! [ -f requirements.txt ] ; then echo "$BEAM_PACKAGE" > requirements.txt ; fi
+# Throw if requirements.txt file not provided
+RUN if ! [ -f requirements.txt ] ; >&2 echo "error: no requirements.txt file found" && exit 1 ; fi
 
 # Install dependencies to launch the pipeline and download to reduce startup time
 # Remove Jinja2 dependency once YAML templatization support is added to Beam
 # TODO - remove `pip uninstall apache-beam` line when repo is upgraded to Beam 2.59.0
 RUN python -m venv /venv \
     && /venv/bin/pip uninstall apache-beam -y \
-    && /venv/bin/pip install --no-cache-dir --upgrade pip setuptools \
-    && /venv/bin/pip install --no-cache-dir -U -r $REQUIREMENTS_FILE \
+    && /venv/bin/pip install --require-hashes --no-cache-dir -U -r $REQUIREMENTS_FILE \
     && /venv/bin/pip install --no-cache-dir -U Jinja2 \
     && /venv/bin/pip download --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE \
     && rm -rf /usr/local/lib/python$PY_VERSION/site-packages  \
