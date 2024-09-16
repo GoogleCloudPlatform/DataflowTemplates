@@ -23,6 +23,7 @@ variable "common_params" {
       }))
     })
     dataflow_params = object({
+      skip_dataflow   = optional(bool, false)
       template_params = object({
         shadow_table_prefix                 = optional(string)
         create_shadow_tables                = optional(bool)

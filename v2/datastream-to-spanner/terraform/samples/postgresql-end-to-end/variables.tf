@@ -57,6 +57,7 @@ variable "datastream_params" {
 variable "dataflow_params" {
   description = "Parameters for the Dataflow job. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md for the description of the parameters below."
   type        = object({
+    skip_dataflow   = optional(bool, false)
     template_params = object({
       shadow_table_prefix                 = optional(string)
       create_shadow_tables                = optional(bool)

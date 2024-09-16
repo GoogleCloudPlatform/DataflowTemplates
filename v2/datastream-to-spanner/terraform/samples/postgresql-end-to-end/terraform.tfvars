@@ -3,8 +3,10 @@ common_params = {
   project                         = "<YOUR_PROJECT_ID>"      # Replace with your GCP project ID
   host_project                    = "<YOUR_HOST_PROJECT_ID>" # If you are using a shared VPC
   region                          = "<YOUR_GCP_REGION>"      # Replace with your desired GCP region
-  migration_id                    = "<YOUR_MIGRATION_ID>"    # Will be used as a prefix for all resources, auto-generated if not specified
-  add_policies_to_service_account = "<TRUE/FALSE>"           # This will decide if roles will be attached to service accounts or not.
+  migration_id                    = "<YOUR_MIGRATION_ID>"
+  # Will be used as a prefix for all resources, auto-generated if not specified
+  add_policies_to_service_account = "<TRUE/FALSE>"
+  # This will decide if roles will be attached to service accounts or not.
 }
 
 # Datastream Parameters
@@ -19,14 +21,14 @@ datastream_params = {
   postgresql_host               = "<YOUR_POSTGRESQL_HOST_IP_ADDRESS>"
   # Use the Public IP if using IP allowlisting and Private IP if using
   # private connectivity.
-  postgresql_username         = "<YOUR_POSTGRESQL_USERNAME>"
-  postgresql_password         = "<YOUR_POSTGRESQL_PASSWORD>"
-  postgresql_publication      = "<YOUR_POSTGRESQL_PUBLICATION>"
-  postgresql_replication_slot = "<YOUR_POSTGRESQL_REPLICATION_SLOT>"
-  postgresql_port             = 5432
-  postgresql_database = {
+  postgresql_username           = "<YOUR_POSTGRESQL_USERNAME>"
+  postgresql_password           = "<YOUR_POSTGRESQL_PASSWORD>"
+  postgresql_publication        = "<YOUR_POSTGRESQL_PUBLICATION>"
+  postgresql_replication_slot   = "<YOUR_POSTGRESQL_REPLICATION_SLOT>"
+  postgresql_port               = 5432
+  postgresql_database           = {
     database = "<YOUR_DATABASE_NAME>"
-    schemas = [
+    schemas  = [
       {
         schema_name = "<YOUR_SCHEMA_NAME>"
         tables      = [] # List specific tables to replicate (optional)
@@ -43,18 +45,19 @@ datastream_params = {
   # may exist. Use `private_connectivity_id` to specify an existing
   # private connectivity configuration, and the `private_connectivity` to
   # create a new one via Terraform.
-  private_connectivity = {
+  private_connectivity    = {
     private_connectivity_id = "<YOUR_PRIVATE_CONNECTIVITY_ID>"
     # ID of the private connection you want to create in Datastream.
-    vpc_name = "<YOUR_VPC_NAME>"
+    vpc_name                = "<YOUR_VPC_NAME>"
     # The pre-existing VPC which will be peered to Datastream.
-    range = "<YOUR_RESERVED_RANGE>"
+    range                   = "<YOUR_RESERVED_RANGE>"
     # The IP range to be reserved for Datastream.
   }
 }
 
 # Dataflow Parameters
 dataflow_params = {
+  skip_dataflow   = false
   template_params = {
     shadow_table_prefix                 = "<YOUR_SHADOW_TABLE_PREFIX>" # e.g., "shadow_" (optional)
     create_shadow_tables                = true                         # true or false
@@ -66,23 +69,26 @@ dataflow_params = {
     spanner_host                        = "https://<YOUR_REGION>-spanner.googleapis.com" # Replace <YOUR_REGION>
     dlq_retry_minutes                   = 10                                             # Adjust as needed
     dlq_max_retry_count                 = 3                                              # Adjust as needed
-    datastream_root_url                 = "<YOUR_DATASTREAM_ROOT_URL>"                   # Base URL of your Datastream API (optional)
+    datastream_root_url                 = "<YOUR_DATASTREAM_ROOT_URL>"# Base URL of your Datastream API (optional)
     datastream_source_type              = "postgresql"
     round_json_decimals                 = false
     run_mode                            = "regular"
-    transformation_context_file_path    = "<YOUR_TRANSFORMATION_FILE_PATH>" # Path to your transformation file (optional)
+    transformation_context_file_path    = "<YOUR_TRANSFORMATION_FILE_PATH>"
+    # Path to your transformation file (optional)
     directory_watch_duration_in_minutes = "5"                               # Adjust as needed
     spanner_priority                    = "HIGH"
     dlq_gcs_pub_sub_subscription        = "<YOUR_DLQ_PUBSUB_SUBSCRIPTION>"        # Optional
     transformation_jar_path             = "<YOUR_CUSTOM_TRANSFORMATION_JAR_PATH>" # Optional
     transformation_custom_parameters    = "<YOUR_CUSTOM_PARAMETERS_FOR_JAR>"      # Optional
-    transformation_class_name           = "<YOUR_TRANSFORMATION_CLASS_NAME>"      # Fully Classified Class Name(Optional)
+    transformation_class_name           = "<YOUR_TRANSFORMATION_CLASS_NAME>"
+    # Fully Classified Class Name(Optional)
     filtered_events_directory           = "<YOUR_GCS_PATH_FOR_FILTERED_EVENTS>"   # Optional
   }
 
   runner_params = {
     additional_experiments       = []                            # Add any additional experiments or leave empty
-    autoscaling_algorithm        = "AUTOSCALING_ALGORITHM_BASIC" # Acceptable values: AUTOSCALING_ALGORITHM_UNKNOWN / AUTOSCALING_ALGORITHM_BASIC / AUTOSCALING_ALGORITHM_NONE
+    autoscaling_algorithm        = "AUTOSCALING_ALGORITHM_BASIC"
+    # Acceptable values: AUTOSCALING_ALGORITHM_UNKNOWN / AUTOSCALING_ALGORITHM_BASIC / AUTOSCALING_ALGORITHM_NONE
     enable_streaming_engine      = true                          # Acceptable values: true / false
     kms_key_name                 = "<YOUR_KMS_KEY_NAME>"         # If you're using customer-managed encryption key
     labels                       = {}                            # Add any labels you want

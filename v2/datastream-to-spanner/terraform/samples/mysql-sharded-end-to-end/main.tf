@@ -261,7 +261,7 @@ resource "google_project_iam_member" "live_migration_roles" {
 }
 # Dataflow Flex Template Job (for CDC to Spanner)
 resource "google_dataflow_flex_template_job" "live_migration_job" {
-  count      = length(var.shard_list)
+  count      = var.common_params.dataflow_params.skip_dataflow ? 0 : length(var.shard_list)
   depends_on = [
     google_project_service.enabled_apis, google_project_iam_member.live_migration_roles
   ] # Launch the template once the stream is created.
