@@ -185,6 +185,7 @@ final class CassandraToBigtable {
 
     void setSplitLargeRows(ValueProvider<Boolean> splitLargeRows);
 
+    // TODO(georgecma) - upgrade template to V2 or modify CassandraIO so column schema is automatically processed.
     @TemplateParameter.GcsReadFile(
         order = 11,
         optional = true,
