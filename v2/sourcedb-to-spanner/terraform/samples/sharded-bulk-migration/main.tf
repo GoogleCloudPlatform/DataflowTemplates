@@ -25,6 +25,22 @@ resource "google_storage_bucket_object" "source_config_upload" {
   depends_on = [google_project_service.enabled_apis]
 }
 
+# Setup network firewalls rules to enable Dataflow access to source.
+resource "google_compute_firewall" "allow-dataflow-to-source" {
+  depends_on  = [google_project_service.enabled_apis]
+  project     = var.common_params.host_project != null ?  var.common_params.host_project : var.common_params.project
+  name        = "allow-dataflow-to-source"
+  network     = var.common_params.network != null ? var.common_params.host_project != null ? "projects/${var.common_params.host_project}/global/networks/${var.common_params.network}" : "projects/${var.common_params.project}/global/networks/${var.common_params.network}" : "default"
+  description = "Allow traffic from Dataflow to source databases"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["3306"]
+  }
+  source_tags = ["dataflow"]
+  target_tags = ["databases"]
+}
+
 # upload local session file to the working GCS bucket
 resource "google_storage_bucket_object" "session_file_object" {
   depends_on   = [google_project_service.enabled_apis]
@@ -67,7 +83,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     numPartitions                  = tostring(var.common_params.num_partitions)
     instanceId                     = var.common_params.instance_id
     databaseId                     = var.common_params.database_id
-    projectId                      = var.common_params.project_id
+    projectId                      = var.common_params.spanner_project_id
     spannerHost                    = var.common_params.spanner_host
     sessionFilePath                = "${local.working_directory_gcs}/session.json"
     outputDirectory                = "${local.working_directory_gcs}/${random_pet.job_prefixes[count.index].id}/output/"
@@ -84,8 +100,8 @@ resource "google_dataflow_flex_template_job" "generated" {
   max_workers            = var.common_params.max_workers
   name                   = "${random_pet.job_prefixes[count.index].id}-${var.common_params.run_id}"
   ip_configuration       = var.common_params.ip_configuration
-  network                = var.common_params.network
-  subnetwork             = var.common_params.subnetwork
+  network                = var.common_params.network != null ? var.common_params.host_project != null ? "projects/${var.common_params.host_project}/global/networks/${var.common_params.network}" : "projects/${var.common_params.project}/global/networks/${var.common_params.network}" : null
+  subnetwork             = var.common_params.subnetwork != null ? var.common_params.host_project != null ? "https://www.googleapis.com/compute/v1/projects/${var.common_params.host_project}/regions/${var.common_params.region}/subnetworks/${var.common_params.subnetwork}" : "https://www.googleapis.com/compute/v1/projects/${var.common_params.project}/regions/${var.common_params.region}/subnetworks/${var.common_params.subnetwork}" : null
   num_workers            = var.common_params.num_workers
   project                = var.common_params.project
   region                 = var.common_params.region

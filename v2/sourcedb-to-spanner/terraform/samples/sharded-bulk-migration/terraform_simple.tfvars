@@ -9,10 +9,8 @@ common_params = {
   working_directory_prefix = "path/to/working/directory" # should not start or end with a '/'
   instance_id              = "my-spanner-instance"
   database_id              = "my-spanner-database"
-  project_id               = "my-spanner-project"
+  spanner_project_id       = "my-spanner-project"
   local_session_file_path  = "/local/path/to/smt/session/file"
-
-  additional_experiments = ["disable_runner_v2"] # This option is required for bulk jobs. Do not remove.
 
   batch_size = 1
 }
@@ -24,7 +22,7 @@ data_shards = [
     user          = "username"
     password      = "password"
     port          = 3306
-    databases = [
+    databases     = [
       {
         db_name           = "db1"
         database_id       = "logicaldb1"

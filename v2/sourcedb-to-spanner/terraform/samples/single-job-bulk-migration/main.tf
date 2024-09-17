@@ -8,6 +8,22 @@ resource "google_storage_bucket_object" "session_file_object" {
   bucket       = var.working_directory_bucket
 }
 
+# Setup network firewalls rules to enable Dataflow access to source.
+resource "google_compute_firewall" "allow-dataflow-to-source" {
+  depends_on  = [google_project_service.enabled_apis]
+  project     = var.host_project != null ?  var.host_project : var.project
+  name        = "allow-dataflow-to-source"
+  network     = var.network != null ? var.host_project != null ? "projects/${var.host_project}/global/networks/${var.network}" : "projects/${var.project}/global/networks/${var.network}" : "default"
+  description = "Allow traffic from Dataflow to source databases"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["3306"]
+  }
+  source_tags = ["dataflow"]
+  target_tags = ["databases"]
+}
+
 # Add roles to the service account that will run Dataflow for bulk migration
 resource "google_project_iam_member" "live_migration_roles" {
   for_each = var.add_policies_to_service_account ? toset([
@@ -42,7 +58,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     numPartitions                  = tostring(var.num_partitions)
     instanceId                     = var.instance_id
     databaseId                     = var.database_id
-    projectId                      = var.project_id
+    projectId                      = var.spanner_project_id
     spannerHost                    = var.spanner_host
     sessionFilePath                = var.local_session_file_path != null ? "gs://${var.working_directory_bucket}/${var.working_directory_prefix}/session.json" : null
     outputDirectory                = "gs://${var.working_directory_bucket}/${var.working_directory_prefix}/output/"
@@ -59,8 +75,8 @@ resource "google_dataflow_flex_template_job" "generated" {
   max_workers            = var.max_workers
   name                   = var.job_name
   ip_configuration       = var.ip_configuration
-  network                = var.network
-  subnetwork             = var.subnetwork
+  network                = var.network != null ? var.host_project != null ? "projects/${var.host_project}/global/networks/${var.network}" : "projects/${var.project}/global/networks/${var.network}" : null
+  subnetwork             = var.subnetwork != null ? var.host_project != null ? "https://www.googleapis.com/compute/v1/projects/${var.host_project}/regions/${var.region}/subnetworks/${var.subnetwork}" : "https://www.googleapis.com/compute/v1/projects/${var.project}/regions/${var.region}/subnetworks/${var.subnetwork}" : null
   num_workers            = var.num_workers
   project                = var.project
   region                 = var.region
