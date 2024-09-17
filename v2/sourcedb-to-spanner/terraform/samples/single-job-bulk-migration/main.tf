@@ -8,6 +8,22 @@ resource "google_storage_bucket_object" "session_file_object" {
   bucket       = var.working_directory_bucket
 }
 
+# Add roles to the service account that will run Dataflow for bulk migration
+resource "google_project_iam_member" "live_migration_roles" {
+  for_each = var.add_policies_to_service_account ? toset([
+    "roles/viewer",
+    "roles/storage.objectAdmin",
+    "roles/dataflow.worker",
+    "roles/dataflow.admin",
+    "roles/spanner.databaseAdmin",
+    "roles/monitoring.metricWriter",
+    "roles/cloudprofiler.agent"
+  ]) : toset([])
+  project = data.google_project.project.id
+  role    = each.key
+  member  = var.service_account_email != null ? "serviceAccount:${var.service_account_email}" : "serviceAccount:${data.google_compute_default_service_account.gce_account.email}"
+}
+
 resource "google_dataflow_flex_template_job" "generated" {
   depends_on = [
     google_project_service.enabled_apis,

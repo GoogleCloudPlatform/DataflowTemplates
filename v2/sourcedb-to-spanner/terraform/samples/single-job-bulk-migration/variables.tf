@@ -1,3 +1,9 @@
+variable "add_policies_to_service_account" {
+  type        = bool
+  description = "Terraform will add the required permission to the dataflow service account."
+  default     = true
+}
+
 variable "job_name" {
   type        = string
   description = "Dataflow job name."
