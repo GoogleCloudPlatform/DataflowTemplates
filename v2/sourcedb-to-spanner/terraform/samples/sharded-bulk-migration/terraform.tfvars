@@ -36,8 +36,8 @@ data_shards = [
   {
     dataShardId = "data-shard1"
     host        = "10.128.0.2"
-    user        = "deep"
-    password    = "welcome1"
+    user        = "user"
+    password    = "password"
     port        = "3306"
     databases = [
       {
@@ -50,8 +50,8 @@ data_shards = [
   {
     dataShardId = "data-shard2"
     host        = "10.128.0.3"
-    user        = "deep"
-    password    = "welcome1"
+    user        = "user"
+    password    = "password"
     port        = "3306"
     databases = [
       {
