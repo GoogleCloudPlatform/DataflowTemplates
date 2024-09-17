@@ -1,7 +1,7 @@
 # Resource IDs (Structured by Shard ID)
 output "resource_ids" {
   description = "IDs of resources created, organized by shard ID."
-  value = {
+  value       = {
     for idx, shard in var.shard_list :
     (shard.shard_id != null ? shard.shard_id : random_pet.migration_id[idx].id) => {
       datastream_source_connection_profile = google_datastream_connection_profile.source_mysql[idx].connection_profile_id
@@ -10,7 +10,7 @@ output "resource_ids" {
       gcs_bucket                           = google_storage_bucket.datastream_bucket[idx].name
       pubsub_topic                         = google_pubsub_topic.datastream_topic[idx].name
       pubsub_subscription                  = google_pubsub_subscription.datastream_subscription[idx].name
-      dataflow_job                         = google_dataflow_flex_template_job.live_migration_job[idx].job_id
+      dataflow_job                         = var.common_params.dataflow_params.skip_dataflow ? "Dataflow job creation skipped" : google_dataflow_flex_template_job.live_migration_job[idx].job_id
     }
   }
 
@@ -29,7 +29,7 @@ output "resource_ids" {
 # Resource URLs (Structured by Shard ID)
 output "resource_urls" {
   description = "URLs to access resources in the Google Cloud Console, organized by shard ID."
-  value = {
+  value       = {
     for idx, shard in var.shard_list :
     (shard.shard_id != null ? shard.shard_id : random_pet.migration_id[idx].id) => {
       datastream_source_connection_profile = "https://console.cloud.google.com/datastream/connection-profiles/locations/${var.common_params.region}/instances/${google_datastream_connection_profile.source_mysql[idx].connection_profile_id}?project=${var.common_params.project}"
@@ -38,7 +38,7 @@ output "resource_urls" {
       gcs_bucket                           = "https://console.cloud.google.com/storage/browser/${google_storage_bucket.datastream_bucket[idx].name}?project=${var.common_params.project}"
       pubsub_topic                         = "https://console.cloud.google.com/cloudpubsub/topic/detail/${google_pubsub_topic.datastream_topic[idx].name}?project=${var.common_params.project}"
       pubsub_subscription                  = "https://console.cloud.google.com/cloudpubsub/subscription/detail/${google_pubsub_subscription.datastream_subscription[idx].name}?project=${var.common_params.project}"
-      dataflow_job                         = "https://console.cloud.google.com/dataflow/jobs/${var.common_params.region}/${google_dataflow_flex_template_job.live_migration_job[idx].job_id}?project=${var.common_params.project}"
+      dataflow_job                         = var.common_params.dataflow_params.skip_dataflow ? "Dataflow job creation skipped" : "https://console.cloud.google.com/dataflow/jobs/${var.common_params.region}/${google_dataflow_flex_template_job.live_migration_job[idx].job_id}?project=${var.common_params.project}"
     }
   }
 
