@@ -21,6 +21,8 @@ import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -37,6 +39,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.script.Invocable;
@@ -144,16 +147,6 @@ public class MongoDbUtils implements Serializable {
                 row.set(key, value.toString());
             }
           });
-<<<<<<< HEAD
-      LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
-      row.set("timestamp", localdate.format(TIMEFORMAT));
-    } else {
-      LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
-      String sourceData = GSON.toJson(document);
-      row.set("id", document.get("_id").toString())
-          .set("source_data", sourceData)
-          .set("timestamp", localdate.format(TIMEFORMAT));
-=======
       row.set("timestamp", localDate.format(TIMEFORMAT));
     } else if (userOption.equals("JSON")) {
       JsonObject sourceDataJsonObject = GSON.toJsonTree(document).getAsJsonObject();
@@ -171,7 +164,6 @@ public class MongoDbUtils implements Serializable {
       row.set("id", document.get("_id").toString())
           .set("source_data", sourceData)
           .set("timestamp", localDate.format(TIMEFORMAT));
->>>>>>> main
     }
     return row;
   }
@@ -219,14 +211,10 @@ public class MongoDbUtils implements Serializable {
           });
     } else {
       bigquerySchemaFields.add(new TableFieldSchema().setName("id").setType("STRING"));
-<<<<<<< HEAD
-      bigquerySchemaFields.add(new TableFieldSchema().setName("source_data").setType("STRING"));
-=======
       bigquerySchemaFields.add(
           new TableFieldSchema()
               .setName("source_data")
               .setType(userOption.equals("JSON") ? "JSON" : "STRING"));
->>>>>>> main
     }
 
     bigquerySchemaFields.add(new TableFieldSchema().setName("timestamp").setType("TIMESTAMP"));
