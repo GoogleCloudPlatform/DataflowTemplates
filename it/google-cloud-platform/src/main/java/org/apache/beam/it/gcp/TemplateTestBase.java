@@ -493,10 +493,21 @@ public abstract class TemplateTestBase {
 
       if (System.getProperty("sdkContainerImage") != null) {
         options.addParameter("sdkContainerImage", System.getProperty("sdkContainerImage"));
-        appendExperiment(
-            options, "worker_harness_container_image=" + System.getProperty("sdkContainerImage"));
-        appendExperiment(options, "disable_worker_rolling_upgrade");
       }
+      if (System.getProperty("runnerHarnessContainerImage") != null) {
+        appendExperiment(
+            options,
+            "runner_harness_container_image=" + System.getProperty("runnerHarnessContainerImage"));
+      }
+    }
+
+    if (System.getProperty("uw_staging_experiments") != null) {
+      appendExperiment(options, "disable_worker_rolling_upgrade");
+      appendExperiment(options, "use_beam_bq_sink");
+      appendExperiment(options, "beam_fn_api");
+      appendExperiment(options, "use_unified_worker");
+      appendExperiment(options, "use_portable_job_submission");
+      appendExperiment(options, "worker_region=" + REGION);
     }
 
     if (System.getProperty("enableCleanupState") != null) {

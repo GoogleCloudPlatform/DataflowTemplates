@@ -73,7 +73,8 @@ func main() {
 		flags.CloudProxyHost(),
 		flags.CloudProxyMySqlPort(),
 		flags.CloudProxyPostgresPort(),
-		flags.CloudProxyPassword())
+		flags.CloudProxyPassword(),
+		flags.RunnerHarnessContainerImage())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
