@@ -17,16 +17,16 @@ common_params = {
 
 data_shards = [
   {
-    data_shard_id = "data-shard1"
-    host          = "10.1.1.1"
-    user          = "username"
-    password      = "password"
-    port          = 3306
-    databases     = [
+    dataShardId = "data-shard1"
+    host        = "10.1.1.1"
+    user        = "username"
+    password    = "password"
+    port        = "3306"
+    databases   = [
       {
-        db_name           = "db1"
-        database_id       = "logicaldb1"
-        ref_data_shard_id = "data-shard1"
+        dbName         = "db1"
+        databaseId     = "logicaldb1"
+        refDataShardId = "data-shard1"
       }
     ]
   }

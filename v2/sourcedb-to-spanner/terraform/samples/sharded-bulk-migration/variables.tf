@@ -47,15 +47,15 @@ variable "common_params" {
 
 variable "data_shards" {
   type = list(object({
-    data_shard_id = string
-    host          = string
-    user          = string
-    password      = string
-    port          = number
-    databases     = list(object({
-      db_name           = string
-      database_id       = string
-      ref_data_shard_id = string
+    dataShardId = string
+    host        = string
+    user        = string
+    password    = string
+    port        = string
+    databases   = list(object({
+      dbName         = string
+      databaseId     = string
+      refDataShardId = string
     }))
   }))
 }

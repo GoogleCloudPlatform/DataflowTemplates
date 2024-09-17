@@ -34,35 +34,30 @@ common_params = {
 
 data_shards = [
   {
-    data_shard_id = "data-shard1"
-    host          = "10.1.1.1"
-    user          = "username"
-    password      = "password"
-    port          = 3306
-    databases     = [
+    dataShardId = "data-shard1"
+    host        = "10.128.0.2"
+    user        = "deep"
+    password    = "welcome1"
+    port        = "3306"
+    databases   = [
       {
-        db_name           = "db1"
-        database_id       = "logicaldb1"
-        ref_data_shard_id = "data-shard1"
-      },
-      {
-        db_name           = "db2"
-        database_id       = "logicaldb2"
-        ref_data_shard_id = "data-shard1"
+        dbName         = "tftest"
+        databaseId     = "logicaldb1"
+        refDataShardId = "data-shard1"
       }
     ]
   },
   {
-    data_shard_id = "data-shard2"
-    host          = "10.1.1.2"
-    user          = "username"
-    password      = "password"
-    port          = 3306
-    databases     = [
+    dataShardId = "data-shard2"
+    host        = "10.128.0.3"
+    user        = "deep"
+    password    = "welcome1"
+    port        = "3306"
+    databases   = [
       {
-        db_name           = "db3"
-        database_id       = "logicaldb3"
-        ref_data_shard_id = "data-shard2"
+        dbName         = "tftest"
+        databaseId     = "logicaldb2"
+        refDataShardId = "data-shard2"
       }
     ]
   }
