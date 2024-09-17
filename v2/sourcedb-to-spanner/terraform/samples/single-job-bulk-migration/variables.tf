@@ -1,3 +1,9 @@
+variable "add_policies_to_service_account" {
+  type        = bool
+  description = "Terraform will add the required permission to the dataflow service account."
+  default     = true
+}
+
 variable "job_name" {
   type        = string
   description = "Dataflow job name."
@@ -6,6 +12,12 @@ variable "job_name" {
 variable "project" {
   type        = string
   description = "Google Cloud Project ID where Dataflow will run."
+}
+
+variable "host_project" {
+  type        = string
+  description = "Project id hosting the network in case of a shared vpc setup."
+  default     = null
 }
 
 variable "region" {
@@ -72,7 +84,7 @@ variable "database_id" {
   description = "Cloud Spanner database ID."
 }
 
-variable "project_id" {
+variable "spanner_project_id" {
   type        = string
   description = "Google Cloud Project ID (for Spanner)."
 }
@@ -111,7 +123,9 @@ variable "transformation_class_name" {
 variable "additional_experiments" {
   type        = list(string)
   description = "Additional Dataflow experiments. 'disable_runner_v2' is required for bulk jobs."
-  default     = ["disable_runner_v2"]
+  default = [
+    "disable_runner_v2", "use_network_tags=allow-dataflow", "use_network_tags_for_flex_templates=allow-dataflow"
+  ]
 }
 
 variable "network" {

@@ -20,11 +20,15 @@ There are two ways to add permissions -
 Following permissions are required -
 
 ```shell
+- compute.firewalls.create
+- compute.firewalls.delete
+- compute.firewalls.update
 - dataflow.jobs.cancel
 - dataflow.jobs.create
 - dataflow.jobs.updateContents
 - iam.roles.get
 - iam.serviceAccounts.actAs
+- resourcemanager.projects.setIamPolicy
 - storage.objects.delete
 - storage.objects.create
 - serviceusage.services.use
@@ -41,10 +45,12 @@ provides instructions to add these permissions to an existing service account.
 Following roles are required -
 
 ```shell
-roles/dataflow.admin
-roles/iam.serviceAccountUser 
+roles/dataflow.admin 
+roles/iam.securityAdmin
+roles/iam.serviceAccountUser
 roles/storage.admin
 roles/viewer
+roles/compute.networkAdmin
 ```
 
 [This](#adding-access-to-terraform-service-account) section in the FAQ
@@ -248,6 +254,9 @@ for allowing connectivity:
 3. If only certain source network tags are allowlisted via a firewall, specify the  
    network tags via
    the [additional-experiments flag](https://cloud.google.com/dataflow/docs/guides/routes-firewall#network-tags-flex).
+   Dataflow automatically assigns
+   the `dataflow` network tag if any network tag is additionally specified. You need
+   specify the tag for both worker VMs and launcher VMs.
 
 > **_NOTE:_** You can use a shared VPC by specifying the `host_project` in the subnet path.
 > This will result in the Dataflow jobs being launched inside the shared VPC.
