@@ -39,7 +39,7 @@ data_shards = [
     user        = "deep"
     password    = "welcome1"
     port        = "3306"
-    databases   = [
+    databases = [
       {
         dbName         = "tftest"
         databaseId     = "logicaldb1"
@@ -53,7 +53,7 @@ data_shards = [
     user        = "deep"
     password    = "welcome1"
     port        = "3306"
-    databases   = [
+    databases = [
       {
         dbName         = "tftest"
         databaseId     = "logicaldb2"

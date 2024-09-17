@@ -28,7 +28,7 @@ resource "google_storage_bucket_object" "source_config_upload" {
 # Setup network firewalls rules to enable Dataflow access to source.
 resource "google_compute_firewall" "allow-dataflow-to-source" {
   depends_on  = [google_project_service.enabled_apis]
-  project     = var.common_params.host_project != null ?  var.common_params.host_project : var.common_params.project
+  project     = var.common_params.host_project != null ? var.common_params.host_project : var.common_params.project
   name        = "allow-dataflow-to-source"
   network     = var.common_params.network != null ? var.common_params.host_project != null ? "projects/${var.common_params.host_project}/global/networks/${var.common_params.network}" : "projects/${var.common_params.project}/global/networks/${var.common_params.network}" : "default"
   description = "Allow traffic from Dataflow to source databases"
@@ -67,7 +67,7 @@ resource "google_project_iam_member" "live_migration_roles" {
 }
 
 resource "google_dataflow_flex_template_job" "generated" {
-  count      = length(local.source_configs)
+  count = length(local.source_configs)
   depends_on = [
     google_project_service.enabled_apis, google_storage_bucket_object.source_config_upload,
     google_storage_bucket_object.session_file_object

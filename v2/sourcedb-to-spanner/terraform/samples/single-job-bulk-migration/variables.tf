@@ -123,7 +123,7 @@ variable "transformation_class_name" {
 variable "additional_experiments" {
   type        = list(string)
   description = "Additional Dataflow experiments. 'disable_runner_v2' is required for bulk jobs."
-  default     = [
+  default = [
     "disable_runner_v2", "use_network_tags=allow-dataflow", "use_network_tags_for_flex_templates=allow-dataflow"
   ]
 }

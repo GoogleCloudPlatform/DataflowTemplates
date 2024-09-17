@@ -1,6 +1,6 @@
 variable "common_params" {
   type = object({
-    add_policies_to_service_account  = optional(bool, true)
+    add_policies_to_service_account = optional(bool, true)
     # Template parameters
     run_id                           = string
     project                          = string
@@ -52,7 +52,7 @@ variable "data_shards" {
     user        = string
     password    = string
     port        = string
-    databases   = list(object({
+    databases = list(object({
       dbName         = string
       databaseId     = string
       refDataShardId = string
