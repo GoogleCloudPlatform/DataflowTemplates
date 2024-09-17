@@ -1,57 +1,38 @@
 CREATE TABLE person1 (
-     first_name1 STRING(500),
-     last_name1 STRING(500),
-     first_name2 STRING(500),
-     last_name2 STRING(500),
-     first_name3 STRING(500),
-     last_name3 STRING(500),
-     IL_ID INT64 NOT NULL,
-) PRIMARY KEY(IL_ID);
+     first_name STRING(500),
+     last_name STRING(500),
+     ID INT64 NOT NULL,
+) PRIMARY KEY(ID);
 
 CREATE TABLE person2 (
-     first_name1 STRING(500),
-     last_name1 STRING(500),
-     first_name2 STRING(500),
-     last_name2 STRING(500),
-     first_name3 STRING(500),
-     last_name3 STRING(500),
-     IL_ID INT64 NOT NULL,
-     ID INT64 NOT NULL,
-) PRIMARY KEY(IL_ID, ID),
-    INTERLEAVE IN PARENT person1 ON DELETE CASCADE;
+     first_name STRING(500),
+     last_name STRING(500),
+     FK_ID2 INT64,
+     ID INT64 NOT NULL
+) PRIMARY KEY (ID);
+
+CREATE INDEX FK_ID_CONS2_3 ON person2 (FK_ID2);
+
+ALTER TABLE person2 ADD CONSTRAINT FK_ID_CONS2 FOREIGN KEY (FK_ID2) REFERENCES person1 (ID) ON DELETE CASCADE;
 
 CREATE TABLE person3 (
-     first_name1 STRING(500),
-     last_name1 STRING(500),
-     first_name2 STRING(500),
-     last_name2 STRING(500),
-     first_name3 STRING(500),
-     last_name3 STRING(500),
-     IL_ID INT64 NOT NULL,
-     ID INT64 NOT NULL,
-) PRIMARY KEY(IL_ID, ID),
-    INTERLEAVE IN PARENT person1 ON DELETE CASCADE;
+     first_name STRING(500),
+     last_name STRING(500),
+     FK_ID3 INT64,
+     ID INT64 NOT NULL
+) PRIMARY KEY (ID);
+
+CREATE INDEX FK_ID_CONS3_6 ON person3 (FK_ID3);
+
+ALTER TABLE person3 ADD CONSTRAINT FK_ID_CONS3 FOREIGN KEY (FK_ID3) REFERENCES person2 (ID) ON DELETE CASCADE;
 
 CREATE TABLE person4 (
-     first_name1 STRING(500),
-     last_name1 STRING(500),
-     first_name2 STRING(500),
-     last_name2 STRING(500),
-     first_name3 STRING(500),
-     last_name3 STRING(500),
-     IL_ID INT64 NOT NULL,
-     ID INT64 NOT NULL,
-) PRIMARY KEY(IL_ID, ID),
-    INTERLEAVE IN PARENT person1 ON DELETE CASCADE;
+     first_name STRING(500),
+     last_name STRING(500),
+     FK_ID4 INT64,
+     ID INT64 NOT NULL
+) PRIMARY KEY (ID);
 
-CREATE TABLE person5 (
-     first_name1 STRING(500),
-     last_name1 STRING(500),
-     first_name2 STRING(500),
-     last_name2 STRING(500),
-     first_name3 STRING(500),
-     last_name3 STRING(500),
-     IL_ID INT64 NOT NULL,
-     ID INT64 NOT NULL,
-) PRIMARY KEY(IL_ID, ID),
-    INTERLEAVE IN PARENT person1 ON DELETE CASCADE;
+CREATE INDEX FK_ID_CONS4_9 ON person4 (FK_ID4);
+
+ALTER TABLE person4 ADD CONSTRAINT FK_ID_CONS4 FOREIGN KEY (FK_ID4) REFERENCES person3 (ID) ON DELETE CASCADE;

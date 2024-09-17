@@ -32,21 +32,18 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerTallTable extends DataStreamToSpannerLTBase {
   @Test
-  public void tallTableBackfill100Gb() throws IOException, ParseException, InterruptedException {
+  public void backfill100Gb() throws IOException, ParseException, InterruptedException {
     setUpResourceManagers("DataStreamToSpanner100GbLT/spanner-schema-tall-table.sql");
     HashMap<String, Integer> tables100GB = new HashMap<>();
-    tables100GB.put("Person", 65000000);
+    tables100GB.put("person", 1815080000);
 
     // Setup Datastream
     String hostIp =
-        secretClient.accessSecret(
-            "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-ip-address/versions/1");
+        secretClient.accessSecret("projects/269744978479/secrets/tall-table-ip/versions/1");
     String username =
-        secretClient.accessSecret(
-            "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-username/versions/1");
+        secretClient.accessSecret("projects/269744978479/secrets/tall-table-user/versions/1");
     String password =
-        secretClient.accessSecret(
-            "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-password/versions/1");
+        secretClient.accessSecret("projects/269744978479/secrets/tall-table-password/versions/1");
 
     JDBCSource mySQLSource = getMySQLSource(hostIp, username, password);
     runLoadTest(tables100GB, mySQLSource);

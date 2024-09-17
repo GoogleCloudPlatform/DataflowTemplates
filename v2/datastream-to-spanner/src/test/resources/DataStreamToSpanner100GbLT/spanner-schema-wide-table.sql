@@ -1,5 +1,5 @@
 CREATE TABLE person (
-    ID INT64 NOT NULL,
+    ID STRING(500) NOT NULL,
     first_name1 STRING(500),
     last_name1 STRING(500),
     first_name2 STRING(500),
