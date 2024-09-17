@@ -6,6 +6,23 @@ locals {
   migration_id = var.common_params.migration_id != null ? var.common_params.migration_id : random_pet.migration_id.id
 }
 
+# Setup network firewalls for datastream if creating a private connection.
+resource "google_compute_firewall" "allow-datastream" {
+  depends_on  = [google_project_service.enabled_apis]
+  count       = var.datastream_params.private_connectivity != null ? 1 : 0
+  project     = var.common_params.host_project != null ?  var.common_params.host_project : var.common_params.project
+  name        = "allow-datastream"
+  network     = var.common_params.host_project != null ? "projects/${var.common_params.host_project}/global/networks/${var.datastream_params.private_connectivity.vpc_name}" : "projects/${var.common_params.project}/global/networks/${var.datastream_params.private_connectivity.vpc_name}"
+  description = "Allow traffic from private connectivity endpoint of Datastream"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["3306"]
+  }
+  source_ranges = [var.datastream_params.private_connectivity.range]
+  target_tags   = ["databases"]
+}
+
 # Create a private connectivity configuration if needed.
 resource "google_datastream_private_connection" "datastream_private_connection" {
   depends_on            = [google_project_service.enabled_apis]
@@ -69,7 +86,7 @@ resource "google_storage_bucket" "datastream_bucket" {
   location                    = var.common_params.region
   uniform_bucket_level_access = true
   force_destroy               = true
-  labels = {
+  labels                      = {
     "migration_id" = local.migration_id
   }
 }
@@ -89,7 +106,7 @@ resource "google_pubsub_topic" "datastream_topic" {
   depends_on = [google_project_service.enabled_apis]
   name       = "${local.migration_id}-${var.datastream_params.pubsub_topic_name}"
   project    = var.common_params.project
-  labels = {
+  labels     = {
     "migration_id" = local.migration_id
   }
 }
@@ -122,8 +139,8 @@ resource "google_pubsub_subscription" "datastream_subscription" {
     google_project_service.enabled_apis,
     google_storage_notification.bucket_notification
   ] # Create the subscription once the notification is created.
-  name  = "${google_pubsub_topic.datastream_topic.name}-sub"
-  topic = google_pubsub_topic.datastream_topic.id
+  name   = "${google_pubsub_topic.datastream_topic.name}-sub"
+  topic  = google_pubsub_topic.datastream_topic.id
   labels = {
     "migration_id" = local.migration_id
   }
@@ -274,7 +291,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
   on_delete                    = var.dataflow_params.runner_params.on_delete
   region                       = var.common_params.region
   ip_configuration             = var.dataflow_params.runner_params.ip_configuration
-  labels = {
+  labels                       = {
     "migration_id" = local.migration_id
   }
 }

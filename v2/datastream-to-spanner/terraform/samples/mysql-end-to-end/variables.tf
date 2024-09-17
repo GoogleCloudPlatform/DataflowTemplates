@@ -1,10 +1,10 @@
 variable "common_params" {
   description = "Parameters that are common to multiple resources"
-  type = object({
-    project      = string
-    host_project = optional(string)
-    region       = string
-    migration_id = optional(string)
+  type        = object({
+    project                         = string
+    host_project                    = optional(string)
+    region                          = string
+    migration_id                    = optional(string)
     # Will be auto-generated if not specified
     add_policies_to_service_account = optional(bool, true)
   })
@@ -12,11 +12,11 @@ variable "common_params" {
 
 variable "datastream_params" {
   description = "Parameters to setup Datastream"
-  type = object({
+  type        = object({
     private_connectivity = optional(object({
       private_connectivity_id = optional(string, "priv-conn")
       vpc_name                = string
-      range                   = string
+      range                   = optional(string, "10.0.0.0/29")
     }))
     private_connectivity_id       = optional(string)
     source_connection_profile_id  = optional(string, "source-mysql")
@@ -32,16 +32,16 @@ variable "datastream_params" {
     stream_id                     = optional(string, "mysql-stream")
     max_concurrent_cdc_tasks      = optional(number, 5)
     max_concurrent_backfill_tasks = optional(number, 20)
-    mysql_database = object({
+    mysql_database                = object({
       database = string
       tables   = optional(list(string))
     })
   })
   validation {
     condition = (
-      (var.datastream_params.private_connectivity_id == null && var.datastream_params.private_connectivity != null) ||
-      (var.datastream_params.private_connectivity_id != null && var.datastream_params.private_connectivity == null) ||
-      (var.datastream_params.private_connectivity_id == null && var.datastream_params.private_connectivity == null)
+    (var.datastream_params.private_connectivity_id == null && var.datastream_params.private_connectivity != null) ||
+    (var.datastream_params.private_connectivity_id != null && var.datastream_params.private_connectivity == null) ||
+    (var.datastream_params.private_connectivity_id == null && var.datastream_params.private_connectivity == null)
     )
     error_message = "Exactly one of 'private_connectivity_id' or the 'private_connectivity' block must be provided, not both."
   }
@@ -49,7 +49,7 @@ variable "datastream_params" {
 
 variable "dataflow_params" {
   description = "Parameters for the Dataflow job. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/README_Sourcedb_to_Spanner_Flex.md for the description of the parameters below."
-  type = object({
+  type        = object({
     template_params = object({
       shadow_table_prefix                 = optional(string)
       create_shadow_tables                = optional(bool)

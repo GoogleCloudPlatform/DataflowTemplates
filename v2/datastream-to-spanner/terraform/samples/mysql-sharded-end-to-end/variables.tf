@@ -1,21 +1,21 @@
 variable "common_params" {
   description = "Parameters that are common to multiple resources"
-  type = object({
-    project      = string
-    host_project = optional(string)
-    region       = string
-    migration_id = optional(string)
+  type        = object({
+    project                         = string
+    host_project                    = optional(string)
+    region                          = string
+    migration_id                    = optional(string)
     # Will be auto-generated if not specified
     add_policies_to_service_account = optional(bool, true)
-    datastream_params = object({
+    datastream_params               = object({
       stream_prefix_path            = optional(string, "data")
       max_concurrent_cdc_tasks      = optional(number, 5)
       max_concurrent_backfill_tasks = optional(number, 20)
       private_connectivity_id       = optional(string)
-      private_connectivity = optional(object({
+      private_connectivity          = optional(object({
         private_connectivity_id = optional(string, "priv-conn")
         vpc_name                = string
-        range                   = string
+        range                   = optional(string, "10.0.0.0/29")
       }))
       mysql_databases = list(object({
         database = string
@@ -75,8 +75,8 @@ variable "common_params" {
 
 variable "shard_list" {
   description = "Parameters for the Dataflow job. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/README_Sourcedb_to_Spanner_Flex.md for the description of the parameters below."
-  type = list(object({
-    shard_id = optional(string)
+  type        = list(object({
+    shard_id          = optional(string)
     datastream_params = object({
       source_connection_profile_id = optional(string, "source-mysql")
       mysql_host                   = string
