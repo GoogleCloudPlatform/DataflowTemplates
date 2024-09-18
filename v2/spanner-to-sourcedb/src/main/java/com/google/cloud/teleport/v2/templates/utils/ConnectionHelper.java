@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 public class ConnectionHelper {
 
   private static final Logger LOG = LoggerFactory.getLogger(ConnectionHelper.class);
-  private static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
+  private static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
   private static Map<String, HikariDataSource> connectionPoolMap = null;
 
   public static synchronized void init(List<Shard> shards, String properties, int maxConnections) {
