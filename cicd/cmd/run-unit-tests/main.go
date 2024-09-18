@@ -39,7 +39,7 @@ func main() {
 		mvnFlags.SkipIntegrationTests(),
 		mvnFlags.FailAtTheEnd(),
 		mvnFlags.ThreadCount(8),
-		flags.InternalMaven())
+		mvnFlags.InternalMaven())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
