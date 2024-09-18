@@ -17,11 +17,9 @@ package com.google.cloud.teleport.v2.neo4j.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.neo4j.model.InputValidator;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.JobSpecMapper;
-import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
-import com.google.cloud.teleport.v2.neo4j.model.job.Source;
+import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
 import com.google.cloud.teleport.v2.neo4j.providers.Provider;
 import com.google.cloud.teleport.v2.neo4j.providers.ProviderFactory;
 import com.google.cloud.teleport.v2.neo4j.providers.text.TextImpl;
@@ -37,47 +35,36 @@ import org.junit.runners.JUnit4;
 public class GoogleToNeo4jTest {
 
   private static Provider providerImpl;
-  private static JobSpec jobSpec;
   private static OptionsParams optionsParams;
 
   @BeforeClass
   public static void setUp() {
-    jobSpec = JobSpecMapper.fromUri("src/test/resources/testing-specs/text-northwind-jobspec.json");
-    providerImpl = ProviderFactory.of(jobSpec.getSourceList().get(0).getSourceType());
+    providerImpl =
+        ProviderFactory.of(
+            new InlineTextSource(
+                "a-text-source",
+                List.of(List.of("v1", "v2"), List.of("v3", "v4")),
+                List.of("column1", "column2")),
+            new TargetSequence());
     optionsParams = new OptionsParams();
     optionsParams.overlayTokens("{\"limit\":7}");
-    providerImpl.configure(optionsParams, jobSpec);
+    providerImpl.configure(optionsParams);
   }
 
   @Test
-  public void testValidateSourceType() {
+  public void validates_source_type() {
     assertThat(providerImpl.getClass()).isEqualTo(TextImpl.class);
   }
 
   @Test
-  public void testValidJobSpec() {
-    List<String> sourceValidationMessages = providerImpl.validateJobSpec();
-    assertThat(sourceValidationMessages).isEmpty();
-  }
-
-  @Test
-  public void testResolvedVariable() {
+  public void resolves_variable() {
     assertThat(optionsParams.getTokenMap().get("limit")).isEqualTo("7");
   }
 
   @Test
-  public void testResolvedSqlVariable() {
+  public void resolves_sql_variable() {
     String uri = "SELECT * FROM TEST LIMIT $limit";
     String uriReplaced = ModelUtils.replaceVariableTokens(uri, optionsParams.getTokenMap());
     assertThat(uriReplaced).contains("LIMIT 7");
-  }
-
-  @Test
-  public void testGetInvalidOrderedQuery() {
-    Source source = jobSpec.getSourceList().get(0);
-    source.setQuery("SELECT * FROM FOO ORDER BY X");
-    List<String> messages = InputValidator.validateJobSpec(jobSpec);
-    assertThat(messages).hasSize(1);
-    assertThat(messages.get(0)).contains("SQL contains ORDER BY which is not supported");
   }
 }

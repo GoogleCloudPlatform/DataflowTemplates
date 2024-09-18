@@ -15,104 +15,102 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.SourceType;
-import com.google.cloud.teleport.v2.neo4j.model.job.Source;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getStringOrDefault;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getStringOrNull;
+
+import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.sources.BigQuerySource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.ExternalTextSource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.TextFormat;
+import com.google.cloud.teleport.v2.neo4j.model.sources.TextSource;
+import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import com.google.cloud.teleport.v2.neo4j.utils.TextParserUtils;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
 import java.util.regex.Pattern;
-import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.neo4j.importer.v1.sources.Source;
 
-/** Helper class for parsing json into Source model object. */
+/**
+ * Helper class for parsing legacy json into {@link Source} model object.
+ *
+ * @deprecated use the current JSON format instead
+ */
+@Deprecated
 public class SourceMapper {
 
+  static final String DEFAULT_SOURCE_NAME = "";
   static final Pattern NEWLINE_PATTERN = Pattern.compile("\\R");
-  private static final Logger LOG = LoggerFactory.getLogger(SourceMapper.class);
 
-  public static Source fromJson(JSONObject sourceObj) {
-    Source source = new Source();
-    source.setName(sourceObj.getString("name"));
-    source.setSourceType(
-        sourceObj.has("type") ? SourceType.valueOf(sourceObj.getString("type")) : SourceType.text);
+  public static List<Source> parse(JSONArray rawSources, OptionsParams options) {
+    List<Source> sources = new ArrayList<>(rawSources.length());
+    for (int i = 0; i < rawSources.length(); i++) {
+      sources.add(parse(rawSources.getJSONObject(i), options));
+    }
+    return sources;
+  }
 
-    String formatStr =
-        sourceObj.has("format") ? sourceObj.getString("format").toUpperCase() : "DEFAULT";
-    if ("EXCEL".equals(formatStr)) {
-      source.setCsvFormat(CSVFormat.EXCEL);
-    } else if ("MONGO".equals(formatStr)) {
-      source.setCsvFormat(CSVFormat.MONGODB_CSV);
-    } else if ("INFORMIX".equals(formatStr)) {
-      source.setCsvFormat(CSVFormat.INFORMIX_UNLOAD_CSV);
-    } else if ("POSTGRES".equals(formatStr)) {
-      source.setCsvFormat(CSVFormat.POSTGRESQL_CSV);
-    } else if ("MYSQL".equals(formatStr)) {
-      source.setCsvFormat(CSVFormat.MYSQL);
-    } else if ("ORACLE".equals(formatStr)) {
-      source.setCsvFormat(CSVFormat.ORACLE);
-    } else if ("MONGO_TSV".equals(formatStr)) {
-      source.setCsvFormat(CSVFormat.MONGODB_TSV);
-    } else if ("RFC4180".equals(formatStr)) {
-      source.setCsvFormat(CSVFormat.RFC4180);
-    } else if ("POSTGRESQL_CSV".equals(formatStr)) {
-      source.setCsvFormat(CSVFormat.POSTGRESQL_CSV);
-    } else {
-      source.setCsvFormat(CSVFormat.DEFAULT);
+  public static Source parse(JSONObject rawSource, OptionsParams options) {
+    var sourceType = getStringOrDefault(rawSource, "type", "text").toLowerCase(Locale.ROOT);
+    switch (sourceType) {
+      case "bigquery":
+        return parseBigQuerySource(rawSource, options);
+      case "text":
+        return parseTextSource(rawSource, options);
+      default:
+        throw new RuntimeException(String.format("Unsupported source type: %s", sourceType));
+    }
+  }
+
+  private static BigQuerySource parseBigQuerySource(JSONObject rawSource, OptionsParams options) {
+    var sourceName = getStringOrDefault(rawSource, "name", DEFAULT_SOURCE_NAME);
+    var sql = ModelUtils.replaceVariableTokens(rawSource.getString("query"), options.getTokenMap());
+    return new BigQuerySource(sourceName, sql);
+  }
+
+  private static TextSource parseTextSource(JSONObject rawSource, OptionsParams options) {
+    var sourceName = getStringOrDefault(rawSource, "name", DEFAULT_SOURCE_NAME);
+    var header =
+        Arrays.asList(StringUtils.stripAll(rawSource.getString("ordered_field_names").split(",")));
+    var format =
+        TextFormat.valueOf(
+            getStringOrDefault(rawSource, "format", "default").toUpperCase(Locale.ROOT));
+    var delimiter = getStringOrDefault(rawSource, "delimiter", ",").substring(0, 1);
+    var separator = getStringOrNull(rawSource, "separator");
+    if (rawSource.has("uri") || rawSource.has("url")) {
+      var url = rawSource.has("uri") ? rawSource.getString("uri") : rawSource.getString("url");
+      url = ModelUtils.replaceVariableTokens(url, options.getTokenMap());
+      return new ExternalTextSource(sourceName, List.of(url), header, format, delimiter, separator);
     }
 
-    source.setDelimiter(
-        sourceObj.has("delimiter") ? sourceObj.getString("delimiter") : source.getDelimiter());
-    source.setSeparator(
-        sourceObj.has("separator") ? sourceObj.getString("separator") : source.getSeparator());
-    // handle inline data
-    if (sourceObj.has("data")) {
-      if (sourceObj.get("data") instanceof JSONArray) {
-
-        if (source.getCsvFormat() == CSVFormat.DEFAULT) {
-          source.setInline(Source.jsonToListOfListsArray(sourceObj.getJSONArray("data")));
-        } else {
-          String[] rows =
-              Source.jsonToListOfStringArray(sourceObj.getJSONArray("data"), source.getDelimiter());
-          source.setInline(TextParserUtils.parseDelimitedLines(source.getCsvFormat(), rows));
-        }
-
+    Object rawData = rawSource.get("data");
+    var csvFormat = CsvSources.toCsvFormat(format);
+    List<List<Object>> data;
+    if (rawData instanceof JSONArray) {
+      var array = (JSONArray) rawData;
+      if (format == TextFormat.DEFAULT) {
+        data = TextParserUtils.jsonToListOfListsArray(array);
       } else {
-        String csv = sourceObj.getString("data");
-        String[] rows;
-        if (source.getSeparator() != null && csv.contains(source.getSeparator())) {
-          rows = StringUtils.split(csv, source.getSeparator());
-          // we may have more luck with varieties of newline
-        } else {
-          rows = NEWLINE_PATTERN.split(csv);
-        }
-        if (rows.length < 2) {
-          String errMsg = "Cold not parse inline data.  Check separator: " + source.getSeparator();
-          LOG.error(errMsg);
-          throw new RuntimeException(errMsg);
-        }
-        source.setInline(TextParserUtils.parseDelimitedLines(source.getCsvFormat(), rows));
+        String[] rows = TextParserUtils.jsonToListOfStringArray(array, delimiter);
+        data = TextParserUtils.parseDelimitedLines(csvFormat, rows);
       }
-    }
-    source.setQuery(sourceObj.has("query") ? sourceObj.getString("query") : "");
-    // uri or url accepted
-    source.setUri(
-        sourceObj.has("uri")
-            ? sourceObj.getString("uri")
-            : sourceObj.has("url") ? sourceObj.getString("url") : "");
-    String rawFieldNames =
-        sourceObj.has("ordered_field_names") ? sourceObj.getString("ordered_field_names") : "";
-    if (StringUtils.isNotEmpty(rawFieldNames)) {
-      String[] fieldNames = StringUtils.stripAll(StringUtils.split(rawFieldNames, ","));
-      source.setFieldNames(fieldNames);
-      for (int i = 0; i < fieldNames.length; i++) {
-        source.getFieldPosByName().put(fieldNames[i], (i + 1));
+    } else if (rawData instanceof String) {
+      var content = (String) rawData;
+      String[] rows;
+      if (separator != null && content.contains(separator)) {
+        rows = StringUtils.split(content, separator);
+      } else {
+        rows = NEWLINE_PATTERN.split(content);
       }
+      data = TextParserUtils.parseDelimitedLines(csvFormat, rows);
+    } else {
+      throw new RuntimeException("data should either be a JSON array of array or plain string");
     }
-    if (StringUtils.isNotEmpty(source.getDelimiter())) {
-      source.getCsvFormat().withDelimiter(source.getDelimiter().charAt(0));
-    }
-    return source;
+    return new InlineTextSource(sourceName, data, header);
   }
 }

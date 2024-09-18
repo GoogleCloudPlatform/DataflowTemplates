@@ -15,7 +15,8 @@
  */
 package com.google.cloud.teleport.v2.neo4j.providers.text;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.Source;
+import com.google.cloud.teleport.v2.neo4j.model.sources.TextSource;
+import com.google.cloud.teleport.v2.neo4j.utils.BeamUtils;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -26,15 +27,15 @@ import org.apache.beam.sdk.values.Row;
 /** Transform to return zero row PCollection with schema from text sources. */
 public class TextSourceFileMetadataToRow extends PTransform<PBegin, PCollection<Row>> {
 
-  Source source;
+  private final TextSource source;
 
-  public TextSourceFileMetadataToRow(Source source) {
+  public TextSourceFileMetadataToRow(TextSource source) {
     this.source = source;
   }
 
   @Override
   public PCollection<Row> expand(PBegin input) {
-    Schema schema = source.getTextFileSchema();
+    Schema schema = BeamUtils.textToBeamSchema(source.getHeader());
     return input.apply(Create.empty(schema));
   }
 }
