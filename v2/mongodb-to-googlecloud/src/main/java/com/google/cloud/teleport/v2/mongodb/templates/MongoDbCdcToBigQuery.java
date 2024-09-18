@@ -27,7 +27,7 @@ import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.Big
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.JavascriptDocumentTransformerOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.PubSubOptions;
-import com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQueryCdc.Options;
+import com.google.cloud.teleport.v2.mongodb.templates.MongoDbCdcToBigQuery.Options;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.transforms.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
@@ -46,22 +46,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link MongoDbToBigQueryCdc} pipeline is a streaming pipeline which reads data pushed to
+ * The {@link MongoDbCdcToBigQuery} pipeline is a streaming pipeline which reads data pushed to
  * PubSub from MongoDB Changestream and outputs the resulting records to BigQuery.
  *
  * <p>Check out <a
- * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/mongodb-to-googlecloud/README_MongoDB_to_BigQuery_CDC.md">README</a>
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/mongodb-to-googlecloud/README_MongoDB_CDC_to_BigQuery.md">README</a>
  * for instructions on how to use or modify this template.
  */
 @Template(
-    name = "MongoDB_to_BigQuery_CDC",
+    name = "MongoDB_CDC_to_BigQuery",
     category = TemplateCategory.STREAMING,
-    displayName = "MongoDB to BigQuery (CDC)",
+    displayName = "MongoDB (CDC) to BigQuery",
     description =
-        "The MongoDB to BigQuery CDC (Change Data Capture) template is a streaming pipeline that works together with MongoDB change streams. "
+        "The MongoDB CDC (Change Data Capture) to BigQuery template is a streaming pipeline that works together with MongoDB change streams. "
             + "The pipeline reads the JSON records pushed to Pub/Sub via a MongoDB change stream and writes them to BigQuery as specified by the <code>userOption</code> parameter.",
     optionsClass = Options.class,
-    flexContainerName = "mongodb-to-bigquery-cdc",
+    flexContainerName = "mongodb-cdc-to-bigquery",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/mongodb-change-stream-to-bigquery",
     contactInformation = "https://cloud.google.com/support",
@@ -73,9 +73,9 @@ import org.slf4j.LoggerFactory;
     },
     streaming = true,
     supportsAtLeastOnce = true)
-public class MongoDbToBigQueryCdc {
+public class MongoDbCdcToBigQuery {
 
-  private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MongoDbCdcToBigQuery.class);
 
   /** Options interface. */
   public interface Options

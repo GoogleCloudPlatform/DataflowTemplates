@@ -41,7 +41,7 @@ follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/
     - [Kafka to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Kafka_to_BigQuery&type=code)
     - [Kafka to Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Kafka_to_GCS&type=code)
     - [Kinesis To Pubsub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Kinesis_To_Pubsub&type=code)
-    - [MongoDB to BigQuery (CDC)](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20MongoDB_to_BigQuery_CDC&type=code)
+    - [MongoDB to BigQuery (CDC)](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20MongoDB_CDC_to_BigQuery&type=code)
     - [Mqtt to Pubsub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Mqtt_to_PubSub&type=code)
     - [Ordered change stream buffer to Source DB](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Ordered_Changestream_Buffer_to_Sourcedb&type=code)
     - [Pub/Sub Avro to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20PubSub_Avro_to_BigQuery&type=code)
