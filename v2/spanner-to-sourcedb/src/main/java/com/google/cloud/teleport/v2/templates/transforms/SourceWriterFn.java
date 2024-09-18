@@ -129,12 +129,10 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     ConnectionHelper.init(shards, null, maxThreadPerDataflowWorker);
-
-    // TODO: Support multiple databases
+    mySqlDaoMap = new HashMap<>();
     for (Shard shard : shards) {
       String sourceConnectionUrl =
           "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
-      mySqlDaoMap = new HashMap<>();
       mySqlDaoMap.put(
           shard.getLogicalShardId(),
           new MySqlDao(sourceConnectionUrl, shard.getUserName(), shard.getPassword()));
