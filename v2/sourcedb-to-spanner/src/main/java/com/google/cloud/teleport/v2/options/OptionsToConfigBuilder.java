@@ -61,6 +61,7 @@ public final class OptionsToConfigBuilder {
         tables,
         sourceDbURL,
         null,
+        null,
         0,
         username,
         password,
@@ -78,6 +79,7 @@ public final class OptionsToConfigBuilder {
       List<String> tables,
       String sourceDbURL,
       String host,
+      String connectionProperties,
       int port,
       String username,
       String password,
@@ -108,6 +110,9 @@ public final class OptionsToConfigBuilder {
       case MYSQL:
         if (sourceDbURL == null) {
           sourceDbURL = "jdbc:mysql://" + host + ":" + port + "/" + dbName;
+          if (StringUtils.isNotBlank(connectionProperties)) {
+            sourceDbURL = sourceDbURL + "?" + connectionProperties;
+          }
         }
         for (Entry<String, String> entry :
             MySqlConfigDefaults.DEFAULT_MYSQL_URL_PROPERTIES.entrySet()) {
@@ -117,6 +122,9 @@ public final class OptionsToConfigBuilder {
       case POSTGRESQL:
         if (sourceDbURL == null) {
           sourceDbURL = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
+        }
+        if (StringUtils.isNotBlank(connectionProperties)) {
+          sourceDbURL = sourceDbURL + "?" + connectionProperties;
         }
         break;
     }

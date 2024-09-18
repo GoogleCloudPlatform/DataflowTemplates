@@ -214,6 +214,7 @@ public class PipelineController {
                           List.of(srcTable),
                           null,
                           shard.getHost(),
+                          shard.getConnectionProperties(),
                           Integer.parseInt(shard.getPort()),
                           shard.getUserName(),
                           shard.getPassword(),

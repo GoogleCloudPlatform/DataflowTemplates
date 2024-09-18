@@ -221,6 +221,9 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
     expectedData.put("set", createRows("set", "v1,v2", "NULL"));
     expectedData.put(
         "integer_unsigned", createRows("integer_unsigned", "0", "42", "4294967296", "NULL"));
+    expectedData.put(
+        "bigint_unsigned_pk", createRows("bigint_unsigned", "0", "42", "18446744073709551615"));
+    expectedData.put("string_pk", createRows("string", "Cloud", "Google", "Spanner"));
     return expectedData;
   }
 

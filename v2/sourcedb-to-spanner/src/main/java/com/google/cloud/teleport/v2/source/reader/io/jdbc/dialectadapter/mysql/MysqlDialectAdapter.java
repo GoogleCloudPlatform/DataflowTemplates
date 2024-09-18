@@ -354,6 +354,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   private static final ImmutableMap<String, SourceColumnIndexInfo.IndexType> INDEX_TYPE_MAPPING =
       ImmutableMap.<String, SourceColumnIndexInfo.IndexType>builder()
+          .put("BIGINT UNSIGNED", IndexType.BIG_INT_UNSIGNED)
           .put("BIGINT", IndexType.NUMERIC)
           .put("DATETIME", IndexType.DATE_TIME)
           .put("INTEGER", IndexType.NUMERIC)
