@@ -36,7 +36,7 @@ func main() {
 		mvnFlags.SkipSpotlessCheck(),
 		mvnFlags.SkipTests(),
 		mvnFlags.ThreadCount(3),
-		flags.InternalMaven())
+		mvnFlags.InternalMaven())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
