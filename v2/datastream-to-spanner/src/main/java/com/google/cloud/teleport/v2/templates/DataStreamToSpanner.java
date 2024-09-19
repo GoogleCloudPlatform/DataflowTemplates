@@ -495,6 +495,7 @@ public class DataStreamToSpanner {
         order = 30,
         optional = true,
         description = "Table name overrides from source to spanner",
+        regexes = "^\\[([[:space:]]*\\{[[:space:]]*[[:alnum:]]+[[:space:]]*,[[:space:]]*[[:alnum:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
         example = "[{Singers, Vocalists}, {Albums, Records}]",
         helpText =
             "These are the table name overrides from source to spanner. They are written in the"
@@ -508,6 +509,7 @@ public class DataStreamToSpanner {
     @TemplateParameter.Text(
         order = 31,
         optional = true,
+        regexes = "^\\[([[:space:]]*\\{[[:space:]]*[[:alnum:]]+\\.[[:alnum:]_]+[[:space:]]*,[[:space:]]*[[:alnum:]_]+\\.[[:alnum:]_]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
         description = "Column name overrides from source to spanner",
         example =
             "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
