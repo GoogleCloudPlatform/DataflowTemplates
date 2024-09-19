@@ -391,7 +391,9 @@ public class SpannerToSourceDb {
 
     // calculate the max connections per worker
     int maxNumWorkers =
-        pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getMaxNumWorkers();
+        pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getMaxNumWorkers() > 0
+            ? pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getMaxNumWorkers()
+            : 1;
     int connectionPoolSizePerWorker = (int) (options.getMaxShardConnections() / maxNumWorkers);
     if (connectionPoolSizePerWorker < 1) {
       // This can happen when the number of workers is more than max.

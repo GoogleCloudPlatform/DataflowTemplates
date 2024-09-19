@@ -24,19 +24,14 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
-import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -57,6 +52,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
 
   private static final String SPANNER_DDL_RESOURCE = "SpannerToSourceDbIT/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURCE = "SpannerToSourceDbIT/session.json";
+  private static final String MYSQL_SCHEMA_FILE_RESOURCE = "SpannerToSourceDbIT/mysql-schema.sql";
 
   private static final String TABLE = "Users";
   private static final HashSet<SpannerToSourceDbIT> testInstances = new HashSet<>();
@@ -84,7 +80,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
 
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
-        createMySQLSchema(jdbcResourceManager);
+        createMySQLSchema(jdbcResourceManager, SpannerToSourceDbIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
@@ -98,7 +94,15 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
                 getClass().getSimpleName(),
                 pubsubResourceManager,
                 getGcsPath("dlq", gcsResourceManager));
-        launchDataflowJob();
+        jobInfo =
+            launchDataflowJob(
+                gcsResourceManager,
+                spannerResourceManager,
+                spannerMetadataResourceManager,
+                subscriptionName.toString(),
+                "",
+                "",
+                "");
       }
     }
   }
@@ -150,43 +154,5 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     assertThat(rows).hasSize(1);
     assertThat(rows.get(0).get("id")).isEqualTo(1);
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
-  }
-
-  private void launchDataflowJob() throws IOException {
-
-    Map<String, String> params =
-        new HashMap<>() {
-          {
-            put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
-            put("instanceId", spannerResourceManager.getInstanceId());
-            put("databaseId", spannerResourceManager.getDatabaseId());
-            put("spannerProjectId", PROJECT);
-            put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
-            put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put("sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager));
-            put("changeStreamName", "allstream");
-            put("dlqGcsPubSubSubscription", subscriptionName.toString());
-            put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
-            put("maxShardConnections", "5");
-            put("maxNumWorkers", "1");
-            put("numWorkers", "1");
-          }
-        };
-    String jobName = PipelineUtils.createJobName(testName);
-    LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
-    options.setParameters(params);
-    options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
-
-    // Run
-    jobInfo = launchTemplate(options, false);
-  }
-
-  private void createMySQLSchema(MySQLResourceManager jdbcResourceManager) {
-    HashMap<String, String> columns = new HashMap<>();
-    columns.put("id", "INT NOT NULL");
-    columns.put("name", "VARCHAR(25)");
-    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
-
-    jdbcResourceManager.createTable(TABLE, schema);
   }
 }
