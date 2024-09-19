@@ -52,6 +52,9 @@ public class DataStreamToSpannerLTObserver {
             .setDataset(dataset)
             .setMetricName("RunTime")
             .setPercentageDeviation(25)
+            .setTestCaseDescription(
+                String.format(
+                    "templateName=%s, testName=%s", "cloud_datastream_to_spanner", "backfill100Gb"))
             .build();
 
     DetectMetricDeviationConditionCheck totalCostCheck =
@@ -59,6 +62,9 @@ public class DataStreamToSpannerLTObserver {
             .setDataset(dataset)
             .setMetricName("EstimatedCost")
             .setPercentageDeviation(25)
+            .setTestCaseDescription(
+                String.format(
+                    "templateName=%s, testName=%s", "cloud_datastream_to_spanner", "backfill100Gb"))
             .build();
 
     AssertAll asserts = new AssertAll();
