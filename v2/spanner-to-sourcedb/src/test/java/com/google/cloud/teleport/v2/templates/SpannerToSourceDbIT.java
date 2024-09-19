@@ -49,7 +49,7 @@ import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link SpannerToSourceDb} Flex template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(GCSToSourceDb.class)
+@TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
 public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
 
@@ -99,7 +99,6 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
                 pubsubResourceManager,
                 getGcsPath("dlq", gcsResourceManager));
         launchDataflowJob();
-        launchWriterDataflowJob();
       }
     }
   }
@@ -124,7 +123,6 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
 
   @Test
   public void testSpannerToSource() throws InterruptedException {
-    assertThatPipeline(readerJobInfo).isRunning();
     assertThatPipeline(jobInfo).isRunning();
     // Write row in Spanner
     writeRowInSpanner();
@@ -170,20 +168,20 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
             put("dlqGcsPubSubSubscription", subscriptionName.toString());
             put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
             put("maxShardConnections", "5");
+            put("maxNumWorkers", "1");
+            put("numWorkers", "1");
           }
         };
     String jobName = PipelineUtils.createJobName(testName);
     LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
     options.setParameters(params);
-    options.setMaxNumWorkers(1);
-    options.setNumWorkers(1);
-    options.setExperiments(Collections.singletonList("use_runner_v2"));
+    options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+
     // Run
     jobInfo = launchTemplate(options, false);
   }
 
-  private void createMySQLSchema(
-      MySQLResourceManager jdbcResourceManager, String tableName, Map<String, String> columns) {
+  private void createMySQLSchema(MySQLResourceManager jdbcResourceManager) {
     HashMap<String, String> columns = new HashMap<>();
     columns.put("id", "INT NOT NULL");
     columns.put("name", "VARCHAR(25)");
