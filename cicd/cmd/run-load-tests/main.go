@@ -57,6 +57,8 @@ func main() {
 		mvnFlags.SkipShade(),
 		mvnFlags.FailAtTheEnd(),
 		mvnFlags.RunLoadTests(),
+		mvnFlags.ThreadCount(4),
+		flags.Region(),
 		flags.Project(),
 		flags.ArtifactBucket(),
 		flags.StageBucket(),
@@ -65,9 +67,11 @@ func main() {
 		flags.ExportProject(),
 		flags.ExportDataset(),
 		flags.ExportTable(),
-		flags.StaticOracleInstance(),
+		flags.StaticOracleHost(),
+		flags.StaticOracleSysPassword(),
 		flags.CloudProxyHost(),
-		flags.CloudProxyPort(),
+		flags.CloudProxyMySqlPort(),
+		flags.CloudProxyPostgresPort(),
 		flags.CloudProxyPassword())
 	if err != nil {
 		log.Fatalf("%v\n", err)

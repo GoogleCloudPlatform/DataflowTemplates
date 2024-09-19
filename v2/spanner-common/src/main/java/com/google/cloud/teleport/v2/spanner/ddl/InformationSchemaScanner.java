@@ -89,10 +89,10 @@ public class InformationSchemaScanner {
         continue; // Skipping as table does not exist
       }
 
-      ImmutableList.Builder<String> tableForeignKeys = ImmutableList.builder();
+      ImmutableList.Builder<ForeignKey> tableForeignKeys = ImmutableList.builder();
       for (Map.Entry<String, ForeignKey.Builder> entry : tableEntry.getValue().entrySet()) {
         ForeignKey.Builder foreignKeyBuilder = entry.getValue();
-        tableForeignKeys.add(foreignKeyBuilder.build().prettyPrint());
+        tableForeignKeys.add(foreignKeyBuilder.build());
       }
       builder.createTable(tableName).foreignKeys(tableForeignKeys.build()).endTable();
     }

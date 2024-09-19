@@ -59,6 +59,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -113,6 +114,11 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   @Test
   public void testFakeMessagesToGcsBaseUsingRunnerV2() throws IOException {
     testFakeMessagesToGcsBase(this::enableRunnerV2);
+  }
+
+  @Test
+  public void testFakeMessagesToGcsStreamingEngine() throws IOException {
+    testFakeMessagesToGcsBase(this::enableStreamingEngine);
   }
 
   private void testFakeMessagesToGcsBase(
@@ -385,6 +391,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   }
 
   @Test
+  @Ignore("https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/1752")
   public void testFakeMessagesToKafka() throws IOException {
     // Set up resource manager
     kafkaResourceManager =

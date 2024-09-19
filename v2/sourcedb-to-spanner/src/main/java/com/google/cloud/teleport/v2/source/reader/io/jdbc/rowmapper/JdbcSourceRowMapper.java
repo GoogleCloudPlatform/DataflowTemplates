@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
 
 /** Implement the {@link org.apache.beam.sdk.io.jdbc.JdbcIO.RowMapper} interface. */
 public final class JdbcSourceRowMapper implements JdbcIO.RowMapper<SourceRow> {
-
   private final JdbcValueMappingsProvider mappingsProvider;
 
   private final SourceSchemaReference sourceSchemaReference;
@@ -103,13 +102,16 @@ public final class JdbcSourceRowMapper implements JdbcIO.RowMapper<SourceRow> {
                     entry.getKey(),
                     this.mappingsProvider
                         .getMappings()
-                        .getOrDefault(entry.getValue().getName(), JdbcValueMapper.UNSUPPORTED)
+                        .getOrDefault(
+                            entry.getValue().getName().toUpperCase(), JdbcValueMapper.UNSUPPORTED)
                         .mapValue(resultSet, entry.getKey(), schema));
               } catch (SQLException e) {
                 mapperErrors.inc();
                 logger.error(
-                    "Exception while mapping jdbc ResultSet to avro. Check for potential schema changes. Exception: "
-                        + e);
+                    "Exception while mapping jdbc ResultSet to avro. Check for potential schema changes or unexpected inaccuracy in schema discovery logs. SourceSchemaReference: {},  SourceTableSchema: {}. Exception: {}",
+                    sourceSchemaReference,
+                    sourceTableSchema,
+                    e);
                 throw new ValueMappingException(e);
               }
             });

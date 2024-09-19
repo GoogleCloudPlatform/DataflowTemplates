@@ -141,6 +141,7 @@ public class ExportPipelineIT extends TemplateTestBase {
                   + "    }"
                   + "  ]"
                   + "}");
+
   private SpannerResourceManager spannerResourceManager;
 
   @After
@@ -185,6 +186,8 @@ public class ExportPipelineIT extends TemplateTestBase {
                 + "  FirstName String(1024),\n"
                 + "  LastName String(1024),\n"
                 + "  Rating FLOAT32,\n"
+                + "  Review String(MAX),\n"
+                + "  `MyTokens` TOKENLIST AS (TOKENIZE_FULLTEXT(Review)) HIDDEN,\n"
                 + ") PRIMARY KEY(Id)",
             testName);
     String createModelStructStatement =
@@ -194,10 +197,17 @@ public class ExportPipelineIT extends TemplateTestBase {
                 + " OUTPUT (embeddings STRUCT<statistics STRUCT<truncated BOOL, token_count FLOAT64>, values ARRAY<FLOAT64>>) \n"
                 + " REMOTE OPTIONS (endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/publishers/google/models/textembedding-gecko\")",
             testName);
+    String createSearchIndexStatement =
+        String.format(
+            "CREATE SEARCH INDEX `%s_SearchIndex`\n"
+                + " ON `%s_Singers`(`MyTokens`)\n"
+                + " OPTIONS (sort_order_sharding=TRUE)",
+            testName, testName);
 
     spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
     spannerResourceManager.executeDdlStatement(createSingersTableStatement);
     spannerResourceManager.executeDdlStatement(createModelStructStatement);
+    spannerResourceManager.executeDdlStatement(createSearchIndexStatement);
     List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
     spannerResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
@@ -226,6 +236,10 @@ public class ExportPipelineIT extends TemplateTestBase {
         gcsClient.listArtifacts(
             "output/",
             Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "ModelStruct")));
+    List<Artifact> searchIndexArtifacts =
+        gcsClient.listArtifacts(
+            "output/",
+            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "SearchIndex")));
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(modelStructArtifacts).isNotEmpty();

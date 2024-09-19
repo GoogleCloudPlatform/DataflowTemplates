@@ -52,7 +52,8 @@ public abstract class IndexColumn implements Serializable {
   public enum Order {
     ASC("ASC"),
     DESC("DESC"),
-    STORING("STORING");
+    STORING("STORING"),
+    NONE("");
 
     Order(String title) {
       this.title = title;
@@ -139,6 +140,11 @@ public abstract class IndexColumn implements Serializable {
       return set(IndexColumn.create(name, Order.DESC, dialect));
     }
 
+    public IndexColumnsBuilder<T> none(String name) {
+      IndexColumn indexColumn = IndexColumn.create(name, Order.NONE, dialect);
+      return set(indexColumn);
+    }
+
     public IndexColumnsBuilder<T> storing(String name) {
       return set(IndexColumn.create(name, Order.STORING, dialect));
     }
@@ -177,6 +183,15 @@ public abstract class IndexColumn implements Serializable {
             "Builder is missing. Call create method to initiate a builder first.");
       }
       indexColumnBuilder.order(Order.DESC);
+      return this;
+    }
+
+    public IndexColumnsBuilder<T> none() {
+      if (indexColumnBuilder == null) {
+        throw new IllegalArgumentException(
+            "Builder is missing. Call create method to initiate a builder first.");
+      }
+      indexColumnBuilder.order(Order.NONE);
       return this;
     }
 

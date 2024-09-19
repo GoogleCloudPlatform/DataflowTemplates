@@ -18,6 +18,7 @@ package flags
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -40,7 +41,7 @@ func TestModulesToBuild(t *testing.T) {
 		},
 		{
 			input:    "SPANNER",
-			expected: []string{"v2/datastream-to-spanner/", "v2/spanner-change-streams-to-sharded-file-sink/", "v2/gcs-to-sourcedb/", "v2/sourcedb-to-spanner/", "v2/spanner-custom-shard", "plugins/templates-maven-plugin"},
+			expected: []string{"v2/datastream-to-spanner/", "v2/spanner-change-streams-to-sharded-file-sink/", "v2/gcs-to-sourcedb/", "v2/sourcedb-to-spanner/", "v2/spanner-to-sourcedb/", "v2/spanner-custom-shard", "plugins/templates-maven-plugin"},
 		},
 	}
 
@@ -50,5 +51,25 @@ func TestModulesToBuild(t *testing.T) {
 		if !reflect.DeepEqual(actual, test.expected) {
 			t.Errorf("Returned modules are not equal. Expected %v. Got %v.", test.expected, actual)
 		}
+	}
+}
+
+func TestDefaultExcludedSubModules(t *testing.T) {
+	// common modules won't excluded
+	modulesToBuild = "DEFAULT"
+	defaults := ModulesToBuild()
+	mods := []string{"SPANNER"}
+	var s []string
+	for _, m := range mods {
+		modulesToBuild = m
+		ms := ModulesToBuild()
+		for _, n := range ms {
+			if !strings.HasPrefix(n, "plugins/") {
+				s = append(s, "!"+n)
+			}
+		}
+	}
+	if !reflect.DeepEqual(defaults, s) {
+		t.Errorf("Returned modules are not equal. Expected %v. Got %v.", s, defaults)
 	}
 }

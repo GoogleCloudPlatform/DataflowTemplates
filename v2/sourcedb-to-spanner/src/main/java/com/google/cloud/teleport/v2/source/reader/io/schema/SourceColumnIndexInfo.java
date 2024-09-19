@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.v2.source.reader.io.schema;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.common.base.Preconditions;
+import javax.annotation.Nullable;
 
 @AutoValue
 /**
@@ -24,7 +26,7 @@ import com.google.common.base.Preconditions;
  * a list of {@llink SourceColumnIndexInfo} is discovered, a composite index will have multiple
  * columns associated with the same indexName with unique ordinal positions.
  */
-public abstract class SourceColumnIndexInfo {
+public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIndexInfo> {
 
   /**
    * @return name of the column.
@@ -68,6 +70,14 @@ public abstract class SourceColumnIndexInfo {
    */
   public abstract IndexType indexType();
 
+  /** Collation details for string columns. Null if the column is not of string type. */
+  @Nullable
+  public abstract CollationReference collationReference();
+
+  /** Maximum Length for String Columns. Null for other types. */
+  @Nullable
+  public abstract Integer stringMaxLength();
+
   /**
    * Builder for {@link SourceColumnIndexInfo}.
    *
@@ -75,6 +85,21 @@ public abstract class SourceColumnIndexInfo {
    */
   public static Builder builder() {
     return new AutoValue_SourceColumnIndexInfo.Builder();
+  }
+
+  @Override
+  public int compareTo(SourceColumnIndexInfo other) {
+    if (this.equals(other)) {
+      return 0;
+    }
+    int nameCompare = this.indexName().compareTo(other.indexName());
+    if (nameCompare != 0) {
+      return nameCompare;
+    }
+    // Within the same index, check the ordinal position comparison.
+    int ordinalCompare =
+        new Long(this.ordinalPosition()).compareTo(new Long(other.ordinalPosition()));
+    return ordinalCompare;
   }
 
   @AutoValue.Builder
@@ -94,6 +119,10 @@ public abstract class SourceColumnIndexInfo {
 
     public abstract Builder setIndexType(IndexType value);
 
+    public abstract Builder setCollationReference(CollationReference value);
+
+    public abstract Builder setStringMaxLength(@Nullable Integer value);
+
     abstract SourceColumnIndexInfo autoBuild();
 
     public SourceColumnIndexInfo build() {
@@ -106,6 +135,7 @@ public abstract class SourceColumnIndexInfo {
 
   public enum IndexType {
     NUMERIC,
+    STRING,
     DATE_TIME,
     OTHER
   };

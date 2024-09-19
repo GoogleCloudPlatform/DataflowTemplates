@@ -18,6 +18,8 @@
 package org.apache.beam.it.gcp.cloudsql;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Custom class for the MySQL implementation of {@link CloudSqlResourceManager} abstract class.
@@ -28,6 +30,8 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  * <p>The class is thread-safe.
  */
 public class CloudMySQLResourceManager extends CloudSqlResourceManager {
+
+  private static final Logger LOG = LoggerFactory.getLogger(CloudMySQLResourceManager.class);
 
   private CloudMySQLResourceManager(Builder builder) {
     super(builder);
@@ -47,6 +51,15 @@ public class CloudMySQLResourceManager extends CloudSqlResourceManager {
 
     public Builder(String testId) {
       super(testId);
+    }
+
+    @Override
+    protected void configurePort() {
+      if (System.getProperty("cloudProxyMySqlPort") != null) {
+        this.setPort(Integer.parseInt(System.getProperty("cloudProxyMySqlPort")));
+      } else {
+        LOG.warn("Missing -DcloudProxyMySqlPort.");
+      }
     }
 
     @Override

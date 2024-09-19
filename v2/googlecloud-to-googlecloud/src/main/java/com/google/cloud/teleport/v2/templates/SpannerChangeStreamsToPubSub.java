@@ -22,6 +22,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToPubSubOptions;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreamsToPubSub;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
@@ -95,6 +96,14 @@ public class SpannerChangeStreamsToPubSub {
         : options.getPubsubProjectId();
   }
 
+  public static boolean isValidAsciiString(String outputMessageMetadata) {
+    if (outputMessageMetadata != null
+        && !StandardCharsets.US_ASCII.newEncoder().canEncode(outputMessageMetadata)) {
+      return false;
+    }
+    return true;
+  }
+
   public static PipelineResult run(SpannerChangeStreamsToPubSubOptions options) {
     LOG.info("Requested Message Format is " + options.getOutputDataFormat());
     options.setStreaming(true);
@@ -112,6 +121,13 @@ public class SpannerChangeStreamsToPubSub {
     String pubsubProjectId = getPubsubProjectId(options);
     String pubsubTopicName = options.getPubsubTopic();
     String pubsubAPI = options.getPubsubAPI();
+    Boolean includeSpannerSource = options.getIncludeSpannerSource();
+    String outputMessageMetadata = options.getOutputMessageMetadata();
+
+    // Ensure outputMessageMetadata only contains valid ascii characters
+    if (!isValidAsciiString(outputMessageMetadata)) {
+      throw new RuntimeException("outputMessageMetadata contains non ascii characters.");
+    }
 
     // Retrieve and parse the start / end timestamps.
     Timestamp startTimestamp =
@@ -170,6 +186,10 @@ public class SpannerChangeStreamsToPubSub {
                 .setProjectId(pubsubProjectId)
                 .setPubsubAPI(pubsubAPI)
                 .setPubsubTopicName(pubsubTopicName)
+                .setIncludeSpannerSource(includeSpannerSource)
+                .setSpannerDatabaseId(databaseId)
+                .setSpannerInstanceId(instanceId)
+                .setOutputMessageMetadata(outputMessageMetadata)
                 .build());
     return pipeline.run();
   }

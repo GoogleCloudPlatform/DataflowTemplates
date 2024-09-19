@@ -12,13 +12,11 @@ datastream_params = {
   mysql_username = "<YOUR_MYSQL_USERNAME>"
   mysql_password = "<YOUR_MYSQL_PASSWORD>"
   mysql_port     = 3306
-  mysql_databases = [
-    {
-      database = "<YOUR_DATABASE_NAME>"
-      tables   = []
-      # Optionally list specific tables, or remove "tables" all together for all tables
-    }
-  ]
+  mysql_database = {
+    database = "<YOUR_DATABASE_NAME>"
+    tables   = []
+    # Optionally list specific tables, or remove "tables" all together for all tables
+  }
   private_connectivity_id = "<YOUR_PRIVATE_CONNECTIVITY_ID>"
   # Only one of `private_connectivity_id` or `private_connectivity` block
   # may exist. Use `private_connectivity_id` to specify an existing
@@ -49,7 +47,7 @@ dataflow_params = {
     num_workers = 4
     on_delete   = "cancel"
     network     = "<YOUR_VPC_NETWORK>"
-    subnetwork  = "regions/<YOUR_REGION>/subnetworks/<YOUR_SUBNETWORK_NAME>"
+    subnetwork  = "<YOUR_SUBNETWORK_NAME>"
     # subnetwork is passed "as-is". This is intentionally kept like so to
     # allow for shared VPC configurations. Learn more about subnetwork
     # configuration at: https://cloud.google.com/dataflow/docs/guides/specifying-networks#subnetwork_parameter

@@ -24,22 +24,24 @@ import (
 
 // Avoid making these vars public.
 var (
-	dRegion              string
-	dProject             string
-	dArtifactBucket      string
-	dStageBucket         string
-	dHostIp              string
-	dPrivateConnectivity string
-	dSpannerHost         string
-	dReleaseMode         bool
-	dRetryFailures       string
-	dCloudProxyHost      string
-	dCloudProxyPort      string
-	dCloudProxyPassword  string
-	dOracleInstance      string
+	dRegion                 string
+	dProject                string
+	dArtifactBucket         string
+	dStageBucket            string
+	dHostIp                 string
+	dPrivateConnectivity    string
+	dSpannerHost            string
+	dReleaseMode            bool
+	dRetryFailures          string
+	dCloudProxyHost         string
+	dCloudProxyMySqlPort    string
+	dCloudProxyPostgresPort string
+	dCloudProxyPassword     string
+	dOracleHost             string
+	dCloudOracleSysPassword string
 )
 
-// Registers all common flags. Must be called before flag.Parse().
+// Registers all it flags. Must be called before flag.Parse().
 func RegisterItFlags() {
 	flag.StringVar(&dRegion, "it-region", "", "The GCP region to use for storing test artifacts")
 	flag.StringVar(&dProject, "it-project", "", "The GCP project to run the integration tests in")
@@ -51,9 +53,11 @@ func RegisterItFlags() {
 	flag.BoolVar(&dReleaseMode, "it-release", false, "(optional) Set if tests are being executed for a release")
 	flag.StringVar(&dRetryFailures, "it-retry-failures", "0", "Number of retries attempts for failing tests")
 	flag.StringVar(&dCloudProxyHost, "it-cloud-proxy-host", "10.128.0.34", "Hostname or IP address of static Cloud Auth Proxy")
-	flag.StringVar(&dCloudProxyPort, "it-cloud-proxy-port", "33134", "Port number of static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxyMySqlPort, "it-cloud-proxy-mysql-port", "33134", "MySql port number on static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxyPostgresPort, "it-cloud-proxy-postgres-port", "33136", "Postgres port number on static Cloud Auth Proxy")
 	flag.StringVar(&dCloudProxyPassword, "it-cloud-proxy-password", "t>5xl%J(&qTK6?FaZ", "Password of static Cloud Auth Proxy")
-	flag.StringVar(&dOracleInstance, "it-oracle-host", "10.128.0.90", "Hostname or IP address of static Oracle DB")
+	flag.StringVar(&dOracleHost, "it-oracle-host", "10.128.0.90", "Hostname or IP address of static Oracle DB")
+	flag.StringVar(&dCloudOracleSysPassword, "it-oracle-sys-password", "oracle", "sys password of static Oracle DB")
 }
 
 func Region() string {
@@ -119,14 +123,22 @@ func CloudProxyHost() string {
 	return "-DcloudProxyHost=" + dCloudProxyHost
 }
 
-func CloudProxyPort() string {
-	return "-DcloudProxyPort=" + dCloudProxyPort
+func CloudProxyMySqlPort() string {
+	return "-DcloudProxyMySqlPort=" + dCloudProxyMySqlPort
+}
+
+func CloudProxyPostgresPort() string {
+	return "-DcloudProxyPostgresPort=" + dCloudProxyPostgresPort
 }
 
 func CloudProxyPassword() string {
 	return "-DcloudProxyPassword=" + dCloudProxyPassword
 }
 
-func StaticOracleInstance() string {
-	return "-DcloudOracleHost=" + dOracleInstance
+func StaticOracleHost() string {
+	return "-DcloudOracleHost=" + dOracleHost
+}
+
+func StaticOracleSysPassword() string {
+	return "-DcloudOracleSysPassword=" + dCloudOracleSysPassword
 }

@@ -34,8 +34,6 @@
   </description>
 
   <properties>
-    <autovalue.service.version>1.0.2</autovalue.service.version>
-    <extra.enforcer.rules.version>1.8.0</extra.enforcer.rules.version>
     <mock-server-netty.version>5.14.0</mock-server-netty.version>
     <open-census.version>0.24.0</open-census.version>
     <!-- TODO: check if this could be declared on a Beam BOM instead of here -->
@@ -66,7 +64,7 @@
             <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam is updated to 2.56. -->
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-spanner-bom</artifactId>
-            <version>6.61.0</version>
+            <version>6.71.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -640,6 +638,9 @@
                   com.google.api.grpc:proto-google-cloud-spanner-admin-database-v1
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
+                  com.google.api.grpc:proto-google-cloud-spanner-admin-instance-v1
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
                   com.google.protobuf:protobuf-java-util
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
@@ -741,6 +742,11 @@
               <groupId>com.google.auto.value</groupId>
               <artifactId>auto-value</artifactId>
               <version>${autovalue.version}</version>
+            </path>
+            <path>
+              <groupId>com.google.auto.service</groupId>
+              <artifactId>auto-service</artifactId>
+              <version>${autovalue.service.version}</version>
             </path>
           </annotationProcessorPaths>
         </configuration>
@@ -945,19 +951,6 @@
   </build>
 
   <profiles>
-    <profile>
-      <id>missing-artifact-repos</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <repositories>
-        <repository>
-          <!-- Required for io.confluent:kafka-avro-serializer artifact -->
-          <id>confluent</id>
-          <url>https://packages.confluent.io/maven/</url>
-        </repository>
-      </repositories>
-    </profile>
     <profile>
       <id>shade</id>
       <activation>

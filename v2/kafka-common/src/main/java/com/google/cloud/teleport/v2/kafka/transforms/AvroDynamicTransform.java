@@ -26,7 +26,13 @@ import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.io.kafka.KafkaRecordCoder;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecordRouter;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 
 /**
  * The {@link AvroDynamicTransform} class is a {@link PTransform} which transforms incoming Kafka
@@ -38,33 +44,79 @@ public class AvroDynamicTransform
         PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>> {
   private String schemaRegistryConnectionUrl;
 
-  private Map<String, Object> schemaRegistrySslConfig;
+  private Map<String, Object> schemaRegistryAuthenticationConfig;
+
+  private ErrorHandler<BadRecord, ?> errorHandler;
+  private BadRecordRouter badRecordRouter;
+  private static final TupleTag<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>>
+      SUCCESS_GENERIC_RECORDS = new TupleTag<>();
 
   private AvroDynamicTransform(
-      String schemaRegistryConnectionUrl, Map<String, Object> schemaRegistrySslConfig) {
+      String schemaRegistryConnectionUrl,
+      Map<String, Object> schemaRegistryAuthenticationConfig,
+      ErrorHandler<BadRecord, ?> errorHandler,
+      BadRecordRouter badRecordRouter) {
     this.schemaRegistryConnectionUrl = schemaRegistryConnectionUrl;
-    this.schemaRegistrySslConfig = schemaRegistrySslConfig;
+    this.schemaRegistryAuthenticationConfig = schemaRegistryAuthenticationConfig;
+    this.errorHandler = errorHandler;
+    this.badRecordRouter = badRecordRouter;
+  }
+
+  private AvroDynamicTransform(
+      String schemaRegistryConnectionUrl, Map<String, Object> schemaRegistryAuthenticationConfig) {
+    this.schemaRegistryConnectionUrl = schemaRegistryConnectionUrl;
+    this.schemaRegistryAuthenticationConfig = schemaRegistryAuthenticationConfig;
+    this.errorHandler = new ErrorHandler.DefaultErrorHandler<>();
+    this.badRecordRouter = BadRecordRouter.THROWING_ROUTER;
   }
 
   public static AvroDynamicTransform of(
-      String schemaRegistryConnectionUrl, Map<String, Object> schemaRegistrySslConfig) {
-    return new AvroDynamicTransform(schemaRegistryConnectionUrl, schemaRegistrySslConfig);
+      String schemaRegistryConnectionUrl, Map<String, Object> schemaRegistryAuthenticationConfig) {
+    return new AvroDynamicTransform(
+        schemaRegistryConnectionUrl, schemaRegistryAuthenticationConfig);
+  }
+
+  public static AvroDynamicTransform of(
+      String schemaRegistryConnectionUrl,
+      Map<String, Object> schemaRegistryAuthenticationConfig,
+      ErrorHandler<BadRecord, ?> badRecordErrorHandler,
+      BadRecordRouter badRecordRouter) {
+    return new AvroDynamicTransform(
+        schemaRegistryConnectionUrl,
+        schemaRegistryAuthenticationConfig,
+        badRecordErrorHandler,
+        badRecordRouter);
   }
 
   public PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> expand(
       PCollection<KafkaRecord<byte[], byte[]>> kafkaRecords) {
-    PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> genericRecords;
+    PCollectionTuple genericRecords;
     genericRecords =
-        kafkaRecords
-            .apply(
-                "ConvertKafkaRecordsToGenericRecordsWrappedinFailsafeElement",
-                ParDo.of(
+        kafkaRecords.apply(
+            "ConvertKafkaRecordsToGenericRecordsWrappedinFailsafeElement",
+            ParDo.of(
                     new KafkaRecordToGenericRecordFailsafeElementFn(
-                        this.schemaRegistryConnectionUrl, this.schemaRegistrySslConfig)))
+                        this.schemaRegistryConnectionUrl,
+                        this.schemaRegistryAuthenticationConfig,
+                        this.badRecordRouter,
+                        SUCCESS_GENERIC_RECORDS))
+                .withOutputTags(
+                    SUCCESS_GENERIC_RECORDS, TupleTagList.of(BadRecordRouter.BAD_RECORD_TAG)));
+
+    PCollection<FailsafeElement<KafkaRecord<byte[], byte[]>, GenericRecord>> successGenericRecords;
+    successGenericRecords =
+        genericRecords
+            .get(SUCCESS_GENERIC_RECORDS)
             .setCoder(
                 FailsafeElementCoder.of(
                     KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()),
                     GenericRecordCoder.of()));
-    return genericRecords;
+
+    // Get the failed elements and add them to the errorHandler collection.
+    PCollection<BadRecord> failedGenericRecords =
+        genericRecords.get(BadRecordRouter.BAD_RECORD_TAG);
+    errorHandler.addErrorCollection(
+        failedGenericRecords.setCoder(BadRecord.getCoder(genericRecords.getPipeline())));
+    return successGenericRecords;
   }
 }

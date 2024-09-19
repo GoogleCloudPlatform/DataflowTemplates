@@ -47,17 +47,15 @@ for handling any issues that arise as a result of this setup.
 
 ## Merging PRs
 
-This repo's code currently is mirrored in Google's internal source control system. Merging a PR should use the following flow:
+Merging a PR should use the following flow:
 
 1) PR author creates a PR. If they are an external contributor, checks won't be automatically run.
 2) Code reviewers review/iterate with Author until PR is ready to be approved. After reviewing and verifying there is no malicious code, but before step 3 make sure to click "approve and run" to allow their workflows to run.
 3) PR reviewer approves PR
-4) PR reviewer adds "Google LGTM" tag to PR. Google tooling will now automatically create an internal CL.
-5) After a minute or two, click the "import/copybara" check in the checks section. This will navigate to an internal UI.
-6) Approve the change internally. At this point, the change will get automatically merged internally and externally.
+4) A maintainer will squash and merge PR once checks are passing.
+5) If there are issues and/or merge conflicts, repeat steps 1-4 until conflicts are resolved and checks are passing
 
-We are actively working to deprecate this process and use GitHub as the only source of truth.
-If you encounter unresolvable issues with this flow, please reach out to the Dataflow team directly.
+Note: All PRs require an approval from at least 1 reviewer and can only be merged by a maintainer.
 
 ## GitHub actions
 

@@ -9,7 +9,7 @@ coverage:
     patch:
       default:
         target: 80%
-        informational: true
+        informational: false
 
 component_management:
   individual_components:
@@ -26,11 +26,13 @@ component_management:
     - "v2/spanner-migrations-sdk/**"
     - "v2/spanner-custom-shard/**"
     - "v2/sourcedb-to-spanner/**"
+    - "v2/spanner-to-sourcedb/**"
     statuses:
     - type: project
       informational: true
     - type: patch
       target: 80%
+      informational: false
   - component_id: spanner-import-export
     name: spanner-import-export
     paths:
@@ -42,11 +44,11 @@ component_management:
     paths:
     - "v2/datastream-to-spanner/**"
     - "v2/spanner-common/**"
+    - "v2/spanner-migrations-sdk/**"
   - component_id: spanner-live-reverse-replication
     name: spanner-live-reverse-replication
     paths:
-    - "v2/spanner-change-streams-to-sharded-file-sink/**"
-    - "v2/gcs-to-sourcedb/**"
+    - "v2/spanner-to-sourcedb/**"
     - "v2/spanner-migrations-sdk/**"
     - "v2/spanner-custom-shard/**"
     - "v2/spanner-common/**"

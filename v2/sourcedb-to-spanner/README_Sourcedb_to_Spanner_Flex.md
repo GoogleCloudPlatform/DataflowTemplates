@@ -27,7 +27,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **sourceDbURL** : The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`.
+* **sourceConfigURL** (Configuration to connect to the source database): Can be the JDBC URL or the location of the sharding config. (Example: jdbc:mysql://10.10.10.10:3306/testdb or gs://test1/shard.conf)
 * **instanceId** : The destination Cloud Spanner instance.
 * **databaseId** : The destination Cloud Spanner database.
 * **projectId** : This is the name of the Cloud Spanner project.
@@ -127,7 +127,7 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Sourcedb_to_Spanner_Flex"
 
 ### Required
-export SOURCE_DB_URL=<sourceDbURL>
+export SOURCE_CONFIG_URL=<sourceConfigURL>
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
 export PROJECT_ID=<projectId>
@@ -155,7 +155,7 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "jdbcDriverJars=$JDBC_DRIVER_JARS" \
   --parameters "jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME" \
-  --parameters "sourceDbURL=$SOURCE_DB_URL" \
+  --parameters "sourceConfigURL=$SOURCE_CONFIG_URL" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
   --parameters "tables=$TABLES" \
@@ -167,9 +167,6 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "maxConnections=$MAX_CONNECTIONS" \
   --parameters "sessionFilePath=$SESSION_FILE_PATH" \
   --parameters "outputDirectory=$OUTPUT_DIRECTORY" \
-  --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
-  --parameters "transformationClassName=$TRANSFORMATION_CLASS_NAME" \
-  --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
   --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE"
 ```
@@ -190,7 +187,7 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export SOURCE_DB_URL=<sourceDbURL>
+export SOURCE_CONFIG_URL=<sourceConfigURL>
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
 export PROJECT_ID=<projectId>
@@ -219,7 +216,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceDbURL=$SOURCE_DB_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,defaultLogLevel=$DEFAULT_LOG_LEVEL" \
 -f v2/sourcedb-to-spanner
 ```
 
@@ -264,7 +261,7 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
   name              = "sourcedb-to-spanner-flex"
   region            = var.region
   parameters        = {
-    sourceDbURL = "<sourceDbURL>"
+    sourceConfigURL = "<sourceConfigURL>"
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
     projectId = "<projectId>"

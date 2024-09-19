@@ -53,7 +53,11 @@ public abstract class Column implements Serializable {
 
   public abstract boolean isStored();
 
+  public abstract boolean isPlacementKey();
+
   public abstract Dialect dialect();
+
+  public abstract boolean isHidden();
 
   @Nullable
   public abstract String defaultExpression();
@@ -64,8 +68,10 @@ public abstract class Column implements Serializable {
         .columnOptions(ImmutableList.of())
         .notNull(false)
         .isGenerated(false)
+        .isHidden(false)
         .generationExpression("")
-        .isStored(false);
+        .isStored(false)
+        .isPlacementKey(false);
   }
 
   public static Builder builder() {
@@ -97,6 +103,14 @@ public abstract class Column implements Serializable {
       appendable.append(" AS (").append(generationExpression()).append(")");
       if (isStored()) {
         appendable.append(" STORED");
+      }
+    }
+    if (isPlacementKey()) {
+      appendable.append(" PLACEMENT KEY");
+    }
+    if (isHidden()) {
+      if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
+        appendable.append(" HIDDEN");
       }
     }
     if (columnOptions() == null) {
@@ -169,6 +183,8 @@ public abstract class Column implements Serializable {
       return notNull(true);
     }
 
+    public abstract Builder isHidden(boolean hidden);
+
     public abstract Builder isGenerated(boolean generated);
 
     public abstract Builder generationExpression(String expression);
@@ -183,6 +199,12 @@ public abstract class Column implements Serializable {
 
     public Builder stored() {
       return isStored(true);
+    }
+
+    public abstract Builder isPlacementKey(boolean isPlacementKey);
+
+    public Builder placementKey() {
+      return isPlacementKey(true);
     }
 
     public abstract Column autoBuild();
@@ -237,6 +259,10 @@ public abstract class Column implements Serializable {
 
     public Builder pgBytea() {
       return type(Type.pgBytea()).max();
+    }
+
+    public Builder tokenlist() {
+      return type(Type.tokenlist());
     }
 
     public Builder timestamp() {

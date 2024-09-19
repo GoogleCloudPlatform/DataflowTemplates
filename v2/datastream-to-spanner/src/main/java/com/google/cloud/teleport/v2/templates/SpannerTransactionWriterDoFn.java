@@ -220,7 +220,6 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       // do not increment the retry error count if this was retry attempt
       if (!isRetryRecord) {
         retryableErrors.inc();
-        retryableErrors.inc();
       }
     } catch (Exception e) {
       // Any other errors are considered severe and not retryable.

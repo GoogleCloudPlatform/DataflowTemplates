@@ -2,6 +2,8 @@
 common_params = {
   project = "<YOUR_PROJECT_ID>"
   # Replace with your GCP project ID
+  host_project = "<YOUR_HOST_PROJECT_ID>"
+  # If you are using a shared VPC
   region = "<YOUR_REGION>"
   # Replace with your desired GCP region
 }
@@ -14,13 +16,11 @@ datastream_params = {
   # ID of the GCS target connection profile
   target_gcs_bucket_name = "<YOUR_TARGET_GCS_BUCKET_NAME>"
   # Name of the target GCS bucket used in the target connection profile above.
-  mysql_databases = [
-    {
-      database = "<YOUR_DATABASE_NAME>"
-      tables   = []
-      # Optionally list specific tables, or remove "tables" all together for all tables
-    }
-  ]
+  mysql_database = {
+    database = "<YOUR_DATABASE_NAME>"
+    tables   = []
+    # Optionally list specific tables, or remove "tables" all together for all tables
+  }
 }
 
 # Dataflow Parameters
@@ -36,7 +36,7 @@ dataflow_params = {
     num_workers = 4        # Adjust based on your requirements
     on_delete   = "cancel" # Or "drain"
     network     = "<YOUR_VPC_NETWORK>"
-    subnetwork  = "regions/<YOUR_REGION>/subnetworks/<YOUR_SUBNETWORK_NAME>"
+    subnetwork  = "<YOUR_SUBNETWORK_NAME>"
     # subnetwork is passed "as-is". This is intentionally kept like so to
     # allow for shared VPC configurations. Learn more about subnetwork
     # configuration at: https://cloud.google.com/dataflow/docs/guides/specifying-networks#subnetwork_parameter

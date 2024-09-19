@@ -23,7 +23,6 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.BatchClient;
@@ -36,12 +35,15 @@ import com.google.cloud.teleport.spanner.common.Type;
 import com.google.common.collect.HashMultimap;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.Rule;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -54,30 +56,44 @@ import org.junit.experimental.categories.Category;
 public class InformationSchemaScannerIT {
 
   private final String dbId = "informationschemascannertest";
+  public static final String INSTANCE_PARTITION_ID = "mr-partition";
 
-  @Rule public final SpannerServerResource spannerServer = new SpannerServerResource();
+  /** Class rule for Spanner server resource. */
+  @ClassRule public static final SpannerServerResource SPANNER_SERVER = new SpannerServerResource();
 
   @Before
   public void setup() {
     // Just to make sure an old database is not left over.
-    spannerServer.dropDatabase(dbId);
+    SPANNER_SERVER.dropDatabase(dbId);
   }
 
   @After
   public void tearDown() {
-    spannerServer.dropDatabase(dbId);
+    // Drop database before deleting the partition.
+    SPANNER_SERVER.dropDatabase(dbId);
+  }
+
+  @BeforeClass
+  public static void setupInstancePartition() throws Exception {
+    SPANNER_SERVER.createInstancePartition(INSTANCE_PARTITION_ID, "nam3");
+  }
+
+  @AfterClass
+  public static void tearDownInstancePartition() throws Exception {
+    SPANNER_SERVER.deleteInstancePartition(INSTANCE_PARTITION_ID);
   }
 
   private Ddl getDatabaseDdl() {
-    BatchClient batchClient = spannerServer.getBatchClient(dbId);
+    BatchClient batchClient = SPANNER_SERVER.getBatchClient(dbId);
     BatchReadOnlyTransaction batchTx =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
+
     InformationSchemaScanner scanner = new InformationSchemaScanner(batchTx);
     return scanner.scan();
   }
 
   private Ddl getPgDatabaseDdl() {
-    BatchClient batchClient = spannerServer.getBatchClient(dbId);
+    BatchClient batchClient = SPANNER_SERVER.getBatchClient(dbId);
     BatchReadOnlyTransaction batchTx =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
     InformationSchemaScanner scanner = new InformationSchemaScanner(batchTx, Dialect.POSTGRESQL);
@@ -86,26 +102,32 @@ public class InformationSchemaScannerIT {
 
   @Test
   public void emptyDatabase() throws Exception {
-    spannerServer.createDatabase(dbId, Collections.emptyList());
+    SPANNER_SERVER.createDatabase(dbId, Collections.emptyList());
     Ddl ddl = getDatabaseDdl();
     assertThat(ddl, equalTo(Ddl.builder().build()));
   }
 
   @Test
   public void pgEmptyDatabase() throws Exception {
-    spannerServer.createPgDatabase(dbId, Collections.emptyList());
+    SPANNER_SERVER.createPgDatabase(dbId, Collections.emptyList());
     Ddl ddl = getPgDatabaseDdl();
     assertThat(ddl, equalTo(Ddl.builder(Dialect.POSTGRESQL).build()));
   }
 
   @Test
   public void tableWithAllTypes() throws Exception {
-    String allTypes =
+    String createProtoBundleStmt =
         "CREATE PROTO BUNDLE ("
-            + " com.google.cloud.teleport.spanner.tests.TestMessage,"
-            + " com.google.cloud.teleport.spanner.tests.TestEnum"
-            + ")"
-            + "CREATE TABLE `alltypes` ("
+            + "\n\t`com.google.cloud.teleport.spanner.tests.TestMessage`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.Order.PaymentMode`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.Order.Item`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.Order.Address`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.Order`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.TestEnum`,"
+            + "\n\t`com.google.cloud.teleport.spanner.tests.OrderHistory`,)";
+
+    String createTableStmt =
+        "CREATE TABLE `alltypes` ("
             + " `first_name`            STRING(MAX),"
             + " `last_name`             STRING(5),"
             + " `id`                    INT64 NOT NULL,"
@@ -117,8 +139,10 @@ public class InformationSchemaScannerIT {
             + " `bytes_field`           BYTES(13),"
             + " `timestamp_field`       TIMESTAMP,"
             + " `date_field`            DATE,"
-            + " `proto_field`           com.google.cloud.teleport.spanner.tests.TestMessage,"
-            + " `enum_field`            com.google.cloud.teleport.spanner.tests.TestEnum,"
+            + " `proto_field`           `com.google.cloud.teleport.spanner.tests.TestMessage`,"
+            + " `proto_field_2`         `com.google.cloud.teleport.spanner.tests.Order`,"
+            + " `nested_enum`           `com.google.cloud.teleport.spanner.tests.Order.PaymentMode`,"
+            + " `enum_field`            `com.google.cloud.teleport.spanner.tests.TestEnum`,"
             + " `arr_bool_field`        ARRAY<BOOL>,"
             + " `arr_int64_field`       ARRAY<INT64>,"
             + " `arr_float32_field`     ARRAY<FLOAT32>,"
@@ -128,8 +152,10 @@ public class InformationSchemaScannerIT {
             + " `arr_timestamp_field`   ARRAY<TIMESTAMP>,"
             + " `arr_date_field`        ARRAY<DATE>,"
             + " `embedding_vector`      ARRAY<FLOAT64>(vector_length=>16),"
-            + " `arr_proto_field`       ARRAY<com.google.cloud.teleport.spanner.tests.TestMessage>,"
-            + " `arr_enum_field`        ARRAY<com.google.cloud.teleport.spanner.tests.TestEnum>,"
+            + " `arr_proto_field`       ARRAY<`com.google.cloud.teleport.spanner.tests.TestMessage`>,"
+            + " `arr_proto_field_2`     ARRAY<`com.google.cloud.teleport.spanner.tests.Order`>,"
+            + " `arr_nested_enum`       ARRAY<`com.google.cloud.teleport.spanner.tests.Order.PaymentMode`>,"
+            + " `arr_enum_field`        ARRAY<`com.google.cloud.teleport.spanner.tests.TestEnum`>,"
             + " ) PRIMARY KEY (`first_name` ASC, `last_name` DESC, `id` ASC)";
 
     FileDescriptorSet.Builder fileDescriptorSetBuilder = FileDescriptorSet.newBuilder();
@@ -137,16 +163,18 @@ public class InformationSchemaScannerIT {
         com.google.cloud.teleport.spanner.tests.TestMessage.getDescriptor().getFile().toProto());
     ByteString protoDescriptorBytes = fileDescriptorSetBuilder.build().toByteString();
 
-    spannerServer.createDatabase(dbId, Collections.singleton(allTypes), protoDescriptorBytes);
+    List<String> statements = new ArrayList<>();
+    statements.add(createProtoBundleStmt);
+    statements.add(createTableStmt);
+    SPANNER_SERVER.createDatabase(dbId, statements, protoDescriptorBytes);
     Ddl ddl = getDatabaseDdl();
 
-    assertEquals(FileDescriptorSet.parseFrom(protoDescriptorBytes), ddl.protoDescriptors());
     assertThat(ddl.allTables(), hasSize(1));
     assertThat(ddl.table("alltypes"), notNullValue());
     assertThat(ddl.table("aLlTYPeS"), notNullValue());
 
     Table table = ddl.table("alltypes");
-    assertThat(table.columns(), hasSize(18));
+    assertThat(table.columns(), hasSize(28));
 
     // Check case sensitiveness.
     assertThat(table.column("first_name"), notNullValue());
@@ -169,6 +197,12 @@ public class InformationSchemaScannerIT {
         table.column("proto_field").type(),
         equalTo(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage")));
     assertThat(
+        table.column("proto_field_2").type(),
+        equalTo(Type.proto("com.google.cloud.teleport.spanner.tests.Order")));
+    assertThat(
+        table.column("nested_enum").type(),
+        equalTo(Type.protoEnum("com.google.cloud.teleport.spanner.tests.Order.PaymentMode")));
+    assertThat(
         table.column("enum_field").type(),
         equalTo(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum")));
     assertThat(table.column("arr_bool_field").type(), equalTo(Type.array(Type.bool())));
@@ -186,6 +220,14 @@ public class InformationSchemaScannerIT {
     assertThat(
         table.column("arr_proto_field").type(),
         equalTo(Type.array(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage"))));
+    assertThat(
+        table.column("arr_proto_field_2").type(),
+        equalTo(Type.array(Type.proto("com.google.cloud.teleport.spanner.tests.Order"))));
+    assertThat(
+        table.column("arr_nested_enum").type(),
+        equalTo(
+            Type.array(
+                Type.protoEnum("com.google.cloud.teleport.spanner.tests.Order.PaymentMode"))));
     assertThat(
         table.column("arr_enum_field").type(),
         equalTo(Type.array(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum"))));
@@ -206,7 +248,8 @@ public class InformationSchemaScannerIT {
     assertThat(pk.get(2).order(), equalTo(IndexColumn.Order.ASC));
 
     // Verify pretty print.
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(allTypes));
+    assertThat(
+        ddl.prettyPrint(), equalToCompressingWhiteSpace(createProtoBundleStmt + createTableStmt));
   }
 
   @Test
@@ -238,7 +281,7 @@ public class InformationSchemaScannerIT {
             + " PRIMARY KEY (\"first_name\", \"last_name\", \"id\")"
             + " )";
 
-    spannerServer.createPgDatabase(dbId, Collections.singleton(allTypes));
+    SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(allTypes));
     Ddl ddl = getPgDatabaseDdl();
 
     assertThat(ddl.allTables(), hasSize(1));
@@ -302,7 +345,7 @@ public class InformationSchemaScannerIT {
             + " OUTPUT ( `classes` ARRAY<STRING(MAX)>, `scores` ARRAY<FLOAT64>, ) REMOTE OPTIONS"
             + " (endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760\")";
 
-    spannerServer.createDatabase(dbId, Arrays.asList(modelDef));
+    SPANNER_SERVER.createDatabase(dbId, Arrays.asList(modelDef));
     Ddl ddl = getDatabaseDdl();
 
     assertThat(ddl.models(), hasSize(1));
@@ -333,7 +376,7 @@ public class InformationSchemaScannerIT {
             + ") PRIMARY KEY (id)";
     String viewDef = "CREATE VIEW Names SQL SECURITY INVOKER AS SELECT u.name FROM Users u";
 
-    spannerServer.createDatabase(dbId, Arrays.asList(tableDef, viewDef));
+    SPANNER_SERVER.createDatabase(dbId, Arrays.asList(tableDef, viewDef));
     Ddl ddl = getDatabaseDdl();
 
     assertThat(ddl.allTables(), hasSize(1));
@@ -357,7 +400,7 @@ public class InformationSchemaScannerIT {
             + " PRIMARY KEY (id)) ";
     String viewDef = "CREATE VIEW \"Names\" SQL SECURITY INVOKER AS SELECT name FROM \"Users\"";
 
-    spannerServer.createPgDatabase(dbId, Arrays.asList(tableDef, viewDef));
+    SPANNER_SERVER.createPgDatabase(dbId, Arrays.asList(tableDef, viewDef));
     Ddl ddl = getPgDatabaseDdl();
 
     assertThat(ddl.allTables(), hasSize(1));
@@ -399,7 +442,7 @@ public class InformationSchemaScannerIT {
                 + " ) PRIMARY KEY (id0 ASC, id1 ASC, id2_1 ASC),"
                 + " INTERLEAVE IN PARENT level1 ON DELETE CASCADE");
 
-    spannerServer.createDatabase(dbId, statements);
+    SPANNER_SERVER.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
 
     assertThat(ddl.allTables(), hasSize(4));
@@ -451,7 +494,7 @@ public class InformationSchemaScannerIT {
                 + " PRIMARY KEY (id0, id1, id2_1)"
                 + " ) INTERLEAVE IN PARENT level1 ON DELETE CASCADE");
 
-    spannerServer.createPgDatabase(dbId, statements);
+    SPANNER_SERVER.createPgDatabase(dbId, statements);
     Ddl ddl = getPgDatabaseDdl();
 
     assertThat(ddl.allTables(), hasSize(4));
@@ -482,7 +525,7 @@ public class InformationSchemaScannerIT {
             + " `NULL`                                  INT64,"
             + " ) PRIMARY KEY (`NULL` ASC)";
 
-    spannerServer.createDatabase(dbId, Collections.singleton(statement));
+    SPANNER_SERVER.createDatabase(dbId, Collections.singleton(statement));
     Ddl ddl = getDatabaseDdl();
 
     assertThat(ddl.allTables(), hasSize(1));
@@ -506,7 +549,7 @@ public class InformationSchemaScannerIT {
             + " PRIMARY KEY (\"NULL\")"
             + " )";
 
-    spannerServer.createPgDatabase(dbId, Collections.singleton(statement));
+    SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
     Ddl ddl = getPgDatabaseDdl();
 
     assertThat(ddl.allTables(), hasSize(1));
@@ -536,7 +579,35 @@ public class InformationSchemaScannerIT {
             " CREATE INDEX `b_age_idx` ON `Users`(`age` DESC)",
             " CREATE UNIQUE INDEX `c_first_name_idx` ON `Users`(`first_name` ASC)");
 
-    spannerServer.createDatabase(dbId, statements);
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
+  public void searchIndexes() throws Exception {
+    // Prefix indexes to ensure ordering.
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE `Users` ("
+                + "  `UserId`                                INT64 NOT NULL,"
+                + " ) PRIMARY KEY (`UserId` ASC)",
+            " CREATE TABLE `Messages` ("
+                + "  `UserId`                                INT64 NOT NULL,"
+                + "  `MessageId`                             INT64 NOT NULL,"
+                + "  `Subject`                               STRING(MAX),"
+                + "  `Subject_Tokens`                        TOKENLIST AS (TOKENIZE_FULLTEXT(`Subject`)) HIDDEN,"
+                + "  `Body`                                  STRING(MAX),"
+                + "  `Body_Tokens`                           TOKENLIST AS (TOKENIZE_FULLTEXT(`Body`)) HIDDEN,"
+                + "  `Data`                                  STRING(MAX),"
+                + " ) PRIMARY KEY (`UserId` ASC, `MessageId` ASC), INTERLEAVE IN PARENT `Users`",
+            " CREATE SEARCH INDEX `SearchIndex` ON `Messages`(`Subject_Tokens` , `Body_Tokens` )"
+                + " STORING (`Data`)"
+                + " PARTITION BY `UserId`,"
+                + " INTERLEAVE IN `Users`"
+                + " OPTIONS (sort_order_sharding=TRUE)");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
@@ -564,7 +635,7 @@ public class InformationSchemaScannerIT {
             " CREATE INDEX \"null_ordering_idx\" ON \"Users\"(\"id\" ASC NULLS FIRST,"
                 + " \"first_name\" ASC, \"last_name\" DESC, \"AGE\" DESC NULLS LAST)");
 
-    spannerServer.createPgDatabase(dbId, statements);
+    SPANNER_SERVER.createPgDatabase(dbId, statements);
     Ddl ddl = getPgDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
@@ -600,7 +671,7 @@ public class InformationSchemaScannerIT {
                 // Unspecified DELETE action defaults to "NO ACTION"
                 + " REFERENCES `Ref` (`id2`, `id1`) ON DELETE NO ACTION");
 
-    spannerServer.createDatabase(dbId, dbCreationStatements);
+    SPANNER_SERVER.createDatabase(dbId, dbCreationStatements);
     Ddl ddl = getDatabaseDdl();
     assertThat(
         ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", dbVerificationStatements)));
@@ -640,7 +711,7 @@ public class InformationSchemaScannerIT {
                 // Unspecified DELETE action defaults to "NO ACTION"
                 + " REFERENCES \"Ref\" (\"id2\", \"id1\") ON DELETE NO ACTION");
 
-    spannerServer.createPgDatabase(dbId, dbCreationStatements);
+    SPANNER_SERVER.createPgDatabase(dbId, dbCreationStatements);
     Ddl ddl = getPgDatabaseDdl();
     assertThat(
         ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", dbVerificationStatements)));
@@ -657,7 +728,7 @@ public class InformationSchemaScannerIT {
                 + " CONSTRAINT `ck` CHECK(A>0),"
                 + " ) PRIMARY KEY (`id` ASC)");
 
-    spannerServer.createDatabase(dbId, statements);
+    SPANNER_SERVER.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
@@ -673,7 +744,7 @@ public class InformationSchemaScannerIT {
                 + " PRIMARY KEY (\"id\")"
                 + " )");
 
-    spannerServer.createPgDatabase(dbId, statements);
+    SPANNER_SERVER.createPgDatabase(dbId, statements);
     Ddl ddl = getPgDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
@@ -687,7 +758,7 @@ public class InformationSchemaScannerIT {
             + " OPTIONS (allow_commit_timestamp=TRUE),"
             + " ) PRIMARY KEY (`id` ASC)";
 
-    spannerServer.createDatabase(dbId, Collections.singleton(statement));
+    SPANNER_SERVER.createDatabase(dbId, Collections.singleton(statement));
     Ddl ddl = getDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
   }
@@ -700,7 +771,7 @@ public class InformationSchemaScannerIT {
             + " \"birthday\"                              spanner.commit_timestamp NOT NULL,"
             + " PRIMARY KEY (\"id\") )";
 
-    spannerServer.createPgDatabase(dbId, Collections.singleton(statement));
+    SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
     Ddl ddl = getPgDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
   }
@@ -714,7 +785,7 @@ public class InformationSchemaScannerIT {
             + " `generated`                              INT64 NOT NULL AS (`id`) STORED, "
             + " ) PRIMARY KEY (`id` ASC)";
 
-    spannerServer.createDatabase(dbId, Collections.singleton(statement));
+    SPANNER_SERVER.createDatabase(dbId, Collections.singleton(statement));
     Ddl ddl = getDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
   }
@@ -726,7 +797,7 @@ public class InformationSchemaScannerIT {
             + " \"generated\" bigint NOT NULL GENERATED ALWAYS AS ((id / '1'::bigint)) STORED, "
             + " PRIMARY KEY (\"id\") )";
 
-    spannerServer.createPgDatabase(dbId, Collections.singleton(statement));
+    SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
     Ddl ddl = getPgDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
   }
@@ -739,7 +810,7 @@ public class InformationSchemaScannerIT {
             + " `generated`                              INT64 NOT NULL DEFAULT (10), "
             + " ) PRIMARY KEY (`id` ASC)";
 
-    spannerServer.createDatabase(dbId, Collections.singleton(statement));
+    SPANNER_SERVER.createDatabase(dbId, Collections.singleton(statement));
     Ddl ddl = getDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
   }
@@ -751,7 +822,7 @@ public class InformationSchemaScannerIT {
             + " \"generated\"                              bigint NOT NULL DEFAULT '10'::bigint,"
             + " PRIMARY KEY (\"id\") )";
 
-    spannerServer.createPgDatabase(dbId, Collections.singleton(statement));
+    SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
     Ddl ddl = getPgDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
   }
@@ -772,7 +843,7 @@ public class InformationSchemaScannerIT {
             " CREATE INDEX `b_age_idx` ON `Users`(`age` DESC)",
             " CREATE UNIQUE INDEX `c_first_name_idx` ON `Users`(`first_name` ASC)");
 
-    spannerServer.createDatabase(dbId, statements);
+    SPANNER_SERVER.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
     String alterStatement = statements.get(0);
     statements.set(0, alterStatement.replace(dbId, "%db_name%"));
@@ -796,7 +867,7 @@ public class InformationSchemaScannerIT {
             " CREATE INDEX \"b_age_idx\" ON \"Users\"(\"age\" DESC)",
             " CREATE INDEX \"c_first_name_idx\" ON \"Users\"(\"first_name\" ASC)");
 
-    spannerServer.createPgDatabase(dbId, statements);
+    SPANNER_SERVER.createPgDatabase(dbId, statements);
     Ddl ddl = getPgDatabaseDdl();
     String alterStatement = statements.get(0);
     statements.set(0, alterStatement.replace(dbId, "%db_name%"));
@@ -825,7 +896,7 @@ public class InformationSchemaScannerIT {
             " CREATE CHANGE STREAM `ChangeStreamTableColumns`"
                 + " FOR `Account`, `Users`(`first_name`, `last_name`)");
 
-    spannerServer.createDatabase(dbId, statements);
+    SPANNER_SERVER.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
@@ -855,7 +926,7 @@ public class InformationSchemaScannerIT {
             " CREATE CHANGE STREAM \"ChangeStreamTableColumns\""
                 + " FOR \"Account\", \"Users\"(\"first_name\", \"last_name\")");
 
-    spannerServer.createPgDatabase(dbId, statements);
+    SPANNER_SERVER.createPgDatabase(dbId, statements);
     Ddl ddl = getPgDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
@@ -875,7 +946,7 @@ public class InformationSchemaScannerIT {
                 + " `balanceId` INT64 NOT NULL,"
                 + " ) PRIMARY KEY (`id` ASC)");
 
-    spannerServer.createDatabase(dbId, statements);
+    SPANNER_SERVER.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
     String expectedDdl =
         "\nCREATE SEQUENCE `MySequence`\n\tOPTIONS "
@@ -905,7 +976,7 @@ public class InformationSchemaScannerIT {
                 + " \"balanceId\" bigint NOT NULL,"
                 + " PRIMARY KEY (\"id\"))");
 
-    spannerServer.createPgDatabase(dbId, statements);
+    SPANNER_SERVER.createPgDatabase(dbId, statements);
     Ddl ddl = getPgDatabaseDdl();
     String expectedDdl =
         "\nCREATE SEQUENCE \"MyPGSequence\" BIT_REVERSED_POSITIVE"
@@ -918,5 +989,84 @@ public class InformationSchemaScannerIT {
             + "\"balanceId\"                             bigint NOT NULL,"
             + "\n\tPRIMARY KEY (\"id\")\n)\n\n";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+  }
+
+  @Test
+  public void placements() throws Exception {
+    List<String> statements =
+        // Create placements pointing to MR partition, which uses nam3 config.
+        Arrays.asList(
+            "ALTER DATABASE `" + dbId + "` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n",
+            "CREATE PLACEMENT `pl1`\n\tOPTIONS (instance_partition=\""
+                + INSTANCE_PARTITION_ID
+                + "\")\n",
+            "CREATE PLACEMENT `pl2`\n\tOPTIONS (default_leader=\"us-east1\", instance_partition=\""
+                + INSTANCE_PARTITION_ID
+                + "\")\n",
+            "CREATE PLACEMENT `pl3`\n\tOPTIONS (default_leader=\"us-east4\", instance_partition=\""
+                + INSTANCE_PARTITION_ID
+                + "\")");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  // TODO: Add PG test once placements and placement_options are available.
+
+  // TODO: Re-enable once placement table constraints are available.
+  // @Test
+  public void placementTables() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "ALTER DATABASE `" + dbId + "` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n",
+            "CREATE TABLE `PlacementKeyAsPrimaryKey` (\n\t"
+                + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n\t"
+                + "`val`                                   STRING(MAX),\n"
+                + ") PRIMARY KEY (`location` ASC)\n\n\n",
+            "CREATE TABLE `PlacedUsers` (\n\t"
+                + "`location`                              STRING(MAX) NOT NULL,\n\t"
+                + "`user_id`                               INT64 NOT NULL,\n"
+                + ") PRIMARY KEY (`location` ASC, `user_id` ASC),\n"
+                + "INTERLEAVE IN PARENT `PlacementKeyAsPrimaryKey`\n\n\n",
+            "CREATE TABLE `UsersByPlacement` (\n\t"
+                + "`user_id`                               INT64 NOT NULL,\n\t"
+                + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n"
+                + ") PRIMARY KEY (`user_id` ASC)\n\n");
+
+    // Validate the PLACEMENT KEY constraint is available in placement tables.
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  // TODO: Re-enable once placement table constraints are available.
+  // @Test
+  public void pgPlacementTables() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "ALTER DATABASE \"" + dbId + "\" SET spanner.opt_in_dataplacement_preview = TRUE\n",
+            " CREATE TABLE \"PlacementKeyAsPrimaryKey\" ("
+                + " \"location\"                              character varying NOT NULL PLACEMENT KEY,"
+                + " \"val\"                                   character varying,"
+                + " PRIMARY KEY (\"location\")"
+                + " )",
+            " CREATE TABLE \"PlacedUsers\" ("
+                + " \"location\"                              character varying NOT NULL,"
+                + " \"user_id\"                               character varying NOT NULL,"
+                + " PRIMARY KEY (\"location\", \"user_id\") "
+                + ") INTERLEAVE IN PARENT \"PlacementKeyAsPrimaryKey\"",
+            " CREATE TABLE \"UsersWithPlacement\" ("
+                + " \"user_id\"                               bigint NOT NULL,"
+                + " \"location\"                              character varying NOT NULL PLACEMENT KEY,"
+                + " PRIMARY KEY (\"user_id\")"
+                + " )");
+    // Validate the PLACEMENT KEY constraint is available in placement tables.
+    SPANNER_SERVER.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
+    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
 }

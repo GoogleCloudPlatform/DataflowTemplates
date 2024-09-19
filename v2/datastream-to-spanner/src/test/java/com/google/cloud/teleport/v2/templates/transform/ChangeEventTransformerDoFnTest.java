@@ -365,7 +365,9 @@ public class ChangeEventTransformerDoFnTest {
         ArgumentCaptor.forClass(FailsafeElement.class);
     verify(processContextMock, times(1))
         .output(eq(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG), argument.capture());
-    assertEquals("invalid transformation", argument.getValue().getErrorMessage());
+    assertEquals(
+        "com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException: invalid transformation",
+        argument.getValue().getErrorMessage());
   }
 
   @Test

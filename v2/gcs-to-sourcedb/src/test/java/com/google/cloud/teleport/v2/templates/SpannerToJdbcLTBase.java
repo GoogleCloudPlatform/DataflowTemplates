@@ -38,8 +38,8 @@ import org.apache.beam.it.gcp.TemplateLoadTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.it.jdbc.CustomMySQLResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +78,7 @@ public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
   public void setupMySQLResourceManager(int numShards) throws IOException {
     jdbcResourceManagers = new ArrayList<>();
     for (int i = 0; i < numShards; ++i) {
-      jdbcResourceManagers.add(CustomMySQLResourceManager.builder(testName).build());
+      jdbcResourceManagers.add(MySQLResourceManager.builder(testName).build());
     }
 
     createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManagers);
@@ -128,9 +128,8 @@ public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
       throws IOException {
     JsonArray ja = new JsonArray();
     for (int i = 0; i < 1; ++i) {
-      if (jdbcResourceManagers.get(i) instanceof CustomMySQLResourceManager) {
-        CustomMySQLResourceManager resourceManager =
-            (CustomMySQLResourceManager) jdbcResourceManagers.get(i);
+      if (jdbcResourceManagers.get(i) instanceof MySQLResourceManager) {
+        MySQLResourceManager resourceManager = (MySQLResourceManager) jdbcResourceManagers.get(i);
         Shard shard = new Shard();
         shard.setLogicalShardId("Shard" + (i + 1));
         shard.setUser(jdbcResourceManagers.get(i).getUsername());

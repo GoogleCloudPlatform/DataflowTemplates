@@ -19,6 +19,26 @@ v2/spanner-change-streams-to-sharded-file-sink/ @GoogleCloudPlatform/spanner-mig
 v2/gcs-to-sourcedb/ @GoogleCloudPlatform/spanner-migrations-team
 v2/spanner-migrations-sdk/ @GoogleCloudPlatform/spanner-migrations-team
 v2/spanner-custom-shard/ @GoogleCloudPlatform/spanner-migrations-team
+v2/spanner-to-sourcedb/ @GoogleCloudPlatform/spanner-migrations-team
+
+# Datastream Templates
+v2/datastream-to-sql/ @GoogleCloudPlatform/datastream
+v2/datastream-to-bigquery/ @GoogleCloudPlatform/datastream
+v2/datastream-to-postgres/ @GoogleCloudPlatform/datastream
+v2/datastream-to-mongodb/ @GoogleCloudPlatform/datastream
+v2/datastream-common/ @GoogleCloudPlatform/datastream @GoogleCloudPlatform/spanner-migrations-team
 
 # Spanner Bulk migration template
 v2/sourcedb-to-spanner/ @GoogleCloudPlatform/spanner-migrations-team
+
+# Bigtable Import Export templates
+v1/src/main/java/com/google/cloud/teleport/bigtable @GoogleCloudPlatform/bigtable-migrations-team
+v1/src/test/java/com/google/cloud/teleport/bigtable @GoogleCloudPlatform/bigtable-migrations-team
+v1/src/test/java/com/google/cloud/teleport/templates/BigtableToAvroIT.java @GoogleCloudPlatform/bigtable-migrations-team
+v1/src/test/java/com/google/cloud/teleport/templates/BigtableToJsonIT.java @GoogleCloudPlatform/bigtable-migrations-team
+v1/src/test/java/com/google/cloud/teleport/templates/BigtableToParquetIT.java @GoogleCloudPlatform/bigtable-migrations-team
+v1/src/test/java/com/google/cloud/teleport/templates/BigtableToVectorEmbeddingsIT.java @GoogleCloudPlatform/bigtable-migrations-team
+
+# Bigtable CDC shared logic
+v2/bigtable-changestreams-to-hbase/ @GoogleCloudPlatform/bigtable-migrations-team
+v2/bigtable-common/ @GoogleCloudPlatform/bigtable-migrations-team

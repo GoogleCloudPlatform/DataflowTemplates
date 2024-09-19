@@ -141,10 +141,12 @@ public class DataStreamToSpanner {
     @TemplateParameter.GcsReadFile(
         order = 1,
         groupName = "Source",
-        description = "File location for Datastream file output in Cloud Storage.",
+        optional = true,
+        description =
+            "File location for Datastream file output in Cloud Storage. Support for this feature has been disabled.",
         helpText =
             "The Cloud Storage file location that contains the Datastream files to replicate. Typically, "
-                + "this is the root path for a stream.")
+                + "this is the root path for a stream. Support for this feature has been disabled.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -702,6 +704,9 @@ public class DataStreamToSpanner {
      * a) Retryable errors are written to retry GCS Dead letter queue
      * b) Severe errors are written to severe GCS Dead letter queue
      */
+    // We will write only the original payload from the failsafe event to the DLQ.  We are doing
+    // that in
+    // StringDeadLetterQueueSanitizer.
     spannerWriteResults
         .retryableErrors()
         .apply(

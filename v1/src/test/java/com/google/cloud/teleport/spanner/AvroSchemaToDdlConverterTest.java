@@ -170,7 +170,16 @@ public class AvroSchemaToDdlConverterTest {
             + "  }, {"
             + "    \"name\" : \"timestamp\","
             + "    \"type\" : [ \"null\", {\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]"
-            + "  }],"
+            + "  }, {"
+            + "    \"name\" : \"MyTokens\","
+            + "    \"type\" : \"null\","
+            + "    \"default\" : null,"
+            + "    \"sqlType\" : \"TOKENLIST\","
+            + "    \"hidden\" : \"true\","
+            + "    \"notNull\" : \"false\","
+            + "    \"generationExpression\" : \"(TOKENIZE_FULLTEXT(MyData))\","
+            + "    \"stored\" : \"false\""
+            + " }],"
             + "  \"googleStorage\" : \"CloudSpanner\","
             + "  \"spannerParent\" : \"\","
             + "  \"googleFormatVersion\" : \"booleans\","
@@ -214,19 +223,20 @@ public class AvroSchemaToDdlConverterTest {
                 + " `notJson`         STRING(MAX),"
                 + " `jsonArr`         ARRAY<JSON>,"
                 + " `notJsonArr`      ARRAY<STRING(MAX)>,"
-                + " `proto`           com.google.cloud.teleport.spanner.tests.TestMessage,"
+                + " `proto`           `com.google.cloud.teleport.spanner.tests.TestMessage`,"
                 + " `notProto`        BYTES(MAX),"
-                + " `protoArr`        ARRAY<com.google.cloud.teleport.spanner.tests.TestMessage>,"
+                + " `protoArr`        ARRAY<`com.google.cloud.teleport.spanner.tests.TestMessage`>,"
                 + " `notProtoArr`     ARRAY<BYTES(MAX)>,"
-                + " `enum`            com.google.cloud.teleport.spanner.tests.TestEnum,"
+                + " `enum`            `com.google.cloud.teleport.spanner.tests.TestEnum`,"
                 + " `notEnum`         INT64,"
-                + " `enumArr`         ARRAY<com.google.cloud.teleport.spanner.tests.TestEnum>,"
+                + " `enumArr`         ARRAY<`com.google.cloud.teleport.spanner.tests.TestEnum`>,"
                 + " `notEnumArr`      ARRAY<INT64>,"
                 + " `boolean`         BOOL,"
                 + " `integer`         INT64,"
                 + " `float32`         FLOAT32,"
                 + " `float64`         FLOAT64,"
                 + " `timestamp`       TIMESTAMP,"
+                + " `MyTokens`                              TOKENLIST AS ((TOKENIZE_FULLTEXT(MyData))) HIDDEN,"
                 + " CONSTRAINT `ck` CHECK(`first_name` != 'last_name'),"
                 + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC, `last_name` DESC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
@@ -969,5 +979,167 @@ public class AvroSchemaToDdlConverterTest {
     timestampSchema = Schema.create(Schema.Type.LONG);
     timestampSchema.addProp("logicalType", "timestamp-micros");
     assertEquals(Type.pgTimestamptz(), avroSchemaToDdlConverter.inferType(timestampSchema, false));
+  }
+
+  @Test
+  public void placements() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Placement1\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerEntity\":\"Placement\", "
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerOption_0\" : \"instance_partition='mr-partition'\","
+            + "  \"spannerOption_1\" : \"default_leader='us-east1'\""
+            + "}";
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(avroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.placements(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE PLACEMENT `Placement1`\n\t"
+                + " OPTIONS (instance_partition='mr-partition', default_leader='us-east1')"));
+  }
+
+  @Test
+  public void placementTable() {
+    String placementKeyAsPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"PlacementKeyAsPrimaryKey\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"val\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`location` ASC\""
+            + "}";
+
+    String placementKeyAsNonPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"UsersWithPlacement\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"INT64\""
+            + "  }, {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`id` ASC\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(placementKeyAsPrimaryKeyAvroString));
+    schemas.add(parser.parse(placementKeyAsNonPrimaryKeyAvroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.allTables(), hasSize(2));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `PlacementKeyAsPrimaryKey` (\n\t"
+                + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n\t"
+                + "`val`                                   STRING(MAX) NOT NULL,\n"
+                + ") PRIMARY KEY (`location` ASC)\n\n\n"
+                + "CREATE TABLE `UsersWithPlacement` (\n\t"
+                + "`id`                                    INT64 NOT NULL,\n\t"
+                + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n"
+                + ") PRIMARY KEY (`id` ASC)\n\n"));
+  }
+
+  @Test
+  public void pgPlacementTable() {
+    String placementKeyAsPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"PlacementKeyAsPrimaryKey\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"val\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"location ASC\""
+            + "}";
+
+    String placementKeyAsNonPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"UsersWithPlacement\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"bigint\""
+            + "  }, {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"id ASC\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(placementKeyAsPrimaryKeyAvroString));
+    schemas.add(parser.parse(placementKeyAsNonPrimaryKeyAvroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.allTables(), hasSize(2));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"PlacementKeyAsPrimaryKey\" (\n\t"
+                + "\"location\"                              character varying NOT NULL PLACEMENT KEY,\n\t"
+                + "\"val\"                                   character varying NOT NULL,\n\t"
+                + "PRIMARY KEY (\"location\")\n)\n\n\n"
+                + "CREATE TABLE \"UsersWithPlacement\" (\n\t"
+                + "\"id\"                                    bigint NOT NULL,\n\t"
+                + "\"location\"                              character varying NOT NULL PLACEMENT KEY,\n\t"
+                + "PRIMARY KEY (\"id\")\n)\n\n"));
   }
 }

@@ -38,6 +38,9 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecord;
+import org.apache.beam.sdk.transforms.errorhandling.BadRecordRouter;
+import org.apache.beam.sdk.transforms.errorhandling.ErrorHandler;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
@@ -56,6 +59,10 @@ public abstract class AvroWriteTransform
     extends PTransform<
         PCollection<KafkaRecord<byte[], byte[]>>, WriteFilesResult<AvroDestination>> {
 
+  public abstract BadRecordRouter badRecordRouter();
+
+  public abstract ErrorHandler<BadRecord, ?> errorHandler();
+
   public abstract String outputDirectory();
 
   public abstract Integer numShards();
@@ -66,7 +73,7 @@ public abstract class AvroWriteTransform
 
   public abstract @Nullable String schemaRegistryURL();
 
-  public abstract Map<String, Object> schemaRegistrySslConfig();
+  public abstract Map<String, Object> schemaRegistryAuthenticationConfig();
 
   public abstract @Nullable String confluentSchemaPath();
 
@@ -94,17 +101,26 @@ public abstract class AvroWriteTransform
       }
       if ((schemaFormat().equals(KafkaTemplateParameters.SchemaFormat.SINGLE_SCHEMA_FILE))) {
         failsafeElementPCollection =
-            records.apply(AvroTransform.of(inputWireFormat, confluentSchemaPath()));
+            records.apply(
+                AvroTransform.of(
+                    inputWireFormat, confluentSchemaPath(), errorHandler(), badRecordRouter()));
       } else if (schemaFormat().equals(KafkaTemplateParameters.SchemaFormat.SCHEMA_REGISTRY)) {
         failsafeElementPCollection =
-            records.apply(AvroDynamicTransform.of(schemaRegistryURL(), schemaRegistrySslConfig()));
+            records.apply(
+                AvroDynamicTransform.of(
+                    schemaRegistryURL(),
+                    schemaRegistryAuthenticationConfig(),
+                    errorHandler(),
+                    badRecordRouter()));
       } else {
         throw new RuntimeException("Unsupported message format");
       }
     } else if (inputWireFormat.equals(MessageFormatConstants.AVRO_BINARY_ENCODING)
         && !(Objects.requireNonNull(binaryAvroSchemaPath())).isEmpty()) {
       failsafeElementPCollection =
-          records.apply(AvroTransform.of(messageFormat(), binaryAvroSchemaPath()));
+          records.apply(
+              AvroTransform.of(
+                  messageFormat(), binaryAvroSchemaPath(), errorHandler(), badRecordRouter()));
     } else {
       throw new RuntimeException("Unsupported message format");
     }
@@ -129,6 +145,10 @@ public abstract class AvroWriteTransform
 
   @AutoValue.Builder
   public abstract static class AvroWriteTransformBuilder {
+    public abstract AvroWriteTransformBuilder setBadRecordRouter(BadRecordRouter value);
+
+    public abstract AvroWriteTransformBuilder setErrorHandler(ErrorHandler<BadRecord, ?> value);
+
     abstract AvroWriteTransform autoBuild();
 
     public abstract AvroWriteTransformBuilder setOutputDirectory(String outputDirectory);
@@ -140,8 +160,8 @@ public abstract class AvroWriteTransform
     public abstract AvroWriteTransformBuilder setSchemaRegistryURL(
         @Nullable String schemaRegistryURL);
 
-    public abstract AvroWriteTransformBuilder setSchemaRegistrySslConfig(
-        Map<String, Object> schemaRegistrySslConfig);
+    public abstract AvroWriteTransformBuilder setSchemaRegistryAuthenticationConfig(
+        Map<String, Object> schemaRegistryAuthenticationConfig);
 
     public abstract AvroWriteTransformBuilder setConfluentSchemaPath(String value);
 

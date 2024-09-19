@@ -145,12 +145,15 @@ public class ExportTransformTest {
             "changeStream",
             "changeStream manifest",
             "sequence",
-            "sequence manifest");
+            "sequence manifest",
+            "placement",
+            "placement manifest");
 
     FileDescriptorProto.Builder builder = FileDescriptorProto.newBuilder();
     builder
         .addMessageType(
             com.google.cloud.teleport.spanner.tests.TestMessage.getDescriptor().toProto())
+        .addMessageType(com.google.cloud.teleport.spanner.tests.Order.getDescriptor().toProto())
         .addEnumType(com.google.cloud.teleport.spanner.tests.TestEnum.getDescriptor().toProto());
     FileDescriptorSet.Builder fileDescriptorSetBuilder = FileDescriptorSet.newBuilder();
     fileDescriptorSetBuilder.addFile(builder);
@@ -158,6 +161,7 @@ public class ExportTransformTest {
     ImmutableSet<String> protoBundle =
         ImmutableSet.of(
             "com.google.cloud.teleport.spanner.tests.TestMessage",
+            "com.google.cloud.teleport.spanner.tests.Order",
             "com.google.cloud.teleport.spanner.tests.TestEnum");
     PCollection<List<Export.Table>> metadataTables =
         pipeline
@@ -175,6 +179,11 @@ public class ExportTransformTest {
     ddlBuilder.createModel("model1").remote(true).endModel();
     ddlBuilder.createChangeStream("changeStream").endChangeStream();
     ddlBuilder.createSequence("sequence").endSequence();
+    ddlBuilder
+        .createPlacement("placement")
+        .options(
+            ImmutableList.of("instance_partition=\"mr-partition\"", "default_leader=\"us-east1\""))
+        .endPlacement();
     ddlBuilder.mergeProtoBundle(protoBundle);
     ddlBuilder.mergeProtoDescriptors(protoDescriptors);
     Ddl ddl = ddlBuilder.build();
@@ -226,6 +235,12 @@ public class ExportTransformTest {
                   assertThat(
                       manifestProto.getChangeStreams(0).getManifestFile(),
                       is("changeStream-manifest.json"));
+
+                  assertThat(manifestProto.getPlacementsCount(), is(1));
+                  assertThat(manifestProto.getPlacements(0).getName(), is("placement"));
+                  assertThat(
+                      manifestProto.getPlacements(0).getManifestFile(),
+                      is("placement-manifest.json"));
 
                   assertThat(manifestProto.getSequencesCount(), is(1));
                   assertThat(manifestProto.getSequences(0).getName(), is("sequence"));

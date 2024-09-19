@@ -57,6 +57,8 @@ message Export {
   repeated Table change_streams = 3;
   // The set of sequences that were exported.
   repeated Table sequences = 5;
+  // The set of placements that were exported.
+  repeated Table placements = 8;
 
   // Contains a protobuf-serialized google.protobuf.FileDescriptorSet for
   // proto_descriptors (from spanner_database_admin.proto)

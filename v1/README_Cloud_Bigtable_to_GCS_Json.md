@@ -27,6 +27,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **outputDirectory** : The Cloud Storage path where the output JSON files are stored. (Example: gs://your-bucket/your-path/).
 * **userOption** : Possible values are `FLATTEN` or `NONE`. `FLATTEN` flattens the row to the single level. `NONE` stores the whole row as a JSON string. Defaults to `NONE`.
 * **columnsAliases** : A comma-separated list of columns that are required for the Vertex AI Vector Search index. The columns `id` and `embedding` are required for Vertex AI Vector Search. You can use the notation `fromfamily:fromcolumn;to`. For example, if the columns are `rowkey` and `cf:my_embedding`, where `rowkey` has a different name than the embedding column, specify `cf:my_embedding;embedding` and, `rowkey;id`. Only use this option when the value for `userOption` is `FLATTEN`.
+* **bigtableAppProfileId** : The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.
 
 
 
@@ -116,6 +117,7 @@ export FILENAME_PREFIX=part
 export OUTPUT_DIRECTORY=<outputDirectory>
 export USER_OPTION=NONE
 export COLUMNS_ALIASES=<columnsAliases>
+export BIGTABLE_APP_PROFILE_ID=default
 
 gcloud dataflow jobs run "cloud-bigtable-to-gcs-json-job" \
   --project "$PROJECT" \
@@ -127,7 +129,8 @@ gcloud dataflow jobs run "cloud-bigtable-to-gcs-json-job" \
   --parameters "outputDirectory=$OUTPUT_DIRECTORY" \
   --parameters "filenamePrefix=$FILENAME_PREFIX" \
   --parameters "userOption=$USER_OPTION" \
-  --parameters "columnsAliases=$COLUMNS_ALIASES"
+  --parameters "columnsAliases=$COLUMNS_ALIASES" \
+  --parameters "bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID"
 ```
 
 For more information about the command, please check:
@@ -155,6 +158,7 @@ export FILENAME_PREFIX=part
 export OUTPUT_DIRECTORY=<outputDirectory>
 export USER_OPTION=NONE
 export COLUMNS_ALIASES=<columnsAliases>
+export BIGTABLE_APP_PROFILE_ID=default
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -163,7 +167,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-bigtable-to-gcs-json-job" \
 -DtemplateName="Cloud_Bigtable_to_GCS_Json" \
--Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,userOption=$USER_OPTION,columnsAliases=$COLUMNS_ALIASES" \
+-Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,userOption=$USER_OPTION,columnsAliases=$COLUMNS_ALIASES,bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID" \
 -f v1
 ```
 
@@ -216,6 +220,7 @@ resource "google_dataflow_job" "cloud_bigtable_to_gcs_json" {
     # outputDirectory = "gs://your-bucket/your-path/"
     # userOption = "NONE"
     # columnsAliases = "<columnsAliases>"
+    # bigtableAppProfileId = "default"
   }
 }
 ```

@@ -19,14 +19,14 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **spannerInstanceId** : The instance ID of the Spanner database to read from.
 * **spannerDatabaseId** : The database ID of the Spanner database to export.
-* **spannerTableId** : The table name of the Spanner database to export.
-* **sqlQuery** : The SQL query to use to read data from the Spanner database.
 * **outputTableSpec** : The BigQuery output table location to write the output to. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`.Depending on the `createDisposition` specified, the output table might be created automatically using the user provided Avro schema.
 
 ### Optional parameters
 
 * **spannerProjectId** : The ID of the project that the Spanner database resides in. The default value for this parameter is the project where the Dataflow pipeline is running.
+* **spannerTableId** : The table name of the Spanner database to export. Ignored if sqlQuery is set.
 * **spannerRpcPriority** : The request priority (https://cloud.google.com/spanner/docs/reference/rest/v1/RequestOptions) for Spanner calls. Possible values are `HIGH`, `MEDIUM`, and `LOW`. The default value is `HIGH`.
+* **sqlQuery** : The SQL query to use to read data from the Spanner database. Required if spannerTableId is empty.
 * **bigQuerySchemaPath** : The Cloud Storage path (gs://) to the JSON file that defines your BigQuery schema. (Example: gs://your-bucket/your-schema.json).
 * **writeDisposition** : The BigQuery WriteDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload) value. For example, `WRITE_APPEND`, `WRITE_EMPTY`, or `WRITE_TRUNCATE`. Defaults to `WRITE_APPEND`.
 * **createDisposition** : The BigQuery CreateDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload). For example, `CREATE_IF_NEEDED` and `CREATE_NEVER`. Defaults to `CREATE_IF_NEEDED`.
@@ -112,13 +112,13 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Spanner_to_
 ### Required
 export SPANNER_INSTANCE_ID=<spannerInstanceId>
 export SPANNER_DATABASE_ID=<spannerDatabaseId>
-export SPANNER_TABLE_ID=<spannerTableId>
-export SQL_QUERY=<sqlQuery>
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
 
 ### Optional
 export SPANNER_PROJECT_ID=""
+export SPANNER_TABLE_ID=<spannerTableId>
 export SPANNER_RPC_PRIORITY=<spannerRpcPriority>
+export SQL_QUERY=<sqlQuery>
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 export WRITE_DISPOSITION=WRITE_APPEND
 export CREATE_DISPOSITION=CREATE_IF_NEEDED
@@ -161,13 +161,13 @@ export REGION=us-central1
 ### Required
 export SPANNER_INSTANCE_ID=<spannerInstanceId>
 export SPANNER_DATABASE_ID=<spannerDatabaseId>
-export SPANNER_TABLE_ID=<spannerTableId>
-export SQL_QUERY=<sqlQuery>
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
 
 ### Optional
 export SPANNER_PROJECT_ID=""
+export SPANNER_TABLE_ID=<spannerTableId>
 export SPANNER_RPC_PRIORITY=<spannerRpcPriority>
+export SQL_QUERY=<sqlQuery>
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 export WRITE_DISPOSITION=WRITE_APPEND
 export CREATE_DISPOSITION=CREATE_IF_NEEDED
@@ -228,11 +228,11 @@ resource "google_dataflow_flex_template_job" "cloud_spanner_to_bigquery_flex" {
   parameters        = {
     spannerInstanceId = "<spannerInstanceId>"
     spannerDatabaseId = "<spannerDatabaseId>"
-    spannerTableId = "<spannerTableId>"
-    sqlQuery = "<sqlQuery>"
     outputTableSpec = "<outputTableSpec>"
     # spannerProjectId = ""
+    # spannerTableId = "<spannerTableId>"
     # spannerRpcPriority = "<spannerRpcPriority>"
+    # sqlQuery = "<sqlQuery>"
     # bigQuerySchemaPath = "gs://your-bucket/your-schema.json"
     # writeDisposition = "WRITE_APPEND"
     # createDisposition = "CREATE_IF_NEEDED"

@@ -104,7 +104,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
       createAndUploadJarToGcs("shard1");
       CustomTransformation customTransformation =
           CustomTransformation.builder(
-                  "customTransformation.jar", "com.custom.CustomTransformationWithShardForIT")
+                  "customTransformation.jar", "com.custom.CustomTransformationWithShardForLiveIT")
               .build();
       if (jobInfo1 == null) {
         jobInfo1 =
@@ -242,7 +242,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
             .build();
     result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo1, Duration.ofMinutes(10)), rowsConditionCheck);
+            .waitForCondition(createConfig(jobInfo2, Duration.ofMinutes(10)), rowsConditionCheck);
     assertThatResult(result).meetsConditions();
 
     // Assert specific rows
