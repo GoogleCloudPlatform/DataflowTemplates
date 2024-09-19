@@ -511,7 +511,7 @@ public class DataStreamToSpanner {
         order = 31,
         optional = true,
         regexes =
-            "^\\[([[:space:]]*\\{[[:space:]]*[[:alnum:]]+\\.[[:alnum:]_]+[[:space:]]*,[[:space:]]*[[:alnum:]_]+\\.[[:alnum:]_]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+            "^\\[([[:space:]]*\\{[[:space:]]*[[:alnum:]]+\\.[[:alnum:]]+[[:space:]]*,[[:space:]]*[[:alnum:]]+\\.[[:alnum:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
         description = "Column name overrides from source to spanner",
         example =
             "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
