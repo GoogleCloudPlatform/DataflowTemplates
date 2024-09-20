@@ -3,8 +3,8 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      runnerHarnessContainerImage:
-        description: 'Runner harness container image'
+      unifiedWorkerHarnessContainerImage:
+        description: 'Unified worker harness container image'
         type: string
         required: true
 
@@ -27,10 +27,10 @@ jobs:
       - name: Declare runner image and release tag
         id: variables
         run: |
-          echo "runnerHarnessContainerImage=${HARNESS_IMAGE}" >> $GITHUB_OUTPUT
+          echo "unifiedWorkerHarnessContainerImage=${HARNESS_IMAGE}" >> $GITHUB_OUTPUT
           echo "releaseTag=$(curl -s https://api.github.com/repos/GoogleCLoudPlatform/DataflowTemplates/releases/latest | jq '.tag_name' | sed 's/\"//g')" >> $GITHUB_OUTPUT
         env:
-          HARNESS_IMAGE: ${{ inputs.runnerHarnessContainerImage }}
+          HARNESS_IMAGE: ${{ inputs.unifiedWorkerHarnessContainerImage }}
       - name: Checkout code
         uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
         with:
@@ -50,10 +50,10 @@ jobs:
           --it-private-connectivity="datastream-private-connect-us-central1" \
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
-          --it-runner-harness-container-image=$HARNESS_IMAGE \
+          --it-unified-worker-harness-container-image=$HARNESS_IMAGE \
           --it-retry-failures=2
         env:
-          HARNESS_IMAGE: ${{ steps.variables.outputs.runnerHarnessContainerImage }}
+          HARNESS_IMAGE: ${{ steps.variables.outputs.unifiedWorkerHarnessContainerImage }}
       - name: Upload Site Report
         uses: ./.github/actions/publish-site-report
         with:

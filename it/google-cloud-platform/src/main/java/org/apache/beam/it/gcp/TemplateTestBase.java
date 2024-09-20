@@ -494,10 +494,11 @@ public abstract class TemplateTestBase {
       if (System.getProperty("sdkContainerImage") != null) {
         options.addParameter("sdkContainerImage", System.getProperty("sdkContainerImage"));
       }
-      if (System.getProperty("runnerHarnessContainerImage") != null) {
+      if (System.getProperty("unifiedWorkerHarnessContainerImage") != null) {
         appendExperiment(
             options,
-            "runner_harness_container_image=" + System.getProperty("runnerHarnessContainerImage"));
+            "runner_harness_container_image="
+                + System.getProperty("unifiedWorkerHarnessContainerImage"));
       }
     }
 
