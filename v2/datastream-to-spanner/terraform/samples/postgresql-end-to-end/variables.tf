@@ -32,6 +32,7 @@ variable "datastream_params" {
     stream_prefix_path            = optional(string, "data")
     pubsub_topic_name             = optional(string, "live-migration")
     stream_id                     = optional(string, "postgresql-stream")
+    enable_backfill               = optional(bool, true)
     max_concurrent_cdc_tasks      = optional(number, 5)
     max_concurrent_backfill_tasks = optional(number, 20)
 

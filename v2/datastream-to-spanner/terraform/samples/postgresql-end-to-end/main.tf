@@ -177,7 +177,14 @@ resource "google_datastream_stream" "postgresql_to_gcs" {
   location      = var.common_params.region
   display_name  = "${local.migration_id}-${var.datastream_params.stream_id}"
   desired_state = "RUNNING"
-  backfill_all {
+  dynamic "backfill_all" {
+    for_each = var.datastream_params.enable_backfill ? [1] : []
+    content {}
+  }
+
+  dynamic "backfill_none" {
+    for_each = var.datastream_params.enable_backfill ? [] : [1]
+    content {}
   }
 
   source_config {

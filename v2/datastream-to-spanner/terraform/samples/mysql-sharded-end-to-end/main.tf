@@ -200,7 +200,14 @@ resource "google_datastream_stream" "mysql_to_gcs" {
   location      = var.common_params.region
   display_name  = "${var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id}-${var.shard_list[count.index].datastream_params.stream_id}"
   desired_state = "RUNNING"
-  backfill_all {
+  dynamic "backfill_all" {
+    for_each = var.common_params.datastream_params.enable_backfill ? [1] : []
+    content {}
+  }
+
+  dynamic "backfill_none" {
+    for_each = var.common_params.datastream_params.enable_backfill ? [] : [1]
+    content {}
   }
 
   source_config {
