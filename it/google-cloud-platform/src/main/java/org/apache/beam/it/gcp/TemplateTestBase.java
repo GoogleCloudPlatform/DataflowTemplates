@@ -488,27 +488,29 @@ public abstract class TemplateTestBase {
             && !templateMetadata.flexContainerName().isEmpty();
 
     // Property allows testing with Runner v2 / Unified Worker
-    if (System.getProperty("unifiedWorker") != null) {
+    String unifiedWorkerHarnessContainerImage =
+        System.getProperty("unifiedWorkerHarnessContainerImage");
+    if (System.getProperty("unifiedWorker") != null || unifiedWorkerHarnessContainerImage != null) {
       appendExperiment(options, "use_runner_v2");
 
       if (System.getProperty("sdkContainerImage") != null) {
         options.addParameter("sdkContainerImage", System.getProperty("sdkContainerImage"));
       }
-      if (System.getProperty("unifiedWorkerHarnessContainerImage") != null) {
+      if (unifiedWorkerHarnessContainerImage != null) {
         appendExperiment(
             options,
             "runner_harness_container_image="
                 + System.getProperty("unifiedWorkerHarnessContainerImage"));
       }
-    }
-
-    if (System.getProperty("uw_staging_experiments") != null) {
-      appendExperiment(options, "disable_worker_rolling_upgrade");
-      appendExperiment(options, "use_beam_bq_sink");
-      appendExperiment(options, "beam_fn_api");
-      appendExperiment(options, "use_unified_worker");
-      appendExperiment(options, "use_portable_job_submission");
-      appendExperiment(options, "worker_region=" + REGION);
+      if (System.getProperty("uwStagingExperiments") != null
+          || unifiedWorkerHarnessContainerImage != null) {
+        appendExperiment(options, "disable_worker_rolling_upgrade");
+        appendExperiment(options, "use_beam_bq_sink");
+        appendExperiment(options, "beam_fn_api");
+        appendExperiment(options, "use_unified_worker");
+        appendExperiment(options, "use_portable_job_submission");
+        appendExperiment(options, "worker_region=" + REGION);
+      }
     }
 
     if (System.getProperty("enableCleanupState") != null) {

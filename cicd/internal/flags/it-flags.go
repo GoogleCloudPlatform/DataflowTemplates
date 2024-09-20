@@ -147,7 +147,7 @@ func StaticOracleSysPassword() string {
 
 func UnifiedWorkerHarnessContainerImage() string {
 	if dUnifiedWorkerHarnessContainerImage != "" {
-		return "-Duw_staging_experiments=true -DunifiedWorker=true -DunifiedWorkerHarnessContainerImage=" + dUnifiedWorkerHarnessContainerImage
+		return "-DunifiedWorkerHarnessContainerImage=" + dUnifiedWorkerHarnessContainerImage
 	}
 	return ""
 }
