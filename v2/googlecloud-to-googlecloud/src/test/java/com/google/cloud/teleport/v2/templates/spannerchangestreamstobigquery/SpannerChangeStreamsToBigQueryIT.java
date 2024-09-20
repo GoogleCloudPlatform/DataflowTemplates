@@ -168,6 +168,83 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
+  public void testSpannerChangeStreamsToBigQueryBasicWriteApiExactlyOnce() throws IOException {
+    String spannerTable = testName + RandomStringUtils.randomAlphanumeric(1, 5);
+    String createTableStatement =
+        String.format(
+            "CREATE TABLE %s (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  FirstName String(1024),\n"
+                + "  LastName String(1024),\n"
+                + ") PRIMARY KEY(Id)",
+            spannerTable);
+
+    String cdcTable = spannerTable + "_changelog";
+    spannerResourceManager.executeDdlStatement(createTableStatement);
+
+    int key = nextValue();
+    String firstName = UUID.randomUUID().toString();
+    String lastName = UUID.randomUUID().toString();
+    Mutation insertOneRow =
+        Mutation.newInsertBuilder(spannerTable)
+            .set("Id")
+            .to(key)
+            .set("FirstName")
+            .to(firstName)
+            .set("LastName")
+            .to(lastName)
+            .build();
+    spannerResourceManager.write(Collections.singletonList(insertOneRow));
+
+    String createChangeStreamStatement =
+        String.format("CREATE CHANGE STREAM %s_stream FOR %s", testName, spannerTable);
+    spannerResourceManager.executeDdlStatement(createChangeStreamStatement);
+    bigQueryResourceManager.createDataset(REGION);
+
+    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
+
+    launchInfo =
+        launchTemplate(
+            paramsAdder.apply(
+                LaunchConfig.builder(testName, specPath)
+                    .addParameter("spannerProjectId", PROJECT)
+                    .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
+                    .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
+                    .addParameter(
+                        "spannerMetadataInstanceId", spannerResourceManager.getInstanceId())
+                    .addParameter("spannerMetadataDatabase", spannerResourceManager.getDatabaseId())
+                    .addParameter("spannerChangeStreamName", testName + "_stream")
+                    .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
+                    .addParameter("rpcPriority", "HIGH")
+                    .addParameter("useStorageWriteApi", "true")
+                    .addParameter("useStorageWriteApiAtLeastOnce", "false")
+                    .addParameter("numStorageWriteApiStreams", "1")
+                    .addParameter("storageWriteApiTriggeringFrequencySec", "10")
+                    .addParameter("dlqRetryMinutes", "3")));
+
+    assertThatPipeline(launchInfo).isRunning();
+
+    String updatedLastName = UUID.randomUUID().toString();
+    Mutation updateOneRow =
+        Mutation.newUpdateBuilder(spannerTable)
+            .set("Id")
+            .to(key)
+            .set("LastName")
+            .to(updatedLastName)
+            .build();
+    spannerResourceManager.write(Collections.singletonList(updateOneRow));
+    String query = queryCdcTable(cdcTable, key);
+    waitForQueryToReturnRows(query, 1, true);
+
+    TableResult tableResult = bigQueryResourceManager.runQuery(query);
+    assertEquals(1, tableResult.getTotalRows());
+    for (FieldValueList row : tableResult.iterateAll()) {
+      assertEquals(firstName, row.get("FirstName").getStringValue());
+      assertEquals(updatedLastName, row.get("LastName").getStringValue());
+    }
+  }
+
+  @Test
   public void testSpannerChangeStreamsToBigQueryFloatColumns() throws IOException {
     String spannerTable = testName + RandomStringUtils.randomAlphanumeric(1, 5);
     String createTableStatement =

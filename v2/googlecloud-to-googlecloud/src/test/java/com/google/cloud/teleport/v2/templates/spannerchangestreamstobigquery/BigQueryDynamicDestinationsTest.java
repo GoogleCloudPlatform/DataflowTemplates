@@ -71,14 +71,15 @@ import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigqu
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.dropSpannerDatabase;
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.Timestamp;
-import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.spanner.IntegrationTest;
 import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.BigQueryDynamicDestinations.BigQueryDynamicDestinationsOptions;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.common.collect.ImmutableSet;
+import java.util.List;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.values.KV;
@@ -99,7 +100,7 @@ public final class BigQueryDynamicDestinationsTest {
 
   private static BigQueryDynamicDestinations bigQueryDynamicDestinations;
   private static TableRow tableRow;
-  private static KV<TableId, TableRow> tableIdToTableRow;
+  private static KV<String, List<TableFieldSchema>> tableNameToFields;
   private static String spannerDatabaseName;
 
   private static final String typePrefix = "_type_";
@@ -125,10 +126,12 @@ public final class BigQueryDynamicDestinationsTest {
 
     tableRow = new TableRow();
     tableRow.set(BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_TABLE_NAME, TEST_SPANNER_TABLE);
-    tableIdToTableRow =
+    tableNameToFields =
         KV.of(
-            TableId.of(TEST_PROJECT, TEST_BIG_QUERY_DATESET, TEST_SPANNER_TABLE + "_changelog"),
-            tableRow);
+            String.format(
+                "%s:%s.%s",
+                TEST_PROJECT, TEST_BIG_QUERY_DATESET, TEST_SPANNER_TABLE + "_changelog"),
+            bigQueryDynamicDestinations.getFields(tableRow));
   }
 
   @AfterClass
@@ -202,17 +205,20 @@ public final class BigQueryDynamicDestinationsTest {
     PaneInfo paneInfo = PaneInfo.createPane(true, false, PaneInfo.Timing.ON_TIME);
     ValueInSingleWindow<TableRow> tableRowValueInSingleWindow =
         ValueInSingleWindow.of(tableRow, timestamp, GlobalWindow.INSTANCE, paneInfo);
-    TableRow expectedTableRow = new TableRow();
-    TableId expectedTableId =
-        TableId.of(TEST_PROJECT, TEST_BIG_QUERY_DATESET, TEST_SPANNER_TABLE + "_changelog");
-    expectedTableRow.set(BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_TABLE_NAME, TEST_SPANNER_TABLE);
+    TableRow tableRow = new TableRow();
+    tableRow.set(BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_TABLE_NAME, TEST_SPANNER_TABLE);
     assertThat(bigQueryDynamicDestinations.getDestination(tableRowValueInSingleWindow))
-        .isEqualTo(KV.of(expectedTableId, expectedTableRow));
+        .isEqualTo(
+            KV.of(
+                String.format(
+                    "%s:%s.%s",
+                    TEST_PROJECT, TEST_BIG_QUERY_DATESET, TEST_SPANNER_TABLE + "_changelog"),
+                bigQueryDynamicDestinations.getFields(tableRow)));
   }
 
   @Test
   public void testGetTable() {
-    assertThat(bigQueryDynamicDestinations.getTable(tableIdToTableRow).toString())
+    assertThat(bigQueryDynamicDestinations.getTable(tableNameToFields).toString())
         .isEqualTo(
             "tableSpec: span-cloud-testing:dataset.AllTypes_changelog tableDescription: BigQuery"
                 + " changelog table.");
@@ -223,14 +229,18 @@ public final class BigQueryDynamicDestinationsTest {
   @Test
   public void testGetSchema() {
     fillTableRow();
-    tableIdToTableRow =
+    tableNameToFields =
         KV.of(
-            TableId.of(TEST_PROJECT, TEST_BIG_QUERY_DATESET, TEST_SPANNER_TABLE + "_changelog"),
-            tableRow);
-    String schemaStr = bigQueryDynamicDestinations.getSchema(tableIdToTableRow).toString();
+            String.format(
+                "%s:%s.%s",
+                TEST_PROJECT, TEST_BIG_QUERY_DATESET, TEST_SPANNER_TABLE + "_changelog"),
+            bigQueryDynamicDestinations.getFields(tableRow));
+    String schemaStr = bigQueryDynamicDestinations.getSchema(tableNameToFields).toString();
     schemaStr =
         schemaStr.replace(
-            "classInfo=[categories, collation, defaultValueExpression, description, fields, maxLength, mode, name, policyTags, precision, rangeElementType, roundingMode, scale, type], ",
+            "classInfo=[categories, collation, defaultValueExpression, description, fields,"
+                + " maxLength, mode, name, policyTags, precision, rangeElementType, roundingMode,"
+                + " scale, type], ",
             "");
     schemaStr = schemaStr.replace("GenericData", "");
     assertThat(schemaStr)

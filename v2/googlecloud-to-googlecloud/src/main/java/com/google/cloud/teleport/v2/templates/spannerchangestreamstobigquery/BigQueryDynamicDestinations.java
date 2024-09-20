@@ -15,22 +15,31 @@
  */
 package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.StandardSQLTypeName;
-import com.google.cloud.bigquery.TableId;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerToBigQueryUtils;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.common.collect.ImmutableSet;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.CustomCoder;
+import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.coders.ListCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.DynamicDestinations;
 import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
@@ -45,7 +54,7 @@ import org.slf4j.LoggerFactory;
  * destination table is inferred from the provided {@link TableRow}.
  */
 public final class BigQueryDynamicDestinations
-    extends DynamicDestinations<TableRow, KV<TableId, TableRow>> {
+    extends DynamicDestinations<TableRow, KV<String, List<TableFieldSchema>>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryDynamicDestinations.class);
 
@@ -68,35 +77,34 @@ public final class BigQueryDynamicDestinations
     this.useStorageWriteApi = bigQueryDynamicDestinationsOptions.getUseStorageWriteApi();
   }
 
-  private TableId getTableId(String bigQueryTableTemplate, TableRow tableRow) {
+  private String getTableName(TableRow tableRow) {
     String bigQueryTableName =
         BigQueryConverters.formatStringTemplate(bigQueryTableTemplate, tableRow);
 
-    return TableId.of(bigQueryProject, bigQueryDataset, bigQueryTableName);
+    return String.format("%s:%s.%s", bigQueryProject, bigQueryDataset, bigQueryTableName);
   }
 
   @Override
-  public KV<TableId, TableRow> getDestination(ValueInSingleWindow<TableRow> element) {
+  public Coder<KV<String, List<TableFieldSchema>>> getDestinationCoder() {
+    return KvCoder.of(StringUtf8Coder.of(), ListCoder.of(TableFieldSchemaCoder.of()));
+  }
+
+  @Override
+  public KV<String, List<TableFieldSchema>> getDestination(ValueInSingleWindow<TableRow> element) {
     TableRow tableRow = element.getValue();
-    return KV.of(getTableId(bigQueryTableTemplate, tableRow), tableRow);
-  }
-
-  @Override
-  public TableDestination getTable(KV<TableId, TableRow> destination) {
-    TableId tableId = getTableId(bigQueryTableTemplate, destination.getValue());
-    String tableName =
-        String.format("%s:%s.%s", tableId.getProject(), tableId.getDataset(), tableId.getTable());
-
-    return new TableDestination(tableName, "BigQuery changelog table.");
-  }
-
-  @Override
-  public TableSchema getSchema(KV<TableId, TableRow> destination) {
-    TableRow tableRow = destination.getValue();
     // Get List<TableFieldSchema> for both user columns and metadata columns.
-    List<TableFieldSchema> fields = getFields(tableRow);
+    return KV.of(getTableName(tableRow), getFields(tableRow));
+  }
+
+  @Override
+  public TableDestination getTable(KV<String, List<TableFieldSchema>> destination) {
+    return new TableDestination(destination.getKey(), "BigQuery changelog table.");
+  }
+
+  @Override
+  public TableSchema getSchema(KV<String, List<TableFieldSchema>> destination) {
     List<TableFieldSchema> filteredFields = new ArrayList<>();
-    for (TableFieldSchema field : fields) {
+    for (TableFieldSchema field : destination.getValue()) {
       if (!ignoreFields.contains(field.getName())) {
         filteredFields.add(field);
       }
@@ -107,7 +115,7 @@ public final class BigQueryDynamicDestinations
 
   // Returns List<TableFieldSchema> for user columns and metadata columns based on the parameter
   // TableRow.
-  private List<TableFieldSchema> getFields(TableRow tableRow) {
+  List<TableFieldSchema> getFields(TableRow tableRow) {
     // Add all user data fields (excluding metadata fields stored in metadataColumns).
     List<TableFieldSchema> fields =
         SpannerToBigQueryUtils.tableRowColumnsToBigQueryIOFields(tableRow, this.useStorageWriteApi);
@@ -213,5 +221,32 @@ public final class BigQueryDynamicDestinations
   private static Dialect getDialect(SpannerConfig spannerConfig) {
     DatabaseClient databaseClient = SpannerAccessor.getOrCreate(spannerConfig).getDatabaseClient();
     return databaseClient.getDialect();
+  }
+
+  /**
+   * {@link TableFieldSchemaCoder} provides custom coder for TableFieldSchema with deterministic
+   * serialization.
+   */
+  private static class TableFieldSchemaCoder extends CustomCoder<TableFieldSchema> {
+
+    private static final ObjectMapper OBJECT_MAPPER =
+        new ObjectMapper().enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
+
+    private static TableFieldSchemaCoder of() {
+      return new TableFieldSchemaCoder();
+    }
+
+    @Override
+    public void encode(TableFieldSchema value, OutputStream outStream) throws IOException {
+      OBJECT_MAPPER.writeValue(outStream, value);
+    }
+
+    @Override
+    public TableFieldSchema decode(InputStream inStream) throws IOException {
+      return OBJECT_MAPPER.readValue(inStream, TableFieldSchema.class);
+    }
+
+    @Override
+    public void verifyDeterministic() throws Coder.NonDeterministicException {}
   }
 }
