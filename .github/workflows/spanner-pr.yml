@@ -38,11 +38,11 @@ on:
       - 'v2/sourcedb-to-spanner/**'
       - 'v2/spanner-to-sourcedb/**'
   schedule:
-  - cron: "0 */12 * * *"
+  - cron: "3 */12 * * *"
   workflow_dispatch:
 
 concurrency:
-  group: java-pr-${{ github.event.issue.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event.issue.number || github.run_id }}
   cancel-in-progress: true
 
 env:
