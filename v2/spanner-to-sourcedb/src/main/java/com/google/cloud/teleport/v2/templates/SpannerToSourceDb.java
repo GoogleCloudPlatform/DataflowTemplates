@@ -89,7 +89,7 @@ import org.slf4j.LoggerFactory;
     optionsClass = Options.class,
     flexContainerName = "spanner-to-sourcedb",
     contactInformation = "https://cloud.google.com/support",
-    hidden = true,
+    hidden = false,
     streaming = true)
 public class SpannerToSourceDb {
 

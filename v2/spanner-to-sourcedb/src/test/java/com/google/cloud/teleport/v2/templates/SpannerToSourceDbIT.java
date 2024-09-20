@@ -100,9 +100,9 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
                 spannerResourceManager,
                 spannerMetadataResourceManager,
                 subscriptionName.toString(),
-                "",
-                "",
-                "");
+                null,
+                null,
+                null);
       }
     }
   }
