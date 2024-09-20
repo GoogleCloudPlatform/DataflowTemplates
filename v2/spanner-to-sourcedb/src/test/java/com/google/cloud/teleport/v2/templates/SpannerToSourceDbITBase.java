@@ -28,9 +28,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
@@ -45,17 +45,6 @@ import org.slf4j.LoggerFactory;
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
-
-  private static final String SPANNER_DDL_RESOURCE = "SpannerToSourceDbITBase/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE = "SpannerToSourceDbITBase/session.json";
-
-  private static final String TABLE = "Users";
-  private static final HashSet<SpannerToSourceDbITBase> testInstances = new HashSet<>();
-  private static PipelineLauncher.LaunchInfo jobInfo;
-  public static SpannerResourceManager spannerResourceManager;
-  private static SpannerResourceManager spannerMetadataResourceManager;
-  private static MySQLResourceManager jdbcResourceManager;
-  private static GcsResourceManager gcsResourceManager;
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -133,7 +122,8 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       String subscriptionName,
       String identifierSuffix,
       String shardingCustomJarPath,
-      String shardingCustomClassName)
+      String shardingCustomClassName,
+      String sourceDbTimezoneOffset)
       throws IOException {
     // default parameters
 
@@ -163,6 +153,10 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     }
     if (shardingCustomClassName != null) {
       params.put("shardingCustomClassName", shardingCustomClassName);
+    }
+
+    if (sourceDbTimezoneOffset != null) {
+      params.put("sourceDbTimezoneOffset", sourceDbTimezoneOffset);
     }
 
     // Construct template
@@ -204,5 +198,22 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       GcsResourceManager gcsResourceManager, String artifactId, String identifierSuffix) {
     return ArtifactUtils.getFullGcsPath(
         artifactBucketName, identifierSuffix, gcsResourceManager.runId(), artifactId);
+  }
+
+  protected void createAndUploadJarToGcs(GcsResourceManager gcsResourceManager)
+      throws IOException, InterruptedException {
+    String[] shellCommand = {"/bin/bash", "-c", "cd ../spanner-custom-shard"};
+
+    Process exec = Runtime.getRuntime().exec(shellCommand);
+
+    IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
+    IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
+
+    if (exec.waitFor() != 0) {
+      throw new RuntimeException("Error staging template, check Maven logs.");
+    }
+    gcsResourceManager.uploadArtifact(
+        "input/customShard.jar",
+        "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
   }
 }
