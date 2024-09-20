@@ -18,7 +18,6 @@ package com.google.cloud.teleport.plugin.maven;
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.bucketNameOnly;
 
 import com.google.api.gax.rpc.InvalidArgumentException;
-import com.google.cloud.teleport.metadata.HelperImage;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
 import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
@@ -172,12 +171,6 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
         generator.saveMetadata(definition, imageSpec.getMetadata(), targetDirectory);
         if (definition.isFlex()) {
           generator.saveImageSpec(definition, imageSpec, targetDirectory);
-        }
-
-        if (definition.getTemplateClass().isAnnotationPresent(HelperImage.class)) {
-
-          String imagePath = configuredMojo.stageHelperImage(definition);
-          LOG.info("Image staged: {}", imagePath);
         }
       }
 

@@ -30,8 +30,6 @@ import static org.twdata.maven.mojoexecutor.MojoExecutor.executionEnvironment;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.goal;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.plugin;
 
-import com.google.cloud.teleport.metadata.HelperImage;
-import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.Template.TemplateType;
 import com.google.cloud.teleport.plugin.DockerfileGenerator;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
@@ -137,9 +135,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${unifiedWorker}", readonly = true, required = false)
   protected boolean unifiedWorker;
 
-  @Parameter(defaultValue = "${stageHelperImage}", readonly = true, required = false)
-  protected boolean stageHelperImage;
-
   public TemplatesStageMojo() {}
 
   public TemplatesStageMojo(
@@ -163,8 +158,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String javaTemplateLauncherEntryPoint,
       String pythonVersion,
       String beamVersion,
-      boolean unifiedWorker,
-      boolean stageHelperImage) {
+      boolean unifiedWorker) {
     this.project = project;
     this.session = session;
     this.outputDirectory = outputDirectory;
@@ -186,7 +180,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     this.pythonVersion = pythonVersion;
     this.beamVersion = beamVersion;
     this.unifiedWorker = unifiedWorker;
-    this.stageHelperImage = stageHelperImage;
   }
 
   public void execute() throws MojoExecutionException {
@@ -233,11 +226,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           stageFlexTemplate(definition, imageSpec, pluginManager);
         } else {
           stageClassicTemplate(definition, imageSpec, pluginManager);
-        }
-
-        if (definition.getTemplateClass().isAnnotationPresent(HelperImage.class)
-            && stageHelperImage) {
-          stageHelperImage(definition);
         }
       }
 
@@ -936,66 +924,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (stageProcess.waitFor() != 0) {
       LOG.warn("Possible error building container image using gcloud. Check logs for details.");
     }
-  }
-
-  public String stageHelperImage(TemplateDefinitions definition)
-      throws IOException, InterruptedException, TemplateException {
-    // Fetch helper image definition
-    HelperImage helperImage = definition.getTemplateClass().getAnnotation(HelperImage.class);
-    Template templateAnnotation = definition.getTemplateAnnotation();
-    String containerName = helperImage.containerName();
-    String imagePath =
-        generateFlexTemplateImagePath(
-            containerName, projectId, artifactRegion, artifactRegistry, stagePrefix);
-
-    // Extract image properties
-    Map<String, Set<String>> filesToCopy = new HashMap<>();
-    String otherFiles = helperImage.filesToCopy();
-    if (!Strings.isNullOrEmpty(otherFiles)) {
-      List.of(otherFiles.split(",")).forEach(file -> filesToCopy.put(file, Set.of()));
-    }
-    Template.TemplateType templateType =
-        helperImage.type().equals(TemplateType.NONE)
-            ? templateAnnotation.type()
-            : helperImage.type();
-
-    File outputDirectory =
-        new File(
-            (templateType.equals(TemplateType.PYTHON)
-                    ? targetDirectory.getPath()
-                    : outputClassesDirectory.getPath())
-                + "/"
-                + templateAnnotation.flexContainerName());
-
-    // Set image parameters for Dockerfile
-    DockerfileGenerator.Builder dockerfileBuilder =
-        DockerfileGenerator.builder(templateType, beamVersion, containerName, outputDirectory)
-            .setBasePythonContainerImage(basePythonContainerImage)
-            .setFilesToCopy(filesToCopy)
-            .setEntryPoint(helperImage.entryPoint());
-    if (List.of(TemplateType.XLANG, TemplateType.YAML).contains(templateType)) {
-      dockerfileBuilder
-          .setBaseJavaContainerImage(baseContainerImage)
-          .setPythonVersion(pythonVersion);
-    }
-    dockerfileBuilder.build().generate();
-
-    // Stage image based on type of base image
-    String buildDir = templateAnnotation.flexContainerName() + "/" + containerName;
-    switch (templateType) {
-      case YAML:
-        stageYamlUsingDockerfile(imagePath, buildDir);
-        break;
-      case PYTHON:
-        stagePythonUsingDockerfile(imagePath, buildDir);
-        break;
-      case XLANG:
-        stageXlangUsingDockerfile(imagePath, buildDir);
-        break;
-    }
-
-    LOG.info("Helper image was staged! {}", imagePath);
-    return imagePath;
   }
 
   private static void copyJavaArtifacts(
