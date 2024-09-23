@@ -9,9 +9,9 @@ variable "common_params" {
 variable "vpc_params" {
   description = "Parameters for VPC configuration"
   type = object({
-    vpc_name                = optional(string, "sample-vpc-network")
-    subnetwork_name         = optional(string, "sample-vpc-subnetwork")
-    subnetwork_cidr_range   = optional(string, "10.128.0.0/20")
+    vpc_name              = optional(string, "sample-vpc-network")
+    subnetwork_name       = optional(string, "sample-vpc-subnetwork")
+    subnetwork_cidr_range = optional(string, "10.128.0.0/20")
   })
 }
 

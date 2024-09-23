@@ -9,7 +9,7 @@ locals {
 # Setup network firewalls for datastream if creating a private connection.
 resource "google_compute_firewall" "allow-datastream" {
   depends_on  = [google_project_service.enabled_apis]
-  count       = var.common_params.datastream_params.private_connectivity != null ? 1 : 0
+  count       = var.datastream_params.private_connectivity != null ? 1 : 0
   project     = var.common_params.host_project != null ? var.common_params.host_project : var.common_params.project
   name        = "allow-datastream"
   network     = var.common_params.host_project != null ? "projects/${var.common_params.host_project}/global/networks/${var.common_params.datastream_params.private_connectivity.vpc_name}" : "projects/${var.common_params.project}/global/networks/${var.common_params.datastream_params.private_connectivity.vpc_name}"
@@ -19,7 +19,7 @@ resource "google_compute_firewall" "allow-datastream" {
     protocol = "tcp"
     ports    = ["3306"]
   }
-  source_ranges = [var.common_params.datastream_params.private_connectivity.range]
+  source_ranges = [var.datastream_params.private_connectivity.range]
   target_tags   = ["databases"]
 }
 
