@@ -171,7 +171,7 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManagerShardB.getRowCount("Singers") == 1);
+                () -> jdbcResourceManagerShardB.getRowCount("Singers") == 2);
     assertThatResult(shardBResult).meetsConditions();
 
     List<Map<String, Object>> rows =
