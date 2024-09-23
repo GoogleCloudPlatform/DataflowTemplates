@@ -88,12 +88,12 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
         spannerResourceManager =
             createSpannerDatabase(SpannerToSourceDbCustomShardIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
-        jdbcResourceManagerShardA = MySQLResourceManager.builder(testName).build();
+        jdbcResourceManagerShardA = MySQLResourceManager.builder(testName + "shardA").build();
 
         createMySQLSchema(
             jdbcResourceManagerShardA, SpannerToSourceDbCustomShardIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
-        jdbcResourceManagerShardB = MySQLResourceManager.builder(testName).build();
+        jdbcResourceManagerShardB = MySQLResourceManager.builder(testName + "shardB").build();
 
         createMySQLSchema(
             jdbcResourceManagerShardB, SpannerToSourceDbCustomShardIT.MYSQL_SCHEMA_FILE_RESOURCE);

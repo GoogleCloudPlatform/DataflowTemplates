@@ -213,12 +213,12 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
                 () -> jdbcResourceManagerShardA.getRowCount("parent1") == 1);
     assertThatResult(parent1Result).meetsConditions();
 
-    PipelineOperator.Result result =
+    PipelineOperator.Result child1Result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManagerShardB.getRowCount("child21") == 1);
-    assertThatResult(result).meetsConditions();
+                () -> jdbcResourceManagerShardA.getRowCount("child11") == 1);
+    assertThatResult(child1Result).meetsConditions();
 
     PipelineOperator.Result parent2Result =
         pipelineOperator()
@@ -227,12 +227,12 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
                 () -> jdbcResourceManagerShardB.getRowCount("parent2") == 1);
     assertThatResult(parent2Result).meetsConditions();
 
-    PipelineOperator.Result child1Result =
+    PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManagerShardA.getRowCount("child11") == 1);
-    assertThatResult(child1Result).meetsConditions();
+                () -> jdbcResourceManagerShardB.getRowCount("child21") == 1);
+    assertThatResult(result).meetsConditions();
 
     List<Map<String, Object>> rows = jdbcResourceManagerShardA.readTable("parent1");
     assertThat(rows).hasSize(1);

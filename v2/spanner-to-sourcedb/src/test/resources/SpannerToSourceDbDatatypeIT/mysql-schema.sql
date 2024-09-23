@@ -25,7 +25,7 @@ CREATE TABLE `AllDatatypeColumns` (
     `enum_column` enum('1','2','3'),       
     `bool_column` tinyint(1),              
     `other_bool_column` tinyint(1),        
-    `binary_column` binary(20),            
+    `binary_column` binary(10),            
     `varbinary_column` varbinary(20),      
     `bit_column` bit(7),                   
     PRIMARY KEY (`varchar_column`)
