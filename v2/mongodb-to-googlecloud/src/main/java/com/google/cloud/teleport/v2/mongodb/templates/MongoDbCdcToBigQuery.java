@@ -61,7 +61,7 @@ import org.slf4j.LoggerFactory;
         "The MongoDB CDC (Change Data Capture) to BigQuery template is a streaming pipeline that works together with MongoDB change streams. "
             + "The pipeline reads the JSON records pushed to Pub/Sub via a MongoDB change stream and writes them to BigQuery as specified by the <code>userOption</code> parameter.",
     optionsClass = Options.class,
-    flexContainerName = "mongodb-cdc-to-bigquery",
+    flexContainerName = "mongodb-to-bigquery-cdc",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/mongodb-change-stream-to-bigquery",
     contactInformation = "https://cloud.google.com/support",
