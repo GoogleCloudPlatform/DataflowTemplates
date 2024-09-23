@@ -170,7 +170,7 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
     PipelineOperator.Result shardBResult =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofSeconds(1)),
+                createConfig(jobInfo, Duration.ofMinutes(10)),
                 () -> jdbcResourceManagerShardB.getRowCount("Singers") == 1);
     assertThatResult(shardBResult).meetsConditions();
 

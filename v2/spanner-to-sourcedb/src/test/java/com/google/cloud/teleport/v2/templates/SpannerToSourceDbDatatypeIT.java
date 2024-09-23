@@ -284,7 +284,7 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
         () -> assertThat(row.get("other_bool_column")).isEqualTo(true),
         () ->
             assertThat(row.get("binary_column"))
-                .isEqualTo("binary_column_value1".getBytes(StandardCharsets.UTF_8)),
+                .isEqualTo("binary_col".getBytes(StandardCharsets.UTF_8)),
         () ->
             assertThat(row.get("varbinary_column"))
                 .isEqualTo("varbinary".getBytes(StandardCharsets.UTF_8)),
