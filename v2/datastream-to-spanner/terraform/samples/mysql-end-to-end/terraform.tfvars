@@ -1,12 +1,10 @@
 # Common Parameters
 common_params = {
-  project      = "<YOUR_PROJECT_ID>"      # Replace with your GCP project ID
-  host_project = "<YOUR_HOST_PROJECT_ID>" # If you are using a shared VPC
-  region       = "<YOUR_GCP_REGION>"      # Replace with your desired GCP region
-  migration_id = "<YOUR_MIGRATION_ID>"
-  # Will be used as a prefix for all resources, auto-generated if not specified
-  add_policies_to_service_account = "<TRUE/FALSE>"
-  # This will decide if roles will be attached to service accounts or not.
+  project                         = "<YOUR_PROJECT_ID>"      # Replace with your GCP project ID
+  host_project                    = "<YOUR_HOST_PROJECT_ID>" # If you are using a shared VPC
+  region                          = "<YOUR_GCP_REGION>"      # Replace with your desired GCP region
+  migration_id                    = "<YOUR_MIGRATION_ID>"    # Will be used as a prefix for all resources, auto-generated if not specified
+  add_policies_to_service_account = "<TRUE/FALSE>"           # This will decide if roles will be attached to service accounts or not.
 }
 
 # Datastream Parameters
@@ -47,23 +45,22 @@ datastream_params = {
 dataflow_params = {
   skip_dataflow = false
   template_params = {
-    shadow_table_prefix              = "<YOUR_SHADOW_TABLE_PREFIX>" # e.g., "shadow_" (optional)
-    create_shadow_tables             = true                         # true or false
-    rfc_start_date_time              = "<YYYY-MM-DDTHH:MM:SSZ>"     # e.g., "2023-12-31T12:00:00Z" (optional)
-    file_read_concurrency            = 10                           # Adjust as needed
-    session_file_path                = "<YOUR_SESSION_FILE_PATH>"   # Path to your session file (optional)
-    spanner_instance_id              = "<YOUR_SPANNER_INSTANCE_ID>"
-    spanner_database_id              = "<YOUR_SPANNER_DATABASE_ID>"
-    spanner_host                     = "https://<YOUR_REGION>-spanner.googleapis.com" # Replace <YOUR_REGION>
-    dlq_retry_minutes                = 10                                             # Adjust as needed
-    dlq_max_retry_count              = 3                                              # Adjust as needed
-    datastream_root_url              = "<YOUR_DATASTREAM_ROOT_URL>"                   # Base URL of your Datastream API (optional)
-    datastream_source_type           = "mysql"
-    round_json_decimals              = false
-    run_mode                         = "regular"
-    transformation_context_file_path = "<YOUR_TRANSFORMATION_FILE_PATH>"
-    # Path to your transformation file (optional)
-    directory_watch_duration_in_minutes = "5" # Adjust as needed
+    shadow_table_prefix                 = "<YOUR_SHADOW_TABLE_PREFIX>" # e.g., "shadow_" (optional)
+    create_shadow_tables                = true                         # true or false
+    rfc_start_date_time                 = "<YYYY-MM-DDTHH:MM:SSZ>"     # e.g., "2023-12-31T12:00:00Z" (optional)
+    file_read_concurrency               = 10                           # Adjust as needed
+    session_file_path                   = "<YOUR_SESSION_FILE_PATH>"   # Path to your session file (optional)
+    spanner_instance_id                 = "<YOUR_SPANNER_INSTANCE_ID>"
+    spanner_database_id                 = "<YOUR_SPANNER_DATABASE_ID>"
+    spanner_host                        = "https://<YOUR_REGION>-spanner.googleapis.com" # Replace <YOUR_REGION>
+    dlq_retry_minutes                   = 10                                             # Adjust as needed
+    dlq_max_retry_count                 = 3                                              # Adjust as needed
+    datastream_root_url                 = "<YOUR_DATASTREAM_ROOT_URL>"                   # Base URL of your Datastream API (optional)
+    datastream_source_type              = "mysql"
+    round_json_decimals                 = false
+    run_mode                            = "regular"
+    transformation_context_file_path    = "<YOUR_TRANSFORMATION_FILE_PATH>" # Path to your transformation file (optional)
+    directory_watch_duration_in_minutes = "5"                               # Adjust as needed
     spanner_priority                    = "HIGH"
     dlq_gcs_pub_sub_subscription        = "<YOUR_DLQ_PUBSUB_SUBSCRIPTION>"        # Optional
     transformation_jar_path             = "<YOUR_CUSTOM_TRANSFORMATION_JAR_PATH>" # Optional

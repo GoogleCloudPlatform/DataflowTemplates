@@ -73,30 +73,26 @@ Following permissions are required -
 > **_Note on IAM:_**
 >
 > 1. For ease of use, this sample automatically adds the
-     > required
-     > roles to the service account used for running the migration. In order to
-     > do this, we need the `resourcemanager.projects.setIamPolicy` permission. If
-     > granting
-     > this role is unacceptable, please set
-     > the `var.common_params.add_policies_to_service_account`
-     > to **false**. This will skip adding the roles.
-     > They will have to be added manually. Note that if they are not added, **the
-     > migration will fail.**
-     > Two service accounts will need to be modified manually -
-     >
-1. Dataflow service account - The list of roles can be found in the `main.tf`
-   file, in the `live_migration_roles` resource.
+> required
+> roles to the service account used for running the migration. In order to
+> do this, we need the `roles/iam.securityAdmin` role. If granting
+> this role is unacceptable, please set
+> the `var.common_params.add_policies_to_service_account`
+> to **false**. This will skip adding the roles.
+> They will have to be added manually. Note that if they are not added, **the
+> migration will fail.**
+> Two service accounts will need to be modified manually -
+>    1. Dataflow service account - The list of roles can be found in the `main.tf`
+      file, in the `live_migration_roles` resource.
 >    2. GCS service account - The list of roles can be found in the `main.tf` file,
         in the `gcs_publisher_role` resource.
 >
 >
-> 2. In order to create private connectivity configuration for Datastream,
-     > `compute.*` permissions are
-     required, [as documented here](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration#shared-vpc).
-     > Private connectivity cannot be created without these permissions. If you don't want to grant these permissions,
-     > you can use the [pre-configured connection profiles template](../pre-configured-conn-profiles/README.md). This
-     template
-     > assumes you have created connection profiles outside of Terraform.
+>2. In order to create private connectivity configuration for Datastream,
+>`compute.*` permissions are required, [as documented here](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration#shared-vpc).
+> Private connectivity cannot be created without these permissions. If you don't want to grant these permissions,
+> you can use the [pre-configured connection profiles template](../pre-configured-conn-profiles/README.md). This template
+> assumes you have created connection profiles outside of Terraform.
 
 [This](#adding-access-to-terraform-service-account) section in the FAQ
 provides instructions to add these permissions to an existing service account.
@@ -119,29 +115,29 @@ roles/compute.networkAdmin
 > **_Note on IAM:_**
 >
 > 1. For ease of use, this sample automatically adds the
-     > required
-     > roles to the service account used for running the migration. In order to
-     > do this, we need the `roles/iam.securityAdmin` role. If granting
-     > this role is unacceptable, please set
-     > the `var.common_params.add_policies_to_service_account`
-     > to **false**. This will skip adding the roles.
-     > They will have to be added manually. Note that if they are not added, **the
-     > migration will fail.**
-     > Two service accounts will need to be modified manually -
-     >
-1. Dataflow service account - The list of roles can be found in the `main.tf`
-   file, in the `live_migration_roles` resource.
+> required
+> roles to the service account used for running the migration. In order to
+> do this, we need the `roles/iam.securityAdmin` role. If granting
+> this role is unacceptable, please set
+> the `var.common_params.add_policies_to_service_account`
+> to **false**. This will skip adding the roles.
+> They will have to be added manually. Note that if they are not added, **the
+> migration will fail.**
+> Two service accounts will need to be modified manually -
+>    1. Dataflow service account - The list of roles can be found in the `main.tf`
+       file, in the `live_migration_roles` resource.
+
 >    2. GCS service account - The list of roles can be found in the `main.tf` file,
-        in the `gcs_publisher_role` resource.
+  in the `gcs_publisher_role` resource.
 >
 >
 >2. In order to create private connectivity configuration for Datastream,
-    > `networkAdmin` role is
+> `networkAdmin` role is
     required, [as documented here](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration#shared-vpc).
-    > Private connectivity cannot be created without these permissions. If you don't want to grant these permissions,
-    > you can use the [pre-configured connection profiles template](../pre-configured-conn-profiles/README.md). This
+> Private connectivity cannot be created without these permissions. If you don't want to grant these permissions,
+> you can use the [pre-configured connection profiles template](../pre-configured-conn-profiles/README.md). This
     template
-    > assumes you have created connection profiles outside of Terraform.
+> assumes you have created connection profiles outside of Terraform.
 
 [This](#adding-access-to-terraform-service-account) section in the FAQ
 provides instructions to add these roles to an existing service account.
