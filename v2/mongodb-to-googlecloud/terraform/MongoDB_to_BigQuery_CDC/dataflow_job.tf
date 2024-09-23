@@ -248,7 +248,7 @@ resource "google_project_service" "required" {
 resource "google_dataflow_flex_template_job" "generated" {
     depends_on = [google_project_service.required]
     provider = google-beta
-    container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/MongoDB_CDC_to_BigQuery"
+    container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/MongoDB_to_BigQuery_CDC"
     parameters = {
         useStorageWriteApiAtLeastOnce = tostring(var.useStorageWriteApiAtLeastOnce)
         mongoDbUri = var.mongoDbUri

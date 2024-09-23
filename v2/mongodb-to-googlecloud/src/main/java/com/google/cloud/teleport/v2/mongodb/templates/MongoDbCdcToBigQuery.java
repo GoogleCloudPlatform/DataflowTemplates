@@ -50,11 +50,11 @@ import org.slf4j.LoggerFactory;
  * PubSub from MongoDB Changestream and outputs the resulting records to BigQuery.
  *
  * <p>Check out <a
- * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/mongodb-to-googlecloud/README_MongoDB_CDC_to_BigQuery.md">README</a>
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/mongodb-to-googlecloud/README_MongoDB_to_BigQuery_CDC.md">README</a>
  * for instructions on how to use or modify this template.
  */
 @Template(
-    name = "MongoDB_CDC_to_BigQuery",
+    name = "MongoDB_to_BigQuery_CDC",
     category = TemplateCategory.STREAMING,
     displayName = "MongoDB (CDC) to BigQuery",
     description =
