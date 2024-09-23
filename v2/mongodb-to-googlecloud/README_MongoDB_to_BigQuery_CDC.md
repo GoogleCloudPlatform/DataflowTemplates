@@ -225,7 +225,7 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "MongoDB_to_BigQuery_CDC" {
+resource "google_dataflow_flex_template_job" "mongodb_to_bigquery_cdc" {
 
   provider          = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/MongoDB_to_BigQuery_CDC"
