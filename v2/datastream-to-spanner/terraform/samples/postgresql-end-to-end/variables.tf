@@ -1,10 +1,10 @@
 variable "common_params" {
   description = "Parameters that are common to multiple resources"
-  type        = object({
-    project                         = string
-    host_project                    = optional(string)
-    region                          = string
-    migration_id                    = optional(string)
+  type = object({
+    project      = string
+    host_project = optional(string)
+    region       = string
+    migration_id = optional(string)
     # Will be auto-generated if not specified
     add_policies_to_service_account = optional(bool, true)
   })
@@ -12,7 +12,7 @@ variable "common_params" {
 
 variable "datastream_params" {
   description = "Parameters to setup Datastream"
-  type        = object({
+  type = object({
     private_connectivity = optional(object({
       private_connectivity_id = optional(string, "priv-conn")
       vpc_name                = string
@@ -38,7 +38,7 @@ variable "datastream_params" {
 
     postgresql_database = object({
       database = string
-      schemas  = list(object({
+      schemas = list(object({
         schema_name = string
         tables      = optional(list(string))
       }))
@@ -47,9 +47,9 @@ variable "datastream_params" {
   })
   validation {
     condition = (
-    (var.datastream_params.private_connectivity_id == null && var.datastream_params.private_connectivity != null) ||
-    (var.datastream_params.private_connectivity_id != null && var.datastream_params.private_connectivity == null) ||
-    (var.datastream_params.private_connectivity_id == null && var.datastream_params.private_connectivity == null)
+      (var.datastream_params.private_connectivity_id == null && var.datastream_params.private_connectivity != null) ||
+      (var.datastream_params.private_connectivity_id != null && var.datastream_params.private_connectivity == null) ||
+      (var.datastream_params.private_connectivity_id == null && var.datastream_params.private_connectivity == null)
     )
     error_message = "Exactly one of 'private_connectivity_id' or the 'private_connectivity' block must be provided, not both."
   }
@@ -57,8 +57,8 @@ variable "datastream_params" {
 
 variable "dataflow_params" {
   description = "Parameters for the Dataflow job. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md for the description of the parameters below."
-  type        = object({
-    skip_dataflow   = optional(bool, false)
+  type = object({
+    skip_dataflow = optional(bool, false)
     template_params = object({
       shadow_table_prefix                 = optional(string)
       create_shadow_tables                = optional(bool)

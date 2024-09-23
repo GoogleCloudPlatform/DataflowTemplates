@@ -1,7 +1,7 @@
 # Resource IDs (Structured by Shard ID)
 output "resource_ids" {
   description = "IDs of resources created, organized by shard ID."
-  value       = {
+  value = {
     for idx, shard in var.shard_list :
     (shard.shard_id != null ? shard.shard_id : random_pet.migration_id[idx].id) => {
       datastream_source_connection_profile = google_datastream_connection_profile.source_mysql[idx].connection_profile_id
@@ -29,7 +29,7 @@ output "resource_ids" {
 # Resource URLs (Structured by Shard ID)
 output "resource_urls" {
   description = "URLs to access resources in the Google Cloud Console, organized by shard ID."
-  value       = {
+  value = {
     for idx, shard in var.shard_list :
     (shard.shard_id != null ? shard.shard_id : random_pet.migration_id[idx].id) => {
       datastream_source_connection_profile = "https://console.cloud.google.com/datastream/connection-profiles/locations/${var.common_params.region}/instances/${google_datastream_connection_profile.source_mysql[idx].connection_profile_id}?project=${var.common_params.project}"

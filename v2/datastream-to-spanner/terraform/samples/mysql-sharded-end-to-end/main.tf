@@ -7,7 +7,7 @@ resource "random_pet" "migration_id" {
 resource "google_compute_firewall" "allow-datastream" {
   depends_on  = [google_project_service.enabled_apis]
   count       = var.common_params.datastream_params.private_connectivity != null ? 1 : 0
-  project     = var.common_params.host_project != null ?  var.common_params.host_project : var.common_params.project
+  project     = var.common_params.host_project != null ? var.common_params.host_project : var.common_params.project
   name        = "allow-datastream"
   network     = var.common_params.host_project != null ? "projects/${var.common_params.host_project}/global/networks/${var.common_params.datastream_params.private_connectivity.vpc_name}" : "projects/${var.common_params.project}/global/networks/${var.common_params.datastream_params.private_connectivity.vpc_name}"
   description = "Allow traffic from private connectivity endpoint of Datastream"
@@ -84,7 +84,7 @@ resource "google_storage_bucket" "datastream_bucket" {
   location                    = var.common_params.region
   uniform_bucket_level_access = true
   force_destroy               = true
-  labels                      = {
+  labels = {
     "migration_id" = var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id
   }
 }
@@ -103,20 +103,20 @@ resource "google_storage_bucket_object" "session_file_object" {
 # auto-generate transformation context on basis of MySQL host IP and logical
 # shard names.
 resource "google_storage_bucket_object" "transformation_context_file_object" {
-  for_each     = {for idx, shard in var.shard_list : idx => shard}
+  for_each     = { for idx, shard in var.shard_list : idx => shard }
   depends_on   = [google_project_service.enabled_apis]
   name         = "transformationContext.json"
   content_type = "application/json"
   bucket       = google_storage_bucket.datastream_bucket[each.key].id
-  content      = (
-  each.value.dataflow_params.template_params.local_transformation_context_path == null
-  ? jsonencode({
-    "SchemaToShardId" : {
-      for db in var.common_params.datastream_params.mysql_databases :
-      db.database => "${replace(each.value.datastream_params.mysql_host, ".", "-")}-${db.database}"
-    }
-  })
-  : file(each.value.dataflow_params.template_params.local_transformation_context_path)
+  content = (
+    each.value.dataflow_params.template_params.local_transformation_context_path == null
+    ? jsonencode({
+      "SchemaToShardId" : {
+        for db in var.common_params.datastream_params.mysql_databases :
+        db.database => "${replace(each.value.datastream_params.mysql_host, ".", "-")}-${db.database}"
+      }
+    })
+    : file(each.value.dataflow_params.template_params.local_transformation_context_path)
   )
 }
 
@@ -126,7 +126,7 @@ resource "google_pubsub_topic" "datastream_topic" {
   depends_on = [google_project_service.enabled_apis]
   name       = "${var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id}-${var.shard_list[count.index].datastream_params.pubsub_topic_name}"
   project    = var.common_params.project
-  labels     = {
+  labels = {
     "migration_id" = var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id
   }
 }
@@ -142,7 +142,7 @@ resource "google_pubsub_topic_iam_member" "gcs_publisher_role" {
 
 # Pub/Sub Notification on GCS Bucket
 resource "google_storage_notification" "bucket_notification" {
-  count      = length(var.shard_list)
+  count = length(var.shard_list)
   depends_on = [
     google_project_service.enabled_apis,
     google_pubsub_topic_iam_member.gcs_publisher_role
@@ -156,13 +156,13 @@ resource "google_storage_notification" "bucket_notification" {
 
 # Pub/Sub Subscription for the created notification
 resource "google_pubsub_subscription" "datastream_subscription" {
-  count      = length(var.shard_list)
+  count = length(var.shard_list)
   depends_on = [
     google_project_service.enabled_apis,
     google_storage_notification.bucket_notification
   ] # Create the subscription once the notification is created.
-  name   = "${google_pubsub_topic.datastream_topic[count.index].name}-sub"
-  topic  = google_pubsub_topic.datastream_topic[count.index].id
+  name  = "${google_pubsub_topic.datastream_topic[count.index].name}-sub"
+  topic = google_pubsub_topic.datastream_topic[count.index].id
   labels = {
     "migration_id" = var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id
   }
@@ -170,7 +170,7 @@ resource "google_pubsub_subscription" "datastream_subscription" {
 
 # GCS Target Connection Profile
 resource "google_datastream_connection_profile" "target_gcs" {
-  count      = length(var.shard_list)
+  count = length(var.shard_list)
   depends_on = [
     google_project_service.enabled_apis,
     google_storage_notification.bucket_notification
@@ -190,7 +190,7 @@ resource "google_datastream_connection_profile" "target_gcs" {
 
 # Datastream Stream (MySQL to GCS)
 resource "google_datastream_stream" "mysql_to_gcs" {
-  count      = length(var.shard_list)
+  count = length(var.shard_list)
   depends_on = [
     google_project_service.enabled_apis,
     google_pubsub_subscription.datastream_subscription
@@ -268,7 +268,7 @@ resource "google_project_iam_member" "live_migration_roles" {
 }
 # Dataflow Flex Template Job (for CDC to Spanner)
 resource "google_dataflow_flex_template_job" "live_migration_job" {
-  count      = var.common_params.dataflow_params.skip_dataflow ? 0 : length(var.shard_list)
+  count = var.common_params.dataflow_params.skip_dataflow ? 0 : length(var.shard_list)
   depends_on = [
     google_project_service.enabled_apis, google_project_iam_member.live_migration_roles
   ] # Launch the template once the stream is created.
@@ -327,7 +327,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
   on_delete                    = var.common_params.dataflow_params.runner_params.on_delete
   region                       = var.common_params.region
   ip_configuration             = var.common_params.dataflow_params.runner_params.ip_configuration
-  labels                       = {
+  labels = {
     "migration_id" = var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id
   }
 }
