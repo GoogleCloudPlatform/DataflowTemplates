@@ -35,8 +35,8 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.beam.sdk.coders.AtomicCoder;
 import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.coders.CustomCoder;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.ListCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -45,6 +45,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.ValueInSingleWindow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -225,25 +226,52 @@ public final class BigQueryDynamicDestinations
 
   /**
    * {@link TableFieldSchemaCoder} provides custom coder for TableFieldSchema with deterministic
-   * serialization.
+   * serialization. This coder is only used within the context of this file where TableFieldSchema
+   * objects are created in {@link BigQueryDynamicDestinations#getFields(TableRow)} method
+   * deterministically.
    */
-  private static class TableFieldSchemaCoder extends CustomCoder<TableFieldSchema> {
+  private static class TableFieldSchemaCoder extends AtomicCoder<TableFieldSchema> {
 
-    private static final ObjectMapper OBJECT_MAPPER =
-        new ObjectMapper().enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
+    private static final ObjectMapper OBJECT_MAPPER;
+    private static final TypeDescriptor<TableFieldSchema> TYPE_DESCRIPTOR;
+    private static final TableFieldSchemaCoder INSTANCE;
+
+    static {
+      OBJECT_MAPPER =
+          new ObjectMapper()
+              .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+              .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+      TYPE_DESCRIPTOR = new TypeDescriptor<TableFieldSchema>() {};
+      INSTANCE = new TableFieldSchemaCoder();
+    }
 
     private static TableFieldSchemaCoder of() {
-      return new TableFieldSchemaCoder();
+      return INSTANCE;
     }
+
+    private TableFieldSchemaCoder() {}
 
     @Override
     public void encode(TableFieldSchema value, OutputStream outStream) throws IOException {
-      OBJECT_MAPPER.writeValue(outStream, value);
+      String strValue = OBJECT_MAPPER.writeValueAsString(value);
+      StringUtf8Coder.of().encode(strValue, outStream);
     }
 
     @Override
     public TableFieldSchema decode(InputStream inStream) throws IOException {
-      return OBJECT_MAPPER.readValue(inStream, TableFieldSchema.class);
+      String strValue = StringUtf8Coder.of().decode(inStream);
+      return OBJECT_MAPPER.readValue(strValue, TableFieldSchema.class);
+    }
+
+    @Override
+    public long getEncodedElementByteSize(TableFieldSchema value) throws Exception {
+      String strValue = OBJECT_MAPPER.writeValueAsString(value);
+      return StringUtf8Coder.of().getEncodedElementByteSize(strValue);
+    }
+
+    @Override
+    public TypeDescriptor<TableFieldSchema> getEncodedTypeDescriptor() {
+      return TYPE_DESCRIPTOR;
     }
 
     @Override
