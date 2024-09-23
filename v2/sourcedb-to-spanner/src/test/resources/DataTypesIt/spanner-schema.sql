@@ -204,3 +204,12 @@ CREATE TABLE spatial_polygon (
   id INT64 NOT NULL,
   area STRING(MAX),
 ) PRIMARY KEY(id);
+CREATE TABLE `bigint_unsigned_pk_table` (
+  id NUMERIC NOT NULL,
+  bigint_unsigned_col NUMERIC NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE `string_pk_table` (
+  id STRING(max) NOT NULL,
+  string_col STRING(max) NOT NULL
+) PRIMARY KEY(id);

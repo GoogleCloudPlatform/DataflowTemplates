@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
@@ -43,8 +44,8 @@ public final class ShardFileReaderTest {
     List<Shard> shards = shardFileReader.getOrderedShardDetails("src/test/resources/shard.json");
     List<Shard> expectedShards =
         Arrays.asList(
-            new Shard("shardA", "hostShardA", "3306", "test", "test", "test", null),
-            new Shard("shardB", "hostShardB", "3306", "test", "test", "test", null));
+            new Shard("shardA", "hostShardA", "3306", "test", "test", "test", null, null),
+            new Shard("shardB", "hostShardB", "3306", "test", "test", "test", null, null));
 
     assertEquals(shards, expectedShards);
   }
@@ -82,7 +83,8 @@ public final class ShardFileReaderTest {
                 "test",
                 "secretA",
                 "test",
-                "projects/123/secrets/secretA/versions/latest"),
+                "projects/123/secrets/secretA/versions/latest",
+                null),
             new Shard(
                 "shardB",
                 "hostShardB",
@@ -90,7 +92,8 @@ public final class ShardFileReaderTest {
                 "test",
                 "secretB",
                 "test",
-                "projects/123/secrets/secretB"),
+                "projects/123/secrets/secretB",
+                null),
             new Shard(
                 "shardC",
                 "hostShardC",
@@ -98,8 +101,9 @@ public final class ShardFileReaderTest {
                 "test",
                 "secretC",
                 "test",
-                "projects/123/secrets/secretC/"),
-            new Shard("shardD", "hostShardD", "3306", "test", "test", "test", null));
+                "projects/123/secrets/secretC/",
+                null),
+            new Shard("shardD", "hostShardD", "3306", "test", "test", "test", null, null));
 
     assertEquals(shards, expectedShards);
   }
@@ -136,19 +140,31 @@ public final class ShardFileReaderTest {
 
   @Test
   public void readBulkMigrationShardFile() {
+    String testConnectionProperties =
+        "useUnicode=yes&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull";
     ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
     List<Shard> shards =
         shardFileReader.readForwardMigrationShardingConfig(
             "src/test/resources/bulk-migration-shards.json");
-    Shard shard1 = new Shard("", "1.1.1.1", "3306", "test1", "pass1", "", null);
+    Shard shard1 =
+        new Shard("", "1.1.1.1", "3306", "test1", "pass1", "", null, testConnectionProperties);
     shard1.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-1-person");
     shard1.getDbNameToLogicalShardIdMap().put("person2", "1-1-1-1-person2");
-    Shard shard2 = new Shard("", "1.1.1.2", "3306", "test1", "pass1", "", null);
+    Shard shard2 = new Shard("", "1.1.1.2", "3306", "test1", "pass1", "", null, "");
     shard2.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-2-person");
     shard2.getDbNameToLogicalShardIdMap().put("person20", "1-1-1-2-person2");
     List<Shard> expectedShards = new ArrayList<>(Arrays.asList(shard1, shard2));
 
-    assertEquals(shards, expectedShards);
+    assertEquals(expectedShards, shards);
+    assertEquals(shard1.toString().contains(testConnectionProperties), true);
+    assertEquals(shard1.getConnectionProperties(), testConnectionProperties);
+    var originalHarshCode = shard1.hashCode();
+    shard1.setConnectionProperties("");
+    assertNotEquals(originalHarshCode, shard1.hashCode());
+    // Cover the equality override.
+    assertEquals(shard1, shard1);
+    assertNotEquals(shard1, "");
+    assertNotEquals(shard1, shards.get(0));
   }
 
   @Test
@@ -169,7 +185,8 @@ public final class ShardFileReaderTest {
             "test1",
             "secretA",
             "",
-            "projects/123/secrets/secretA/versions/latest");
+            "projects/123/secrets/secretA/versions/latest",
+            "");
     shard1.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-1-person");
     shard1.getDbNameToLogicalShardIdMap().put("person2", "1-1-1-1-person2");
     Shard shard2 =
@@ -180,7 +197,8 @@ public final class ShardFileReaderTest {
             "test1",
             "secretB",
             "",
-            "projects/123/secrets/secretB/versions/latest");
+            "projects/123/secrets/secretB/versions/latest",
+            "");
     shard2.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-2-person");
     shard2.getDbNameToLogicalShardIdMap().put("person20", "1-1-1-2-person2");
     List<Shard> expectedShards = new ArrayList<>(Arrays.asList(shard1, shard2));

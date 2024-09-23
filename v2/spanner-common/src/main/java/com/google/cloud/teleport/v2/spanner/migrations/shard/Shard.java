@@ -29,6 +29,7 @@ public class Shard implements Serializable {
   private String password;
   private String dbName;
   private String secretManagerUri;
+  private String connectionProperties;
 
   private Map<String, String> dbNameToLogicalShardIdMap = new HashMap<>();
 
@@ -39,7 +40,8 @@ public class Shard implements Serializable {
       String user,
       String password,
       String dbName,
-      String secretManagerUri) {
+      String secretManagerUri,
+      String connectionProperties) {
     this.logicalShardId = logicalShardId;
     this.host = host;
     this.port = port;
@@ -47,6 +49,7 @@ public class Shard implements Serializable {
     this.password = password;
     this.dbName = dbName;
     this.secretManagerUri = secretManagerUri;
+    this.connectionProperties = connectionProperties;
   }
 
   public Shard() {}
@@ -107,6 +110,14 @@ public class Shard implements Serializable {
     this.secretManagerUri = input;
   }
 
+  public String getConnectionProperties() {
+    return connectionProperties;
+  }
+
+  public void setConnectionProperties(String input) {
+    this.connectionProperties = input;
+  }
+
   public Map<String, String> getDbNameToLogicalShardIdMap() {
     return dbNameToLogicalShardIdMap;
   }
@@ -129,6 +140,9 @@ public class Shard implements Serializable {
         + ", dbName='"
         + dbName
         + '\''
+        + ", connectionProperties='"
+        + connectionProperties
+        + '\''
         + ", dbNameToLogicalShardIdMap="
         + dbNameToLogicalShardIdMap
         + '}';
@@ -149,6 +163,7 @@ public class Shard implements Serializable {
         && Objects.equals(user, shard.user)
         && Objects.equals(password, shard.password)
         && Objects.equals(dbName, shard.dbName)
+        && Objects.equals(connectionProperties, shard.connectionProperties)
         && Objects.equals(secretManagerUri, shard.secretManagerUri)
         && Objects.equals(dbNameToLogicalShardIdMap, shard.dbNameToLogicalShardIdMap);
   }
@@ -162,6 +177,7 @@ public class Shard implements Serializable {
         user,
         password,
         dbName,
+        connectionProperties,
         secretManagerUri,
         dbNameToLogicalShardIdMap);
   }
