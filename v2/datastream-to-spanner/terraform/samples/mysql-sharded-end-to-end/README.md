@@ -27,6 +27,9 @@ Following permissions are required -
 - compute.globalAddresses.deleteInternal
 - compute.globalAddresses.get
 - compute.globalOperations.get
+- compute.firewalls.create
+- compute.firewalls.delete
+- compute.firewalls.update
 - compute.networks.addPeering
 - compute.networks.get
 - compute.networks.listPeeringRoutes
