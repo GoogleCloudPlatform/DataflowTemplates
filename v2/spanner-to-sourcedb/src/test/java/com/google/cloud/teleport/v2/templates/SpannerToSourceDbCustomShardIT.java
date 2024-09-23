@@ -88,7 +88,6 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
         spannerResourceManager =
             createSpannerDatabase(SpannerToSourceDbCustomShardIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
-        createAndUploadJarToGcs(gcsResourceManager);
         jdbcResourceManagerShardA = MySQLResourceManager.builder(testName).build();
 
         createMySQLSchema(
@@ -102,6 +101,8 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
+        createAndUploadJarToGcs(gcsResourceManager);
+
         createAndUploadShardConfigToGcs();
         gcsResourceManager.uploadArtifact(
             "input/session.json",

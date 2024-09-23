@@ -160,7 +160,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     }
 
     // Construct template
-    String jobName = PipelineUtils.createJobName("rrev-it");
+    String jobName = PipelineUtils.createJobName("rrev-it" + testName);
     // /-DunifiedWorker=true when using runner v2
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);

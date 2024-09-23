@@ -206,6 +206,13 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
   }
 
   private void assertInsertedRowsInMySQL() throws InterruptedException {
+    PipelineOperator.Result parent1Result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                () -> jdbcResourceManagerShardA.getRowCount("parent1") == 1);
+    assertThatResult(parent1Result).meetsConditions();
+
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
@@ -213,24 +220,19 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
                 () -> jdbcResourceManagerShardB.getRowCount("child21") == 1);
     assertThatResult(result).meetsConditions();
 
-    PipelineOperator.Result parent1Result =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofSeconds(1)),
-                () -> jdbcResourceManagerShardA.getRowCount("parent1") == 1);
-    assertThatResult(parent1Result).meetsConditions();
-    PipelineOperator.Result child1Result =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofSeconds(1)),
-                () -> jdbcResourceManagerShardA.getRowCount("child11") == 1);
-    assertThatResult(child1Result).meetsConditions();
     PipelineOperator.Result parent2Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofSeconds(1)),
+                createConfig(jobInfo, Duration.ofMinutes(10)),
                 () -> jdbcResourceManagerShardB.getRowCount("parent2") == 1);
     assertThatResult(parent2Result).meetsConditions();
+
+    PipelineOperator.Result child1Result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                () -> jdbcResourceManagerShardA.getRowCount("child11") == 1);
+    assertThatResult(child1Result).meetsConditions();
 
     List<Map<String, Object>> rows = jdbcResourceManagerShardA.readTable("parent1");
     assertThat(rows).hasSize(1);
@@ -335,7 +337,7 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     PipelineOperator.Result parent1Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofSeconds(1)),
+                createConfig(jobInfo, Duration.ofMinutes(10)),
                 () -> jdbcResourceManagerShardA.getRowCount("parent1") == 0);
     assertThatResult(parent1Result).meetsConditions();
     PipelineOperator.Result child1Result =
