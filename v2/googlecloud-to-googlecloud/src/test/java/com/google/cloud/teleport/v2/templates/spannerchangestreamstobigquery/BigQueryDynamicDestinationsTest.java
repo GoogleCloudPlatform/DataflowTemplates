@@ -80,6 +80,8 @@ import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.Big
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.common.collect.ImmutableSet;
 import java.util.List;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.testing.CoderProperties;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.values.KV;
@@ -277,5 +279,20 @@ public final class BigQueryDynamicDestinationsTest {
                 + " name=_metadata_spanner_number_of_partitions_in_transaction, type=INT64}},"
                 + " {{mode=REQUIRED, name=_metadata_big_query_commit_timestamp,"
                 + " type=TIMESTAMP}}]}}");
+  }
+
+  // Test that the custome destination coder is able to encode/decode destination.
+  @Test
+  public void testGetDestinationCoder() throws Exception {
+    fillTableRow();
+    tableNameToFields =
+        KV.of(
+            String.format(
+                "%s:%s.%s",
+                TEST_PROJECT, TEST_BIG_QUERY_DATESET, TEST_SPANNER_TABLE + "_changelog"),
+            bigQueryDynamicDestinations.getFields(tableRow));
+    Coder<KV<String, List<TableFieldSchema>>> coder =
+        bigQueryDynamicDestinations.getDestinationCoder();
+    CoderProperties.coderDecodeEncodeEqual(coder, tableNameToFields);
   }
 }
