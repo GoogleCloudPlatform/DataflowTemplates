@@ -90,7 +90,7 @@ A few prerequisites must be considered before starting with reverse replication.
   Then configure the notification like:
 
 
-  gcloud storage buckets notifications create --event-types=OBJECT_FINALIZE 
+  gcloud storage buckets notifications create --event-types=OBJECT_FINALIZE
   --object-prefix=retry/ gs://rr-dlq --topic=projects/<my-project>/topics/rr-dlq-topic
   ```
 15. Create change stream, the below example tracks all tables. When creating a change stream, use the NEW_ROW option, sample command below :
@@ -109,7 +109,7 @@ A few prerequisites must be considered before starting with reverse replication.
   When disabling the public IP for Dataflow, the option below should be added to the command line:
 
   ```
-  --disable-public-ips 
+  --disable-public-ips
   ```
 
   When providing subnetwork, give the option like so:
@@ -234,7 +234,7 @@ In this case, check if you observe the following:
 
 Records of below nature are dropped from reverse replication. Check the Dataflow logs to see if they are dropped:
 
-1. Records which are forward migrated. 
+1. Records which are forward migrated.
 2. Shard Id based routing could not be performed since the shard id value could not be determined.
 3. The record was deleted on Cloud Spanner and the deleted record was removed from Cloud Spanner due to lapse of retention period by the time the record was to be reverse replicated.
 4. Check for issues in the dataflow job. This can include scaling issues, CPU utilization being more than 70% consistently. This can be checked via [CPU utilization](https://cloud.google.com/dataflow/docs/guides/using-monitoring-intf#cpu-use) section on the Dataflow job UI.Check for any errors in the jobor worker logs which could indicate restarts. Sometimes a worker might restart causing a delay in record processing. The CPU utilization would show multiple workers during the restart period. The number of workers could also be viewed via [here](https://cloud.google.com/dataflow/docs/guides/using-monitoring-intf#autoscaling).
@@ -306,11 +306,11 @@ Reverse transformation can not be supported for following scenarios out of the b
 1. The table in original database has single column while in Spanner it’s split into multiple - example POINT to X,Y coordinates
 2. Adding column in Spanner that does not exist in source - in this case the column cannot be replicated
 3. Deleting column in Spanner that is mandatory in source
-4. Spanner PK is UUID while source PK is auto-increment key 
-5. Spanner table has more columns as part of PK than the source - in this case the source records having the same values as the partial primary keys are updated 
-6. Spanner columns have greater length of string columns than source 
-7. Spanner columns have different data type than source 
-8. CLOB will not be read from GCS and put in source 
+4. Spanner PK is UUID while source PK is auto-increment key
+5. Spanner table has more columns as part of PK than the source - in this case the source records having the same values as the partial primary keys are updated
+6. Spanner columns have greater length of string columns than source
+7. Spanner columns have different data type than source
+8. CLOB will not be read from GCS and put in source
 9. DELETES on Spanner that have Primary key columns different from the Source database column - such records will be dropped
 10. Primary key of the source table cannot be determined - such records will be dropped
 
@@ -337,7 +337,7 @@ The Dataflow jobs can be customized. Some use cases could be:
 
 To customize, checkout the open source template, add the custom logic, build and launch the open source template.
 
-Refer to [Spanner to SourceDb template](https://github.com/GoogleCloudPlatform/DataflowTemplates/tree/main/v2/spanner-to-sourcedb) on how to build and customize this. 
+Refer to [Spanner to SourceDb template](https://github.com/GoogleCloudPlatform/DataflowTemplates/tree/main/v2/spanner-to-sourcedb) on how to build and customize this.
 
 
 ### Shard routing customization
