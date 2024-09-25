@@ -56,8 +56,8 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
   private final String dataGeneratorSchemaResource =
       "SpannerToMySqlSourceLT/datagenerator-schema.json";
   private final String table = "Person";
-  private final int maxWorkers = 100;
-  private final int numWorkers = 50;
+  private final int maxWorkers = 50;
+  private final int numWorkers = 20;
   private PipelineLauncher.LaunchInfo jobInfo;
   private PipelineLauncher.LaunchInfo readerJobInfo;
 
@@ -84,12 +84,12 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
   }
 
   @Test
-  public void reverseReplication100TpsLoadTest()
+  public void reverseReplication1KTpsLoadTest()
       throws IOException, ParseException, InterruptedException {
     // Start data generator
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaLocation(testName, generatorSchemaPath)
-            .setQPS("100")
+            .setQPS("1000")
             .setMessagesLimit(String.valueOf(300000))
             .setSpannerInstanceName(spannerResourceManager.getInstanceId())
             .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
