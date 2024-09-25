@@ -365,7 +365,6 @@
             <exclude>**/constants/**</exclude>
             <exclude>**/CustomTransformationImplFetcher.*</exclude>
             <exclude>**/JarFileReader.*</exclude>
-            <exclude>**/WatchdogRunnable.*</exclude>
             <exclude>**/CustomTransformationWithShardFor*IT.*</exclude>
           </excludes>
         </configuration>

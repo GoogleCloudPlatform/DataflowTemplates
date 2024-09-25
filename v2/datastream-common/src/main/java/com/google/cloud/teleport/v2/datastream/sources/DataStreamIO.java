@@ -174,7 +174,18 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
     return this;
   }
 
-  /** Set applyReshuffle to false inorder to skip the reshuffle step on datastream records. */
+  /**
+   * Set applyReshuffle to false in order to skip the reshuffle step on Datastream records.
+   *
+   * In the Datastream to Spanner template, one reshuffle step is already performed to balance
+   * the load across workers. Load testing showed that removing this second reshuffle did not
+   * impact performance but significantly reduced pipeline costs.
+   *
+   * Since the cost of a pipeline depends on the amount of data processed, reshuffling increases
+   * data processing due to extra grouping and shuffling across workers. By skipping this extra
+   * reshuffle, we reduce the total data processed, leading to cost savings while maintaining
+   * performance.
+   */
   public DataStreamIO withoutDatastreamRecordsReshuffle() {
     this.applyReshuffle = false;
     return this;

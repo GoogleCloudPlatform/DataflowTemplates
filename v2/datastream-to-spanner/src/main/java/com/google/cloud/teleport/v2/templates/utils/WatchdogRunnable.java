@@ -23,11 +23,19 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/*
+ * The WatchdogRunnable is designed to track if a transaction is making progress by comparing
+ * the number of transaction attempts (`transactionAttemptCount`) over time. The `isInTransaction`
+ * flag indicates whether a transaction is currently active. If the number of attempts remains
+ * the same for a period of 15 minutes while the transaction is active, the watchdog logs a warning
+ * and terminates the process by calling `System.exit(1)`.
+ */
 public class WatchdogRunnable implements Runnable, Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(WatchdogRunnable.class);
   private final AtomicLong transactionAttemptCount;
   private final AtomicBoolean isInTransaction;
   private final AtomicBoolean keepWatchdogRunning;
+  private transient long SLEEP_DURATION_IN_SECONDS = 15 * 60;
 
   public WatchdogRunnable(
       AtomicLong transactionAttemptCount,
@@ -45,12 +53,18 @@ public class WatchdogRunnable implements Runnable, Serializable {
       if (isInTransaction.get()) {
         long currentTransactionCount = transactionAttemptCount.get();
         if (lastTransactionCount == currentTransactionCount) {
-          LOG.warn("Transaction is not making progress after 15 minutes. Terminating process");
+          LOG.warn(
+              "Transaction is not making progress after %s seconds. Terminating process",
+              SLEEP_DURATION_IN_SECONDS);
           System.exit(1);
         }
         lastTransactionCount = currentTransactionCount;
       }
-      Uninterruptibles.sleepUninterruptibly(Duration.ofMinutes(15));
+      Uninterruptibles.sleepUninterruptibly(Duration.ofSeconds(SLEEP_DURATION_IN_SECONDS));
     }
+  }
+
+  public void setSleepDuration(long SLEEP_DURATION_IN_SECONDS) {
+    this.SLEEP_DURATION_IN_SECONDS = SLEEP_DURATION_IN_SECONDS;
   }
 }
