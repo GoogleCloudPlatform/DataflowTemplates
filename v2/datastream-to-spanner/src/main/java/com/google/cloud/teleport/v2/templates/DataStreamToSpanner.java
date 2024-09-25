@@ -31,6 +31,7 @@ import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.NoopSchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
@@ -888,6 +889,6 @@ public class DataStreamToSpanner {
       return new SchemaFileOverridesParser(options.getSchemaOverridesFilePath());
     }
     // no overrides
-    return null;
+    return new NoopSchemaOverridesParser();
   }
 }
