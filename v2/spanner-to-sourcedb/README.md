@@ -14,9 +14,9 @@ Reverse replication could also be used to replicate the Cloud Spanner writes to 
 Reverse replication flow involves below steps:
 
 1. Reading the changes that happened on Cloud Spanner using [Cloud Spanner change streams](https://cloud.google.com/spanner/docs/change-streams)
-2. Removing forward migrated changes ( if configured to filter )
+2. Filtering forward migrated changes ( if configured to filter )
 3. Transforming Cloud Spanner data to source database schema
-4. Verifying that the source database does not already have more up-to-date data for the given primary key
+4. Verifying whether the source database already contains more recent data for the specified primary key.
 5. Writing to source database
 
 These steps are achieved by the Spanner to SourceDb dataflow template.
@@ -25,7 +25,7 @@ These steps are achieved by the Spanner to SourceDb dataflow template.
 
 #### Consistency guarantees
 
-The pipeline guarantees consistency at a primary key level. The pipeline creates shadow tables, which contain the Spanner commit timestamp of the latest record that was successfully written on the shard for that table. The writes are guaranteed to be consistent up-to this commit timestamp for the given primary key.
+The pipeline guarantees consistency at a primary key level. The pipeline creates shadow tables in Cloud Spanner, which contain the Spanner commit timestamp of the latest record that was successfully written on the shard for that table. The writes are guaranteed to be consistent up-to this commit timestamp for the given primary key.
 
 However, there is no order maintained across tables or even across various primary keys in the same table. This helps achieve faster replication.
 
@@ -45,7 +45,7 @@ The following error scenarios are possible currently:
 
 1. If there is a foreign key constraint on a table - and due to unordered processing by Dataflow - the child table record comes before the parent table record and it fails with foreign key constraint violation in case of insertion or parent record get processed before the child record in case of deletion.
 2. Intermittent connection error when communicating with the source database.
-3. There could also be some intermittent errors from Spanner like deadline exceeded due a temporary resource impact.
+3. There could also be some intermittent errors from Spanner like deadline exceeded due a temporary resource unavailability .
 4. Other SpannerExceptions - which are marked for retry
 5. In addition, there is a possibility of severe errors that would require manual intervention.Example a manual schema change.
 
@@ -70,15 +70,14 @@ A few prerequisites must be considered before starting with reverse replication.
 5. Ensure the authenticated user launching reverse replication has the following permissions: (this is the user account authenticated for the Spanner Migration Tool and not the service account)
     - roles/spanner.databaseUser
     - roles/dataflow.developer
-6. Ensure that [golang](https://go.dev/dl/) (version 1.18 and above) is setup on the machine from which reverse replication flow will be launched.
-7. Ensure that gcloud authentication is done,refer [here](https://cloud.google.com/spanner/docs/getting-started/set-up#set_up_authentication_and_authorization).
-8. Ensure that the target Spanner instance ready.
-9. Ensure that that [session file](https://googlecloudplatform.github.io/spanner-migration-tool/reports.html#session-file-ending-in-sessionjson) is uploaded to GCS (this requires a schema conversion to be done).
-10. [Source shards file](./RunnigReverseReplication.md#sample-sourceshards-file) already uploaded to GCS.
-11. Resources needed for reverse replication incur cost. Make sure to read [cost](#cost).
-12. Reverse replication uses shard identifier column per table to route the Spanner records to a given source shard.The column identified as the sharding column needs to be selected via Spanner Migration Tool when performing migration.The value of this column should be the logicalShardId value specified in the [source shard file](#sample-source-shards-file).In the event that the shard identifier column is not an existing column,the application code needs to be changed to populate this shard identifier column when writing to Spanner. Or use a custom shard identifier plugin to supply the shard identifier.
-13. The reverse replication pipeline uses GCS for dead letter queue handling. Ensure that the DLQ directory exists in GCS.
-14. Create PubSub notification on the 'retry' folder of the DLQ directory. For this, create a [PubSub topic](https://cloud.google.com/pubsub/docs/create-topic), create a [PubSub subscription](https://cloud.google.com/pubsub/docs/create-subscription) for that topic. Configure [GCS notification](https://cloud.google.com/storage/docs/reporting-changes#command-line). The resulting subscription should be supplied as the dlqGcsPubSubSubscription Dataflow input parameter.
+6. Ensure that gcloud authentication is done,refer [here](https://cloud.google.com/spanner/docs/getting-started/set-up#set_up_authentication_and_authorization).
+7. Ensure that the target Spanner instance is ready.
+8. Ensure that that [session file](https://googlecloudplatform.github.io/spanner-migration-tool/reports.html#session-file-ending-in-sessionjson) is uploaded to GCS (this requires a schema conversion to be done).
+9. [Source shards file](./RunnigReverseReplication.md#sample-sourceshards-file) already uploaded to GCS.
+10. Resources needed for reverse replication incur cost. Make sure to read [cost](#cost).
+11. Reverse replication uses shard identifier column per table to route the Spanner records to a given source shard.The column identified as the sharding column needs to be selected via Spanner Migration Tool when performing migration.The value of this column should be the logicalShardId value specified in the [source shard file](#sample-source-shards-file).In the event that the shard identifier column is not an existing column,the application code needs to be changed to populate this shard identifier column when writing to Spanner. Or use a custom shard identifier plugin to supply the shard identifier.
+12. The reverse replication pipeline uses GCS for dead letter queue handling. Ensure that the DLQ directory exists in GCS.
+13. Create PubSub notification on the 'retry' folder of the DLQ directory. For this, create a [PubSub topic](https://cloud.google.com/pubsub/docs/create-topic), create a [PubSub subscription](https://cloud.google.com/pubsub/docs/create-subscription) for that topic. Configure [GCS notification](https://cloud.google.com/storage/docs/reporting-changes#command-line). The resulting subscription should be supplied as the dlqGcsPubSubSubscription Dataflow input parameter.
 
   For example:
 
@@ -93,7 +92,7 @@ A few prerequisites must be considered before starting with reverse replication.
   gcloud storage buckets notifications create --event-types=OBJECT_FINALIZE
   --object-prefix=retry/ gs://rr-dlq --topic=projects/<my-project>/topics/rr-dlq-topic
   ```
-15. Create change stream, the below example tracks all tables. When creating a change stream, use the NEW_ROW option, sample command below :
+14. Create change stream, the below example tracks all tables. When creating a change stream, use the NEW_ROW option, sample command below :
 
   ```
   CREATE CHANGE STREAM allstream
@@ -102,9 +101,9 @@ A few prerequisites must be considered before starting with reverse replication.
   value_capture_type = 'NEW_ROW'
   );
   ```
-16. The Dataflow template creates a pool of database connections per Dataflow worker. The maxShardConnections template parameter, defaulting to 10,000 represents the maximum connections allowed for a given database. The maxWorkers Dataflow configuration should not exceed the maxShardConnections value, else the template launch will fail as we do not want to overload the database.
+15. The Dataflow template creates a pool of database connections per Dataflow worker. The maxShardConnections template parameter, defaulting to 10,000 represents the maximum connections allowed for a given database. The maxWorkers Dataflow configuration should not exceed the maxShardConnections value, else the template launch will fail as we do not want to overload the database.
 
-17. Please refer dataflow [documentation](https://cloud.google.com/dataflow/docs/guides/routes-firewall#internet_access_for) on network options.
+16. Please refer dataflow [documentation](https://cloud.google.com/dataflow/docs/guides/routes-firewall#internet_access_for) on network options.
 
   When disabling the public IP for Dataflow, the option below should be added to the command line:
 
