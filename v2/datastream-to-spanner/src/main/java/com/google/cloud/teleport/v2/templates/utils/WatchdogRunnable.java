@@ -35,7 +35,7 @@ public class WatchdogRunnable implements Runnable, Serializable {
   private final AtomicLong transactionAttemptCount;
   private final AtomicBoolean isInTransaction;
   private final AtomicBoolean keepWatchdogRunning;
-  private transient long SLEEP_DURATION_IN_SECONDS = 15 * 60;
+  private transient long sleepDurationInSeconds = 15 * 60;
 
   public WatchdogRunnable(
       AtomicLong transactionAttemptCount,
@@ -55,16 +55,16 @@ public class WatchdogRunnable implements Runnable, Serializable {
         if (lastTransactionCount == currentTransactionCount) {
           LOG.warn(
               "Transaction is not making progress after %s seconds. Terminating process",
-              SLEEP_DURATION_IN_SECONDS);
+              sleepDurationInSeconds);
           System.exit(1);
         }
         lastTransactionCount = currentTransactionCount;
       }
-      Uninterruptibles.sleepUninterruptibly(Duration.ofSeconds(SLEEP_DURATION_IN_SECONDS));
+      Uninterruptibles.sleepUninterruptibly(Duration.ofSeconds(sleepDurationInSeconds));
     }
   }
 
-  public void setSleepDuration(long SLEEP_DURATION_IN_SECONDS) {
-    this.SLEEP_DURATION_IN_SECONDS = SLEEP_DURATION_IN_SECONDS;
+  public void setSleepDuration(long sleepDurationInSeconds) {
+    this.sleepDurationInSeconds = sleepDurationInSeconds;
   }
 }
