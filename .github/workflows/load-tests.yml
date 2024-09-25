@@ -28,8 +28,8 @@ jobs:
     - name: Run load tests with Maven
       run: |
         mvn test -PtemplatesLoadTests \
-        -Dproject=apache-beam-testing \
-        -DartifactBucket=gs://apache-beam-testing-pranavbhandari \
+        -Dproject=cloud-teleport-testing \
+        -DartifactBucket=gs://cloud-teleport-testing-it-gitactions \
         -DhostIp=${HOST_IP} \
         -DprivateConnectivity="datastream-private-connect-us-central1" \
         -DexportProject=cloud-teleport-testing \
