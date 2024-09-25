@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -280,6 +281,12 @@ public class AvroToValueMapper {
           s = "0" + s;
         }
         return ByteArray.copyFrom(Hex.decodeHex(s));
+      }
+      if (fieldSchema.getType().equals(Schema.Type.BYTES)) {
+        // For a bytes avro type, expect a java.nio.ByteBuffer.
+        if (recordValue instanceof ByteBuffer) {
+          return ByteArray.copyFrom(((ByteBuffer) recordValue).array());
+        }
       }
       return ByteArray.copyFrom((byte[]) recordValue);
     } catch (Exception e) {

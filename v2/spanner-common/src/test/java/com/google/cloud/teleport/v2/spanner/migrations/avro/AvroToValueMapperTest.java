@@ -24,6 +24,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.AvroTypeConvertorException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.avro.Schema;
@@ -315,6 +316,15 @@ public class AvroToValueMapperTest {
     ByteArray result =
         AvroToValueMapper.avroFieldToByteArray(inputValue, SchemaBuilder.builder().bytesType());
     assertEquals(ByteArray.copyFrom(inputValue), result);
+  }
+
+  @Test
+  public void testAvroFieldToByteArray_ValidByteBufferInput() {
+    byte[] bytes = {10, 20, 30};
+    ByteBuffer inputValue = ByteBuffer.wrap(bytes);
+    ByteArray result =
+        AvroToValueMapper.avroFieldToByteArray(inputValue, SchemaBuilder.builder().bytesType());
+    assertEquals(ByteArray.copyFrom(bytes), result);
   }
 
   @Test
