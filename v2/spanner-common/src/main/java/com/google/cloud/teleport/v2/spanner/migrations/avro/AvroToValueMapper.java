@@ -282,18 +282,12 @@ public class AvroToValueMapper {
         }
         return ByteArray.copyFrom(Hex.decodeHex(s));
       }
-      if (fieldSchema.getType().equals(Schema.Type.BYTES)) {
-        // For a bytes avro type, expect a java.nio.ByteBuffer.
-        if (recordValue instanceof ByteBuffer) {
-          return ByteArray.copyFrom(((ByteBuffer) recordValue).array());
-        }
-      }
-      return ByteArray.copyFrom((byte[]) recordValue);
+      return ByteArray.copyFrom(((ByteBuffer) recordValue).array());
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
           "Unable to convert "
               + fieldSchema.getType()
-              + " to byte array, with value: "
+              + " to byte buffer, with value: "
               + recordValue
               + ", Exception: "
               + e.getMessage());

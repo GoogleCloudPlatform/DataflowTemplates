@@ -312,14 +312,6 @@ public class AvroToValueMapperTest {
 
   @Test
   public void testAvroFieldToByteArray_ValidByteArrayInput() {
-    byte[] inputValue = {10, 20, 30};
-    ByteArray result =
-        AvroToValueMapper.avroFieldToByteArray(inputValue, SchemaBuilder.builder().bytesType());
-    assertEquals(ByteArray.copyFrom(inputValue), result);
-  }
-
-  @Test
-  public void testAvroFieldToByteArray_ValidByteBufferInput() {
     byte[] bytes = {10, 20, 30};
     ByteBuffer inputValue = ByteBuffer.wrap(bytes);
     ByteArray result =

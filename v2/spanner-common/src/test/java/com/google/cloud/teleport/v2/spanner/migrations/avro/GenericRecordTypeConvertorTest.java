@@ -148,9 +148,6 @@ public class GenericRecordTypeConvertorTest {
         .name("bytes_col")
         .type(unionNullType(Schema.create(Schema.Type.BYTES)))
         .noDefault()
-        .name("byte_buffer_col")
-        .type(unionNullType(Schema.create(Schema.Type.BYTES)))
-        .noDefault()
         .name("timestamp_col")
         .type(timestampType)
         .noDefault()
@@ -369,9 +366,6 @@ public class GenericRecordTypeConvertorTest {
             .column("bytes_col")
             .bytes()
             .endColumn()
-            .column("byte_buffer_col")
-            .bytes()
-            .endColumn()
             .column("timestamp_col")
             .timestamp()
             .endColumn()
@@ -396,7 +390,6 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put(
         "numeric_col", ByteBuffer.wrap(new BigDecimal("12.34").unscaledValue().toByteArray()));
     genericRecord.put("bytes_col", ByteBuffer.wrap(new byte[] {10, 20, 30}));
-    genericRecord.put("byte_buffer_col", ByteBuffer.wrap(new byte[] {40, 50, 60}));
     genericRecord.put("timestamp_col", 1602599400056483L);
     genericRecord.put("date_col", 738991);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
@@ -411,7 +404,6 @@ public class GenericRecordTypeConvertorTest {
             "string_col", Value.string("hello"),
             "numeric_col", Value.numeric(new BigDecimal("12.340000000")),
             "bytes_col", Value.bytes(ByteArray.copyFrom(new byte[] {10, 20, 30})),
-            "byte_buffer_col", Value.bytes(ByteArray.copyFrom(new byte[] {40, 50, 60})),
             "timestamp_col",
                 Value.timestamp(Timestamp.parseTimestamp("2020-10-13T14:30:00.056483Z")),
             "date_col", Value.date(com.google.cloud.Date.parseDate("3993-04-16")));
@@ -446,8 +438,6 @@ public class GenericRecordTypeConvertorTest {
             "numeric_col",
             Value.numeric(null),
             "bytes_col",
-            Value.bytes(null),
-            "byte_buffer_col",
             Value.bytes(null),
             "timestamp_col",
             Value.timestamp(null),
