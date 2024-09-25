@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.utils;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
+import com.google.gson.ToNumberPolicy;
 import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.io.InputStream;
@@ -184,6 +185,7 @@ public class ShardFileReader {
     Map shardConfigMap =
         new GsonBuilder()
             .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
+            .setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
             .create()
             .fromJson(jsonString, shardConfiguration);
 
@@ -225,7 +227,8 @@ public class ShardFileReader {
               (String) (dataShard.get("user")),
               password,
               "",
-              (String) (dataShard.get("secretManagerUri")));
+              (String) (dataShard.get("secretManagerUri")),
+              dataShard.getOrDefault("connectionProperties", "").toString());
 
       for (Map database : databases) {
         shard

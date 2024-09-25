@@ -189,7 +189,7 @@ public class MysqlDialectAdapterTest {
             MysqlDialectAdapter.getSchemaDiscoveryQuery(
                 SourceSchemaReference.builder().setDbName("testDB").build()))
         .isEqualTo(
-            "SELECT COLUMN_NAME,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE FROM INFORMATION_SCHEMA.Columns WHERE TABLE_SCHEMA = 'testDB' AND TABLE_NAME = ?");
+            "SELECT COLUMN_NAME,COLUMN_TYPE,CHARACTER_MAXIMUM_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE FROM INFORMATION_SCHEMA.Columns WHERE TABLE_SCHEMA = 'testDB' AND TABLE_NAME = ?");
   }
 
   @Test
@@ -820,7 +820,7 @@ class MockRSBuilder {
         .when(rs)
         .getString(InformationSchemaCols.NAME_COL);
 
-    // mock rs.getString("DATA_TYPE");
+    // mock rs.getString("COLUMN_TYPE");
     doAnswer(
             invocation -> {
               wasNull = null;

@@ -26,6 +26,7 @@ import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -90,6 +91,28 @@ public final class KafkaToBigQueryFlexJsonIT extends TemplateTestBase {
   }
 
   @Test
+  public void testKafkaToBigQueryWithUdfFunction() throws RestClientException, IOException {
+    String udfFileName = "input/transform.js";
+    gcsClient.createArtifact(
+        udfFileName,
+        "function transform(value) {\n"
+            + "  const data = JSON.parse(value);\n"
+            + "  data.name = data.name.toUpperCase();\n"
+            + "  return JSON.stringify(data);\n"
+            + "}");
+
+    baseKafkaToBigQuery(
+        b ->
+            b.addParameter("messageFormat", "JSON")
+                .addParameter("writeMode", "SINGLE_TABLE_NAME")
+                .addParameter("useBigQueryDLQ", "false")
+                .addParameter("kafkaReadAuthenticationMode", "NONE")
+                .addParameter("javascriptTextTransformGcsPath", getGcsPath(udfFileName))
+                .addParameter("javascriptTextTransformFunctionName", "transform"),
+        s -> s == null ? null : s.toUpperCase());
+  }
+
+  @Test
   @TemplateIntegrationTest(value = KafkaToBigQueryFlex.class, template = "Kafka_to_BigQuery_Flex")
   public void testKafkaToBigQueryWithExistingDLQ() throws IOException {
     TableId deadletterTableId =
@@ -137,6 +160,13 @@ public final class KafkaToBigQueryFlexJsonIT extends TemplateTestBase {
   }
 
   public void baseKafkaToBigQuery(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException {
+    baseKafkaToBigQuery(paramsAdder, Function.identity());
+  }
+
+  public void baseKafkaToBigQuery(
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder,
+      Function<String, String> namePostProcessor)
       throws IOException {
     // Arrange
     String topicName = kafkaResourceManager.createTopic(testName, 5);
@@ -198,7 +228,9 @@ public final class KafkaToBigQueryFlexJsonIT extends TemplateTestBase {
 
     assertThatBigQueryRecords(tableRows)
         .hasRecordsUnordered(
-            List.of(Map.of("id", 11, "name", "Dataflow"), Map.of("id", 12, "name", "Pub/Sub")));
+            List.of(
+                Map.of("id", 11, "name", namePostProcessor.apply("Dataflow")),
+                Map.of("id", 12, "name", namePostProcessor.apply("Pub/Sub"))));
     assertThatBigQueryRecords(dlqRows).hasRecordsWithStrings(List.of("bad json string"));
   }
 

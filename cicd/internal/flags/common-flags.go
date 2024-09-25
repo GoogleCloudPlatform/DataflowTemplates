@@ -24,6 +24,7 @@ import (
 const (
 	ALL     = "ALL"     // All modules
 	DEFAULT = "DEFAULT" // Modules other than those excluded
+	KAFKA   = "KAFKA"
 	SPANNER = "SPANNER"
 )
 
@@ -33,6 +34,13 @@ var (
 	moduleMap      = map[string][]string{
 		ALL:     {},
 		DEFAULT: {},
+		KAFKA: {"v2/kafka-common/",
+			"v2/kafka-to-bigquery/",
+			"v2/kafka-to-gcs/",
+			"v2/kafka-to-kafka/",
+			"v2/kafka-to-pubsub/",
+			"plugins/templates-maven-plugin",
+		},
 		SPANNER: {"v2/datastream-to-spanner/",
 			"v2/spanner-change-streams-to-sharded-file-sink/",
 			"v2/gcs-to-sourcedb/",
@@ -57,7 +65,7 @@ func ModulesToBuild() []string {
 		for k, v := range moduleMap {
 			if k != "ALL" && k != "DEFAULT" {
 				for _, n := range v {
-					if !strings.HasPrefix(n, "plugins/") {
+					if !(strings.HasPrefix(n, "plugins/") || strings.Contains(n, "common/")) {
 						s = append(s, "!"+n)
 					}
 				}

@@ -30,8 +30,11 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.utils.ConnectionException;
+import com.google.cloud.teleport.v2.templates.utils.ConnectionHelper;
 import com.google.cloud.teleport.v2.templates.utils.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.utils.MySqlDao;
+import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
@@ -83,6 +86,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final Ddl ddl;
   private final String shadowTablePrefix;
   private final String skipDirName;
+  private final int maxThreadPerDataflowWorker;
 
   public SourceWriterFn(
       List<Shard> shards,
@@ -91,7 +95,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       String sourceDbTimezoneOffset,
       Ddl ddl,
       String shadowTablePrefix,
-      String skipDirName) {
+      String skipDirName,
+      int maxThreadPerDataflowWorker) {
 
     this.schema = schema;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
@@ -100,6 +105,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.ddl = ddl;
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
+    this.maxThreadPerDataflowWorker = maxThreadPerDataflowWorker;
   }
 
   // for unit testing purposes
@@ -122,12 +128,11 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   public void setup() {
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-
-    // TODO: Support multiple databases
+    ConnectionHelper.init(shards, null, maxThreadPerDataflowWorker);
+    mySqlDaoMap = new HashMap<>();
     for (Shard shard : shards) {
       String sourceConnectionUrl =
           "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
-      mySqlDaoMap = new HashMap<>();
       mySqlDaoMap.put(
           shard.getLogicalShardId(),
           new MySqlDao(sourceConnectionUrl, shard.getUserName(), shard.getPassword()));
@@ -138,11 +143,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   /** Teardown function disconnects from the Cloud Spanner. */
   @Teardown
   public void teardown() throws Exception {
-    if (mySqlDaoMap != null) {
-      for (MySqlDao mySqlDao : mySqlDaoMap.values()) {
-        mySqlDao.cleanup();
-      }
-    }
     spannerDao.close();
     mySqlDaoMap.clear();
   }
@@ -170,12 +170,22 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                 tableName, ddl, keysJson, /* convertNameToLowerCase= */ false);
         String shadowTableName = shadowTablePrefix + tableName;
         boolean isSourceAhead = false;
-
-        com.google.cloud.Timestamp processedCommitTimestamp =
-            spannerDao.getProcessedCommitTimestamp(shadowTableName, primaryKey);
+        ShadowTableRecord shadowTableRecord =
+            spannerDao.getShadowTableRecord(shadowTableName, primaryKey);
         isSourceAhead =
-            processedCommitTimestamp != null
-                && (processedCommitTimestamp.compareTo(spannerRec.getCommitTimestamp()) > 0);
+            shadowTableRecord != null
+                && ((shadowTableRecord
+                            .getProcessedCommitTimestamp()
+                            .compareTo(spannerRec.getCommitTimestamp())
+                        > 0) // either the source already has record with greater commit
+                    // timestamp
+                    || (shadowTableRecord // or the source has the same commit timestamp but
+                                // greater record sequence
+                                .getProcessedCommitTimestamp()
+                                .compareTo(spannerRec.getCommitTimestamp())
+                            == 0
+                        && shadowTableRecord.getRecordSequence()
+                            > Long.parseLong(spannerRec.getRecordSequence())));
 
         if (!isSourceAhead) {
           MySqlDao mySqlDao = mySqlDaoMap.get(shardId);
@@ -183,9 +193,13 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
           InputRecordProcessor.processRecord(
               spannerRec, schema, mySqlDao, shardId, sourceDbTimezoneOffset);
 
-          spannerDao.updateProcessedCommitTimestamp(
+          spannerDao.updateShadowTable(
               getShadowTableMutation(
-                  tableName, shadowTableName, keysJson, spannerRec.getCommitTimestamp()));
+                  tableName,
+                  shadowTableName,
+                  keysJson,
+                  spannerRec.getCommitTimestamp(),
+                  spannerRec.getRecordSequence()));
         }
         successRecordCountMetric.inc();
         if (spannerRec.isRetryRecord()) {
@@ -195,25 +209,24 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         c.output(Constants.SUCCESS_TAG, timestamp.toString());
       } catch (ChangeEventConvertorException ex) {
         outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (SpannerException | IllegalStateException ex) {
-        if (!spannerRec.isRetryRecord()) {
-          retryableRecordCountMetric.inc();
-        }
+      } catch (SpannerException
+          | IllegalStateException
+          | com.mysql.cj.jdbc.exceptions.CommunicationsException
+          | java.sql.SQLIntegrityConstraintViolationException
+          | java.sql.SQLTransientConnectionException
+          | ConnectionException ex) {
         outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (Exception ex) {
-        LOG.error("Failed to write to source", ex);
-        // we are only interested in the retryable errors
+      } catch (java.sql.SQLNonTransientConnectionException ex) {
         // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
-        // Error 1452 and 1451
-
-        if (ex.getMessage().contains("a foreign key constraint fails")) {
-          if (!spannerRec.isRetryRecord()) {
-            retryableRecordCountMetric.inc();
-          }
+        // error codes 1053,1161 and 1159 can be retried
+        if (ex.getErrorCode() == 1053 || ex.getErrorCode() == 1159 || ex.getErrorCode() == 1161) {
           outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
         } else {
           outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
         }
+      } catch (Exception ex) {
+        LOG.error("Failed to write to source", ex);
+        outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
       }
     }
   }
@@ -222,7 +235,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       String tableName,
       String shadowTableName,
       JsonNode keysJson,
-      com.google.cloud.Timestamp commitTimestamp)
+      com.google.cloud.Timestamp commitTimestamp,
+      String recordSequence)
       throws ChangeEventConvertorException {
     Mutation.WriteBuilder mutationBuilder = null;
 
@@ -240,6 +254,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
             keyColumnNamesSet,
             /* convertNameToLowerCase= */ false);
     mutationBuilder.set(Constants.PROCESSED_COMMIT_TS_COLUMN_NAME).to(commitTimestamp);
+    mutationBuilder.set(Constants.RECORD_SEQ_COLUMN_NAME).to(Long.parseLong(recordSequence));
 
     return mutationBuilder.build();
   }
@@ -251,6 +266,11 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       TrimmedShardedDataChangeRecord record) {
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord = new ChangeStreamErrorRecord(jsonRec, message);
+
+    // Permanent error metrics are inceremented differently based on regular or retryDLQ mode
+    if (!record.isRetryRecord() && tag.equals(Constants.RETRYABLE_ERROR_TAG)) {
+      retryableRecordCountMetric.inc();
+    }
     c.output(tag, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
   }
 }

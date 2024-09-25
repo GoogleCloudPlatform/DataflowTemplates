@@ -43,21 +43,23 @@ public final class ShadowTableCreatorTest {
 
     Table shadowTable = shadowTableCreator.constructShadowTable("table1");
     assertThat(shadowTable.name()).isEqualTo("shadow_table1");
-    assertThat(shadowTable.columns()).hasSize(2);
+    assertThat(shadowTable.columns()).hasSize(3);
     assertThat(shadowTable.columns().get(0).name()).isEqualTo("id");
     assertThat(shadowTable.columns().get(1).name())
         .isEqualTo(Constants.PROCESSED_COMMIT_TS_COLUMN_NAME);
+    assertThat(shadowTable.columns().get(2).name()).isEqualTo(Constants.RECORD_SEQ_COLUMN_NAME);
     assertThat(shadowTable.primaryKeys()).hasSize(1);
     assertThat(shadowTable.primaryKeys().get(0).name()).isEqualTo("id");
     assertThat(shadowTable.primaryKeys().get(0).order()).isEqualTo(IndexColumn.Order.ASC);
 
     Table shadowTable4 = shadowTableCreator.constructShadowTable("table4");
     assertThat(shadowTable4.name()).isEqualTo("shadow_table4");
-    assertThat(shadowTable4.columns()).hasSize(3);
+    assertThat(shadowTable4.columns()).hasSize(4);
     assertThat(shadowTable4.columns().get(0).name()).isEqualTo("id4");
     assertThat(shadowTable4.columns().get(1).name()).isEqualTo("id5");
     assertThat(shadowTable4.columns().get(2).name())
         .isEqualTo(Constants.PROCESSED_COMMIT_TS_COLUMN_NAME);
+    assertThat(shadowTable4.columns().get(3).name()).isEqualTo(Constants.RECORD_SEQ_COLUMN_NAME);
     assertThat(shadowTable4.primaryKeys()).hasSize(2);
     assertThat(shadowTable4.primaryKeys().get(0).name()).isEqualTo("id4");
     assertThat(shadowTable4.primaryKeys().get(0).order()).isEqualTo(IndexColumn.Order.ASC);

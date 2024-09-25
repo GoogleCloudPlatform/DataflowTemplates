@@ -60,7 +60,7 @@ public class InlineDataToNeo4jIT extends TemplateTestBase {
   }
 
   @Test
-  public void testInlineDataToNeo4j() throws IOException {
+  public void importsInlineDataToNeo4J() throws IOException {
     String spec = contentOf("/testing-specs/inline-data/northwind-jobspec.json");
     gcsClient.createArtifact("inline-data-to-neo4j.json", spec);
     gcsClient.createArtifact("neo4j-connection.json", jsonBasicPayload(neo4jClient));

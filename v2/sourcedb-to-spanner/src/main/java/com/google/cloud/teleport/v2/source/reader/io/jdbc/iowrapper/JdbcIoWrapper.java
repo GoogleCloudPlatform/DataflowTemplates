@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
 
+import static com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.INDEX_TYPE_TO_CLASS;
+
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SuitableIndexNotFoundException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
@@ -243,7 +245,7 @@ public final class JdbcIoWrapper implements IoWrapper {
             .forEach(tableConfigBuilder::withPartitionColum);
       } else {
         ImmutableSet<IndexType> supportedIndexTypes =
-            ImmutableSet.of(IndexType.NUMERIC, IndexType.STRING);
+            ImmutableSet.of(IndexType.NUMERIC, IndexType.STRING, IndexType.BIG_INT_UNSIGNED);
         // As of now only Primary key index with Numeric type is supported.
         // TODO:
         //    1. support non-primary unique indexes.
@@ -274,11 +276,21 @@ public final class JdbcIoWrapper implements IoWrapper {
     }
   }
 
+  @VisibleForTesting
+  protected static java.lang.Class indexTypeToColumnClass(SourceColumnIndexInfo indexInfo)
+      throws SuitableIndexNotFoundException {
+    if (INDEX_TYPE_TO_CLASS.containsKey(indexInfo.indexType())) {
+      return INDEX_TYPE_TO_CLASS.get(indexInfo.indexType());
+    } else {
+      throw new SuitableIndexNotFoundException(
+          new Throwable("No class Mapping for IndexType " + indexInfo));
+    }
+  }
+
   private static PartitionColumn partitionColumnFromIndexInfo(SourceColumnIndexInfo idxInfo) {
     return PartitionColumn.builder()
         .setColumnName(idxInfo.columnName())
-        // TODO(vardhanvthigle): handle other types
-        .setColumnClass((idxInfo.indexType() == IndexType.NUMERIC) ? Long.class : String.class)
+        .setColumnClass(indexTypeToColumnClass(idxInfo))
         .setStringCollation(idxInfo.collationReference())
         .setStringMaxLength(idxInfo.stringMaxLength())
         .build();

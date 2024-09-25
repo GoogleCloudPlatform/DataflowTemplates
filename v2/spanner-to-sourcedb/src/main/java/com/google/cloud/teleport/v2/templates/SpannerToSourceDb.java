@@ -48,6 +48,7 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType;
@@ -88,7 +89,7 @@ import org.slf4j.LoggerFactory;
     optionsClass = Options.class,
     flexContainerName = "spanner-to-sourcedb",
     contactInformation = "https://cloud.google.com/support",
-    hidden = true,
+    hidden = false,
     streaming = true)
 public class SpannerToSourceDb {
 
@@ -388,6 +389,30 @@ public class SpannerToSourceDb {
         .as(DataflowPipelineWorkerPoolOptions.class)
         .setAutoscalingAlgorithm(AutoscalingAlgorithmType.THROUGHPUT_BASED);
 
+    // calculate the max connections per worker
+    int maxNumWorkers =
+        pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getMaxNumWorkers() > 0
+            ? pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getMaxNumWorkers()
+            : 1;
+    int connectionPoolSizePerWorker = (int) (options.getMaxShardConnections() / maxNumWorkers);
+    if (connectionPoolSizePerWorker < 1) {
+      // This can happen when the number of workers is more than max.
+      // This can cause overload on the source database. Error out and let the user know.
+      LOG.error(
+          "Max workers {} is more than max shard connections {}, this can lead to more database"
+              + " connections than desired",
+          maxNumWorkers,
+          options.getMaxShardConnections());
+      throw new IllegalArgumentException(
+          "Max Dataflow workers "
+              + maxNumWorkers
+              + " is more than max per shard connections: "
+              + options.getMaxShardConnections()
+              + " this can lead to more"
+              + " database connections than desired. Either reduce the max allowed workers or"
+              + " incease the max shard connections");
+    }
+
     // Read the session file
     Schema schema = SessionFileReader.read(options.getSessionFilePath());
 
@@ -423,6 +448,8 @@ public class SpannerToSourceDb {
                 .getDialect(),
             options.getShadowTablePrefix());
 
+    DataflowPipelineDebugOptions debugOptions = options.as(DataflowPipelineDebugOptions.class);
+
     shadowTableCreator.createShadowTablesInSpanner();
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
@@ -434,6 +461,12 @@ public class SpannerToSourceDb {
     boolean isRegularMode = "regular".equals(options.getRunMode());
     PCollectionTuple reconsumedElements = null;
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
+
+    int reshuffleBucketSize =
+        maxNumWorkers
+            * (debugOptions.getNumberOfWorkerHarnessThreads() > 0
+                ? debugOptions.getNumberOfWorkerHarnessThreads()
+                : Constants.DEFAULT_WORKER_HARNESS_THREAD_COUNT);
 
     if (isRegularMode) {
       reconsumedElements =
@@ -490,7 +523,6 @@ public class SpannerToSourceDb {
     } else {
       mergedRecords = dlqRecords;
     }
-
     SourceWriterTransform.Result sourceWriterOutput =
         mergedRecords
             .apply(
@@ -510,7 +542,9 @@ public class SpannerToSourceDb {
                         options.getShardingCustomJarPath(),
                         options.getShardingCustomClassName(),
                         options.getShardingCustomParameters(),
-                        options.getMaxShardConnections())))
+                        options.getMaxShardConnections()
+                            * shards.size()))) // currently assuming that all shards accept the same
+            // number of max connections
             .setCoder(
                 KvCoder.of(
                     VarLongCoder.of(), SerializableCoder.of(TrimmedShardedDataChangeRecord.class)))
@@ -524,7 +558,8 @@ public class SpannerToSourceDb {
                     options.getSourceDbTimezoneOffset(),
                     ddl,
                     options.getShadowTablePrefix(),
-                    options.getSkipDirectoryName()));
+                    options.getSkipDirectoryName(),
+                    connectionPoolSizePerWorker));
 
     PCollection<FailsafeElement<String, String>> dlqPermErrorRecords =
         reconsumedElements
@@ -535,6 +570,8 @@ public class SpannerToSourceDb {
         sourceWriterOutput
             .permanentErrors()
             .setCoder(StringUtf8Coder.of())
+            .apply(
+                "Reshuffle3", Reshuffle.<String>viaRandomKey().withNumBuckets(reshuffleBucketSize))
             .apply(
                 "Convert permanent errors from source writer to DLQ format",
                 ParDo.of(new ConvertChangeStreamErrorRecordToFailsafeElementFn()))
@@ -565,6 +602,8 @@ public class SpannerToSourceDb {
             .retryableErrors()
             .setCoder(StringUtf8Coder.of())
             .apply(
+                "Reshuffle4", Reshuffle.<String>viaRandomKey().withNumBuckets(reshuffleBucketSize))
+            .apply(
                 "Convert retryable errors from source writer to DLQ format",
                 ParDo.of(new ConvertChangeStreamErrorRecordToFailsafeElementFn()))
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
@@ -586,6 +625,8 @@ public class SpannerToSourceDb {
         sourceWriterOutput
             .skippedSourceWrites()
             .setCoder(StringUtf8Coder.of())
+            .apply(
+                "Reshuffle5", Reshuffle.<String>viaRandomKey().withNumBuckets(reshuffleBucketSize))
             .apply(
                 "Convert skipped records from source writer to DLQ format",
                 ParDo.of(new ConvertChangeStreamErrorRecordToFailsafeElementFn()))

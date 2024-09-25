@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
@@ -50,6 +51,8 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
   private ISchemaMapper schemaMapper;
   private ReaderImpl reader;
   private String shardId;
+  private String shardIdColumn;
+  private SQLDialect sqlDialect;
 
   public MigrateTableTransform(
       SourceDbToSpannerOptions options,
@@ -57,13 +60,16 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
       Ddl ddl,
       ISchemaMapper schemaMapper,
       ReaderImpl reader,
-      String shardId) {
+      String shardId,
+      String shardIdColumn) {
     this.options = options;
     this.spannerConfig = spannerConfig;
     this.ddl = ddl;
     this.schemaMapper = schemaMapper;
     this.reader = reader;
     this.shardId = StringUtils.isEmpty(shardId) ? "" : shardId;
+    this.shardIdColumn = shardIdColumn;
+    this.sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
   }
 
   @Override
@@ -109,7 +115,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     // Dump Failed rows to DLQ
     String dlqDirectory = outputDirectory + "dlq/severe/" + shardId;
     LOG.info("DLQ directory: {}", dlqDirectory);
-    DeadLetterQueue dlq = DeadLetterQueue.create(dlqDirectory, ddl);
+    DeadLetterQueue dlq = DeadLetterQueue.create(dlqDirectory, ddl, shardIdColumn, sqlDialect);
     dlq.failedMutationsToDLQ(failedMutations);
     dlq.failedTransformsToDLQ(
         transformationResult
@@ -121,7 +127,8 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
      */
     String filterEventsDirectory = outputDirectory + "filteredEvents/" + shardId;
     LOG.info("Filtered events directory: {}", filterEventsDirectory);
-    DeadLetterQueue filteredEventsQueue = DeadLetterQueue.create(filterEventsDirectory, ddl);
+    DeadLetterQueue filteredEventsQueue =
+        DeadLetterQueue.create(filterEventsDirectory, ddl, shardIdColumn, sqlDialect);
     filteredEventsQueue.filteredEventsToDLQ(
         transformationResult
             .get(SourceDbToSpannerConstants.FILTERED_EVENT_TAG)

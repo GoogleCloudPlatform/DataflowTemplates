@@ -83,7 +83,7 @@ public class MySqlConfigDefaults {
   // TODO: Add innodb_parallel_read_threads for better performance tuning.
   public static final ImmutableList<String> DEFAULT_MYSQL_INIT_SEQ =
       ImmutableList.of(
-          "SET TIME_ZONE = 'UTC'",
+          "SET TIME_ZONE = '+00:00'",
           "SET SESSION NET_WRITE_TIMEOUT=1200",
           "SET SESSION NET_READ_TIMEOUT=1200");
 

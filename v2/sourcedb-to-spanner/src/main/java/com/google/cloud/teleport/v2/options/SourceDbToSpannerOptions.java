@@ -22,6 +22,7 @@ import org.apache.beam.sdk.options.Default;
 public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   @TemplateParameter.Enum(
       order = 1,
+      optional = true,
       enumOptions = {
         @TemplateParameter.TemplateEnumOption("MYSQL"),
         @TemplateParameter.TemplateEnumOption("POSTGRESQL")

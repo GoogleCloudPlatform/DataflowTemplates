@@ -3,6 +3,11 @@ CREATE TABLE bigint_table (
   bigint_col INT64,
 ) PRIMARY KEY(id);
 
+CREATE TABLE bigint_table (
+  id INT64 NOT NULL,
+  bigint_unsigned_col INT64,
+) PRIMARY KEY(id);
+
 CREATE TABLE binary_table (
   id INT64 NOT NULL,
   binary_col BYTES(MAX),
@@ -68,6 +73,11 @@ CREATE TABLE int_table (
   int_col INT64,
 ) PRIMARY KEY(id);
 
+CREATE TABLE `integer_unsigned_table` (
+  id INT64 NOT NULL,
+  int_col INT64,
+) PRIMARY KEY(id);
+
 CREATE TABLE json_table (
   id INT64 NOT NULL,
   json_col JSON,
@@ -89,10 +99,16 @@ CREATE TABLE mediumblob_table (
   mediumblob_col BYTES(MAX),
 ) PRIMARY KEY(id);
 
-CREATE TABLE mediumint_table (
-  id INT64 NOT NULL,
-  mediumint_col INT64,
-) PRIMARY KEY(id);
+create table mediumint_table (
+  id int64 not null,
+  mediumint_col int64,
+) primary key(id);
+
+create table mediumint_unsigned_table (
+  id int64 not null,
+  mediumint_unsigned_col int64,
+) primary key(id);
+
 
 CREATE TABLE mediumtext_table (
   id INT64 NOT NULL,
@@ -132,6 +148,11 @@ CREATE TABLE tinyblob_table (
 CREATE TABLE tinyint_table (
   id INT64 NOT NULL,
   tinyint_col INT64,
+) PRIMARY KEY(id);
+
+CREATE TABLE tinyint_unsigned_table (
+  id INT64 NOT NULL,
+  tinyint_unsigned_col INT64,
 ) PRIMARY KEY(id);
 
 CREATE TABLE tinytext_table (
@@ -182,4 +203,13 @@ CREATE TABLE spatial_point (
 CREATE TABLE spatial_polygon (
   id INT64 NOT NULL,
   area STRING(MAX),
+) PRIMARY KEY(id);
+CREATE TABLE `bigint_unsigned_pk_table` (
+  id NUMERIC NOT NULL,
+  bigint_unsigned_col NUMERIC NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE `string_pk_table` (
+  id STRING(max) NOT NULL,
+  string_col STRING(max) NOT NULL
 ) PRIMARY KEY(id);

@@ -72,12 +72,13 @@ public class OptionsToConfigBuilderTest {
   public void testConfigWithMySqlUrlFromOptions() {
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
-    JdbcIOWrapperConfig config =
+    JdbcIOWrapperConfig configWithConnectionProperties =
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.MYSQL,
             List.of("table1", "table2"),
             null,
             "myhost",
+            "testParam=testValue",
             3306,
             "myuser",
             "mypassword",
@@ -88,7 +89,29 @@ public class OptionsToConfigBuilderTest {
             10,
             0,
             Wait.on(dummyPCollection));
-    assertThat(config.sourceDbURL())
+
+    JdbcIOWrapperConfig configWithoutConnectionProperties =
+        OptionsToConfigBuilder.getJdbcIOWrapperConfig(
+            SQLDialect.MYSQL,
+            List.of("table1", "table2"),
+            null,
+            "myhost",
+            null,
+            3306,
+            "myuser",
+            "mypassword",
+            "mydb",
+            null,
+            "com.mysql.jdbc.Driver",
+            "mysql-jar",
+            10,
+            0,
+            Wait.on(dummyPCollection));
+
+    assertThat(configWithConnectionProperties.sourceDbURL())
+        .isEqualTo(
+            "jdbc:mysql://myhost:3306/mydb?testParam=testValue&allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
+    assertThat(configWithoutConnectionProperties.sourceDbURL())
         .isEqualTo(
             "jdbc:mysql://myhost:3306/mydb?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
   }
@@ -130,12 +153,13 @@ public class OptionsToConfigBuilderTest {
   public void testConfigWithPostgreSqlUrlFromOptions() {
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
-    JdbcIOWrapperConfig config =
+    JdbcIOWrapperConfig configWithConnectionParameters =
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.POSTGRESQL,
             List.of("table1", "table2"),
             null,
             "myhost",
+            "testParam=testValue",
             5432,
             "myuser",
             "mypassword",
@@ -146,7 +170,27 @@ public class OptionsToConfigBuilderTest {
             10,
             0,
             Wait.on(dummyPCollection));
-    assertThat(config.sourceDbURL()).isEqualTo("jdbc:postgresql://myhost:5432/mydb");
+    JdbcIOWrapperConfig configWithoutConnectionParameters =
+        OptionsToConfigBuilder.getJdbcIOWrapperConfig(
+            SQLDialect.POSTGRESQL,
+            List.of("table1", "table2"),
+            null,
+            "myhost",
+            "",
+            5432,
+            "myuser",
+            "mypassword",
+            "mydb",
+            null,
+            "com.mysql.jdbc.Driver",
+            "mysql-jar",
+            10,
+            0,
+            Wait.on(dummyPCollection));
+    assertThat(configWithoutConnectionParameters.sourceDbURL())
+        .isEqualTo("jdbc:postgresql://myhost:5432/mydb");
+    assertThat(configWithConnectionParameters.sourceDbURL())
+        .isEqualTo("jdbc:postgresql://myhost:5432/mydb?testParam=testValue");
   }
 
   @Test
