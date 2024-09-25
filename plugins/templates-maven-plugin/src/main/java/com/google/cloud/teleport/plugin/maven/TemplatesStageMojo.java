@@ -111,22 +111,39 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${gcpTempLocation}", readonly = true, required = false)
   protected String gcpTempLocation;
 
-  @Parameter(defaultValue = "${baseContainerImage}", readonly = true, required = false)
+  @Parameter(
+      defaultValue = BASE_CONTAINER_IMAGE,
+      property = "baseContainerImage",
+      readonly = true,
+      required = false)
   protected String baseContainerImage;
 
-  @Parameter(defaultValue = "${basePythonContainerImage}", readonly = true, required = false)
+  @Parameter(
+      defaultValue = BASE_PYTHON_CONTAINER_IMAGE,
+      property = "basePythonContainerImage",
+      readonly = true,
+      required = false)
   protected String basePythonContainerImage;
 
   @Parameter(
-      defaultValue = "${pythonTemplateLauncherEntryPoint}",
+      defaultValue = PYTHON_LAUNCHER_ENTRYPOINT,
+      property = "pythonTemplateLauncherEntryPoint",
       readonly = true,
       required = false)
   protected String pythonTemplateLauncherEntryPoint;
 
-  @Parameter(defaultValue = "${javaTemplateLauncherEntryPoint}", readonly = true, required = false)
+  @Parameter(
+      defaultValue = JAVA_LAUNCHER_ENTRYPOINT,
+      property = "javaTemplateLauncherEntryPoint",
+      readonly = true,
+      required = false)
   protected String javaTemplateLauncherEntryPoint;
 
-  @Parameter(defaultValue = "${pythonVersion}", readonly = true, required = false)
+  @Parameter(
+      defaultValue = PYTHON_VERSION,
+      property = "pythonVersion",
+      readonly = true,
+      required = false)
   protected String pythonVersion;
 
   @Parameter(defaultValue = "${beamVersion}", readonly = true, required = false)
@@ -192,8 +209,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       stagePrefix = stagePrefix.substring(0, stagePrefix.length() - 1);
     }
 
-    // Set default values for Dockerfile-based templates (YAML, PYTHON, XLANG)
-    setDockerfileDefaults();
+    if (beamVersion == null || beamVersion.isEmpty()) {
+      beamVersion = project.getProperties().getProperty("beam-python.version");
+    }
 
     try {
       URLClassLoader loader = buildClassloader();
@@ -961,27 +979,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     } catch (Exception e) {
       LOG.warn("unable to copy jar files");
       throw e;
-    }
-  }
-
-  private void setDockerfileDefaults() {
-    if (baseContainerImage == null) {
-      baseContainerImage = BASE_CONTAINER_IMAGE;
-    }
-    if (basePythonContainerImage == null) {
-      basePythonContainerImage = BASE_PYTHON_CONTAINER_IMAGE;
-    }
-    if (javaTemplateLauncherEntryPoint == null) {
-      javaTemplateLauncherEntryPoint = JAVA_LAUNCHER_ENTRYPOINT;
-    }
-    if (pythonTemplateLauncherEntryPoint == null) {
-      pythonTemplateLauncherEntryPoint = PYTHON_LAUNCHER_ENTRYPOINT;
-    }
-    if (pythonVersion == null) {
-      pythonVersion = PYTHON_VERSION;
-    }
-    if (beamVersion == null) {
-      beamVersion = project.getProperties().getProperty("beam-python.version");
     }
   }
 
