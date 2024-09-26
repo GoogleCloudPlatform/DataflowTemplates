@@ -64,7 +64,8 @@ public class ConvertChangeStreamErrorRecordToFailsafeElementFnTest {
     convertChangeStreamErrorRecordToFailsafeElementFn.processElement(processContext);
     verify(processContext, times(1)).output(eq(failsafeElement));
 
-    // tests the untested code paths
+    // tests the untested code paths for used classes
+    // keeping it here since they do no warrant a separate test class
     ChangeStreamErrorRecord errorRecord2 =
         new ChangeStreamErrorRecord(errorRecord.getOriginalRecord(), errorRecord.getErrorMessage());
     errorRecord2.setOriginalRecord(errorRecord.getOriginalRecord());
@@ -76,6 +77,9 @@ public class ConvertChangeStreamErrorRecordToFailsafeElementFnTest {
     assertTrue(record.getNumberOfRecordsInTransaction() == 1);
     assertTrue(record.getTransactionTag().equals("sampleTrxTag"));
     assertTrue(record.toString().contains("parent1"));
+    assertTrue(record.equals(record));
+    assertTrue(!record.equals(message));
+    assertTrue(record.equals(getTrimmedDataChangeRecord("shardA")));
   }
 
   private TrimmedShardedDataChangeRecord getTrimmedDataChangeRecord(String shardId) {

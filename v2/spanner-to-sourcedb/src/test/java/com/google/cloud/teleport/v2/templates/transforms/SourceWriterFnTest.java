@@ -84,7 +84,22 @@ public class SourceWriterFnTest {
     doNothing().when(mockSpannerDao).updateShadowTable(any());
     doThrow(new java.sql.SQLIntegrityConstraintViolationException("a foreign key constraint fails"))
         .when(mockMySqlDao)
-        .write(contains("child21"));
+        .write(contains("2300")); // This is the child_id for which we want to test the foreign key
+    // constraint failure.
+    doThrow(
+            new java.sql.SQLNonTransientConnectionException(
+                "transient connection error", "HY000", 1161))
+        .when(mockMySqlDao)
+        .write(contains("1161")); // This is the child_id for which we want to retryable
+    // connection error
+    doThrow(
+            new java.sql.SQLNonTransientConnectionException(
+                "permanent connection error", "HY000", 4242))
+        .when(mockMySqlDao)
+        .write(contains("4242")); // no retryable error
+    doThrow(new RuntimeException("generic exception"))
+        .when(mockMySqlDao)
+        .write(contains("12345")); // to test code path of generic exception
     doNothing().when(mockMySqlDao).write(contains("parent1"));
     testShard = new Shard();
     testShard.setLogicalShardId("shardA");
@@ -297,7 +312,7 @@ public class SourceWriterFnTest {
 
   @Test
   public void testRetryableErrorForForeignKey() throws Exception {
-    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA");
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 2300);
     record.setShard("shardA");
     when(processContext.element()).thenReturn(KV.of(1L, record));
     SourceWriterFn sourceWriterFn =
@@ -322,6 +337,92 @@ public class SourceWriterFnTest {
     verify(processContext, atLeast(1))
         .output(
             Constants.RETRYABLE_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
+  @Test
+  public void testRetryableErrorConnectionFailure() throws Exception {
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 1161);
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip",
+            500);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.processElement(processContext);
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord =
+        new ChangeStreamErrorRecord(jsonRec, "transient connection error");
+    verify(processContext, atLeast(1))
+        .output(
+            Constants.RETRYABLE_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
+  @Test
+  public void testPermanentConnectionFailure() throws Exception {
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 4242);
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip",
+            500);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.processElement(processContext);
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord =
+        new ChangeStreamErrorRecord(jsonRec, "permanent connection error");
+    verify(processContext, atLeast(1))
+        .output(
+            Constants.PERMANENT_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
+  @Test
+  public void testPermanentGenericException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 12345);
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip",
+            500);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.processElement(processContext);
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord = new ChangeStreamErrorRecord(jsonRec, "generic exception");
+    verify(processContext, atLeast(1))
+        .output(
+            Constants.PERMANENT_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
   }
 
   static Ddl getTestDdl() {
@@ -476,14 +577,15 @@ public class SourceWriterFnTest {
         "");
   }
 
-  private TrimmedShardedDataChangeRecord getChild21TrimmedDataChangeRecord(String shardId) {
+  private TrimmedShardedDataChangeRecord getChild21TrimmedDataChangeRecord(
+      String shardId, int childIdForMockResponse) {
     return new TrimmedShardedDataChangeRecord(
         Timestamp.parseTimestamp("2024-12-01T10:15:30.000Z"),
         "serverTxnId",
         "0",
         "child21",
         new Mod(
-            "{\"child_id\": \"42\" , \"parent_id\": \"42\"}",
+            "{\"child_id\": \"" + childIdForMockResponse + "\" , \"parent_id\": \"42\"}",
             "{}",
             "{ \"migration_shard_id\": \"" + shardId + "\"}"),
         ModType.valueOf("INSERT"),

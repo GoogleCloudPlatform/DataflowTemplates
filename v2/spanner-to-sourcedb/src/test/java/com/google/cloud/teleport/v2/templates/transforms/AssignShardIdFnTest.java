@@ -48,6 +48,7 @@ import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataCha
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.ShardIdFetcherImpl;
 import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -274,7 +275,7 @@ public class AssignShardIdFnTest {
             .set("migration_shard_id")
             .to("shard1")
             .set("age")
-            .to(1)
+            .to(new BigDecimal(1))
             .set("bool_field")
             .to(true)
             .set("int64_field")
@@ -511,7 +512,7 @@ public class AssignShardIdFnTest {
                 + " \"2023-05-18\"}",
             "{}",
             "{ \"timestamp_field2\": \"2023-05-18T12:01:13.088397258Z\", \"date_field2\":"
-                + " \"2023-05-18\"}"),
+                + " \"2023-05-18\", \"json_field\": \"{\\\"a\\\": \\\"b\\\"}\"}"),
         ModType.valueOf("INSERT"),
         1,
         "");
@@ -621,7 +622,7 @@ public class AssignShardIdFnTest {
             .size(50)
             .endColumn()
             .column("age")
-            .int64()
+            .numeric()
             .endColumn()
             .column("bool_field")
             .bool()
@@ -689,7 +690,7 @@ public class AssignShardIdFnTest {
     t1SpColDefs.put(
         "c1", new SpannerColumnDefinition("first_name", new SpannerColumnType("STRING", false)));
     t1SpColDefs.put(
-        "c2", new SpannerColumnDefinition("age", new SpannerColumnType("INT64", false)));
+        "c2", new SpannerColumnDefinition("age", new SpannerColumnType("NUMERIC", false)));
     t1SpColDefs.put(
         "c3", new SpannerColumnDefinition("bool_field", new SpannerColumnType("BOOL", false)));
     t1SpColDefs.put(
@@ -807,7 +808,7 @@ public class AssignShardIdFnTest {
     t1SpColDefs.put(
         "c4", new SpannerColumnDefinition("accountNumber", new SpannerColumnType("INT", false)));
     spSchema.put(
-        "t1",
+        "junk",
         new SpannerTable(
             "junk",
             new String[] {"c1", "c2", "c3", "c4"},
