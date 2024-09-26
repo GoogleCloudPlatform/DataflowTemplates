@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -101,6 +102,8 @@ public class AssignShardIdFnTest {
     // Mock readRow
     when(mockReadOnlyTransaction.readRow(eq("tableName"), any(Key.class), any(Iterable.class)))
         .thenReturn(mockRow);
+
+    doNothing().when(spannerAccessor).close();
   }
 
   @Test
@@ -259,7 +262,7 @@ public class AssignShardIdFnTest {
   }
 
   @Test
-  public void testXProcessElementAllDatatypes() throws Exception {
+  public void testProcessElementDeleteAllDatatypes() throws Exception {
     TrimmedShardedDataChangeRecord record = getDeleteTrimmedDataChangeRecordAllDatatypes("shard1");
     when(processContext.element()).thenReturn(record);
     // All datatypes row
@@ -322,6 +325,39 @@ public class AssignShardIdFnTest {
     String keyStr = record.getTableName() + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
 
+    verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
+  }
+
+  @Test
+  public void testProcessElementInsertAllDatatypes() throws Exception {
+    TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecordAllDatatypes("shard1");
+    when(processContext.element()).thenReturn(record);
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            getSchemaObjectAllDatatypes(),
+            getTestDdlForPrimaryKeyTest(),
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L);
+
+    record.setShard("shard1");
+    assignShardIdFn.setSpannerAccessor(spannerAccessor);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    assignShardIdFn.setMapper(mapper);
+    ShardIdFetcherImpl shardIdFetcher =
+        new ShardIdFetcherImpl(getSchemaObjectAllDatatypes(), "skip");
+    assignShardIdFn.setShardIdFetcher(shardIdFetcher);
+
+    assignShardIdFn.processElement(processContext);
+    String keyStr = record.getTableName() + "_" + record.getMod().getKeysJson() + "_" + "shard1";
+    Long key = keyStr.hashCode() % 10000L;
+    assignShardIdFn.teardown();
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
   }
 
@@ -455,6 +491,28 @@ public class AssignShardIdFnTest {
         "tableName",
         new Mod("{\"accountId\": \"Id1\"}", "{}", "{}"),
         ModType.valueOf("DELETE"),
+        1,
+        "");
+  }
+
+  public TrimmedShardedDataChangeRecord getInsertTrimmedDataChangeRecordAllDatatypes(
+      String shardId) {
+    return new TrimmedShardedDataChangeRecord(
+        Timestamp.parseTimestamp("2020-12-01T10:15:30.000Z"),
+        "serverTxnId",
+        "recordSeq",
+        "Users",
+        new Mod(
+            "{\"first_name\": \"Id1\", \"migration_shard_id\": \""
+                + shardId
+                + "\", \"age\": \"1\", \"bool_field\":true, \"int64_field\": \"1\","
+                + " \"float64_field\": 4.2, \"string_field\": \"abc\", \"bytes_field\": \"abc\","
+                + " \"timestamp_field\": \"2023-05-18T12:01:13.088397258Z\", \"date_field\":"
+                + " \"2023-05-18\"}",
+            "{}",
+            "{ \"timestamp_field2\": \"2023-05-18T12:01:13.088397258Z\", \"date_field2\":"
+                + " \"2023-05-18\"}"),
+        ModType.valueOf("INSERT"),
         1,
         "");
   }

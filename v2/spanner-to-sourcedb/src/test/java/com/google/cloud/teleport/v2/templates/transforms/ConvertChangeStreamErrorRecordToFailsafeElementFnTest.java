@@ -67,7 +67,15 @@ public class ConvertChangeStreamErrorRecordToFailsafeElementFnTest {
     // tests the untested code paths
     ChangeStreamErrorRecord errorRecord2 =
         new ChangeStreamErrorRecord(errorRecord.getOriginalRecord(), errorRecord.getErrorMessage());
+    errorRecord2.setOriginalRecord(errorRecord.getOriginalRecord());
+    errorRecord2.setErrorMessage(errorRecord.getErrorMessage());
     assertTrue(errorRecord2.equals(errorRecord));
+    assertTrue(errorRecord.equals(errorRecord));
+    assertTrue(!errorRecord.equals(message));
+
+    assertTrue(record.getNumberOfRecordsInTransaction() == 1);
+    assertTrue(record.getTransactionTag().equals("sampleTrxTag"));
+    assertTrue(record.toString().contains("parent1"));
   }
 
   private TrimmedShardedDataChangeRecord getTrimmedDataChangeRecord(String shardId) {
@@ -79,6 +87,6 @@ public class ConvertChangeStreamErrorRecordToFailsafeElementFnTest {
         new Mod("{\"id\": \"42\"}", "{}", "{ \"migration_shard_id\": \"" + shardId + "\"}"),
         ModType.valueOf("INSERT"),
         1,
-        "");
+        "sampleTrxTag");
   }
 }
