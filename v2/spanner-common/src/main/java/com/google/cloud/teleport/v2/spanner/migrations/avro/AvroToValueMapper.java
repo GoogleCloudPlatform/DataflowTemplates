@@ -287,7 +287,7 @@ public class AvroToValueMapper {
       throw new AvroTypeConvertorException(
           "Unable to convert "
               + fieldSchema.getType()
-              + " to byte buffer, with value: "
+              + " to byte array, with value: "
               + recordValue
               + ", Exception: "
               + e.getMessage());
