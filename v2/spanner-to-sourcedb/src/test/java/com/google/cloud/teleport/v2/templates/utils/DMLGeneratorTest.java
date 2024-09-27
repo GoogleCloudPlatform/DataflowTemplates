@@ -863,6 +863,45 @@ public final class DMLGeneratorTest {
     assertTrue(sql.isEmpty());
   }
 
+  @Test
+  public void testSpannerTableNotInSchemaObject() {
+    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String tableName = "Singers";
+    schema.getSpSchema().remove(schema.getSpannerToID().get(tableName).getName());
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\",\"SingerId\":null}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SmthingElse\":null}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    assertTrue(sql.isEmpty());
+  }
+
+  @Test
+  public void testSpannerColDefsNull() {
+    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String tableName = "Singers";
+
+    String spannerTableId = schema.getSpannerToID().get(tableName).getName();
+    SpannerTable spannerTable = schema.getSpSchema().get(spannerTableId);
+    spannerTable.getColDefs().remove("c5");
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SingerId\":\"23\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    assertTrue(sql.isEmpty());
+  }
+
   public static Schema getSchemaObject() {
     Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
     Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();

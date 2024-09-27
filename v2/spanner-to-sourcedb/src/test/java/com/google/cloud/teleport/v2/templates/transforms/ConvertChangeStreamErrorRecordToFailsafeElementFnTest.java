@@ -73,7 +73,8 @@ public class ConvertChangeStreamErrorRecordToFailsafeElementFnTest {
     assertTrue(errorRecord2.equals(errorRecord));
     assertTrue(errorRecord.equals(errorRecord));
     assertTrue(!errorRecord.equals(message));
-
+    errorRecord2.setErrorMessage("test");
+    assertTrue(!errorRecord2.equals(errorRecord));
     assertTrue(record.getNumberOfRecordsInTransaction() == 1);
     assertTrue(record.getTransactionTag().equals("sampleTrxTag"));
     assertTrue(record.toString().contains("parent1"));

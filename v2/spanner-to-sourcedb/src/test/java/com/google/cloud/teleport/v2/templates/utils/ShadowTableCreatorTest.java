@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.utils;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,15 +37,15 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.junit.Before;
+import org.junit.FixMethodOrder;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.runners.MethodSorters;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-@RunWith(JUnit4.class)
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public final class ShadowTableCreatorTest {
 
   @Rule public final MockitoRule mocktio = MockitoJUnit.rule();
@@ -110,10 +111,29 @@ public final class ShadowTableCreatorTest {
     assertThat(shadowTable4.primaryKeys().get(0).name()).isEqualTo("id4");
     assertThat(shadowTable4.primaryKeys().get(0).order()).isEqualTo(IndexColumn.Order.ASC);
     assertThat(shadowTable4.primaryKeys().get(1).name()).isEqualTo("id5");
-    assertThat(shadowTable4.primaryKeys().get(1).order()).isEqualTo(IndexColumn.Order.ASC);
+    assertThat(shadowTable4.primaryKeys().get(1).order()).isEqualTo(IndexColumn.Order.DESC);
 
     shadowTableCreator.createShadowTablesInSpanner();
     verify(mockDatabaseClient).updateDatabaseDdl(any(), any(), any(), any());
+  }
+
+  @Test
+  public void testNoShadowTableCreated() {
+    Ddl primaryDbDdl = getMetadataDbDdl();
+    Ddl metadataDbDdl = getMetadataDbDdl();
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator(
+            Dialect.GOOGLE_STANDARD_SQL,
+            "shadow_",
+            primaryDbDdl,
+            metadataDbDdl,
+            mockSpannerAccessor,
+            testSpannerConfig);
+    List<String> tablesToCreate = shadowTableCreator.getDataTablesWithNoShadowTables();
+    assertThat(tablesToCreate).isEmpty();
+
+    shadowTableCreator.createShadowTablesInSpanner();
+    verify(mockDatabaseClient, never()).updateDatabaseDdl(any(), any(), any(), any());
   }
 
   private Ddl getPrimaryDbDdl() {
@@ -164,7 +184,7 @@ public final class ShadowTableCreatorTest {
             .endColumn()
             .primaryKey()
             .asc("id4")
-            .asc("id5")
+            .desc("id5")
             .end()
             .endTable()
             .build();
