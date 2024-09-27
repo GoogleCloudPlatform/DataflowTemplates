@@ -20,7 +20,6 @@ import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
@@ -55,7 +54,6 @@ public class KafkaTransform {
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
-      @Nullable Map<String, Object> sslConfig,
       Boolean enableCommitOffsets) {
     KafkaIO.Read<String, String> kafkaRecords =
         KafkaIO.<String, String>read()
@@ -87,7 +85,6 @@ public class KafkaTransform {
       List<String> topicsList,
       Map<String, Object> config,
       String avroSchema,
-      @Nullable Map<String, Object> sslConfig,
       Boolean enableCommitOffsets) {
     KafkaIO.Read<byte[], GenericRecord> kafkaRecords =
         KafkaIO.<byte[], GenericRecord>read()

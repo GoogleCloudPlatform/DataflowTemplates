@@ -511,11 +511,7 @@ public class KafkaToBigQueryFlex {
             .apply(
                 "ReadFromKafka",
                 KafkaTransform.readStringFromKafka(
-                    bootstrapServers,
-                    topicsList,
-                    kafkaConfig,
-                    null,
-                    options.getEnableCommitOffsets()))
+                    bootstrapServers, topicsList, kafkaConfig, options.getEnableCommitOffsets()))
 
             /*
              * Step #2: Transform the Kafka Messages into TableRows
