@@ -467,6 +467,76 @@ public class AssignShardIdFnTest {
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
   }
 
+  @Test()
+  public void testInvalidShard() throws Exception {
+    TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1/");
+    when(processContext.element()).thenReturn(record);
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            getSchemaObject(),
+            getTestDdl(),
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L);
+
+    record.setShard("shard1");
+    assignShardIdFn.setSpannerAccessor(spannerAccessor);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    assignShardIdFn.setMapper(mapper);
+    assignShardIdFn.setShardIdFetcher(
+        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", getSchemaObject(), "skip"));
+
+    assignShardIdFn.processElement(processContext);
+    String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
+    Long key = keyStr.hashCode() % 10000L;
+    assignShardIdFn.processElement(processContext);
+    verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
+  }
+
+  @Test
+  public void testProcessElementDeleteNoSpannerRow() throws Exception {
+    TrimmedShardedDataChangeRecord record = getDeleteTrimmedDataChangeRecordAllDatatypes("shard1");
+    when(processContext.element()).thenReturn(record);
+    // All datatypes row
+    ByteArray bytesArray = ByteArray.copyFrom("abc");
+
+    when(mockReadOnlyTransaction.readRow(eq("Users"), any(Key.class), any(Iterable.class)))
+        .thenReturn(null);
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            getSchemaObjectAllDatatypes(),
+            getTestDdlForPrimaryKeyTest(),
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L);
+
+    record.setShard("shard1");
+    assignShardIdFn.setSpannerAccessor(spannerAccessor);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    assignShardIdFn.setMapper(mapper);
+    ShardIdFetcherImpl shardIdFetcher =
+        new ShardIdFetcherImpl(getSchemaObjectAllDatatypes(), "skip");
+    assignShardIdFn.setShardIdFetcher(shardIdFetcher);
+
+    assignShardIdFn.processElement(processContext);
+    String keyStr = record.getTableName() + "_" + record.getMod().getKeysJson() + "_" + "skip";
+    Long key = keyStr.hashCode() % 10000L;
+
+    verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
+  }
+
   public TrimmedShardedDataChangeRecord getInsertTrimmedDataChangeRecord(String shardId) {
     return new TrimmedShardedDataChangeRecord(
         Timestamp.parseTimestamp("2020-12-01T10:15:30.000Z"),
