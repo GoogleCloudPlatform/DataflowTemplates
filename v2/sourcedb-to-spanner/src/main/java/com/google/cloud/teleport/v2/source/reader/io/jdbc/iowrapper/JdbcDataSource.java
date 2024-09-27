@@ -177,4 +177,11 @@ public final class JdbcDataSource extends BasicDataSource implements Serializabl
     // Call initializeSuper after deserialization
     initializeSuper();
   }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "JdbcDataSource: {\"sourceDbURL\":\"%s\", \"initSql\":\"%s\", \"maxConnections\",\"%s\" }",
+        sourceDbURL, initSql, maxConnections);
+  }
 }

@@ -248,7 +248,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> tableSchema =
         tableSchemaBuilder.build();
     logger.info(
-        "Discovered tale schema for Datasource: {}, SourceSchemaReference: {}, tables: {}, schema: {}",
+        "Discovered table schema for Datasource: {}, SourceSchemaReference: {}, tables: {}, schema: {}",
         dataSource,
         sourceSchemaReference,
         tables,
