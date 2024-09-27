@@ -65,10 +65,8 @@ public class KafkaTransform {
                 StringDeserializer.class, NullableCoder.of(StringUtf8Coder.of()))
             .withValueDeserializerAndCoder(
                 StringDeserializer.class, NullableCoder.of(StringUtf8Coder.of()))
-            .withConsumerConfigUpdates(config);
-    if (sslConfig != null) {
-      kafkaRecords = kafkaRecords.withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
-    }
+            .withConsumerConfigUpdates(config)
+            .withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
     if (enableCommitOffsets) {
       kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
     }
@@ -97,10 +95,8 @@ public class KafkaTransform {
             .withKeyDeserializerAndCoder(
                 ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
             .withValueDeserializer(new KafkaSchemaDeserializerProvider(avroSchema))
-            .withConsumerConfigUpdates(config);
-    if (sslConfig != null) {
-      kafkaRecords = kafkaRecords.withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
-    }
+            .withConsumerConfigUpdates(config)
+            .withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
     return kafkaRecords.withoutMetadata();
   }
 
