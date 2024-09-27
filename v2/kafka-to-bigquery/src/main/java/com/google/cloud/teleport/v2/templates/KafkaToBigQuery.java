@@ -483,7 +483,7 @@ public class KafkaToBigQuery {
             .apply(
                 "ReadFromKafka",
                 KafkaTransform.readAvroFromKafka(
-                    bootstrapServers, topicsList, kafkaConfig, avroSchema, null))
+                    bootstrapServers, topicsList, kafkaConfig, avroSchema, null, false))
             .setCoder(
                 KvCoder.of(
                     ByteArrayCoder.of(),
