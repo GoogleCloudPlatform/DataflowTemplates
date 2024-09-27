@@ -31,4 +31,7 @@ public class SourceDbToSpannerConstants {
 
   /* The tag for rows which were filtered based on custom transformation response. */
   public static final TupleTag<RowContext> FILTERED_EVENT_TAG = new TupleTag<>();
+
+  /* Misc constants */
+  public static final int MAX_TABLES_PER_JOB = 150;
 }
