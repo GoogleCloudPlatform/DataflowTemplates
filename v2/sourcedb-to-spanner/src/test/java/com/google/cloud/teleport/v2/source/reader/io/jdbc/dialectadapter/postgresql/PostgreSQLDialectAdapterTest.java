@@ -22,8 +22,11 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter.PostgreSQLVersion;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
@@ -207,7 +210,12 @@ public class PostgreSQLDialectAdapterTest {
     when(mockResultSet.getBoolean("is_primary")).thenReturn(true, false, false, false);
     when(mockResultSet.getLong("cardinality")).thenReturn(1L, 1L, 2L, 2L);
     when(mockResultSet.getLong("ordinal_position")).thenReturn(1L, 1L, 1L, 2L);
-    when(mockResultSet.getString("type_category")).thenReturn("N", "S", "N", "D");
+    when(mockResultSet.getString("type_category")).thenReturn("N", "S", "S", "D");
+    when(mockResultSet.getString("collation")).thenReturn(null, "en_US", "en_US", null);
+    when(mockResultSet.getInt("type_length")).thenReturn(100, 0);
+    when(mockResultSet.wasNull()).thenReturn(false, true);
+    when(mockResultSet.getString("type_name")).thenReturn("char", "text");
+    when(mockResultSet.getString("charset")).thenReturn("UTF8", "UTF8");
 
     assertThat(adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables))
         .containsExactly(
@@ -229,7 +237,14 @@ public class PostgreSQLDialectAdapterTest {
                     .setIsPrimary(false)
                     .setCardinality(1L)
                     .setOrdinalPosition(1L)
-                    .setIndexType(SourceColumnIndexInfo.IndexType.STRING)
+                    .setIndexType(IndexType.STRING)
+                    .setCollationReference(
+                        CollationReference.builder()
+                            .setDbCharacterSet("UTF8")
+                            .setDbCollation("en_US")
+                            .setPadSpace(true)
+                            .build())
+                    .setStringMaxLength(100)
                     .build(),
                 SourceColumnIndexInfo.builder()
                     .setColumnName("col2")
@@ -238,7 +253,14 @@ public class PostgreSQLDialectAdapterTest {
                     .setIsPrimary(false)
                     .setCardinality(2L)
                     .setOrdinalPosition(1L)
-                    .setIndexType(SourceColumnIndexInfo.IndexType.NUMERIC)
+                    .setIndexType(IndexType.STRING)
+                    .setCollationReference(
+                        CollationReference.builder()
+                            .setDbCharacterSet("UTF8")
+                            .setDbCollation("en_US")
+                            .setPadSpace(false)
+                            .build())
+                    .setStringMaxLength(65535)
                     .build(),
                 SourceColumnIndexInfo.builder()
                     .setColumnName("col3")
@@ -340,5 +362,15 @@ public class PostgreSQLDialectAdapterTest {
     // SQLState: Lock timeout
     assertThat(adapter.checkForTimeout(new SQLException("Expected test timeout error", "55P03")))
         .isTrue();
+  }
+
+  @Test
+  public void testCollationsOrderQuery() {
+    String collationsOrderQuery = adapter.getCollationsOrderQuery("myCharset", "myCollation");
+
+    assertThat(collationsOrderQuery).contains("myCharset");
+    assertThat(collationsOrderQuery).contains("myCollation");
+    assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.CHARSET_REPLACEMENT_TAG);
+    assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.COLLATION_REPLACEMENT_TAG);
   }
 }

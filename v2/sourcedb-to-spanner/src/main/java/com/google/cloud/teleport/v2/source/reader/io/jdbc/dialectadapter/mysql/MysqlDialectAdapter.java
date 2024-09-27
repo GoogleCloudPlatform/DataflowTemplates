@@ -15,6 +15,10 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql;
 
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.CHARSET_REPLACEMENT_TAG;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.COLLATION_REPLACEMENT_TAG;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.replaceTagsAndSanitize;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.resourceAsString;
 import static org.apache.curator.shaded.com.google.common.collect.Sets.newHashSet;
 
 import com.google.cloud.teleport.v2.constants.MetricCounters;
@@ -32,10 +36,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -44,7 +45,9 @@ import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.metrics.Counter;
@@ -96,7 +99,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   private final Counter schemaDiscoveryErrors =
       Metrics.counter(JdbcSourceRowMapper.class, MetricCounters.READER_SCHEMA_DISCOVERY_ERRORS);
 
-  private static final String COLLATIONS_QUERY_RESOURCE_PATH = "sql/mysql_collation_oder_query.sql";
+  private static final String COLLATIONS_QUERY_RESOURCE_PATH =
+      "sql/mysql_collation_order_query.sql";
 
   public MysqlDialectAdapter(MySqlVersion mySqlVersion) {
     this.mySqlVersion = mySqlVersion;
@@ -640,62 +644,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   }
 
   /**
-   * Replace tags for collations and character set as needed in run-time, and, Remove blank lines
-   * and comments from the collations query. Queries with size > max_allowed_packet get rejected by
-   * the db. max_allowed_packet is generally around 16Mb which is a lot for our use case.
-   *
-   * @param query query to prepare.
-   * @param dbCharset character set used by the database for which collation ordering has to be
-   *     found.
-   * @param dbCollation collation set used by the database for which collation ordering has to be
-   *     found.
-   * @return
-   */
-  @VisibleForTesting
-  protected String prepareCollationsOrderQuery(String query, String dbCharset, String dbCollation) {
-    // Replace tags
-    String processedQuery =
-        query
-            .replace("'charset_replacement_tag'", "'" + dbCharset + "'")
-            .replace("'collation_replacement_tag'", "'" + dbCollation + "'");
-
-    // Remove MySQL comments and blank lines.
-
-    // Remove MySql Comments.
-    // Note we don't remove block comments for sake of simplicity.
-    Pattern commentPattern = Pattern.compile("(?m)^[ \\t]?--.*$");
-    Matcher matcher = commentPattern.matcher(processedQuery);
-    processedQuery = matcher.replaceAll("");
-
-    // Remove blank lines
-    processedQuery = processedQuery.replaceAll("(?m)^\\s*\\r?\\n", "");
-    return processedQuery;
-  }
-
-  /**
-   * Load a resource file as string.
-   *
-   * @param resource path of the resource file.
-   * @return resource file as string.
-   */
-  @VisibleForTesting
-  protected static String resourceAsString(String resource) {
-    try {
-      URL url = com.google.common.io.Resources.getResource(resource);
-      return com.google.common.io.Resources.toString(url, StandardCharsets.UTF_8);
-    } catch (Exception e) {
-      // This exception should not happen in production as it really means we don't have the
-      // expected resource
-      // file in bundled in the build or a fatal IO failure in reading one.
-      logger.error(
-          "Exception {} while trying to load the SQL file {} for collation discovery.",
-          e,
-          resource);
-      throw new RuntimeException(e);
-    }
-  }
-
-  /**
    * Get Query that returns order of collation. The query must return all the characters in the
    * character set with the columns listed in {@link CollationsOrderQueryColumns}.
    *
@@ -706,8 +654,13 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    */
   @Override
   public String getCollationsOrderQuery(String dbCharset, String dbCollation) {
-    return prepareCollationsOrderQuery(
-        resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH), dbCharset, dbCollation);
+    String query = resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH);
+    Map<String, String> tags = new HashMap<>();
+    tags.put("'" + CHARSET_REPLACEMENT_TAG + "'", dbCharset);
+    tags.put("'" + COLLATION_REPLACEMENT_TAG + "'", dbCollation);
+    // Queries with size > max_allowed_packet get rejected by
+    // the db. max_allowed_packet is generally around 16Mb which is a lot for our use case.
+    return replaceTagsAndSanitize(query, tags);
   }
 
   /**
