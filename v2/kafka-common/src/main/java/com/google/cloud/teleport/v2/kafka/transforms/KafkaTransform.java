@@ -56,7 +56,7 @@ public class KafkaTransform {
       List<String> topicsList,
       Map<String, Object> config,
       @Nullable Map<String, Object> sslConfig,
-      Boolean enableCommitOffsets) {
+      boolean enableCommitOffsets) {
     KafkaIO.Read<String, String> kafkaRecords =
         KafkaIO.<String, String>read()
             .withBootstrapServers(bootstrapServers)
@@ -112,7 +112,7 @@ public class KafkaTransform {
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
-      Boolean enableCommitOffsets) {
+      boolean enableCommitOffsets) {
 
     KafkaIO.Read<byte[], byte[]> kafkaRecords =
         KafkaIO.<byte[], byte[]>read()
