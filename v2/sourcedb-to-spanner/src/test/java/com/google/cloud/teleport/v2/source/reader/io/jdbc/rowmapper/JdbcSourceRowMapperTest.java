@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper;
 
+import static com.google.cloud.teleport.v2.source.reader.io.CustomAsserts.assertColumnEquals;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -33,6 +34,8 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReferenc
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
+import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeStampTz;
+import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeTz;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
@@ -43,6 +46,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.junit.After;
@@ -65,6 +69,7 @@ public class JdbcSourceRowMapperTest {
     // and detect the lock faster, we decrease this timeout
     System.setProperty("derby.locks.waitTimeout", "2");
     System.setProperty("derby.stream.error.file", "build/derby.log");
+    Locale.setDefault(Locale.US);
   }
 
   @Before
@@ -115,7 +120,7 @@ public class JdbcSourceRowMapperTest {
         assertEquals(schemaReference, sourceRow.sourceSchemaReference());
         assertEquals(table, sourceRow.tableName());
         assertEquals(shardId, sourceRow.shardId());
-        assertEquals(
+        assertColumnEquals(
             "Failed for column: " + expectedColumn.name + " for value index: " + i,
             expectedColumn.mappedValue,
             sourceRow.getPayload().get(i));
@@ -169,7 +174,7 @@ public class JdbcSourceRowMapperTest {
         assertEquals(table, sourceRow.tableName());
         assertEquals(shardId, sourceRow.shardId());
 
-        assertEquals(
+        assertColumnEquals(
             "Failed for column: " + expectedColumn.name + " for value index: " + i,
             expectedColumn.mappedValue,
             sourceRow.getPayload().get(i));
@@ -492,9 +497,81 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
+                .derbyColumnType("BIGINT")
+                .sourceColumnType("BIGSERIAL")
+                .mappedValue(1L)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("CHAR(8) FOR BIT DATA")
+                .sourceColumnType("BIT")
+                .mappedValue(ByteBuffer.allocate(8).putLong(Byte.MAX_VALUE).array())
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("CHAR(16) FOR BIT DATA")
+                .sourceColumnType("BIT VARYING")
+                .mappedValue(ByteBuffer.allocate(16).putLong(Short.MAX_VALUE).array())
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("BOOLEAN")
+                .sourceColumnType("BOOL")
+                .mappedValue(false)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("BOOLEAN")
+                .sourceColumnType("BOOLEAN")
+                .mappedValue(true)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("BOX")
+                .mappedValue("(1, 2), (3, 4)")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("CHAR(64) FOR BIT DATA")
+                .sourceColumnType("BYTEA")
+                .mappedValue(ByteBuffer.allocate(64).putLong(Long.MAX_VALUE).array())
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("CHAR(1)")
+                .sourceColumnType("CHAR")
+                .mappedValue("a")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("CHAR(1)")
+                .sourceColumnType("CHARACTER")
+                .mappedValue("b")
+                .build())
+        .add(
+            Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("CHARACTER VARYING", new Long[] {100L})
                 .mappedValue("character varying value")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("CIDR")
+                .mappedValue("192.168.100.128/25")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("CIRCLE")
+                .mappedValue("(1, 2), 3)")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("CITEXT")
+                .mappedValue("ci text")
                 .build())
         .add(
             Column.builder()
@@ -505,9 +582,203 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
+                .derbyColumnType("DECIMAL(9,3)")
+                .sourceColumnType("DECIMAL", new Long[] {9L, 3L})
+                .inputValue(123456.789)
+                .mappedValue("123456.789")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("DOUBLE")
+                .sourceColumnType("DOUBLE PRECISION")
+                .mappedValue(1.2345D)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("ENUM")
+                .mappedValue("ENUM VALUE")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("DOUBLE")
+                .sourceColumnType("FLOAT4")
+                .mappedValue(1.23F)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("DOUBLE")
+                .sourceColumnType("FLOAT8")
+                .mappedValue(1.2345D)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("INET")
+                .mappedValue("192.168.1.0/24")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("INTEGER")
+                .sourceColumnType("INT")
+                .mappedValue(Integer.MAX_VALUE)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("INTEGER")
+                .sourceColumnType("INTEGER")
+                .mappedValue(Integer.MAX_VALUE)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("SMALLINT")
+                .sourceColumnType("INT2")
+                .inputValue(Short.MAX_VALUE)
+                .mappedValue((int) Short.MAX_VALUE)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("INTEGER")
+                .sourceColumnType("INT4")
+                .mappedValue(Integer.MAX_VALUE)
+                .build())
+        .add(
+            Column.builder()
                 .derbyColumnType("BIGINT")
                 .sourceColumnType("INT8")
                 .mappedValue(Long.MAX_VALUE)
+                .build())
+        // TODO(thiagotnunes): INTERVAL
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("JSON")
+                .mappedValue("{\"key\":\"value\"}")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("JSONB")
+                .mappedValue("{\"key\":\"value\"}")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("LINE")
+                .mappedValue("{1,2,3}")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("LSEG")
+                .mappedValue("[(1,2),(3,4)]")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("MACADDR")
+                .mappedValue("08:00:2b:01:02:03")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("MACADDR8")
+                .mappedValue("08:00:2b:01:02:03:04:05")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("MONEY")
+                .inputValue("1.23")
+                .mappedValue(1.23D)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("DECIMAL(9,3)")
+                .sourceColumnType("NUMERIC", new Long[] {9L, 3L})
+                .inputValue(123456.789)
+                .mappedValue("123456.789")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("BIGINT")
+                .sourceColumnType("OID")
+                .mappedValue(1000L)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("PATH")
+                .mappedValue("[(1,2),(3,4),(5,6)]")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("PG_LSN")
+                .mappedValue("123/0")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("PG_SNAPSHOT")
+                .mappedValue("795:799:795,797")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("POINT")
+                .mappedValue("(1,2)")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("POLYGON")
+                .mappedValue("((1,2),(3,4))")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("DOUBLE")
+                .sourceColumnType("REAL")
+                .mappedValue(1.23F)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("INTEGER")
+                .sourceColumnType("SERIAL")
+                .mappedValue(Integer.MAX_VALUE)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("SMALLINT")
+                .sourceColumnType("SERIAL2")
+                .inputValue(Short.MAX_VALUE)
+                .mappedValue((int) Short.MAX_VALUE)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("INTEGER")
+                .sourceColumnType("SERIAL4")
+                .mappedValue(Integer.MAX_VALUE)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("BIGINT")
+                .sourceColumnType("SERIAL8")
+                .mappedValue(Long.MAX_VALUE)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("SMALLINT")
+                .sourceColumnType("SMALLINT")
+                .inputValue(Short.MAX_VALUE)
+                .mappedValue((int) Short.MAX_VALUE)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("SMALLINT")
+                .sourceColumnType("SMALLSERIAL")
+                .inputValue(Short.MAX_VALUE)
+                .mappedValue((int) Short.MAX_VALUE)
                 .build())
         .add(
             Column.builder()
@@ -518,8 +789,158 @@ public class JdbcSourceRowMapperTest {
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TIME")
+                .inputValue("01:02:03.123456")
+                .mappedValue(3723123456L)
+                .build())
+        .add(
+            Column.builder()
+                .name("time_00")
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TIME")
+                .inputValue("00:00:00")
+                .mappedValue(0L)
+                .build())
+        .add(
+            Column.builder()
+                .name("time_24")
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TIME")
+                .inputValue("24:00:00")
+                .mappedValue(0L)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TIME WITHOUT TIME ZONE")
+                .inputValue("01:02:03")
+                .mappedValue(3723000000L)
+                .build())
+        .add(
+            Column.builder()
+                .name("timetz_hour_offset")
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TIMETZ")
+                .inputValue("01:02:03-05")
+                .mappedValue(
+                    new GenericRecordBuilder(TimeTz.SCHEMA)
+                        .set(TimeTz.TIME_FIELD_NAME, 3723000000L)
+                        .set(TimeTz.OFFSET_FIELD_NAME, -18000000L)
+                        .build())
+                .build())
+        .add(
+            Column.builder()
+                .name("timetz_hour_minute_offset")
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TIMETZ")
+                .inputValue("01:02:03-05:00")
+                .mappedValue(
+                    new GenericRecordBuilder(TimeTz.SCHEMA)
+                        .set(TimeTz.TIME_FIELD_NAME, 3723000000L)
+                        .set(TimeTz.OFFSET_FIELD_NAME, -18000000L)
+                        .build())
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TIME WITH TIME ZONE")
+                .inputValue("01:02:03.123456-05:00")
+                .mappedValue(
+                    new GenericRecordBuilder(TimeTz.SCHEMA)
+                        .set(TimeTz.TIME_FIELD_NAME, 3723123456L)
+                        .set(TimeTz.OFFSET_FIELD_NAME, -18000000L)
+                        .build())
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("TIMESTAMP")
+                .sourceColumnType("TIMESTAMP")
+                .inputValue(Timestamp.valueOf("1970-01-02 01:02:03.123456"))
+                .mappedValue(90123123456L)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("TIMESTAMP")
+                .sourceColumnType("TIMESTAMP WITHOUT TIME ZONE")
+                .inputValue(Timestamp.valueOf("1970-01-02 01:02:03"))
+                .mappedValue(90123000000L)
+                .build())
+        .add(
+            Column.builder()
+                .name("timestamptz_hour_offset")
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TIMESTAMPTZ")
+                .inputValue("1970-01-02 01:02:03.123456-05")
+                .mappedValue(
+                    new GenericRecordBuilder(TimeStampTz.SCHEMA)
+                        .set(TimeStampTz.TIMESTAMP_FIELD_NAME, 108123123456L)
+                        .set(TimeStampTz.OFFSET_FIELD_NAME, -18000000L)
+                        .build())
+                .build())
+        .add(
+            Column.builder()
+                .name("timestamptz_hour_minute_offset")
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TIMESTAMPTZ")
+                .inputValue("1970-01-02 01:02:03.123456-05:00")
+                .mappedValue(
+                    new GenericRecordBuilder(TimeStampTz.SCHEMA)
+                        .set(TimeStampTz.TIMESTAMP_FIELD_NAME, 108123123456L)
+                        .set(TimeStampTz.OFFSET_FIELD_NAME, -18000000L)
+                        .build())
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TIMESTAMP WITH TIME ZONE")
+                .inputValue("1970-01-02 01:02:03.12345+01:00")
+                .mappedValue(
+                    new GenericRecordBuilder(TimeStampTz.SCHEMA)
+                        .set(TimeStampTz.TIMESTAMP_FIELD_NAME, 86523123450L)
+                        .set(TimeStampTz.OFFSET_FIELD_NAME, 3600000L)
+                        .build())
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TSQUERY")
+                .mappedValue("fat & rat")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TSVECTOR")
+                .mappedValue("a fat cat sat on a mat and ate a fat rat")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TXID_SNAPSHOT")
+                .mappedValue("10:30:10,14,15")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("UUID")
+                .mappedValue("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("CHAR(32) FOR BIT DATA")
+                .sourceColumnType("VARBIT")
+                .mappedValue(ByteBuffer.allocate(32).putLong(Integer.MAX_VALUE).array())
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("VARCHAR", new Long[] {100L})
                 .mappedValue("varchar value")
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("XML")
+                .mappedValue("<test>123</test>")
                 .build())
         .build();
   }
