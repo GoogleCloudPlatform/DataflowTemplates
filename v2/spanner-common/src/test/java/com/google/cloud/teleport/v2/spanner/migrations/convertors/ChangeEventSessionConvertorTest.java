@@ -39,6 +39,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefin
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import java.io.IOException;
 import java.util.HashMap;
@@ -85,7 +86,8 @@ public class ChangeEventSessionConvertorTest {
   public void transformChangeEventViaSessionFileNamesTest() {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
+        new ChangeEventSessionConvertor(
+            schema, new TransformationContext(), new ShardingContext(), "", false);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("product_id", "A");
@@ -109,7 +111,8 @@ public class ChangeEventSessionConvertorTest {
   public void transformChangeEventViaSessionFileSynthPKTest() {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
+        new ChangeEventSessionConvertor(
+            schema, new TransformationContext(), new ShardingContext(), "", false);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");
@@ -132,7 +135,8 @@ public class ChangeEventSessionConvertorTest {
   public void transformChangeEventDataTest() throws Exception {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", true);
+        new ChangeEventSessionConvertor(
+            schema, new TransformationContext(), new ShardingContext(), "", true);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
@@ -297,11 +301,22 @@ public class ChangeEventSessionConvertorTest {
     return transformationContext;
   }
 
+  private static ShardingContext getShardingContext() {
+    Map<String, Map<String, String>> schemaToDbAndShardMap = new HashMap<>();
+    Map<String, String> schemaToShardId = new HashMap<>();
+    schemaToShardId.put("db_01", "id1");
+    schemaToShardId.put("db_02", "id2");
+    schemaToDbAndShardMap.put("stream1", schemaToShardId);
+    ShardingContext shardingContext = new ShardingContext(schemaToDbAndShardMap);
+    return shardingContext;
+  }
+
   @Test
   public void shardedConfigDataTest() throws Exception {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", true);
+        new ChangeEventSessionConvertor(
+            schema, new TransformationContext(), new ShardingContext(), "", true);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
@@ -322,11 +337,12 @@ public class ChangeEventSessionConvertorTest {
   }
 
   @Test
-  public void transformChangeEventViaShardedSessionFileTest() {
+  public void transformChangeEventViaTransformationContextTest() {
     Schema schema = getShardedSchemaObject();
     TransformationContext transformationContext = getTransformationContext();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, transformationContext, "mysql", false);
+        new ChangeEventSessionConvertor(
+            schema, transformationContext, new ShardingContext(), "mysql", false);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");
@@ -345,6 +361,55 @@ public class ChangeEventSessionConvertorTest {
     changeEventNew.put("migration_shard_id", "1");
     JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
     assertEquals(expectedEvent, actualEvent);
+  }
+
+  @Test
+  public void transformChangeEventViaShardingContextTest() {
+    Schema schema = getShardedSchemaObject();
+    ShardingContext shardingContext = getShardingContext();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, new TransformationContext(), shardingContext, "mysql", false);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("name", "A");
+    changeEvent.put(Constants.EVENT_STREAM_NAME, "stream1");
+    changeEvent.put(Constants.EVENT_SCHEMA_KEY, "db_01");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    changeEvent.put(Constants.EVENT_UUID_KEY, "abc-123");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    JsonNode actualEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
+
+    JSONObject changeEventNew = new JSONObject();
+    changeEventNew.put("new_name", "A");
+    changeEventNew.put(Constants.EVENT_STREAM_NAME, "stream1");
+    changeEventNew.put(Constants.EVENT_SCHEMA_KEY, "db_01");
+    changeEventNew.put(Constants.EVENT_TABLE_NAME_KEY, "new_people");
+    changeEventNew.put(Constants.EVENT_UUID_KEY, "abc-123");
+    changeEventNew.put("migration_shard_id", "id1");
+    JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
+    assertEquals(expectedEvent, actualEvent);
+  }
+
+  @Test
+  public void getShardIdInvalidSource() {
+    Schema schema = getShardedSchemaObject();
+    ShardingContext shardingContext = getShardingContext();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, new TransformationContext(), shardingContext, "oracle", false);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("name", "A");
+    changeEvent.put(Constants.EVENT_STREAM_NAME, "stream1");
+    changeEvent.put(Constants.EVENT_SCHEMA_KEY, "db_01");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    changeEvent.put(Constants.EVENT_UUID_KEY, "abc-123");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    String shardId = changeEventSessionConvertor.getShardId(ce);
+    assertEquals(shardId, "");
   }
 
   public static Schema getShardedSchemaObject() {

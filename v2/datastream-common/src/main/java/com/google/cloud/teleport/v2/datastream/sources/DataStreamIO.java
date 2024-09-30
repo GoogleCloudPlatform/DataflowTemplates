@@ -116,6 +116,8 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   private Duration directoryWatchDuration = Duration.standardMinutes(10);
   PCollection<String> directories = null;
 
+  private Boolean applyReshuffle = true;
+
   public DataStreamIO() {}
 
   public DataStreamIO(
@@ -172,6 +174,20 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
     return this;
   }
 
+  /**
+   * Set {@code applyReshuffle} to {@code false} to skip the reshuffle step for Datastream records.
+   *
+   * <p>This provides additional flexibility in how DatastreamIO outputs the records. Applying
+   * reshuffle is typically useful for improving parallelism or reducing coupled failures by
+   * redistributing elements across workers. However, reshuffling can increase processing costs due
+   * to the additional grouping and shuffling of data between workers. Please weigh this tradeoff
+   * when deciding whether to bypass the reshuffle step for DatastreamIO records.
+   */
+  public DataStreamIO withoutDatastreamRecordsReshuffle() {
+    this.applyReshuffle = false;
+    return this;
+  }
+
   @Override
   public PCollection<FailsafeElement<String, String>> expand(PBegin input) {
     PCollection<ReadableFile> datastreamFiles =
@@ -223,7 +239,9 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
                           new ReadFileRangesFn.ReadFileRangesFnExceptionHandler())))
               .setCoder(coder);
     }
-    return datastreamRecords.apply("Reshuffle", Reshuffle.viaRandomKey());
+    return applyReshuffle
+        ? datastreamRecords.apply("Reshuffle", Reshuffle.viaRandomKey())
+        : datastreamRecords;
   }
 
   private static class CreateParseSourceFn

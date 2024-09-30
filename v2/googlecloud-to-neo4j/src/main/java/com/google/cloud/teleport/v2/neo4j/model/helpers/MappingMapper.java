@@ -15,294 +15,493 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
-import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
-import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
-import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
-import com.google.cloud.teleport.v2.neo4j.model.job.FieldNameTuple;
-import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
-import com.google.cloud.teleport.v2.neo4j.model.job.Target;
-import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getBooleanOrDefault;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getStringOrDefault;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getStringOrNull;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.MappingVisitor.visit;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.SourceMapper.DEFAULT_SOURCE_NAME;
+import static org.neo4j.importer.v1.targets.PropertyType.BOOLEAN;
+import static org.neo4j.importer.v1.targets.PropertyType.BYTE_ARRAY;
+import static org.neo4j.importer.v1.targets.PropertyType.FLOAT;
+import static org.neo4j.importer.v1.targets.PropertyType.INTEGER;
+import static org.neo4j.importer.v1.targets.PropertyType.POINT;
+import static org.neo4j.importer.v1.targets.PropertyType.STRING;
+import static org.neo4j.importer.v1.targets.PropertyType.ZONED_DATETIME;
+
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
-import org.apache.commons.lang3.StringUtils;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.neo4j.importer.v1.targets.NodeExistenceConstraint;
+import org.neo4j.importer.v1.targets.NodeKeyConstraint;
+import org.neo4j.importer.v1.targets.NodeRangeIndex;
+import org.neo4j.importer.v1.targets.NodeSchema;
+import org.neo4j.importer.v1.targets.NodeTarget;
+import org.neo4j.importer.v1.targets.NodeUniqueConstraint;
+import org.neo4j.importer.v1.targets.PropertyMapping;
+import org.neo4j.importer.v1.targets.RelationshipExistenceConstraint;
+import org.neo4j.importer.v1.targets.RelationshipKeyConstraint;
+import org.neo4j.importer.v1.targets.RelationshipRangeIndex;
+import org.neo4j.importer.v1.targets.RelationshipSchema;
+import org.neo4j.importer.v1.targets.RelationshipUniqueConstraint;
+import org.neo4j.importer.v1.targets.Target;
+import org.neo4j.importer.v1.targets.WriteMode;
 
-/** Helper object for parsing field mappings (ie. strings, indexed, longs, etc.). */
-public class MappingMapper {
+/**
+ * Helper object for parsing legacy json for property mappings, schema, labels and types.
+ *
+ * @deprecated use the current JSON format instead
+ */
+@Deprecated
+class MappingMapper {
 
-  public static List<Mapping> parseMappings(Target target, JSONObject mappingsObject) {
-    String targetName = target.getName();
-    List<Mapping> allMappings = new ArrayList<>();
-    TargetType type = target.getType();
-    switch (type) {
-      case node:
-        return parseNode(allMappings, mappingsObject);
-      case edge:
-        return parseEdge(allMappings, mappingsObject);
-      default:
-        String error =
-            String.format(
-                "Unknown target type for target %s: only \"node\" and \"edge\" types are supported, got: %s",
-                targetName, type);
-        throw new IllegalArgumentException(error);
-    }
+  public static String parseType(JSONObject mappings) {
+    return unquote(getStringOrNull(mappings, "type"));
   }
 
-  private static List<Mapping> parseNode(List<Mapping> mappings, JSONObject nodeMappingsObject) {
-    if (nodeMappingsObject.has("label")) {
-      FieldNameTuple labelTuple = createFieldNameTuple(nodeMappingsObject.getString("label"));
-      mappings.add(new Mapping(FragmentType.node, RoleType.label, labelTuple));
+  /**
+   * This tries to match an embedded edge node spec against an existing node target. A node targets
+   * matches if and only if it passes all the following criteria:<br>
+   * - its labels are the same as the embedded node's<br>
+   * - its property mappings form a superset of the embedded node's<br>
+   * - its key constraints match all the embedded node's by comparing label & property names<br>
+   *
+   * @param edgeNode the legacy JSON representation of the start or end node of the edge
+   * @param nodes all the processed node targets
+   * @return the matching target name or an empty optional
+   */
+  public static Optional<String> findNodeTarget(JSONObject edgeNode, List<NodeTarget> nodes) {
+    var labels = parseLabels(edgeNode);
+    var mappings = parseKeyMappings(edgeNode);
+    var keyDefinitions =
+        nodeKeyDefinitionsOf(parseNodeKeyConstraints("irrelevant", labels, edgeNode));
+    return nodes.stream()
+        .filter(
+            target ->
+                labels.equals(target.getLabels())
+                    && new HashSet<>(target.getProperties()).containsAll(mappings)
+                    && nodeKeyDefinitionsOf(target.getSchema()).containsAll(keyDefinitions))
+        .map(Target::getName)
+        .findFirst();
+  }
+
+  public static NodeTarget parseEdgeNode(JSONObject edge, String key, WriteMode writeMode) {
+    var node = edge.getJSONObject("mappings").getJSONObject(key);
+    var targetName = String.format("%s-%s", edge.getString("name"), key);
+    var labels = parseLabels(node);
+
+    Map<String, PropertyMapping> keyMappings = new LinkedHashMap<>();
+    List<NodeKeyConstraint> keyConstraints = new ArrayList<>();
+    var propertyListener = new PropertyMappingListener(keyMappings, MappingMapper::untypedMapping);
+    if (node.has("key")) {
+      var keyListener = new SingleNodeKeyConstraintListener(targetName, labels);
+      visit(node.get("key"), MappingListeners.of(propertyListener, keyListener));
+      keyConstraints.addAll(keyListener.getSchema());
     }
-    if (nodeMappingsObject.has("labels")) {
-      List<FieldNameTuple> labels = getFieldAndNameTuples(nodeMappingsObject.get("labels"));
-      for (FieldNameTuple f : labels) {
-        mappings.add(new Mapping(FragmentType.node, RoleType.label, f));
+    if (node.has("keys")) {
+      var keysListener = new NodeKeyConstraintsListener(targetName, labels);
+      visit(node.get("keys"), MappingListeners.of(propertyListener, keysListener));
+      keyConstraints.addAll(keysListener.getSchema());
+    }
+    return new NodeTarget(
+        getBooleanOrDefault(edge, "active", true), // inherit active status from enclosing edge
+        targetName,
+        getStringOrDefault(edge, "source", DEFAULT_SOURCE_NAME),
+        null,
+        writeMode,
+        null,
+        labels,
+        new ArrayList<>(keyMappings.values()),
+        new NodeSchema(null, keyConstraints, null, null, null, null, null, null, null));
+  }
+
+  public static List<String> parseLabels(JSONObject mappings) {
+    // breaking: this implementation drops support for labels specified as a JSONObject because it
+    // does not make much sense
+    List<String> labels = new ArrayList<>();
+    if (mappings.has("label")) {
+      labels.addAll(parseLabelStringOrArray(mappings.get("label")));
+    }
+    if (mappings.has("labels")) {
+      labels.addAll(parseLabelStringOrArray(mappings.get("labels")));
+    }
+    return labels;
+  }
+
+  public static List<PropertyMapping> parseMappings(JSONObject mappings) {
+    if (!mappings.has("properties")) {
+      return List.of();
+    }
+    JSONObject properties = mappings.getJSONObject("properties");
+    Map<String, PropertyMapping> indexedMappings = new LinkedHashMap<>();
+    var mappingListener =
+        new PropertyMappingListener(indexedMappings, MappingMapper::untypedMapping);
+    if (properties.has("key")) {
+      visit(properties.get("key"), mappingListener);
+    }
+    if (properties.has("keys")) {
+      visit(properties.get("keys"), mappingListener);
+    }
+    if (properties.has("unique")) {
+      visit(properties.get("unique"), mappingListener);
+    }
+    if (properties.has("mandatory")) {
+      visit(properties.get("mandatory"), mappingListener);
+    }
+    if (properties.has("indexed")) {
+      visit(properties.get("indexed"), mappingListener);
+    }
+    if (properties.has("dates")) {
+      var listener =
+          new PropertyMappingListener(
+              indexedMappings,
+              (field, property) -> new PropertyMapping(field, property, ZONED_DATETIME));
+      visit(properties.get("dates"), listener);
+    }
+    if (properties.has("doubles")) {
+      var listener =
+          new PropertyMappingListener(
+              indexedMappings, (field, property) -> new PropertyMapping(field, property, FLOAT));
+      visit(properties.get("doubles"), listener);
+    }
+    if (properties.has("floats")) {
+      var listener =
+          new PropertyMappingListener(
+              indexedMappings, (field, property) -> new PropertyMapping(field, property, FLOAT));
+      visit(properties.get("floats"), listener);
+    }
+    if (properties.has("longs")) {
+      var listener =
+          new PropertyMappingListener(
+              indexedMappings, (field, property) -> new PropertyMapping(field, property, INTEGER));
+      visit(properties.get("longs"), listener);
+    }
+    if (properties.has("integers")) {
+      var listener =
+          new PropertyMappingListener(
+              indexedMappings, (field, property) -> new PropertyMapping(field, property, INTEGER));
+      visit(properties.get("integers"), listener);
+    }
+    if (properties.has("strings")) {
+      var listener =
+          new PropertyMappingListener(
+              indexedMappings, (field, property) -> new PropertyMapping(field, property, STRING));
+      visit(properties.get("strings"), listener);
+    }
+    if (properties.has("points")) {
+      var listener =
+          new PropertyMappingListener(
+              indexedMappings, (field, property) -> new PropertyMapping(field, property, POINT));
+      visit(properties.get("points"), listener);
+    }
+    if (properties.has("booleans")) {
+      var listener =
+          new PropertyMappingListener(
+              indexedMappings, (field, property) -> new PropertyMapping(field, property, BOOLEAN));
+      visit(properties.get("booleans"), listener);
+    }
+    if (properties.has("bytearrays")) {
+      var listener =
+          new PropertyMappingListener(
+              indexedMappings,
+              (field, property) -> new PropertyMapping(field, property, BYTE_ARRAY));
+      visit(properties.get("bytearrays"), listener);
+    }
+    return new ArrayList<>(indexedMappings.values());
+  }
+
+  public static NodeSchema parseNodeSchema(
+      String targetName,
+      List<String> labels,
+      JSONObject mappings,
+      List<String> defaultIndexedProperties) {
+
+    if (!mappings.has("properties")) {
+      return null;
+    }
+    JSONObject properties = mappings.getJSONObject("properties");
+    List<NodeKeyConstraint> keyConstraints =
+        parseNodeKeyConstraints(targetName, labels, properties);
+    List<NodeUniqueConstraint> uniqueConstraints = new ArrayList<>(0);
+    if (properties.has("unique")) {
+      var uniqueConstraintListener = new NodeUniqueConstraintsListener(targetName, labels);
+      visit(properties.get("unique"), uniqueConstraintListener);
+      uniqueConstraints = uniqueConstraintListener.getSchema();
+    }
+    List<NodeExistenceConstraint> existenceConstraints = new ArrayList<>(0);
+    if (properties.has("mandatory")) {
+      var existenceConstraintListener = new NodeExistenceConstraintListener(targetName, labels);
+      visit(properties.get("mandatory"), existenceConstraintListener);
+      existenceConstraints = existenceConstraintListener.getSchema();
+    }
+    List<NodeRangeIndex> indexes = new ArrayList<>(0);
+    if (properties.has("indexed")) {
+      CompoundNodeSchemaListener<NodeRangeIndex> indexListener =
+          new NodeIndexListener(targetName, labels);
+      visit(properties.get("indexed"), indexListener);
+      indexes.addAll(indexListener.getSchema());
+    }
+    if (!defaultIndexedProperties.isEmpty()) {
+      indexes.addAll(
+          generateAutomaticIndexes(
+              labels, defaultIndexedProperties, keyConstraints, uniqueConstraints, indexes));
+    }
+    return new NodeSchema(
+        null,
+        nullIfEmpty(keyConstraints),
+        nullIfEmpty(uniqueConstraints),
+        nullIfEmpty(existenceConstraints),
+        nullIfEmpty(indexes),
+        null,
+        null,
+        null,
+        null);
+  }
+
+  public static RelationshipSchema parseEdgeSchema(
+      String targetName, String type, JSONObject mappings, List<String> defaultIndexedProperties) {
+
+    if (!mappings.has("properties")) {
+      return null;
+    }
+    JSONObject properties = mappings.getJSONObject("properties");
+    List<RelationshipKeyConstraint> keyConstraints = new ArrayList<>();
+    if (properties.has("key")) {
+      SingleRelationshipKeyConstraintListener listener =
+          new SingleRelationshipKeyConstraintListener(targetName, type);
+      visit(properties.get("key"), listener);
+      keyConstraints.add(listener.getSchema());
+    }
+    if (properties.has("keys")) {
+      CompoundRelationshipSchemaListener<RelationshipKeyConstraint> listener =
+          new RelationshipKeyConstraintsListener(targetName, type);
+      visit(properties.get("keys"), listener);
+      keyConstraints.addAll(listener.getSchema());
+    }
+    List<RelationshipUniqueConstraint> uniqueConstraints = new ArrayList<>(0);
+    if (properties.has("unique")) {
+      var uniqueConstraintListener = new RelationshipUniqueConstraintsListener(targetName, type);
+      visit(properties.get("unique"), uniqueConstraintListener);
+      uniqueConstraints = uniqueConstraintListener.getSchema();
+    }
+    List<RelationshipExistenceConstraint> existenceConstraints = new ArrayList<>(0);
+    if (properties.has("mandatory")) {
+      var existenceConstraintListener =
+          new RelationshipExistenceConstraintListener(targetName, type);
+      visit(properties.get("mandatory"), existenceConstraintListener);
+      existenceConstraints = existenceConstraintListener.getSchema();
+    }
+    List<RelationshipRangeIndex> indexes = new ArrayList<>(0);
+    if (properties.has("indexed")) {
+      var indexListener = new RelationshipIndexListener(targetName, type);
+      visit(properties.get("indexed"), indexListener);
+      indexes.addAll(indexListener.getSchema());
+    }
+    if (!defaultIndexedProperties.isEmpty()) {
+      indexes.addAll(
+          generateAutomaticIndexes(
+              type, defaultIndexedProperties, keyConstraints, uniqueConstraints, indexes));
+    }
+    return new RelationshipSchema(
+        null,
+        nullIfEmpty(keyConstraints),
+        nullIfEmpty(uniqueConstraints),
+        nullIfEmpty(existenceConstraints),
+        nullIfEmpty(indexes),
+        null,
+        null,
+        null,
+        null);
+  }
+
+  private static List<String> parseLabelStringOrArray(Object rawLabels) {
+    List<String> labels = new ArrayList<>();
+    if (rawLabels instanceof String) {
+      String rawLabel = (String) rawLabels;
+      labels.add(unquote(rawLabel));
+    } else if (rawLabels instanceof JSONArray) {
+      JSONArray jsonLabels = (JSONArray) rawLabels;
+      for (int i = 0; i < jsonLabels.length(); i++) {
+        labels.add(unquote(jsonLabels.getString(i)));
       }
-    }
-    if (nodeMappingsObject.has("properties")) {
-      parseProperties(mappings, nodeMappingsObject.getJSONObject("properties"), FragmentType.node);
-    }
-    return mappings;
-  }
-
-  private static List<Mapping> parseEdge(List<Mapping> mappings, JSONObject edgeMappingsObject) {
-    if (edgeMappingsObject.has("type")) {
-      FieldNameTuple typeTuple =
-          createFieldNameTuple(
-              edgeMappingsObject.getString("type"), edgeMappingsObject.getString("type"));
-      mappings.add(new Mapping(FragmentType.rel, RoleType.type, typeTuple));
-    }
-
-    if (edgeMappingsObject.has("source")) {
-      parseEdgeNode(mappings, FragmentType.source, edgeMappingsObject);
-    }
-
-    if (edgeMappingsObject.has("target")) {
-      parseEdgeNode(mappings, FragmentType.target, edgeMappingsObject);
-    }
-
-    if (edgeMappingsObject.has("properties")) {
-      parseProperties(mappings, edgeMappingsObject.getJSONObject("properties"), FragmentType.rel);
-    }
-    return mappings;
-  }
-
-  private static void parseEdgeNode(
-      List<Mapping> mappings, FragmentType fragmentType, JSONObject edgeMappingsObject) {
-
-    String fieldName = jsonPropertyNameForEdgeNode(fragmentType);
-    JSONObject edgeNodeMapping = edgeMappingsObject.getJSONObject(fieldName);
-    if (!edgeNodeMapping.has("key") && !edgeNodeMapping.has("keys")) {
-      String error =
+    } else {
+      throw new IllegalArgumentException(
           String.format(
-              "Edge node fragment of type %s should define a \"key\" or \"keys\" attribute. None found",
-              fragmentType);
-      throw new IllegalArgumentException(error);
+              "Unsupported type for label(s), expected string or array of strings, got: %s",
+              rawLabels.getClass()));
     }
-    if (edgeNodeMapping.has("key")) {
-      List<FieldNameTuple> keyTuples = getFieldAndNameTuples(edgeNodeMapping.get("key"));
-      for (FieldNameTuple keyTuple : keyTuples) {
-        mappings.add(new Mapping(fragmentType, RoleType.key, keyTuple));
-      }
-    }
-    if (edgeNodeMapping.has("keys")) {
-      List<FieldNameTuple> keyTuples = getFieldAndNameTuples(edgeNodeMapping.get("keys"));
-      keyTuples.forEach(
-          keyTuple -> {
-            mappings.add(new Mapping(fragmentType, RoleType.key, keyTuple));
-          });
-    }
-
-    List<FieldNameTuple> labels = getFieldAndNameTuples(edgeNodeMapping.get("label"));
-    for (FieldNameTuple f : labels) {
-      mappings.add(new Mapping(fragmentType, RoleType.label, f));
-    }
+    return labels;
   }
 
-  private static String jsonPropertyNameForEdgeNode(FragmentType fragmentType) {
-    switch (fragmentType) {
-      case source:
-        return "source";
-      case target:
-        return "target";
-      default:
-        String error =
-            String.format(
-                "Unexpected fragment type for edge mapping: expected \"source\" or \"target\", got: %s",
-                fragmentType);
-        throw new IllegalArgumentException(error);
+  private static String unquote(String string) {
+    if (string == null) {
+      return null;
     }
+    String value = string.trim();
+    if (value.charAt(0) == '"' && value.charAt(value.length() - 1) == '"') {
+      return value.substring(1, value.length() - 1);
+    }
+    return value;
   }
 
-  private static void parseProperties(
-      List<Mapping> mappings, JSONObject propertyMappings, FragmentType fragmentType) {
-    if (propertyMappings == null) {
-      return;
-    }
-
-    List<FieldNameTuple> keys = new ArrayList<>();
-    List<FieldNameTuple> uniques = new ArrayList<>();
-    List<FieldNameTuple> indexed = new ArrayList<>();
-    List<FieldNameTuple> mandatory = new ArrayList<>();
-
-    if (propertyMappings.has("key")) {
-      keys.addAll(getFieldAndNameTuples(propertyMappings.get("key")));
-    }
-    if (propertyMappings.has("keys")) {
-      keys.addAll(getFieldAndNameTuples(propertyMappings.get("keys")));
-    }
-    if (propertyMappings.has("unique")) {
-      uniques = getFieldAndNameTuples(propertyMappings.get("unique"));
-    }
-    if (propertyMappings.has("mandatory")) {
-      mandatory = getFieldAndNameTuples(propertyMappings.get("mandatory"));
-    }
-    if (propertyMappings.has("indexed")) {
-      indexed = getFieldAndNameTuples(propertyMappings.get("indexed"));
-    }
-
-    for (FieldNameTuple key : keys) {
-      mappings.add(new Mapping(fragmentType, RoleType.key, key));
-    }
-
-    for (FieldNameTuple f : uniques) {
-      Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
-      mapping.setUnique(true);
-      mappings.add(mapping);
-    }
-
-    for (FieldNameTuple f : mandatory) {
-      Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
-      mapping.setMandatory(true);
-      mappings.add(mapping);
-    }
-
-    for (FieldNameTuple f : indexed) {
-      Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
-      mapping.setIndexed(true);
-      mappings.add(mapping);
-    }
-    if (propertyMappings.has("dates")) {
-      List<FieldNameTuple> dates = getFieldAndNameTuples(propertyMappings.get("dates"));
-      for (FieldNameTuple f : dates) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.DateTime));
-      }
-    }
-    if (propertyMappings.has("doubles")) {
-      List<FieldNameTuple> doubles = getFieldAndNameTuples(propertyMappings.get("doubles"));
-      for (FieldNameTuple f : doubles) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.Double));
-      }
-    }
-    if (propertyMappings.has("longs")) {
-      List<FieldNameTuple> longs = getFieldAndNameTuples(propertyMappings.get("longs"));
-      for (FieldNameTuple f : longs) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.Long));
-      }
-    }
-    if (propertyMappings.has("strings")) {
-      List<FieldNameTuple> strings = getFieldAndNameTuples(propertyMappings.get("strings"));
-      for (FieldNameTuple f : strings) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.String));
-      }
-    }
-    if (propertyMappings.has("points")) {
-      List<FieldNameTuple> strings = getFieldAndNameTuples(propertyMappings.get("points"));
-      for (FieldNameTuple f : strings) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.Point));
-      }
-    }
-    if (propertyMappings.has("floats")) {
-      List<FieldNameTuple> floats = getFieldAndNameTuples(propertyMappings.get("floats"));
-      for (FieldNameTuple f : floats) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.Float));
-      }
-    }
-    if (propertyMappings.has("integers")) {
-      List<FieldNameTuple> integers = getFieldAndNameTuples(propertyMappings.get("integers"));
-      for (FieldNameTuple f : integers) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.Integer));
-      }
-    }
-    if (propertyMappings.has("booleans")) {
-      List<FieldNameTuple> booleans = getFieldAndNameTuples(propertyMappings.get("booleans"));
-      for (FieldNameTuple f : booleans) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.Boolean));
-      }
-    }
-    if (propertyMappings.has("bytearrays")) {
-      List<FieldNameTuple> booleans = getFieldAndNameTuples(propertyMappings.get("bytearrays"));
-      for (FieldNameTuple f : booleans) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.ByteArray));
-      }
-    }
+  private static PropertyMapping untypedMapping(String field, String property) {
+    return new PropertyMapping(field, property, null);
   }
 
-  private static List<FieldNameTuple> getFieldAndNameTuples(Object tuplesObj) {
-    List<FieldNameTuple> tuples = new ArrayList<>();
-    if (tuplesObj instanceof JSONArray) {
-      JSONArray tuplesArray = (JSONArray) tuplesObj;
-      for (int i = 0; i < tuplesArray.length(); i++) {
-        if (tuplesArray.get(i) instanceof JSONObject) {
-          // {field:name} or {field1:name,field2:name} tuples
-          Iterator<String> it = tuplesArray.getJSONObject(i).keys();
-          while (it.hasNext()) {
-            String key = it.next();
-            tuples.add(createFieldNameTuple(key, tuplesArray.getJSONObject(i).getString(key)));
-          }
-        } else {
-          tuples.add(createFieldNameTuple(tuplesArray.getString(i), tuplesArray.getString(i)));
-        }
-      }
-    } else if (tuplesObj instanceof JSONObject) {
-      JSONObject jsonObject = (JSONObject) tuplesObj;
-      // {field:name} or {field1:name,field2:name} tuples
-      Iterator<String> it = jsonObject.keys();
-      while (it.hasNext()) {
-        String key = it.next();
-        tuples.add(createFieldNameTuple(key, jsonObject.getString(key)));
-      }
-    } else {
-      tuples.add(createFieldNameTuple(String.valueOf(tuplesObj), String.valueOf(tuplesObj)));
+  private static Collection<PropertyMapping> parseKeyMappings(JSONObject node) {
+    Map<String, PropertyMapping> keyMappings = new LinkedHashMap<>();
+    var propertyListener = new PropertyMappingListener(keyMappings, MappingMapper::untypedMapping);
+    if (node.has("key")) {
+      visit(node.get("key"), propertyListener);
     }
-    return tuples;
-  }
-
-  private static FieldNameTuple createFieldNameTuple(String field) {
-    return createFieldNameTuple(field, null);
-  }
-
-  private static FieldNameTuple createFieldNameTuple(String field, String name) {
-    FieldNameTuple fieldSet = new FieldNameTuple();
-    fieldSet.setName(name);
-    field = field.trim();
-    // handle double quoted constants
-    if (field.charAt(0) == '\"' && field.charAt(field.length() - 1) == '\"') {
-      fieldSet.setConstant(StringUtils.replace(field, "\"", ""));
-      if (StringUtils.isEmpty(name)) {
-        fieldSet.setName(fieldSet.getConstant());
-      } else {
-        fieldSet.setName(StringUtils.replace(name, "\"", ""));
-      }
-      // field is ""
-    } else {
-      if (StringUtils.isEmpty(name)) {
-        fieldSet.setName(ModelUtils.makeValidNeo4jIdentifier(field));
-      } else {
-        fieldSet.setName(ModelUtils.makeValidNeo4jIdentifier(name));
-      }
-      fieldSet.setField(field);
+    if (node.has("keys")) {
+      visit(node.get("keys"), propertyListener);
     }
-    return fieldSet;
+    return keyMappings.values();
   }
 
-  private static Mapping newMapping(
-      FragmentType fragmentType, FieldNameTuple tuple, PropertyType propertyType) {
-    Mapping mapping = new Mapping(fragmentType, RoleType.property, tuple);
-    mapping.setType(propertyType);
-    return mapping;
+  private static List<NodeRangeIndex> generateAutomaticIndexes(
+      List<String> labels,
+      List<String> defaultIndexedProperties,
+      List<NodeKeyConstraint> keyConstraints,
+      List<NodeUniqueConstraint> uniqueConstraints,
+      List<NodeRangeIndex> indexes) {
+    var properties = new ArrayList<>(defaultIndexedProperties);
+    properties.removeAll(
+        keyConstraints.stream()
+            .flatMap(constraint -> constraint.getProperties().stream())
+            .distinct()
+            .collect(Collectors.toList()));
+    properties.removeAll(
+        uniqueConstraints.stream()
+            .flatMap(constraint -> constraint.getProperties().stream())
+            .distinct()
+            .collect(Collectors.toList()));
+    properties.removeAll(
+        indexes.stream()
+            .flatMap(index -> index.getProperties().stream())
+            .distinct()
+            .collect(Collectors.toList()));
+    return properties.stream()
+        .flatMap(property -> labels.stream().map(label -> automaticNodeIndex(label, property)))
+        .collect(Collectors.toList());
+  }
+
+  private static List<RelationshipRangeIndex> generateAutomaticIndexes(
+      String type,
+      List<String> defaultIndexedProperties,
+      List<RelationshipKeyConstraint> keyConstraints,
+      List<RelationshipUniqueConstraint> uniqueConstraints,
+      List<RelationshipRangeIndex> indexes) {
+    var properties = new ArrayList<>(defaultIndexedProperties);
+    properties.removeAll(
+        keyConstraints.stream()
+            .flatMap(constraint -> constraint.getProperties().stream())
+            .distinct()
+            .collect(Collectors.toList()));
+    properties.removeAll(
+        uniqueConstraints.stream()
+            .flatMap(constraint -> constraint.getProperties().stream())
+            .distinct()
+            .collect(Collectors.toList()));
+    properties.removeAll(
+        indexes.stream()
+            .flatMap(index -> index.getProperties().stream())
+            .distinct()
+            .collect(Collectors.toList()));
+    return properties.stream()
+        .map(property -> automaticRelationshipIndex(type, property))
+        .collect(Collectors.toList());
+  }
+
+  private static NodeRangeIndex automaticNodeIndex(String label, String property) {
+    return new NodeRangeIndex(
+        String.format("node/default-index-for-%s-%s", label, property), label, List.of(property));
+  }
+
+  private static RelationshipRangeIndex automaticRelationshipIndex(String type, String property) {
+    return new RelationshipRangeIndex(
+        String.format("edge/default-index-for-%s-%s", type, property), List.of(property));
+  }
+
+  private static <T> List<T> nullIfEmpty(List<T> items) {
+    return items.isEmpty() ? null : items;
+  }
+
+  private static List<NodeKeyConstraint> parseNodeKeyConstraints(
+      String targetName, List<String> labels, JSONObject properties) {
+    List<NodeKeyConstraint> keyConstraints = new ArrayList<>();
+    if (properties.has("key")) {
+      var listener = new SingleNodeKeyConstraintListener(targetName, labels);
+      visit(properties.get("key"), listener);
+      keyConstraints.addAll(listener.getSchema());
+    }
+    if (properties.has("keys")) {
+      var listener = new NodeKeyConstraintsListener(targetName, labels);
+      visit(properties.get("keys"), listener);
+      keyConstraints.addAll(listener.getSchema());
+    }
+    return keyConstraints;
+  }
+
+  private static Set<NodeKeyDefinition> nodeKeyDefinitionsOf(NodeSchema schema) {
+    if (schema == null) {
+      return Set.of();
+    }
+    var keyConstraints = schema.getKeyConstraints();
+    if (keyConstraints == null) {
+      return Set.of();
+    }
+    return nodeKeyDefinitionsOf(keyConstraints);
+  }
+
+  private static Set<NodeKeyDefinition> nodeKeyDefinitionsOf(
+      List<NodeKeyConstraint> keyConstraints) {
+    return keyConstraints.stream()
+        .map(constraint -> new NodeKeyDefinition(constraint.getLabel(), constraint.getProperties()))
+        .collect(Collectors.toSet());
+  }
+}
+
+class NodeKeyDefinition {
+  private final String label;
+  private final List<String> properties;
+
+  public NodeKeyDefinition(String label, List<String> properties) {
+    this.label = label;
+    this.properties = properties;
+  }
+
+  public String getLabel() {
+    return label;
+  }
+
+  public List<String> getProperties() {
+    return properties;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof NodeKeyDefinition)) {
+      return false;
+    }
+    NodeKeyDefinition that = (NodeKeyDefinition) o;
+    return Objects.equals(label, that.label) && Objects.equals(properties, that.properties);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(label, properties);
   }
 }

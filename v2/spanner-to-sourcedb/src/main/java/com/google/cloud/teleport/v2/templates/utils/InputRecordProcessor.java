@@ -57,15 +57,7 @@ public class InputRecordProcessor {
         return;
       }
 
-      Instant daoStartTime = Instant.now();
       dao.write(dmlStatement);
-      Instant daoEndTime = Instant.now();
-      LOG.info(
-          "Shard "
-              + shardId
-              + ": Write to mysql took:  "
-              + ChronoUnit.MILLIS.between(daoStartTime, daoEndTime)
-              + " milliseconds ");
 
       Counter numRecProcessedMetric =
           Metrics.counter(shardId, "records_written_to_source_" + shardId);

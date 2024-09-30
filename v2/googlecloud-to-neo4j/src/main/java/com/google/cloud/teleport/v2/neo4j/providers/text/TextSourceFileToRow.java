@@ -15,17 +15,22 @@
  */
 package com.google.cloud.teleport.v2.neo4j.providers.text;
 
-import com.google.cloud.teleport.v2.neo4j.model.helpers.SourceQuerySpec;
-import com.google.cloud.teleport.v2.neo4j.model.job.Source;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.CsvSources;
+import com.google.cloud.teleport.v2.neo4j.model.sources.ExternalTextSource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.TextSource;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.Row;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,36 +38,47 @@ import org.slf4j.LoggerFactory;
 public class TextSourceFileToRow extends PTransform<PBegin, PCollection<Row>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(TextSourceFileToRow.class);
-  SourceQuerySpec sourceQuerySpec;
+  private final TextSource source;
+  private final Schema schema;
 
-  public TextSourceFileToRow(SourceQuerySpec sourceQuerySpec) {
-    this.sourceQuerySpec = sourceQuerySpec;
+  public TextSourceFileToRow(TextSource source, Schema schema) {
+    this.source = source;
+    this.schema = schema;
   }
 
   @Override
   public PCollection<Row> expand(PBegin input) {
-    Source source = sourceQuerySpec.getSource();
-    Schema beamTextSchema = sourceQuerySpec.getSourceSchema();
-    String dataFileUri = source.getUri();
+    if (source instanceof ExternalTextSource) {
+      ExternalTextSource externalTextSource = (ExternalTextSource) source;
+      List<String> urls = externalTextSource.getUrls();
 
-    if (StringUtils.isNotBlank(dataFileUri)) {
-      LOG.info("Ingesting file: {}.", dataFileUri);
-      return input
-          .apply(
-              "Read " + source.getName() + " data: " + dataFileUri, TextIO.read().from(dataFileUri))
-          .apply(
-              "Parse lines into string columns.",
-              ParDo.of(new LineToRowFn(source, beamTextSchema, source.getCsvFormat())))
-          .setRowSchema(beamTextSchema);
-    } else if (source.getInline() != null && !source.getInline().isEmpty()) {
-      LOG.info("Processing {} rows inline.", source.getInline().size());
-      return input
-          .apply("Ingest inline dataset: " + source.getName(), Create.of(source.getInline()))
-          .apply(
-              "Parse lines into string columns.", ParDo.of(new ListOfStringToRowFn(beamTextSchema)))
-          .setRowSchema(beamTextSchema);
-    } else {
-      throw new RuntimeException("Data not found.");
+      return PCollectionList.of(
+              urls.stream()
+                  .map(
+                      (url) ->
+                          input
+                              .apply(
+                                  "Read " + source.getName() + " data: " + url,
+                                  TextIO.read().from(url))
+                              .apply(
+                                  "Parse lines into string columns.",
+                                  ParDo.of(
+                                      new LineToRowFn(
+                                          schema,
+                                          CsvSources.toCsvFormat(externalTextSource.getFormat()))))
+                              .setRowSchema(schema))
+                  .collect(Collectors.toList()))
+          .apply("Combine all " + source.getName() + " data", Flatten.pCollections());
     }
+    if (source instanceof InlineTextSource) {
+      InlineTextSource inlineTextSource = (InlineTextSource) source;
+      List<List<Object>> rows = inlineTextSource.getData();
+      LOG.info("Processing {} rows inline.", rows.size());
+      return input
+          .apply("Ingest inline dataset: " + source.getName(), Create.of(rows))
+          .apply("Parse lines into string columns.", ParDo.of(new ListOfStringToRowFn(schema)))
+          .setRowSchema(schema);
+    }
+    throw new RuntimeException(String.format("Unsupported text source: %s", source.getClass()));
   }
 }

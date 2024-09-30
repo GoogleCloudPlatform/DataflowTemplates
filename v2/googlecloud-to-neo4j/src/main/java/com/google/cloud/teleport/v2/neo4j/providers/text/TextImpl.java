@@ -15,14 +15,12 @@
  */
 package com.google.cloud.teleport.v2.neo4j.providers.text;
 
-import com.google.cloud.teleport.v2.neo4j.model.helpers.SourceQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
-import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
-import com.google.cloud.teleport.v2.neo4j.model.job.Source;
+import com.google.cloud.teleport.v2.neo4j.model.sources.TextSource;
 import com.google.cloud.teleport.v2.neo4j.providers.Provider;
-import java.util.ArrayList;
-import java.util.List;
+import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -31,12 +29,17 @@ import org.apache.beam.sdk.values.Row;
 /** Provider implementation for reading and writing Text files. */
 public class TextImpl implements Provider {
 
+  private final TextSource source;
+  private final TargetSequence targetSequence;
   private OptionsParams optionsParams;
 
-  public TextImpl() {}
+  public TextImpl(TextSource source, TargetSequence targetSequence) {
+    this.source = source;
+    this.targetSequence = targetSequence;
+  }
 
   @Override
-  public void configure(OptionsParams optionsParams, JobSpec jobSpecRequest) {
+  public void configure(OptionsParams optionsParams) {
     this.optionsParams = optionsParams;
   }
 
@@ -46,24 +49,17 @@ public class TextImpl implements Provider {
   }
 
   @Override
-  public List<String> validateJobSpec() {
-    // no specific validations currently
-
-    return new ArrayList<>();
-  }
-
-  @Override
-  public PTransform<PBegin, PCollection<Row>> querySourceBeamRows(SourceQuerySpec sourceQuerySpec) {
-    return new TextSourceFileToRow(sourceQuerySpec);
+  public PTransform<PBegin, PCollection<Row>> querySourceBeamRows(Schema schema) {
+    return new TextSourceFileToRow(source, schema);
   }
 
   @Override
   public PTransform<PBegin, PCollection<Row>> queryTargetBeamRows(TargetQuerySpec targetQuerySpec) {
-    return new TextTargetToRow(optionsParams, targetQuerySpec);
+    return new TextTargetToRow(optionsParams, targetSequence, targetQuerySpec);
   }
 
   @Override
-  public PTransform<PBegin, PCollection<Row>> queryMetadata(Source source) {
+  public PTransform<PBegin, PCollection<Row>> queryMetadata() {
     return new TextSourceFileMetadataToRow(source);
   }
 }

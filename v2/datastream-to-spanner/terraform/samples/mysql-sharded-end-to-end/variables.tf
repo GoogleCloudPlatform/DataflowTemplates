@@ -74,7 +74,7 @@ variable "common_params" {
 }
 
 variable "shard_list" {
-  description = "Parameters for the Dataflow job. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/README_Sourcedb_to_Spanner_Flex.md for the description of the parameters below."
+  description = "Parameters for the Dataflow job. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/README_Cloud_Datastream_to_Spanner.md for the description of the parameters below."
   type = list(object({
     shard_id = optional(string)
     datastream_params = object({

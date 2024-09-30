@@ -1,8 +1,10 @@
 variable "common_params" {
   type = object({
+    add_policies_to_service_account = optional(bool, true)
     # Template parameters
     run_id                           = string
     project                          = string
+    host_project                     = optional(string)
     region                           = string
     working_directory_bucket         = string # example "test-bucket"
     working_directory_prefix         = string # should not start or end with a '/'
@@ -12,7 +14,7 @@ variable "common_params" {
     max_connections                  = optional(number)
     instance_id                      = string
     database_id                      = string
-    project_id                       = string
+    spanner_project_id               = string
     spanner_host                     = optional(string)
     local_session_file_path          = string
     transformation_jar_path          = optional(string)
@@ -20,10 +22,12 @@ variable "common_params" {
     transformation_class_name        = optional(string)
 
     # Dataflow runtime parameters
-    additional_experiments = list(string) # disable_runner_v2 experiment is a must for bulk jobs.
-    network                = optional(string)
-    subnetwork             = optional(string)
-    service_account_email  = optional(string)
+    additional_experiments = optional(list(string), [
+      "disable_runner_v2", "use_network_tags=allow-dataflow", "use_network_tags_for_flex_templates=allow-dataflow"
+    ])
+    network               = optional(string)
+    subnetwork            = optional(string)
+    service_account_email = optional(string)
     # Recommend using larger launcher VMs. Machine with >= 16 vCPUs should be safe.
     launcher_machine_type = optional(string, "n1-highmem-32")
     machine_type          = optional(string, "n1-highmem-4")
@@ -43,15 +47,15 @@ variable "common_params" {
 
 variable "data_shards" {
   type = list(object({
-    data_shard_id = string
-    host          = string
-    user          = string
-    password      = string
-    port          = number
+    dataShardId = string
+    host        = string
+    user        = string
+    password    = string
+    port        = string
     databases = list(object({
-      db_name           = string
-      database_id       = string
-      ref_data_shard_id = string
+      dbName         = string
+      databaseId     = string
+      refDataShardId = string
     }))
   }))
 }

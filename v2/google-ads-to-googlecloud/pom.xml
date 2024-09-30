@@ -29,7 +29,7 @@
     <artifactId>google-ads-to-googlecloud</artifactId>
 
     <properties>
-        <google-ads.version>26.0.0</google-ads.version>
+        <google-ads.version>33.0.0</google-ads.version>
     </properties>
 
     <dependencies>

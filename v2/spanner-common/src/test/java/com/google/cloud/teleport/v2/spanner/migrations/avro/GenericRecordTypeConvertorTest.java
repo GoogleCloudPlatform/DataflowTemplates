@@ -389,7 +389,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("string_col", "hello");
     genericRecord.put(
         "numeric_col", ByteBuffer.wrap(new BigDecimal("12.34").unscaledValue().toByteArray()));
-    genericRecord.put("bytes_col", new byte[] {10, 20, 30});
+    genericRecord.put("bytes_col", ByteBuffer.wrap(new byte[] {10, 20, 30}));
     genericRecord.put("timestamp_col", 1602599400056483L);
     genericRecord.put("date_col", 738991);
     GenericRecordTypeConvertor genericRecordTypeConvertor =

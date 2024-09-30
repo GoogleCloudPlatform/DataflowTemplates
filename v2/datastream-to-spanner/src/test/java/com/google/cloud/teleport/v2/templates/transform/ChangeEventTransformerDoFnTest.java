@@ -39,6 +39,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSes
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventToMapConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
@@ -97,7 +98,7 @@ public class ChangeEventTransformerDoFnTest {
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
     changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
@@ -156,10 +157,11 @@ public class ChangeEventTransformerDoFnTest {
     when(changeEventSessionConvertor.transformChangeEventData(
             changeEvent, databaseClientMock, null))
         .thenReturn(changeEvent);
+    when(changeEventSessionConvertor.getShardId(changeEvent)).thenReturn("");
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
     changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
@@ -175,7 +177,8 @@ public class ChangeEventTransformerDoFnTest {
   }
 
   @Test
-  public void testProcessElementWithCustomTransformationAndShardId() throws Exception {
+  public void testProcessElementWithCustomTransformationAndTransformationContext()
+      throws Exception {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     Schema schema = mock(Schema.class);
@@ -224,11 +227,13 @@ public class ChangeEventTransformerDoFnTest {
     when(changeEventSessionConvertor.transformChangeEventData(
             changeEvent, databaseClientMock, null))
         .thenReturn(changeEvent);
+    when(changeEventSessionConvertor.getShardId(changeEvent)).thenReturn("shard1");
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
             schema,
             transformationContext,
+            null,
             "mysql",
             customTransformation,
             false,
@@ -245,6 +250,85 @@ public class ChangeEventTransformerDoFnTest {
         .output(eq(DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG), argument.capture());
     assertEquals(
         "{\"_metadata_source_type\":\"mysql\",\"_metadata_table\":\"Users\",\"_metadata_schema\":\"db1\",\"first_name\":\"Johnny\",\"last_name\":\"Depp\",\"age\":13,\"_metadata_timestamp\":12345,\"_metadata_change_type\":\"INSERT\",\"shardId\":\"shard1\"}",
+        argument.getValue().getPayload());
+  }
+
+  @Test
+  public void testProcessElementWithCustomTransformationAndShardingContext() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    Schema schema = mock(Schema.class);
+    CustomTransformation customTransformation = mock(CustomTransformation.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    ISpannerMigrationTransformer spannerMigrationTransformer =
+        mock(ISpannerMigrationTransformer.class);
+    PCollectionView<Ddl> ddl = mock(PCollectionView.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        mock(ChangeEventSessionConvertor.class);
+
+    Map<String, Map<String, String>> streamToDbAndShardMap = new HashMap<>();
+    Map<String, String> schemaToShardId = new HashMap<>();
+    schemaToShardId.put("db1", "shard1");
+    streamToDbAndShardMap.put("stream1", schemaToShardId);
+    ShardingContext shardingContext = new ShardingContext(streamToDbAndShardMap);
+
+    // Create failsafe element input for the DoFn
+    ObjectNode changeEvent = mapper.createObjectNode();
+    changeEvent.put(DatastreamConstants.EVENT_STREAM_NAME, "stream1");
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(DatastreamConstants.EVENT_SCHEMA_KEY, "db1");
+    changeEvent.put("first_name", "Johnny");
+    changeEvent.put("last_name", "Depp");
+    changeEvent.put("age", 13);
+    changeEvent.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(changeEvent.toString(), changeEvent.toString());
+
+    Map<String, Object> sourceRecord =
+        ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
+    MigrationTransformationRequest expectedRequest =
+        new MigrationTransformationRequest("Users", sourceRecord, "shard1", "INSERT");
+    Map<String, Object> spannerRecord = new HashMap<>(sourceRecord);
+    spannerRecord.put("shardId", "shard1");
+    MigrationTransformationResponse migrationTransformationResponse =
+        new MigrationTransformationResponse(spannerRecord, false);
+
+    when(schema.isEmpty()).thenReturn(true);
+    when(processContextMock.element()).thenReturn(failsafeElement);
+    when(spannerMigrationTransformer.toSpannerRow(refEq(expectedRequest)))
+        .thenReturn(migrationTransformationResponse);
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(changeEventSessionConvertor.transformChangeEventData(
+            changeEvent, databaseClientMock, null))
+        .thenReturn(changeEvent);
+    when(changeEventSessionConvertor.getShardId(changeEvent)).thenReturn("shard1");
+
+    ChangeEventTransformerDoFn changeEventTransformerDoFn =
+        ChangeEventTransformerDoFn.create(
+            schema,
+            null,
+            shardingContext,
+            "mysql",
+            customTransformation,
+            false,
+            ddl,
+            spannerConfig);
+    changeEventTransformerDoFn.setMapper(mapper);
+    changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
+    changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
+    changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
+    changeEventTransformerDoFn.processElement(processContextMock);
+
+    ArgumentCaptor<FailsafeElement> argument = ArgumentCaptor.forClass(FailsafeElement.class);
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG), argument.capture());
+    assertEquals(
+        "{\"_metadata_stream\":\"stream1\",\"_metadata_source_type\":\"mysql\",\"_metadata_table\":\"Users\",\"_metadata_schema\":\"db1\",\"first_name\":\"Johnny\",\"last_name\":\"Depp\",\"age\":13,\"_metadata_timestamp\":12345,\"_metadata_change_type\":\"INSERT\",\"shardId\":\"shard1\"}",
         argument.getValue().getPayload());
   }
 
@@ -293,10 +377,11 @@ public class ChangeEventTransformerDoFnTest {
     when(changeEventSessionConvertor.transformChangeEventData(
             changeEvent, databaseClientMock, null))
         .thenReturn(changeEvent);
+    when(changeEventSessionConvertor.getShardId(changeEvent)).thenReturn("");
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
     changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
@@ -351,10 +436,11 @@ public class ChangeEventTransformerDoFnTest {
     when(changeEventSessionConvertor.transformChangeEventData(
             changeEvent, databaseClientMock, null))
         .thenReturn(changeEvent);
+    when(changeEventSessionConvertor.getShardId(changeEvent)).thenReturn("");
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
     changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
@@ -397,7 +483,7 @@ public class ChangeEventTransformerDoFnTest {
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.processElement(processContextMock);
     verify(processContextMock, times(0)).output(any());
@@ -440,7 +526,7 @@ public class ChangeEventTransformerDoFnTest {
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
     changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
@@ -472,7 +558,7 @@ public class ChangeEventTransformerDoFnTest {
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.processElement(processContextMock);
 
@@ -514,7 +600,7 @@ public class ChangeEventTransformerDoFnTest {
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
     changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
     changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);

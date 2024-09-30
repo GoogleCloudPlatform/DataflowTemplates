@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.convertors;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_METADATA_KEY_PREFIX;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_SCHEMA_KEY;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_STREAM_NAME;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_TABLE_NAME_KEY;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_UUID_KEY;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
@@ -34,6 +35,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.util.Iterator;
@@ -55,6 +57,9 @@ public class ChangeEventSessionConvertor {
   /* The context used to populate transformation information */
   private final TransformationContext transformationContext;
 
+  /* The context used to populate shard id in the spanner database. */
+  private final ShardingContext shardingContext;
+
   // The source database type.
   private final String sourceType;
 
@@ -64,10 +69,12 @@ public class ChangeEventSessionConvertor {
   public ChangeEventSessionConvertor(
       Schema schema,
       TransformationContext transformationContext,
+      ShardingContext shardingContext,
       String sourceType,
       boolean roundJsonDecimals) {
     this.schema = schema;
     this.transformationContext = transformationContext;
+    this.shardingContext = shardingContext;
     this.sourceType = sourceType;
     this.roundJsonDecimals = roundJsonDecimals;
   }
@@ -96,10 +103,45 @@ public class ChangeEventSessionConvertor {
     return changeEvent;
   }
 
+  public String getShardId(JsonNode changeEvent) {
+    if (!MYSQL_SOURCE_TYPE.equals(this.sourceType)
+        || ((shardingContext.getStreamToDbAndShardMap() == null
+                || shardingContext.getStreamToDbAndShardMap().isEmpty())
+            && (transformationContext.getSchemaToShardId() == null
+                || transformationContext.getSchemaToShardId().isEmpty()))) {
+      return "";
+    }
+    String shardId = "";
+    // Fetch shard id from sharding/transformation context.
+    if (shardingContext != null && !shardingContext.getStreamToDbAndShardMap().isEmpty()) {
+      Map<String, Map<String, String>> streamToDbAndShardMap =
+          shardingContext.getStreamToDbAndShardMap();
+      if (streamToDbAndShardMap != null && !streamToDbAndShardMap.isEmpty()) {
+        String streamName =
+            changeEvent
+                .get(EVENT_STREAM_NAME)
+                .asText()
+                .substring(changeEvent.get(EVENT_STREAM_NAME).asText().lastIndexOf('/') + 1);
+        Map<String, String> schemaToShardId = streamToDbAndShardMap.get(streamName);
+        if (schemaToShardId != null && !schemaToShardId.isEmpty()) {
+          String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
+          shardId = schemaToShardId.getOrDefault(schemaName, "");
+        }
+      }
+    } else {
+      Map<String, String> schemaToShardId = transformationContext.getSchemaToShardId();
+      String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
+      shardId = schemaToShardId.get(schemaName);
+    }
+    return shardId;
+  }
+
   JsonNode populateShardId(JsonNode changeEvent, String tableId) {
     if (!MYSQL_SOURCE_TYPE.equals(this.sourceType)
-        || transformationContext.getSchemaToShardId() == null
-        || transformationContext.getSchemaToShardId().isEmpty()) {
+        || ((shardingContext.getStreamToDbAndShardMap() == null
+                || shardingContext.getStreamToDbAndShardMap().isEmpty())
+            && (transformationContext.getSchemaToShardId() == null
+                || transformationContext.getSchemaToShardId().isEmpty()))) {
       return changeEvent; // Nothing to do
     }
 
@@ -112,9 +154,7 @@ public class ChangeEventSessionConvertor {
     if (shardIdColDef == null) {
       return changeEvent;
     }
-    Map<String, String> schemaToShardId = transformationContext.getSchemaToShardId();
-    String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
-    String shardId = schemaToShardId.get(schemaName);
+    String shardId = getShardId(changeEvent);
     ((ObjectNode) changeEvent).put(shardIdColDef.getName(), shardId);
     return changeEvent;
   }

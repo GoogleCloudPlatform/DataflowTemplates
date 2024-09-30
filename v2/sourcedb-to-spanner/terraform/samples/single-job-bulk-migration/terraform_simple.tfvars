@@ -10,6 +10,4 @@ username                 = "root"
 password                 = "abc"
 instance_id              = "my-spanner-instance"
 database_id              = "my-spanner-database"
-project_id               = "my-spanner-project"
-
-additional_experiments = ["disable_runner_v2"] # This option is required for bulk jobs. Do not remove.
+spanner_project_id       = "my-spanner-project"

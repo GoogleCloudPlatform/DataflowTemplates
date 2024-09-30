@@ -39,6 +39,22 @@ public class DataStreamToSpannerTest {
   }
 
   @Test
+  public void testGetSourceTypeWithDatastreamInputFilePattern() {
+    String[] args =
+        new String[] {"--inputFilePattern=gs://test-bkt/", "--directoryWatchDurationInMinutes=42"};
+    DataStreamToSpanner.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamToSpanner.Options.class);
+    String inputFilePattern = options.getInputFilePattern();
+    Integer directoryWatchDurationInMinutes = options.getDirectoryWatchDurationInMinutes();
+    Integer expectedWatchDuration = 42;
+
+    assertEquals(inputFilePattern, "gs://test-bkt/");
+    assertEquals(directoryWatchDurationInMinutes, expectedWatchDuration);
+  }
+
+  @Test
   public void testGetSourceTypeWithEmptyStreamName() {
     expectedEx.expect(IllegalArgumentException.class);
     expectedEx.expectMessage("Stream name cannot be empty.");
