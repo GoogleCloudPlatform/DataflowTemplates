@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants.MAX_TABLES_PER_JOB;
+import static com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants.MAX_RECOMMENDED_TABLES_PER_JOB;
 
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
@@ -84,12 +84,15 @@ public class PipelineController {
       }
       finalTablesToMigrate.add(spTable);
     }
-    LOG.info("Final list of Spanner tables that will be populated: ", finalTablesToMigrate);
-    if (finalTablesToMigrate.size() > MAX_TABLES_PER_JOB) {
+    LOG.info(
+        "{} Spanner tables in final selection for migration: {}",
+        finalTablesToMigrate.size(),
+        finalTablesToMigrate);
+    if (finalTablesToMigrate.size() > MAX_RECOMMENDED_TABLES_PER_JOB) {
       LOG.warn(
           "Migrating {} tables in a single job (max recommended: {}). Consider splitting tables across jobs to avoid launch issues.",
           finalTablesToMigrate.size(),
-          MAX_TABLES_PER_JOB);
+          MAX_RECOMMENDED_TABLES_PER_JOB);
     }
     for (String spTable : finalTablesToMigrate) {
       String srcTable = schemaMapper.getSourceTableName("", spTable);
@@ -196,9 +199,12 @@ public class PipelineController {
       }
       finalTablesToMigrate.add(spTable);
     }
-    LOG.info("Final list of Spanner tables that will be populated: ", finalTablesToMigrate);
+    LOG.info(
+        "{} Spanner tables in final selection for migration: {}",
+        finalTablesToMigrate.size(),
+        finalTablesToMigrate);
     long totalTablesAcrossShards = findNumLogicalshards(shards) * finalTablesToMigrate.size();
-    if (totalTablesAcrossShards > MAX_TABLES_PER_JOB) {
+    if (totalTablesAcrossShards > MAX_RECOMMENDED_TABLES_PER_JOB) {
       LOG.warn(
           "Migrating {} tables ({} shards x {} tables/shard) in a single job. "
               + "This exceeds the recommended maximum of {} tables per job. "
@@ -206,7 +212,7 @@ public class PipelineController {
           totalTablesAcrossShards,
           findNumLogicalshards(shards),
           finalTablesToMigrate.size(),
-          MAX_TABLES_PER_JOB);
+          MAX_RECOMMENDED_TABLES_PER_JOB);
     }
 
     LOG.info(
@@ -283,12 +289,9 @@ public class PipelineController {
     return pipeline.run();
   }
 
+  // Calculate the total number of logical shards in the list of physical shards.
   private static long findNumLogicalshards(List<Shard> shards) {
-    long total = 0;
-    for (Shard shard : shards) {
-      total += shard.getDbNameToLogicalShardIdMap().size();
-    }
-    return total;
+    return shards.stream().mapToLong(shard -> shard.getDbNameToLogicalShardIdMap().size()).sum();
   }
 
   @VisibleForTesting
