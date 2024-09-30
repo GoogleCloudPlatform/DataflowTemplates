@@ -67,6 +67,9 @@ public class DatastreamConstants {
   /* The prefix for all metadata keys in the event json */
   public static final String EVENT_METADATA_KEY_PREFIX = "_metadata";
 
+  /* The key for stream name in the event json */
+  public static final String EVENT_STREAM_NAME = "_metadata_stream";
+
   /* List of Event keys, Shadow table information related to sort order in Oracle database. */
   public static final String ORACLE_TIMESTAMP_KEY = "_metadata_timestamp";
 

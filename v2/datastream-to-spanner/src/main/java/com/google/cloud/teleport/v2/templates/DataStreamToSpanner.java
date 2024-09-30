@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.api.gax.retrying.RetrySettings;
 import com.google.api.services.datastream.v1.model.SourceConfig;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
@@ -30,9 +31,11 @@ import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardingContextReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
@@ -46,6 +49,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -137,7 +141,8 @@ public class DataStreamToSpanner {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions {
+  public interface Options
+      extends PipelineOptions, StreamingOptions, DataflowPipelineWorkerPoolOptions {
     @TemplateParameter.GcsReadFile(
         order = 1,
         groupName = "Source",
@@ -229,6 +234,7 @@ public class DataStreamToSpanner {
     @TemplateParameter.Text(
         order = 9,
         groupName = "Source",
+        optional = true,
         description = "Datastream stream name.",
         helpText =
             "The name or template for the stream to poll for schema information and source type.")
@@ -468,6 +474,17 @@ public class DataStreamToSpanner {
     String getFilteredEventsDirectory();
 
     void setFilteredEventsDirectory(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 29,
+        optional = true,
+        helpText =
+            "Sharding context file path in cloud storage is used to populate the shard id in spanner database for each source shard."
+                + "It is of the format Map<stream_name, Map<db_name, shard_id>>",
+        description = "Sharding context file path in cloud storage")
+    String getShardingContextFilePath();
+
+    void setShardingContextFilePath(String value);
   }
 
   private static void validateSourceType(Options options) {
@@ -564,7 +581,18 @@ public class DataStreamToSpanner {
             .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
             .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
-            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()))
+            .withCommitRetrySettings(
+                RetrySettings.newBuilder()
+                    .setTotalTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setInitialRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
+                    .setRetryDelayMultiplier(1)
+                    .setMaxRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
+                    .setInitialRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setRpcTimeoutMultiplier(1)
+                    .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setMaxAttempts(1)
+                    .build());
     /* Process information schema
      * 1) Read information schema from destination Cloud Spanner database
      * 2) Check if shadow tables are present and create if necessary
@@ -615,13 +643,19 @@ public class DataStreamToSpanner {
                       options.getGcsPubSubSubscription(),
                       options.getRfcStartDateTime())
                   .withFileReadConcurrency(options.getFileReadConcurrency())
+                  .withoutDatastreamRecordsReshuffle()
                   .withDirectoryWatchDuration(
                       Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes())));
+      int maxNumWorkers = options.getMaxNumWorkers() != 0 ? options.getMaxNumWorkers() : 1;
       jsonRecords =
           PCollectionList.of(datastreamJsonRecords)
               .and(dlqJsonRecords)
               .apply(Flatten.pCollections())
-              .apply("Reshuffle", Reshuffle.viaRandomKey());
+              .apply(
+                  "Reshuffle",
+                  Reshuffle.<FailsafeElement<String, String>>viaRandomKey()
+                      .withNumBuckets(
+                          maxNumWorkers * DatastreamToSpannerConstants.MAX_DOFN_PER_WORKER));
     } else {
       LOG.info("DLQ retry flow");
       jsonRecords =
@@ -638,6 +672,10 @@ public class DataStreamToSpanner {
         TransformationContextReader.getTransformationContext(
             options.getTransformationContextFilePath());
 
+    // Ingest sharding context file into memory.
+    ShardingContext shardingContext =
+        ShardingContextReader.getShardingContext(options.getShardingContextFilePath());
+
     CustomTransformation customTransformation =
         CustomTransformation.builder(
                 options.getTransformationJarPath(), options.getTransformationClassName())
@@ -648,6 +686,7 @@ public class DataStreamToSpanner {
         ChangeEventTransformerDoFn.create(
             schema,
             transformationContext,
+            shardingContext,
             options.getDatastreamSourceType(),
             customTransformation,
             options.getRoundJsonDecimals(),
@@ -730,8 +769,7 @@ public class DataStreamToSpanner {
         PCollectionList.of(dlqErrorRecords)
             .and(spannerWriteResults.permanentErrors())
             .and(transformedRecords.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))
-            .apply(Flatten.pCollections())
-            .apply("Reshuffle", Reshuffle.viaRandomKey());
+            .apply(Flatten.pCollections());
     // increment the metrics
     permanentErrors
         .apply("Update metrics", ParDo.of(new MetricUpdaterDoFn(isRegularMode)))

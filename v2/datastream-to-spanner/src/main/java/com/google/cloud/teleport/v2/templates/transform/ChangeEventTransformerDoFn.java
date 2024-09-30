@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.transform;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_SCHEMA_KEY;
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_CHANGE_TYPE_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_TABLE_NAME_KEY;
 
@@ -31,6 +29,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventToM
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
@@ -79,6 +78,9 @@ public abstract class ChangeEventTransformerDoFn
   @Nullable
   public abstract TransformationContext transformationContext();
 
+  @Nullable
+  public abstract ShardingContext shardingContext();
+
   public abstract String sourceType();
 
   @Nullable
@@ -115,6 +117,7 @@ public abstract class ChangeEventTransformerDoFn
   public static ChangeEventTransformerDoFn create(
       Schema schema,
       TransformationContext transformationContext,
+      ShardingContext shardingContext,
       String sourceType,
       CustomTransformation customTransformation,
       Boolean roundJsonDecimals,
@@ -123,6 +126,7 @@ public abstract class ChangeEventTransformerDoFn
     return new AutoValue_ChangeEventTransformerDoFn(
         schema,
         transformationContext,
+        shardingContext,
         sourceType,
         customTransformation,
         roundJsonDecimals,
@@ -139,7 +143,11 @@ public abstract class ChangeEventTransformerDoFn
         CustomTransformationImplFetcher.getCustomTransformationLogicImpl(customTransformation());
     changeEventSessionConvertor =
         new ChangeEventSessionConvertor(
-            schema(), transformationContext(), sourceType(), roundJsonDecimals());
+            schema(),
+            transformationContext(),
+            shardingContext(),
+            sourceType(),
+            roundJsonDecimals());
     spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig());
   }
 
@@ -213,17 +221,8 @@ public abstract class ChangeEventTransformerDoFn
   MigrationTransformationResponse getCustomTransformationResponse(
       JsonNode changeEvent, Map<String, Object> sourceRecord)
       throws InvalidTransformationException {
-    String shardId = "";
+    String shardId = changeEventSessionConvertor.getShardId(changeEvent);
     String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
-
-    // Fetch shard id from transformation context.
-    if (transformationContext() != null && MYSQL_SOURCE_TYPE.equals(sourceType())) {
-      Map<String, String> schemaToShardId = transformationContext().getSchemaToShardId();
-      if (schemaToShardId != null && !schemaToShardId.isEmpty()) {
-        String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
-        shardId = schemaToShardId.getOrDefault(schemaName, "");
-      }
-    }
     Instant startTimestamp = Instant.now();
     MigrationTransformationRequest migrationTransformationRequest =
         new MigrationTransformationRequest(
