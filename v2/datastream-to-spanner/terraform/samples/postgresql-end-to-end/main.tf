@@ -9,10 +9,10 @@ locals {
 # Setup network firewalls for datastream if creating a private connection.
 resource "google_compute_firewall" "allow-datastream" {
   depends_on  = [google_project_service.enabled_apis]
-  count       = var.datastream_params.private_connectivity != null ? 1 : 0
+  count       = var.datastream_params.create_firewall_rule == true ? 1 : 0
   project     = var.common_params.host_project != null ? var.common_params.host_project : var.common_params.project
   name        = "allow-datastream"
-  network     = var.common_params.host_project != null ? "projects/${var.common_params.host_project}/global/networks/${var.common_params.datastream_params.private_connectivity.vpc_name}" : "projects/${var.common_params.project}/global/networks/${var.common_params.datastream_params.private_connectivity.vpc_name}"
+  network     = var.common_params.host_project != null ? "projects/${var.common_params.host_project}/global/networks/${var.datastream_params.private_connectivity.vpc_name}" : "projects/${var.common_params.project}/global/networks/${var.datastream_params.private_connectivity.vpc_name}"
   description = "Allow traffic from private connectivity endpoint of Datastream"
 
   allow {
@@ -20,7 +20,19 @@ resource "google_compute_firewall" "allow-datastream" {
     ports    = ["3306"]
   }
   source_ranges = [var.datastream_params.private_connectivity.range]
-  target_tags   = ["databases"]
+  dynamic "target_tags" {
+    for_each = var.datastream_params.firewall_rule_target_tags != null ? [1] : []
+    content {
+      target_tags = var.datastream_params.firewall_rule_target_tags
+    }
+  }
+
+  dynamic "target_ranges" {
+    for_each = var.datastream_params.firewall_rule_target_ranges != null ? [1] : []
+    content {
+      target_ranges = var.datastream_params.firewall_rule_target_ranges
+    }
+  }
 }
 
 # Create a private connectivity configuration if needed.

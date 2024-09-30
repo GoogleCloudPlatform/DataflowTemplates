@@ -73,7 +73,7 @@ Following permissions are required -
 > 1. For ease of use, this sample automatically adds the
 > required
 > roles to the service account used for running the migration. In order to
-> do this, we need the `roles/iam.securityAdmin` role. If granting
+> do this, we need the `resourcemanager.projects.setIamPolicy` permission. If granting
 > this role is unacceptable, please set
 > the `var.common_params.add_policies_to_service_account`
 > to **false**. This will skip adding the roles.
@@ -354,21 +354,6 @@ and configures it in the source profile created for the Datastream stream.
 > **_NOTE:_** Private connectivity resource creation can take a long time to
 > create.
 
-
-> **ALERT:** Private connectivity resource destruction is currently not
-> supported in Terraform due to the ability to delete nested
-> resources: [#17920](https://github.com/hashicorp/terraform-provider-google/issues/17290),
-> [#13054](https://github.com/hashicorp/terraform-provider-google/issues/13054).
-> Until this is supported, the private connectivity resource will need to be
-> manually deleted via the console or the gcloud CLI before running
-> `terraform destroy`.
->
-> Example -
->
->  `gcloud datastream private-connections delete 'private-conn-name' --location=us-central1 --force --quiet`
->
-> You can run `terraform destroy` after deleting the private connection from the
-> UI or the gcloud CLI to clean up the remaining resources.
 
 If this is not specified, configurations are created assuming **IP Allowlisting
 **.

@@ -12,6 +12,9 @@ variable "common_params" {
       enable_backfill               = optional(bool, true)
       max_concurrent_cdc_tasks      = optional(number, 5)
       max_concurrent_backfill_tasks = optional(number, 20)
+      create_firewall_rule          = optional(bool, true)
+      firewall_rule_target_tags     = optional(list(string), ["databases"])
+      firewall_rule_target_ranges   = optional(list(string)) # Set default to ["10.2.0.0/24"] if needed.
       private_connectivity_id       = optional(string)
       private_connectivity = optional(object({
         private_connectivity_id = optional(string, "priv-conn")
@@ -73,6 +76,12 @@ variable "common_params" {
       })
     })
   })
+  validation {
+    condition = !(var.common_params.datastream_params.create_firewall_rule == true &&
+      var.common_params.datastream_params.firewall_rule_target_tags != null &&
+    var.common_params.datastream_params.firewall_rule_target_ranges != null)
+    error_message = "Exactly one of 'firewall_rule_target_tags' or 'firewall_rule_target_ranges' must be specified when 'create_firewall_rule' is true."
+  }
 }
 
 variable "shard_list" {

@@ -19,6 +19,9 @@ variable "datastream_params" {
       range                   = optional(string, "10.0.0.0/29")
     }))
     private_connectivity_id       = optional(string)
+    create_firewall_rule          = optional(bool, true)
+    firewall_rule_target_tags     = optional(list(string), ["databases"])
+    firewall_rule_target_ranges   = optional(list(string)) # Set default to ["10.2.0.0/24"] if needed.
     source_connection_profile_id  = optional(string, "source-postgresql")
     postgresql_host               = string
     postgresql_username           = string
@@ -45,6 +48,12 @@ variable "datastream_params" {
     })
 
   })
+  validation {
+    condition = !(var.datastream_params.create_firewall_rule == true &&
+      var.datastream_params.firewall_rule_target_tags != null &&
+    var.datastream_params.firewall_rule_target_ranges != null)
+    error_message = "Exactly one of 'firewall_rule_target_tags' or 'firewall_rule_target_ranges' must be specified when 'create_firewall_rule' is true."
+  }
   validation {
     condition = (
       (var.datastream_params.private_connectivity_id == null && var.datastream_params.private_connectivity != null) ||
