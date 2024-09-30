@@ -40,6 +40,6 @@ public class SchemaFileOverrideTest {
     tableColumnMap.put("Lorem", "Epsum");
     renamedColumns.put("table1", tableColumnMap);
     schemaFileOverride = new SchemaFileOverride(null, renamedColumns);
-    assertEquals(renamedColumns, schemaFileOverride.getRenamedColumns());
+    assertEquals(renamedColumns, schemaFileOverride.getRenamedColumnTupleMap());
   }
 }

@@ -48,7 +48,7 @@ public class SchemaStringOverridesParser implements ISchemaOverridesParser, Seri
    * @return The overridden spanner table name
    */
   @Override
-  public String getTableOverrideOrDefault(String sourceTableName) {
+  public String getTableOverride(String sourceTableName) {
     return tableNameOverrides.getOrDefault(sourceTableName, sourceTableName);
   }
 
@@ -61,8 +61,7 @@ public class SchemaStringOverridesParser implements ISchemaOverridesParser, Seri
    * @return A pair of spannerTableName and spannerColumnName
    */
   @Override
-  public Pair<String, String> getColumnOverrideOrDefault(
-      String sourceTableName, String sourceColumnName) {
+  public Pair<String, String> getColumnOverride(String sourceTableName, String sourceColumnName) {
     return columnNameOverrides.getOrDefault(
         String.format("%s.%s", sourceTableName, sourceColumnName),
         new ImmutablePair<>(sourceTableName, sourceColumnName));

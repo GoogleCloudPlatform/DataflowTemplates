@@ -58,7 +58,7 @@ public class SchemaFileOverridesParser implements ISchemaOverridesParser, Serial
    * @return The overridden spanner table name
    */
   @Override
-  public String getTableOverrideOrDefault(String sourceTableName) {
+  public String getTableOverride(String sourceTableName) {
     if (schemaFileOverride.getRenamedTables() == null) {
       return sourceTableName;
     }
@@ -74,14 +74,13 @@ public class SchemaFileOverridesParser implements ISchemaOverridesParser, Serial
    * @return A pair of spannerTableName and spannerColumnName
    */
   @Override
-  public Pair<String, String> getColumnOverrideOrDefault(
-      String sourceTableName, String sourceColumnName) {
-    if (schemaFileOverride.getRenamedColumns() == null
-        || schemaFileOverride.getRenamedColumns().get(sourceTableName) == null) {
+  public Pair<String, String> getColumnOverride(String sourceTableName, String sourceColumnName) {
+    if (schemaFileOverride.getRenamedColumnTupleMap() == null
+        || schemaFileOverride.getRenamedColumnTupleMap().get(sourceTableName) == null) {
       return new ImmutablePair<>(sourceTableName, sourceColumnName);
     }
     Map<String, String> tableOverridesMap =
-        schemaFileOverride.getRenamedColumns().get(sourceTableName);
+        schemaFileOverride.getRenamedColumnTupleMap().get(sourceTableName);
     return new ImmutablePair<>(
         sourceTableName, tableOverridesMap.getOrDefault(sourceColumnName, sourceColumnName));
   }

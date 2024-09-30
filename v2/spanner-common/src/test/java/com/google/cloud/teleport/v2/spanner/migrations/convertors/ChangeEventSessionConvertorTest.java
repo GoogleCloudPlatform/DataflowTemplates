@@ -480,7 +480,8 @@ public class ChangeEventSessionConvertorTest {
     SchemaStringOverridesParser schemaStringOverridesParser =
         new SchemaStringOverridesParser(userOptionsOverrides);
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(null, schemaStringOverridesParser, null, null, "mysql", false);
+        new ChangeEventSessionConvertor(
+            null, schemaStringOverridesParser, null, null, "mysql", false);
 
     JSONObject changeEvent1 = new JSONObject();
     changeEvent1.put(Constants.EVENT_TABLE_NAME_KEY, "Singers");
@@ -508,7 +509,8 @@ public class ChangeEventSessionConvertorTest {
     SchemaStringOverridesParser schemaStringOverridesParser =
         new SchemaStringOverridesParser(userOptionsOverrides);
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(null, schemaStringOverridesParser, null, null, "mysql", false);
+        new ChangeEventSessionConvertor(
+            null, schemaStringOverridesParser, null, null, "mysql", false);
 
     JSONObject changeEvent1 = new JSONObject();
     changeEvent1.put(Constants.EVENT_TABLE_NAME_KEY, "Singers");
@@ -537,7 +539,8 @@ public class ChangeEventSessionConvertorTest {
     SchemaStringOverridesParser schemaStringOverridesParser =
         new SchemaStringOverridesParser(userOptionsOverrides);
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(null, schemaStringOverridesParser, null, null, "mysql", false);
+        new ChangeEventSessionConvertor(
+            null, schemaStringOverridesParser, null, null, "mysql", false);
 
     JSONObject changeEvent1 = new JSONObject();
     changeEvent1.put(Constants.EVENT_TABLE_NAME_KEY, "Singers");
@@ -565,7 +568,8 @@ public class ChangeEventSessionConvertorTest {
     SchemaFileOverridesParser schemaFileOverridesParser =
         new SchemaFileOverridesParser(schemaOverridesFile.toString());
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(null, schemaFileOverridesParser, null, null, "mysql", false);
+        new ChangeEventSessionConvertor(
+            null, schemaFileOverridesParser, null, null, "mysql", false);
 
     JSONObject changeEvent1 = new JSONObject();
     changeEvent1.put(Constants.EVENT_TABLE_NAME_KEY, "Singers");
@@ -591,7 +595,8 @@ public class ChangeEventSessionConvertorTest {
     SchemaFileOverridesParser schemaFileOverridesParser =
         new SchemaFileOverridesParser(schemaOverridesFile.toString());
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(null, schemaFileOverridesParser, null, null, "mysql", false);
+        new ChangeEventSessionConvertor(
+            null, schemaFileOverridesParser, null, null, "mysql", false);
 
     JSONObject changeEvent1 = new JSONObject();
     changeEvent1.put(Constants.EVENT_TABLE_NAME_KEY, "Singers");
@@ -617,7 +622,8 @@ public class ChangeEventSessionConvertorTest {
     SchemaFileOverridesParser schemaFileOverridesParser =
         new SchemaFileOverridesParser(schemaOverridesFile.toString());
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(null, schemaFileOverridesParser, null, null, "mysql", false);
+        new ChangeEventSessionConvertor(
+            null, schemaFileOverridesParser, null, null, "mysql", false);
 
     JSONObject changeEvent1 = new JSONObject();
     changeEvent1.put(Constants.EVENT_TABLE_NAME_KEY, "Singers");

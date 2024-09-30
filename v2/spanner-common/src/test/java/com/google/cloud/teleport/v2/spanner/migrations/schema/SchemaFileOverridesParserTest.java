@@ -33,9 +33,9 @@ public class SchemaFileOverridesParserTest {
         Paths.get(Resources.getResource("schema-overrides-tables.json").getPath());
     schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFile.toString());
     assertEquals(3, schemaFileOverridesParser.schemaFileOverride.getRenamedTables().size());
-    assertEquals("Vocalists", schemaFileOverridesParser.getTableOverrideOrDefault("Singers"));
-    assertEquals("Records", schemaFileOverridesParser.getTableOverrideOrDefault("Albums"));
-    assertEquals("World", schemaFileOverridesParser.getTableOverrideOrDefault("Hello"));
+    assertEquals("Vocalists", schemaFileOverridesParser.getTableOverride("Singers"));
+    assertEquals("Records", schemaFileOverridesParser.getTableOverride("Albums"));
+    assertEquals("World", schemaFileOverridesParser.getTableOverride("Hello"));
   }
 
   @Test
@@ -44,10 +44,10 @@ public class SchemaFileOverridesParserTest {
         Paths.get(Resources.getResource("schema-overrides-columns.json").getPath());
     schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFile.toString());
     Pair<String, String> result1 =
-        schemaFileOverridesParser.getColumnOverrideOrDefault("Singers", "SingerName");
+        schemaFileOverridesParser.getColumnOverride("Singers", "SingerName");
     Pair<String, String> result2 =
-        schemaFileOverridesParser.getColumnOverrideOrDefault("Albums", "AlbumName");
-    assertEquals(2, schemaFileOverridesParser.schemaFileOverride.getRenamedColumns().size());
+        schemaFileOverridesParser.getColumnOverride("Albums", "AlbumName");
+    assertEquals(2, schemaFileOverridesParser.schemaFileOverride.getRenamedColumnTupleMap().size());
     assertEquals("TalentName", result1.getRight());
     assertEquals("RecordName", result2.getRight());
   }
@@ -58,14 +58,14 @@ public class SchemaFileOverridesParserTest {
         Paths.get(Resources.getResource("schema-overrides-cols-tables.json").getPath());
     schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFile.toString());
     Pair<String, String> result1 =
-        schemaFileOverridesParser.getColumnOverrideOrDefault("Singers", "SingerName");
+        schemaFileOverridesParser.getColumnOverride("Singers", "SingerName");
     Pair<String, String> result2 =
-        schemaFileOverridesParser.getColumnOverrideOrDefault("Albums", "AlbumName");
+        schemaFileOverridesParser.getColumnOverride("Albums", "AlbumName");
     assertEquals(3, schemaFileOverridesParser.schemaFileOverride.getRenamedTables().size());
-    assertEquals("Vocalists", schemaFileOverridesParser.getTableOverrideOrDefault("Singers"));
-    assertEquals("Records", schemaFileOverridesParser.getTableOverrideOrDefault("Albums"));
-    assertEquals("World", schemaFileOverridesParser.getTableOverrideOrDefault("Hello"));
-    assertEquals(2, schemaFileOverridesParser.schemaFileOverride.getRenamedColumns().size());
+    assertEquals("Vocalists", schemaFileOverridesParser.getTableOverride("Singers"));
+    assertEquals("Records", schemaFileOverridesParser.getTableOverride("Albums"));
+    assertEquals("World", schemaFileOverridesParser.getTableOverride("Hello"));
+    assertEquals(2, schemaFileOverridesParser.schemaFileOverride.getRenamedColumnTupleMap().size());
     assertEquals("TalentName", result1.getRight());
     assertEquals("RecordName", result2.getRight());
   }

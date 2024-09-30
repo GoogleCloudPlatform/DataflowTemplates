@@ -29,7 +29,7 @@ public class NoopSchemaOverridesParser implements ISchemaOverridesParser, Serial
    * @return The overridden spanner table name
    */
   @Override
-  public String getTableOverrideOrDefault(String sourceTableName) {
+  public String getTableOverride(String sourceTableName) {
     return sourceTableName;
   }
 
@@ -42,8 +42,7 @@ public class NoopSchemaOverridesParser implements ISchemaOverridesParser, Serial
    * @return A pair of spannerTableName and spannerColumnName
    */
   @Override
-  public Pair<String, String> getColumnOverrideOrDefault(
-      String sourceTableName, String sourceColumnName) {
+  public Pair<String, String> getColumnOverride(String sourceTableName, String sourceColumnName) {
     return new ImmutablePair<>(sourceTableName, sourceColumnName);
   }
 }

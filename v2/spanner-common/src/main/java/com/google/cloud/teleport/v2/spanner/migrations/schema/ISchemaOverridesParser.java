@@ -26,7 +26,7 @@ public interface ISchemaOverridesParser {
    * @param sourceTableName The source table name
    * @return The overridden spanner table name
    */
-  String getTableOverrideOrDefault(String sourceTableName);
+  String getTableOverride(String sourceTableName);
 
   /**
    * Gets the spanner column name given the source table name, or the source column name if override
@@ -36,5 +36,5 @@ public interface ISchemaOverridesParser {
    * @param sourceColumnName the source column name being overridden
    * @return A pair of spannerTableName and spannerColumnName
    */
-  Pair<String, String> getColumnOverrideOrDefault(String sourceTableName, String sourceColumnName);
+  Pair<String, String> getColumnOverride(String sourceTableName, String sourceColumnName);
 }

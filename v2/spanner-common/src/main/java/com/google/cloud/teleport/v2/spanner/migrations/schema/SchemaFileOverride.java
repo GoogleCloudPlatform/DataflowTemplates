@@ -30,7 +30,7 @@ public class SchemaFileOverride implements Serializable {
     this.renamedColumns = renamedColumns;
   }
 
-  public Map<String, Map<String, String>> getRenamedColumns() {
+  public Map<String, Map<String, String>> getRenamedColumnTupleMap() {
     return renamedColumns;
   }
 

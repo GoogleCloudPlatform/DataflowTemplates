@@ -152,7 +152,8 @@ public abstract class ChangeEventTransformerDoFn
             schema(),
             schemaOverridesParser(),
             transformationContext(),
-           shardingContext(), sourceType(),
+            shardingContext(),
+            sourceType(),
             roundJsonDecimals());
     spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig());
   }
