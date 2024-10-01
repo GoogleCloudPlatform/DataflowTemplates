@@ -20,7 +20,6 @@ import static junit.framework.TestCase.assertEquals;
 import com.google.common.io.Resources;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
 
 public class SchemaFileOverridesParserTest {
@@ -43,13 +42,11 @@ public class SchemaFileOverridesParserTest {
     Path schemaOverridesFile =
         Paths.get(Resources.getResource("schema-overrides-columns.json").getPath());
     schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFile.toString());
-    Pair<String, String> result1 =
-        schemaFileOverridesParser.getColumnOverride("Singers", "SingerName");
-    Pair<String, String> result2 =
-        schemaFileOverridesParser.getColumnOverride("Albums", "AlbumName");
+    String result1 = schemaFileOverridesParser.getColumnOverride("Singers", "SingerName");
+    String result2 = schemaFileOverridesParser.getColumnOverride("Albums", "AlbumName");
     assertEquals(2, schemaFileOverridesParser.schemaFileOverride.getRenamedColumnTupleMap().size());
-    assertEquals("TalentName", result1.getRight());
-    assertEquals("RecordName", result2.getRight());
+    assertEquals("TalentName", result1);
+    assertEquals("RecordName", result2);
   }
 
   @Test
@@ -57,17 +54,15 @@ public class SchemaFileOverridesParserTest {
     Path schemaOverridesFile =
         Paths.get(Resources.getResource("schema-overrides-cols-tables.json").getPath());
     schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFile.toString());
-    Pair<String, String> result1 =
-        schemaFileOverridesParser.getColumnOverride("Singers", "SingerName");
-    Pair<String, String> result2 =
-        schemaFileOverridesParser.getColumnOverride("Albums", "AlbumName");
+    String result1 = schemaFileOverridesParser.getColumnOverride("Singers", "SingerName");
+    String result2 = schemaFileOverridesParser.getColumnOverride("Albums", "AlbumName");
     assertEquals(3, schemaFileOverridesParser.schemaFileOverride.getRenamedTables().size());
     assertEquals("Vocalists", schemaFileOverridesParser.getTableOverride("Singers"));
     assertEquals("Records", schemaFileOverridesParser.getTableOverride("Albums"));
     assertEquals("World", schemaFileOverridesParser.getTableOverride("Hello"));
     assertEquals(2, schemaFileOverridesParser.schemaFileOverride.getRenamedColumnTupleMap().size());
-    assertEquals("TalentName", result1.getRight());
-    assertEquals("RecordName", result2.getRight());
+    assertEquals("TalentName", result1);
+    assertEquals("RecordName", result2);
   }
 
   @Test(expected = IllegalArgumentException.class)

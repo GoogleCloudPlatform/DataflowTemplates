@@ -23,8 +23,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,14 +72,13 @@ public class SchemaFileOverridesParser implements ISchemaOverridesParser, Serial
    * @return A pair of spannerTableName and spannerColumnName
    */
   @Override
-  public Pair<String, String> getColumnOverride(String sourceTableName, String sourceColumnName) {
+  public String getColumnOverride(String sourceTableName, String sourceColumnName) {
     if (schemaFileOverride.getRenamedColumnTupleMap() == null
         || schemaFileOverride.getRenamedColumnTupleMap().get(sourceTableName) == null) {
-      return new ImmutablePair<>(sourceTableName, sourceColumnName);
+      return sourceColumnName;
     }
     Map<String, String> tableOverridesMap =
         schemaFileOverride.getRenamedColumnTupleMap().get(sourceTableName);
-    return new ImmutablePair<>(
-        sourceTableName, tableOverridesMap.getOrDefault(sourceColumnName, sourceColumnName));
+    return tableOverridesMap.getOrDefault(sourceColumnName, sourceColumnName);
   }
 }

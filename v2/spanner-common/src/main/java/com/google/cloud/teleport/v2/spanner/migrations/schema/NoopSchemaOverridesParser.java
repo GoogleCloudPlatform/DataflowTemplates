@@ -16,8 +16,6 @@
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import java.io.Serializable;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 
 public class NoopSchemaOverridesParser implements ISchemaOverridesParser, Serializable {
 
@@ -42,7 +40,7 @@ public class NoopSchemaOverridesParser implements ISchemaOverridesParser, Serial
    * @return A pair of spannerTableName and spannerColumnName
    */
   @Override
-  public Pair<String, String> getColumnOverride(String sourceTableName, String sourceColumnName) {
-    return new ImmutablePair<>(sourceTableName, sourceColumnName);
+  public String getColumnOverride(String sourceTableName, String sourceColumnName) {
+    return sourceColumnName;
   }
 }

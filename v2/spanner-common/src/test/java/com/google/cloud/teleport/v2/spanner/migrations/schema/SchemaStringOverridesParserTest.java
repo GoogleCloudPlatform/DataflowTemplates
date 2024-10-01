@@ -19,7 +19,6 @@ import static junit.framework.TestCase.assertEquals;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
 
 public class SchemaStringOverridesParserTest {
@@ -45,13 +44,11 @@ public class SchemaStringOverridesParserTest {
         "columnOverrides",
         "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]");
     schemaStringOverridesParser = new SchemaStringOverridesParser(userOptionsOverrides);
-    Pair<String, String> result1 =
-        schemaStringOverridesParser.getColumnOverride("Singers", "SingerName");
-    Pair<String, String> result2 =
-        schemaStringOverridesParser.getColumnOverride("Albums", "AlbumName");
+    String result1 = schemaStringOverridesParser.getColumnOverride("Singers", "SingerName");
+    String result2 = schemaStringOverridesParser.getColumnOverride("Albums", "AlbumName");
     assertEquals(2, schemaStringOverridesParser.columnNameOverrides.keySet().size());
-    assertEquals("TalentName", result1.getRight());
-    assertEquals("RecordName", result2.getRight());
+    assertEquals("TalentName", result1);
+    assertEquals("RecordName", result2);
   }
 
   @Test
@@ -63,15 +60,12 @@ public class SchemaStringOverridesParserTest {
         "columnOverrides",
         "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]");
     schemaStringOverridesParser = new SchemaStringOverridesParser(userOptionsOverrides);
-    String sourceTableName = "Singers";
-    String sourceColumnName = "SingerName";
-    String tableResult = schemaStringOverridesParser.getTableOverride(sourceTableName);
-    Pair<String, String> columnResult =
-        schemaStringOverridesParser.getColumnOverride(sourceTableName, sourceColumnName);
+    String tableResult = schemaStringOverridesParser.getTableOverride("Singers");
+    String columnResult = schemaStringOverridesParser.getColumnOverride("Singers", "SingerName");
     assertEquals(3, schemaStringOverridesParser.tableNameOverrides.keySet().size());
     assertEquals("Vocalists", tableResult);
     assertEquals(2, schemaStringOverridesParser.columnNameOverrides.keySet().size());
-    assertEquals("TalentName", columnResult.getRight());
+    assertEquals("TalentName", columnResult);
   }
 
   @Test
@@ -79,9 +73,8 @@ public class SchemaStringOverridesParserTest {
     Map<String, String> userOptionsOverrides = new HashMap<>();
     userOptionsOverrides.put("tableOverrides", "[{Singers, Vocalists}, {Albums, Records}]");
     schemaStringOverridesParser = new SchemaStringOverridesParser(userOptionsOverrides);
-    String sourceTableName = "Labels";
-    String result = schemaStringOverridesParser.getTableOverride(sourceTableName);
-    assertEquals(sourceTableName, result);
+    String result = schemaStringOverridesParser.getTableOverride("Labels");
+    assertEquals("Labels", result);
   }
 
   @Test
@@ -91,13 +84,9 @@ public class SchemaStringOverridesParserTest {
         "columnOverrides",
         "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]");
     schemaStringOverridesParser = new SchemaStringOverridesParser(userOptionsOverrides);
-    String sourceTableName = "Labels";
-    String sourceColumnName = "Owners";
-    Pair<String, String> result =
-        schemaStringOverridesParser.getColumnOverride(sourceTableName, sourceColumnName);
+    String result = schemaStringOverridesParser.getColumnOverride("Labels", "Owners");
     assertEquals(2, schemaStringOverridesParser.columnNameOverrides.keySet().size());
-    assertEquals("Labels", result.getLeft());
-    assertEquals("Owners", result.getRight());
+    assertEquals("Owners", result);
   }
 
   @Test(expected = IllegalArgumentException.class)

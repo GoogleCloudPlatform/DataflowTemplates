@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
-import org.apache.commons.lang3.tuple.Pair;
-
 public interface ISchemaOverridesParser {
 
   /**
@@ -36,5 +34,5 @@ public interface ISchemaOverridesParser {
    * @param sourceColumnName the source column name being overridden
    * @return A pair of spannerTableName and spannerColumnName
    */
-  Pair<String, String> getColumnOverride(String sourceTableName, String sourceColumnName);
+  String getColumnOverride(String sourceTableName, String sourceColumnName);
 }

@@ -48,7 +48,6 @@ import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-import org.apache.commons.lang3.tuple.Pair;
 
 /**
  * Utility class with methods which converts change events based on {@link
@@ -230,16 +229,14 @@ public class ChangeEventSessionConvertor {
     List<String> sourceFieldNames = ChangeEventUtils.getEventColumnKeys(changeEvent);
     sourceFieldNames.forEach(
         sourceFieldName -> {
-          Pair<String, String> spannerTableColumn =
+          String spannerTableColumn =
               schemaOverridesParser.getColumnOverride(sourceTableName, sourceFieldName);
           // a valid column override for the table in this changeEvent exist
           // 1.  the table name of the source should match the one specified in the override
           // 2. the column name override should be a different value than the current source field
           // name.
-          if (sourceTableName.equals(spannerTableColumn.getLeft())
-              && !sourceFieldName.equals(spannerTableColumn.getRight())) {
-            ((ObjectNode) changeEvent)
-                .set(spannerTableColumn.getRight(), changeEvent.get(sourceFieldName));
+          if (!sourceFieldName.equals(spannerTableColumn)) {
+            ((ObjectNode) changeEvent).set(spannerTableColumn, changeEvent.get(sourceFieldName));
             ((ObjectNode) changeEvent).remove(sourceFieldName);
           }
         });
