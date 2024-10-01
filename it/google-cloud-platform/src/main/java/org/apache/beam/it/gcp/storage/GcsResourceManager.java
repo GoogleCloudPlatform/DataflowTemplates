@@ -18,6 +18,7 @@
 package org.apache.beam.it.gcp.storage;
 
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.api.gax.paging.Page;
 import com.google.auth.Credentials;
@@ -48,7 +49,6 @@ import org.apache.beam.it.gcp.artifacts.ArtifactClient;
 import org.apache.beam.it.gcp.artifacts.GcsArtifact;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
 import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,8 +136,8 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
   }
 
   public static String generateBucketName(String testClassName, String runId) {
-    Preconditions.checkNotNull(runId, "runId cannot be null");
-    Preconditions.checkNotNull(testClassName, "testClassName cannot be null");
+    checkNotNull(runId, "runId cannot be null");
+    checkNotNull(testClassName, "testClassName cannot be null");
 
     String lowercaseName = (testClassName + "-" + runId).toLowerCase();
     String sanitizedName = lowercaseName.replace(".", "-");
