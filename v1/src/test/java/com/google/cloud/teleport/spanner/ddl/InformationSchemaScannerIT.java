@@ -623,10 +623,10 @@ public class InformationSchemaScannerIT {
             " CREATE VECTOR INDEX `VI` ON `Base`(`Embeddings` ) WHERE Embeddings IS NOT NULL"
                 + " OPTIONS (distance_type=\"COSINE\")");
 
-        SPANNER_SERVER.createDatabase(dbId, statements);
-        Ddl ddl = getDatabaseDdl();
-        assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
-      }
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
 
   @Test
   public void pgIndexes() throws Exception {
