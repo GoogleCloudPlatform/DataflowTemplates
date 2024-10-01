@@ -1,7 +1,7 @@
 #===================================================================#
 # Create build environment from base Python template launcher image #
 #===================================================================#
-FROM gcr.io/dataflow-templates-base/python311-template-launcher-base:latest as python-base
+FROM ${basePythonContainerImage} as python-base
 
 # Build args
 ARG WORKDIR=/template
@@ -12,8 +12,8 @@ ARG PY_VERSION=${pythonVersion}
 
 # Copy template files to /template
 RUN mkdir -p $WORKDIR
-COPY main.py requirements.txt* /template/
-<#if copyOtherFiles??>COPY ${copyOtherFiles} /template/</#if>
+${filesToCopy}
+${directoriesToCopy}
 WORKDIR $WORKDIR
 
 # Create requirements.txt file if not provided
@@ -71,4 +71,4 @@ COPY --from=python-base /usr/licenses/ /usr/licenses/
 
 WORKDIR /template
 
-ENTRYPOINT ["/opt/google/dataflow/python_template_launcher"]
+ENTRYPOINT ${entryPoint}
