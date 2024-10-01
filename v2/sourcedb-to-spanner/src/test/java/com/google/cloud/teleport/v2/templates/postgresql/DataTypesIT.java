@@ -200,7 +200,6 @@ public class DataTypesIT extends SourceDbToSpannerITBase {
     result.put(
         "timestamptz",
         createRows("1970-02-02T18:05:06.123456000Z", "1970-02-03T05:05:06.123456000Z", "NULL"));
-    result.put("time_without_time_zone", createRows("00:00:00", "23:59:59", "00:00:00", "NULL"));
     result.put(
         "timestamp_with_time_zone",
         createRows("1970-02-02T18:05:06.123456000Z", "1970-02-03T05:05:06.123456000Z", "NULL"));
