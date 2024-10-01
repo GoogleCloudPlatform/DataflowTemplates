@@ -18,6 +18,7 @@
 package org.apache.beam.it.gcp.storage;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyIterable;
@@ -105,6 +106,12 @@ public final class GcsResourceManagerTest {
   }
 
   @Test
+  public void testBuilderWithoutStaticBucketWithEmptyTestClassName() {
+    assertThrows(
+        IllegalArgumentException.class, () -> GcsResourceManager.builder("", null).build());
+  }
+
+  @Test
   public void testBuilderWithEmptyBucket() {
     assertThrows(
         IllegalArgumentException.class,
@@ -156,6 +163,37 @@ public final class GcsResourceManagerTest {
     when(client.create(any(BlobInfo.class), any())).thenReturn(blob);
     assertThrows(
         IOException.class, () -> gcsClient.uploadArtifact(ARTIFACT_NAME, "/" + UUID.randomUUID()));
+  }
+
+  @Test
+  public void testGenerateBucketName_validInput() {
+    String testClassName = "MyTestClass";
+    String runId = "1234567890";
+    String expectedBucketName = "mytestclass-1234567890";
+    String actualBucketName = GcsResourceManager.generateBucketName(testClassName, runId);
+    assertEquals(expectedBucketName, actualBucketName);
+  }
+
+  @Test
+  public void testGenerateBucketName_withSpecialCharactersAndLongName() {
+    String testClassName = "My.Test.Class.With.A.Very.Long.Name";
+    String runId = "1234567890";
+    String expectedBucketName =
+        "my-test-class-with-a-very-long-name-1234567890"; // Periods replaced, truncated
+    String actualBucketName = GcsResourceManager.generateBucketName(testClassName, runId);
+    assertEquals(expectedBucketName, actualBucketName);
+  }
+
+  @Test
+  public void testGenerateBucketName_nullInputs() {
+    assertThrows(
+        NullPointerException.class,
+        () -> GcsResourceManager.generateBucketName("MyTestClass", null) // Null runId
+        );
+    assertThrows(
+        NullPointerException.class,
+        () -> GcsResourceManager.generateBucketName(null, "1234567890") // Null testClassName
+        );
   }
 
   @Test
@@ -320,6 +358,22 @@ public final class GcsResourceManagerTest {
 
     gcsClient.cleanupAll();
 
+    verify(client, never()).delete(anyIterable());
+  }
+
+  @Test
+  public void testCleanup_deleteNonStaticBucket_bucketExists() {
+    // Arrange
+    GcsResourceManager client2 = new GcsResourceManager(client, BUCKET, TEST_CLASS, true);
+
+    when(client.delete(BUCKET)).thenReturn(true); // Mock successful bucket deletion
+
+    // Act
+    client2.cleanupAll();
+
+    // Assert
+    verify(client).delete(BUCKET);
+    verify(client, never()).list(anyString(), any(BlobListOption.class));
     verify(client, never()).delete(anyIterable());
   }
 
