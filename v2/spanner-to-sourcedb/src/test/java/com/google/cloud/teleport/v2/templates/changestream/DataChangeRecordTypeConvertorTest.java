@@ -345,6 +345,15 @@ public final class DataChangeRecordTypeConvertorTest {
         Date.parseDate("2020-02-30"));
   }
 
+  @Test
+  public void canConvertToDateNull() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("field1", "something");
+    JsonNode ce = getJsonNode(changeEvent.toString());
+
+    assertNull(DataChangeRecordTypeConvertor.toDate(ce, "field2", /* requiredField= */ false));
+  }
+
   @Test(expected = DataChangeRecordConvertorException.class)
   public void cannotConvertRandomStringTodate() throws Exception {
     JSONObject changeEvent = new JSONObject();
@@ -375,6 +384,36 @@ public final class DataChangeRecordTypeConvertorTest {
         Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
   }
 
+  @Test(expected = DataChangeRecordConvertorException.class)
+  public void convertToByteArrayError() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("field1", "&*^%");
+
+    JsonNode ce = getJsonNode(changeEvent.toString());
+
+    DataChangeRecordTypeConvertor.toByteArray(ce, "field1", /* requiredField= */ true);
+  }
+
+  @Test()
+  public void convertToByteArrayNull() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("field2", "smth");
+
+    JsonNode ce = getJsonNode(changeEvent.toString());
+
+    assertNull(DataChangeRecordTypeConvertor.toByteArray(ce, "field1", /* requiredField= */ false));
+  }
+
+  @Test(expected = DataChangeRecordConvertorException.class)
+  public void convertToByteArrayNotFound() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("field2", "tada");
+
+    JsonNode ce = getJsonNode(changeEvent.toString());
+
+    DataChangeRecordTypeConvertor.toByteArray(ce, "field1", /* requiredField= */ true);
+  }
+
   /*
    * Tests null value for NumericBigDecimal
    */
@@ -386,5 +425,13 @@ public final class DataChangeRecordTypeConvertorTest {
     assertNull(
         DataChangeRecordTypeConvertor.toNumericBigDecimal(
             ce, "field1", /* requiredField= */ false));
+  }
+
+  @Test(expected = DataChangeRecordConvertorException.class)
+  public void testNullNumericBigDecimalError() throws Exception {
+    String jsonChangeEvent = "{ \"field1\" : \"junk\" }";
+    JsonNode ce = getJsonNode(jsonChangeEvent);
+
+    DataChangeRecordTypeConvertor.toNumericBigDecimal(ce, "field1", /* requiredField= */ false);
   }
 }

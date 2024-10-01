@@ -290,6 +290,9 @@ public class AssignShardIdFn
     return spannerRecord;
   }
 
+  // Refer https://cloud.google.com/spanner/docs/reference/standard-sql/data-types
+  // and https://cloud.google.com/spanner/docs/reference/postgresql/data-types
+  // for allowed primary key types
   private com.google.cloud.spanner.Key generateKey(String tableName, JsonNode keysJson)
       throws Exception {
     try {
@@ -331,12 +334,6 @@ public class AssignShardIdFn
           case PG_NUMERIC:
             pk.append(
                 DataChangeRecordTypeConvertor.toNumericBigDecimal(
-                    keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case JSON:
-          case PG_JSONB:
-            pk.append(
-                DataChangeRecordTypeConvertor.toString(
                     keysJson, keyColName, /* requiredField= */ true));
             break;
           case BYTES:

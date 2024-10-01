@@ -98,7 +98,7 @@ public class ChangeEventTransformerDoFnTest {
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
     changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
@@ -161,7 +161,7 @@ public class ChangeEventTransformerDoFnTest {
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
     changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
@@ -232,6 +232,7 @@ public class ChangeEventTransformerDoFnTest {
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
             schema,
+            null,
             transformationContext,
             null,
             "mysql",
@@ -312,6 +313,7 @@ public class ChangeEventTransformerDoFnTest {
         ChangeEventTransformerDoFn.create(
             schema,
             null,
+            null,
             shardingContext,
             "mysql",
             customTransformation,
@@ -381,7 +383,7 @@ public class ChangeEventTransformerDoFnTest {
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
     changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
@@ -440,7 +442,7 @@ public class ChangeEventTransformerDoFnTest {
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
     changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
@@ -483,7 +485,7 @@ public class ChangeEventTransformerDoFnTest {
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.processElement(processContextMock);
     verify(processContextMock, times(0)).output(any());
@@ -526,7 +528,7 @@ public class ChangeEventTransformerDoFnTest {
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
     changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
@@ -558,7 +560,7 @@ public class ChangeEventTransformerDoFnTest {
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.processElement(processContextMock);
 
@@ -600,7 +602,7 @@ public class ChangeEventTransformerDoFnTest {
 
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
-            schema, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
+            schema, null, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
     changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
     changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
