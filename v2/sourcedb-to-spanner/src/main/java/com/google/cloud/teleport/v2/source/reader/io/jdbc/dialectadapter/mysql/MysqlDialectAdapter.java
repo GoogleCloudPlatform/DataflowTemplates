@@ -656,8 +656,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   public String getCollationsOrderQuery(String dbCharset, String dbCollation) {
     String query = resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH);
     Map<String, String> tags = new HashMap<>();
-    tags.put("'" + CHARSET_REPLACEMENT_TAG + "'", dbCharset);
-    tags.put("'" + COLLATION_REPLACEMENT_TAG + "'", dbCollation);
+    tags.put("'" + CHARSET_REPLACEMENT_TAG + "'", "'" + dbCharset + "'");
+    tags.put("'" + COLLATION_REPLACEMENT_TAG + "'", "'" + dbCollation + "'");
     // Queries with size > max_allowed_packet get rejected by
     // the db. max_allowed_packet is generally around 16Mb which is a lot for our use case.
     return replaceTagsAndSanitize(query, tags);
