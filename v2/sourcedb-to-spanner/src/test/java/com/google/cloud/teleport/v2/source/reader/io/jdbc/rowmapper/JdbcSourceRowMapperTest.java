@@ -35,7 +35,6 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeStampTz;
-import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeTz;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
@@ -529,7 +528,7 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("BOX")
-                .mappedValue("(1, 2), (3, 4)")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
@@ -559,13 +558,13 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("CIDR")
-                .mappedValue("192.168.100.128/25")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("CIRCLE")
-                .mappedValue("(1, 2), 3)")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
@@ -579,6 +578,20 @@ public class JdbcSourceRowMapperTest {
                 .sourceColumnType("DATE")
                 .inputValue(java.sql.Date.valueOf("2024-08-30"))
                 .mappedValue((int) java.sql.Date.valueOf("2024-08-30").toLocalDate().toEpochDay())
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("DATEMULTIRANGE")
+                .inputValue("{[0001-01-01, 9999-12-31]}")
+                .mappedValue(null) // Unsupported
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("DATERANGE")
+                .inputValue("[0001-01-01, 9999-12-31]")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
@@ -597,7 +610,8 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("ENUM")
-                .mappedValue("ENUM VALUE")
+                .inputValue("ENUM VALUE")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
@@ -615,7 +629,7 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("INET")
-                .mappedValue("192.168.1.0/24")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
@@ -631,10 +645,31 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("INTERVAL")
+                .inputValue("1 hour")
+                .mappedValue(null) // Unsupported
+                .build())
+        .add(
+            Column.builder()
                 .derbyColumnType("SMALLINT")
                 .sourceColumnType("INT2")
                 .inputValue(Short.MAX_VALUE)
                 .mappedValue((int) Short.MAX_VALUE)
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("INT4MULTIRANGE")
+                .inputValue("{[10, 20]}")
+                .mappedValue(null) // Unsupported
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("INT4RANGE")
+                .inputValue("[10, 20]")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
@@ -644,11 +679,24 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("INT8MULTIRANGE")
+                .inputValue("{[30, 40]}")
+                .mappedValue(null) // Unsupported
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("INT8RANGE")
+                .inputValue("[30, 40]")
+                .mappedValue(null) // Unsupported
+                .build())
+        .add(
+            Column.builder()
                 .derbyColumnType("BIGINT")
                 .sourceColumnType("INT8")
                 .mappedValue(Long.MAX_VALUE)
                 .build())
-        // TODO(thiagotnunes): INTERVAL
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
@@ -665,25 +713,25 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("LINE")
-                .mappedValue("{1,2,3}")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("LSEG")
-                .mappedValue("[(1,2),(3,4)]")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("MACADDR")
-                .mappedValue("08:00:2b:01:02:03")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("MACADDR8")
-                .mappedValue("08:00:2b:01:02:03:04:05")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
@@ -701,6 +749,20 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("NUMMULTIRANGE")
+                .inputValue("{[50, 60]}")
+                .mappedValue(null) // Unsupported
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("NUMRANGE")
+                .inputValue("[50, 60]")
+                .mappedValue(null) // Unsupported
+                .build())
+        .add(
+            Column.builder()
                 .derbyColumnType("BIGINT")
                 .sourceColumnType("OID")
                 .mappedValue(1000L)
@@ -709,31 +771,31 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("PATH")
-                .mappedValue("[(1,2),(3,4),(5,6)]")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("PG_LSN")
-                .mappedValue("123/0")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("PG_SNAPSHOT")
-                .mappedValue("795:799:795,797")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("POINT")
-                .mappedValue("(1,2)")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("POLYGON")
-                .mappedValue("((1,2),(3,4))")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
@@ -790,66 +852,22 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("TIME")
-                .inputValue("01:02:03.123456")
-                .mappedValue(3723123456L)
-                .build())
-        .add(
-            Column.builder()
-                .name("time_00")
-                .derbyColumnType("VARCHAR(100)")
-                .sourceColumnType("TIME")
-                .inputValue("00:00:00")
                 .mappedValue(0L)
-                .build())
-        .add(
-            Column.builder()
-                .name("time_24")
-                .derbyColumnType("VARCHAR(100)")
-                .sourceColumnType("TIME")
-                .inputValue("24:00:00")
-                .mappedValue(0L)
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("TIME WITHOUT TIME ZONE")
                 .inputValue("01:02:03")
-                .mappedValue(3723000000L)
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
-                .name("timetz_hour_offset")
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("TIMETZ")
                 .inputValue("01:02:03-05")
-                .mappedValue(
-                    new GenericRecordBuilder(TimeTz.SCHEMA)
-                        .set(TimeTz.TIME_FIELD_NAME, 3723000000L)
-                        .set(TimeTz.OFFSET_FIELD_NAME, -18000000L)
-                        .build())
-                .build())
-        .add(
-            Column.builder()
-                .name("timetz_hour_minute_offset")
-                .derbyColumnType("VARCHAR(100)")
-                .sourceColumnType("TIMETZ")
-                .inputValue("01:02:03-05:00")
-                .mappedValue(
-                    new GenericRecordBuilder(TimeTz.SCHEMA)
-                        .set(TimeTz.TIME_FIELD_NAME, 3723000000L)
-                        .set(TimeTz.OFFSET_FIELD_NAME, -18000000L)
-                        .build())
-                .build())
-        .add(
-            Column.builder()
-                .derbyColumnType("VARCHAR(100)")
-                .sourceColumnType("TIME WITH TIME ZONE")
-                .inputValue("01:02:03.123456-05:00")
-                .mappedValue(
-                    new GenericRecordBuilder(TimeTz.SCHEMA)
-                        .set(TimeTz.TIME_FIELD_NAME, 3723123456L)
-                        .set(TimeTz.OFFSET_FIELD_NAME, -18000000L)
-                        .build())
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
@@ -903,20 +921,48 @@ public class JdbcSourceRowMapperTest {
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TSMULTIRANGE")
+                .inputValue("{[1970-01-01 01:00, 1970-01-01 02:00]}")
+                .mappedValue(null) // Unsupported
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TSRANGE")
+                .inputValue("[1970-01-01 01:00, 1970-01-01 02:00]")
+                .mappedValue(null) // Unsupported
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TSTZMULTIRANGE")
+                .inputValue("{[1970-01-01 01:00+10:00, 1970-01-01 02:00+10:00]}")
+                .mappedValue(null) // Unsupported
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
+                .sourceColumnType("TSTZRANGE")
+                .inputValue("[1970-01-01 01:00+10:00, 1970-01-01 02:00+10:00]")
+                .mappedValue(null) // Unsupported
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("TSQUERY")
-                .mappedValue("fat & rat")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("TSVECTOR")
-                .mappedValue("a fat cat sat on a mat and ate a fat rat")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("TXID_SNAPSHOT")
-                .mappedValue("10:30:10,14,15")
+                .mappedValue(null) // Unsupported
                 .build())
         .add(
             Column.builder()
@@ -940,7 +986,7 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("XML")
-                .mappedValue("<test>123</test>")
+                .mappedValue(null) // Unsupported
                 .build())
         .build();
   }
@@ -1046,9 +1092,6 @@ class Column {
       }
       if (sourceColumnType == null) {
         throw new IllegalStateException("Source column type must be defined for column");
-      }
-      if (mappedValue == null) {
-        throw new IllegalStateException("Mapped value must be defined for column");
       }
       if (name == null) {
         name = String.join("_", sourceColumnType.getName().toLowerCase().split(" "));

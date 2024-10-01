@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.postgresql;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
@@ -102,6 +103,50 @@ public class DataTypesIT extends SourceDbToSpannerITBase {
       SpannerAsserts.assertThatStructs(rows)
           .hasRecordsUnorderedCaseInsensitiveColumns(entry.getValue());
     }
+
+    // Validate unsupported types.
+    List<String> unsupportedTypeTables =
+        List.of(
+            "t_box",
+            "t_cidr",
+            "t_circle",
+            "t_datemultirange",
+            "t_daterange",
+            "t_enum",
+            "t_inet",
+            "t_int4multirange",
+            "t_int4range",
+            "t_int8multirange",
+            "t_int8range",
+            "t_interval",
+            "t_line",
+            "t_lseg",
+            "t_macaddr",
+            "t_macaddr8",
+            "t_nummultirange",
+            "t_numrange",
+            "t_path",
+            "t_pg_lsn",
+            "t_pg_snapshot",
+            "t_point",
+            "t_polygon",
+            "t_time",
+            "t_time_with_time_zone",
+            "t_time_without_time_zone",
+            "t_timetz",
+            "t_tsmultirange",
+            "t_tsquery",
+            "t_tsrange",
+            "t_tstzmultirange",
+            "t_tstzrange",
+            "t_tsvector",
+            "t_txid_snapshot",
+            "t_xml");
+
+    for (String table : unsupportedTypeTables) {
+      // Unsupported rows should still be migrated. Each source table has 2 rows.
+      assertThat(spannerResourceManager.getRowCount(table)).isEqualTo(2L);
+    }
   }
 
   private Map<String, List<Map<String, Object>>> getExpectedData() {
@@ -112,16 +157,10 @@ public class DataTypesIT extends SourceDbToSpannerITBase {
     result.put("bit_varying", createRows("MDEwMQ==", "NULL"));
     result.put("bool", createRows("false", "true", "NULL"));
     result.put("boolean", createRows("false", "true", "NULL"));
-    result.put("box", createRows("(3,4),(1,2)", "NULL"));
     result.put("bytea", createRows("YWJj", "NULL"));
     result.put("char", createRows("a", "Θ", "NULL"));
     result.put("character", createRows("a", "Ξ", "NULL"));
     result.put("character_varying", createRows("testing character varying", "NULL"));
-    result.put(
-        "cidr",
-        createRows(
-            "192.168.100.128/25", "192.168.1.0/24", "192.0.0.0/24", "::ffff:1.2.3.0/128", "NULL"));
-    result.put("circle", createRows("<(1,2),3>", "NULL"));
     result.put("date", createRows("0001-01-01", "9999-12-31", "NULL"));
     result.put("decimal", createRows("0.12", "NULL"));
     result.put(
@@ -136,7 +175,6 @@ public class DataTypesIT extends SourceDbToSpannerITBase {
         "float8",
         createRows(
             "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "3.45", "NULL"));
-    result.put("inet", createRows("192.168.1.0/24", "NULL"));
     result.put("int", createRows("-2147483648", "2147483647", "1", "NULL"));
     result.put("integer", createRows("-2147483648", "2147483647", "2", "NULL"));
     result.put("int2", createRows("-32768", "32767", "3", "NULL"));
@@ -144,18 +182,9 @@ public class DataTypesIT extends SourceDbToSpannerITBase {
     result.put("int8", createRows("-9223372036854775808", "9223372036854775807", "5", "NULL"));
     result.put("json", createRows("{\"duplicate_key\":1}", "{\"null_key\":null}", "NULL"));
     result.put("jsonb", createRows("{\"duplicate_key\":2}", "{\"null_key\":null}", "NULL"));
-    result.put("line", createRows("{1,2,3}", "NULL"));
-    result.put("lseg", createRows("[(1,2),(3,4)]", "NULL"));
-    result.put("macaddr", createRows("08:00:2b:01:02:03", "NULL"));
-    result.put("macaddr8", createRows("08:00:2b:01:02:03:04:05", "NULL"));
     result.put("money", createRows("123.45", "NULL"));
     result.put("numeric", createRows("4.56", "NULL"));
     result.put("oid", createRows("1000", "NULL"));
-    result.put("path", createRows("[(1,2),(3,4),(5,6)]", "NULL"));
-    result.put("pg_lsn", createRows("123/0", "NULL"));
-    result.put("pg_snapshot", createRows("1000:1000:", "NULL"));
-    result.put("point", createRows("(1,2)", "NULL"));
-    result.put("polygon", createRows("((1,2),(3,4))", "NULL"));
     result.put(
         "real",
         createRows(
@@ -167,7 +196,6 @@ public class DataTypesIT extends SourceDbToSpannerITBase {
     result.put("smallint", createRows("-32768", "32767", "10", "NULL"));
     result.put("smallserial", createRows("-32768", "32767", "11"));
     result.put("text", createRows("testing text", "NULL"));
-    result.put("time", createRows("00:00:00", "23:59:59", "00:00:00", "NULL"));
     result.put("timestamp", createRows("1970-01-02T03:04:05.123456Z", "NULL"));
     result.put(
         "timestamptz",
@@ -177,13 +205,9 @@ public class DataTypesIT extends SourceDbToSpannerITBase {
         "timestamp_with_time_zone",
         createRows("1970-02-02T18:05:06.123456000Z", "1970-02-03T05:05:06.123456000Z", "NULL"));
     result.put("timestamp_without_time_zone", createRows("1970-01-02T03:04:05.123456Z", "NULL"));
-    result.put("tsquery", createRows("'fat' & 'rat'", "NULL"));
-    result.put("tsvector", createRows("'a' 'cat' 'fat' 'mat' 'on' 'sat'", "NULL"));
-    result.put("txid_snapshot", createRows("10:20:10,14,15", "NULL"));
     result.put("uuid", createRows("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
     result.put("varbit", createRows("MTEwMA==", "NULL"));
     result.put("varchar", createRows("testing varchar", "NULL"));
-    result.put("xml", createRows("<test>123</test>", "NULL"));
     return result;
   }
 

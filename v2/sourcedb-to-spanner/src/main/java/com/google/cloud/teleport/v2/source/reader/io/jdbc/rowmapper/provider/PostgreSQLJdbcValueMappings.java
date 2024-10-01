@@ -20,7 +20,6 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMap
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueExtractor;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueMapper;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeStampTz;
-import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeTz;
 import com.google.common.collect.ImmutableMap;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
@@ -43,24 +42,6 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
 
   private static final Calendar UTC_CALENDAR =
       Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
-
-  private static final DateTimeFormatter TIME_FORMAT =
-      new DateTimeFormatterBuilder()
-          .appendPattern("HH:mm:ss")
-          .optionalStart()
-          .appendFraction(ChronoField.NANO_OF_SECOND, 1, 6, true)
-          .optionalEnd()
-          .appendOffsetId()
-          .toFormatter();
-
-  private static final DateTimeFormatter TIMETZ_FORMAT =
-      new DateTimeFormatterBuilder()
-          .appendPattern("HH:mm:ss")
-          .optionalStart()
-          .appendFraction(ChronoField.NANO_OF_SECOND, 1, 6, true)
-          .optionalEnd()
-          .appendOffset("+HH:mm", "+00")
-          .toFormatter();
 
   private static final DateTimeFormatter TIMESTAMPTZ_FORMAT =
       new DateTimeFormatterBuilder()
@@ -97,27 +78,6 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
   private static final ResultSetValueExtractor<java.sql.Date> dateExtractor =
       (rs, fieldName) -> rs.getDate(fieldName, UTC_CALENDAR);
 
-  // We cannot use `java.sql.Time` here, as the PostgreSQL time might be '24:00:00'. This makes the
-  // java.sql.Time jump a day (from the underlying `java.sql.Date`) and microseconds extraction gets
-  // a wrong value. We parse the time from a String into an `OffsetTime` instead.
-  private static final ResultSetValueExtractor<OffsetTime> timeExtractor =
-      (rs, fieldName) -> {
-        String time = rs.getString(fieldName);
-        if (time == null) {
-          return null;
-        }
-        return OffsetTime.parse(time + ZoneOffset.UTC, TIME_FORMAT);
-      };
-
-  private static final ResultSetValueExtractor<OffsetTime> timetzExtractor =
-      (rs, fieldName) -> {
-        String timeTz = rs.getString(fieldName);
-        if (timeTz == null) {
-          return null;
-        }
-        return OffsetTime.parse(timeTz, TIMETZ_FORMAT);
-      };
-
   private static final ResultSetValueExtractor<java.sql.Timestamp> timestampExtractor =
       (rs, fieldName) -> rs.getTimestamp(fieldName, UTC_CALENDAR);
 
@@ -140,20 +100,6 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
   private static final ResultSetValueMapper<java.sql.Timestamp> timestampToAvro =
       (value, schema) -> toMicros(value.toInstant());
 
-  private static final ResultSetValueMapper<OffsetTime> timeToAvro =
-      (value, schema) -> toMicros(value);
-
-  private static final ResultSetValueMapper<OffsetTime> timetzToAvro =
-      (value, schema) ->
-          new GenericRecordBuilder(TimeTz.SCHEMA)
-              .set(
-                  TimeTz.TIME_FIELD_NAME,
-                  TimeUnit.NANOSECONDS.toMicros(value.toLocalTime().toNanoOfDay()))
-              .set(
-                  TimeTz.OFFSET_FIELD_NAME,
-                  TimeUnit.SECONDS.toMillis(value.getOffset().getTotalSeconds()))
-              .build();
-
   private static final ResultSetValueMapper<OffsetDateTime> timestamptzToAvro =
       (value, schema) ->
           new GenericRecordBuilder(TimeStampTz.SCHEMA)
@@ -171,41 +117,26 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
           .put("BIT VARYING", Pair.of(bytesExtractor, valuePassThrough))
           .put("BOOL", Pair.of(ResultSet::getBoolean, valuePassThrough))
           .put("BOOLEAN", Pair.of(ResultSet::getBoolean, valuePassThrough))
-          .put("BOX", Pair.of(ResultSet::getString, valuePassThrough))
           .put("BYTEA", Pair.of(bytesExtractor, valuePassThrough))
           .put("CHAR", Pair.of(ResultSet::getString, valuePassThrough))
           .put("CHARACTER", Pair.of(ResultSet::getString, valuePassThrough))
           .put("CHARACTER VARYING", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("CIDR", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("CIRCLE", Pair.of(ResultSet::getString, valuePassThrough))
           .put("CITEXT", Pair.of(ResultSet::getString, valuePassThrough))
           .put("DATE", Pair.of(dateExtractor, dateToAvro))
           .put("DECIMAL", Pair.of(ResultSet::getObject, numericToAvro))
           .put("DOUBLE PRECISION", Pair.of(ResultSet::getDouble, valuePassThrough))
-          .put("ENUM", Pair.of(ResultSet::getString, valuePassThrough))
           .put("FLOAT4", Pair.of(ResultSet::getFloat, valuePassThrough))
           .put("FLOAT8", Pair.of(ResultSet::getDouble, valuePassThrough))
-          .put("INET", Pair.of(ResultSet::getString, valuePassThrough))
           .put("INT", Pair.of(ResultSet::getInt, valuePassThrough))
           .put("INTEGER", Pair.of(ResultSet::getInt, valuePassThrough))
-          // TODO(thiagotnunes): INTERVAL
           .put("INT2", Pair.of(ResultSet::getInt, valuePassThrough))
           .put("INT4", Pair.of(ResultSet::getInt, valuePassThrough))
           .put("INT8", Pair.of(ResultSet::getLong, valuePassThrough))
           .put("JSON", Pair.of(ResultSet::getString, valuePassThrough))
           .put("JSONB", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("LINE", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("LSEG", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("MACADDR", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("MACADDR8", Pair.of(ResultSet::getString, valuePassThrough))
           .put("MONEY", Pair.of(ResultSet::getDouble, valuePassThrough))
           .put("NUMERIC", Pair.of(ResultSet::getObject, numericToAvro))
           .put("OID", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("PATH", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("PG_LSN", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("PG_SNAPSHOT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("POINT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("POLYGON", Pair.of(ResultSet::getString, valuePassThrough))
           .put("REAL", Pair.of(ResultSet::getFloat, valuePassThrough))
           .put("SERIAL", Pair.of(ResultSet::getInt, valuePassThrough))
           .put("SERIAL2", Pair.of(ResultSet::getInt, valuePassThrough))
@@ -214,21 +145,13 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
           .put("SMALLINT", Pair.of(ResultSet::getInt, valuePassThrough))
           .put("SMALLSERIAL", Pair.of(ResultSet::getInt, valuePassThrough))
           .put("TEXT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("TIME", Pair.of(timeExtractor, timeToAvro))
-          .put("TIMETZ", Pair.of(timetzExtractor, timetzToAvro))
           .put("TIMESTAMP", Pair.of(timestampExtractor, timestampToAvro))
           .put("TIMESTAMPTZ", Pair.of(timestamptzExtractor, timestamptzToAvro))
-          .put("TIME WITH TIME ZONE", Pair.of(timetzExtractor, timetzToAvro))
-          .put("TIME WITHOUT TIME ZONE", Pair.of(timeExtractor, timeToAvro))
           .put("TIMESTAMP WITH TIME ZONE", Pair.of(timestamptzExtractor, timestamptzToAvro))
           .put("TIMESTAMP WITHOUT TIME ZONE", Pair.of(timestampExtractor, timestampToAvro))
-          .put("TSQUERY", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("TSVECTOR", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("TXID_SNAPSHOT", Pair.of(ResultSet::getString, valuePassThrough))
           .put("UUID", Pair.of(ResultSet::getString, valuePassThrough))
           .put("VARBIT", Pair.of(bytesExtractor, valuePassThrough))
           .put("VARCHAR", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("XML", Pair.of(ResultSet::getString, valuePassThrough))
           .build()
           .entrySet()
           .stream()
