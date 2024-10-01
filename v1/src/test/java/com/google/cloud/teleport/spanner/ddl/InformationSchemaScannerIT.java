@@ -620,8 +620,8 @@ public class InformationSchemaScannerIT {
                 + " `K`                                     INT64,"
                 + " `Embeddings`                            ARRAY<FLOAT32>(vector_length=>128),"
                 + " ) PRIMARY KEY (`K` ASC)",
-            " CREATE VECTOR INDEX `VI` ON `Base`(`Embeddings`) WHERE Embeddings IS NOT NULL"
-                + " OPTIONS (distance_type=\'COSINE\')");
+            " CREATE VECTOR INDEX `VI` ON `Base`(`Embeddings` ) WHERE Embeddings IS NOT NULL"
+                + " OPTIONS (distance_type=\"COSINE\")");
 
         SPANNER_SERVER.createDatabase(dbId, statements);
         Ddl ddl = getDatabaseDdl();

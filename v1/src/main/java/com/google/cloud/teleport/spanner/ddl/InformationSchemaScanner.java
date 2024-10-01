@@ -463,7 +463,6 @@ public class InformationSchemaScanner {
 
   private void listIndexColumns(
       Ddl.Builder builder, Map<String, NavigableMap<String, Index.Builder>> indexes) {
-    System.out.println("dbg: listing index columns");
     Statement statement = listIndexColumnsSQL();
 
     ResultSet resultSet = context.executeQuery(statement);
@@ -474,7 +473,6 @@ public class InformationSchemaScanner {
       String indexLocalName = resultSet.getString(4);
       String indexType = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getString(5) : null;
       String spannerType = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getString(6) : null;
-      System.out.println("dbg: index type: " + indexType);
 
       if (indexLocalName.equals("PRIMARY_KEY")) {
         IndexColumn.IndexColumnsBuilder<Table.Builder> pkBuilder =
@@ -512,7 +510,6 @@ public class InformationSchemaScanner {
         }
         indexColumnsBuilder.endIndexColumn().end();
       } else if (indexType != null && indexType.equals("VECTOR")) {
-        System.out.println("dbg: vector index column");
         if (!spannerType.startsWith("ARRAY") && ordering != null) {
           continue;
         }
