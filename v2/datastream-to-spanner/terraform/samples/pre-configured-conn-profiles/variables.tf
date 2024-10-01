@@ -59,6 +59,9 @@ variable "dataflow_params" {
       transformation_custom_parameters    = optional(string)
       transformation_class_name           = optional(string)
       filtered_events_directory           = optional(string)
+      table_overrides                     = optional(string)
+      column_overrides                    = optional(string)
+      local_schema_overrides_file_path    = optional(string)
     })
     runner_params = object({
       additional_experiments = optional(set(string), [

@@ -319,7 +319,58 @@ mysql_database = {
 
 By default, the Dataflow job performs a like-like mapping between
 source and Spanner. Any schema changes between source and Spanner can be
-specified using the `session file`. To specify a session file -
+specified in multiple ways -
+
+#### Using string overrides
+
+Table and Column name overrides can be specified using
+the `var.dataflow_params.template_params.tableOverrides`
+and the `var.dataflow_params.template_params.columnOverrides` parameters.
+
+1. Table overrides are written in the following
+   format: `[{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]`
+
+   For example - `[{Singers, Vocalists}, {Albums, Records}]`
+   This example shows mapping Singers table to Vocalists and Albums
+   table to Records.
+2. Column overrides are written in the following
+   format: `[{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]`.
+   Note that the SourceTableName should remain the same in both the source and
+   spanner pair. To override table names, use tableOverrides.
+   For
+   example - `[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]`
+   The example shows mapping SingerName to TalentName and AlbumName to
+   RecordName in Singers and Albums table respectively.
+
+#### Using file based overrides
+
+You can also use a file to specify the list of overrides. This file can be
+placed in a local directory and its path can be configured in the
+`var.dataflow_params.template_params.local_schema_overrides_file_path`. The file
+will be automatically uploaded to GCS and configured in the template.
+
+A sample override file is -
+
+```json
+{
+  "renamedTables":{
+    "srcTable":"destTable"
+  },
+  "renamedColumns":{
+    "srcTable1":{
+      "srcCol1":"destCol1"
+    },
+    "srcTable2":{
+      "srcCol2":"destCol2"
+    }
+  }
+}
+```
+
+#### Using session file
+
+The session file is generated via Spanner Migration Tool. To specify a session
+file -
 
 1. Copy the
    contents of the SMT generated `session file` to the `session.json` file.

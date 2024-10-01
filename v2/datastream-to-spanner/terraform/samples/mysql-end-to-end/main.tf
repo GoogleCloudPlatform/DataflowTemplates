@@ -84,6 +84,16 @@ resource "google_storage_bucket_object" "session_file_object" {
   bucket       = google_storage_bucket.datastream_bucket.id
 }
 
+# upload local schema overrides file to the created GCS bucket
+resource "google_storage_bucket_object" "schema_overrides_file_object" {
+  count        = var.dataflow_params.template_params.local_schema_overrides_file_path != null ? 1 : 0
+  depends_on   = [google_project_service.enabled_apis]
+  name         = "schema-overrides.json"
+  source       = var.dataflow_params.template_params.local_schema_overrides_file_path
+  content_type = "application/json"
+  bucket       = google_storage_bucket.datastream_bucket.id
+}
+
 # Pub/Sub Topic for Datastream
 resource "google_pubsub_topic" "datastream_topic" {
   depends_on = [google_project_service.enabled_apis]
@@ -218,7 +228,8 @@ resource "google_project_iam_member" "live_migration_roles" {
 # Dataflow Flex Template Job (for CDC to Spanner)
 resource "google_dataflow_flex_template_job" "live_migration_job" {
   depends_on = [
-    google_project_service.enabled_apis, google_project_iam_member.live_migration_roles
+    google_project_service.enabled_apis,
+    google_project_iam_member.live_migration_roles
   ] # Launch the template once the stream is created.
   provider                = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Cloud_Datastream_to_Spanner"
@@ -252,6 +263,9 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     transformationClassName         = var.dataflow_params.template_params.transformation_class_name
     transformationCustomParameters  = var.dataflow_params.template_params.transformation_custom_parameters
     filteredEventsDirectory         = var.dataflow_params.template_params.filtered_events_directory
+    tableOverrides                  = var.dataflow_params.template_params.table_overrides
+    columnOverrides                 = var.dataflow_params.template_params.column_overrides
+    schemaOverridesFilePath         = var.dataflow_params.template_params.local_schema_overrides_file_path != null ? "gs://${google_storage_bucket_object.schema_overrides_file_object[0].bucket}/${google_storage_bucket_object.schema_overrides_file_object[0].name}" : null
   }
 
   # Additional Job Configurations

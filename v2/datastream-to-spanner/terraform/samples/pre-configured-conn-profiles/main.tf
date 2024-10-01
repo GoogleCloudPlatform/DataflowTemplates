@@ -26,6 +26,16 @@ resource "google_storage_bucket_object" "session_file_object" {
   bucket       = var.datastream_params.target_gcs_bucket_name
 }
 
+# upload local schema overrides file to the created GCS bucket
+resource "google_storage_bucket_object" "schema_overrides_file_object" {
+  count        = var.dataflow_params.template_params.local_schema_overrides_file_path != null ? 1 : 0
+  depends_on   = [google_project_service.enabled_apis]
+  name         = "schema-overrides.json"
+  source       = var.dataflow_params.template_params.local_schema_overrides_file_path
+  content_type = "application/json"
+  bucket       = var.datastream_params.target_gcs_bucket_name
+}
+
 # Configure permissions to publish Pub/Sub notifications
 resource "google_pubsub_topic_iam_member" "gcs_publisher_role" {
   count      = var.common_params.add_policies_to_service_account ? 1 : 0
@@ -165,6 +175,9 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     transformationClassName         = var.dataflow_params.template_params.transformation_class_name
     transformationCustomParameters  = var.dataflow_params.template_params.transformation_custom_parameters
     filteredEventsDirectory         = var.dataflow_params.template_params.filtered_events_directory
+    tableOverrides                  = var.dataflow_params.template_params.table_overrides
+    columnOverrides                 = var.dataflow_params.template_params.column_overrides
+    schemaOverridesFilePath         = var.dataflow_params.template_params.local_schema_overrides_file_path != null ? "gs://${google_storage_bucket_object.schema_overrides_file_object[0].bucket}/${google_storage_bucket_object.schema_overrides_file_object[0].name}" : null
   }
 
   # Additional Job Configurations

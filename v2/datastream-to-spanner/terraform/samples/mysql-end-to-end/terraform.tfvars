@@ -66,6 +66,9 @@ dataflow_params = {
     transformation_custom_parameters    = "<YOUR_CUSTOM_PARAMETERS_FOR_JAR>"      # Optional
     transformation_class_name           = "<YOUR_TRANSFORMATION_CLASS_NAME>"      # Fully Classified Class Name(Optional)
     filtered_events_directory           = "<YOUR_GCS_PATH_FOR_FILTERED_EVENTS>"   # Optional
+    table_overrides                     = "<YOUR_TABLE_NAME_OVERRIDES"
+    column_overrides                    = "<YOUR_COLUMN_NAME_OVERRIDES"
+    local_schema_overrides_file_path    = "<YOUR_LOCAL_SCHEMA_OVERRIDES_FILE_PATH>" #One of string based overrides should be used or the file based overrides; not both.
   }
 
   runner_params = {
