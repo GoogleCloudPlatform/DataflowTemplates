@@ -497,7 +497,7 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Table name overrides from source to spanner",
         regexes =
-            "^\\[([[:space:]]*\\{[[:space:]]*[[:alnum:]]+[[:space:]]*,[[:space:]]*[[:alnum:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+            "^\\[([[:space:]]*\\{[[:space:]]*[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
         example = "[{Singers, Vocalists}, {Albums, Records}]",
         helpText =
             "These are the table name overrides from source to spanner. They are written in the"
@@ -512,7 +512,7 @@ public class DataStreamToSpanner {
         order = 31,
         optional = true,
         regexes =
-            "^\\[([[:space:]]*\\{[[:space:]]*[[:alnum:]]+\\.[[:alnum:]]+[[:space:]]*,[[:space:]]*[[:alnum:]]+\\.[[:alnum:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+            "^\\[([[:space:]]*\\{[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
         description = "Column name overrides from source to spanner",
         example =
             "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
