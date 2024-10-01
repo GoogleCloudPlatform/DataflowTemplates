@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToBigQueryOptions;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.ModColumnType;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.OptionsUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
@@ -35,6 +36,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -166,7 +168,9 @@ import org.slf4j.LoggerFactory;
       "The Cloud Spanner change stream must exist prior to running the pipeline.",
       "The BigQuery dataset must exist prior to running the pipeline."
     },
-    streaming = true)
+    streaming = true,
+    supportsExactlyOnce = true,
+    supportsAtLeastOnce = true)
 public final class SpannerChangeStreamsToBigQuery {
 
   /** String/String Coder for {@link FailsafeElement}. */
@@ -201,6 +205,15 @@ public final class SpannerChangeStreamsToBigQuery {
   private static void validateOptions(SpannerChangeStreamsToBigQueryOptions options) {
     if (options.getDlqRetryMinutes() <= 0) {
       throw new IllegalArgumentException("dlqRetryMinutes must be positive.");
+    }
+    if (options
+        .getBigQueryChangelogTableNameTemplate()
+        .equals(BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_TABLE_NAME)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "bigQueryChangelogTableNameTemplate cannot be set to '{%s}'. This value is reserved"
+                  + " for the Cloud Spanner table name.",
+              BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_TABLE_NAME));
     }
 
     BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
@@ -376,19 +389,39 @@ public final class SpannerChangeStreamsToBigQuery {
                 .setBigQueryTableTemplate(options.getBigQueryChangelogTableNameTemplate())
                 .setUseStorageWriteApi(options.getUseStorageWriteApi())
                 .build();
-    WriteResult writeResult =
-        tableRowTuple
-            .get(failsafeModJsonToTableRow.transformOut)
-            .apply(
-                "Write To BigQuery",
-                BigQueryIO.<TableRow>write()
-                    .to(BigQueryDynamicDestinations.of(bigQueryDynamicDestinationsOptions))
-                    .withFormatFunction(element -> removeIntermediateMetadataFields(element))
-                    .withFormatRecordOnFailureFunction(element -> element)
-                    .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
-                    .withWriteDisposition(Write.WriteDisposition.WRITE_APPEND)
-                    .withExtendedErrorInfo()
-                    .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
+    WriteResult writeResult;
+    if (!options.getUseStorageWriteApi()) {
+      writeResult =
+          tableRowTuple
+              .get(failsafeModJsonToTableRow.transformOut)
+              .apply(
+                  "Write To BigQuery",
+                  BigQueryIO.<TableRow>write()
+                      .to(BigQueryDynamicDestinations.of(bigQueryDynamicDestinationsOptions))
+                      .withFormatFunction(element -> removeIntermediateMetadataFields(element))
+                      .withFormatRecordOnFailureFunction(element -> element)
+                      .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
+                      .withWriteDisposition(Write.WriteDisposition.WRITE_APPEND)
+                      .withExtendedErrorInfo()
+                      .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
+    } else {
+      writeResult =
+          tableRowTuple
+              .get(failsafeModJsonToTableRow.transformOut)
+              .apply(
+                  "Write To BigQuery",
+                  BigQueryIO.<TableRow>write()
+                      .to(BigQueryDynamicDestinations.of(bigQueryDynamicDestinationsOptions))
+                      .withFormatFunction(element -> removeIntermediateMetadataFields(element))
+                      .withFormatRecordOnFailureFunction(element -> element)
+                      .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
+                      .withWriteDisposition(Write.WriteDisposition.WRITE_APPEND)
+                      .ignoreUnknownValues()
+                      .withAutoSchemaUpdate(true) // only supported when using STORAGE_WRITE_API or
+                      // STORAGE_API_AT_LEAST_ONCE.
+                      .withExtendedErrorInfo()
+                      .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
+    }
 
     PCollection<String> transformDlqJson =
         tableRowTuple
@@ -461,6 +494,8 @@ public final class SpannerChangeStreamsToBigQuery {
     for (String rowKey : rowKeys) {
       if (metadataFields.contains(rowKey)) {
         cleanTableRow.remove(rowKey);
+      } else if (rowKeys.contains("_type_" + rowKey)) {
+        cleanTableRow.remove("_type_" + rowKey);
       }
     }
 
@@ -486,6 +521,7 @@ public final class SpannerChangeStreamsToBigQuery {
                 input.isLastRecordInTransactionInPartition(),
                 input.getRecordSequence(),
                 input.getTableName(),
+                input.getRowType().stream().map(ModColumnType::new).collect(Collectors.toList()),
                 input.getModType(),
                 input.getValueCaptureType(),
                 input.getNumberOfRecordsInTransaction(),

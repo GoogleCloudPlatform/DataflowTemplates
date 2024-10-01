@@ -41,6 +41,10 @@ public @interface Template {
   /** Container name to stage (required for Flex templates). */
   String flexContainerName() default "";
 
+  String yamlTemplateFile() default "";
+
+  String xlangContainerName() default "";
+
   /** The category of the template. */
   TemplateCategory category();
 
@@ -87,7 +91,7 @@ public @interface Template {
   boolean streaming() default false;
 
   /** Indicates if the template supports at-least-once correctness. */
-  boolean supportsAtLeastOnce() default true;
+  boolean supportsAtLeastOnce() default false;
 
   /** Indicates if the template supports exactly-once correctness. */
   boolean supportsExactlyOnce() default true;
@@ -101,9 +105,34 @@ public @interface Template {
   /** Languages that are supported by templates. */
   enum TemplateType {
     JAVA,
-    PYTHON
+    PYTHON,
+    YAML,
+    XLANG
   }
 
   /** Marker if the template is still in preview / pre-GA. */
   boolean preview() default false;
+
+  /**
+   * Comma-separated list of files to include in Template image when building with Dockerfile. Only
+   * works for YAML and XLANG types. Must be in the path of the build files, i.e. copied to target
+   * folder.
+   *
+   * <p>Will be copied as such, using Docker command: COPY ${otherFiles} /template/
+   */
+  String filesToCopy() default "";
+
+  StreamingMode defaultStreamingMode() default StreamingMode.UNSPECIFIED;
+
+  /**
+   * Set to true if the template is used internally/ for testing purposes and should not be staged
+   * or released.
+   */
+  boolean testOnly() default false;
+
+  enum StreamingMode {
+    UNSPECIFIED,
+    EXACTLY_ONCE,
+    AT_LEAST_ONCE
+  }
 }

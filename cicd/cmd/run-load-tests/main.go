@@ -57,13 +57,22 @@ func main() {
 		mvnFlags.SkipShade(),
 		mvnFlags.FailAtTheEnd(),
 		mvnFlags.RunLoadTests(),
+		mvnFlags.ThreadCount(4),
+		flags.Region(),
 		flags.Project(),
 		flags.ArtifactBucket(),
 		flags.StageBucket(),
 		flags.HostIp(),
+		flags.PrivateConnectivity(),
 		flags.ExportProject(),
 		flags.ExportDataset(),
-		flags.ExportTable())
+		flags.ExportTable(),
+		flags.StaticOracleHost(),
+		flags.StaticOracleSysPassword(),
+		flags.CloudProxyHost(),
+		flags.CloudProxyMySqlPort(),
+		flags.CloudProxyPostgresPort(),
+		flags.CloudProxyPassword())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}

@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.spanner.migrations.shard;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public class Shard implements Serializable {
@@ -27,6 +29,9 @@ public class Shard implements Serializable {
   private String password;
   private String dbName;
   private String secretManagerUri;
+  private String connectionProperties;
+
+  private Map<String, String> dbNameToLogicalShardIdMap = new HashMap<>();
 
   public Shard(
       String logicalShardId,
@@ -35,7 +40,8 @@ public class Shard implements Serializable {
       String user,
       String password,
       String dbName,
-      String secretManagerUri) {
+      String secretManagerUri,
+      String connectionProperties) {
     this.logicalShardId = logicalShardId;
     this.host = host;
     this.port = port;
@@ -43,6 +49,7 @@ public class Shard implements Serializable {
     this.password = password;
     this.dbName = dbName;
     this.secretManagerUri = secretManagerUri;
+    this.connectionProperties = connectionProperties;
   }
 
   public Shard() {}
@@ -103,39 +110,75 @@ public class Shard implements Serializable {
     this.secretManagerUri = input;
   }
 
+  public String getConnectionProperties() {
+    return connectionProperties;
+  }
+
+  public void setConnectionProperties(String input) {
+    this.connectionProperties = input;
+  }
+
+  public Map<String, String> getDbNameToLogicalShardIdMap() {
+    return dbNameToLogicalShardIdMap;
+  }
+
   @Override
   public String toString() {
-    return "{ logicalShardId: "
+    return "Shard{"
+        + "logicalShardId='"
         + logicalShardId
-        + ", host: "
+        + '\''
+        + ", host='"
         + host
-        + ", port: "
+        + '\''
+        + ", port='"
         + port
-        + " , dbName: "
-        + dbName
-        + " , user: "
+        + '\''
+        + ", user='"
         + user
-        + "}";
+        + '\''
+        + ", dbName='"
+        + dbName
+        + '\''
+        + ", connectionProperties='"
+        + connectionProperties
+        + '\''
+        + ", dbNameToLogicalShardIdMap="
+        + dbNameToLogicalShardIdMap
+        + '}';
   }
 
   @Override
   public boolean equals(Object o) {
-    if (o == this) {
+    if (this == o) {
       return true;
     }
     if (!(o instanceof Shard)) {
       return false;
     }
-    final Shard other = (Shard) o;
-    return this.logicalShardId.equals(other.logicalShardId)
-        && this.host.equals(other.host)
-        && this.port.equals(other.port)
-        && this.user.equals(other.user)
-        && this.dbName.equals(other.dbName);
+    Shard shard = (Shard) o;
+    return Objects.equals(logicalShardId, shard.logicalShardId)
+        && Objects.equals(host, shard.host)
+        && Objects.equals(port, shard.port)
+        && Objects.equals(user, shard.user)
+        && Objects.equals(password, shard.password)
+        && Objects.equals(dbName, shard.dbName)
+        && Objects.equals(connectionProperties, shard.connectionProperties)
+        && Objects.equals(secretManagerUri, shard.secretManagerUri)
+        && Objects.equals(dbNameToLogicalShardIdMap, shard.dbNameToLogicalShardIdMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(logicalShardId, host, port, user, dbName);
+    return Objects.hash(
+        logicalShardId,
+        host,
+        port,
+        user,
+        password,
+        dbName,
+        connectionProperties,
+        secretManagerUri,
+        dbNameToLogicalShardIdMap);
   }
 }

@@ -51,7 +51,8 @@ public class ProcessingContextGenerator {
       String metadataDatabase,
       String runMode,
       String tableSuffix,
-      String runId) {
+      String runId,
+      boolean isMetadataDbPostgres) {
 
     LOG.info(" In getProcessingContextForGCS");
 
@@ -69,15 +70,13 @@ public class ProcessingContextGenerator {
 
     ShardProgressTracker shardProgressTracker =
         new ShardProgressTracker(
-            spannerProjectId, metadataInstance, metadataDatabase, tableSuffix, runId);
+            spannerProjectId,
+            metadataInstance,
+            metadataDatabase,
+            tableSuffix,
+            runId,
+            isMetadataDbPostgres);
     shardProgressTracker.init();
-
-    // We need this here to create the shard_skipped_files table.
-    SkippedFileTracker skippedFileTracker =
-        new SkippedFileTracker(
-            spannerProjectId, metadataInstance, metadataDatabase, tableSuffix, runId);
-    skippedFileTracker.init();
-    skippedFileTracker.close();
 
     Map<String, ProcessingContext> response = null;
 
@@ -94,7 +93,8 @@ public class ProcessingContextGenerator {
               tableSuffix,
               runId,
               shards,
-              schema);
+              schema,
+              isMetadataDbPostgres);
     } else {
       response =
           getProcessingContextForReprocessOrResumeModes(
@@ -108,7 +108,8 @@ public class ProcessingContextGenerator {
               shards,
               schema,
               shardProgressTracker,
-              runMode);
+              runMode,
+              isMetadataDbPostgres);
     }
 
     shardProgressTracker.close();
@@ -126,7 +127,8 @@ public class ProcessingContextGenerator {
       String tableSuffix,
       String runId,
       List<Shard> shards,
-      Schema schema) {
+      Schema schema,
+      boolean isMetadataDbPostgres) {
 
     Map<String, ProcessingContext> response = new HashMap<>();
     if (startTimestamp == null
@@ -137,7 +139,12 @@ public class ProcessingContextGenerator {
       try {
         SpannerToGcsJobMetadata spannerToGcsJobMetadata =
             SpannerToGcsJobMetadataFetcher.getSpannerToGcsJobMetadata(
-                spannerProjectId, metadataInstance, metadataDatabase, tableSuffix, runId);
+                spannerProjectId,
+                metadataInstance,
+                metadataDatabase,
+                tableSuffix,
+                runId,
+                isMetadataDbPostgres);
         windowDuration = spannerToGcsJobMetadata.getWindowDuration();
         startTimestamp = spannerToGcsJobMetadata.getStartTimestamp();
         LOG.info("The start timestamp  from Spanner to GCS job is : {}", startTimestamp);
@@ -178,7 +185,8 @@ public class ProcessingContextGenerator {
       List<Shard> shards,
       Schema schema,
       ShardProgressTracker shardProgressTracker,
-      String runMode) {
+      String runMode,
+      boolean isMetadataDbPostgres) {
 
     String status = "";
     switch (runMode) {
@@ -205,7 +213,12 @@ public class ProcessingContextGenerator {
     try {
       SpannerToGcsJobMetadata spannerToGcsJobMetadata =
           SpannerToGcsJobMetadataFetcher.getSpannerToGcsJobMetadata(
-              spannerProjectId, metadataInstance, metadataDatabase, tableSuffix, runId);
+              spannerProjectId,
+              metadataInstance,
+              metadataDatabase,
+              tableSuffix,
+              runId,
+              isMetadataDbPostgres);
       windowDuration = spannerToGcsJobMetadata.getWindowDuration();
       LOG.info("The window duration from Spanner to GCS job is : {}", windowDuration);
     } catch (Exception e) {

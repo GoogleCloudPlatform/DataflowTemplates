@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -47,6 +48,7 @@ import java.util.regex.Pattern;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.options.Default;
@@ -55,6 +57,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.slf4j.Logger;
@@ -92,6 +95,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         optional = false,
         description = "Name of the change stream to read from",
         helpText =
@@ -102,6 +106,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Instance Id.",
         helpText =
@@ -112,6 +117,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Database Id.",
         helpText =
@@ -122,6 +128,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.ProjectId(
         order = 4,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Project Id.",
         helpText = "This is the name of the Cloud Spanner project.")
@@ -199,6 +206,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.GcsWriteFolder(
         order = 11,
+        groupName = "Target",
         optional = false,
         description = "Output file directory in Cloud Storage",
         helpText =
@@ -305,6 +313,17 @@ public class SpannerChangeStreamsToShardedFileSink {
     String getShardingCustomClassName();
 
     void setShardingCustomClassName(String value);
+
+    @TemplateParameter.Text(
+        order = 20,
+        optional = true,
+        description = "Custom sharding logic parameters",
+        helpText =
+            "String containing any custom parameters to be passed to the custom sharding class.")
+    @Default.String("")
+    String getShardingCustomParameters();
+
+    void setShardingCustomParameters(String value);
   }
 
   /**
@@ -351,6 +370,20 @@ public class SpannerChangeStreamsToShardedFileSink {
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
             .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
 
+    SpannerConfig spannerMetadataConfig =
+        SpannerConfig.create()
+            .withProjectId(ValueProvider.StaticValueProvider.of(options.getSpannerProjectId()))
+            .withInstanceId(ValueProvider.StaticValueProvider.of(options.getMetadataInstance()))
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getMetadataDatabase()));
+    boolean isMetadataDbPostgres =
+        Dialect.POSTGRESQL
+            == SpannerAccessor.getOrCreate(spannerMetadataConfig)
+                .getDatabaseAdminClient()
+                .getDatabase(
+                    spannerMetadataConfig.getInstanceId().get(),
+                    spannerMetadataConfig.getDatabaseId().get())
+                .getDialect();
+
     Schema schema = null;
     Ddl ddl = null;
     if (shardingMode.equals(Constants.SHARDING_MODE_MULTI_SHARD)) {
@@ -376,7 +409,8 @@ public class SpannerChangeStreamsToShardedFileSink {
             options.getSpannerProjectId(),
             options.getMetadataInstance(),
             options.getMetadataDatabase(),
-            tableSuffix);
+            tableSuffix,
+            isMetadataDbPostgres);
     SpannerToGcsJobMetadata jobMetadata = getStartTimeAndDuration(options, spannerDao);
 
     // Capture the window start time and duration config.
@@ -384,24 +418,21 @@ public class SpannerChangeStreamsToShardedFileSink {
     if (options.getRunMode().equals(Constants.RUN_MODE_REGULAR)) {
       JobMetadataUpdater.writeStartAndDuration(spannerDao, options.getRunIdentifier(), jobMetadata);
     }
-    spannerDao.close();
 
     // Initialize the per shard progress with historical value
     // This makes it easier to fire blind UPDATES later on when
     // updating per shard file creation progress
     FileCreationTracker fileCreationTracker =
-        new FileCreationTracker(
-            options.getSpannerProjectId(),
-            options.getMetadataInstance(),
-            options.getMetadataDatabase(),
-            tableSuffix,
-            options.getRunIdentifier());
+        new FileCreationTracker(spannerDao, options.getRunIdentifier());
     fileCreationTracker.init(shards);
+
+    spannerDao.close();
 
     pipeline
         .apply(
             getReadChangeStreamDoFn(
                 options, spannerConfig, Timestamp.parseTimestamp(jobMetadata.getStartTimestamp())))
+        .apply("Reshuffle", Reshuffle.viaRandomKey())
         .apply(ParDo.of(new FilterRecordsFn(options.getFiltrationMode())))
         .apply(ParDo.of(new PreprocessRecordsFn()))
         .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class))
@@ -415,7 +446,8 @@ public class SpannerChangeStreamsToShardedFileSink {
                     shards.get(0).getLogicalShardId(),
                     options.getSkipDirectoryName(),
                     options.getShardingCustomJarPath(),
-                    options.getShardingCustomClassName())))
+                    options.getShardingCustomClassName(),
+                    options.getShardingCustomParameters())))
         .apply(
             "Creating " + options.getWindowDuration() + " Window",
             Window.into(
@@ -424,11 +456,11 @@ public class SpannerChangeStreamsToShardedFileSink {
             "Tracking change data seen",
             ParDo.of(
                 new ChangeDataProgressTrackerFn(
-                    options.getSpannerProjectId(),
-                    options.getMetadataInstance(),
-                    options.getMetadataDatabase(),
+                    spannerMetadataConfig,
                     tableSuffix,
-                    options.getRunIdentifier())))
+                    options.getRunIdentifier(),
+                    isMetadataDbPostgres)))
+        .apply("Reshuffle", Reshuffle.viaRandomKey())
         .apply(
             "Write To GCS",
             WriterGCS.newBuilder()
@@ -443,11 +475,10 @@ public class SpannerChangeStreamsToShardedFileSink {
             "Tracking file progress ",
             ParDo.of(
                 new FileProgressTrackerFn(
-                    options.getSpannerProjectId(),
-                    options.getMetadataInstance(),
-                    options.getMetadataDatabase(),
+                    spannerMetadataConfig,
                     tableSuffix,
-                    options.getRunIdentifier())));
+                    options.getRunIdentifier(),
+                    isMetadataDbPostgres)));
     return pipeline.run();
   }
 

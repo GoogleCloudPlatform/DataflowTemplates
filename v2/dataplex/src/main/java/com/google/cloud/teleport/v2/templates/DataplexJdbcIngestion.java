@@ -280,14 +280,19 @@ public class DataplexJdbcIngestion {
       LOG.warn("Dataplex metadata updates enabled, but not supported for BigQuery targets.");
     }
 
+    JdbcIO.Read<TableRow> readIO =
+        JdbcIO.<TableRow>read()
+            .withDataSourceConfiguration(dataSourceConfig)
+            .withQuery(options.getQuery())
+            .withCoder(TableRowJsonCoder.of())
+            .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias()));
+
+    if (options.getFetchSize() != null && options.getFetchSize() > 0) {
+      readIO = readIO.withFetchSize(options.getFetchSize());
+    }
+
     pipeline
-        .apply(
-            "Read from JdbcIO",
-            JdbcIO.<TableRow>read()
-                .withDataSourceConfiguration(dataSourceConfig)
-                .withQuery(options.getQuery())
-                .withCoder(TableRowJsonCoder.of())
-                .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias())))
+        .apply("Read from JdbcIO", readIO)
         .apply(
             "Write to BigQuery",
             BigQueryIO.writeTableRows()
@@ -317,12 +322,16 @@ public class DataplexJdbcIngestion {
     org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(beamSchema);
 
     // Read from JdbcIO and convert ResultSet to Beam Row
-    PCollection<Row> resultRows =
-        pipeline.apply(
-            "Read from JdbcIO",
-            JdbcIO.readRows()
-                .withDataSourceConfiguration(dataSourceConfig)
-                .withQuery(options.getQuery()));
+    JdbcIO.ReadRows readIO =
+        JdbcIO.readRows()
+            .withDataSourceConfiguration(dataSourceConfig)
+            .withQuery(options.getQuery());
+
+    if (options.getFetchSize() != null && options.getFetchSize() > 0) {
+      readIO = readIO.withFetchSize(options.getFetchSize());
+    }
+
+    PCollection<Row> resultRows = pipeline.apply("Read from JdbcIO", readIO);
     // Convert Beam Row to GenericRecord
     PCollection<GenericRecord> genericRecords =
         resultRows

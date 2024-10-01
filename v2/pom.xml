@@ -37,6 +37,7 @@
     <properties>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
         <jib.maven.version>3.4.0</jib.maven.version>
+        <kafka-clients.version>3.7.0</kafka-clients.version>
         <opencensus.version>0.31.0</opencensus.version>
         <protoc.version>3.21.12</protoc.version>
 
@@ -88,13 +89,13 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Test -->
+        <!-- hamcrest is a transitive dependency for beam-io-gcp and also needed in test -->
         <dependency>
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest</artifactId>
             <version>${hamcrest.version}</version>
-            <scope>test</scope>
         </dependency>
+        <!-- Test -->
         <dependency>
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest-core</artifactId>
@@ -186,12 +187,6 @@
                     <artifactId>jib-maven-plugin</artifactId>
                     <version>${jib.maven.version}</version>
                     <configuration>
-                        <extraDirectories>
-                            <paths>
-                                <from>${project.build.directory}/extra_libs</from>
-                                <into>${app-root}/libs</into>
-                            </paths>
-                        </extraDirectories>
                         <from>
                             <!--
                             The Dataflow Template base image to use. This
@@ -362,6 +357,18 @@
                     <!-- <compilerArgument>-parameters</compilerArgument> -->
                     <parameters>true</parameters>
                     <testCompilerArgument>-parameters</testCompilerArgument>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.google.auto.value</groupId>
+                            <artifactId>auto-value</artifactId>
+                            <version>${autovalue.version}</version>
+                        </path>
+                        <path>
+                            <groupId>com.google.auto.service</groupId>
+                            <artifactId>auto-service</artifactId>
+                            <version>${autovalue.service.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
@@ -453,7 +460,7 @@
                     <dependency>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>extra-enforcer-rules</artifactId>
-                        <version>1.3</version>
+                        <version>${extra.enforcer.rules.version}</version>
                     </dependency>
                 </dependencies>
             </plugin>
@@ -461,19 +468,6 @@
     </build>
 
     <profiles>
-        <profile>
-            <id>missing-artifact-repos</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <repositories>
-                <repository>
-                    <!-- Required for io.confluent:kafka-avro-serializer artifact -->
-                    <id>confluent</id>
-                    <url>https://packages.confluent.io/maven/</url>
-                </repository>
-            </repositories>
-        </profile>
         <profile>
             <id>shade</id>
             <activation>
@@ -496,6 +490,11 @@
                                     <goal>shade</goal>
                                 </goals>
                                 <configuration>
+                                    <extraDirectories>
+                                        <paths>
+                                            <path>${project.build.directory}/extra_libs</path>
+                                        </paths>
+                                    </extraDirectories>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
                                     <shadeTestJar>true</shadeTestJar>
                                     <artifactSet>
@@ -647,6 +646,28 @@
                 </plugins>
             </build>
         </profile>
+        <profile>
+            <id>templatesTerraform</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.teleport</groupId>
+                        <artifactId>templates-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>terraform</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
     <modules>
@@ -680,6 +701,7 @@
         <module>kafka-common</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
+        <module>kafka-to-kafka</module>
         <module>kafka-to-pubsub</module>
         <module>kinesis-to-pubsub</module>
         <module>kudu-to-bigquery</module>
@@ -687,7 +709,6 @@
         <module>mqtt-to-pubsub</module>
         <module>mysql-to-googlecloud</module>
         <module>oracle-to-googlecloud</module>
-        <module>ordered-changestream-buffer-to-sourcedb</module>
         <module>postgresql-to-googlecloud</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
@@ -695,11 +716,12 @@
         <module>pubsub-to-kafka</module>
         <module>pubsub-to-mongodb</module>
         <module>pubsub-to-redis</module>
+        <module>sourcedb-to-spanner</module>
         <module>spanner-change-streams-to-sharded-file-sink</module>
-        <module>spanner-change-streams-to-sink</module>
         <module>spanner-common</module>
         <module>spanner-custom-shard</module>
         <module>spanner-migrations-sdk</module>
+        <module>spanner-to-sourcedb</module>
         <module>sqlserver-to-googlecloud</module>
         <module>streaming-data-generator</module>
 

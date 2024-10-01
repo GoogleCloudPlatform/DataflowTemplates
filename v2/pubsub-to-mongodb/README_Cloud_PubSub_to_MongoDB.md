@@ -21,26 +21,26 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **inputSubscription** (Pub/Sub input subscription): Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **mongoDBUri** (MongoDB Connection URI): Comma separated list of MongoDB servers. (Example: host1:port,host2:port,host3:port).
-* **database** (MongoDB Database): Database in MongoDB to store the collection. (Example: my-db).
-* **collection** (MongoDB collection): Name of the collection inside MongoDB database to insert the documents. (Example: my-collection).
-* **deadletterTable** (The dead-letter table name to output failed messages to BigQuery): BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
+* **inputSubscription** : Name of the Pub/Sub subscription. (Example: projects/your-project-id/subscriptions/your-subscription-name).
+* **mongoDBUri** : Comma separated list of MongoDB servers. (Example: host1:port,host2:port,host3:port).
+* **database** : Database in MongoDB to store the collection. (Example: my-db).
+* **collection** : Name of the collection in the MongoDB database. (Example: my-collection).
+* **deadletterTable** : The BigQuery table that stores messages caused by failures, such as mismatched schema, malformed JSON, and so on. (Example: your-project-id:your-dataset.your-table-name).
 
-### Optional Parameters
+### Optional parameters
 
-* **batchSize** (Batch Size): Batch Size used for batch insertion of documents into MongoDB. Defaults to: 1000.
-* **batchSizeBytes** (Batch Size in Bytes): Batch Size in bytes used for batch insertion of documents into MongoDB. Defaults to: 5242880.
-* **maxConnectionIdleTime** (Max Connection idle time): Maximum idle time allowed in seconds before connection timeout occurs. Defaults to: 60000.
-* **sslEnabled** (SSL Enabled): Indicates whether connection to MongoDB is ssl enabled. Defaults to: true.
-* **ignoreSSLCertificate** (Ignore SSL Certificate): Indicates whether SSL certificate should be ignored. Defaults to: true.
-* **withOrdered** (withOrdered): Enables ordered bulk insertions into MongoDB. Defaults to: true.
-* **withSSLInvalidHostNameAllowed** (withSSLInvalidHostNameAllowed): Indicates whether invalid host name is allowed for ssl connection. Defaults to: true.
-* **javascriptTextTransformGcsPath** (Cloud Storage path to Javascript UDF source): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
-* **javascriptTextTransformFunctionName** (UDF Javascript Function Name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
-* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
+* **batchSize** : Batch size used for batch insertion of documents into MongoDB. Defaults to: 1000.
+* **batchSizeBytes** : Batch size in bytes. Defaults to: 5242880.
+* **maxConnectionIdleTime** : Maximum idle time allowed in seconds before connection timeout occurs. Defaults to: 60000.
+* **sslEnabled** : Boolean value indicating whether the connection to MongoDB is SSL enabled. Defaults to: true.
+* **ignoreSSLCertificate** : Boolean value indicating whether to ignore the SSL certificate. Defaults to: true.
+* **withOrdered** : Boolean value enabling ordered bulk insertions into MongoDB. Defaults to: true.
+* **withSSLInvalidHostNameAllowed** : Boolean value indicating whether an invalid hostname is allowed for the SSL connection. Defaults to: true.
+* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js).
+* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **javascriptTextTransformReloadIntervalMinutes** : Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is 0, UDF reloading is disabled. The default value is 0.
 
 
 ## User-Defined functions (UDFs)
@@ -218,8 +218,23 @@ mvn clean package -PtemplatesRun \
 Dataflow supports the utilization of Terraform to manage template jobs,
 see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
 
-Here is an example of Terraform configuration:
+Terraform modules have been generated for most templates in this repository. This includes the relevant parameters
+specific to the template. If available, they may be used instead of
+[dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job)
+directly.
 
+To use the autogenerated module, execute the standard
+[terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
+
+```shell
+cd v2/pubsub-to-mongodb/terraform/Cloud_PubSub_to_MongoDB
+terraform init
+terraform apply
+```
+
+To use
+[dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job)
+directly:
 
 ```terraform
 provider "google-beta" {
@@ -251,8 +266,8 @@ resource "google_dataflow_flex_template_job" "cloud_pubsub_to_mongodb" {
     # ignoreSSLCertificate = "true"
     # withOrdered = "true"
     # withSSLInvalidHostNameAllowed = "true"
-    # javascriptTextTransformGcsPath = "gs://your-bucket/your-function.js"
-    # javascriptTextTransformFunctionName = "'transform' or 'transform_udf1'"
+    # javascriptTextTransformGcsPath = "gs://my-bucket/my-udfs/my_file.js"
+    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # javascriptTextTransformReloadIntervalMinutes = "0"
   }
 }

@@ -90,9 +90,53 @@ public class MySqlDao implements Serializable {
         status = true;
       } catch (com.mysql.cj.jdbc.exceptions.CommunicationsException e) {
         // TODO: retry handling is configurable with retry count
-        LOG.warn("Connection exception while executing SQL, will retry : " + e.getMessage());
+        LOG.warn(
+            "Connection exception while executing SQL for shard : "
+                + shardId
+                + ", will retry : "
+                + e.getMessage());
         // gives indication that the shard is being retried
         Metrics.counter(MySqlDao.class, "mySQL_retry_" + shardId).inc();
+        try {
+          Thread.sleep(1000);
+        } catch (java.lang.InterruptedException ex) {
+          throw new RuntimeException(ex);
+        }
+      } catch (java.sql.SQLNonTransientConnectionException e) {
+        if (e.getMessage().contains("Server shutdown in progress")) {
+          LOG.warn(
+              "Connection exception while executing SQL for shard : "
+                  + shardId
+                  + ", will retry : "
+                  + e.getMessage());
+          // gives indication that the shard is being retried
+          Metrics.counter(MySqlDao.class, "mySQL_retry_" + shardId).inc();
+          try {
+            Thread.sleep(1000);
+          } catch (java.lang.InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        } else {
+          throw e;
+        }
+      } catch (java.sql.SQLException e) {
+        // This exception happens when the DB is shutting down
+        if (e.getMessage().contains("No operations allowed after statement closed")) {
+          LOG.warn(
+              "Connection exception while executing SQL for shard : "
+                  + shardId
+                  + ", will retry : "
+                  + e.getMessage());
+          // gives indication that the shard is being retried
+          Metrics.counter(MySqlDao.class, "mySQL_retry_" + shardId).inc();
+          try {
+            Thread.sleep(1000);
+          } catch (java.lang.InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        } else {
+          throw e;
+        }
       } finally {
 
         if (statement != null) {

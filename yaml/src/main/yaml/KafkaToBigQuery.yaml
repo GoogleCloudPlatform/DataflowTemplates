@@ -1,0 +1,83 @@
+template:
+
+  name: "Kafka_To_BigQuery_Yaml"
+  display_name: "Kafka To BigQuery (Yaml)"
+  description: "A template for Kafka to BigQuery."
+  flex_container_name: "kafka-to-bigquery-yaml"
+  category: "STREAMING"
+
+  parameters:
+    - name: "kafkaReadTopics"
+      help: "Kafka topic to read the input from."
+      required: true
+
+    - name: "messageFormat"
+      help: "Format of Kafka message data. One of: RAW, JSON, AVRO, PROTO."
+      required: true
+
+    - name: "schema"
+      help: "Kafka schema. A schema is required if data format is JSON, AVRO or PROTO."
+      required: false
+
+    - name: "readBootstrapServers"
+      help: "Kafka Bootstrap Server list, separated by commas."
+      required: false
+
+    - name: "outputTableSpec"
+      help: "BigQuery table location to write the output to."
+      required: true
+
+    - name: "outputDeadletterTable"
+      help: "The dead-letter table name to output failed messages to BigQuery."
+      required: true
+
+    - name: "numStorageWriteApiStreams"
+      help: "Number of streams defines the parallelism of the BigQueryIO’s Write."
+      required: false
+      default: 1
+      type: integer
+
+    - name: "storageWriteApiTriggeringFrequencySec"
+      help: "Triggering frequency in seconds for BigQuery Storage Write API"
+      required: false
+      default: 3
+      type: integer
+
+pipeline:
+  transforms:
+    - type: ReadFromKafka
+      config:
+        schema: $schema
+        format: $messageFormat
+        topic: $kafkaReadTopics
+        bootstrap_servers: $readBootstrapServers
+        autoOffsetResetConfig: 'earliest'
+        error_handling:
+          output: errors
+    - type: WriteToBigQuery
+      name: WriteGoodMessages
+      input: ReadFromKafka
+      config:
+        table: $outputTableSpec
+        numStreams: $numStorageWriteApiStreams
+        create_disposition: 'CREATE_NEVER'
+        triggeringFrequencySeconds: $storageWriteApiTriggeringFrequencySec
+        error_handling:
+          output: errors
+    - type: WriteToBigQuery
+      name: WriteBadReadMessages
+      input: ReadFromKafka.errors
+      config:
+        table: $outputDeadletterTable
+        numStreams: $numStorageWriteApiStreams
+        triggeringFrequencySeconds: $storageWriteApiTriggeringFrequencySec
+    - type: WriteToBigQuery
+      name: WriteBadWriteMessages
+      input: WriteGoodMessages.errors
+      config:
+        table: $outputDeadletterTable
+        numStreams: $numStorageWriteApiStreams
+        triggeringFrequencySeconds: $storageWriteApiTriggeringFrequencySec
+
+options:
+  streaming: true

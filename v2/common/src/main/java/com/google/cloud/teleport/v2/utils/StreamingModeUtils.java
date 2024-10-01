@@ -22,20 +22,35 @@ public class StreamingModeUtils {
   private StreamingModeUtils() {}
 
   public static void validate(DataflowPipelineOptions options) {
-    if (ExperimentalOptions.hasExperiment(options, "streaming_mode_at_least_once")
-        || (options.getDataflowServiceOptions() != null
-            && options.getDataflowServiceOptions().contains("streaming_mode_at_least_once"))) {
+    if (isAtLeastOnceEnabled(options)) {
       options.setEnableStreamingEngine(true);
     }
   }
 
   public static void validateBQOptions(DataflowPipelineOptions options) {
     validate(options);
-    if (ExperimentalOptions.hasExperiment(options, "streaming_mode_at_least_once")
-        || (options.getDataflowServiceOptions() != null
-            && options.getDataflowServiceOptions().contains("streaming_mode_at_least_once"))) {
-      options.setUseStorageWriteApi(true);
+    if (isAtLeastOnceEnabled(options) && options.getUseStorageWriteApi()) {
       options.setUseStorageWriteApiAtLeastOnce(true);
     }
+  }
+
+  public static void enableAtLeastOnce(DataflowPipelineOptions options) {
+    // Enable "At-Least Once" mode if "Exactly Once" mode is not specified.
+    if (!isExactlyOnceEnabled(options)) {
+      ExperimentalOptions.addExperiment(options, "streaming_mode_at_least_once");
+    }
+  }
+
+  private static boolean isAtLeastOnceEnabled(DataflowPipelineOptions options) {
+    return (!isExactlyOnceEnabled(options)
+        && (ExperimentalOptions.hasExperiment(options, "streaming_mode_at_least_once")
+            || ((options.getDataflowServiceOptions() != null)
+                && options.getDataflowServiceOptions().contains("streaming_mode_at_least_once"))));
+  }
+
+  private static boolean isExactlyOnceEnabled(DataflowPipelineOptions options) {
+    return (ExperimentalOptions.hasExperiment(options, "streaming_mode_exactly_once")
+        || ((options.getDataflowServiceOptions() != null)
+            && options.getDataflowServiceOptions().contains("streaming_mode_exactly_once")));
   }
 }

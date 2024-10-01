@@ -25,11 +25,11 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.FailedStringToTableRowFn;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
@@ -110,7 +110,7 @@ public class ErrorConvertersTest implements Serializable {
 
     // Read in tempfile data
     File file = new File(tmpFolder.getRoot().getAbsolutePath() + "errors.txt-00000-of-00001");
-    String fileContents = Files.toString(file, Charsets.UTF_8);
+    String fileContents = Files.toString(file, StandardCharsets.UTF_8);
     tmpFolder.delete();
 
     // Get the unique expected & received lines of text

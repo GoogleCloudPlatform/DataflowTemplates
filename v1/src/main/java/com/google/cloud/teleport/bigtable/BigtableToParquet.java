@@ -75,9 +75,10 @@ public class BigtableToParquet {
 
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Source",
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from")
+            "The ID of the Google Cloud project that contains the Cloud Bigtable instance that you want to read data from.")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
@@ -85,9 +86,10 @@ public class BigtableToParquet {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
-        helpText = "The ID of the Cloud Bigtable instance that contains the table")
+        helpText = "The ID of the Cloud Bigtable instance that contains the table.")
     ValueProvider<String> getBigtableInstanceId();
 
     @SuppressWarnings("unused")
@@ -95,9 +97,10 @@ public class BigtableToParquet {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
-        helpText = "The ID of the Cloud Bigtable table to export")
+        helpText = "The ID of the Cloud Bigtable table to export.")
     ValueProvider<String> getBigtableTableId();
 
     @SuppressWarnings("unused")
@@ -105,10 +108,10 @@ public class BigtableToParquet {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
+        groupName = "Target",
         description = "Output file directory in Cloud Storage",
         helpText =
-            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.",
-        example = "gs://your-bucket/your-path")
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse the directory path for date and time formatters. For example: gs://your-bucket/your-path.")
     ValueProvider<String> getOutputDirectory();
 
     @SuppressWarnings("unused")
@@ -116,8 +119,10 @@ public class BigtableToParquet {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "Parquet file prefix",
-        helpText = "The prefix of the Parquet file name. For example, \"table1-\"")
+        helpText =
+            "The prefix of the Parquet file name. For example, \"table1-\". Defaults to: part.")
     @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 
@@ -126,18 +131,30 @@ public class BigtableToParquet {
 
     @TemplateParameter.Integer(
         order = 6,
+        groupName = "Target",
         optional = true,
         description = "Maximum output shards",
         helpText =
-            "The maximum number of output shards produced when writing. A higher number of "
-                + "shards means higher throughput for writing to Cloud Storage, but potentially higher "
-                + "data aggregation cost across shards when processing output Cloud Storage files. "
-                + "Default value is decided by Dataflow.")
+            "The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. The default value is decided by Dataflow.")
     @Default.Integer(0)
     ValueProvider<Integer> getNumShards();
 
     @SuppressWarnings("unused")
     void setNumShards(ValueProvider<Integer> numShards);
+
+    @TemplateParameter.Text(
+        order = 7,
+        groupName = "Source",
+        optional = true,
+        regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
+        description = "Application profile ID",
+        helpText =
+            "The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.")
+    @Default.String("default")
+    ValueProvider<String> getBigtableAppProfileId();
+
+    @SuppressWarnings("unused")
+    void setBigtableAppProfileId(ValueProvider<String> appProfileId);
   }
 
   /**
@@ -167,6 +184,7 @@ public class BigtableToParquet {
         BigtableIO.read()
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
+            .withAppProfileId(options.getBigtableAppProfileId())
             .withTableId(options.getBigtableTableId());
 
     // Do not validate input fields if it is running as a template.
@@ -178,18 +196,24 @@ public class BigtableToParquet {
      * Steps: 1) Read records from Bigtable. 2) Convert a Bigtable Row to a GenericRecord. 3) Write
      * GenericRecord(s) to GCS in parquet format.
      */
+    FileIO.Write<Void, GenericRecord> write =
+        FileIO.<GenericRecord>write()
+            .via(ParquetIO.sink(BigtableRow.getClassSchema()))
+            .to(options.getOutputDirectory())
+            .withPrefix(options.getFilenamePrefix())
+            .withSuffix(".parquet");
+    ValueProvider<Integer> numShardsOpt = options.getNumShards();
+    if (numShardsOpt.isAccessible()) {
+      Integer numShards = numShardsOpt.get();
+      if (numShards != null && numShards > 0) {
+        write = write.withNumShards(options.getNumShards());
+      }
+    }
     pipeline
         .apply("Read from Bigtable", read)
         .apply("Transform to Parquet", MapElements.via(new BigtableToParquetFn()))
         .setCoder(AvroCoder.of(GenericRecord.class, BigtableRow.getClassSchema()))
-        .apply(
-            "Write to Parquet in GCS",
-            FileIO.<GenericRecord>write()
-                .via(ParquetIO.sink(BigtableRow.getClassSchema()))
-                .to(options.getOutputDirectory())
-                .withPrefix(options.getFilenamePrefix())
-                .withSuffix(".parquet")
-                .withNumShards(options.getNumShards()));
+        .apply("Write to Parquet in GCS", write);
 
     return pipeline.run();
   }

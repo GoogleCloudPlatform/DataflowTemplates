@@ -30,6 +30,11 @@ public class CustomShardIdFetcher implements IShardIdFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(CustomShardIdFetcher.class);
 
   @Override
+  public void init(String parameters) {
+    LOG.info("init called with {}", parameters);
+  }
+
+  @Override
   public ShardIdResponse getShardId(ShardIdRequest shardIdRequest) {
     LOG.info("Returning custom sharding function");
     return new ShardIdResponse();

@@ -70,4 +70,57 @@ public class SizedTypeTest {
         SizedType.typeString(complexStruct.type, null),
         "STRUCT<a BOOL, b ARRAY<STRUCT<c STRING(MAX), d ARRAY<FLOAT64>>>, e STRUCT<f STRUCT<g INT64>>>");
   }
+
+  @Test
+  public void testEmbeddingVector() {
+    SizedType embeddingVector =
+        SizedType.parseSpannerType(
+            "ARRAY<FLOAT64>(vector_length=>128)", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertEquals(embeddingVector.type, Type.array(Type.float64()));
+    assertEquals(embeddingVector.arrayLength, Integer.valueOf(128));
+    assertEquals(
+        SizedType.typeString(embeddingVector.type, null, 128, false),
+        "ARRAY<FLOAT64>(vector_length=>128)");
+  }
+
+  @Test
+  public void testPgEmbeddingVector() {
+    SizedType embeddingVectorPg =
+        SizedType.parseSpannerType("double precision[] vector length 4", Dialect.POSTGRESQL);
+
+    assertEquals(embeddingVectorPg.type, Type.pgArray(Type.pgFloat8()));
+    assertEquals(embeddingVectorPg.arrayLength, Integer.valueOf(4));
+    assertEquals(
+        SizedType.typeString(embeddingVectorPg.type, null, 4, false),
+        "double precision[] vector length 4");
+  }
+
+  @Test
+  public void testProtoEnum() {
+    SizedType proto = SizedType.parseSpannerType("PROTO<a.b.proto>", Dialect.GOOGLE_STANDARD_SQL);
+    SizedType protoArray =
+        SizedType.parseSpannerType("ARRAY<PROTO<a.b.proto>>", Dialect.GOOGLE_STANDARD_SQL);
+    SizedType enumType = SizedType.parseSpannerType("ENUM<a.b.enum>", Dialect.GOOGLE_STANDARD_SQL);
+    SizedType enumArray =
+        SizedType.parseSpannerType("ARRAY<ENUM<a.b.enum>>", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertEquals(proto.type, Type.proto("a.b.proto"));
+    assertEquals(
+        SizedType.typeString(proto.type, null, /* outputAsDdlRepresentation= */ true),
+        "`a.b.proto`");
+
+    assertEquals(protoArray.type, Type.array(Type.proto("a.b.proto")));
+    assertEquals(
+        SizedType.typeString(protoArray.type, null, /* outputAsDdlRepresentation= */ true),
+        "ARRAY<`a.b.proto`>");
+    assertEquals(enumType.type, Type.protoEnum("a.b.enum"));
+    assertEquals(
+        SizedType.typeString(enumType.type, null, /* outputAsDdlRepresentation= */ true),
+        "`a.b.enum`");
+    assertEquals(enumArray.type, Type.array(Type.protoEnum("a.b.enum")));
+    assertEquals(
+        SizedType.typeString(enumArray.type, null, /* outputAsDdlRepresentation= */ true),
+        "ARRAY<`a.b.enum`>");
+  }
 }

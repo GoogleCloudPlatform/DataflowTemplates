@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.plugin.model;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /** Image Spec Model. The main payload to communicate parameters to the Dataflow UI. */
@@ -55,6 +56,20 @@ public class ImageSpec {
 
   public void setDefaultEnvironment(Map<String, Object> defaultEnvironment) {
     this.defaultEnvironment = defaultEnvironment;
+  }
+
+  public void setAdditionalUserLabel(String label, String value) {
+    if (defaultEnvironment == null) {
+      defaultEnvironment = new HashMap<>();
+    }
+
+    @SuppressWarnings("unchecked")
+    Map<String, String> labels =
+        (Map<String, String>)
+            defaultEnvironment.computeIfAbsent(
+                "additionalUserLabels", k -> new HashMap<String, String>());
+
+    labels.put(label, value);
   }
 
   public void validate() {

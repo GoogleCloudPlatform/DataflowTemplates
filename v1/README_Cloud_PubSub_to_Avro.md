@@ -16,22 +16,22 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **inputTopic** (Pub/Sub input topic): Pub/Sub topic to read the input from, in the format of 'projects/your-project-id/topics/your-topic-name'.
-* **outputDirectory** (Output file directory in Cloud Storage): The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.
-* **avroTempDirectory** (Temporary Avro write directory): Directory for temporary Avro files.
+* **inputTopic** : The Pub/Sub topic to subscribe to for message consumption. The topic name must be in the format projects/<PROJECT_ID>/topics/<TOPIC_NAME>.
+* **outputDirectory** : The output directory where output Avro files are archived. Must contain / at the end. For example: gs://example-bucket/example-directory/.
+* **avroTempDirectory** : The directory for temporary Avro files. Must contain / at the end. For example: gs://example-bucket/example-directory/.
 
-### Optional Parameters
+### Optional parameters
 
-* **outputFilenamePrefix** (Output filename prefix of the files to write): The prefix to place on each windowed file. Defaults to: output.
-* **outputFilenameSuffix** (Output filename suffix of the files to write): The suffix to place on each windowed file. Typically a file extension such as .txt or .csv. Defaults to empty.
-* **outputShardTemplate** (Shard template): Defines the unique/dynamic portion of each windowed file. Recommended: use the default (W-P-SS-of-NN). At runtime, 'W' is replaced with the window date range and 'P' is replaced with the pane info. Repeating sequences of the letters 'S' or 'N' are replaced with the shard number and number of shards respectively. The pipeline assumes a single file output and will produce the text of '00-of-01' by default.
-* **yearPattern** (Custom Year Pattern to use for the output directory): Pattern for formatting the year. Must be one or more of 'y' or 'Y'. Case makes no difference in the year. The pattern can be optionally wrapped by characters that aren't either alphanumeric or the directory ('/') character. Defaults to 'YYYY'.
-* **monthPattern** (Custom Month Pattern to use for the output directory): Pattern for formatting the month. Must be one or more of the 'M' character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory ('/') character. Defaults to 'MM'.
-* **dayPattern** (Custom Day Pattern to use for the output directory): Pattern for formatting the day. Must be one or more of 'd' for day of month or 'D' for day of year. Case makes no difference in the year. The pattern can be optionally wrapped by characters that aren't either alphanumeric or the directory ('/') character. Defaults to 'dd'.
-* **hourPattern** (Custom Hour Pattern to use for the output directory): Pattern for formatting the hour. Must be one or more of the 'H' character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory ('/') character. Defaults to 'HH'.
-* **minutePattern** (Custom Minute Pattern to use for the output directory): Pattern for formatting the minute. Must be one or more of the 'm' character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory ('/') character. Defaults to 'mm'.
+* **outputFilenamePrefix** : The output filename prefix for the Avro files. Defaults to: output.
+* **outputFilenameSuffix** : The output filename suffix for the Avro files. Defaults to empty.
+* **outputShardTemplate** : The shard template defines the dynamic portion of each windowed file. By default, the pipeline uses a single shard for output to the file system within each window. Therefore, all data outputs into a single file per window. The `outputShardTemplate` defaults `to W-P-SS-of-NN`, where `W` is the window date range, `P` is the pane info, `S` is the shard number, and `N` is the number of shards. In case of a single file, the `SS-of-NN` portion of the `outputShardTemplate` is `00-of-01`.
+* **yearPattern** : Pattern for formatting the year. Must be one or more of `y` or `Y`. Case makes no difference in the year. Optionally, wrap the pattern with characters that aren't alphanumeric or the directory ('/') character. Defaults to `YYYY`.
+* **monthPattern** : Pattern for formatting the month. Must be one or more of the `M` character. Optionally, wrap the pattern with characters that aren't alphanumeric or the directory ('/') character. Defaults to `MM`.
+* **dayPattern** : Pattern for formatting the day. Must be one or more of `d` for day of month or `D` for day of year. Optionally, wrap the pattern with characters that aren't alphanumeric or the directory ('/') character. Defaults to `dd`.
+* **hourPattern** : Pattern for formatting the hour. Must be one or more of the `H` character. Optionally, wrap the pattern with characters that aren't alphanumeric or the directory ('/') character. Defaults to `HH`.
+* **minutePattern** : Pattern for formatting the minute. Must be one or more of the `m` character. Optionally, wrap the pattern with characters that aren't alphanumeric or the directory ('/') character. Defaults to `mm`.
 
 
 
@@ -189,8 +189,23 @@ mvn clean package -PtemplatesRun \
 Dataflow supports the utilization of Terraform to manage template jobs,
 see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
 
-Here is an example of Terraform configuration:
+Terraform modules have been generated for most templates in this repository. This includes the relevant parameters
+specific to the template. If available, they may be used instead of
+[dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job)
+directly.
 
+To use the autogenerated module, execute the standard
+[terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
+
+```shell
+cd v1/terraform/Cloud_PubSub_to_Avro
+terraform init
+terraform apply
+```
+
+To use
+[dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job)
+directly:
 
 ```terraform
 provider "google-beta" {

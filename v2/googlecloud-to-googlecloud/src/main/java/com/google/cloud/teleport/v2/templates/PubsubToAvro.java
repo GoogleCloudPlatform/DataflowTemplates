@@ -77,7 +77,8 @@ import org.apache.beam.sdk.values.PCollection;
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-avro",
     contactInformation = "https://cloud.google.com/support",
     requirements = {"The input Pub/Sub topic must exist prior to pipeline execution."},
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class PubsubToAvro {
 
   /**
@@ -89,6 +90,7 @@ public class PubsubToAvro {
       extends PipelineOptions, StreamingOptions, WindowedFilenamePolicyOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         optional = true,
         description = "Pub/Sub input subscription",
         helpText =
@@ -101,6 +103,7 @@ public class PubsubToAvro {
 
     @TemplateParameter.PubsubTopic(
         order = 2,
+        groupName = "Source",
         optional = true,
         description = "Pub/Sub input topic",
         helpText =
@@ -112,6 +115,7 @@ public class PubsubToAvro {
 
     @TemplateParameter.GcsWriteFolder(
         order = 3,
+        groupName = "Target",
         optional = false,
         description = "Output file directory in Cloud Storage",
         helpText =
@@ -124,6 +128,7 @@ public class PubsubToAvro {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         optional = true,
         description = "Output filename prefix of the files to write",
         helpText = "The prefix to place on each windowed file.",
@@ -135,6 +140,7 @@ public class PubsubToAvro {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         optional = true,
         description = "Output filename suffix of the files to write",
         helpText =

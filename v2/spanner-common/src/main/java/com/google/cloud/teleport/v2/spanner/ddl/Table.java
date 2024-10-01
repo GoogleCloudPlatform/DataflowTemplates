@@ -45,7 +45,7 @@ public abstract class Table implements Serializable {
 
   public abstract ImmutableList<String> indexes();
 
-  public abstract ImmutableList<String> foreignKeys();
+  public abstract ImmutableList<ForeignKey> foreignKeys();
 
   public abstract ImmutableList<String> checkConstraints();
 
@@ -132,7 +132,9 @@ public abstract class Table implements Serializable {
     }
     if (includeForeignKeys) {
       appendable.append("\n");
-      appendable.append(String.join("\n", foreignKeys()));
+      appendable.append(
+          String.join(
+              "\n", foreignKeys().stream().map(f -> f.prettyPrint()).collect(Collectors.toList())));
     }
   }
 
@@ -176,7 +178,9 @@ public abstract class Table implements Serializable {
     }
     if (includeForeignKeys) {
       appendable.append("\n");
-      appendable.append(String.join("\n", foreignKeys()));
+      appendable.append(
+          String.join(
+              "\n", foreignKeys().stream().map(f -> f.prettyPrint()).collect(Collectors.toList())));
     }
   }
 
@@ -222,7 +226,7 @@ public abstract class Table implements Serializable {
 
     public abstract Builder indexes(ImmutableList<String> indexes);
 
-    public abstract Builder foreignKeys(ImmutableList<String> foreignKeys);
+    public abstract Builder foreignKeys(ImmutableList<ForeignKey> foreignKeys);
 
     public abstract Builder checkConstraints(ImmutableList<String> checkConstraints);
 

@@ -36,11 +36,11 @@ public interface SpannerChangeStreamsToGcsOptions
 
   @TemplateParameter.ProjectId(
       order = 1,
+      groupName = "Source",
       optional = true,
       description = "Spanner Project ID",
       helpText =
-          "Project to read change streams from. The default for this parameter is the project "
-              + "where the Dataflow pipeline is running.")
+          "The ID of the Google Cloud project that contains the Spanner database to read change streams from. This project is also where the change streams connector metadata table is created. The default for this parameter is the project where the Dataflow pipeline is running.")
   @Default.String("")
   String getSpannerProjectId();
 
@@ -48,8 +48,9 @@ public interface SpannerChangeStreamsToGcsOptions
 
   @TemplateParameter.Text(
       order = 2,
+      groupName = "Source",
       description = "Spanner instance ID",
-      helpText = "The Spanner instance to read change streams from.")
+      helpText = "The Spanner instance ID to read change streams data from.")
   @Validation.Required
   String getSpannerInstanceId();
 
@@ -57,8 +58,9 @@ public interface SpannerChangeStreamsToGcsOptions
 
   @TemplateParameter.Text(
       order = 3,
+      groupName = "Source",
       description = "Spanner database",
-      helpText = "The Spanner database to read change streams from.")
+      helpText = "The Spanner database to read change streams data from.")
   @Validation.Required
   String getSpannerDatabase();
 
@@ -69,10 +71,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Spanner database role",
       helpText =
-          "Database role user assumes while reading from the change stream. The database role"
-              + " should have required privileges to read from change stream. If a database role is"
-              + " not specified, the user should have required IAM permissions to read from the"
-              + " database.")
+          "The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a fine-grained access control user. The database role must have the `SELECT` privilege on the change stream and the `EXECUTE` privilege on the change stream's read function. For more information, see Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams).")
   String getSpannerDatabaseRole();
 
   void setSpannerDatabaseRole(String spannerDatabaseRole);
@@ -80,7 +79,7 @@ public interface SpannerChangeStreamsToGcsOptions
   @TemplateParameter.Text(
       order = 5,
       description = "Spanner metadata instance ID",
-      helpText = "The Spanner instance to use for the change streams connector metadata table.")
+      helpText = "The Spanner instance ID to use for the change streams connector metadata table.")
   @Validation.Required
   String getSpannerMetadataInstanceId();
 
@@ -89,10 +88,7 @@ public interface SpannerChangeStreamsToGcsOptions
   @TemplateParameter.Text(
       order = 6,
       description = "Spanner metadata database",
-      helpText =
-          "The Spanner database to use for the change streams connector metadata table. For change"
-              + " streams tracking all tables in a database, we recommend putting the metadata"
-              + " table in a separate database.")
+      helpText = "The Spanner database to use for the change streams connector metadata table.")
   @Validation.Required
   String getSpannerMetadataDatabase();
 
@@ -103,16 +99,14 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Cloud Spanner metadata table name",
       helpText =
-          "The Cloud Spanner change streams connector metadata table name to use. If not provided,"
-              + " a Cloud Spanner change streams connector metadata table will automatically be"
-              + " created during the pipeline flow. This parameter must be provided when updating"
-              + " an existing pipeline and should not be provided otherwise.")
+          "The Spanner change streams connector metadata table name to use. If not provided, a Spanner change streams metadata table is automatically created during pipeline execution. You must provide a value for this parameter when updating an existing pipeline. Otherwise, don't use this parameter.")
   String getSpannerMetadataTableName();
 
   void setSpannerMetadataTableName(String value);
 
   @TemplateParameter.Text(
       order = 8,
+      groupName = "Source",
       description = "Spanner change stream",
       helpText = "The name of the Spanner change stream to read from.")
   @Validation.Required
@@ -125,9 +119,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "The timestamp to read change streams from",
       helpText =
-          "The starting DateTime, inclusive, to use for reading change streams"
-              + " (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z."
-              + " Defaults to the timestamp when the pipeline starts.")
+          "The starting DateTime, inclusive, to use for reading change streams, in the format Ex-2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, that is, the current time.")
   @Default.String("")
   String getStartTimestamp();
 
@@ -138,9 +130,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "The timestamp to read change streams to",
       helpText =
-          "The ending DateTime, inclusive, to use for reading change streams"
-              + " (https://tools.ietf.org/html/rfc3339). Ex-2022-05-05T07:59:59Z. Defaults to an"
-              + " infinite time in the future.")
+          "The ending DateTime, inclusive, to use for reading change streams. For example, Ex-2021-10-12T07:20:50.52Z. Defaults to an infinite time in the future.")
   @Default.String("")
   String getEndTimestamp();
 
@@ -163,8 +153,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Output file format",
       helpText =
-          "The format of the output Cloud Storage file. Allowed formats are TEXT, AVRO. Default is"
-              + " AVRO.")
+          "The format of the output Cloud Storage file. Allowed formats are TEXT and AVRO. Defaults to AVRO.")
   @Default.Enum("AVRO")
   FileFormat getOutputFileFormat();
 
@@ -175,9 +164,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Window duration",
       helpText =
-          "The window duration/size in which data will be written to Cloud Storage. Allowed formats"
-              + " are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for"
-              + " hours, example: 2h).",
+          "The window duration is the interval in which data is written to the output directory. Configure the duration based on the pipeline's throughput. For example, a higher throughput might require smaller window sizes so that the data fits into memory. Defaults to 5m (five minutes), with a minimum of 1s (one second). Allowed formats are: [int]s (for seconds, example: 5s), [int]m (for minutes, example: 12m), [int]h (for hours, example: 2h).",
       example = "5m")
   @Default.String("5m")
   String getWindowDuration();
@@ -194,8 +181,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Priority for Spanner RPC invocations",
       helpText =
-          "The request priority for Cloud Spanner calls. The value must be one of:"
-              + " [HIGH,MEDIUM,LOW].")
+          "The request priority for Spanner calls. The value must be HIGH, MEDIUM, or LOW. Defaults to HIGH.")
   @Default.Enum("HIGH")
   RpcPriority getRpcPriority();
 

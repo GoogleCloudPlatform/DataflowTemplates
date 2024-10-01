@@ -16,17 +16,27 @@
 package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.spanner.BatchClient;
+import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
+import com.google.cloud.spanner.DatabaseInfo;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.TransactionRunner;
+import com.google.cloud.spanner.admin.instance.v1.InstanceAdminClient;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.RandomInsertMutationGenerator;
+import com.google.protobuf.ByteString;
+import com.google.spanner.admin.database.v1.GetDatabaseDdlResponse;
+import com.google.spanner.admin.instance.v1.CreateInstancePartitionRequest;
+import com.google.spanner.admin.instance.v1.InstanceConfigName;
+import com.google.spanner.admin.instance.v1.InstanceName;
+import com.google.spanner.admin.instance.v1.InstancePartition;
+import com.google.spanner.admin.instance.v1.InstancePartitionName;
 import java.util.Arrays;
 import java.util.Iterator;
 import javax.annotation.Nullable;
@@ -47,6 +57,7 @@ public class SpannerServerResource extends ExternalResource {
 
   private Spanner client;
   private DatabaseAdminClient databaseAdminClient;
+  private InstanceAdminClient instanceAdminClient;
 
   public SpannerServerResource() {
     this.projectId = System.getProperty("projectId", DEFAULT_PROJECT_ID);
@@ -67,16 +78,52 @@ public class SpannerServerResource extends ExternalResource {
     }
     client = spannerOptions.getService();
     databaseAdminClient = client.getDatabaseAdminClient();
+    instanceAdminClient = client.createInstanceAdminClient();
   }
 
   @Override
   protected void after() {
-    client.close();
+    if (!client.isClosed()) {
+      client.close();
+    }
+  }
+
+  private Database buildDatabase(String dbName, ByteString protoDescriptors) {
+    DatabaseInfo.Builder builder =
+        databaseAdminClient
+            .newDatabaseBuilder(DatabaseId.of(projectId, instanceId, dbName))
+            .setDialect(Dialect.GOOGLE_STANDARD_SQL);
+    if (protoDescriptors != null) {
+      builder.setProtoDescriptors(protoDescriptors.toByteArray());
+    }
+    return builder.build();
+  }
+
+  public void createDatabase(
+      String dbName, Iterable<String> ddlStatements, ByteString protoDescriptors) throws Exception {
+    databaseAdminClient
+        .createDatabase(buildDatabase(dbName, protoDescriptors), ddlStatements)
+        .get();
+  }
+
+  public void updateDatabase(
+      String dbName, Iterable<String> ddlStatements, ByteString protoDescriptors) throws Exception {
+    databaseAdminClient
+        .updateDatabaseDdl(buildDatabase(dbName, protoDescriptors), ddlStatements, null)
+        .get();
+  }
+
+  public ByteString getProtoDescriptors(String dbName) {
+    DatabaseId databaseID = DatabaseId.of(projectId, instanceId, dbName);
+    GetDatabaseDdlResponse response =
+        databaseAdminClient.getDatabaseDdlResponse(
+            databaseID.getInstanceId().getInstance(), databaseID.getDatabase());
+    return response.getProtoDescriptors();
   }
 
   public void createDatabase(String dbName, Iterable<String> ddlStatements) throws Exception {
     // Waits for create database to complete.
-    databaseAdminClient.createDatabase(instanceId, dbName, ddlStatements).get();
+    createDatabase(dbName, ddlStatements, null);
   }
 
   public void createPgDatabase(String dbName, Iterable<String> ddlStatements) throws Exception {
@@ -94,7 +141,7 @@ public class SpannerServerResource extends ExternalResource {
   }
 
   public void updateDatabase(String dbName, Iterable<String> ddlStatements) throws Exception {
-    databaseAdminClient.updateDatabaseDdl(instanceId, dbName, ddlStatements, null).get();
+    updateDatabase(dbName, ddlStatements, null);
   }
 
   public void dropDatabase(String dbName) {
@@ -150,5 +197,33 @@ public class SpannerServerResource extends ExternalResource {
             }
           });
     }
+  }
+
+  public void createInstancePartition(String instancePartitionId, String instanceConfigId)
+      throws Exception {
+    InstancePartition instancePartition =
+        InstancePartition.newBuilder()
+            .setDisplayName("mr partition")
+            .setNodeCount(1)
+            .setConfig(InstanceConfigName.of(projectId, instanceConfigId).toString())
+            .build();
+
+    InstancePartition ip =
+        instanceAdminClient
+            .createInstancePartitionAsync(
+                CreateInstancePartitionRequest.newBuilder()
+                    .setParent(InstanceName.of(projectId, instanceId).toString())
+                    .setInstancePartitionId(instancePartitionId)
+                    .setInstancePartition(instancePartition)
+                    .build())
+            .get();
+  }
+
+  public void deleteInstancePartition(String instancePartitionId) throws Exception {
+    if (client.isClosed()) {
+      before();
+    }
+    instanceAdminClient.deleteInstancePartition(
+        InstancePartitionName.of(projectId, instanceId, instancePartitionId).toString());
   }
 }

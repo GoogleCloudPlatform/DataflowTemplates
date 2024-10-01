@@ -41,16 +41,6 @@ public class ShardIdFetcherImpl implements IShardIdFetcher {
     try {
       String tableName = shardIdRequest.getTableName();
       String shardIdColumn = getShardIdColumnForTableName(tableName);
-      if (shardIdColumn.isEmpty()) {
-        LOG.warn(
-            "Writing record for table {} to skipped directory name {} since table not present in"
-                + " the session file.",
-            tableName,
-            skipDirName);
-        ShardIdResponse shardIdResponse = new ShardIdResponse();
-        shardIdResponse.setLogicalShardId(skipDirName);
-        return shardIdResponse;
-      }
       if (shardIdRequest.getSpannerRecord().containsKey(shardIdColumn)) {
         String shardId = shardIdRequest.getSpannerRecord().get(shardIdColumn).toString();
         ShardIdResponse shardIdResponse = new ShardIdResponse();
@@ -94,5 +84,10 @@ public class ShardIdFetcherImpl implements IShardIdFetcher {
               + " not found in session file. Please provide a valid session file.");
     }
     return spTable.getColDefs().get(shardColId).getName();
+  }
+
+  @Override
+  public void init(String parameters) {
+    LOG.info("init called with {}", parameters);
   }
 }

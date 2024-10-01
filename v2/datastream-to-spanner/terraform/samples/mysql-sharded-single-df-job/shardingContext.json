@@ -1,0 +1,6 @@
+{
+  "StreamToDbAndShardMap": {
+    "hostIp1": {"dbName1":"${hostIp1}-dbName1", "dbName2":"${hostIp1}-dbName2"},
+    "hostIp2": {"dbName1":"${hostIp2}-dbName1", "dbName2":"${hostIp2}-dbName2"}
+  }
+}

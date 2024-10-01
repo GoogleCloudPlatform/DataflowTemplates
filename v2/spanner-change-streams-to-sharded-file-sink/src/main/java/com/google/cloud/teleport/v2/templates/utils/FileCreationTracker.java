@@ -15,8 +15,10 @@
  */
 package com.google.cloud.teleport.v2.templates.utils;
 
+import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import java.util.List;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 
 /** Tracks the shard file creation progress. */
 public class FileCreationTracker {
@@ -25,13 +27,13 @@ public class FileCreationTracker {
   private String runId;
 
   public FileCreationTracker(
-      String spannerProjectId,
-      String metadataInstance,
-      String metadataDatabase,
-      String tableSuffix,
-      String runId) {
-    this.spannerDao =
-        new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
+      SpannerConfig spannerConfig, String tableSuffix, String runId, boolean isPostgres) {
+    this.spannerDao = new SpannerDao(spannerConfig, tableSuffix, isPostgres);
+    this.runId = runId;
+  }
+
+  public FileCreationTracker(SpannerDao spannerDao, String runId) {
+    this.spannerDao = spannerDao;
     this.runId = runId;
   }
 
@@ -40,7 +42,24 @@ public class FileCreationTracker {
   }
 
   public void updateProgress(String shard, String endTime) {
-    this.spannerDao.updateProgress(shard, endTime, runId);
+    boolean retry = true;
+    while (retry) {
+      try {
+        this.spannerDao.updateProgress(shard, endTime, this.runId);
+        retry = false;
+      } catch (SpannerException e) {
+        if (e.getMessage().contains("DEADLINE_EXCEEDED")) {
+          try {
+            Thread.sleep(500);
+          } catch (java.lang.InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+          continue;
+        } else {
+          throw e;
+        }
+      }
+    }
   }
 
   public void close() {

@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.SizedType;
@@ -39,6 +41,10 @@ public abstract class Column implements Serializable {
   @Nullable
   public abstract Integer size();
 
+  @Nullable
+  // Used to specify exact length requirements for array type columns.
+  public abstract Integer arrayLength();
+
   public abstract boolean notNull();
 
   public abstract boolean isGenerated();
@@ -47,7 +53,11 @@ public abstract class Column implements Serializable {
 
   public abstract boolean isStored();
 
+  public abstract boolean isPlacementKey();
+
   public abstract Dialect dialect();
+
+  public abstract boolean isHidden();
 
   @Nullable
   public abstract String defaultExpression();
@@ -58,8 +68,10 @@ public abstract class Column implements Serializable {
         .columnOptions(ImmutableList.of())
         .notNull(false)
         .isGenerated(false)
+        .isHidden(false)
         .generationExpression("")
-        .isStored(false);
+        .isStored(false)
+        .isPlacementKey(false);
   }
 
   public static Builder builder() {
@@ -70,10 +82,9 @@ public abstract class Column implements Serializable {
     if (dialect() != Dialect.GOOGLE_STANDARD_SQL && dialect() != Dialect.POSTGRESQL) {
       throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
     }
-    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
     appendable
-        .append(String.format("%1$-40s", identifierQuote + name() + identifierQuote))
-        .append(typeString());
+        .append(String.format("%1$-40s", quoteIdentifier(name(), dialect())))
+        .append(typeString(true));
     if (notNull()) {
       appendable.append(" NOT NULL");
     }
@@ -92,6 +103,14 @@ public abstract class Column implements Serializable {
       appendable.append(" AS (").append(generationExpression()).append(")");
       if (isStored()) {
         appendable.append(" STORED");
+      }
+    }
+    if (isPlacementKey()) {
+      appendable.append(" PLACEMENT KEY");
+    }
+    if (isHidden()) {
+      if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
+        appendable.append(" HIDDEN");
       }
     }
     if (columnOptions() == null) {
@@ -121,7 +140,18 @@ public abstract class Column implements Serializable {
   }
 
   public String typeString() {
-    return SizedType.typeString(type(), size());
+    if (arrayLength() != null) {
+      return SizedType.typeString(
+          type(), size(), arrayLength(), /* outputAsDdlRepresentation= */ false);
+    }
+    return SizedType.typeString(type(), size(), /* outputAsDdlRepresentation= */ false);
+  }
+
+  public String typeString(boolean outputAsDdlRepresentation) {
+    if (arrayLength() != null) {
+      return SizedType.typeString(type(), size(), arrayLength(), outputAsDdlRepresentation);
+    }
+    return SizedType.typeString(type(), size(), outputAsDdlRepresentation);
   }
 
   /** A builder for {@link Column}. */
@@ -141,6 +171,8 @@ public abstract class Column implements Serializable {
 
     public abstract Builder size(Integer size);
 
+    public abstract Builder arrayLength(Integer size);
+
     public abstract Builder notNull(boolean nullable);
 
     abstract Builder dialect(Dialect dialect);
@@ -150,6 +182,8 @@ public abstract class Column implements Serializable {
     public Builder notNull() {
       return notNull(true);
     }
+
+    public abstract Builder isHidden(boolean hidden);
 
     public abstract Builder isGenerated(boolean generated);
 
@@ -167,6 +201,12 @@ public abstract class Column implements Serializable {
       return isStored(true);
     }
 
+    public abstract Builder isPlacementKey(boolean isPlacementKey);
+
+    public Builder placementKey() {
+      return isPlacementKey(true);
+    }
+
     public abstract Column autoBuild();
 
     public Builder int64() {
@@ -175,6 +215,14 @@ public abstract class Column implements Serializable {
 
     public Builder pgInt8() {
       return type(Type.pgInt8());
+    }
+
+    public Builder float32() {
+      return type(Type.float32());
+    }
+
+    public Builder pgFloat4() {
+      return type(Type.pgFloat4());
     }
 
     public Builder float64() {
@@ -213,6 +261,10 @@ public abstract class Column implements Serializable {
       return type(Type.pgBytea()).max();
     }
 
+    public Builder tokenlist() {
+      return type(Type.tokenlist());
+    }
+
     public Builder timestamp() {
       return type(Type.timestamp());
     }
@@ -249,12 +301,23 @@ public abstract class Column implements Serializable {
       return type(Type.pgJsonb());
     }
 
+    public Builder proto(String protoTypeFqn) {
+      return type(Type.proto(protoTypeFqn));
+    }
+
+    public Builder protoEnum(String enumTypeFqn) {
+      return type(Type.protoEnum(enumTypeFqn));
+    }
+
     public Builder max() {
       return size(-1);
     }
 
     public Builder parseType(String spannerType) {
       SizedType sizedType = SizedType.parseSpannerType(spannerType, dialect());
+      if (sizedType.arrayLength != null) {
+        return type(sizedType.type).size(sizedType.size).arrayLength(sizedType.arrayLength);
+      }
       return type(sizedType.type).size(sizedType.size);
     }
 

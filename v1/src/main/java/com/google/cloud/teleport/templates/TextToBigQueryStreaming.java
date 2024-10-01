@@ -28,7 +28,6 @@ import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.Fail
 import com.google.cloud.teleport.util.ResourceUtils;
 import com.google.cloud.teleport.util.ValueProviderUtils;
 import com.google.cloud.teleport.values.FailsafeElement;
-import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteStreams;
 import java.io.ByteArrayOutputStream;
@@ -36,6 +35,7 @@ import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -148,7 +148,8 @@ import org.slf4j.LoggerFactory;
           + "}\n"
           + "</pre>"
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class TextToBigQueryStreaming {
 
   private static final Logger LOG = LoggerFactory.getLogger(TextToBigQueryStreaming.class);
@@ -254,6 +255,8 @@ public class TextToBigQueryStreaming {
                 FailsafeJavascriptUdf.<String>newBuilder()
                     .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                     .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setReloadIntervalMinutes(
+                        options.getJavascriptTextTransformReloadIntervalMinutes())
                     .setSuccessTag(UDF_OUT)
                     .setFailureTag(UDF_DEADLETTER_OUT)
                     .build());
@@ -362,7 +365,7 @@ public class TextToBigQueryStreaming {
               try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
                 try (WritableByteChannel wbc = Channels.newChannel(baos)) {
                   ByteStreams.copy(rbc, wbc);
-                  schema = baos.toString(Charsets.UTF_8.name());
+                  schema = baos.toString(StandardCharsets.UTF_8.name());
                   LOG.info("Extracted schema: " + schema);
                 }
               }

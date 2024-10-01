@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.mongodb.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.bigquery.Field;
@@ -24,6 +25,7 @@ import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -98,7 +100,10 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
   private static final String BIGQUERY_TABLE = "outputTableSpec";
   private static final String USER_OPTION = "userOption";
 
-  private static final String MONGO_DB_ID = "_id";
+  private static final String MONGO_DB_FLATTEN_ID = "_id";
+  private static final String MONGO_DB_ID = "id";
+
+  private static final String UDF_FILE_NAME = "input/transform.js";
 
   private MongoDBResourceManager mongoDbClient;
   private BigQueryResourceManager bigQueryClient;
@@ -115,26 +120,63 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  public void testMongoDbToBigQuery() throws IOException {
+  public void testMongoDbToBigQueryFlatten() throws IOException {
+    mongoDbToBigQueryWithUdfBase("FLATTEN");
+  }
+
+  @Test
+  @Category(DirectRunnerTest.class)
+  public void testMongoDbToBigQueryJson() throws IOException {
+    mongoDbToBigQueryWithUdfBase("JSON");
+  }
+
+  @Test
+  @Category(DirectRunnerTest.class)
+  public void testMongoDbToBigQueryNone() throws IOException {
+    mongoDbToBigQueryWithUdfBase("NONE");
+  }
+
+  @Test
+  public void testMongoDbToBigQueryWithFilters() throws IOException {
+    mongoDbToBigQueryBase("FLATTEN", false, true);
+  }
+
+  private void mongoDbToBigQueryWithUdfBase(String userOption) throws IOException {
+    mongoDbToBigQueryBase(userOption, true, false);
+  }
+
+  private void mongoDbToBigQueryBase(String userOption, boolean applyUdf, boolean applyFilter)
+      throws IOException {
     // Arrange
     String collectionName = testName;
     List<Document> mongoDocuments = generateDocuments();
     mongoDbClient.insertDocuments(collectionName, mongoDocuments);
 
     String bqTable = testName;
-    String udfFileName = "transform.js";
-    gcsClient.createArtifact(
-        "input/" + udfFileName,
-        "function transform(inJson) {\n"
-            + "    var outJson = JSON.parse(inJson);\n"
-            + "    outJson.udf = \"out\";\n"
-            + "    return JSON.stringify(outJson);\n"
-            + "}");
+
+    if (applyUdf) {
+      gcsClient.createArtifact(
+          UDF_FILE_NAME,
+          "function transform(inJson) {\n"
+              + "    var outJson = JSON.parse(inJson);\n"
+              + "    outJson.udf = \"out\";\n"
+              + "    return JSON.stringify(outJson);\n"
+              + "}");
+    }
+
     List<Field> bqSchemaFields = new ArrayList<>();
     bqSchemaFields.add(Field.of("timestamp", StandardSQLTypeName.TIMESTAMP));
-    mongoDocuments
-        .get(0)
-        .forEach((key, val) -> bqSchemaFields.add(Field.of(key, StandardSQLTypeName.STRING)));
+    if (userOption.equals("FLATTEN")) {
+      mongoDocuments
+          .get(0)
+          .forEach((key, val) -> bqSchemaFields.add(Field.of(key, StandardSQLTypeName.STRING)));
+    } else {
+      bqSchemaFields.add(Field.of("id", StandardSQLTypeName.STRING));
+      bqSchemaFields.add(
+          Field.of(
+              "source_data",
+              userOption.equals("JSON") ? StandardSQLTypeName.JSON : StandardSQLTypeName.STRING));
+    }
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     bigQueryClient.createDataset(REGION);
@@ -146,9 +188,16 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
             .addParameter(MONGO_DB, mongoDbClient.getDatabaseName())
             .addParameter(MONGO_COLLECTION, collectionName)
             .addParameter(BIGQUERY_TABLE, toTableSpecLegacy(table))
-            .addParameter(USER_OPTION, "FLATTEN")
-            .addParameter("javascriptDocumentTransformGcsPath", getGcsPath("input/" + udfFileName))
-            .addParameter("javascriptDocumentTransformFunctionName", "transform");
+            .addParameter(USER_OPTION, userOption);
+
+    if (applyUdf) {
+      options
+          .addParameter("javascriptDocumentTransformGcsPath", getGcsPath(UDF_FILE_NAME))
+          .addParameter("javascriptDocumentTransformFunctionName", "transform");
+    }
+    if (applyFilter) {
+      options.addParameter("filter", "{ \"filter_test\": { $eq: \"0\" }}");
+    }
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -167,9 +216,17 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     mongoDocuments.forEach(
         mongoDocument -> {
           JSONObject mongoDbJson = new JSONObject(mongoDocument.toJson());
-          String mongoId = mongoDbJson.getJSONObject(MONGO_DB_ID).getString("$oid");
-          mongoDbJson.put("udf", "out");
-          mongoDbJson.put(MONGO_DB_ID, mongoId);
+          String mongoId = mongoDbJson.getJSONObject(MONGO_DB_FLATTEN_ID).getString("$oid");
+          if (applyUdf) {
+            mongoDbJson.put("udf", "out");
+          }
+          if (!userOption.equals("FLATTEN")) {
+            mongoDbJson.remove("_id");
+            mongoDbJson.remove("nullonly");
+            mongoDbJson = new JSONObject("{\"source_data\":" + mongoDbJson + "}");
+          }
+          mongoDbJson.put(
+              userOption.equals("FLATTEN") ? MONGO_DB_FLATTEN_ID : MONGO_DB_ID, mongoId);
           mongoMap.put(mongoId, mongoDbJson);
         });
 
@@ -182,10 +239,29 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
                     val -> {
                       JSONObject bigQueryJson = new JSONObject(val.getStringValue());
                       assertTrue(bigQueryJson.has("timestamp"));
-
                       bigQueryJson.remove("timestamp");
-                      String bigQueryId = bigQueryJson.getString(MONGO_DB_ID);
-                      assertTrue(mongoMap.get(bigQueryId).similar(bigQueryJson));
+                      String bigQueryId;
+                      if (userOption.equals("FLATTEN")) {
+                        bigQueryId = bigQueryJson.getString(MONGO_DB_FLATTEN_ID);
+                      } else {
+                        if (userOption.equals("NONE")) {
+                          bigQueryJson.put(
+                              "source_data", new JSONObject(bigQueryJson.getString("source_data")));
+                        }
+                        bigQueryId = bigQueryJson.getString(MONGO_DB_ID);
+                        bigQueryJson.getJSONObject("source_data").remove("_id");
+                      }
+
+                      if (applyFilter) {
+                        String msg =
+                            val.getStringValue()
+                                + " is different from "
+                                + mongoMap.get(bigQueryId).toString();
+                        assertEquals("0", bigQueryJson.getString("filter_test"));
+                        assertTrue(msg, mongoMap.get(bigQueryId).similar(bigQueryJson));
+                      } else {
+                        assertTrue(mongoMap.get(bigQueryId).similar(bigQueryJson));
+                      }
                     }));
   }
 
@@ -217,7 +293,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     mongoDocumentKeys.add("nullonly");
 
     for (int i = 0; i < numDocuments; i++) {
-      Document randomDocument = new Document().append(MONGO_DB_ID, new ObjectId());
+      Document randomDocument = new Document().append(MONGO_DB_FLATTEN_ID, new ObjectId());
 
       for (int j = 0; j < numFields; j++) {
         randomDocument.append(
@@ -225,6 +301,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
       }
       randomDocument.append("udf", "in");
       randomDocument.append("nullonly", null);
+      randomDocument.append("filter_test", String.valueOf(i));
 
       mongoDocuments.add(randomDocument);
     }

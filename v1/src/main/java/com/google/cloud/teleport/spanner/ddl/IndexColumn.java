@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
@@ -50,7 +52,8 @@ public abstract class IndexColumn implements Serializable {
   public enum Order {
     ASC("ASC"),
     DESC("DESC"),
-    STORING("STORING");
+    STORING("STORING"),
+    NONE("");
 
     Order(String title) {
       this.title = title;
@@ -76,12 +79,7 @@ public abstract class IndexColumn implements Serializable {
   }
 
   public void prettyPrint(Appendable appendable) throws IOException {
-    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
-    appendable
-        .append(identifierQuote)
-        .append(name())
-        .append(identifierQuote + " ")
-        .append(order().title);
+    appendable.append(quoteIdentifier(name(), dialect())).append(" ").append(order().title);
     if (nullsOrder() != null) {
       appendable.append(" NULLS ").append(nullsOrder().title);
     }
@@ -142,6 +140,11 @@ public abstract class IndexColumn implements Serializable {
       return set(IndexColumn.create(name, Order.DESC, dialect));
     }
 
+    public IndexColumnsBuilder<T> none(String name) {
+      IndexColumn indexColumn = IndexColumn.create(name, Order.NONE, dialect);
+      return set(indexColumn);
+    }
+
     public IndexColumnsBuilder<T> storing(String name) {
       return set(IndexColumn.create(name, Order.STORING, dialect));
     }
@@ -180,6 +183,15 @@ public abstract class IndexColumn implements Serializable {
             "Builder is missing. Call create method to initiate a builder first.");
       }
       indexColumnBuilder.order(Order.DESC);
+      return this;
+    }
+
+    public IndexColumnsBuilder<T> none() {
+      if (indexColumnBuilder == null) {
+        throw new IllegalArgumentException(
+            "Builder is missing. Call create method to initiate a builder first.");
+      }
+      indexColumnBuilder.order(Order.NONE);
       return this;
     }
 

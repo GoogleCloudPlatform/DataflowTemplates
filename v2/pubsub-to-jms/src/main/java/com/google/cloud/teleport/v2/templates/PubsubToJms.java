@@ -128,6 +128,7 @@ public class PubsubToJms {
   public interface PubsubToJmsOptions extends PipelineOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input subscription",
         helpText =
             "Pub/Sub subscription to read the input from, in the format of"
@@ -140,6 +141,7 @@ public class PubsubToJms {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         optional = true,
         regexes = {"[,\\/:a-zA-Z0-9._-]+"},
         description = "JMS Host IP",
@@ -152,6 +154,7 @@ public class PubsubToJms {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Target",
         optional = false,
         regexes = {"[a-zA-Z0-9._-]+"},
         description = "JMS Queue/Topic Name to write the input to",
@@ -183,7 +186,7 @@ public class PubsubToJms {
 
     void setUsername(String username);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Password(
         order = 6,
         description = "JMS Password",
         helpText = "Password for username provided for authentication with JMS server",

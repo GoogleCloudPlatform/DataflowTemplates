@@ -183,7 +183,8 @@ public class CsvConverters {
     @TemplateParameter.GcsReadFile(
         order = 1,
         description = "The input filepattern to read from.",
-        helpText = "Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv")
+        helpText =
+            "The Cloud Storage file pattern to search for CSV files. Example: gs://mybucket/test-*.csv.")
     String getInputFileSpec();
 
     void setInputFileSpec(String inputFileSpec);
@@ -237,7 +238,7 @@ public class CsvConverters {
         order = 6,
         optional = true,
         description = "Path to JSON schema",
-        helpText = "Path to JSON schema. Default: null.",
+        helpText = "The path to the JSON schema. Defaults to: null.",
         example = "gs://path/to/schema")
     String getJsonSchemaPath();
 
@@ -247,7 +248,8 @@ public class CsvConverters {
         order = 7,
         optional = true,
         description = "Set to true if number of files is in the tens of thousands",
-        helpText = "Set to true if number of files is in the tens of thousands.")
+        helpText =
+            "Set to true if number of files is in the tens of thousands. Defaults to: false.")
     @Default.Boolean(false)
     Boolean getLargeNumFiles();
 
@@ -259,8 +261,7 @@ public class CsvConverters {
         regexes = {"^(US-ASCII|ISO-8859-1|UTF-8|UTF-16)$"},
         description = "CSV file encoding",
         helpText =
-            "CSV file character encoding format. Allowed Values are US-ASCII"
-                + ", ISO-8859-1, UTF-8, UTF-16")
+            "The CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, and UTF-16.")
     @Default.String("UTF-8")
     String getCsvFileEncoding();
 
@@ -308,10 +309,16 @@ public class CsvConverters {
     public abstract String delimiter();
 
     @Nullable
-    public abstract String udfFileSystemPath();
+    public abstract String javascriptUdfFileSystemPath();
 
     @Nullable
-    public abstract String udfFunctionName();
+    public abstract String javascriptUdfFunctionName();
+
+    @Nullable
+    public abstract String pythonUdfFileSystemPath();
+
+    @Nullable
+    public abstract String pythonUdfFunctionName();
 
     @Nullable
     public abstract Integer udfReloadIntervalMinutes();
@@ -335,6 +342,28 @@ public class CsvConverters {
 
       PCollectionView<String> headersView = null;
 
+      // Python UDFs have a slightly different failsafe mechanism, so we check it first before
+      // executing
+      // normal code path.
+      if (pythonUdfFileSystemPath() != null) {
+        return lines
+            .get(lineTag())
+            .apply(
+                "MapLineToRow",
+                PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.stringMappingFunction())
+            .setRowSchema(PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.ROW_SCHEMA)
+            .apply(
+                "InvokeUDF",
+                PythonExternalTextTransformer.FailsafePythonExternalUdf.newBuilder()
+                    .setFileSystemPath(pythonUdfFileSystemPath())
+                    .setFunctionName(pythonUdfFunctionName())
+                    .build())
+            .apply(
+                ParDo.of(
+                        new PythonExternalTextTransformer.RowToStringFailsafeElementFn(
+                            udfOutputTag(), udfDeadletterTag()))
+                    .withOutputTags(udfOutputTag(), TupleTagList.of(udfDeadletterTag())));
+      }
       // Convert csv lines into Failsafe elements so that we can recover over multiple transforms.
       PCollection<FailsafeElement<String, String>> lineFailsafeElements =
           lines
@@ -342,13 +371,13 @@ public class CsvConverters {
               .apply("LineToFailsafeElement", ParDo.of(new LineToFailsafeElementFn()));
 
       // If UDF is specified then use that to parse csv lines.
-      if (udfFileSystemPath() != null) {
+      if (javascriptUdfFileSystemPath() != null) {
 
         return lineFailsafeElements.apply(
             "LineToDocumentUsingUdf",
             FailsafeJavascriptUdf.<String>newBuilder()
-                .setFileSystemPath(udfFileSystemPath())
-                .setFunctionName(udfFunctionName())
+                .setFileSystemPath(javascriptUdfFileSystemPath())
+                .setFunctionName(javascriptUdfFunctionName())
                 .setReloadIntervalMinutes(udfReloadIntervalMinutes())
                 .setSuccessTag(udfOutputTag())
                 .setFailureTag(udfDeadletterTag())
@@ -408,9 +437,13 @@ public class CsvConverters {
     public abstract static class Builder {
       public abstract Builder setDelimiter(String delimiter);
 
-      public abstract Builder setUdfFileSystemPath(String udfFileSystemPath);
+      public abstract Builder setJavascriptUdfFileSystemPath(String javascriptUdfFileSystemPath);
 
-      public abstract Builder setUdfFunctionName(String udfFunctionName);
+      public abstract Builder setJavascriptUdfFunctionName(String javascriptUdfFunctionName);
+
+      public abstract Builder setPythonUdfFileSystemPath(String pythonUdfFileSystemPath);
+
+      public abstract Builder setPythonUdfFunctionName(String pythonUdfFunctionName);
 
       public abstract Builder setUdfReloadIntervalMinutes(int udfReloadIntervalMinutes);
 

@@ -179,6 +179,11 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
           columnValue =
               isNullValue ? Value.int64(null) : Value.int64(Long.valueOf(cellValue.trim()));
           break;
+        case FLOAT32:
+        case PG_FLOAT4:
+          columnValue =
+              isNullValue ? Value.float32(null) : Value.float32(Float.valueOf(cellValue.trim()));
+          break;
         case FLOAT64:
         case PG_FLOAT8:
           columnValue =
@@ -255,6 +260,19 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
         case PG_BYTEA:
           columnValue =
               isNullValue ? Value.bytes(null) : Value.bytes(ByteArray.fromBase64(cellValue.trim()));
+          break;
+        case PROTO:
+          columnValue =
+              isNullValue
+                  ? Value.protoMessage(null, columnType.getProtoTypeFqn())
+                  : Value.protoMessage(
+                      ByteArray.fromBase64(cellValue.trim()), columnType.getProtoTypeFqn());
+          break;
+        case ENUM:
+          columnValue =
+              isNullValue
+                  ? Value.protoEnum(null, columnType.getProtoTypeFqn())
+                  : Value.protoEnum(Long.valueOf(cellValue.trim()), columnType.getProtoTypeFqn());
           break;
         default:
           throw new IllegalArgumentException(

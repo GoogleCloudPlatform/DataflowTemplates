@@ -48,6 +48,7 @@ import com.google.common.collect.Iterables;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
@@ -74,6 +75,8 @@ public final class SpannerResourceManager implements ResourceManager {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerResourceManager.class);
   private static final int MAX_BASE_ID_LENGTH = 30;
 
+  private static final String DEFAULT_SPANNER_HOST = "https://batch-spanner.googleapis.com";
+
   // Retry settings for instance creation
   private static final int CREATE_MAX_RETRIES = 5;
   private static final Duration CREATE_BACKOFF_DELAY = Duration.ofSeconds(10);
@@ -88,12 +91,14 @@ public final class SpannerResourceManager implements ResourceManager {
   private final boolean usingStaticInstance;
   private final String databaseId;
   private final String region;
+  private final String spannerHost;
 
   private final Dialect dialect;
 
   private final Spanner spanner;
   private final InstanceAdminClient instanceAdminClient;
   private final DatabaseAdminClient databaseAdminClient;
+  private final int nodeCount;
 
   private SpannerResourceManager(Builder builder) {
     this(
@@ -101,7 +106,7 @@ public final class SpannerResourceManager implements ResourceManager {
         ((Supplier<Spanner>)
                 () -> {
                   SpannerOptions.Builder optionsBuilder = SpannerOptions.newBuilder();
-                  optionsBuilder.setProjectId(builder.projectId);
+                  optionsBuilder.setProjectId(builder.projectId).setHost(builder.host);
                   if (builder.credentials != null) {
                     optionsBuilder.setCredentials(builder.credentials);
                   }
@@ -135,9 +140,11 @@ public final class SpannerResourceManager implements ResourceManager {
 
     this.region = builder.region;
     this.dialect = builder.dialect;
+    this.spannerHost = builder.host;
     this.spanner = spanner;
     this.instanceAdminClient = spanner.getInstanceAdminClient();
     this.databaseAdminClient = spanner.getDatabaseAdminClient();
+    this.nodeCount = builder.nodeCount;
   }
 
   public static Builder builder(String testId, String projectId, String region) {
@@ -167,7 +174,7 @@ public final class SpannerResourceManager implements ResourceManager {
           InstanceInfo.newBuilder(InstanceId.of(projectId, instanceId))
               .setInstanceConfigId(InstanceConfigId.of(projectId, "regional-" + region))
               .setDisplayName(instanceId)
-              .setNodeCount(1)
+              .setNodeCount(nodeCount)
               .build();
 
       // Retry creation if there's a quota error
@@ -256,6 +263,15 @@ public final class SpannerResourceManager implements ResourceManager {
   }
 
   /**
+   * Return the Spanner host that is servicing API requests.
+   *
+   * @return Spanner host.
+   */
+  public String getSpannerHost() {
+    return this.spannerHost;
+  }
+
+  /**
    * Executes a DDL statement.
    *
    * <p>Note: Implementations may do instance creation and database creation here.
@@ -264,17 +280,29 @@ public final class SpannerResourceManager implements ResourceManager {
    * @throws IllegalStateException if method is called after resources have been cleaned up.
    */
   public synchronized void executeDdlStatement(String statement) throws IllegalStateException {
+    executeDdlStatements(ImmutableList.of(statement));
+  }
+
+  /**
+   * Executes a list of DDL statements.
+   *
+   * <p>Note: Implementations may do instance creation and database creation here.
+   *
+   * @param statements The DDL statements.
+   * @throws IllegalStateException if method is called after resources have been cleaned up.
+   */
+  public synchronized void executeDdlStatements(List<String> statements)
+      throws IllegalStateException {
     checkIsUsable();
     maybeCreateInstance();
     maybeCreateDatabase();
 
-    LOG.info("Executing DDL statement '{}' on database {}.", statement, databaseId);
+    LOG.info("Executing DDL statements '{}' on database {}.", statements, databaseId);
     try {
       databaseAdminClient
-          .updateDatabaseDdl(
-              instanceId, databaseId, ImmutableList.of(statement), /* operationId= */ null)
+          .updateDatabaseDdl(instanceId, databaseId, statements, /* operationId= */ null)
           .get();
-      LOG.info("Successfully executed DDL statement '{}' on database {}.", statement, databaseId);
+      LOG.info("Successfully executed DDL statements '{}' on database {}.", statements, databaseId);
     } catch (ExecutionException | InterruptedException | SpannerException e) {
       throw new SpannerResourceManagerException("Failed to execute statement.", e);
     }
@@ -451,6 +479,8 @@ public final class SpannerResourceManager implements ResourceManager {
     private @Nullable String instanceId;
     private boolean useStaticInstance;
     private Credentials credentials;
+    private String host;
+    private int nodeCount;
 
     private Builder(String testId, String projectId, String region, Dialect dialect) {
       this.testId = testId;
@@ -459,6 +489,8 @@ public final class SpannerResourceManager implements ResourceManager {
       this.dialect = dialect;
       this.instanceId = null;
       this.useStaticInstance = false;
+      this.host = DEFAULT_SPANNER_HOST;
+      this.nodeCount = 1;
     }
 
     public Builder setCredentials(Credentials credentials) {
@@ -498,6 +530,30 @@ public final class SpannerResourceManager implements ResourceManager {
      */
     public Builder setInstanceId(String instanceId) {
       this.instanceId = instanceId;
+      return this;
+    }
+
+    /**
+     * Looks at the system properties if there's a Spanner host override, uses it for Spanner API
+     * calls.
+     *
+     * @return this builder with host set.
+     */
+    public Builder maybeUseCustomHost() {
+      if (System.getProperty("spannerHost") != null) {
+        this.host = System.getProperty("spannerHost");
+      }
+      return this;
+    }
+
+    /**
+     * Configures the node count of the spanner instance if creating a new one.
+     *
+     * @param nodeCount
+     * @return
+     */
+    public Builder setNodeCount(int nodeCount) {
+      this.nodeCount = nodeCount;
       return this;
     }
 

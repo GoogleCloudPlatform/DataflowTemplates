@@ -26,6 +26,10 @@ import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
 import com.google.cloud.teleport.spanner.proto.ExportProtos;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
+import com.google.common.collect.ImmutableList;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
+import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
 import com.google.protobuf.util.JsonFormat;
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -50,7 +54,10 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -64,19 +71,35 @@ import org.junit.rules.TemporaryFolder;
 public class ImportFromAvroTest {
   @Rule public final TestPipeline importPipeline = TestPipeline.create();
   @Rule public final TemporaryFolder tmpDir = new TemporaryFolder();
-  @Rule public final SpannerServerResource spannerServer = new SpannerServerResource();
+
+  /** Class rule for Spanner server resource. */
+  @ClassRule public static final SpannerServerResource SPANNER_SERVER = new SpannerServerResource();
 
   private final String dbName = "importdbtest";
+  public static final String INSTANCE_PARTITION_ID = "mr-partition";
 
   @Before
   public void setup() {
     // Just to make sure an old database is not left over.
-    spannerServer.dropDatabase(dbName);
+    SPANNER_SERVER.before();
+    SPANNER_SERVER.dropDatabase(dbName);
   }
 
   @After
   public void tearDown() {
-    spannerServer.dropDatabase(dbName);
+    SPANNER_SERVER.dropDatabase(dbName);
+    // Closing clients required after each test since it will clean up old db connection.
+    SPANNER_SERVER.after();
+  }
+
+  @BeforeClass
+  public static void setupInstancePartition() throws Exception {
+    SPANNER_SERVER.createInstancePartition(INSTANCE_PARTITION_ID, "nam3");
+  }
+
+  @AfterClass
+  public static void tearDownInstancePartition() throws Exception {
+    SPANNER_SERVER.deleteInstancePartition(INSTANCE_PARTITION_ID);
   }
 
   @Test
@@ -270,8 +293,8 @@ public class ImportFromAvroTest {
   }
 
   @Test
-  public void floats() throws Exception {
-    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("floats");
+  public void float64s() throws Exception {
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("float64s");
     SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
 
     fieldAssembler
@@ -338,8 +361,8 @@ public class ImportFromAvroTest {
   }
 
   @Test
-  public void pgFloats() throws Exception {
-    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("floats");
+  public void pgFloat64s() throws Exception {
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("float64s");
     SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
 
     fieldAssembler
@@ -402,6 +425,111 @@ public class ImportFromAvroTest {
                 .set("required_double", 3.16)
                 .set("optional_string_double", "100.301")
                 .set("required_string_double", "1.1e-3")
+                .build()),
+        Dialect.POSTGRESQL);
+  }
+
+  @Test
+  public void float32s() throws Exception {
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("float32s");
+    SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
+
+    fieldAssembler
+        // Primary key.
+        .requiredLong("id")
+        // Integer columns.
+        .optionalInt("optional_int")
+        .requiredInt("required_int")
+        // Floating columns
+        .optionalFloat("optional_float")
+        .requiredFloat("required_float")
+        .optionalString("optional_string_float")
+        .requiredString("required_string_float");
+    Schema schema = fieldAssembler.endRecord();
+    String spannerSchema =
+        "CREATE TABLE `AvroTable` ("
+            + "`id`                                    INT64 NOT NULL,"
+            + "`optional_int`                          FLOAT32,"
+            + "`required_int`                          FLOAT32 NOT NULL,"
+            + "`optional_float`                        FLOAT32,"
+            + "`required_float`                        FLOAT32 NOT NULL,"
+            + "`optional_string_float`                 FLOAT32,"
+            + "`required_string_float`                 FLOAT32 NOT NULL,"
+            + ") PRIMARY KEY (`id`)";
+
+    runTest(
+        schema,
+        spannerSchema,
+        Arrays.asList(
+            new GenericRecordBuilder(schema)
+                .set("id", 1L)
+                .set("optional_int", 1)
+                .set("required_int", 4)
+                .set("optional_float", 2.3f)
+                .set("required_float", 3.4f)
+                .set("optional_string_float", "100.30")
+                .set("required_string_float", "0.1e-3")
+                .build(),
+            new GenericRecordBuilder(schema)
+                .set("id", 2L)
+                .set("optional_int", 10)
+                .set("required_int", 40)
+                .set("optional_float", 2.03f)
+                .set("required_float", 3.14f)
+                .set("optional_string_float", "100.301")
+                .set("required_string_float", "1.1e-3")
+                .build()));
+  }
+
+  @Test
+  public void pgFloat32s() throws Exception {
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("float32s");
+    SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
+
+    fieldAssembler
+        // Primary key.
+        .requiredLong("id")
+        // Integer columns.
+        .optionalInt("optional_int")
+        .requiredInt("required_int")
+        // Floating columns
+        .optionalFloat("optional_float")
+        .requiredFloat("required_float")
+        .optionalString("optional_string_float")
+        .requiredString("required_string_float");
+    Schema schema = fieldAssembler.endRecord();
+    String spannerSchema =
+        "CREATE TABLE \"AvroTable\" ("
+            + "\"id\"                                    bigint NOT NULL,"
+            + "\"optional_int\"                          real,"
+            + "\"required_int\"                          real NOT NULL,"
+            + "\"optional_float\"                        real,"
+            + "\"required_float\"                        real NOT NULL,"
+            + "\"optional_string_float\"                 real,"
+            + "\"required_string_float\"                 real NOT NULL,"
+            + " PRIMARY KEY (\"id\"))";
+
+    runTest(
+        schema,
+        spannerSchema,
+        Arrays.asList(
+            new GenericRecordBuilder(schema)
+                .set("id", 1L)
+                .set("optional_int", 1)
+                .set("required_int", 4)
+                .set("optional_float", 2.3f)
+                .set("required_float", 3.4f)
+                .set("optional_string_float", "100.30")
+                .set("required_string_float", "0.1e-3")
+                .build(),
+            new GenericRecordBuilder(schema)
+                .set("id", 2L)
+                .set("optional_int", 10)
+                .set("required_int", 40)
+                .set("optional_float", 2.03f)
+                .set("required_float", 3.14f)
+                .set("optional_string_float", "100.301")
+                .set("required_string_float", "1.1e-3")
                 .build()),
         Dialect.POSTGRESQL);
   }
@@ -1133,13 +1261,13 @@ public class ImportFromAvroTest {
             + "`c1` BOOL,"
             + "`c2` INT64,"
             + ") PRIMARY KEY (`id`)";
-    spannerServer.createDatabase(dbName, Collections.singleton(spannerSchema));
+    SPANNER_SERVER.createDatabase(dbName, Collections.singleton(spannerSchema));
 
     // Run the import pipeline.
     importPipeline.apply(
         "Import",
         new ImportTransform(
-            spannerServer.getSpannerConfig(dbName),
+            SPANNER_SERVER.getSpannerConfig(dbName),
             ValueProvider.StaticValueProvider.of(manifestFileLocation),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
@@ -1151,7 +1279,7 @@ public class ImportFromAvroTest {
     importResult.waitUntilFinish();
 
     Ddl ddl;
-    try (ReadOnlyTransaction ctx = spannerServer.getDbClient(dbName).readOnlyTransaction()) {
+    try (ReadOnlyTransaction ctx = SPANNER_SERVER.getDbClient(dbName).readOnlyTransaction()) {
       ddl = new InformationSchemaScanner(ctx).scan();
     }
     assertThat(
@@ -1238,13 +1366,13 @@ public class ImportFromAvroTest {
             + "`c1` BOOL,"
             + "`c2` INT64,"
             + ") PRIMARY KEY (`id`)";
-    spannerServer.createDatabase(dbName, Collections.singleton(spannerSchema));
+    SPANNER_SERVER.createDatabase(dbName, Collections.singleton(spannerSchema));
 
     // Run the import pipeline.
     importPipeline.apply(
         "Import",
         new ImportTransform(
-            spannerServer.getSpannerConfig(dbName),
+            SPANNER_SERVER.getSpannerConfig(dbName),
             ValueProvider.StaticValueProvider.of(manifestFileLocation),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
@@ -1256,7 +1384,7 @@ public class ImportFromAvroTest {
     importResult.waitUntilFinish();
 
     Ddl ddl;
-    try (ReadOnlyTransaction ctx = spannerServer.getDbClient(dbName).readOnlyTransaction()) {
+    try (ReadOnlyTransaction ctx = SPANNER_SERVER.getDbClient(dbName).readOnlyTransaction()) {
       ddl = new InformationSchemaScanner(ctx).scan();
     }
     assertThat(
@@ -1349,13 +1477,13 @@ public class ImportFromAvroTest {
             + "\"c1\" boolean,"
             + "\"c2\" bigint,"
             + " PRIMARY KEY (\"id\"))";
-    spannerServer.createPgDatabase(dbName, Collections.singleton(spannerSchema));
+    SPANNER_SERVER.createPgDatabase(dbName, Collections.singleton(spannerSchema));
 
     // Run the import pipeline.
     importPipeline.apply(
         "Import",
         new ImportTransform(
-            spannerServer.getSpannerConfig(dbName),
+            SPANNER_SERVER.getSpannerConfig(dbName),
             ValueProvider.StaticValueProvider.of(manifestFileLocation),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
@@ -1367,7 +1495,7 @@ public class ImportFromAvroTest {
     importResult.waitUntilFinish();
 
     Ddl ddl;
-    try (ReadOnlyTransaction ctx = spannerServer.getDbClient(dbName).readOnlyTransaction()) {
+    try (ReadOnlyTransaction ctx = SPANNER_SERVER.getDbClient(dbName).readOnlyTransaction()) {
       ddl = new InformationSchemaScanner(ctx, Dialect.POSTGRESQL).scan();
     }
     assertThat(
@@ -1441,13 +1569,13 @@ public class ImportFromAvroTest {
             + "`c2` INT64,"
             + ") PRIMARY KEY (`id`)";
 
-    spannerServer.createDatabase(dbName, Arrays.asList(sequenceDef, tableDef));
+    SPANNER_SERVER.createDatabase(dbName, Arrays.asList(sequenceDef, tableDef));
 
     // Run the import pipeline.
     importPipeline.apply(
         "Import",
         new ImportTransform(
-            spannerServer.getSpannerConfig(dbName),
+            SPANNER_SERVER.getSpannerConfig(dbName),
             ValueProvider.StaticValueProvider.of(manifestFileLocation),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
@@ -1459,7 +1587,7 @@ public class ImportFromAvroTest {
     importResult.waitUntilFinish();
 
     Ddl ddl;
-    try (ReadOnlyTransaction ctx = spannerServer.getDbClient(dbName).readOnlyTransaction()) {
+    try (ReadOnlyTransaction ctx = SPANNER_SERVER.getDbClient(dbName).readOnlyTransaction()) {
       ddl = new InformationSchemaScanner(ctx).scan();
     }
     assertThat(
@@ -1532,13 +1660,13 @@ public class ImportFromAvroTest {
             + "\"c\" bigint,"
             + "PRIMARY KEY (\"id\"))";
 
-    spannerServer.createPgDatabase(dbName, Arrays.asList(sequenceDef, tableDef));
+    SPANNER_SERVER.createPgDatabase(dbName, Arrays.asList(sequenceDef, tableDef));
 
     // Run the import pipeline.
     importPipeline.apply(
         "Import",
         new ImportTransform(
-            spannerServer.getSpannerConfig(dbName),
+            SPANNER_SERVER.getSpannerConfig(dbName),
             ValueProvider.StaticValueProvider.of(manifestFileLocation),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
@@ -1550,7 +1678,7 @@ public class ImportFromAvroTest {
     importResult.waitUntilFinish();
 
     Ddl ddl;
-    try (ReadOnlyTransaction ctx = spannerServer.getDbClient(dbName).readOnlyTransaction()) {
+    try (ReadOnlyTransaction ctx = SPANNER_SERVER.getDbClient(dbName).readOnlyTransaction()) {
       ddl = new InformationSchemaScanner(ctx, Dialect.POSTGRESQL).scan();
     }
     assertThat(
@@ -1565,6 +1693,314 @@ public class ImportFromAvroTest {
                 + " DEFAULT nextval('\"PGSequence2\"'::text),\n\t"
                 + "\"c\"                                     bigint,"
                 + "\n\tPRIMARY KEY (\"id\")\n)\n\n"));
+  }
+
+  @Test
+  public void placements() throws Exception {
+    String fileName = "Placement1.avro";
+    Schema schema =
+        SchemaBuilder.record("Placement1")
+            .prop("spannerEntity", "Placement")
+            .prop("spannerOption_0", "instance_partition=\"mr-partition\"")
+            .prop("spannerOption_1", "default_leader=\"us-east1\"")
+            .fields()
+            .endRecord();
+
+    ExportProtos.Export.Builder exportProtoBuilder = ExportProtos.Export.newBuilder();
+    exportProtoBuilder.addPlacements(
+        ExportProtos.Export.Table.newBuilder()
+            .setName(schema.getName())
+            .addDataFiles(fileName)
+            .build());
+    // Create the Avro files to be imported.
+    File avroFile = tmpDir.newFile(fileName);
+    try (DataFileWriter<GenericRecord> fileWriter =
+        new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+      fileWriter.create(schema, avroFile);
+    }
+
+    // Create the database manifest file.
+    ExportProtos.Export exportProto = exportProtoBuilder.build();
+    File manifestFile = tmpDir.newFile("spanner-export.json");
+    String manifestFileLocation = manifestFile.getParent();
+    Files.write(
+        manifestFile.toPath(),
+        JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
+
+    // Create the target database.
+    SPANNER_SERVER.createDatabase(
+        dbName,
+        Arrays.asList(
+            "ALTER DATABASE `"
+                + dbName
+                + "` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n",
+            "CREATE PLACEMENT `Placement2` OPTIONS (instance_partition=\"mr-partition\")"));
+
+    // Run the import pipeline.
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            SPANNER_SERVER.getSpannerConfig(dbName),
+            ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(30)));
+    PipelineResult importResult = importPipeline.run();
+    importResult.waitUntilFinish();
+
+    Ddl ddl;
+    try (ReadOnlyTransaction ctx = SPANNER_SERVER.getDbClient(dbName).readOnlyTransaction()) {
+      ddl = new InformationSchemaScanner(ctx).scan();
+    }
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "ALTER DATABASE `%db_name%` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n"
+                + "CREATE PLACEMENT `Placement1`\n\t"
+                + "OPTIONS (default_leader=\"us-east1\", instance_partition=\"mr-partition\")\n"
+                + "CREATE PLACEMENT `Placement2`\n\t"
+                + "OPTIONS (instance_partition=\"mr-partition\")"));
+  }
+
+  @Test
+  public void protoDescriptors() throws Exception {
+
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("T");
+    SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
+
+    fieldAssembler.requiredLong("id").optionalBoolean("c1").optionalLong("c2");
+    Schema tableSchema = fieldAssembler.endRecord();
+    Map<String, Schema> avroFiles = new HashMap<>();
+    avroFiles.put("CreateTable.avro", tableSchema);
+
+    FileDescriptorProto.Builder builder = FileDescriptorProto.newBuilder();
+    builder
+        .addMessageType(
+            com.google.cloud.teleport.spanner.tests.TestMessage.getDescriptor().toProto())
+        .addMessageType(com.google.cloud.teleport.spanner.tests.Order.getDescriptor().toProto())
+        .addEnumType(com.google.cloud.teleport.spanner.tests.TestEnum.getDescriptor().toProto());
+    FileDescriptorSet.Builder fileDescriptorSetBuilder = FileDescriptorSet.newBuilder();
+    fileDescriptorSetBuilder.addFile(builder);
+    ByteString protoDescriptorBytes = fileDescriptorSetBuilder.build().toByteString();
+
+    ExportProtos.Export.Builder exportProtoBuilder = ExportProtos.Export.newBuilder();
+    exportProtoBuilder.setProtoDescriptors(protoDescriptorBytes);
+    for (Entry<String, Schema> entry : avroFiles.entrySet()) {
+      String fileName = entry.getKey();
+      Schema schema = entry.getValue();
+      exportProtoBuilder.addTables(
+          ExportProtos.Export.Table.newBuilder()
+              .setName(schema.getName())
+              .addDataFiles(fileName)
+              .build());
+      // Create the Avro files to be imported.
+      File avroFile = tmpDir.newFile(fileName);
+      try (DataFileWriter<GenericRecord> fileWriter =
+          new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+        fileWriter.create(schema, avroFile);
+      }
+    }
+
+    // Create the database manifest file.
+    ExportProtos.Export exportProto = exportProtoBuilder.build();
+    File manifestFile = tmpDir.newFile("spanner-export.json");
+    String manifestFileLocation = manifestFile.getParent();
+    Files.write(
+        manifestFile.toPath(),
+        JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
+
+    // Create the target database.
+
+    SPANNER_SERVER.createDatabase(dbName, Arrays.asList());
+
+    // Run the import pipeline.
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            SPANNER_SERVER.getSpannerConfig(dbName),
+            ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(30)));
+    PipelineResult importResult = importPipeline.run();
+    importResult.waitUntilFinish();
+  }
+
+  @Test
+  public void protoBundle() throws Exception {
+
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("T");
+    SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
+
+    fieldAssembler.requiredLong("id").optionalBoolean("c1").optionalLong("c2");
+    Schema tableSchema = fieldAssembler.endRecord();
+    Map<String, Schema> avroFiles = new HashMap<>();
+    avroFiles.put("CreateTable.avro", tableSchema);
+
+    FileDescriptorSet.Builder fileDescriptorSetBuilder = FileDescriptorSet.newBuilder();
+    fileDescriptorSetBuilder.addFile(
+        com.google.cloud.teleport.spanner.tests.TestMessage.getDescriptor().getFile().toProto());
+    ByteString protoDescriptorBytes = fileDescriptorSetBuilder.build().toByteString();
+    ImmutableList<String> protoBundle =
+        ImmutableList.of(
+            "com.google.cloud.teleport.spanner.tests.TestMessage",
+            "com.google.cloud.teleport.spanner.tests.Order",
+            "com.google.cloud.teleport.spanner.tests.TestEnum");
+
+    ExportProtos.Export.Builder exportProtoBuilder = ExportProtos.Export.newBuilder();
+    exportProtoBuilder.setProtoDescriptors(protoDescriptorBytes);
+    exportProtoBuilder.addAllProtoBundle(protoBundle);
+    for (Entry<String, Schema> entry : avroFiles.entrySet()) {
+      String fileName = entry.getKey();
+      Schema schema = entry.getValue();
+      exportProtoBuilder.addTables(
+          ExportProtos.Export.Table.newBuilder()
+              .setName(schema.getName())
+              .addDataFiles(fileName)
+              .build());
+      // Create the Avro files to be imported.
+      File avroFile = tmpDir.newFile(fileName);
+      try (DataFileWriter<GenericRecord> fileWriter =
+          new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+        fileWriter.create(schema, avroFile);
+      }
+    }
+
+    // Create the database manifest file.
+    ExportProtos.Export exportProto = exportProtoBuilder.build();
+    File manifestFile = tmpDir.newFile("spanner-export.json");
+    String manifestFileLocation = manifestFile.getParent();
+    Files.write(
+        manifestFile.toPath(),
+        JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
+
+    // Create the target database.
+    SPANNER_SERVER.createDatabase(dbName, Arrays.asList());
+
+    // Run the import pipeline.
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            SPANNER_SERVER.getSpannerConfig(dbName),
+            ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(30)));
+    PipelineResult importResult = importPipeline.run();
+    importResult.waitUntilFinish();
+
+    Ddl ddl;
+    try (ReadOnlyTransaction ctx = SPANNER_SERVER.getDbClient(dbName).readOnlyTransaction()) {
+      ddl = new InformationSchemaScanner(ctx).scan();
+    }
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE PROTO BUNDLE ("
+                + "\n\t`com.google.cloud.teleport.spanner.tests.TestMessage`,"
+                + "\n\t`com.google.cloud.teleport.spanner.tests.Order`,"
+                + "\n\t`com.google.cloud.teleport.spanner.tests.TestEnum`,)"
+                + "CREATE TABLE `T` (\n\t"
+                + "`id`                                    INT64 NOT NULL, "
+                + "\n\t`c1`                                    BOOL,\n\t"
+                + "`c2`                                    INT64,\n) "
+                + "PRIMARY KEY ()\n\n"));
+  }
+
+  @Test
+  public void alterProtoBundle() throws Exception {
+
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("T");
+    SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
+
+    fieldAssembler.requiredLong("id").optionalBoolean("c1").optionalLong("c2");
+    Schema tableSchema = fieldAssembler.endRecord();
+    Map<String, Schema> avroFiles = new HashMap<>();
+    avroFiles.put("CreateTable.avro", tableSchema);
+
+    FileDescriptorSet.Builder fileDescriptorSetBuilder = FileDescriptorSet.newBuilder();
+    fileDescriptorSetBuilder.addFile(
+        com.google.cloud.teleport.spanner.tests.TestMessage.getDescriptor().getFile().toProto());
+    ByteString protoDescriptorBytes = fileDescriptorSetBuilder.build().toByteString();
+    ImmutableList<String> protoBundle =
+        ImmutableList.of(
+            "com.google.cloud.teleport.spanner.tests.TestMessage",
+            "com.google.cloud.teleport.spanner.tests.Order");
+
+    ExportProtos.Export.Builder exportProtoBuilder = ExportProtos.Export.newBuilder();
+    exportProtoBuilder.setProtoDescriptors(protoDescriptorBytes);
+    exportProtoBuilder.addAllProtoBundle(protoBundle);
+    for (Entry<String, Schema> entry : avroFiles.entrySet()) {
+      String fileName = entry.getKey();
+      Schema schema = entry.getValue();
+      exportProtoBuilder.addTables(
+          ExportProtos.Export.Table.newBuilder()
+              .setName(schema.getName())
+              .addDataFiles(fileName)
+              .build());
+      // Create the Avro files to be imported.
+      File avroFile = tmpDir.newFile(fileName);
+      try (DataFileWriter<GenericRecord> fileWriter =
+          new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+        fileWriter.create(schema, avroFile);
+      }
+    }
+
+    // Create the database manifest file.
+    ExportProtos.Export exportProto = exportProtoBuilder.build();
+    File manifestFile = tmpDir.newFile("spanner-export.json");
+    String manifestFileLocation = manifestFile.getParent();
+    Files.write(
+        manifestFile.toPath(),
+        JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
+
+    List<String> statements =
+        Arrays.asList(
+            "CREATE PROTO BUNDLE (" + "com.google.cloud.teleport.spanner.tests.TestEnum)");
+
+    // Create the target database.
+    SPANNER_SERVER.createDatabase(dbName, statements, protoDescriptorBytes);
+
+    // Run the import pipeline.
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            SPANNER_SERVER.getSpannerConfig(dbName),
+            ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(30)));
+    PipelineResult importResult = importPipeline.run();
+    importResult.waitUntilFinish();
+
+    Ddl ddl;
+    try (ReadOnlyTransaction ctx = SPANNER_SERVER.getDbClient(dbName).readOnlyTransaction()) {
+      ddl = new InformationSchemaScanner(ctx).scan();
+    }
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE PROTO BUNDLE ("
+                + "\n\t`com.google.cloud.teleport.spanner.tests.TestMessage`,"
+                + "\n\t`com.google.cloud.teleport.spanner.tests.Order`,"
+                + "\n\t`com.google.cloud.teleport.spanner.tests.TestEnum`,)"
+                + "CREATE TABLE `T` (\n\t"
+                + "`id`                                    INT64 NOT NULL, "
+                + "\n\t`c1`                                    BOOL,\n\t"
+                + "`c2`                                    INT64,\n) "
+                + "PRIMARY KEY ()\n\n"));
   }
 
   private void runTest(Schema avroSchema, String spannerSchema, Iterable<GenericRecord> records)
@@ -1612,10 +2048,10 @@ public class ImportFromAvroTest {
     // Create the target database.
     switch (dialect) {
       case GOOGLE_STANDARD_SQL:
-        spannerServer.createDatabase(dbName, Collections.singleton(spannerSchema));
+        SPANNER_SERVER.createDatabase(dbName, Collections.singleton(spannerSchema));
         break;
       case POSTGRESQL:
-        spannerServer.createPgDatabase(dbName, Collections.singleton(spannerSchema));
+        SPANNER_SERVER.createPgDatabase(dbName, Collections.singleton(spannerSchema));
         break;
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
@@ -1625,7 +2061,7 @@ public class ImportFromAvroTest {
     importPipeline.apply(
         "Import",
         new ImportTransform(
-            spannerServer.getSpannerConfig(dbName),
+            SPANNER_SERVER.getSpannerConfig(dbName),
             ValueProvider.StaticValueProvider.of(manifestFileLocation),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
@@ -1637,7 +2073,7 @@ public class ImportFromAvroTest {
     importResult.waitUntilFinish();
 
     Ddl ddl;
-    try (ReadOnlyTransaction ctx = spannerServer.getDbClient(dbName).readOnlyTransaction()) {
+    try (ReadOnlyTransaction ctx = SPANNER_SERVER.getDbClient(dbName).readOnlyTransaction()) {
       ddl = new InformationSchemaScanner(ctx, dialect).scan();
     }
     assertThat(ddl.databaseOptions().size(), is(1));

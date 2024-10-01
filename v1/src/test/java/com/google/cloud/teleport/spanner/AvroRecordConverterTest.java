@@ -153,8 +153,8 @@ public class AvroRecordConverterTest {
   }
 
   @Test
-  public void floatArray() {
-    String colName = "arrayoffloat";
+  public void float64Array() {
+    String colName = "arrayoffloat64";
     Schema schema = createArrayAvroSchema(colName, DOUBLE);
 
     // Null field
@@ -213,8 +213,8 @@ public class AvroRecordConverterTest {
   }
 
   @Test
-  public void testParseFloat() {
-    String colName = "float";
+  public void testParseFloat64() {
+    String colName = "float64";
     Table.Builder tableBuilder = Table.builder();
     tableBuilder.name("record").column(colName).type(Type.float64()).endColumn();
 
@@ -256,6 +256,119 @@ public class AvroRecordConverterTest {
     final GenericRecord avroRecord1 =
         new GenericRecordBuilder(createAvroSchema(colName, BOOLEAN)).set(colName, false).build();
     assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecord1));
+  }
+
+  @Test
+  public void parsefloat32Array() {
+    String colName = "arrayoffloat32";
+    Schema schema = createArrayAvroSchema(colName, FLOAT);
+
+    // Null field
+    GenericRecord avroRecord = new GenericRecordBuilder(schema).set("id", 0).build();
+    Optional<List<Float>> result = AvroRecordConverter.readFloat32Array(avroRecord, FLOAT, colName);
+    assertFalse(result.isPresent());
+
+    // Convert from float to Float32.
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, floatArray).build();
+    result = AvroRecordConverter.readFloat32Array(avroRecord, FLOAT, colName);
+    assertArrayEquals(floatArray.toArray(), result.get().toArray());
+
+    // Convert from String to Float32.
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, stringArray).build();
+    result = AvroRecordConverter.readFloat32Array(avroRecord, STRING, colName);
+    assertArrayEquals(floatArray.toArray(), result.get().toArray());
+
+    // Other types throw exception.
+    final GenericRecord avroRecordBool =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, booleanArray).build();
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> AvroRecordConverter.readFloat32Array(avroRecordBool, BOOLEAN, colName));
+    final GenericRecord avroRecordInt =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, intArray).build();
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> AvroRecordConverter.readFloat32Array(avroRecordInt, INT, colName));
+    final GenericRecord avroRecordDouble =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, doubleArray).build();
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> AvroRecordConverter.readFloat32Array(avroRecordDouble, DOUBLE, colName));
+    final GenericRecord avroRecordLong =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, longArray).build();
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> AvroRecordConverter.readFloat32Array(avroRecordLong, LONG, colName));
+
+    // Strings that are not number-like should fail parsing.
+    final List<Utf8> nonNumberStringArray =
+        Arrays.asList(new Utf8("d1"), new Utf8("d2"), new Utf8("d3"), null);
+    final GenericRecord avroRecordNonNumberStringArray =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, nonNumberStringArray).build();
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AvroRecordConverter.readFloat32Array(avroRecordNonNumberStringArray, STRING, colName));
+
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder
+        .name("record")
+        .column("id")
+        .type(Type.int64())
+        .endColumn()
+        .column(colName)
+        .type(Type.array(Type.float32()))
+        .endColumn();
+    avroRecord = new GenericRecordBuilder(schema).set("id", 1L).set(colName, floatArray).build();
+    AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertArrayEquals(
+        floatArray.toArray(),
+        mutation.asMap().get(colName).getFloat32Array().toArray(new Float[0]));
+  }
+
+  @Test
+  public void parseFloat32() {
+    String colName = "float32";
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder.name("record").column(colName).type(Type.float32()).endColumn();
+
+    // float to float32
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createAvroSchema(colName, FLOAT)).set(colName, 10.6f).build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(10.6f, mutation.asMap().get(colName).getFloat32(), 0.000001);
+
+    // string to float32
+    avroRecord =
+        new GenericRecordBuilder(createAvroSchema(colName, STRING))
+            .set(colName, new Utf8("15.3"))
+            .build();
+    mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(15.3, mutation.asMap().get(colName).getFloat32(), 0.000001);
+
+    // other types throw exception
+    final GenericRecord avroRecordBool =
+        new GenericRecordBuilder(createAvroSchema(colName, BOOLEAN)).set(colName, false).build();
+    assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecordBool));
+    final GenericRecord avroRecordInt =
+        new GenericRecordBuilder(createAvroSchema(colName, INT)).set(colName, 9).build();
+    assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecordInt));
+    final GenericRecord avroRecordDouble =
+        new GenericRecordBuilder(createAvroSchema(colName, DOUBLE)).set(colName, 10.5).build();
+    assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecordDouble));
+    final GenericRecord avroRecordLong =
+        new GenericRecordBuilder(createAvroSchema(colName, LONG)).set(colName, 10L).build();
+    assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecordLong));
+
+    // Strings that are not number-like should fail parsing.
+    final GenericRecord avroRecordBadString =
+        new GenericRecordBuilder(createAvroSchema(colName, STRING))
+            .set(colName, new Utf8("NotNumber"))
+            .build();
+    assertThrows(
+        IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecordBadString));
   }
 
   @Test
@@ -1071,6 +1184,167 @@ public class AvroRecordConverterTest {
     // Other types throw exception.
     final GenericRecord avroRecord1 =
         new GenericRecordBuilder(createAvroSchema(colName, INT)).set(colName, 4).build();
+    assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecord1));
+  }
+
+  @Test
+  public void testParseProtoArray() {
+    String colName = "arrayofproto";
+    Schema schema = createArrayAvroSchema(colName, BYTES);
+
+    // Null field
+    GenericRecord avroRecord = new GenericRecordBuilder(schema).set("id", 0L).build();
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder
+        .name("record")
+        .column("id")
+        .type(Type.int64())
+        .endColumn()
+        .column(colName)
+        .type(Type.array(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage")))
+        .endColumn();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertTrue(mutation.asMap().get(colName).isNull());
+    com.google.cloud.teleport.spanner.tests.TestMessage msg1 =
+        com.google.cloud.teleport.spanner.tests.TestMessage.newBuilder().setValue("A").build();
+    com.google.cloud.teleport.spanner.tests.TestMessage msg2 =
+        com.google.cloud.teleport.spanner.tests.TestMessage.newBuilder().setValue("B").build();
+    com.google.cloud.teleport.spanner.tests.TestMessage msg3 =
+        com.google.cloud.teleport.spanner.tests.TestMessage.newBuilder().setValue("C").build();
+
+    String[] readableByteValues = {msg1.toString(), msg2.toString(), msg3.toString(), null};
+    List<ByteArray> expectedByteArrays =
+        Stream.of(readableByteValues)
+            .map(x -> x == null ? null : ByteArray.copyFrom(x))
+            .collect(Collectors.toList());
+    List<ByteBuffer> avroByteValues =
+        Stream.of(readableByteValues)
+            .map(x -> x == null ? null : ByteBuffer.wrap(x.getBytes()))
+            .collect(Collectors.toList());
+    avroRecord =
+        new GenericRecordBuilder(schema).set("id", 2L).set(colName, avroByteValues).build();
+    mutation = avroRecordConverter.apply(avroRecord);
+    List<String> actualValues = new ArrayList<>();
+    for (ByteArray byteArray : mutation.asMap().get(colName).getBytesArray()) {
+      if (byteArray == null) {
+        actualValues.add(null);
+      } else {
+        actualValues.add(new String(byteArray.toByteArray()));
+      }
+    }
+    assertArrayEquals(readableByteValues, actualValues.toArray());
+
+    // Other types throw exception.
+    schema = createArrayAvroSchema(colName, INT);
+    final GenericRecord avroRecord1 =
+        new GenericRecordBuilder(schema).set("id", 9L).set(colName, intArray).build();
+    assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecord1));
+
+    schema = createArrayAvroSchema(colName, STRING);
+
+    // Null field
+    avroRecord = new GenericRecordBuilder(schema).set("id", 8L).set(colName, null).build();
+    mutation = avroRecordConverter.apply(avroRecord);
+    assertTrue(mutation.asMap().get(colName).isNull());
+
+    // String as bytes
+    avroRecord = new GenericRecordBuilder(schema).set("id", 7L).set(colName, stringArray).build();
+    mutation = avroRecordConverter.apply(avroRecord);
+    assertArrayEquals(readableByteValues, actualValues.toArray());
+  }
+
+  @Test
+  public void testParseProto() {
+    String colName = "proto";
+    com.google.cloud.teleport.spanner.tests.TestMessage msg1 =
+        com.google.cloud.teleport.spanner.tests.TestMessage.newBuilder().setValue("A").build();
+    String expectedProtoValue = msg1.toString();
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder
+        .name("record")
+        .column(colName)
+        .type(Type.proto("com.google.cloud.teleport.spanner.TestMessage"))
+        .endColumn();
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createAvroSchema(colName, BYTES))
+            .set(colName, ByteBuffer.wrap(expectedProtoValue.getBytes()))
+            .build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(
+        expectedProtoValue, new String(mutation.asMap().get(colName).getBytes().toByteArray()));
+
+    // Other types throw exception.
+    final GenericRecord avroRecord1 =
+        new GenericRecordBuilder(createAvroSchema(colName, INT)).set(colName, 4).build();
+    assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecord1));
+  }
+
+  @Test
+  public void testParseEnumArray() {
+    String colName = "arrayofenum";
+    Schema schema = createArrayAvroSchema(colName, LONG);
+
+    // Null field
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, null).build();
+    Optional<List<Long>> result = AvroRecordConverter.readInt64Array(avroRecord, LONG, colName);
+    assertFalse(result.isPresent());
+
+    // Other types throws exception
+    final GenericRecord avroRecord1 =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, booleanArray).build();
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> AvroRecordConverter.readInt64Array(avroRecord1, BOOLEAN, colName));
+
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder
+        .name("record")
+        .column("id")
+        .type(Type.int64())
+        .endColumn()
+        .column(colName)
+        .type(Type.array(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum")))
+        .endColumn();
+    List<Long> protoEnumArray =
+        Arrays.asList(
+            new Long(com.google.cloud.teleport.spanner.tests.TestEnum.VALUE1.getNumber()),
+            new Long(com.google.cloud.teleport.spanner.tests.TestEnum.VALUE2.getNumber()),
+            null);
+    avroRecord =
+        new GenericRecordBuilder(schema).set("id", 0L).set(colName, protoEnumArray).build();
+    AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertArrayEquals(
+        protoEnumArray.toArray(),
+        mutation.asMap().get(colName).getInt64Array().toArray(new Long[0]));
+  }
+
+  @Test
+  public void testParseEnum() {
+    String colName = "enum";
+
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder
+        .name("record")
+        .column(colName)
+        .type(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum"))
+        .endColumn();
+    com.google.cloud.teleport.spanner.tests.TestEnum enum1 =
+        com.google.cloud.teleport.spanner.tests.TestEnum.VALUE1;
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createAvroSchema(colName, LONG))
+            .set(colName, new Long(enum1.getNumber()))
+            .build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(enum1.getNumber(), mutation.asMap().get(colName).getInt64());
+
+    // Other types throws exception
+    final GenericRecord avroRecord1 =
+        new GenericRecordBuilder(createAvroSchema(colName, BOOLEAN)).set(colName, false).build();
     assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecord1));
   }
 

@@ -26,7 +26,22 @@
   <artifactId>googlecloud-to-neo4j</artifactId>
   <modelVersion>4.0.0</modelVersion>
 
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.yaml</groupId>
+        <artifactId>snakeyaml</artifactId>
+        <version>1.33</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <dependencies>
+    <dependency>
+      <groupId>org.neo4j.importer</groupId>
+      <artifactId>import-spec</artifactId>
+      <version>1.0.0-rc02</version>
+    </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
       <artifactId>common</artifactId>
@@ -45,9 +60,14 @@
       <artifactId>google-cloud-secretmanager</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.networknt</groupId>
-      <artifactId>json-schema-validator</artifactId>
-      <version>1.0.87</version>
+      <groupId>com.github.jsqlparser</groupId>
+      <artifactId>jsqlparser</artifactId>
+      <version>4.9</version>
+    </dependency>
+    <dependency>
+      <groupId>org.neo4j</groupId>
+      <artifactId>neo4j-cypher-dsl-schema-name-support</artifactId>
+      <version>2022.9.2</version>
     </dependency>
 
     <!-- Test dependencies -->

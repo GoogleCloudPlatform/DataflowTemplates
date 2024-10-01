@@ -15,11 +15,13 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.templates.GCSToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -32,10 +34,13 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.slf4j.Logger;
@@ -119,14 +124,16 @@ public class GCSToSourceDb {
     @TemplateParameter.Integer(
         order = 5,
         optional = true,
-        description = "Duration in seconds between calls to stateful timer processing. ",
+        description =
+            "Duration in mili seconds between calls to stateful timer processing.Defaults to 1"
+                + " millisecond. ",
         helpText =
             "Controls the time between successive polls to buffer and processing of the resultant"
                 + " records.")
     @Default.Integer(1)
-    Integer getTimerInterval();
+    Integer getTimerIntervalInMilliSec();
 
-    void setTimerInterval(Integer value);
+    void setTimerIntervalInMilliSec(Integer value);
 
     @TemplateParameter.Text(
         order = 6,
@@ -159,8 +166,9 @@ public class GCSToSourceDb {
 
     void setWindowDuration(String windowDuration);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFolder(
         order = 8,
+        groupName = "Source",
         optional = false,
         description = "GCS input directory path",
         helpText = "Path from where to read the change stream files.")
@@ -241,6 +249,52 @@ public class GCSToSourceDb {
     String getRunIdentifier();
 
     void setRunIdentifier(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 15,
+        optional = true,
+        description = "Custom transformation jar location in Cloud Storage",
+        helpText =
+            "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records"
+                + " in reverse replication.")
+    @Default.String("")
+    String getTransformationJarPath();
+
+    void setTransformationJarPath(String value);
+
+    @TemplateParameter.Text(
+        order = 16,
+        optional = true,
+        description = "Custom class name for transformation",
+        helpText =
+            "Fully qualified class name having the custom transformation logic.  It is a"
+                + " mandatory field in case transformationJarPath is specified")
+    @Default.String("")
+    String getTransformationClassName();
+
+    void setTransformationClassName(String value);
+
+    @TemplateParameter.Text(
+        order = 17,
+        optional = true,
+        description = "Custom parameters for transformation",
+        helpText =
+            "String containing any custom parameters to be passed to the custom transformation class.")
+    @Default.String("")
+    String getTransformationCustomParameters();
+
+    void setTransformationCustomParameters(String value);
+
+    @TemplateParameter.Boolean(
+        order = 18,
+        optional = true,
+        description = "Write filtered events to GCS",
+        helpText =
+            "This is a flag which if set to true will write filtered events from custom transformation to GCS.")
+    @Default.Boolean(false)
+    Boolean getWriteFilteredEventsToGcs();
+
+    void setWriteFilteredEventsToGcs(Boolean value);
   }
 
   /**
@@ -279,7 +333,28 @@ public class GCSToSourceDb {
       }
     }
 
+    SpannerConfig spannerMetadataConfig =
+        SpannerConfig.create()
+            .withProjectId(ValueProvider.StaticValueProvider.of(options.getSpannerProjectId()))
+            .withInstanceId(ValueProvider.StaticValueProvider.of(options.getMetadataInstance()))
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getMetadataDatabase()));
+
+    boolean isMetadataDbPostgres =
+        Dialect.POSTGRESQL
+            == SpannerAccessor.getOrCreate(spannerMetadataConfig)
+                .getDatabaseAdminClient()
+                .getDatabase(
+                    spannerMetadataConfig.getInstanceId().get(),
+                    spannerMetadataConfig.getDatabaseId().get())
+                .getDialect();
+
     Map<String, ProcessingContext> processingContextMap = null;
+    CustomTransformation customTransformation =
+        CustomTransformation.builder(
+                options.getTransformationJarPath(), options.getTransformationClassName())
+            .setCustomParameters(options.getTransformationCustomParameters())
+            .build();
+
     processingContextMap =
         ProcessingContextGenerator.getProcessingContextForGCS(
             options.getSourceShardsFilePath(),
@@ -294,7 +369,8 @@ public class GCSToSourceDb {
             options.getMetadataDatabase(),
             options.getRunMode(),
             tableSuffix,
-            options.getRunIdentifier());
+            options.getRunIdentifier(),
+            isMetadataDbPostgres);
 
     LOG.info("The size of  processing context is : " + processingContextMap.size());
 
@@ -309,11 +385,13 @@ public class GCSToSourceDb {
             "Write to source",
             ParDo.of(
                 new GcsToSourceStreamer(
-                    options.getTimerInterval(),
-                    options.getSpannerProjectId(),
-                    options.getMetadataInstance(),
-                    options.getMetadataDatabase(),
-                    tableSuffix)));
+                    options.getTimerIntervalInMilliSec(),
+                    spannerMetadataConfig,
+                    tableSuffix,
+                    isMetadataDbPostgres,
+                    customTransformation,
+                    options.getWriteFilteredEventsToGcs(),
+                    options.getSpannerProjectId())));
 
     return pipeline.run();
   }

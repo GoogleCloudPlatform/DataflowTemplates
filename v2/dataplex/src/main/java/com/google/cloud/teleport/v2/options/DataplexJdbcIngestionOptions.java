@@ -41,6 +41,7 @@ public interface DataplexJdbcIngestionOptions
       regexes = {
         "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
       },
+      groupName = "Source",
       description = "JDBC connection URL string.",
       helpText =
           "Url connection string to connect to the JDBC source. Connection string can be passed in"
@@ -127,6 +128,7 @@ public interface DataplexJdbcIngestionOptions
   void setQuery(String query);
 
   @TemplateParameter.Text(
+      groupName = "Target",
       order = 8,
       optional = false,
       regexes = {"^.+$"},
@@ -170,6 +172,7 @@ public interface DataplexJdbcIngestionOptions
             + "\\r"
             + "\\/]+$"
       },
+      groupName = "Target",
       description = "Dataplex output asset ID",
       helpText =
           "Dataplex output asset ID to which the results are stored to. Should be in the format of"
@@ -250,4 +253,15 @@ public interface DataplexJdbcIngestionOptions
   Boolean getUseColumnAlias();
 
   void setUseColumnAlias(Boolean useColumnAlias);
+
+  @TemplateParameter.Integer(
+      order = 16,
+      optional = true,
+      description = "Set the data size going to be fetched and loaded in memory per Jdbc call.",
+      helpText =
+          "It should ONLY be used if the default value throws memory errors. If not set, using Beam's default "
+              + "fetch size.")
+  Integer getFetchSize();
+
+  void setFetchSize(Integer fetchSize);
 }

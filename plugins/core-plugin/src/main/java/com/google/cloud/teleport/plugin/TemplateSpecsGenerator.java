@@ -75,8 +75,26 @@ public class TemplateSpecsGenerator {
         new File(targetDirectory, templateDash.toLowerCase() + "-spec-generated-metadata.json");
     LOG.info("Saving image spec " + file.getAbsolutePath());
 
+    // The serialized image spec should match com.google.api.services.dataflow.model.ContainerSpec
+    // model, ImageSpec contains some extra fields, so we'll pick up only the expected ones.
+
+    ImageSpec is = new ImageSpec();
+    is.setImage(imageSpec.getImage());
+    is.setSdkInfo(imageSpec.getSdkInfo());
+    is.setDefaultEnvironment(imageSpec.getDefaultEnvironment());
+
+    ImageSpecMetadata m = new ImageSpecMetadata();
+    m.setName(imageSpec.getMetadata().getName());
+    m.setDescription(imageSpec.getMetadata().getDescription());
+    m.setParameters(imageSpec.getMetadata().getParameters());
+    m.setStreaming(imageSpec.getMetadata().isStreaming());
+    m.setSupportsAtLeastOnce(imageSpec.getMetadata().isSupportsAtLeastOnce());
+    m.setSupportsExactlyOnce(imageSpec.getMetadata().isSupportsExactlyOnce());
+    m.setDefaultStreamingMode(imageSpec.getMetadata().getDefaultStreamingMode());
+    is.setMetadata(m);
+
     try (FileWriter writer = new FileWriter(file)) {
-      writer.write(gson.toJson(imageSpec));
+      writer.write(gson.toJson(is));
     } catch (IOException e) {
       throw new RuntimeException("Error writing image spec", e);
     }
@@ -130,7 +148,8 @@ public class TemplateSpecsGenerator {
 
       String containerName = templateAnnotation.flexContainerName();
 
-      if (definition.getTemplateAnnotation().type() == TemplateType.JAVA) {
+      if (definition.getTemplateAnnotation().type() == TemplateType.JAVA
+          || definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
         writer.write(
             "{\n"
                 + "  \"mainClass\": \""
@@ -138,7 +157,7 @@ public class TemplateSpecsGenerator {
                 + "\",\n"
                 + "  \"classPath\": \"/template/"
                 + containerName
-                + "/libs/conscrypt-openjdk-uber-*.jar:/template/"
+                + "/libs/conscrypt-openjdk-uber.jar:/template/"
                 + containerName
                 + "/libs/*:/template/"
                 + containerName

@@ -18,16 +18,18 @@ package com.google.cloud.teleport.v2.templates;
 import static com.google.cloud.teleport.v2.utils.GCSUtils.getGcsFileAsString;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.metadata.MultiTemplate;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.options.BigQueryCommonOptions;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiBatchOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.TransformTextViaJavascript;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer;
 import com.google.cloud.teleport.v2.utils.FirestoreConverters.FirestoreReadOptions;
 import com.google.cloud.teleport.v2.utils.FirestoreConverters.ReadJsonEntities;
+import com.google.common.base.Strings;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
@@ -37,6 +39,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 
 /**
@@ -46,30 +49,53 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
  * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Firestore_to_BigQuery_Flex.md">README</a>
  * for instructions on how to use or modify this template.
  */
-@Template(
-    name = "Firestore_to_BigQuery_Flex",
-    category = TemplateCategory.BATCH,
-    displayName = "Firestore (Datastore mode) to BigQuery",
-    description = "Batch pipeline. Reads Firestore entities and writes them to BigQuery.",
-    optionsClass = FirestoreToBigQuery.FirestoreToBigQueryOptions.class,
-    skipOptions = {
-      "datastoreReadNamespace",
-      "datastoreReadGqlQuery",
-      "datastoreReadProjectId",
-      "javascriptTextTransformReloadIntervalMinutes"
-    },
-    flexContainerName = "firestore-to-bigquery",
-    contactInformation = "https://cloud.google.com/support",
-    hidden = true)
+@MultiTemplate({
+  @Template(
+      name = "Firestore_to_BigQuery_Flex",
+      category = TemplateCategory.BATCH,
+      displayName = "Firestore (Datastore mode) to BigQuery",
+      description = "Batch pipeline. Reads Firestore entities and writes them to BigQuery.",
+      optionsClass = FirestoreToBigQuery.FirestoreToBigQueryOptions.class,
+      skipOptions = {
+        "datastoreReadNamespace",
+        "datastoreReadGqlQuery",
+        "datastoreReadProjectId",
+        "javascriptTextTransformReloadIntervalMinutes",
+        "pythonExternalTextTransformGcsPath",
+        "pythonExternalTextTransformFunctionName"
+      },
+      flexContainerName = "firestore-to-bigquery",
+      contactInformation = "https://cloud.google.com/support",
+      hidden = true),
+  @Template(
+      name = "Firestore_to_BigQuery_Xlang",
+      category = TemplateCategory.BATCH,
+      displayName = "Firestore (Datastore mode) to BigQuery with Python UDF",
+      type = Template.TemplateType.XLANG,
+      description = "Batch pipeline. Reads Firestore entities and writes them to BigQuery.",
+      optionsClass = FirestoreToBigQuery.FirestoreToBigQueryOptions.class,
+      skipOptions = {
+        "datastoreReadNamespace",
+        "datastoreReadGqlQuery",
+        "datastoreReadProjectId",
+        "javascriptTextTransformGcsPath",
+        "javascriptTextTransformFunctionName",
+        "javascriptTextTransformReloadIntervalMinutes"
+      },
+      flexContainerName = "firestore-to-bigquery-xlang",
+      contactInformation = "https://cloud.google.com/support",
+      hidden = true)
+})
 public class FirestoreToBigQuery {
   public interface FirestoreToBigQueryOptions
       extends PipelineOptions,
           FirestoreReadOptions,
-          JavascriptTextTransformerOptions,
+          PythonExternalTextTransformer.PythonExternalTextTransformerOptions,
           BigQueryStorageApiBatchOptions,
           BigQueryCommonOptions.WriteOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
+        groupName = "Target",
         description = "BigQuery output table",
         helpText =
             "BigQuery table location to write the output to. The name should be in the format "
@@ -138,27 +164,57 @@ public class FirestoreToBigQuery {
 
     Pipeline pipeline = Pipeline.create(options);
 
-    pipeline
-        .apply(
-            ReadJsonEntities.newBuilder()
-                .setGqlQuery(options.getFirestoreReadGqlQuery())
-                .setProjectId(options.getFirestoreReadProjectId())
-                .setNamespace(options.getFirestoreReadNamespace())
-                .build())
-        .apply(
-            TransformTextViaJavascript.newBuilder()
-                .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                .build())
-        .apply(
-            MapElements.via(
-                new SimpleFunction<String, TableRow>() {
-                  @Override
-                  public TableRow apply(String json) {
-                    return BigQueryConverters.convertJsonToTableRow(json);
-                  }
-                }))
-        .apply("WriteBigQuery", writeToBigQuery(options));
+    boolean useJavascriptUdf = !Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath());
+    boolean usePythonUdf = !Strings.isNullOrEmpty(options.getPythonExternalTextTransformGcsPath());
+    if (useJavascriptUdf && usePythonUdf) {
+      throw new IllegalArgumentException(
+          "Either javascript or Python gcs path must be provided, but not both.");
+    }
+    if (usePythonUdf) {
+      pipeline
+          .apply(
+              ReadJsonEntities.newBuilder()
+                  .setGqlQuery(options.getFirestoreReadGqlQuery())
+                  .setProjectId(options.getFirestoreReadProjectId())
+                  .setNamespace(options.getFirestoreReadNamespace())
+                  .build())
+          .apply(
+              "MapToRecord",
+              PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.stringMappingFunction())
+          .setRowSchema(PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.ROW_SCHEMA)
+          .apply(
+              "InvokeUDF",
+              PythonExternalTextTransformer.FailsafePythonExternalUdf.newBuilder()
+                  .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
+                  .setFunctionName(options.getPythonExternalTextTransformFunctionName())
+                  .build())
+          .apply(
+              "MapToTableRowElements",
+              ParDo.of(new PythonExternalTextTransformer.RowToTableRowElementFn()))
+          .apply("WriteBigQuery", writeToBigQuery(options));
+    } else {
+      pipeline
+          .apply(
+              ReadJsonEntities.newBuilder()
+                  .setGqlQuery(options.getFirestoreReadGqlQuery())
+                  .setProjectId(options.getFirestoreReadProjectId())
+                  .setNamespace(options.getFirestoreReadNamespace())
+                  .build())
+          .apply(
+              TransformTextViaJavascript.newBuilder()
+                  .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                  .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                  .build())
+          .apply(
+              MapElements.via(
+                  new SimpleFunction<String, TableRow>() {
+                    @Override
+                    public TableRow apply(String json) {
+                      return BigQueryConverters.convertJsonToTableRow(json);
+                    }
+                  }))
+          .apply("WriteBigQuery", writeToBigQuery(options));
+    }
 
     pipeline.run();
   }

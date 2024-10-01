@@ -130,9 +130,9 @@ public class PubsubToPubsub {
   public interface Options extends PipelineOptions, StreamingOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input subscription",
-        helpText =
-            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
+        helpText = "The Pub/Sub subscription to read the input from.",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     @Validation.Required
     ValueProvider<String> getInputSubscription();
@@ -141,9 +141,9 @@ public class PubsubToPubsub {
 
     @TemplateParameter.PubsubTopic(
         order = 2,
+        groupName = "Target",
         description = "Output Pub/Sub topic",
-        helpText =
-            "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
+        helpText = "The Pub/Sub topic to write the output to.",
         example = "projects/your-project-id/topics/your-topic-name")
     @Validation.Required
     ValueProvider<String> getOutputTopic();
@@ -155,7 +155,7 @@ public class PubsubToPubsub {
         optional = true,
         description = "Event filter key",
         helpText =
-            "Attribute key by which events are filtered. No filters are applied if no key is specified.")
+            "The attribute key to use to filter events. No filters are applied if `filterKey` is not specified.")
     ValueProvider<String> getFilterKey();
 
     void setFilterKey(ValueProvider<String> filterKey);
@@ -165,10 +165,7 @@ public class PubsubToPubsub {
         optional = true,
         description = "Event filter value",
         helpText =
-            "Filter attribute value to use if an event filter key is provided. Accepts a valid "
-                + "Java Regex string as an event filter value. In case a regex is provided, the complete "
-                + "expression should match in order for the message to be filtered. Partial matches (e.g. "
-                + "substring) will not be filtered. A null event filter value is used by default.")
+            "The attribute value to use to filter events when a `filterKey` is provided. By default, a null `filterValue` is used.")
     ValueProvider<String> getFilterValue();
 
     void setFilterValue(ValueProvider<String> filterValue);

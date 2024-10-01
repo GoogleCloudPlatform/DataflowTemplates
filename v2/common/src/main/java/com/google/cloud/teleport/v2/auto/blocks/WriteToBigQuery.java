@@ -62,6 +62,7 @@ public class WriteToBigQuery implements TemplateTransform<SinkOptions> {
     @TemplateParameter.BigQueryTable(
         order = 1,
         optional = true,
+        groupName = "Target",
         description = "BigQuery output table",
         helpText =
             "BigQuery table location to write the output to. The table's schema must match the "
@@ -70,7 +71,7 @@ public class WriteToBigQuery implements TemplateTransform<SinkOptions> {
 
     void setOutputTableSpec(String input);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 2,
         optional = true,
         description = "GCS Path to JSON file containing BigQuery table schema.",

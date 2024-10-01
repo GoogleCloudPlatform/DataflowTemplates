@@ -18,19 +18,20 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Required Parameters
+### Required parameters
 
-* **jobSpecUri** (Path to the job specification file): The path to the job specification file, which contains the configuration for source and target metadata.
+* **jobSpecUri** : The path to the job specification file, which contains the configuration for source and target metadata.
 
-### Optional Parameters
+### Optional parameters
 
-* **neo4jConnectionUri** (Path to the Neo4j connection metadata): The path to Neo4j connection metadata JSON file. This is an alternative to the secret option.
-* **neo4jConnectionSecretId** (Secret ID for the Neo4j connection metadata): The secret ID for the Neo4j connection metadata. This is an alternative to the GCS path option.
-* **optionsJson** (Options JSON): Options JSON. Use runtime tokens. (Example: {token1:value1,token2:value2}). Defaults to empty.
-* **readQuery** (Query SQL): Override SQL query. Defaults to empty.
-* **inputFilePattern** (Path to Text File): Override text file pattern (Example: gs://your-bucket/path/*.json). Defaults to empty.
-* **disabledAlgorithms** (Disabled algorithms to override jdk.tls.disabledAlgorithms): Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, because the algorithms that are disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4).
-* **extraFilesToStage** (Extra files to stage in the workers): Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id).
+* **neo4jConnectionUri** : The path to the Neo4j connection metadata JSON file.
+* **neo4jConnectionSecretId** : The secret ID for the Neo4j connection metadata. This is an alternative to the GCS path option.
+* **optionsJson** : Options JSON. Use runtime tokens. (Example: {token1:value1,token2:value2}). Defaults to empty.
+* **readQuery** : Override SQL query. Defaults to empty.
+* **inputFilePattern** : Override text file pattern (Example: gs://your-bucket/path/*.json). Defaults to empty.
+* **disabledAlgorithms** : Comma separated algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4).
+* **extraFilesToStage** : Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>).
+* **defaultLogLevel** : Set Log level in the workers. Supported options are OFF, ERROR, WARN, INFO, DEBUG, TRACE. Defaults to INFO.
 
 
 
@@ -119,6 +120,7 @@ export READ_QUERY=""
 export INPUT_FILE_PATTERN=""
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
+export DEFAULT_LOG_LEVEL=INFO
 
 gcloud dataflow flex-template run "google-cloud-to-neo4j-job" \
   --project "$PROJECT" \
@@ -131,7 +133,8 @@ gcloud dataflow flex-template run "google-cloud-to-neo4j-job" \
   --parameters "readQuery=$READ_QUERY" \
   --parameters "inputFilePattern=$INPUT_FILE_PATTERN" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
-  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE"
+  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+  --parameters "defaultLogLevel=$DEFAULT_LOG_LEVEL"
 ```
 
 For more information about the command, please check:
@@ -160,6 +163,7 @@ export READ_QUERY=""
 export INPUT_FILE_PATTERN=""
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
+export DEFAULT_LOG_LEVEL=INFO
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -168,7 +172,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="google-cloud-to-neo4j-job" \
 -DtemplateName="Google_Cloud_to_Neo4j" \
--Dparameters="jobSpecUri=$JOB_SPEC_URI,neo4jConnectionUri=$NEO4J_CONNECTION_URI,neo4jConnectionSecretId=$NEO4J_CONNECTION_SECRET_ID,optionsJson=$OPTIONS_JSON,readQuery=$READ_QUERY,inputFilePattern=$INPUT_FILE_PATTERN,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-Dparameters="jobSpecUri=$JOB_SPEC_URI,neo4jConnectionUri=$NEO4J_CONNECTION_URI,neo4jConnectionSecretId=$NEO4J_CONNECTION_SECRET_ID,optionsJson=$OPTIONS_JSON,readQuery=$READ_QUERY,inputFilePattern=$INPUT_FILE_PATTERN,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,defaultLogLevel=$DEFAULT_LOG_LEVEL" \
 -f v2/googlecloud-to-neo4j
 ```
 
@@ -177,8 +181,23 @@ mvn clean package -PtemplatesRun \
 Dataflow supports the utilization of Terraform to manage template jobs,
 see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
 
-Here is an example of Terraform configuration:
+Terraform modules have been generated for most templates in this repository. This includes the relevant parameters
+specific to the template. If available, they may be used instead of
+[dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job)
+directly.
 
+To use the autogenerated module, execute the standard
+[terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
+
+```shell
+cd v2/googlecloud-to-neo4j/terraform/Google_Cloud_to_Neo4j
+terraform init
+terraform apply
+```
+
+To use
+[dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job)
+directly:
 
 ```terraform
 provider "google-beta" {
@@ -205,7 +224,8 @@ resource "google_dataflow_flex_template_job" "google_cloud_to_neo4j" {
     # readQuery = ""
     # inputFilePattern = "gs://your-bucket/path/*.json"
     # disabledAlgorithms = "SSLv3, RC4"
-    # extraFilesToStage = "gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id"
+    # extraFilesToStage = "gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>"
+    # defaultLogLevel = "INFO"
   }
 }
 ```

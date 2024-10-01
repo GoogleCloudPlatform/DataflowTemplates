@@ -60,7 +60,11 @@ import org.apache.beam.sdk.values.TupleTag;
         "firestoreWriteEntityKind",
         "firestoreWriteNamespace",
         "firestoreHintNumWorkers",
-        "javascriptTextTransformReloadIntervalMinutes"
+        "javascriptTextTransformReloadIntervalMinutes",
+        // This template doesn't use neither firestoreWriteEntityKind/Namespace
+        // nor datastoreWriteEntityKind/Namespace pipeline options.
+        "datastoreWriteEntityKind",
+        "datastoreWriteNamespace"
       },
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-datastore",
@@ -81,7 +85,11 @@ import org.apache.beam.sdk.values.TupleTag;
         "datastoreWriteEntityKind",
         "datastoreWriteNamespace",
         "datastoreHintNumWorkers",
-        "javascriptTextTransformReloadIntervalMinutes"
+        "javascriptTextTransformReloadIntervalMinutes",
+        // This template doesn't use neither firestoreWriteEntityKind/Namespace
+        // nor datastoreWriteEntityKind/Namespace pipeline options.
+        "firestoreWriteEntityKind",
+        "firestoreWriteNamespace"
       },
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-firestore",

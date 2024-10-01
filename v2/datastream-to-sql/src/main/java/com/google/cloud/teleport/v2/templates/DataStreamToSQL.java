@@ -83,7 +83,8 @@ import org.slf4j.LoggerFactory;
       "A PostgreSQL database was seeded with the required schema.",
       "Network access between Dataflow workers and PostgreSQL is set up."
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class DataStreamToSQL {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSQL.class);
@@ -96,12 +97,12 @@ public class DataStreamToSQL {
    * <p>Inherits standard configuration options.
    */
   public interface Options extends PipelineOptions, StreamingOptions {
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 1,
+        groupName = "Source",
         description = "File location for Datastream file input in Cloud Storage.",
         helpText =
-            "This is the file location for Datastream file input in Cloud Storage. Normally, this"
-                + " will be gs://${BUCKET}/${ROOT_PATH}/.")
+            "The file location for the Datastream files in Cloud Storage to replicate. This file location is typically the root path for the stream.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -111,9 +112,8 @@ public class DataStreamToSQL {
         optional = true,
         description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
         helpText =
-            "The Pub/Sub subscription being used in a Cloud Storage notification policy. The name"
-                + " should be in the format of"
-                + " projects/<project-id>/subscriptions/<subscription-name>.")
+            "The Pub/Sub subscription with Datastream file notifications."
+                + " For example, `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_ID>`.")
     String getGcsPubSubSubscription();
 
     void setGcsPubSubSubscription(String value);
@@ -124,8 +124,7 @@ public class DataStreamToSQL {
         optional = true,
         description = "Datastream output file format (avro/json).",
         helpText =
-            "This is the format of the output file produced by Datastream. by default this will be"
-                + " avro.")
+            "The format of the output file produced by Datastream. For example, `avro` or `json`. Defaults to `avro`.")
     @Default.String("avro")
     String getInputFileFormat();
 
@@ -133,11 +132,11 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Source",
         optional = true,
         description = "Name or template for the stream to poll for schema information.",
         helpText =
-            "This is the name or template for the stream to poll for schema information. Default is"
-                + " {_metadata_stream}. The default value is enough under most conditions.")
+            "The name or template for the stream to poll for schema information. The default value is `{_metadata_stream}`.")
     String getStreamName();
 
     void setStreamName(String value);
@@ -181,17 +180,19 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Target",
         description = "Database Host to connect on.",
-        helpText = "Database Host to connect on.")
+        helpText = "The SQL host to connect on.")
     String getDatabaseHost();
 
     void setDatabaseHost(String value);
 
     @TemplateParameter.Text(
         order = 9,
+        groupName = "Target",
         optional = true,
         description = "Database Port to connect on.",
-        helpText = "Database Port to connect on (default 5432).")
+        helpText = "The SQL database port to connect to. The default value is `5432`.")
     @Default.String("5432")
     String getDatabasePort();
 
@@ -200,7 +201,8 @@ public class DataStreamToSQL {
     @TemplateParameter.Text(
         order = 10,
         description = "Database User to connect with.",
-        helpText = "Database User to connect with.")
+        helpText =
+            "The SQL user with all required permissions to write to all tables in replication.")
     String getDatabaseUser();
 
     void setDatabaseUser(String value);
@@ -208,16 +210,17 @@ public class DataStreamToSQL {
     @TemplateParameter.Password(
         order = 11,
         description = "Database Password for given user.",
-        helpText = "Database Password for given user.")
+        helpText = "The password for the SQL user.")
     String getDatabasePassword();
 
     void setDatabasePassword(String value);
 
     @TemplateParameter.Text(
         order = 12,
+        groupName = "Target",
         optional = true,
         description = "SQL Database Name.",
-        helpText = "The database name to connect to.")
+        helpText = "The name of the SQL database to connect to. The default value is `postgres`.")
     @Default.String("postgres")
     String getDatabaseName();
 
@@ -237,6 +240,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 14,
+        groupName = "Target",
         optional = true,
         description = "Custom connection string.",
         helpText =
@@ -352,6 +356,7 @@ public class DataStreamToSQL {
     CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration = getDataSourceConfiguration(options);
     validateOptions(options, dataSourceConfiguration);
     Map<String, String> schemaMap = parseSchemaMap(options.getSchemaMap());
+    LOG.info("Parsed schema map: {}", schemaMap);
 
     /*
      * Stage 1: Ingest and Normalize Data to FailsafeElement with JSON Strings

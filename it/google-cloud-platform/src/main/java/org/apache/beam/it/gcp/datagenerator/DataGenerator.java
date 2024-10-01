@@ -86,7 +86,7 @@ public class DataGenerator {
    * @return approximate number of messages generated
    * @throws IOException if any errors are encountered.
    */
-  public Integer execute(Duration timeout) throws IOException {
+  public Long execute(Duration timeout) throws IOException {
     LaunchInfo dataGeneratorLaunchInfo =
         pipelineLauncher.launch(PROJECT, REGION, dataGeneratorOptions);
     assertThatPipeline(dataGeneratorLaunchInfo).isRunning();
@@ -102,11 +102,11 @@ public class DataGenerator {
       assertThatResult(dataGeneratorResult).hasTimedOut();
     }
     @SuppressWarnings("nullness")
-    int generatedMessages =
+    Long generatedMessages =
         pipelineLauncher
             .getMetric(
                 PROJECT, REGION, dataGeneratorLaunchInfo.jobId(), MESSAGES_GENERATED_METRIC_NAME)
-            .intValue();
+            .longValue();
     LOG.info("Data generator finished. Generated {} messages.", generatedMessages);
     return generatedMessages;
   }
@@ -199,6 +199,16 @@ public class DataGenerator {
       return this;
     }
 
+    public Builder setKafkaTopic(String value) {
+      parameters.put("kafkaTopic", value);
+      return this;
+    }
+
+    public Builder setBootstrapServer(String value) {
+      parameters.put("bootstrapServer", value);
+      return this;
+    }
+
     public Builder setProjectId(String value) {
       parameters.put("projectId", value);
       return this;
@@ -246,6 +256,11 @@ public class DataGenerator {
 
     public Builder setStatement(String value) {
       parameters.put("statement", value);
+      return this;
+    }
+
+    public Builder setBatchSizeBytes(String value) {
+      parameters.put("batchSizeBytes", value);
       return this;
     }
 

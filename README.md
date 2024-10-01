@@ -15,18 +15,10 @@ their functionality.
 
 ## Note on Default Branch
 
-As of November 18, 2021, our default branch is now named "main". This does not
+As of November 18, 2021, our default branch is now named `main`. This does not
 affect forks. If you would like your fork and its local clone to reflect these
 changes you can
 follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch).
-
-## Building
-
-Maven commands should be run on the parent POM. An example would be:
-
-```
-mvn clean package -pl v2/pubsub-binary-to-bigquery -am
-```
 
 ## Template Pipelines
 
@@ -49,7 +41,7 @@ mvn clean package -pl v2/pubsub-binary-to-bigquery -am
     - [Kafka to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Kafka_to_BigQuery&type=code)
     - [Kafka to Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Kafka_to_GCS&type=code)
     - [Kinesis To Pubsub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Kinesis_To_Pubsub&type=code)
-    - [MongoDB to BigQuery (CDC)](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20MongoDB_to_BigQuery_CDC&type=code)
+    - [MongoDB (CDC) to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20MongoDB_to_BigQuery_CDC&type=code)
     - [Mqtt to Pubsub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Mqtt_to_PubSub&type=code)
     - [Ordered change stream buffer to Source DB](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Ordered_Changestream_Buffer_to_Sourcedb&type=code)
     - [Pub/Sub Avro to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20PubSub_Avro_to_BigQuery&type=code)
@@ -73,6 +65,7 @@ mvn clean package -pl v2/pubsub-binary-to-bigquery -am
     - [Synchronizing CDC data to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cdc_To_BigQuery_Template&type=code)
     - [Text Files on Cloud Storage to Pub/Sub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Stream_GCS_Text_to_Cloud_PubSub&type=code)
 - Process Data in Bulk (batch)
+    - [Any SourceDB to Cloud Spanner](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Sourcedb_To_Spanner&type=code)
     - [AstraDB to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20AstraDB_To_BigQuery&type=code)
     - [Avro Files on Cloud Storage to Cloud Bigtable](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_Avro_to_Cloud_Bigtable&type=code)
     - [Avro Files on Cloud Storage to Cloud Spanner](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_Avro_to_Cloud_Spanner&type=code)
@@ -124,252 +117,6 @@ mvn clean package -pl v2/pubsub-binary-to-bigquery -am
 For documentation on each template's usage and parameters, please see the
 official [docs](https://cloud.google.com/dataflow/docs/templates/provided-templates).
 
-## Getting Started
-
-### Requirements
-
-* Java 11
-* Maven 3
-
-### Building the Project
-
-Build the entire project using the maven compile command.
-
-```sh
-mvn clean compile
-```
-
-### Building/Testing from IntelliJ
-
-IntelliJ, by default, will often skip necessary Maven goals, leading to build
-failures. You can fix these in the Maven view by going to
-**Module_Name > Plugins > Plugin_Name** where Module_Name and Plugin_Name are
-the names of the respective module and plugin with the rule. From there,
-right-click the rule and select "Execute Before Build".
-
-The list of known rules that require this are:
-
-* common > Plugins > protobuf > protobuf:compile
-* common > Plugins > protobuf > protobuf:test-compile
-
-### Formatting Code
-
-From either the root directory or v2/ directory, run:
-
-```sh
-mvn spotless:apply
-```
-
-This will format the code and add a license header. To verify that the code is
-formatted correctly, run:
-
-```sh
-mvn spotless:check
-```
-
-### Executing a Template File
-
-Once the template is staged on Google Cloud Storage, it can then be executed
-using the
-gcloud CLI tool. Please check [Running classic templates](https://cloud.google.com/dataflow/docs/guides/templates/running-templates#using-gcloud)
-or [Using Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates#run-a-flex-template-pipeline)
-for more information.
-
-## Developing/Contributing Templates
-
-### Templates Plugin
-
-Templates plugin was created to make the workflow of creating, testing and
-releasing Templates easier.
-
-Before using the plugin, please make sure that
-the [gcloud CLI](https://cloud.google.com/sdk/docs/install) is installed and
-up-to-date, and that the client is properly authenticated using:
-
-```shell
-gcloud init
-gcloud auth application-default login
-```
-
-After authenticated, install the plugin into your local repository:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
-
-### Staging (Deploying) Templates
-
-To stage a Template, it is necessary to upload the images to Artifact
-Registry (for Flex templates) and copy the template to Cloud Storage.
-
-Although there are different steps that depend on the kind of template being
-developed. The plugin allows a template to be staged using the following single
-command:
-
-```shell
-mvn clean package -PtemplatesStage  \
-  -DskipTests \
-  -DprojectId="{projectId}" \
-  -DbucketName="{bucketName}" \
-  -DstagePrefix="images/$(date +%Y_%m_%d)_01" \
-  -DtemplateName="Cloud_PubSub_to_GCS_Text_Flex" \
-  -pl v2/googlecloud-to-googlecloud -am
-```
-
-Notes:
-- Change `-pl v2/googlecloud-to-googlecloud` and `-DtemplateName` to point to the specific Maven module where your template is located. Even though `-pl` is not required, it allows the command to run considerably faster.
-- In case `-DtemplateName` is not specified, all templates for the module will be staged.
-
-### Running a Template
-
-A template can also be executed on Dataflow, directly from the command line. The
-command-line is similar to staging a template, but it is required to
-specify `-Dparameters` with the parameters that will be used when launching the
-template. For example:
-
-```shell
-mvn clean package -PtemplatesRun \
-  -DskipTests \
-  -DprojectId="{projectId}" \
-  -DbucketName="{bucketName}" \
-  -Dregion="us-central1" \
-  -DtemplateName="Cloud_PubSub_to_GCS_Text_Flex" \
-  -Dparameters="inputTopic=projects/{projectId}/topics/{topicName},windowDuration=15s,outputDirectory=gs://{outputDirectory}/out,outputFilenamePrefix=output-,outputFilenameSuffix=.txt" \
-  -pl v2/googlecloud-to-googlecloud -am
-
-```
-
-Notes:
-- When running a template, `-DtemplateName` is mandatory, as `-Dparameters=` are
-  different across templates.
-- `-PtemplatesRun` is self-contained, i.e., it is not required to run **
-  Deploying/Staging Templates** before. In case you want to run a previously
-  staged template, the existing path can be provided
-  as `-DspecPath=gs://.../path`
-- `-DjobName="{name}"` may be informed if a specific name is desirable (
-  optional).
-- If you encounter the error `Template run failed: File too large`, try adding `-DskipShade` to the mvn args.
-
-
-### Running Integration Tests
-
-To run integration tests, the developer plugin can be also used to stage template on-demand (in case the parameter `-DspecPath=` is not specified).
-
-For example, to run all the integration tests in a specific module (in the example below, `v2/googlecloud-to-googlecloud`):
-
-```shell
-mvn clean verify \
-  -PtemplatesIntegrationTests \
-  -Dproject="{project}" \
-  -DartifactBucket="{bucketName}" \
-  -Dregion=us-central1 \
-  -pl v2/googlecloud-to-googlecloud -am
-```
-
-The parameter `-Dtest=` can be given to test a single class (e.g., `-Dtest=PubsubToTextIT`) or single test case (e.g., `-Dtest=PubsubToTextIT#testTopicToGcs`).
-
-The same happens when the test is executed from an IDE, just make sure to add the parameters `-Dproject=`, `-DartifactBucket=` and `-Dregion=` as program or VM arguments.
-
-## Metadata Annotations
-
-A template requires more information than just a name and description. For
-example, in order to be used from the Dataflow UI, parameters need a longer help
-text to guide users, as well as proper types and validations to make sure
-parameters are being passed correctly.
-
-We introduced annotations to have the source code as a single source of truth,
-along with a set of utilities / plugins to generate template-accompanying
-artifacts (such as command specs, parameter specs).
-
-#### @Template Annotation
-
-Every template must be annotated with `@Template`. Existing templates can be
-used for reference, but the structure is as follows:
-
-```java
-
-@Template(
-    name = "BigQuery_to_Elasticsearch",
-    category = TemplateCategory.BATCH,
-    displayName = "BigQuery to Elasticsearch",
-    description = "A pipeline which sends BigQuery records into an Elasticsearch instance as JSON documents.",
-    optionsClass = BigQueryToElasticsearchOptions.class,
-    flexContainerName = "bigquery-to-elasticsearch")
-public class BigQueryToElasticsearch {
-```
-
-#### @TemplateParameter Annotation
-
-A set of `@TemplateParameter.{Type}` annotations were created to allow the
-definition of options for a template, and the proper rendering in the UI, and
-validations by the template launch service. Examples can be found in the
-repository, but the general structure is as follows:
-
-```java
-@TemplateParameter.Text(
-    order = 2,
-    optional = false,
-    regexes = {"[,a-zA-Z0-9._-]+"},
-    description = "Kafka topic(s) to read the input from",
-    helpText = "Kafka topic(s) to read the input from.",
-    example = "topic1,topic2")
-@Validation.Required
-String getInputTopics();
-```
-
-```java
-@TemplateParameter.GcsReadFile(
-    order = 1,
-    description = "Cloud Storage Input File(s)",
-    helpText = "Path of the file pattern glob to read from.",
-    example = "gs://your-bucket/path/*.csv")
-String getInputFilePattern();
-```
-
-```java
-@TemplateParameter.Boolean(
-    order = 11,
-    optional = true,
-    description = "Whether to use column alias to map the rows.",
-    helpText = "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the column name to map the rows to BigQuery.")
-@Default.Boolean(false)
-Boolean getUseColumnAlias();
-```
-
-```java
-@TemplateParameter.Enum(
-    order = 21,
-    enumOptions = {"INDEX", "CREATE"},
-    optional = true,
-    description = "Build insert method",
-    helpText = "Whether to use INDEX (index, allows upsert) or CREATE (create, errors on duplicate _id) with Elasticsearch bulk requests.")
-@Default.Enum("CREATE")
-BulkInsertMethodOptions getBulkInsertMethod();
-```
-
-Note: `order` is relevant for templates that can be used from the UI, and
-specify the relative order of parameters.
-
-#### @TemplateIntegrationTest Annotation
-
-This annotation should be used by classes that are used for integration tests of
-other templates. This is used to wire a specific `IT` class with a template, and
-allows environment preparation / proper template staging before tests are
-executed on Dataflow.
-
-Template tests have to follow this general format (please note
-the `@TemplateIntegrationTest` annotation and the `TemplateTestBase`
-super-class):
-
-```java
-
-@TemplateIntegrationTest(PubsubToText.class)
-@RunWith(JUnit4.class)
-public final class PubsubToTextIT extends TemplateTestBase {
-```
-
-Please refer to `Templates Plugin` to use and validate such annotations.
-
 ## Using UDFs
 
 User-defined functions (UDFs) allow you to customize a template's functionality
@@ -396,11 +143,11 @@ output.
 | Pub/Sub to Datastore  | String         | A string representation of the incoming payload | String          | A JSON string of the entity to write to Datastore                                                      |
 | Pub/Sub to Splunk     | String         | A string representation of the incoming payload | String          | The event data to be sent to Splunk HEC events endpoint. Must be a string or a stringified JSON object |
 
-### UDF Examples
+## UDF Examples
 
 For a comprehensive list of samples, please check our [udf-samples](v2/common/src/main/resources/udf-samples) folder.
 
-#### Adding fields
+### Adding fields
 
 ```js
 /**
@@ -416,7 +163,7 @@ function transform(inJson) {
 }
 ```
 
-#### Filtering records
+### Filtering records
 
 ```js
 /**
@@ -433,89 +180,21 @@ function transform(inJson) {
 }
 ```
 
+## Contributing
 
-## Generated Documentation
-
-This repository contains generated documentation, which contains a list of parameters
-and instructions on how to customize and/or build every template.
-
-To generate the documentation for all templates, the following command can be used:
-
-```shell
-mvn clean prepare-package \
-  -DskipTests \
-  -PtemplatesSpec
-```
+To contribute to the repository, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Release Process
 
 Templates are released in a weekly basis (best-effort) as part of the efforts to
-keep [Google-provided Templates](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates) updated with latest fixes and improvements.
+keep [Google-provided Templates](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+updated with latest fixes and improvements.
 
-In case desired, you can stage and use your own changes using the `Staging (Deploying) Templates` steps.
-
-To execute the release of multiple templates, we provide a single Maven command to release Templates, which is a shortcut to
-stage all templates while running additional validations.
-
-```shell
-mvn clean verify -PtemplatesRelease \
-  -DprojectId="{projectId}" \
-  -DbucketName="{bucketName}" \
-  -DlibrariesBucketName="{bucketName}-libraries" \
-  -DstagePrefix="$(date +%Y_%m_%d)-00_RC00"
-```
-
-## Maven artifacts
-
-As part of the Templates development process, we release the common artifact snapshots to Maven Central, not
-modules that contain finalized templates. This allows users to consume those resources and modules without forking the
-entire project, while keeping artifacts at a reasonable size.
-
-In order to release artifacts, `~/.m2/settings.xml` should be configured to contain Sonatype's username and password:
-
-```xml
-
-<servers>
-  <server>
-    <id>ossrh</id>
-    <username>(user)</username>
-    <password>(password)</password>
-  </server>
-</servers>
-```
-
-And the command to release (for example, the development plugin and Spanner together):
-
-```shell
-mvn clean deploy -am -Prelease \
-  -pl plugins/templates-maven-plugin \
-  -pl v2/spanner-common
-```
-
-If you intend to use those resources in an external project, your `pom.xml` should include:
-
-```xml
-
-<repositories>
-  <repository>
-    <id>ossrh</id>
-    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-  </repository>
-</repositories>
-```
-
-```xml
-
-<pluginRepositories>
-  <pluginRepository>
-    <id>ossrh</id>
-    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-  </pluginRepository>
-</pluginRepositories>
-```
+To learn more about this process, or how you can stage your own changes, see [Release Process](./release-process.md).
 
 ## More Information
 
+* [Dataflow](https://cloud.google.com/dataflow/docs/overview) - general Dataflow documentation.
 * [Dataflow Templates](https://cloud.google.com/dataflow/docs/concepts/dataflow-templates) - basic template concepts.
 * [Google-provided Templates](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates) - official documentation for templates provided by Google (the source code is in this repository).
 * Dataflow Cookbook: [Blog](https://cloud.google.com/blog/products/data-analytics/introducing-dataflow-cookbook), [GitHub Repository](https://github.com/GoogleCloudPlatform/dataflow-cookbook) - pipeline examples and practical solutions to common data processing challenges.
@@ -526,4 +205,4 @@ If you intend to use those resources in an external project, your `pom.xml` shou
   - [Tour of Beam](https://tour.beam.apache.org/) - an interactive tour with learning topics covering core Beam concepts from simple ones to more advanced ones.
   - [Beam Playground](https://beam.apache.org/get-started/try-beam-playground/) -  an interactive environment to try out Beam transforms and examples without having to install Apache Beam.
   - [Beam College](https://beamcollege.dev/) - hands-on training and practical tips, including video recordings of Apache Beam and Dataflow Templates lessons.
-  - [Getting Started with Apache Beam - Quest](https://www.cloudskillsboost.google/quests/310) - A 5 lab series that provides a Google Cloud certified badge upon completion.
+  - [Getting Started with Apache Beam - Quest](https://www.cloudskillsboost.google/course_templates/724) - A 5 lab series that provides a Google Cloud certified badge upon completion.

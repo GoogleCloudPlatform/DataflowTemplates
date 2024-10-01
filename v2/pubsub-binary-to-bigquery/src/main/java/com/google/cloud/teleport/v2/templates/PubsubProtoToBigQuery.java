@@ -15,8 +15,10 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.stringMappingFunction;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import com.google.cloud.teleport.metadata.MultiTemplate;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -31,7 +33,8 @@ import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.FailsafeElementTransforms.ConvertFailsafeElementToPubsubMessage;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.RowToStringFailsafeElementFn;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
@@ -45,6 +48,7 @@ import com.google.protobuf.util.JsonFormat;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.NullableCoder;
+import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
@@ -56,9 +60,11 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.commons.lang3.ArrayUtils;
@@ -73,29 +79,66 @@ import org.apache.commons.lang3.ArrayUtils;
  * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/pubsub-binary-to-bigquery/README_PubSub_Proto_to_BigQuery.md">README</a>
  * for instructions on how to use or modify this template.
  */
-@Template(
-    name = "PubSub_Proto_to_BigQuery",
-    category = TemplateCategory.STREAMING,
-    displayName = "Pub/Sub Proto to BigQuery",
-    description = {
-      "The Pub/Sub proto to BigQuery template is a streaming pipeline that ingests proto data from a Pub/Sub subscription into a BigQuery table. "
-          + "Any errors that occur while writing to the BigQuery table are streamed into a Pub/Sub unprocessed topic.\n",
-      "A JavaScript user-defined function (UDF) can be provided to transform data. "
-          + "Errors while executing the UDF can be sent to either a separate Pub/Sub topic or the same unprocessed topic as the BigQuery errors."
-    },
-    optionsClass = PubSubProtoToBigQueryOptions.class,
-    flexContainerName = "pubsub-proto-to-bigquery",
-    documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-proto-to-bigquery",
-    contactInformation = "https://cloud.google.com/support",
-    requirements = {
-      "The input Pub/Sub subscription must exist.",
-      "The schema file for the Proto records must exist on Cloud Storage.",
-      "The output Pub/Sub topic must exist.",
-      "The output BigQuery dataset must exist.",
-      "If the BigQuery table exists, it must have a schema matching the proto data regardless of the <code>createDisposition</code> value."
-    },
-    streaming = true)
+@MultiTemplate({
+  @Template(
+      name = "PubSub_Proto_to_BigQuery_Flex",
+      category = TemplateCategory.STREAMING,
+      displayName = "Pub/Sub Proto to BigQuery",
+      description = {
+        "The Pub/Sub proto to BigQuery template is a streaming pipeline that ingests proto data from a Pub/Sub subscription into a BigQuery table. "
+            + "Any errors that occur while writing to the BigQuery table are streamed into a Pub/Sub unprocessed topic.\n",
+        "A JavaScript user-defined function (UDF) can be provided to transform data. "
+            + "Errors while executing the UDF can be sent to either a separate Pub/Sub topic or the same unprocessed topic as the BigQuery errors."
+      },
+      skipOptions = {
+        "pythonExternalTextTransformGcsPath",
+        "pythonExternalTextTransformFunctionName"
+      },
+      optionsClass = PubSubProtoToBigQueryOptions.class,
+      flexContainerName = "pubsub-proto-to-bigquery",
+      documentation =
+          "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-proto-to-bigquery",
+      contactInformation = "https://cloud.google.com/support",
+      requirements = {
+        "The input Pub/Sub subscription must exist.",
+        "The schema file for the Proto records must exist on Cloud Storage.",
+        "The output Pub/Sub topic must exist.",
+        "The output BigQuery dataset must exist.",
+        "If the BigQuery table exists, it must have a schema matching the proto data regardless of the <code>createDisposition</code> value."
+      },
+      streaming = true,
+      supportsAtLeastOnce = true),
+  @Template(
+      name = "PubSub_Proto_to_BigQuery_Xlang",
+      category = TemplateCategory.STREAMING,
+      displayName = "Pub/Sub Proto to BigQuery with Python UDF",
+      type = Template.TemplateType.XLANG,
+      description = {
+        "The Pub/Sub proto to BigQuery template is a streaming pipeline that ingests proto data from a Pub/Sub subscription into a BigQuery table. "
+            + "Any errors that occur while writing to the BigQuery table are streamed into a Pub/Sub unprocessed topic.\n",
+        "A Python user-defined function (UDF) can be provided to transform data. "
+            + "Errors while executing the UDF can be sent to either a separate Pub/Sub topic or the same unprocessed topic as the BigQuery errors."
+      },
+      skipOptions = {
+        "javascriptTextTransformGcsPath",
+        "javascriptTextTransformFunctionName",
+        "javascriptTextTransformReloadIntervalMinutes"
+      },
+      optionsClass = PubSubProtoToBigQueryOptions.class,
+      flexContainerName = "pubsub-proto-to-bigquery-xlang",
+      documentation =
+          "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-proto-to-bigquery",
+      contactInformation = "https://cloud.google.com/support",
+      requirements = {
+        "The input Pub/Sub subscription must exist.",
+        "The schema file for the Proto records must exist on Cloud Storage.",
+        "The output Pub/Sub topic must exist.",
+        "The output BigQuery dataset must exist.",
+        "If the BigQuery table exists, it must have a schema matching the proto data regardless of the <code>createDisposition</code> value."
+      },
+      streaming = true,
+      supportsAtLeastOnce = true)
+})
 public final class PubsubProtoToBigQuery {
   private static final TupleTag<FailsafeElement<String, String>> UDF_SUCCESS_TAG = new TupleTag<>();
   private static final TupleTag<FailsafeElement<String, String>> UDF_FAILURE_TAG = new TupleTag<>();
@@ -113,18 +156,17 @@ public final class PubsubProtoToBigQuery {
       extends ReadSubscriptionOptions,
           WriteOptions,
           WriteTopicOptions,
-          JavascriptTextTransformerOptions,
+          PythonExternalTextTransformer.PythonExternalTextTransformerOptions,
           BigQueryStorageApiStreamingOptions {
 
     @TemplateParameter.GcsReadFile(
         order = 1,
         description = "Cloud Storage Path to the Proto Schema File",
         helpText =
-            "Cloud Storage path to a self-contained descriptor set file. Example:"
-                + " gs://MyBucket/schema.pb. `schema.pb` can be generated by adding"
-                + " `--descriptor_set_out=schema.pb` to the `protoc` command that compiles the"
-                + " protos. The `--include_imports` flag can be used to guarantee that the file is"
-                + " self-contained.")
+            "The Cloud Storage location of the self-contained proto schema file. For example,"
+                + " gs://path/to/my/file.pb. You can generate this file with"
+                + " the `--descriptor_set_out` flag of the protoc command."
+                + " The `--include_imports` flag guarantees that the file is self-contained.")
     @Required
     String getProtoSchemaPath();
 
@@ -135,25 +177,22 @@ public final class PubsubProtoToBigQuery {
         regexes = {"^.+([a-zA-Z][a-zA-Z0-9_]+\\.?)+[a-zA-Z0-9_]$"},
         description = "Full Proto Message Name",
         helpText =
-            "The full message name (example: package.name.MessageName). If the message is nested"
-                + " inside of another message, then include all messages with the '.' delimiter"
-                + " (example: package.name.OuterMessage.InnerMessage). 'package.name' should be"
-                + " from the `package` statement, not the `java_package` statement.")
+            "The full proto message name. For example, `package.name`."
+                + " `MessageName`, where `package.name` is the value provided for the"
+                + " `package` statement and not the `java_package` statement.")
     @Required
     String getFullMessageName();
 
     void setFullMessageName(String value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Boolean(
         order = 3,
         optional = true,
         description = "Preserve Proto Field Names",
         helpText =
-            "Flag to control whether proto field names should be kept or converted to"
-                + " lowerCamelCase. If the table already exists, this should be based on what"
-                + " matches the table's schema. Otherwise, it will determine the column names of"
-                + " the created table. True to preserve proto snake_case. False will convert fields"
-                + " to lowerCamelCase. (Default: false)")
+            "To preserve the original proto field name in JSON, set this property to true. "
+                + "To use more standard JSON names, set to false."
+                + " For example, `false` would change `field_name` to `fieldName`. Defaults to: false.")
     @Default.Boolean(false)
     Boolean getPreserveProtoFieldNames();
 
@@ -164,9 +203,8 @@ public final class PubsubProtoToBigQuery {
         optional = true,
         description = "BigQuery Table Schema Path",
         helpText =
-            "Cloud Storage path to the BigQuery schema JSON file. "
-                + "If this is not set, then the schema is inferred "
-                + "from the Proto schema.",
+            "The Cloud Storage path to the BigQuery schema path. "
+                + "If this value isn't provided, then the schema is inferred from the Proto schema.",
         example = "gs://MyBucket/bq_schema.json")
     String getBigQueryTableSchemaPath();
 
@@ -177,12 +215,31 @@ public final class PubsubProtoToBigQuery {
         optional = true,
         description = "Pub/Sub output topic for UDF failures",
         helpText =
-            "An optional output topic to send UDF failures to. If this option is not set, then"
-                + " failures will be written to the same topic as the BigQuery failures.",
+            "The Pub/Sub topic storing the UDF errors."
+                + " If this value isn't provided, UDF errors are sent to the same topic as `outputTopic`.",
         example = "projects/your-project-id/topics/your-topic-name")
     String getUdfOutputTopic();
 
     void setUdfOutputTopic(String udfOutputTopic);
+
+    // Hide the UseStorageWriteApiAtLeastOnce in the UI, because it will automatically be turned
+    // on when pipeline is running on ALO mode and using the Storage Write API
+    @TemplateParameter.Boolean(
+        order = 6,
+        optional = true,
+        parentName = "useStorageWriteApi",
+        parentTriggerValues = {"true"},
+        description = "Use at at-least-once semantics in BigQuery Storage Write API",
+        helpText =
+            "When using the Storage Write API, specifies the write semantics."
+                + " To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to true`. To use exactly-once semantics, set the parameter to `false`."
+                + " This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.",
+        hiddenUi = true)
+    @Default.Boolean(false)
+    @Override
+    Boolean getUseStorageWriteApiAtLeastOnce();
+
+    void setUseStorageWriteApiAtLeastOnce(Boolean value);
   }
 
   /** Runs the pipeline and returns the results. */
@@ -301,21 +358,40 @@ public final class PubsubProtoToBigQuery {
   @VisibleForTesting
   static PCollection<String> runUdf(
       PCollection<String> jsonCollection, PubSubProtoToBigQueryOptions options) {
+
+    boolean useJavascriptUdf = !Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath());
+    boolean usePythonUdf = !Strings.isNullOrEmpty(options.getPythonExternalTextTransformGcsPath());
+
     // In order to avoid generating a graph that makes it look like a UDF was called when none was
     // intended, simply return the input as "success" output.
-    if (Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath())) {
+    if (!useJavascriptUdf && !usePythonUdf) {
       return jsonCollection;
     }
 
     // For testing purposes, we need to do this check before creating the PTransform rather than
     // in `expand`. Otherwise, we get a NullPointerException due to the PTransform not returning
     // a value.
-    if (Strings.isNullOrEmpty(options.getJavascriptTextTransformFunctionName())) {
+    if (useJavascriptUdf
+        && Strings.isNullOrEmpty(options.getJavascriptTextTransformFunctionName())) {
       throw new IllegalArgumentException(
           "JavaScript function name cannot be null or empty if file is set");
     }
+    if (usePythonUdf
+        && Strings.isNullOrEmpty(options.getPythonExternalTextTransformFunctionName())) {
+      throw new IllegalArgumentException(
+          "Python function name cannot be null or empty if file is set");
+    }
+    if (usePythonUdf && useJavascriptUdf) {
+      throw new IllegalArgumentException(
+          "Either javascript or Python gcs path must be provided, but not both.");
+    }
 
-    PCollectionTuple maybeSuccess = jsonCollection.apply("Run UDF", new RunUdf(options));
+    PCollectionTuple maybeSuccess;
+    if (usePythonUdf) {
+      maybeSuccess = jsonCollection.apply("Run UDF", new RunPythonUdf(options));
+    } else {
+      maybeSuccess = jsonCollection.apply("Run UDF", new RunUdf(options));
+    }
 
     maybeSuccess
         .get(UDF_FAILURE_TAG)
@@ -365,6 +441,33 @@ public final class PubsubProtoToBigQuery {
     private static MapElements<String, FailsafeElement<String, String>> makeFailsafe() {
       return MapElements.into(new TypeDescriptor<FailsafeElement<String, String>>() {})
           .via((String json) -> FailsafeElement.of(json, json));
+    }
+  }
+
+  /** {@link PTransform} that calls a python UDF and returns both success and failure output. */
+  private static class RunPythonUdf extends PTransform<PCollection<String>, PCollectionTuple> {
+    private final PubSubProtoToBigQueryOptions options;
+
+    RunPythonUdf(PubSubProtoToBigQueryOptions options) {
+      this.options = options;
+    }
+
+    @Override
+    public PCollectionTuple expand(PCollection<String> input) {
+      return input
+          .apply("Prepare Failsafe row", stringMappingFunction())
+          .setCoder(
+              RowCoder.of(PythonExternalTextTransformer.FailsafeRowPythonExternalUdf.ROW_SCHEMA))
+          .apply(
+              "InvokeUDF",
+              PythonExternalTextTransformer.FailsafePythonExternalUdf.newBuilder()
+                  .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
+                  .setFunctionName(options.getPythonExternalTextTransformFunctionName())
+                  .build())
+          .apply(
+              "MapRowsToFailsafeElements",
+              ParDo.of(new RowToStringFailsafeElementFn(UDF_SUCCESS_TAG, UDF_FAILURE_TAG))
+                  .withOutputTags(UDF_SUCCESS_TAG, TupleTagList.of(UDF_FAILURE_TAG)));
     }
   }
 

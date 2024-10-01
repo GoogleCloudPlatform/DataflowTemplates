@@ -16,11 +16,18 @@
 package com.google.cloud.teleport.v2.neo4j.actions.function;
 
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
-import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
+import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
+import com.google.cloud.teleport.v2.neo4j.utils.SerializableSupplier;
+import com.google.common.annotations.VisibleForTesting;
+import java.util.Locale;
+import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.Row;
 import org.apache.commons.lang3.StringUtils;
+import org.neo4j.driver.TransactionConfig;
+import org.neo4j.importer.v1.actions.CypherAction;
+import org.neo4j.importer.v1.actions.CypherExecutionMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,41 +36,71 @@ public class CypherActionFn extends DoFn<Integer, Row> {
 
   private static final Logger LOG = LoggerFactory.getLogger(CypherActionFn.class);
 
-  private final ActionContext context;
-  private final ConnectionParams connectionParams;
   private final String cypher;
+  private final SerializableSupplier<Neo4jConnection> connectionProvider;
+  private final CypherExecutionMode executionMode;
 
-  private Neo4jConnection directConnect;
+  private Neo4jConnection connection;
 
   public CypherActionFn(ActionContext context) {
-    this.context = context;
-    this.connectionParams = context.neo4jConnectionParams;
-    this.cypher = this.context.action.options.get("cypher");
+    this(
+        context,
+        () ->
+            new Neo4jConnection(context.getNeo4jConnectionParams(), context.getTemplateVersion()));
+  }
+
+  @VisibleForTesting
+  CypherActionFn(ActionContext context, SerializableSupplier<Neo4jConnection> connectionProvider) {
+    CypherAction cypherAction = (CypherAction) context.getAction();
+    String cypher = cypherAction.getQuery();
     if (StringUtils.isEmpty(cypher)) {
       throw new RuntimeException("Options 'cypher' not provided for cypher action transform.");
     }
+    this.cypher = cypher;
+    this.executionMode = cypherAction.getExecutionMode();
+    this.connectionProvider = connectionProvider;
   }
 
   @Setup
   public void setup() {
-    directConnect = new Neo4jConnection(connectionParams);
+    connection = connectionProvider.get();
   }
 
   @ProcessElement
-  public void processElement(ProcessContext context) throws InterruptedException {
+  public void processElement(ProcessContext context) {
     LOG.info("Executing cypher action: {}", cypher);
     try {
-      directConnect.executeCypher(cypher);
+      run();
     } catch (Exception e) {
       throw new RuntimeException(
           String.format("Exception running cypher action %s: %s", cypher, e.getMessage()), e);
     }
   }
 
+  private void run() {
+    TransactionConfig txConfig =
+        TransactionConfig.builder()
+            .withMetadata(
+                Neo4jTelemetry.transactionMetadata(
+                    Map.of(
+                        "sink", "neo4j",
+                        "step", "cypher-action",
+                        "execution", executionMode.name().toLowerCase(Locale.ROOT))))
+            .build();
+    switch (executionMode) {
+      case TRANSACTION:
+        connection.writeTransaction(tx -> tx.run(cypher).consume(), txConfig);
+        break;
+      case AUTOCOMMIT:
+        connection.runAutocommit(cypher, txConfig);
+        break;
+    }
+  }
+
   @Teardown
   public void tearDown() {
-    if (directConnect != null) {
-      directConnect.close();
+    if (connection != null) {
+      connection.close();
     }
   }
 }

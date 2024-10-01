@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.neo4j.providers.text;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.Field;
@@ -38,7 +37,6 @@ public class LineToRowFnTest {
   @Test
   public void testTransform() {
     // Arrange
-    Source source = new Source();
     Schema sourceSchema =
         Schema.of(Field.of("id", FieldType.STRING), Field.of("name", FieldType.STRING));
     CSVFormat csvFormat = CSVFormat.DEFAULT;
@@ -47,7 +45,7 @@ public class LineToRowFnTest {
     PCollection<Row> convertedRow =
         pipeline
             .apply(Create.of("1,Neo4j", "2,MySQL"))
-            .apply(ParDo.of(new LineToRowFn(source, sourceSchema, csvFormat)))
+            .apply(ParDo.of(new LineToRowFn(sourceSchema, csvFormat)))
             .setCoder(RowCoder.of(sourceSchema));
 
     // Assert
@@ -61,6 +59,27 @@ public class LineToRowFnTest {
             .withFieldValue("id", "2")
             .withFieldValue("name", "MySQL")
             .build();
+    PAssert.that(convertedRow).containsInAnyOrder(neo4jRow, oracleRow);
+
+    pipeline.run();
+  }
+
+  @Test
+  public void testNumberOfFieldsTruncated() {
+    // Arrange
+    Schema sourceSchema = Schema.of(Field.of("id", FieldType.STRING));
+    CSVFormat csvFormat = CSVFormat.DEFAULT;
+
+    // Act
+    PCollection<Row> convertedRow =
+        pipeline
+            .apply(Create.of("1,Neo4j", "2,MySQL"))
+            .apply(ParDo.of(new LineToRowFn(sourceSchema, csvFormat)))
+            .setCoder(RowCoder.of(sourceSchema));
+
+    // Assert
+    Row neo4jRow = Row.withSchema(sourceSchema).withFieldValue("id", "1").build();
+    Row oracleRow = Row.withSchema(sourceSchema).withFieldValue("id", "2").build();
     PAssert.that(convertedRow).containsInAnyOrder(neo4jRow, oracleRow);
 
     pipeline.run();

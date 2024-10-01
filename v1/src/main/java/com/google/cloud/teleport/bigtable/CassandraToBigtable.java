@@ -70,22 +70,22 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         regexes = {"^[a-zA-Z0-9\\.\\-,]*$"},
         description = "Cassandra Hosts",
-        helpText = "Comma separated value list of hostnames or ips of the Cassandra nodes.")
+        helpText = "The hosts of the Apache Cassandra nodes in a comma-separated list.")
     ValueProvider<String> getCassandraHosts();
 
     @SuppressWarnings("unused")
     void setCassandraHosts(ValueProvider<String> hosts);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Integer(
         order = 2,
+        groupName = "Source",
         optional = true,
-        regexes = {
-          "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"
-        },
         description = "Cassandra Port",
-        helpText = "The port where cassandra can be reached. Defaults to 9042.")
+        helpText =
+            "The TCP port to use to reach Apache Cassandra on the nodes. The default value is 9042.")
     @Default.Integer(9042)
     ValueProvider<Integer> getCassandraPort();
 
@@ -94,9 +94,10 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {"^[a-zA-Z0-9][a-zA-Z0-9_]{0,47}$"},
         description = "Cassandra Keyspace",
-        helpText = "Cassandra Keyspace where the table to be migrated can be located.")
+        helpText = "The Apache Cassandra keyspace where the table is located.")
     ValueProvider<String> getCassandraKeyspace();
 
     @SuppressWarnings("unused")
@@ -104,9 +105,10 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Source",
         regexes = {"^[a-zA-Z][a-zA-Z0-9_]*$"},
         description = "Cassandra Table",
-        helpText = "The name of the Cassandra table to Migrate")
+        helpText = "The Apache Cassandra table to copy.")
     ValueProvider<String> getCassandraTable();
 
     @SuppressWarnings("unused")
@@ -114,8 +116,9 @@ final class CassandraToBigtable {
 
     @TemplateParameter.ProjectId(
         order = 5,
+        groupName = "Target",
         description = "Bigtable Project ID",
-        helpText = "The Project ID where the target Bigtable Instance is running.")
+        helpText = "The Google Cloud project ID associated with the Bigtable instance.")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
@@ -123,9 +126,10 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 6,
+        groupName = "Target",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Target Bigtable Instance",
-        helpText = "The target Bigtable Instance where you want to write the data.")
+        helpText = "The ID of the Bigtable instance that the Apache Cassandra table is copied to.")
     ValueProvider<String> getBigtableInstanceId();
 
     @SuppressWarnings("unused")
@@ -133,9 +137,10 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 7,
+        groupName = "Target",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Target Bigtable Table",
-        helpText = "The target Bigtable table where you want to write the data.")
+        helpText = "The name of the Bigtable table that the Apache Cassandra table is copied to.")
     ValueProvider<String> getBigtableTableId();
 
     @SuppressWarnings("unused")
@@ -143,11 +148,12 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 8,
+        groupName = "Target",
         optional = true,
         regexes = {"[-_.a-zA-Z0-9]+"},
         description = "The Default Bigtable Column Family",
         helpText =
-            "This specifies the default column family to write data into. If no columnFamilyMapping is specified all Columns will be written into this column family. Default value is \"default\"")
+            "The name of the column family of the Bigtable table. The default value is default.")
     @Default.String("default")
     ValueProvider<String> getDefaultColumnFamily();
 
@@ -156,10 +162,10 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Text(
         order = 9,
+        groupName = "Target",
         optional = true,
         description = "The Row Key Separator",
-        helpText =
-            "All primary key fields will be appended to form your Bigtable Row Key. The rowKeySeparator allows you to specify a character separator. Default separator is '#'.")
+        helpText = "The separator used to build row-keys. The default value is '#'.")
     @Default.String("#")
     ValueProvider<String> getRowKeySeparator();
 
@@ -168,6 +174,7 @@ final class CassandraToBigtable {
 
     @TemplateParameter.Boolean(
         order = 10,
+        groupName = "Target",
         optional = true,
         description = "If true, large rows will be split into multiple MutateRows requests",
         helpText =

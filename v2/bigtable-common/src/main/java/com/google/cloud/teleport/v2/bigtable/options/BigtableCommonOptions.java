@@ -31,7 +31,7 @@ public interface BigtableCommonOptions extends GcpOptions {
       order = 1,
       optional = true,
       description = "The timeout for an RPC attempt in milliseconds",
-      helpText = "This sets the timeout for an RPC attempt in milliseconds")
+      helpText = "The timeout for each Bigtable RPC attempt in milliseconds.")
   Integer getBigtableRpcAttemptTimeoutMs();
 
   void setBigtableRpcAttemptTimeoutMs(Integer value);
@@ -40,7 +40,7 @@ public interface BigtableCommonOptions extends GcpOptions {
       order = 2,
       optional = true,
       description = "The total timeout for an RPC operation in milliseconds",
-      helpText = "This sets the total timeout for an RPC operation in milliseconds")
+      helpText = "The total timeout for a Bigtable RPC operation in milliseconds.")
   Integer getBigtableRpcTimeoutMs();
 
   void setBigtableRpcTimeoutMs(Integer value);
@@ -49,7 +49,7 @@ public interface BigtableCommonOptions extends GcpOptions {
       order = 3,
       optional = true,
       description = "The additional retry codes",
-      helpText = "This sets the additional retry codes, separated by ','",
+      helpText = "The additional retry codes.",
       example = "RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED")
   String getBigtableAdditionalRetryCodes();
 
@@ -62,7 +62,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 1,
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Bigtable Instance ID",
-        helpText = "The ID of the Cloud Bigtable instance that contains the table")
+        helpText = "The ID of the Bigtable instance that contains the table.")
     @Validation.Required
     String getBigtableWriteInstanceId();
 
@@ -72,7 +72,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 2,
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Bigtable Table ID",
-        helpText = "The ID of the Cloud Bigtable table to write")
+        helpText = "The ID of the Bigtable table to write to.")
     @Validation.Required
     String getBigtableWriteTableId();
 
@@ -82,7 +82,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 3,
         regexes = {"[-_.a-zA-Z0-9]+"},
         description = "The Bigtable Column Family",
-        helpText = "This specifies the column family to write data into")
+        helpText = "The name of the column family of the Bigtable table to write data into.")
     @Validation.Required
     String getBigtableWriteColumnFamily();
 
@@ -94,8 +94,10 @@ public interface BigtableCommonOptions extends GcpOptions {
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Bigtable App Profile",
         helpText =
-            "Bigtable App Profile to use for the export. The default for this parameter "
-                + "is the Bigtable instance's default app profile")
+            "The ID of the Bigtable application profile to use for the export. If you"
+                + " do not specify an app profile, Bigtable uses the"
+                + " default app profile (https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile)"
+                + " of the instance.")
     @Default.String("default")
     String getBigtableWriteAppProfile();
 
@@ -106,7 +108,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         optional = true,
         description = "Bigtable Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want "
+            "The ID of the Google Cloud project that contains the Bigtable instance"
                 + "to write data to.")
     String getBigtableWriteProjectId();
 
@@ -116,7 +118,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 6,
         optional = true,
         description = "Bigtable's latency target in milliseconds for latency-based throttling",
-        helpText = "This enables latency-based throttling and specifies the target latency")
+        helpText = "The latency target of Bigtable in milliseconds for latency-based throttling.")
     Integer getBigtableBulkWriteLatencyTargetMs();
 
     void setBigtableBulkWriteLatencyTargetMs(Integer value);
@@ -125,7 +127,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 7,
         optional = true,
         description = "The max number of row keys in a Bigtable batch write operation",
-        helpText = "This sets the max number of row keys in a Bigtable batch write operation")
+        helpText = "The maximum number of row keys in a Bigtable batch write operation.")
     Integer getBigtableBulkWriteMaxRowKeyCount();
 
     void setBigtableBulkWriteMaxRowKeyCount(Integer value);
@@ -134,7 +136,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 8,
         optional = true,
         description = "The max amount of bytes in a Bigtable batch write operation",
-        helpText = "This sets the max amount of bytes in a Bigtable batch write operation")
+        helpText = "The maximum bytes to include per Bigtable batch write operation.")
     Integer getBigtableBulkWriteMaxRequestSizeBytes();
 
     void setBigtableBulkWriteMaxRequestSizeBytes(Integer value);
@@ -144,9 +146,10 @@ public interface BigtableCommonOptions extends GcpOptions {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Source Bigtable Instance ID",
-        helpText = "The ID of the Cloud Bigtable instance that contains the table")
+        helpText = "The source Bigtable instance ID.")
     @Validation.Required
     String getBigtableReadInstanceId();
 
@@ -154,8 +157,9 @@ public interface BigtableCommonOptions extends GcpOptions {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         description = "Source Cloud Bigtable table ID",
-        helpText = "The Cloud Bigtable table to read from.")
+        helpText = "The source Bigtable table ID.")
     @Validation.Required
     String getBigtableReadTableId();
 
@@ -164,10 +168,9 @@ public interface BigtableCommonOptions extends GcpOptions {
     @TemplateParameter.ProjectId(
         order = 3,
         optional = true,
+        groupName = "Source",
         description = "Source Cloud Bigtable Project ID",
-        helpText =
-            "Project to read Cloud Bigtable data from. The default for this parameter is the "
-                + "project where the Dataflow pipeline is running.")
+        helpText = "The Bigtable project ID. The default is the project for the Dataflow job.")
     @Default.String("")
     String getBigtableReadProjectId();
 
@@ -192,9 +195,9 @@ public interface BigtableCommonOptions extends GcpOptions {
     @TemplateParameter.Text(
         order = 1,
         optional = true,
+        groupName = "Source",
         description = "Cloud Bigtable change streams metadata instance ID",
-        helpText =
-            "The Cloud Bigtable instance to use for the change streams connector metadata table.")
+        helpText = "The Bigtable change streams metadata instance ID.")
     @Default.String("")
     String getBigtableChangeStreamMetadataInstanceId();
 
@@ -203,11 +206,12 @@ public interface BigtableCommonOptions extends GcpOptions {
     @TemplateParameter.Text(
         order = 2,
         optional = true,
+        groupName = "Source",
         description = "Cloud Bigtable change streams metadata table ID",
         helpText =
-            "The Cloud Bigtable change streams connector metadata table ID to use. If not "
-                + "provided, a Cloud Bigtable change streams connector metadata table will automatically be "
-                + "created during the pipeline flow.")
+            "The ID of the Bigtable change streams connector metadata table. If not "
+                + "provided, a Bigtable change streams connector metadata table is automatically "
+                + "created during pipeline execution.")
     @Default.String("")
     String getBigtableChangeStreamMetadataTableTableId();
 
@@ -217,7 +221,8 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 3,
         regexes = {"[a-z][a-z0-9\\-_]+[a-z0-9]"},
         description = "Cloud Bigtable application profile ID",
-        helpText = "The application profile is used to distinguish workload in Cloud Bigtable")
+        helpText =
+            "The Bigtable application profile ID. The application profile must use single-cluster routing and allow single-row transactions.")
     @Validation.Required
     String getBigtableChangeStreamAppProfile();
 
@@ -228,9 +233,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         optional = true,
         description =
             "Bigtable change streams charset name when reading values and column qualifiers",
-        helpText =
-            "Bigtable change streams charset name when reading values and column qualifiers. "
-                + "Default is UTF-8")
+        helpText = "The Bigtable change streams charset name.")
     @Default.String("UTF-8")
     String getBigtableChangeStreamCharset();
 
@@ -241,9 +244,9 @@ public interface BigtableCommonOptions extends GcpOptions {
         optional = true,
         description = "The timestamp to read change streams from",
         helpText =
-            "The starting DateTime, inclusive, to use for reading change streams "
-                + "(https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the "
-                + "timestamp when the pipeline starts.")
+            "The starting timestamp (https://tools.ietf.org/html/rfc3339), inclusive, to use "
+                + "for reading change streams. For example, `2022-05-05T07:59:59Z`. "
+                + "Defaults to the timestamp of the pipeline start time.")
     @Default.String("")
     String getBigtableChangeStreamStartTimestamp();
 
@@ -253,8 +256,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 6,
         optional = true,
         description = "Cloud Bigtable change streams column families to ignore",
-        helpText =
-            "A comma-separated list of column family names changes to which won't be captured")
+        helpText = "A comma-separated list of column family name changes to ignore.")
     @Default.String("")
     String getBigtableChangeStreamIgnoreColumnFamilies();
 
@@ -264,7 +266,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 7,
         optional = true,
         description = "Cloud Bigtable change streams columns to ignore",
-        helpText = "A comma-separated list of column names changes to which won't be captured")
+        helpText = "A comma-separated list of column name changes to ignore.")
     @Default.String("")
     String getBigtableChangeStreamIgnoreColumns();
 
@@ -275,8 +277,9 @@ public interface BigtableCommonOptions extends GcpOptions {
         optional = true,
         description = "A unique name of the client pipeline",
         helpText =
-            "Allows to resume processing from the point where a "
-                + "previously running pipeline stopped")
+            "A unique name for the client pipeline. Lets you resume processing "
+                + "from the point at which a previously running pipeline stopped. "
+                + "Defaults to an automatically generated name. See the Dataflow job logs for the value used.")
     String getBigtableChangeStreamName();
 
     void setBigtableChangeStreamName(String value);
@@ -286,13 +289,12 @@ public interface BigtableCommonOptions extends GcpOptions {
         optional = true,
         description = "Resume streaming with the same change stream name",
         helpText =
-            "When set to true< a new pipeline will resume processing from the point at which "
-                + "a previously running pipeline with the same bigtableChangeStreamName stopped. "
-                + "If pipeline with the given bigtableChangeStreamName never ran in the past, a "
-                + "new pipeline will fail to start. When set to false a new pipeline will be "
-                + "started. If pipeline with the same bigtableChangeStreamName already ran in "
-                + "the past for the given source, a new pipeline will fail to start. "
-                + "Defaults to false")
+            "When set to `true`, a new pipeline resumes processing from the point at which a previously "
+                + "running pipeline with the same `bigtableChangeStreamName` value stopped. If the "
+                + "pipeline with the given `bigtableChangeStreamName` value has never run, a new pipeline "
+                + "doesn't start. When set to `false`, a new pipeline starts. If a pipeline with the "
+                + "same `bigtableChangeStreamName` value has already run for the given source, "
+                + "a new pipeline doesn't start. Defaults to `false`.")
     @Default.Boolean(false)
     Boolean getBigtableChangeStreamResume();
 

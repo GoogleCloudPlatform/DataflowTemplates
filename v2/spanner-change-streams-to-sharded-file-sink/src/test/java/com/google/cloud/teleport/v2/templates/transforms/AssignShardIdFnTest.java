@@ -42,6 +42,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -53,13 +54,16 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.junit.Before;
+import org.junit.FixMethodOrder;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 /** Tests for AssignShardIdFnTest class. */
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class AssignShardIdFnTest {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   @Rule public final MockitoRule mocktio = MockitoJUnit.rule();
@@ -106,6 +110,7 @@ public class AssignShardIdFnTest {
             "test",
             "skip",
             "",
+            "",
             "");
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber");
@@ -129,6 +134,7 @@ public class AssignShardIdFnTest {
             "test",
             "skip",
             "",
+            "",
             "");
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber", "missingColumn");
@@ -148,6 +154,7 @@ public class AssignShardIdFnTest {
             "test",
             "skip",
             "",
+            "",
             "");
 
     record.setShard("shard1");
@@ -155,7 +162,8 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-    assignShardIdFn.setShardIdFetcher(assignShardIdFn.getShardIdFetcherImpl("", ""));
+    assignShardIdFn.setShardIdFetcher(
+        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", getSchemaObject(), "skip"));
 
     assignShardIdFn.processElement(processContext);
     verify(processContext).output(eq(record));
@@ -174,6 +182,7 @@ public class AssignShardIdFnTest {
             "test",
             "skip",
             "",
+            "",
             "");
 
     record.setShard("shard1");
@@ -181,7 +190,8 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-    assignShardIdFn.setShardIdFetcher(assignShardIdFn.getShardIdFetcherImpl("", ""));
+    assignShardIdFn.setShardIdFetcher(
+        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", getSchemaObject(), "skip"));
 
     assignShardIdFn.processElement(processContext);
     verify(processContext).output(eq(record));
@@ -200,6 +210,7 @@ public class AssignShardIdFnTest {
             "test",
             "skip",
             "",
+            "",
             "");
 
     record.setShard("test");
@@ -213,7 +224,7 @@ public class AssignShardIdFnTest {
     TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
     when(processContext.element()).thenReturn(record);
     String customJarPath = "src/test/resources/custom-shard-fetcher.jar";
-    String shardingCustomClassName = "com.custom.CustomShardIdFetcher";
+    String shardingCustomClassName = "com.test.CustomShardIdFetcher";
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
@@ -223,8 +234,11 @@ public class AssignShardIdFnTest {
             "test",
             "skip",
             customJarPath,
-            shardingCustomClassName);
-    assignShardIdFn.getShardIdFetcherImpl(customJarPath, shardingCustomClassName);
+            shardingCustomClassName,
+            "");
+    assignShardIdFn.setShardIdFetcher(
+        ShardingLogicImplFetcher.getShardingLogicImpl(
+            customJarPath, shardingCustomClassName, "", getSchemaObject(), "skip"));
   }
 
   public TrimmedShardedDataChangeRecord getInsertTrimmedDataChangeRecord(String shardId) {

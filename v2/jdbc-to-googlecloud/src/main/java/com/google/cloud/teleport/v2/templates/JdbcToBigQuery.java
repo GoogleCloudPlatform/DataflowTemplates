@@ -24,10 +24,12 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.JdbcToBigQueryOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
+import com.google.cloud.teleport.v2.utils.GCSAwareValueProvider;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
@@ -147,10 +149,14 @@ public class JdbcToBigQuery {
 
       rows = pipeline.apply("Read from JDBC with Partitions", readIO);
     } else {
+      if (options.getQuery() == null) {
+        throw new IllegalArgumentException(
+            "Either 'query' or both 'table' AND 'PartitionColumn' must be specified to read from JDBC");
+      }
       JdbcIO.Read<TableRow> readIO =
           JdbcIO.<TableRow>read()
               .withDataSourceConfiguration(dataSourceConfiguration)
-              .withQuery(options.getQuery())
+              .withQuery(new GCSAwareValueProvider(options.getQuery()))
               .withCoder(TableRowJsonCoder.of())
               .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias()));
 
@@ -175,6 +181,8 @@ public class JdbcToBigQuery {
    */
   @VisibleForTesting
   static Write<TableRow> writeToBQTransform(JdbcToBigQueryOptions options) {
+    // Needed for loading GCS filesystem before Pipeline.Create call
+    FileSystems.setDefaultPipelineOptions(options);
     Write<TableRow> write =
         BigQueryIO.writeTableRows()
             .withoutValidation()

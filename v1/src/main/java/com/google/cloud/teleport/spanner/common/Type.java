@@ -38,15 +38,18 @@ import javax.annotation.concurrent.Immutable;
 public final class Type implements Serializable {
   private static final Type TYPE_BOOL = new Type(Code.BOOL, null, null);
   private static final Type TYPE_INT64 = new Type(Code.INT64, null, null);
+  private static final Type TYPE_FLOAT32 = new Type(Code.FLOAT32, null, null);
   private static final Type TYPE_FLOAT64 = new Type(Code.FLOAT64, null, null);
   private static final Type TYPE_NUMERIC = new Type(Code.NUMERIC, null, null);
   private static final Type TYPE_STRING = new Type(Code.STRING, null, null);
   private static final Type TYPE_JSON = new Type(Code.JSON, null, null);
   private static final Type TYPE_BYTES = new Type(Code.BYTES, null, null);
+  private static final Type TYPE_TOKENLIST = new Type(Code.TOKENLIST, null, null);
   private static final Type TYPE_TIMESTAMP = new Type(Code.TIMESTAMP, null, null);
   private static final Type TYPE_DATE = new Type(Code.DATE, null, null);
   private static final Type TYPE_ARRAY_BOOL = new Type(Code.ARRAY, TYPE_BOOL, null);
   private static final Type TYPE_ARRAY_INT64 = new Type(Code.ARRAY, TYPE_INT64, null);
+  private static final Type TYPE_ARRAY_FLOAT32 = new Type(Code.ARRAY, TYPE_FLOAT32, null);
   private static final Type TYPE_ARRAY_FLOAT64 = new Type(Code.ARRAY, TYPE_FLOAT64, null);
   private static final Type TYPE_ARRAY_NUMERIC = new Type(Code.ARRAY, TYPE_NUMERIC, null);
   private static final Type TYPE_ARRAY_STRING = new Type(Code.ARRAY, TYPE_STRING, null);
@@ -57,6 +60,7 @@ public final class Type implements Serializable {
 
   private static final Type TYPE_PG_BOOL = new Type(Code.PG_BOOL, null, null);
   private static final Type TYPE_PG_INT8 = new Type(Code.PG_INT8, null, null);
+  private static final Type TYPE_PG_FLOAT4 = new Type(Code.PG_FLOAT4, null, null);
   private static final Type TYPE_PG_FLOAT8 = new Type(Code.PG_FLOAT8, null, null);
   private static final Type TYPE_PG_VARCHAR = new Type(Code.PG_VARCHAR, null, null);
   private static final Type TYPE_PG_TEXT = new Type(Code.PG_TEXT, null, null);
@@ -69,6 +73,7 @@ public final class Type implements Serializable {
       new Type(Code.PG_SPANNER_COMMIT_TIMESTAMP, null, null);
   private static final Type TYPE_PG_ARRAY_BOOL = new Type(Code.PG_ARRAY, TYPE_PG_BOOL, null);
   private static final Type TYPE_PG_ARRAY_INT8 = new Type(Code.PG_ARRAY, TYPE_PG_INT8, null);
+  private static final Type TYPE_PG_ARRAY_FLOAT4 = new Type(Code.PG_ARRAY, TYPE_PG_FLOAT4, null);
   private static final Type TYPE_PG_ARRAY_FLOAT8 = new Type(Code.PG_ARRAY, TYPE_PG_FLOAT8, null);
   private static final Type TYPE_PG_ARRAY_VARCHAR = new Type(Code.PG_ARRAY, TYPE_PG_VARCHAR, null);
   private static final Type TYPE_PG_ARRAY_TEXT = new Type(Code.PG_ARRAY, TYPE_PG_TEXT, null);
@@ -93,6 +98,14 @@ public final class Type implements Serializable {
    */
   public static Type int64() {
     return TYPE_INT64;
+  }
+
+  /**
+   * Returns the descriptor for the {@code FLOAT32} type: a floating point type with the same value
+   * domain as a Java {code float}.
+   */
+  public static Type float32() {
+    return TYPE_FLOAT32;
   }
 
   /**
@@ -126,6 +139,13 @@ public final class Type implements Serializable {
   }
 
   /**
+   * Returns the descriptor for the {@code TOKENLIST} type: a collection of unique token strings.
+   */
+  public static Type tokenlist() {
+    return TYPE_TOKENLIST;
+  }
+
+  /**
    * Returns the descriptor for the {@code TIMESTAMP} type: a nano precision timestamp in the range
    * [0000-01-01 00:00:00, 9999-12-31 23:59:59.999999999 UTC].
    */
@@ -147,6 +167,10 @@ public final class Type implements Serializable {
 
   public static Type pgInt8() {
     return TYPE_PG_INT8;
+  }
+
+  public static Type pgFloat4() {
+    return TYPE_PG_FLOAT4;
   }
 
   public static Type pgFloat8() {
@@ -193,6 +217,8 @@ public final class Type implements Serializable {
         return TYPE_ARRAY_BOOL;
       case INT64:
         return TYPE_ARRAY_INT64;
+      case FLOAT32:
+        return TYPE_ARRAY_FLOAT32;
       case FLOAT64:
         return TYPE_ARRAY_FLOAT64;
       case NUMERIC:
@@ -220,6 +246,8 @@ public final class Type implements Serializable {
         return TYPE_PG_ARRAY_BOOL;
       case PG_INT8:
         return TYPE_PG_ARRAY_INT8;
+      case PG_FLOAT4:
+        return TYPE_PG_ARRAY_FLOAT4;
       case PG_FLOAT8:
         return TYPE_PG_ARRAY_FLOAT8;
       case PG_NUMERIC:
@@ -257,9 +285,20 @@ public final class Type implements Serializable {
     return new Type(Code.STRUCT, null, ImmutableList.copyOf(fields));
   }
 
+  /** Returns a descriptor for a {@code PROTO} type. */
+  public static Type proto(String protoTypeFqn) {
+    return new Type(Code.PROTO, null, null, protoTypeFqn);
+  }
+
+  /** Returns a descriptor for a {@code PROTO} type. */
+  public static Type protoEnum(String enumTypeFqn) {
+    return new Type(Code.ENUM, null, null, enumTypeFqn);
+  }
+
   private final Code code;
   private final Type arrayElementType;
   private final ImmutableList<StructField> structFields;
+  private final String protoTypeFqn;
 
   /**
    * Map of field name to field index. Ambiguous names are indexed to {@link #AMBIGUOUS_FIELD}. The
@@ -270,10 +309,19 @@ public final class Type implements Serializable {
   private Type(
       Code code,
       @Nullable Type arrayElementType,
-      @Nullable ImmutableList<StructField> structFields) {
+      @Nullable ImmutableList<StructField> structFields,
+      @Nullable String protoTypeFqn) {
     this.code = code;
     this.arrayElementType = arrayElementType;
     this.structFields = structFields;
+    this.protoTypeFqn = protoTypeFqn;
+  }
+
+  private Type(
+      Code code,
+      @Nullable Type arrayElementType,
+      @Nullable ImmutableList<StructField> structFields) {
+    this(code, arrayElementType, structFields, null);
   }
 
   /** Enumerates the categories of types. */
@@ -281,16 +329,21 @@ public final class Type implements Serializable {
     BOOL("BOOL", Dialect.GOOGLE_STANDARD_SQL),
     INT64("INT64", Dialect.GOOGLE_STANDARD_SQL),
     NUMERIC("NUMERIC", Dialect.GOOGLE_STANDARD_SQL),
+    FLOAT32("FLOAT32", Dialect.GOOGLE_STANDARD_SQL),
     FLOAT64("FLOAT64", Dialect.GOOGLE_STANDARD_SQL),
     STRING("STRING", Dialect.GOOGLE_STANDARD_SQL),
     JSON("JSON", Dialect.GOOGLE_STANDARD_SQL),
     BYTES("BYTES", Dialect.GOOGLE_STANDARD_SQL),
+    TOKENLIST("TOKENLIST", Dialect.GOOGLE_STANDARD_SQL),
     TIMESTAMP("TIMESTAMP", Dialect.GOOGLE_STANDARD_SQL),
     DATE("DATE", Dialect.GOOGLE_STANDARD_SQL),
     ARRAY("ARRAY", Dialect.GOOGLE_STANDARD_SQL),
     STRUCT("STRUCT", Dialect.GOOGLE_STANDARD_SQL),
+    PROTO("PROTO", Dialect.GOOGLE_STANDARD_SQL),
+    ENUM("ENUM", Dialect.GOOGLE_STANDARD_SQL),
     PG_BOOL("boolean", Dialect.POSTGRESQL),
     PG_INT8("bigint", Dialect.POSTGRESQL),
+    PG_FLOAT4("real", Dialect.POSTGRESQL),
     PG_FLOAT8("double precision", Dialect.POSTGRESQL),
     PG_TEXT("text", Dialect.POSTGRESQL),
     PG_VARCHAR("character varying", Dialect.POSTGRESQL),
@@ -388,6 +441,12 @@ public final class Type implements Serializable {
     return structFields;
   }
 
+  public String getProtoTypeFqn() {
+    Preconditions.checkState(
+        code == Code.PROTO || code == Code.ENUM, "Illegal call for non-PROTO/ENUM type");
+    return protoTypeFqn;
+  }
+
   /**
    * Returns the index of the field named {@code fieldName} in this {@code STRUCT} type.
    *
@@ -444,6 +503,14 @@ public final class Type implements Serializable {
         f.getType().toString(b);
       }
       b.append('>');
+    } else if (code == Code.PROTO) {
+      b.append("PROTO<");
+      b.append(protoTypeFqn);
+      b.append(">");
+    } else if (code == Code.ENUM) {
+      b.append("ENUM<");
+      b.append(protoTypeFqn);
+      b.append(">");
     } else {
       b.append(code.toString());
     }

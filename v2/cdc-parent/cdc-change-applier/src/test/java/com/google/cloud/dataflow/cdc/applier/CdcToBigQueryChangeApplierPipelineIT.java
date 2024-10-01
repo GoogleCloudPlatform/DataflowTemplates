@@ -223,9 +223,13 @@ public class CdcToBigQueryChangeApplierPipelineIT extends JDBCBaseIT {
         LOG.info("Debezium process status: {}", embeddedConnector.isAlive());
 
         if (!embeddedConnector.isAlive()) {
-          throw new IllegalStateException("Debezium hasn't started");
+          TimeUnit.SECONDS.sleep(5);
+        } else {
+          break;
         }
-        TimeUnit.SECONDS.sleep(5);
+      }
+      if (!embeddedConnector.isAlive()) {
+        throw new IllegalStateException("Debezium hasn't started");
       }
       LOG.info("Debezium connector successfully started!");
 

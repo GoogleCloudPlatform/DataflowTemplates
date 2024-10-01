@@ -3,6 +3,9 @@
 **/dependency-reduced-pom.xml
 **/target/**/*
 
+# Python requirements build files
+**/__build__/**/*
+
 # IntelliJ files
 **/.idea/**/*
 **/*.iml
@@ -16,3 +19,9 @@
 
 # vscode setting files
 .vscode/
+
+# Terraform files
+**/*.tfvars
+**/*.tfstate
+**/*.tfstate.backup
+**/.terraform*

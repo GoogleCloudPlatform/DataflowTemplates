@@ -31,14 +31,16 @@ public class MongoDbToBigQueryOptions {
   public interface MongoDbOptions extends PipelineOptions, DataflowPipelineOptions {
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         description = "MongoDB Connection URI",
-        helpText = "MongoDB connection URI in the format `mongodb+srv://:@`.")
+        helpText = "The MongoDB connection URI in the format `mongodb+srv://:@.`")
     String getMongoDbUri();
 
     void setMongoDbUri(String getMongoDbUri);
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         description = "MongoDB database",
         helpText = "Database in MongoDB to read the collection from.",
         example = "my-db")
@@ -48,6 +50,7 @@ public class MongoDbToBigQueryOptions {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         description = "MongoDB collection",
         helpText = "Name of the collection inside MongoDB database.",
         example = "my-collection")
@@ -60,7 +63,7 @@ public class MongoDbToBigQueryOptions {
         enumOptions = {@TemplateEnumOption("FLATTEN"), @TemplateEnumOption("NONE")},
         description = "User option",
         helpText =
-            "User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the documents to the single level. `NONE` stores the whole document as a JSON string.")
+            "`FLATTEN`, `JSON`, or `NONE`. `FLATTEN` flattens the documents to the single level. `JSON` stores document in BigQuery JSON format. `NONE` stores the whole document as a JSON-formatted STRING.")
     @Default.String("NONE")
     String getUserOption();
 
@@ -78,17 +81,27 @@ public class MongoDbToBigQueryOptions {
     String getKMSEncryptionKey();
 
     void setKMSEncryptionKey(String keyName);
+
+    @TemplateParameter.Text(
+        order = 6,
+        groupName = "Source",
+        description = "Bson filter",
+        optional = true,
+        helpText = "Bson filter in json format.",
+        example = "{ \"val\": { $gt: 0, $lt: 9 }}")
+    String getFilter();
+
+    void setFilter(String jsonFilter);
   }
 
   /** Options for reading from PubSub. */
   public interface PubSubOptions extends PipelineOptions, DataflowPipelineOptions {
     @TemplateParameter.PubsubTopic(
         order = 1,
+        groupName = "Source",
         description = "Pub/Sub input topic",
         helpText =
-            "Pub/Sub topic to read the input from, in the format of "
-                + "'projects/your-project-id/topics/your-topic-name'",
-        example = "projects/your-project-id/topics/your-topic-name")
+            "The Pub/Sub input topic to read from, in the format of projects/<PROJECT_ID>/topics/<TOPIC_NAME>.")
     String getInputTopic();
 
     void setInputTopic(String inputTopic);
@@ -99,22 +112,33 @@ public class MongoDbToBigQueryOptions {
 
     @TemplateParameter.BigQueryTable(
         order = 1,
+        groupName = "Target",
         description = "BigQuery output table",
         helpText =
-            "BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
+            "The BigQuery table to write to. For example, `bigquery-project:dataset.output_table`.")
     String getOutputTableSpec();
 
     void setOutputTableSpec(String outputTableSpec);
+
+    @TemplateParameter.GcsReadFile(
+        order = 2,
+        optional = true,
+        description = "Cloud Storage path to BigQuery JSON schema",
+        helpText = "The Cloud Storage path for the BigQuery JSON schema.",
+        example = "gs://your-bucket/your-schema.json")
+    String getBigQuerySchemaPath();
+
+    void setBigQuerySchemaPath(String path);
   }
 
   /** UDF options. */
   public interface JavascriptDocumentTransformerOptions extends PipelineOptions {
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.JavascriptUdfFile(
         order = 1,
         optional = true,
         description = "JavaScript UDF path in Cloud Storage.",
         helpText =
-            "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.",
+            "The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) to use.",
         example = "gs://your-bucket/your-transforms/*.js")
     String getJavascriptDocumentTransformGcsPath();
 
@@ -125,7 +149,7 @@ public class MongoDbToBigQueryOptions {
         optional = true,
         description = "The name of the JavaScript function to call as your UDF.",
         helpText =
-            "The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'.",
+            "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is myTransform. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).",
         example = "transform")
     String getJavascriptDocumentTransformFunctionName();
 

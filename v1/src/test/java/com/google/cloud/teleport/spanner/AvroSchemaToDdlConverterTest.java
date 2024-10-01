@@ -123,18 +123,63 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"string\"]}]"
             + "  }, {"
             // Omitting sqlType
+            + "    \"name\" : \"proto\","
+            + "    \"type\" : [ \"null\", \"bytes\" ],"
+            + "    \"sqlType\" : "
+            + "\"PROTO<com.google.cloud.teleport.spanner.tests.TestMessage>\""
+            + "  }, {"
+            + "    \"name\" : \"notProto\","
+            + "    \"type\" : [ \"null\", \"bytes\" ]" // Omitting sqlType
+            + "  }, {"
+            + "    \"name\":\"protoArr\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"bytes\"]}],"
+            + "    \"sqlType\":"
+            + "\"ARRAY<PROTO<com.google.cloud.teleport.spanner.tests.TestMessage>>\""
+            + "  }, {"
+            + "    \"name\":\"notProtoArr\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"bytes\"]}]"
+            + "  }, {"
+            // Omitting sqlType
+            + "    \"name\" : \"enum\","
+            + "    \"type\" : [ \"null\", \"long\" ],"
+            + "    \"sqlType\" : \"ENUM<com.google.cloud.teleport.spanner.tests.TestEnum>\""
+            + "  }, {"
+            + "    \"name\" : \"notEnum\","
+            + "    \"type\" : [ \"null\", \"long\" ]" // Omitting sqlType
+            + "  }, {"
+            + "    \"name\":\"enumArr\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"long\"]}],"
+            + "    \"sqlType\":"
+            + "\"ARRAY<ENUM<com.google.cloud.teleport.spanner.tests.TestEnum>>\""
+            + "  }, {"
+            + "    \"name\":\"notEnumArr\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"long\"]}]"
+            + "  }, {"
+            // Omitting sqlType
             + "    \"name\" : \"boolean\","
             + "    \"type\" : [ \"null\", \"boolean\" ]"
             + "  }, {"
             + "    \"name\" : \"integer\","
             + "    \"type\" : [ \"null\", \"long\" ]"
             + "  }, {"
-            + "    \"name\" : \"float\","
+            + "    \"name\" : \"float32\","
+            + "    \"type\" : [ \"null\", \"float\" ]"
+            + "  }, {"
+            + "    \"name\" : \"float64\","
             + "    \"type\" : [ \"null\", \"double\" ]"
             + "  }, {"
             + "    \"name\" : \"timestamp\","
             + "    \"type\" : [ \"null\", {\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]"
-            + "  }],"
+            + "  }, {"
+            + "    \"name\" : \"MyTokens\","
+            + "    \"type\" : \"null\","
+            + "    \"default\" : null,"
+            + "    \"sqlType\" : \"TOKENLIST\","
+            + "    \"hidden\" : \"true\","
+            + "    \"notNull\" : \"false\","
+            + "    \"generationExpression\" : \"(TOKENIZE_FULLTEXT(MyData))\","
+            + "    \"stored\" : \"false\""
+            + " }],"
             + "  \"googleStorage\" : \"CloudSpanner\","
             + "  \"spannerParent\" : \"\","
             + "  \"googleFormatVersion\" : \"booleans\","
@@ -178,10 +223,20 @@ public class AvroSchemaToDdlConverterTest {
                 + " `notJson`         STRING(MAX),"
                 + " `jsonArr`         ARRAY<JSON>,"
                 + " `notJsonArr`      ARRAY<STRING(MAX)>,"
+                + " `proto`           `com.google.cloud.teleport.spanner.tests.TestMessage`,"
+                + " `notProto`        BYTES(MAX),"
+                + " `protoArr`        ARRAY<`com.google.cloud.teleport.spanner.tests.TestMessage`>,"
+                + " `notProtoArr`     ARRAY<BYTES(MAX)>,"
+                + " `enum`            `com.google.cloud.teleport.spanner.tests.TestEnum`,"
+                + " `notEnum`         INT64,"
+                + " `enumArr`         ARRAY<`com.google.cloud.teleport.spanner.tests.TestEnum`>,"
+                + " `notEnumArr`      ARRAY<INT64>,"
                 + " `boolean`         BOOL,"
                 + " `integer`         INT64,"
-                + " `float`           FLOAT64,"
+                + " `float32`         FLOAT32,"
+                + " `float64`         FLOAT64,"
                 + " `timestamp`       TIMESTAMP,"
+                + " `MyTokens`                              TOKENLIST AS ((TOKENIZE_FULLTEXT(MyData))) HIDDEN,"
                 + " CONSTRAINT `ck` CHECK(`first_name` != 'last_name'),"
                 + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC, `last_name` DESC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
@@ -256,7 +311,11 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"type\" : [ \"null\", \"boolean\" ],"
             + "    \"sqlType\" : \"boolean\""
             + "  }, {"
-            + "    \"name\" : \"float\","
+            + "    \"name\" : \"float32\","
+            + "    \"type\" : [ \"null\", \"float\" ],"
+            + "    \"sqlType\" : \"real\""
+            + "  }, {"
+            + "    \"name\" : \"float64\","
             + "    \"type\" : [ \"null\", \"double\" ],"
             + "    \"sqlType\" : \"double precision\""
             + "  }, {"
@@ -296,7 +355,10 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"name\" : \"integer1\","
             + "    \"type\" : [ \"null\", \"long\" ]"
             + "  }, {"
-            + "    \"name\" : \"float1\","
+            + "    \"name\" : \"float321\","
+            + "    \"type\" : [ \"null\", \"float\" ]"
+            + "  }, {"
+            + "    \"name\" : \"float641\","
             + "    \"type\" : [ \"null\", \"double\" ]"
             + "  }, {"
             + "    \"name\" : \"timestamp1\","
@@ -339,7 +401,8 @@ public class AvroSchemaToDdlConverterTest {
                 + " \"numericArr\"         numeric[],"
                 + " \"notNumericArr\"      bytea[],"
                 + " \"bool\" boolean,"
-                + " \"float\" double precision,"
+                + " \"float32\" real,"
+                + " \"float64\" double precision,"
                 + " \"bytes\" bytea,"
                 + " \"text\" text,"
                 + " \"timestamptz\" timestamp with time zone,"
@@ -349,7 +412,8 @@ public class AvroSchemaToDdlConverterTest {
                 + " \"varcharArr2\"     character varying[],"
                 + " \"boolean\"         boolean,"
                 + " \"integer1\"        bigint,"
-                + " \"float1\"          double precision,"
+                + " \"float321\"        real,"
+                + " \"float641\"        double precision,"
                 + " \"timestamp1\"      timestamp with time zone,"
                 + " CONSTRAINT \"ck\" CHECK(\"first_name\" != \"last_name\"),"
                 + " PRIMARY KEY (\"id\", \"gen_id\", \"last_name\")"
@@ -869,7 +933,7 @@ public class AvroSchemaToDdlConverterTest {
     assertEquals(
         Type.int64(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.LONG), false));
     assertEquals(
-        Type.float64(),
+        Type.float32(),
         avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.FLOAT), false));
     assertEquals(
         Type.float64(),
@@ -897,7 +961,7 @@ public class AvroSchemaToDdlConverterTest {
     assertEquals(
         Type.pgInt8(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.LONG), false));
     assertEquals(
-        Type.pgFloat8(),
+        Type.pgFloat4(),
         avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.FLOAT), false));
     assertEquals(
         Type.pgFloat8(),
@@ -915,5 +979,167 @@ public class AvroSchemaToDdlConverterTest {
     timestampSchema = Schema.create(Schema.Type.LONG);
     timestampSchema.addProp("logicalType", "timestamp-micros");
     assertEquals(Type.pgTimestamptz(), avroSchemaToDdlConverter.inferType(timestampSchema, false));
+  }
+
+  @Test
+  public void placements() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Placement1\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerEntity\":\"Placement\", "
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerOption_0\" : \"instance_partition='mr-partition'\","
+            + "  \"spannerOption_1\" : \"default_leader='us-east1'\""
+            + "}";
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(avroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.placements(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE PLACEMENT `Placement1`\n\t"
+                + " OPTIONS (instance_partition='mr-partition', default_leader='us-east1')"));
+  }
+
+  @Test
+  public void placementTable() {
+    String placementKeyAsPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"PlacementKeyAsPrimaryKey\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"val\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`location` ASC\""
+            + "}";
+
+    String placementKeyAsNonPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"UsersWithPlacement\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"INT64\""
+            + "  }, {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`id` ASC\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(placementKeyAsPrimaryKeyAvroString));
+    schemas.add(parser.parse(placementKeyAsNonPrimaryKeyAvroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.allTables(), hasSize(2));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `PlacementKeyAsPrimaryKey` (\n\t"
+                + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n\t"
+                + "`val`                                   STRING(MAX) NOT NULL,\n"
+                + ") PRIMARY KEY (`location` ASC)\n\n\n"
+                + "CREATE TABLE `UsersWithPlacement` (\n\t"
+                + "`id`                                    INT64 NOT NULL,\n\t"
+                + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n"
+                + ") PRIMARY KEY (`id` ASC)\n\n"));
+  }
+
+  @Test
+  public void pgPlacementTable() {
+    String placementKeyAsPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"PlacementKeyAsPrimaryKey\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"val\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"location ASC\""
+            + "}";
+
+    String placementKeyAsNonPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"UsersWithPlacement\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"bigint\""
+            + "  }, {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"id ASC\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(placementKeyAsPrimaryKeyAvroString));
+    schemas.add(parser.parse(placementKeyAsNonPrimaryKeyAvroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.allTables(), hasSize(2));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"PlacementKeyAsPrimaryKey\" (\n\t"
+                + "\"location\"                              character varying NOT NULL PLACEMENT KEY,\n\t"
+                + "\"val\"                                   character varying NOT NULL,\n\t"
+                + "PRIMARY KEY (\"location\")\n)\n\n\n"
+                + "CREATE TABLE \"UsersWithPlacement\" (\n\t"
+                + "\"id\"                                    bigint NOT NULL,\n\t"
+                + "\"location\"                              character varying NOT NULL PLACEMENT KEY,\n\t"
+                + "PRIMARY KEY (\"id\")\n)\n\n"));
   }
 }

@@ -108,7 +108,8 @@ import org.slf4j.LoggerFactory;
       "The Datadog URL must be accessible from the network of the Dataflow workers.",
       "The Datadog API key must be generated and available."
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class PubSubToDatadog {
 
   /** String/String Coder for FailsafeElement. */
@@ -140,7 +141,7 @@ public class PubSubToDatadog {
   /** Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(PubSubToDatadog.class);
 
-  private static final Boolean DEFAULT_INCLUDE_PUBSUB_MESSAGE = false;
+  private static final Boolean DEFAULT_INCLUDE_PUBSUB_MESSAGE = true;
 
   @VisibleForTesting protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
   @VisibleForTesting protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";

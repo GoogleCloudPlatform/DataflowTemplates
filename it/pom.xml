@@ -32,7 +32,7 @@
     <commons-math3.version>3.6.1</commons-math3.version>
     <failsafe.version>3.3.0</failsafe.version>
     <testcontainers.version>1.18.3</testcontainers.version>
-    <dataflow-api.version>v1b3-rev20220920-2.0.0</dataflow-api.version>
+    <dataflow-api.version>v1b3-rev20240624-2.0.0</dataflow-api.version>
   </properties>
 
   <dependencies>
@@ -124,6 +124,18 @@
           <!-- <compilerArgument>-parameters</compilerArgument> -->
           <parameters>true</parameters>
           <testCompilerArgument>-parameters</testCompilerArgument>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>com.google.auto.value</groupId>
+              <artifactId>auto-value</artifactId>
+              <version>${autovalue.version}</version>
+            </path>
+            <path>
+              <groupId>com.google.auto.service</groupId>
+              <artifactId>auto-service</artifactId>
+              <version>${autovalue.service.version}</version>
+            </path>
+          </annotationProcessorPaths>
         </configuration>
       </plugin>
       <plugin>
@@ -188,5 +200,6 @@
     <module>datadog</module>
     <module>conditions</module>
     <module>jdbc</module>
+    <module>splunk</module>
   </modules>
 </project>

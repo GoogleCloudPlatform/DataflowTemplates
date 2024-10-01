@@ -18,7 +18,7 @@ import json
 import sys
 
 def transform(event):
-  """ Return a Dict or List of Dict Objects.  Return None to discard """
+  """ Return a Dict or List of Dict Objects. Return None to discard """
   # Ensure Table Dest Exists
 
   return clean_transformed_event(event)

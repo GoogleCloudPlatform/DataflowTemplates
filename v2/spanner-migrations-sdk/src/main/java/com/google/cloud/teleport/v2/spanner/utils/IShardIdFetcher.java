@@ -17,5 +17,8 @@ package com.google.cloud.teleport.v2.spanner.utils;
 
 /** The interface to get the shard identifier. */
 public interface IShardIdFetcher {
+
+  void init(String parameters);
+
   ShardIdResponse getShardId(ShardIdRequest shardIdRequest);
 }

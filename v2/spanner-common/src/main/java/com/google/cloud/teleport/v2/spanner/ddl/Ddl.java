@@ -29,11 +29,13 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
 /** Allows to build and introspect Cloud Spanner DDL with Java code. */
@@ -79,6 +81,57 @@ public class Ddl implements Serializable {
             return table(input);
           }
         });
+  }
+
+  /**
+   * Return list of all the tables that this table refers to or depends on. This method only
+   * provides the immediate references, not the whole tree.
+   *
+   * @param tableName
+   * @return
+   */
+  public List<String> tablesReferenced(String tableName) {
+    Set<String> tablesReferenced = new HashSet<>();
+    Table table = tables.get(tableName.toLowerCase());
+    if (table.interleaveInParent() != null) {
+      tablesReferenced.add(table.interleaveInParent());
+    }
+    Set<String> fkReferencedTables =
+        table.foreignKeys().stream().map(f -> f.referencedTable()).collect(Collectors.toSet());
+    tablesReferenced.addAll(fkReferencedTables);
+    return new ArrayList<>(tablesReferenced);
+  }
+
+  private void getTablesOrderedByReferenceUtil(
+      Set<String> visited,
+      Set<String> processingTables,
+      String tableName,
+      List<String> orderedTables) {
+    if (visited.contains(tableName.toLowerCase())) {
+      return;
+    }
+    if (processingTables.contains(tableName.toLowerCase())) {
+      throw new IllegalStateException(
+          "Cyclic dependency detected! Involved tables: " + processingTables);
+    }
+
+    processingTables.add(tableName.toLowerCase());
+    for (String parent : tablesReferenced(tableName)) {
+      getTablesOrderedByReferenceUtil(visited, processingTables, parent, orderedTables);
+    }
+    orderedTables.add(tableName);
+    visited.add(tableName.toLowerCase());
+    processingTables.remove(tableName.toLowerCase());
+  }
+
+  public List<String> getTablesOrderedByReference() {
+    List<String> orderedTables = new ArrayList<>();
+    Set<String> visited = new HashSet<>();
+    Set<String> processingTables = new HashSet<>();
+    for (Table table : allTables()) {
+      getTablesOrderedByReferenceUtil(visited, processingTables, table.name(), orderedTables);
+    }
+    return orderedTables;
   }
 
   private NavigableSet<String> childTableNames(String table) {
@@ -166,7 +219,8 @@ public class Ddl implements Serializable {
   public List<String> addForeignKeyStatements() {
     List<String> result = new ArrayList<>();
     for (Table table : allTables()) {
-      result.addAll(table.foreignKeys());
+      result.addAll(
+          table.foreignKeys().stream().map(f -> f.prettyPrint()).collect(Collectors.toList()));
     }
     return result;
   }
@@ -219,8 +273,12 @@ public class Ddl implements Serializable {
       this.dialect = dialect;
     }
 
+    public Table getTable(String name) {
+      return tables.get(name.toLowerCase());
+    }
+
     public Table.Builder createTable(String name) {
-      Table table = tables.get(name.toLowerCase());
+      Table table = getTable(name);
       if (table == null) {
         return Table.builder(dialect).name(name).ddlBuilder(this);
       }

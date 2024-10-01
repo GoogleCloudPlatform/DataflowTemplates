@@ -83,7 +83,8 @@ import org.slf4j.LoggerFactory;
     },
     flexContainerName = "bigtable-changestreams-to-gcs",
     contactInformation = "https://cloud.google.com/support",
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class BigtableChangeStreamsToGcs {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToGcs.class);

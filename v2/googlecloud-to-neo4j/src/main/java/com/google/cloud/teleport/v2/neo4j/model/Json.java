@@ -20,8 +20,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.networknt.schema.CustomErrorMessageType;
+import com.networknt.schema.JsonNodePath;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.PathType;
 import com.networknt.schema.SpecVersion.VersionFlag;
 import com.networknt.schema.ValidationMessage;
 import java.text.MessageFormat;
@@ -50,15 +52,17 @@ public class Json {
     try {
       return ParsingResult.success(MAPPER.readTree(json));
     } catch (JsonProcessingException e) {
+      var messageType = CustomErrorMessageType.of("dataflow.invalidJSON");
+      var parentPath = new JsonNodePath(PathType.DEFAULT);
       return ParsingResult.failure(
           List.of(
-              ValidationMessage.of(
-                  "invalidJson",
-                  CustomErrorMessageType.of("dataflow.invalidJSON"),
-                  new MessageFormat("The provided string is not valid JSON: {1}"),
-                  "$",
-                  "$",
-                  json)));
+              ValidationMessage.builder()
+                  .type("invalidJson")
+                  .code(messageType.getErrorCode())
+                  .instanceLocation(parentPath)
+                  .format(new MessageFormat("The provided string is not valid JSON: {1}"))
+                  .arguments(json)
+                  .build()));
     }
   }
 

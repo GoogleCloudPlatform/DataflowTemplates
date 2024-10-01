@@ -34,7 +34,11 @@
    </properties>
 
   <dependencies>
-
+    <dependency>
+      <groupId>com.google.cloud.teleport.metadata</groupId>
+      <artifactId>metadata</artifactId>
+      <version>${project.version}</version>
+    </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
       <artifactId>common</artifactId>
@@ -45,7 +49,23 @@
       <artifactId>jdbc-common</artifactId>
       <version>${project.version}</version>
     </dependency>
-
+    <!-- Kafka -->
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-kafka</artifactId>
+      <version>${beam.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${kafka-clients.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.xerial.snappy</groupId>
+          <artifactId>snappy-java</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <!-- Json -->
     <dependency>
       <groupId>com.github.vincentrussell</groupId>
@@ -65,6 +85,11 @@
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <version>${postgresql.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>${mysql-connector-java.version}</version>
     </dependency>
 
     <!-- json-data-generator dependency javafaker depends on snakeyaml  -->
@@ -90,6 +115,11 @@
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-it-jdbc</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-kafka</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

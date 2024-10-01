@@ -15,11 +15,12 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.Source;
-import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
+import org.neo4j.importer.v1.targets.NodeTarget;
+import org.neo4j.importer.v1.targets.RelationshipTarget;
+import org.neo4j.importer.v1.targets.Target;
 
 /**
  * Convenience object for passing Source metadata, Target metadata, PCollection schema, and nullable
@@ -27,21 +28,23 @@ import org.apache.beam.sdk.values.Row;
  */
 public class TargetQuerySpec {
 
-  private final Source source;
   private final Schema sourceBeamSchema;
   private final PCollection<Row> nullableSourceRows;
   private final Target target;
+  private final NodeTarget startNodeTarget;
+  private final NodeTarget endNodeTarget;
 
-  public TargetQuerySpec(
-      Source source, Schema sourceBeamSchema, PCollection<Row> nullableSourceRows, Target target) {
-    this.source = source;
+  private TargetQuerySpec(
+      Schema sourceBeamSchema,
+      PCollection<Row> nullableSourceRows,
+      Target target,
+      NodeTarget startNodeTarget,
+      NodeTarget endNodeTarget) {
     this.sourceBeamSchema = sourceBeamSchema;
     this.nullableSourceRows = nullableSourceRows;
     this.target = target;
-  }
-
-  public Source getSource() {
-    return source;
+    this.startNodeTarget = startNodeTarget;
+    this.endNodeTarget = endNodeTarget;
   }
 
   public Schema getSourceBeamSchema() {
@@ -56,17 +59,22 @@ public class TargetQuerySpec {
     return target;
   }
 
+  public NodeTarget getStartNodeTarget() {
+    return startNodeTarget;
+  }
+
+  public NodeTarget getEndNodeTarget() {
+    return endNodeTarget;
+  }
+
   public static class TargetQuerySpecBuilder {
 
-    private Source source;
     private Schema sourceBeamSchema;
     private PCollection<Row> nullableSourceRows;
     private Target target;
 
-    public TargetQuerySpecBuilder source(Source source) {
-      this.source = source;
-      return this;
-    }
+    private NodeTarget startNodeTarget;
+    private NodeTarget endNodeTarget;
 
     public TargetQuerySpecBuilder sourceBeamSchema(Schema sourceBeamSchema) {
       this.sourceBeamSchema = sourceBeamSchema;
@@ -83,8 +91,80 @@ public class TargetQuerySpec {
       return this;
     }
 
+    public TargetQuerySpecBuilder startNodeTarget(NodeTarget target) {
+      this.startNodeTarget = target;
+      return this;
+    }
+
+    public TargetQuerySpecBuilder endNodeTarget(NodeTarget target) {
+      this.endNodeTarget = target;
+      return this;
+    }
+
+    public Target getTarget() {
+      return target;
+    }
+
     public TargetQuerySpec build() {
-      return new TargetQuerySpec(source, sourceBeamSchema, nullableSourceRows, target);
+      validate();
+      return new TargetQuerySpec(
+          sourceBeamSchema, nullableSourceRows, target, startNodeTarget, endNodeTarget);
+    }
+
+    private void validate() {
+      if (target == null) {
+        throw new IllegalStateException("Target must be specified");
+      }
+      var type = target.getTargetType();
+      switch (type) {
+        case RELATIONSHIP:
+          validateRelationshipTarget((RelationshipTarget) target);
+          break;
+        case NODE:
+        case QUERY:
+          if (startNodeTarget != null) {
+            throw new IllegalStateException(
+                String.format(
+                    "Only relationship targets can specify a start node target, this target is of type %s",
+                    type));
+          }
+          if (endNodeTarget != null) {
+            throw new IllegalStateException(
+                String.format(
+                    "Only relationship targets can specify an end node target, this target is of type %s",
+                    type));
+          }
+          break;
+        default:
+          throw new RuntimeException(String.format("Unsupported target type %s", type));
+      }
+    }
+
+    private void validateRelationshipTarget(RelationshipTarget relationshipTarget) {
+      if (startNodeTarget == null) {
+        throw new IllegalStateException(
+            "Relationship targets must specify a start node target, none found");
+      }
+      String expectedStartName = relationshipTarget.getStartNodeReference();
+      String actualStartName = startNodeTarget.getName();
+      if (!expectedStartName.equals(actualStartName)) {
+        throw new IllegalStateException(
+            String.format(
+                "Specified start node target name \"%s\" does not match expected name \"%s\"",
+                actualStartName, expectedStartName));
+      }
+      if (endNodeTarget == null) {
+        throw new IllegalStateException(
+            "Relationship targets must specify an end node target, none found");
+      }
+      String expectedEndName = relationshipTarget.getEndNodeReference();
+      String actualEndName = endNodeTarget.getName();
+      if (!expectedEndName.equals(actualEndName)) {
+        throw new IllegalStateException(
+            String.format(
+                "Specified end node target name \"%s\" does not match expected name \"%s\"",
+                actualEndName, expectedEndName));
+      }
     }
   }
 }
