@@ -618,6 +618,7 @@ public class InformationSchemaScannerIT {
         Arrays.asList(
             "CREATE TABLE `Base` ("
                 + " `K`                                     INT64,"
+                + " `V`                                     INT64,"
                 + " `Embeddings`                            ARRAY<FLOAT32>(vector_length=>128),"
                 + " ) PRIMARY KEY (`K` ASC)",
             " CREATE VECTOR INDEX `VI` ON `Base`(`Embeddings` ) WHERE Embeddings IS NOT NULL"
