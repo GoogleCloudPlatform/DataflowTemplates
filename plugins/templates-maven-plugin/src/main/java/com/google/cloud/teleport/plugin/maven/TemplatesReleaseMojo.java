@@ -110,6 +110,13 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
       required = false)
   protected String pythonVersion;
 
+  @Parameter(
+      defaultValue = "true",
+      property = "stageHelperImage",
+      readonly = true,
+      required = false)
+  protected boolean stageHelperImage;
+
   @Parameter(defaultValue = "${beamVersion}", readonly = true, required = false)
   protected String beamVersion;
 
@@ -182,7 +189,8 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                 javaTemplateLauncherEntryPoint,
                 pythonVersion,
                 beamVersion,
-                unifiedWorker);
+                unifiedWorker,
+                stageHelperImage);
 
         String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
         LOG.info("Template staged: {}", templatePath);
