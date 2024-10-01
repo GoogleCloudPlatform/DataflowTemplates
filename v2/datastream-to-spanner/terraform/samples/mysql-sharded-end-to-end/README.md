@@ -303,40 +303,6 @@ can exclude it from the state file using `terraform state rm` command.
 
 ## FAQ
 
-### Running end to end migration using live and bulk templates combined
-
-The recommendation for running a production end-to-end migration
-is using a combination of live and bulk Terraform templates.
-This optimizes for speed and cost-effectiveness, especially when dealing
-with large historical datasets. The live Terraform template can handle the
-entire migration process, including historical data. However, migrating
-large historical datasets solely with the live template can be slow and
-expensive.
-
-The steps to follow are:
-
-1. **Change Data Capture Infra setup**
-    - Begin by running the live Terraform template with the variables
-        - `skip_dataflow` = true (This disables the creation of the Dataflow job for CDC data)
-        - `enable_backfill` = false (This disables the backfill functionality within datastream)
-    - This step sets up the necessary infrastructure for the migration but skips the dataflow job creation.
-
-2. **Bulk Migration**
-    - Run the [Bulk Terraform template](../../../../sourcedb-to-spanner/terraform/samples/README.md). This template will
-      create Dataflow job(s) specifically designed for migrating
-      historical data.
-    - Monitor the Dataflow job until it completes. This step migrates the bulk of your historical data efficiently.
-
-3. **Live Migration (with Dataflow)**
-    - Once the bulk migration is complete, run the live Terraform template again, this time with the following
-      variables:
-        - `skip_dataflow` = false (This enables the creation of the Dataflow job for CDC data)
-        - `enable_backfill` = false (Keep backfill disabled as it was handled in the bulk migration)
-    - This step creates a Dataflow job that migrates the CDC data captured by Datastream.
-
-Once Spanner is up to speed with the source instance, turn off the source instance and wait for Spanner to fully
-catch up. Once caught up, cut over the application to use Spanner.
-
 ### Configuring to run using a VPC
 
 #### Specifying a shared VPC

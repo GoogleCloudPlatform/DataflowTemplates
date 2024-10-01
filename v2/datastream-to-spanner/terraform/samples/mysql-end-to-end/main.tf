@@ -19,20 +19,9 @@ resource "google_compute_firewall" "allow-datastream" {
     protocol = "tcp"
     ports    = ["3306"]
   }
-  source_ranges = [var.datastream_params.private_connectivity.range]
-  dynamic "target_tags" {
-    for_each = var.datastream_params.firewall_rule_target_tags != null ? [1] : []
-    content {
-      target_tags = var.datastream_params.firewall_rule_target_tags
-    }
-  }
-
-  dynamic "target_ranges" {
-    for_each = var.datastream_params.firewall_rule_target_ranges != null ? [1] : []
-    content {
-      target_ranges = var.datastream_params.firewall_rule_target_ranges
-    }
-  }
+  source_ranges      = [var.datastream_params.private_connectivity.range]
+  target_tags        = var.datastream_params.firewall_rule_target_tags != null ? var.datastream_params.firewall_rule_target_tags : []
+  destination_ranges = var.datastream_params.firewall_rule_target_ranges != null ? var.datastream_params.firewall_rule_target_ranges : []
 }
 
 # Create a private connectivity configuration if needed.
