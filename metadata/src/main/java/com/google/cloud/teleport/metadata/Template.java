@@ -107,7 +107,8 @@ public @interface Template {
     JAVA,
     PYTHON,
     YAML,
-    XLANG
+    XLANG,
+    NONE
   }
 
   /** Marker if the template is still in preview / pre-GA. */
