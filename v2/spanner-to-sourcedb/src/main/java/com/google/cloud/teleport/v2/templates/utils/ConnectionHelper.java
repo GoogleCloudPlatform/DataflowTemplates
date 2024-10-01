@@ -73,6 +73,10 @@ public class ConnectionHelper {
 
   public static Connection getConnection(String sourceConnectionUrl, String user, String password)
       throws java.sql.SQLException {
+    if (connectionPoolMap == null) {
+      LOG.warn("Connection pool not initialized");
+      return null;
+    }
     HikariDataSource ds = connectionPoolMap.get(sourceConnectionUrl + user + password);
     if (ds == null) {
       LOG.warn("Connection pool not found for source connection url: {}", sourceConnectionUrl);
@@ -80,5 +84,10 @@ public class ConnectionHelper {
     }
 
     return ds.getConnection();
+  }
+
+  // for unit testing
+  public static void setConnectionPoolMap(Map<String, HikariDataSource> inputMap) {
+    connectionPoolMap = inputMap;
   }
 }

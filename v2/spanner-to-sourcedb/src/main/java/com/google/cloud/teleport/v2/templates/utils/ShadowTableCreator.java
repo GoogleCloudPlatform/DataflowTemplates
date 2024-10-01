@@ -50,6 +50,11 @@ public class ShadowTableCreator {
   private Ddl informationSchemaOfPrimaryDb;
   private Ddl informationSchemaOfMetadataDb;
 
+  private enum DatabaseType {
+    PRIMARY,
+    METADATA
+  }
+
   public ShadowTableCreator(
       SpannerConfig spannerConfig,
       SpannerConfig metadataConfig,
@@ -62,24 +67,23 @@ public class ShadowTableCreator {
     this.spannerConfig = spannerConfig;
     this.metadataConfig = metadataConfig;
     this.shadowTablePrefix = shadowTablePrefix;
-    setinformationSchemaOfPrimaryDb();
-    setInformationSchemaOfMetadataDb();
+    setinformationSchema(DatabaseType.PRIMARY);
+    setinformationSchema(DatabaseType.METADATA);
   }
 
-  private void setinformationSchemaOfPrimaryDb() {
-    BatchClient batchClient = spannerAccessor.getBatchClient();
+  private void setinformationSchema(DatabaseType databaseType) {
+    BatchClient batchClient =
+        databaseType.equals(DatabaseType.PRIMARY)
+            ? spannerAccessor.getBatchClient()
+            : metadataSpannerAccessor.getBatchClient();
     BatchReadOnlyTransaction context =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
     InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
-    this.informationSchemaOfPrimaryDb = scanner.scan();
-  }
-
-  private void setInformationSchemaOfMetadataDb() {
-    BatchClient batchClient = metadataSpannerAccessor.getBatchClient();
-    BatchReadOnlyTransaction context =
-        batchClient.batchReadOnlyTransaction(TimestampBound.strong());
-    InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
-    this.informationSchemaOfMetadataDb = scanner.scan();
+    if (databaseType.equals(DatabaseType.PRIMARY)) {
+      this.informationSchemaOfPrimaryDb = scanner.scan();
+    } else {
+      this.informationSchemaOfMetadataDb = scanner.scan();
+    }
   }
 
   // for unit testing purposes
@@ -87,15 +91,17 @@ public class ShadowTableCreator {
       Dialect dialect,
       String shadowTablePrefix,
       Ddl informationSchemaOfPrimaryDb,
-      Ddl informationSchemaOfMetadataDb) {
+      Ddl informationSchemaOfMetadataDb,
+      SpannerAccessor metadataSpannerAccessor,
+      SpannerConfig metadataConfig) {
     this.dialect = dialect;
     this.shadowTablePrefix = shadowTablePrefix;
     this.informationSchemaOfPrimaryDb = informationSchemaOfPrimaryDb;
     this.informationSchemaOfMetadataDb = informationSchemaOfMetadataDb;
     this.spannerAccessor = null;
-    this.metadataSpannerAccessor = null;
+    this.metadataSpannerAccessor = metadataSpannerAccessor;
     this.spannerConfig = null;
-    this.metadataConfig = null;
+    this.metadataConfig = metadataConfig;
   }
 
   public void createShadowTablesInSpanner() {
