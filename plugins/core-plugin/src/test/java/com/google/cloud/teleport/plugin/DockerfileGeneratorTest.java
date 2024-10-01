@@ -52,7 +52,8 @@ public class DockerfileGeneratorTest {
     assertTrue(outputFile.exists());
     String fileContents = Files.toString(outputFile, StandardCharsets.UTF_8);
     assertThat(fileContents).contains("FROM " + BASE_PYTHON_CONTAINER_IMAGE);
-    assertThat(fileContents).contains("ARG BEAM_VERSION=beam_version");
+    assertThat(fileContents)
+        .contains("RUN pip install -U -r --require-hashes $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE");
     assertThat(fileContents)
         .contains(String.format("ENTRYPOINT [\"%s\"]", PYTHON_LAUNCHER_ENTRYPOINT));
   }
@@ -73,7 +74,8 @@ public class DockerfileGeneratorTest {
     assertTrue(outputFile.exists());
     String fileContents = Files.toString(outputFile, StandardCharsets.UTF_8);
     assertThat(fileContents).contains("FROM a python container image");
-    assertThat(fileContents).contains("ARG BEAM_VERSION=beam_version");
+    assertThat(fileContents)
+        .contains("RUN pip install -U -r --require-hashes $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE");
     assertThat(fileContents).contains("COPY main.py requirements.txt* /$WORKDIR/");
     assertThat(fileContents).contains("ENTRYPOINT [\"python/entry/point\"]");
   }
@@ -99,7 +101,8 @@ public class DockerfileGeneratorTest {
     String fileContents = Files.toString(outputFile, StandardCharsets.UTF_8);
     assertThat(fileContents).contains("FROM " + BASE_CONTAINER_IMAGE);
     assertThat(fileContents).contains("FROM " + BASE_PYTHON_CONTAINER_IMAGE);
-    assertThat(fileContents).contains("BEAM_VERSION=beam_version");
+    assertThat(fileContents)
+        .contains("pip install --no-cache-dir --require-hashes -U -r $REQUIREMENTS_FILE");
     assertThat(fileContents).contains("PY_VERSION=" + PYTHON_VERSION);
     assertThat(fileContents).contains("ENV DATAFLOW_JAVA_COMMAND_SPEC=");
     assertThat(fileContents)
