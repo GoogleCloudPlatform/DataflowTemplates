@@ -538,8 +538,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         // Copy in requirements.txt if present
         File sourceRequirements = new File(outputClassesDirectory.getPath() + "/requirements.txt");
         File destRequirements = new File(dockerfileContainer + "/requirements.txt");
-        if(sourceRequirements.exists()) {
-          Files.copy(sourceRequirements.toPath(), destRequirements.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        if (sourceRequirements.exists()) {
+          Files.copy(
+              sourceRequirements.toPath(),
+              destRequirements.toPath(),
+              StandardCopyOption.REPLACE_EXISTING);
         }
         Set<String> directoriesToCopy = Set.of(containerName);
         DockerfileGenerator.builder(
@@ -715,8 +718,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       // Copy in requirements.txt if present
       File sourceRequirements = new File(outputClassesDirectory.getPath() + "/requirements.txt");
       File destRequirements = new File(dockerfileContainer + "/requirements.txt");
-      if(sourceRequirements.exists()) {
-        Files.copy(sourceRequirements.toPath(), destRequirements.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      if (sourceRequirements.exists()) {
+        Files.copy(
+            sourceRequirements.toPath(),
+            destRequirements.toPath(),
+            StandardCopyOption.REPLACE_EXISTING);
       }
       Map<String, Set<String>> filesToCopy = Map.of("main.py", Set.of("requirements.txt*"));
       DockerfileGenerator.builder(
