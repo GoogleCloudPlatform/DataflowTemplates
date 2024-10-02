@@ -60,7 +60,11 @@ public class MongoDbToBigQueryOptions {
 
     @TemplateParameter.Enum(
         order = 4,
-        enumOptions = {@TemplateEnumOption("FLATTEN"), @TemplateEnumOption("JSON"), @TemplateEnumOption("NONE")},
+        enumOptions = {
+          @TemplateEnumOption("FLATTEN"),
+          @TemplateEnumOption("JSON"),
+          @TemplateEnumOption("NONE")
+        },
         description = "User option",
         helpText =
             "`FLATTEN`, `JSON`, or `NONE`. `FLATTEN` flattens the documents to the single level. `JSON` stores document in BigQuery JSON format. `NONE` stores the whole document as a JSON-formatted STRING.")
