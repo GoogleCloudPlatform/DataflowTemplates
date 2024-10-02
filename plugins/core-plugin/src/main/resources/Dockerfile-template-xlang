@@ -17,7 +17,7 @@ ${directoriesToCopy}
 WORKDIR $WORKDIR
 
 # Throw if requirements.txt file not provided
-RUN if ! [ -f requirements.txt ] ; >&2 echo "error: no requirements.txt file found" && exit 1 ; fi
+RUN if ! [ -f requirements.txt ] ; then >&2 echo "error: no requirements.txt file found" && exit 1 ; fi
 
 # Install dependencies to launch the pipeline and download to reduce startup time
 RUN python -m venv /venv \

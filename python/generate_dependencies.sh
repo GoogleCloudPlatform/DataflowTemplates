@@ -15,13 +15,13 @@
 BASE_REQUIREMENTS_PATH=$1
 TARGET_REQUIREMENTS_PATH=$2
 
-if ! python3 --version > /dev/null 2>&1 ; then
-  echo "Please install a python3 interpreter. See s.apache.org/beam-python-dev-wiki for Python installation tips."
+if ! python3.11 --version > /dev/null 2>&1 ; then
+  echo "Please install a python3.11 interpreter. See s.apache.org/beam-python-dev-wiki for Python installation tips."
   exit 1
 fi
 
-if ! python3 -m venv --help > /dev/null 2>&1 ; then
-  echo "Your python3 installation does not have a required venv module. See s.apache.org/beam-python-dev-wiki for Python installation tips."
+if ! python3.11 -m venv --help > /dev/null 2>&1 ; then
+  echo "Your python3.11 installation does not have a required venv module. See s.apache.org/beam-python-dev-wiki for Python installation tips."
   exit 1
 fi
 
@@ -29,7 +29,8 @@ set -ex
 
 ENV_PATH="$PWD/__build__/python${PY_VERSION/./}_requirements_gen"
 rm -rf "$ENV_PATH" 2>/dev/null || true
-python3 -m venv "$ENV_PATH"
+# These python versions need to be kept in sync with our dockerfile python versions (https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/0ac92513838ca525adb3f616c9e1f65237334d1e/plugins/core-plugin/src/main/java/com/google/cloud/teleport/plugin/DockerfileGenerator.java#L46)
+python3.11 -m venv "$ENV_PATH"
 source "$ENV_PATH"/bin/activate
 
 # allow one-off executions of pip to generate requirements locally without alarming automation
