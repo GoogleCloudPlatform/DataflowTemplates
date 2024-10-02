@@ -527,6 +527,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
       String dockerfileContainer = outputClassesDirectory.getPath() + "/" + containerName;
       String dockerfilePath = dockerfileContainer + "/Dockerfile";
+      LOG.info("Generating dockerfile " + dockerfilePath);
       String xlangCommandSpec = "/template/" + containerName + "/resources/" + commandSpecFileName;
       File dockerfile = new File(dockerfilePath);
       if (!dockerfile.exists()) {
@@ -706,11 +707,17 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String containerName,
       String templatePath)
       throws IOException, InterruptedException, TemplateException {
-
-    String dockerfilePath = outputClassesDirectory.getPath() + "/" + containerName + "/Dockerfile";
+    String dockerfileContainer = outputClassesDirectory.getPath() + "/" + containerName;
+    String dockerfilePath = dockerfileContainer + "/Dockerfile";
     LOG.info("Generating dockerfile " + dockerfilePath);
     File dockerfile = new File(dockerfilePath);
     if (!dockerfile.exists()) {
+      // Copy in requirements.txt if present
+      File sourceRequirements = new File(outputClassesDirectory.getPath() + "/requirements.txt");
+      File destRequirements = new File(dockerfileContainer + "/requirements.txt");
+      if(sourceRequirements.exists()) {
+        Files.copy(sourceRequirements.toPath(), destRequirements.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      }
       Map<String, Set<String>> filesToCopy = Map.of("main.py", Set.of("requirements.txt*"));
       DockerfileGenerator.builder(
               definition.getTemplateAnnotation().type(),
