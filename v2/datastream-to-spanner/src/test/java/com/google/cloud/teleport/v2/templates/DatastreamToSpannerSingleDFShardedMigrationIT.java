@@ -45,26 +45,35 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Sharded data migration Integration test without any migration_shard_id column transformation for
- * {@link DataStreamToSpanner} Flex template.
+ * Integration test for sharded data migration using a single Dataflow job per migration. In this
+ * scenario, one Datastream job is created for each physical shard, all of which share the same
+ * target connection profile, writing to the same GCS bucket. As a result, only one Pub/Sub
+ * notification is generated per migration, triggering a single Dataflow job. This test also
+ * validates the addition of the migration_shard_id column to the schema for each table in the
+ * {@link DataStreamToSpanner} Flex template, while using a single Dataflow job for the entire
+ * migration.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
-    extends DataStreamToSpannerITBase {
+public class DatastreamToSpannerSingleDFShardedMigrationIT extends DataStreamToSpannerITBase {
   private static final Logger LOG =
-      LoggerFactory.getLogger(
-          DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT.class);
+      LoggerFactory.getLogger(DatastreamToSpannerSingleDFShardedMigrationIT.class);
 
   private static final String TABLE = "Users";
-  private static final String SPANNER_DDL_RESOURCE =
-      "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/spanner-schema.sql";
 
-  private static HashSet<DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT>
-      testInstances = new HashSet<>();
-  private static PipelineLauncher.LaunchInfo jobInfo1;
-  private static PipelineLauncher.LaunchInfo jobInfo2;
+  private static final String SESSION_FILE_RESOURCE =
+      "DatastreamToSpannerSingleDFShardedMigrationIT/mysql-session.json";
+
+  private static final String SHARDING_CONTEXT_RESOURCE =
+      "DatastreamToSpannerSingleDFShardedMigrationIT/sharding-context.json";
+
+  private static final String SPANNER_DDL_RESOURCE =
+      "DatastreamToSpannerSingleDFShardedMigrationIT/spanner-schema.sql";
+
+  private static HashSet<DatastreamToSpannerSingleDFShardedMigrationIT> testInstances =
+      new HashSet<>();
+  private static PipelineLauncher.LaunchInfo jobInfo;
 
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
@@ -75,10 +84,10 @@ public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
    * @throws IOException
    */
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws IOException, InterruptedException {
     // Prevent cleaning up of dataflow job after a test method is executed.
     skipBaseCleanup = true;
-    synchronized (DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT.class) {
+    synchronized (DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT.class) {
       testInstances.add(this);
       if (spannerResourceManager == null) {
         spannerResourceManager = setUpSpannerResourceManager();
@@ -87,11 +96,12 @@ public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
       if (pubsubResourceManager == null) {
         pubsubResourceManager = setUpPubSubResourceManager();
       }
-      if (jobInfo1 == null) {
-        jobInfo1 =
+      createAndUploadJarToGcs("shard1");
+      if (jobInfo == null) {
+        jobInfo =
             launchDataflowJob(
                 getClass().getSimpleName() + "shard1",
-                null,
+                SESSION_FILE_RESOURCE,
                 null,
                 "shard1",
                 spannerResourceManager,
@@ -102,24 +112,7 @@ public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
                   }
                 },
                 null,
-                null);
-      }
-      if (jobInfo2 == null) {
-        jobInfo2 =
-            launchDataflowJob(
-                getClass().getSimpleName() + "shard2",
-                null,
-                null,
-                "shard2",
-                spannerResourceManager,
-                pubsubResourceManager,
-                new HashMap<>() {
-                  {
-                    put("inputFileFormat", "avro");
-                  }
-                },
-                null,
-                null);
+                SHARDING_CONTEXT_RESOURCE);
       }
     }
   }
@@ -131,8 +124,7 @@ public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT instance :
-        testInstances) {
+    for (DatastreamToSpannerSingleDFShardedMigrationIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
@@ -140,71 +132,47 @@ public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
 
   @Test
   public void multiShardMigration() {
-    // Two dataflow jobs are running corresponding to two physical shards containing two logical
-    // shards each. Migrates Users table from 4 logical shards. Asserts data from all the shards are
-    // going to Spanner. Checks whether migration shard id column is populated properly based on the
-    // transformation context.
+    // Single Dataflow jobs run for two physical shards, each containing two logical shards.
+    // Migrates the Users table from 4 logical shards and verifies that data from all shards is
+    // correctly migrated to Spanner. Additionally, checks whether the migration shard ID column
+    // is populated accurately based on the sharding context.
+
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
                     uploadDataStreamFile(
-                        jobInfo1,
+                        jobInfo,
                         TABLE,
                         "Users-backfill-logical-shard1.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard1.avro"),
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard1.avro"),
                     uploadDataStreamFile(
-                        jobInfo1,
+                        jobInfo,
                         TABLE,
                         "Users-backfill-logical-shard2.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard2.avro"),
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard2.avro"),
                     uploadDataStreamFile(
-                        jobInfo1,
+                        jobInfo,
                         TABLE,
                         "Users-cdc-logical-shard1.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-cdc-logical-shard1.avro"),
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-cdc-logical-shard1.avro"),
                     uploadDataStreamFile(
-                        jobInfo1,
+                        jobInfo,
                         TABLE,
-                        "Users-cdc-logical-shard2.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-cdc-logical-shard2.avro")))
+                        "Users-backfill-logical-shard3.avro",
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard3.avro"),
+                    uploadDataStreamFile(
+                        jobInfo,
+                        TABLE,
+                        "Users-backfill-logical-shard4.avro",
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard4.avro")))
             .build();
 
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo1, Duration.ofMinutes(8)), conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
 
     // Assert Conditions
-    assertThatResult(result).meetsConditions();
-
-    conditionCheck =
-        ChainedConditionCheck.builder(
-                List.of(
-                    uploadDataStreamFile(
-                        jobInfo2,
-                        TABLE,
-                        "Users-backfill-logical-shard3.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard3.avro"),
-                    uploadDataStreamFile(
-                        jobInfo2,
-                        TABLE,
-                        "Users-backfill-logical-shard4.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard4.avro"),
-                    uploadDataStreamFile(
-                        jobInfo2,
-                        TABLE,
-                        "Users-cdc-logical-shard3.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-cdc-logical-shard3.avro"),
-                    uploadDataStreamFile(
-                        jobInfo2,
-                        TABLE,
-                        "Users-cdc-logical-shard4.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-cdc-logical-shard4.avro")))
-            .build();
-
-    result =
-        pipelineOperator()
-            .waitForCondition(createConfig(jobInfo2, Duration.ofMinutes(8)), conditionCheck);
     assertThatResult(result).meetsConditions();
 
     ConditionCheck rowsConditionCheck =
@@ -214,7 +182,7 @@ public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
             .build();
     result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo1, Duration.ofMinutes(10)), rowsConditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), rowsConditionCheck);
     assertThatResult(result).meetsConditions();
 
     // Assert specific rows
@@ -227,73 +195,85 @@ public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
     Map<String, Object> row = new HashMap<>();
     row.put("id", 1);
     row.put("name", "Tester1");
-    row.put("age", 20);
+    row.put("age_spanner", 20);
+    row.put("migration_shard_id", "L1");
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 3);
     row.put("name", "Tester3");
-    row.put("age", 103);
+    row.put("age_spanner", 103);
+    row.put("migration_shard_id", "L1");
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 13);
     row.put("name", "Tester13");
-    row.put("age", 113);
+    row.put("age_spanner", 113);
+    row.put("migration_shard_id", "L1");
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 4);
     row.put("name", "Tester4");
-    row.put("age", 21);
+    row.put("age_spanner", 104);
+    row.put("migration_shard_id", "L2");
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 5);
+    row.put("name", "Tester5");
+    row.put("age_spanner", 105);
+    row.put("migration_shard_id", "L2");
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 6);
     row.put("name", "Tester6");
-    row.put("age", 106);
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 14);
-    row.put("name", "Tester14");
-    row.put("age", 114);
+    row.put("age_spanner", 106);
+    row.put("migration_shard_id", "L2");
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 7);
     row.put("name", "Tester7");
-    row.put("age", 22);
+    row.put("age_spanner", 107);
+    row.put("migration_shard_id", "L3");
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 8);
+    row.put("name", "Tester8");
+    row.put("age_spanner", 108);
+    row.put("migration_shard_id", "L3");
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 9);
     row.put("name", "Tester9");
-    row.put("age", 109);
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 15);
-    row.put("name", "Tester15");
-    row.put("age", 115);
+    row.put("age_spanner", 109);
+    row.put("migration_shard_id", "L3");
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 10);
     row.put("name", "Tester10");
-    row.put("age", 23);
+    row.put("age_spanner", 110);
+    row.put("migration_shard_id", "L4");
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 11);
+    row.put("name", "Tester11");
+    row.put("age_spanner", 111);
+    row.put("migration_shard_id", "L4");
     events.add(row);
 
     row = new HashMap<>();
     row.put("id", 12);
     row.put("name", "Tester12");
-    row.put("age", 112);
-    events.add(row);
-
-    row = new HashMap<>();
-    row.put("id", 16);
-    row.put("name", "Tester16");
-    row.put("age", 116);
+    row.put("age_spanner", 112);
+    row.put("migration_shard_id", "L4");
     events.add(row);
 
     SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Users"))
