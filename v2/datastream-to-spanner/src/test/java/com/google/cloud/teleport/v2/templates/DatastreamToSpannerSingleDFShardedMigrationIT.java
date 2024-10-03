@@ -28,12 +28,14 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -43,8 +45,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Sharded data migration Integration test with addition of migration_shard_id column in the schema
- * for each table in the {@link DataStreamToSpanner} Flex template and with single dataflow job per
+ * Integration test for sharded data migration using a single Dataflow job per migration. In this
+ * scenario, one Datastream job is created for each physical shard, all of which share the same
+ * target connection profile, writing to the same GCS bucket. As a result, only one Pub/Sub
+ * notification is generated per migration, triggering a single Dataflow job. This test also
+ * validates the addition of the migration_shard_id column to the schema for each table in the
+ * {@link DataStreamToSpanner} Flex template, while using a single Dataflow job for the entire
  * migration.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
@@ -116,20 +122,20 @@ public class DatastreamToSpannerSingleDFShardedMigrationIT extends DataStreamToS
    *
    * @throws IOException
    */
-  //  @AfterClass
-  //  public static void cleanUp() throws IOException {
-  //    for (DatastreamToSpannerSingleDFShardedMigrationIT instance : testInstances) {
-  //      instance.tearDownBase();
-  //    }
-  //    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
-  //  }
+  @AfterClass
+  public static void cleanUp() throws IOException {
+    for (DatastreamToSpannerSingleDFShardedMigrationIT instance : testInstances) {
+      instance.tearDownBase();
+    }
+    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
+  }
 
   @Test
   public void multiShardMigration() {
-    // Two dataflow jobs are running corresponding to two physical shards containing two logical
-    // shards each. Migrates Users table from 4 logical shards. Asserts data from all the shards are
-    // going to Spanner. Checks whether migration shard id column is populated properly based on the
-    // sharding context.
+    // Single Dataflow jobs run for two physical shards, each containing two logical shards.
+    // Migrates the Users table from 4 logical shards and verifies that data from all shards is
+    // correctly migrated to Spanner. Additionally, checks whether the migration shard ID column
+    // is populated accurately based on the sharding context.
 
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
