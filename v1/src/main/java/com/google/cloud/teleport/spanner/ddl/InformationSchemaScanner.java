@@ -483,59 +483,13 @@ public class InformationSchemaScanner {
           pkBuilder.desc(columnName).end();
         }
         pkBuilder.end().endTable();
-      } else if (indexType != null && indexType.equals("SEARCH")) {
-        if (!spannerType.equals("TOKENLIST") && ordering != null) {
-          continue;
-        }
-        Map<String, Index.Builder> tableIndexes = indexes.get(tableName);
-        if (tableIndexes == null) {
-          continue;
-        }
-        String indexName =
-            dialect == Dialect.POSTGRESQL
-                ? indexLocalName
-                : getQualifiedName(resultSet.getString(0), indexLocalName);
-        Index.Builder indexBuilder = tableIndexes.get(indexName);
-        if (indexBuilder == null) {
-          LOG.warn("Can not find index using name {}", indexName);
-          continue;
-        }
-        IndexColumn.IndexColumnsBuilder<Index.Builder> indexColumnsBuilder =
-            indexBuilder.columns().create().name(columnName);
-
-        if (spannerType.equals("TOKENLIST")) {
-          indexColumnsBuilder.none();
-        } else if (ordering == null) {
-          indexColumnsBuilder.storing();
-        }
-        indexColumnsBuilder.endIndexColumn().end();
-      } else if (indexType != null && indexType.equals("VECTOR")) {
-        if (!spannerType.startsWith("ARRAY") && ordering != null) {
-          continue;
-        }
-        Map<String, Index.Builder> tableIndexes = indexes.get(tableName);
-        if (tableIndexes == null) {
-          continue;
-        }
-        String indexName =
-            dialect == Dialect.POSTGRESQL
-                ? indexLocalName
-                : getQualifiedName(resultSet.getString(0), indexLocalName);
-        Index.Builder indexBuilder = tableIndexes.get(indexName);
-        if (indexBuilder == null) {
-          LOG.warn("Can not find index using name {}", indexName);
-          continue;
-        }
-        IndexColumn.IndexColumnsBuilder<Index.Builder> indexColumnsBuilder =
-            indexBuilder.columns().create().name(columnName);
-
-        if (spannerType.startsWith("ARRAY")) {
-          indexColumnsBuilder.none();
-        } else if (ordering == null) {
-          indexColumnsBuilder.storing();
-        }
-        indexColumnsBuilder.endIndexColumn().end();
       } else {
+        if (indexType != null && ordering != null) {
+          if ((indexType.equals("SEARCH") && !spannerType.equals("TOKENLIST"))
+              || (indexType.equals("VECTOR") && !spannerType.startsWith("ARRAY"))) {
+            continue;
+          }
+        }
         Map<String, Index.Builder> tableIndexes = indexes.get(tableName);
         if (tableIndexes == null) {
           continue;
@@ -551,7 +505,10 @@ public class InformationSchemaScanner {
         }
         IndexColumn.IndexColumnsBuilder<Index.Builder> indexColumnsBuilder =
             indexBuilder.columns().create().name(columnName);
-        if (ordering == null && (indexType == null || indexType != "VECTOR")) {
+        if (spannerType != null
+            && (spannerType.equals("TOKENLIST") || spannerType.startsWith("ARRAY"))) {
+          indexColumnsBuilder.none();
+        } else if (ordering == null) {
           indexColumnsBuilder.storing();
         } else {
           ordering = ordering.toUpperCase();
