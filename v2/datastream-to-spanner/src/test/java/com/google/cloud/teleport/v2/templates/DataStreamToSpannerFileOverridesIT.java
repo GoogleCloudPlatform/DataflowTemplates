@@ -40,15 +40,16 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.testcontainers.shaded.com.google.common.io.Resources;
 
 /**
  * An integration test for {@link DataStreamToSpanner} Flex template which test use-cases where an
- * override is provided by string parameters.
+ * override is provided by an override file.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITBase {
+public class DataStreamToSpannerFileOverridesIT extends DataStreamToSpannerITBase {
 
   private static final String MYSQL_TABLE = "person1";
 
@@ -56,14 +57,18 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
 
   private static PipelineLauncher.LaunchInfo jobInfo;
 
-  private static HashSet<DataStreamToSpannerStringOverridesIT> testInstances = new HashSet<>();
+  private static HashSet<DataStreamToSpannerFileOverridesIT> testInstances = new HashSet<>();
 
   public static PubsubResourceManager pubsubResourceManager;
 
   public static SpannerResourceManager spannerResourceManager;
 
   private static final String SPANNER_DDL_RESOURCE =
-      "DataStreamToSpannerStringOverridesIT/spanner-schema.sql";
+      "DataStreamToSpannerFileOverridesIT/spanner-schema.sql";
+
+  private static final String OVERRIDE_FILE = "DataStreamToSpannerFileOverridesIT/override.json";
+
+  private static final String GCS_PATH_PREFIX = "FileOverridesIT";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -74,25 +79,26 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
   public void setUp() throws IOException {
     // Prevent cleaning up of dataflow job after a test method is executed.
     skipBaseCleanup = true;
-    synchronized (DataStreamToSpannerStringOverridesIT.class) {
+    synchronized (DataStreamToSpannerFileOverridesIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+        gcsClient.uploadArtifact(
+            GCS_PATH_PREFIX + "/override.json", Resources.getResource(OVERRIDE_FILE).getPath());
         jobInfo =
             launchDataflowJob(
                 getClass().getSimpleName(),
                 null,
                 null,
-                "StringOverridesIT",
+                GCS_PATH_PREFIX,
                 spannerResourceManager,
                 pubsubResourceManager,
                 new HashMap<>() {
                   {
                     put("inputFileFormat", "avro");
-                    put("tableOverrides", "[{person1, human1}]");
-                    put("columnOverrides", "[{person1.first_name1, person1.name1}]");
+                    put("schemaOverridesFilePath", getGcsPath(GCS_PATH_PREFIX + "/override.json"));
                   }
                 },
                 null);
@@ -107,7 +113,7 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (DataStreamToSpannerStringOverridesIT instance : testInstances) {
+    for (DataStreamToSpannerFileOverridesIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
@@ -125,7 +131,7 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
                         jobInfo,
                         MYSQL_TABLE,
                         "cdc_person1.avro",
-                        "DataStreamToSpannerStringOverridesIT/mysql-cdc-person1.avro"),
+                        "DataStreamToSpannerFileOverridesIT/mysql-cdc-person1.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, SPANNER_TABLE)
                         .setMinRows(2)
                         .setMaxRows(2)
