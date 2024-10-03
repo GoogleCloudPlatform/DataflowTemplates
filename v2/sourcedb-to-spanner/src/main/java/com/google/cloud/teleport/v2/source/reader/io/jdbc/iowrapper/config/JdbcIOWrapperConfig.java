@@ -194,6 +194,12 @@ public abstract class JdbcIOWrapperConfig {
 
   private static final String DEFAULT_VALIDATEION_QUERY = "SELECT 1";
 
+  /** Sets the connectivity timeout in seconds during schema discovery. * */
+  public abstract Integer schemaDiscoveryConnectivityTimeoutMilliSeconds();
+
+  private static final Integer DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS =
+      30 * 1000;
+
   /**
    * The timeout in seconds before an abandoned connection can be removed.
    *
@@ -252,7 +258,9 @@ public abstract class JdbcIOWrapperConfig {
         .setTestWhileIdle(DEFAULT_TEST_WILE_IDLE)
         .setValidationQuery(DEFAULT_VALIDATEION_QUERY)
         .setRemoveAbandonedTimeout(DEFAULT_REMOVE_ABANDONED_TIMEOUT)
-        .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS);
+        .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
+        .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
+            DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS);
   }
 
   public static Builder builderWithPostgreSQLDefaults() {
@@ -280,7 +288,9 @@ public abstract class JdbcIOWrapperConfig {
         .setTestWhileIdle(DEFAULT_TEST_WILE_IDLE)
         .setValidationQuery(DEFAULT_VALIDATEION_QUERY)
         .setRemoveAbandonedTimeout(DEFAULT_REMOVE_ABANDONED_TIMEOUT)
-        .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS);
+        .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
+        .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
+            DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS);
   }
 
   @AutoValue.Builder
@@ -338,6 +348,8 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setTestWhileIdle(Boolean value);
 
     public abstract Builder setValidationQuery(String value);
+
+    public abstract Builder setSchemaDiscoveryConnectivityTimeoutMilliSeconds(Integer value);
 
     public abstract Builder setRemoveAbandonedTimeout(Integer value);
 
