@@ -189,7 +189,11 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", List.of("disable_runner_v2"));
-    options.addEnvironment("numWorkers", 2);
+    if (System.getProperty("numWorkers") != null) {
+      options.addEnvironment("numWorkers", Integer.parseInt(System.getProperty("numWorkers")));
+    } else {
+      options.addEnvironment("numWorkers", 2);
+    }
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
     assertThatPipeline(jobInfo).isRunning();

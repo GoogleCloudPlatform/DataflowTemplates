@@ -33,20 +33,67 @@ public final class PostgreSQLMappingProvider {
   private static final ImmutableMap<String, UnifiedTypeMapping> MAPPING =
       ImmutableMap.<String, UnifiedMappingProvider.Type>builder()
           .put("BIGINT", UnifiedMappingProvider.Type.LONG)
+          .put("BIGSERIAL", UnifiedMappingProvider.Type.LONG)
+          .put("BIT", UnifiedMappingProvider.Type.BYTES)
+          .put("BIT VARYING", UnifiedMappingProvider.Type.BYTES)
+          .put("BOOL", UnifiedMappingProvider.Type.BOOLEAN)
+          .put("BOOLEAN", UnifiedMappingProvider.Type.BOOLEAN)
+          .put("BYTEA", UnifiedMappingProvider.Type.BYTES)
+          // TODO(thiagotnunes): Refine mapping type according to
+          // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
+          // for length we should use varchar instead)
+          .put("CHAR", UnifiedMappingProvider.Type.STRING)
+          // TODO(thiagotnunes): Refine mapping type according to
+          // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
+          // for length we should use varchar instead)
+          .put("CHARACTER", UnifiedMappingProvider.Type.STRING)
           // TODO(thiagotnunes): Refine mapping type according to
           // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
           // for length we should use varchar instead)
           .put("CHARACTER VARYING", UnifiedMappingProvider.Type.STRING)
+          .put("CITEXT", UnifiedMappingProvider.Type.STRING)
           .put("DATE", UnifiedMappingProvider.Type.DATE)
+          // TODO(thiagotnunes): Refine mapping type according to
+          // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a
+          // precision and scale are >= 0, map to DECIMAL)
+          .put("DECIMAL", UnifiedMappingProvider.Type.NUMBER)
+          .put("DOUBLE PRECISION", UnifiedMappingProvider.Type.DOUBLE)
+          .put("FLOAT4", UnifiedMappingProvider.Type.FLOAT)
+          .put("FLOAT8", UnifiedMappingProvider.Type.DOUBLE)
+          .put("INT", UnifiedMappingProvider.Type.INTEGER)
+          .put("INTEGER", UnifiedMappingProvider.Type.INTEGER)
+          .put("INT2", UnifiedMappingProvider.Type.INTEGER)
+          .put("INT4", UnifiedMappingProvider.Type.INTEGER)
           .put("INT8", UnifiedMappingProvider.Type.LONG)
+          .put("JSON", UnifiedMappingProvider.Type.JSON)
+          .put("JSONB", UnifiedMappingProvider.Type.JSON)
+          .put("MONEY", UnifiedMappingProvider.Type.DOUBLE)
+          // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a
+          // precision and scale are >= 0, map to DECIMAL)
+          .put("NUMERIC", UnifiedMappingProvider.Type.NUMBER)
+          .put("OID", UnifiedMappingProvider.Type.LONG)
+          .put("REAL", UnifiedMappingProvider.Type.FLOAT)
+          .put("SERIAL", UnifiedMappingProvider.Type.INTEGER)
+          .put("SERIAL2", UnifiedMappingProvider.Type.INTEGER)
+          .put("SERIAL4", UnifiedMappingProvider.Type.INTEGER)
+          .put("SERIAL8", UnifiedMappingProvider.Type.LONG)
+          .put("SMALLINT", UnifiedMappingProvider.Type.INTEGER)
+          .put("SMALLSERIAL", UnifiedMappingProvider.Type.INTEGER)
           // TODO(thiagotnunes): Refine mapping type according to
           // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
           // for length we should use varchar instead)
           .put("TEXT", UnifiedMappingProvider.Type.STRING)
+          .put("TIMESTAMP", UnifiedMappingProvider.Type.TIMESTAMP)
+          .put("TIMESTAMPTZ", UnifiedMappingProvider.Type.TIMESTAMP_WITH_TIME_ZONE)
+          .put("TIMESTAMP WITH TIME ZONE", UnifiedMappingProvider.Type.TIMESTAMP_WITH_TIME_ZONE)
+          .put("TIMESTAMP WITHOUT TIME ZONE", UnifiedMappingProvider.Type.TIMESTAMP)
+          .put("UUID", UnifiedMappingProvider.Type.STRING)
+          .put("VARBIT", UnifiedMappingProvider.Type.BYTES)
           // TODO(thiagotnunes): Refine mapping type according to
           // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
           // for length we should use varchar instead)
           .put("VARCHAR", UnifiedMappingProvider.Type.STRING)
+          .put("UNSUPPORTED", UnifiedMappingProvider.Type.UNSUPPORTED)
           .build()
           .entrySet()
           .stream()
