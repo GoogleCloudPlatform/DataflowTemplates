@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants.MAX_RECOMMENDED_TABLES_PER_JOB;
+
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
@@ -72,12 +74,28 @@ public class PipelineController {
     List<String> orderedSpTables = ddl.getTablesOrderedByReference();
 
     Map<String, PCollection<Void>> outputs = new HashMap<>();
-
+    // This list will contain the final list of tables that actually get migrated, which will be the
+    // intersection of Spanner and source tables.
+    List<String> finalTablesToMigrate = new ArrayList<>();
     for (String spTable : orderedSpTables) {
       String srcTable = schemaMapper.getSourceTableName("", spTable);
       if (!tablesToMigrateSet.contains(srcTable)) {
         continue;
       }
+      finalTablesToMigrate.add(spTable);
+    }
+    LOG.info(
+        "{} Spanner tables in final selection for migration: {}",
+        finalTablesToMigrate.size(),
+        finalTablesToMigrate);
+    if (finalTablesToMigrate.size() > MAX_RECOMMENDED_TABLES_PER_JOB) {
+      LOG.warn(
+          "Migrating {} tables in a single job (max recommended: {}). Consider splitting tables across jobs to avoid launch issues.",
+          finalTablesToMigrate.size(),
+          MAX_RECOMMENDED_TABLES_PER_JOB);
+    }
+    for (String spTable : finalTablesToMigrate) {
+      String srcTable = schemaMapper.getSourceTableName("", spTable);
       List<PCollection<?>> parentOutputs = new ArrayList<>();
       for (String parentSpTable : ddl.tablesReferenced(spTable)) {
         String parentSrcName;
@@ -109,7 +127,8 @@ public class PipelineController {
           continue;
         }
         PCollection<Void> parentOutputPcollection = outputs.get(parentSrcName);
-        // Since we are iterating the tables topologically, all parents should have been processed.
+        // Since we are iterating the tables topologically, all parents should have been
+        // processed.
         Preconditions.checkState(
             parentOutputPcollection != null,
             "Output PCollection for parent table should not be null.");
@@ -170,6 +189,31 @@ public class PipelineController {
     Set<String> tablesToMigrateSet = new HashSet<>(tablesToMigrate);
     // This list is all Spanner tables topologically ordered.
     List<String> orderedSpTables = ddl.getTablesOrderedByReference();
+    // This list will contain the final list of tables that actually get migrated, which will be the
+    // intersection of Spanner and source tables.
+    List<String> finalTablesToMigrate = new ArrayList<>();
+    for (String spTable : orderedSpTables) {
+      String srcTable = schemaMapper.getSourceTableName("", spTable);
+      if (!tablesToMigrateSet.contains(srcTable)) {
+        continue;
+      }
+      finalTablesToMigrate.add(spTable);
+    }
+    LOG.info(
+        "{} Spanner tables in final selection for migration: {}",
+        finalTablesToMigrate.size(),
+        finalTablesToMigrate);
+    long totalTablesAcrossShards = findNumLogicalshards(shards) * finalTablesToMigrate.size();
+    if (totalTablesAcrossShards > MAX_RECOMMENDED_TABLES_PER_JOB) {
+      LOG.warn(
+          "Migrating {} tables ({} shards x {} tables/shard) in a single job. "
+              + "This exceeds the recommended maximum of {} tables per job. "
+              + "Consider splitting shards across multiple jobs to avoid launch issues.",
+          totalTablesAcrossShards,
+          findNumLogicalshards(shards),
+          finalTablesToMigrate.size(),
+          MAX_RECOMMENDED_TABLES_PER_JOB);
+    }
 
     LOG.info(
         "running migration for shards: {}",
@@ -179,11 +223,8 @@ public class PipelineController {
         // Read data from source
         String shardId = entry.getValue();
         Map<String, PCollection<Void>> outputs = new HashMap<>();
-        for (String spTable : orderedSpTables) {
+        for (String spTable : finalTablesToMigrate) {
           String srcTable = schemaMapper.getSourceTableName("", spTable);
-          if (!tablesToMigrateSet.contains(srcTable)) {
-            continue;
-          }
           List<PCollection<?>> parentOutputs = new ArrayList<>();
           for (String parentSpTable : ddl.tablesReferenced(spTable)) {
             String parentSrcName;
@@ -246,6 +287,11 @@ public class PipelineController {
       }
     }
     return pipeline.run();
+  }
+
+  // Calculate the total number of logical shards in the list of physical shards.
+  private static long findNumLogicalshards(List<Shard> shards) {
+    return shards.stream().mapToLong(shard -> shard.getDbNameToLogicalShardIdMap().size()).sum();
   }
 
   @VisibleForTesting
