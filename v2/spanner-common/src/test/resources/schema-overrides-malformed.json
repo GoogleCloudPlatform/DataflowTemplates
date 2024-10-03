@@ -1,0 +1,9 @@
+{
+  "renamedColumns":{
+    "Singers":{
+      "SingerName":"TalentName"
+    },
+    "Albums":{
+      "AlbumName":"RecordName"
+    }
+}
