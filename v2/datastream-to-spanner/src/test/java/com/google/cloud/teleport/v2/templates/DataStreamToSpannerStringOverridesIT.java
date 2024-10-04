@@ -115,7 +115,7 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
 
   @Test
   public void migrationTestWithRenameTableAndColumns() {
-    // Construct a ChainedConditionCheck with 4 stages.
+    // Construct a ChainedConditionCheck with 2 stages.
     // 1. Send initial wave of events
     // 2. Wait on Spanner to have events
     ChainedConditionCheck conditionCheck =
