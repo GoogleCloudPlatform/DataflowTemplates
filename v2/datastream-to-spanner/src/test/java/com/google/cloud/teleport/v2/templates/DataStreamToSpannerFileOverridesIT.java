@@ -99,7 +99,7 @@ public class DataStreamToSpannerFileOverridesIT extends DataStreamToSpannerITBas
                 spannerResourceManager,
                 pubsubResourceManager,
                 overridesMap,
-                null);
+                null, null);
       }
     }
   }
