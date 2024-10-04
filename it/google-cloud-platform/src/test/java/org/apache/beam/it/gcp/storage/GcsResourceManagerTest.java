@@ -183,9 +183,8 @@ public final class GcsResourceManagerTest {
   public void testGenerateBucketName_withSpecialCharactersAndLongName() {
     String testClassName = "My.Test.Class.With.A.Very.Long.Name";
     String runId = "1234567890123456789012345678901234567890";
-    String expectedBucketName =
-        "my-test-class-with-a-very-long-name-123456789012345678901234567"; // Periods replaced,
-    // truncated
+    // Periods replaced, lowercase and length truncated.
+    String expectedBucketName = "my-test-class-with-a-very-long-name-123456789012345678901234567";
     String actualBucketName = GcsResourceManager.generateBucketName(testClassName, runId);
     assertEquals(expectedBucketName, actualBucketName);
   }
