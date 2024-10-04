@@ -64,22 +64,6 @@ resource "google_compute_instance" "mysql_database_instances" {
   }
 }
 
-# Setup network firewalls
-resource "google_compute_firewall" "allow-mysql" {
-  depends_on  = [google_compute_subnetwork.vpc_subnetwork]
-  project     = var.common_params.project
-  name        = "allow-mysql"
-  network     = google_compute_network.vpc_network.name
-  description = "Allow traffic from private connectivity endpoint of Datastream"
-
-  allow {
-    protocol = "tcp"
-    ports    = ["3306"]
-  }
-  source_ranges = [var.vpc_params.private_conn_cidr_range]
-  target_tags   = ["databases"]
-}
-
 resource "google_compute_firewall" "allow-dataflow" {
   depends_on  = [google_compute_subnetwork.vpc_subnetwork]
   project     = var.common_params.project
