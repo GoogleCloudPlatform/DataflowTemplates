@@ -55,6 +55,13 @@ public class DataStreamToSpannerFileOverridesIT extends DataStreamToSpannerITBas
 
   private static final String SPANNER_TABLE = "human1";
 
+  private static final String SPANNER_DDL_RESOURCE =
+      "DataStreamToSpannerFileOverridesIT/spanner-schema.sql";
+
+  private static final String OVERRIDE_FILE = "DataStreamToSpannerFileOverridesIT/override.json";
+
+  private static final String GCS_PATH_PREFIX = "FileOverridesIT";
+
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   private static HashSet<DataStreamToSpannerFileOverridesIT> testInstances = new HashSet<>();
@@ -62,13 +69,6 @@ public class DataStreamToSpannerFileOverridesIT extends DataStreamToSpannerITBas
   public static PubsubResourceManager pubsubResourceManager;
 
   public static SpannerResourceManager spannerResourceManager;
-
-  private static final String SPANNER_DDL_RESOURCE =
-      "DataStreamToSpannerFileOverridesIT/spanner-schema.sql";
-
-  private static final String OVERRIDE_FILE = "DataStreamToSpannerFileOverridesIT/override.json";
-
-  private static final String GCS_PATH_PREFIX = "FileOverridesIT";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -87,6 +87,9 @@ public class DataStreamToSpannerFileOverridesIT extends DataStreamToSpannerITBas
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         gcsClient.uploadArtifact(
             GCS_PATH_PREFIX + "/override.json", Resources.getResource(OVERRIDE_FILE).getPath());
+        Map<String, String> overridesMap = new HashMap<>();
+        overridesMap.put("inputFileFormat", "avro");
+        overridesMap.put("schemaOverridesFilePath", getGcsPath(GCS_PATH_PREFIX + "/override.json"));
         jobInfo =
             launchDataflowJob(
                 getClass().getSimpleName(),
@@ -95,12 +98,7 @@ public class DataStreamToSpannerFileOverridesIT extends DataStreamToSpannerITBas
                 GCS_PATH_PREFIX,
                 spannerResourceManager,
                 pubsubResourceManager,
-                new HashMap<>() {
-                  {
-                    put("inputFileFormat", "avro");
-                    put("schemaOverridesFilePath", getGcsPath(GCS_PATH_PREFIX + "/override.json"));
-                  }
-                },
+                overridesMap,
                 null);
       }
     }

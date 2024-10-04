@@ -54,6 +54,9 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
 
   private static final String SPANNER_TABLE = "human1";
 
+  private static final String SPANNER_DDL_RESOURCE =
+      "DataStreamToSpannerStringOverridesIT/spanner-schema.sql";
+
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   private static HashSet<DataStreamToSpannerStringOverridesIT> testInstances = new HashSet<>();
@@ -61,9 +64,6 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
   public static PubsubResourceManager pubsubResourceManager;
 
   public static SpannerResourceManager spannerResourceManager;
-
-  private static final String SPANNER_DDL_RESOURCE =
-      "DataStreamToSpannerStringOverridesIT/spanner-schema.sql";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -80,6 +80,10 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+        Map<String, String> overridesMap = new HashMap<>();
+        overridesMap.put("inputFileFormat", "avro");
+        overridesMap.put("tableOverrides", "[{person1, human1}]");
+        overridesMap.put("columnOverrides", "[{person1.first_name1, person1.name1}]");
         jobInfo =
             launchDataflowJob(
                 getClass().getSimpleName(),
@@ -88,13 +92,7 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
                 "StringOverridesIT",
                 spannerResourceManager,
                 pubsubResourceManager,
-                new HashMap<>() {
-                  {
-                    put("inputFileFormat", "avro");
-                    put("tableOverrides", "[{person1, human1}]");
-                    put("columnOverrides", "[{person1.first_name1, person1.name1}]");
-                  }
-                },
+                overridesMap,
                 null);
       }
     }
