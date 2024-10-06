@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.SHARD_ID_COLUMN_NAME;
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +26,7 @@ import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
@@ -40,11 +43,14 @@ import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
+import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,6 +93,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private final Counter successfulEvents =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Successful events");
 
+  private final Counter invalidEvents =
+      Metrics.counter(SpannerTransactionWriterDoFn.class, "Invalid events");
+
   private final Counter skippedEvents =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Skipped events");
 
@@ -98,6 +107,25 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   private final Counter retryableErrors =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Retryable errors");
+
+  private final Counter successfulEventRetries =
+      Metrics.counter(SpannerTransactionWriterDoFn.class, "Successful event retries");
+
+  private final Distribution eventRetries =
+      Metrics.distribution(SpannerTransactionWriterDoFn.class, "Event retries");
+
+  private final Distribution systemLatency =
+      Metrics.distribution(SpannerTransactionWriterDoFn.class, "Replication lag system latency");
+  private final Distribution dataflowLatency =
+      Metrics.distribution(SpannerTransactionWriterDoFn.class, "Replication lag dataflow latency");
+  private final Distribution totalLatency =
+      Metrics.distribution(SpannerTransactionWriterDoFn.class, "Replication lag total latency");
+
+  private final Distribution spannerWriterLatencyMs =
+      Metrics.distribution(SpannerTransactionWriterDoFn.class, "spanner_writer_latency_ms");
+
+  private final Counter droppedTableExceptions =
+      Metrics.counter(SpannerTransactionWriterDoFn.class, "Dropped table exceptions");
 
   // The max length of tag allowed in Spanner Transaction tags.
   private static final int MAX_TXN_TAG_LENGTH = 50;
@@ -170,7 +198,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   public void processElement(ProcessContext c) {
     FailsafeElement<String, String> msg = c.element();
     Ddl ddl = c.sideInput(ddlView);
-
+    Instant startTimestamp = Instant.now();
+    String migrationShardId = null;
     boolean isRetryRecord = false;
     /*
      * Try Catch block to capture any exceptions that might occur while processing
@@ -180,10 +209,13 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     try {
 
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
-
+      if (changeEvent.get(SHARD_ID_COLUMN_NAME) != null) {
+        migrationShardId = changeEvent.get(changeEvent.get(SHARD_ID_COLUMN_NAME).asText()).asText();
+      }
       JsonNode retryCount = changeEvent.get("_metadata_retry_count");
 
       if (retryCount != null) {
+        eventRetries.update(retryCount.asLong());
         isRetryRecord = true;
       }
       ChangeEventContext changeEventContext =
@@ -196,6 +228,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
               changeEventContext);
 
       // Start transaction
+      String finalMigrationShardId = migrationShardId;
       spannerAccessor
           .getDatabaseClient()
           .readWriteTransaction(
@@ -216,30 +249,60 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                      */
                     if (previousChangeEventSequence != null
                         && previousChangeEventSequence.compareTo(currentChangeEventSequence) >= 0) {
+                      skippedEvents.inc();
                       return null;
                     }
 
                     // Apply shadow and data table mutations.
                     transaction.buffer(changeEventContext.getMutations());
                     isInTransaction.set(false);
+                    if (finalMigrationShardId != null) {
+                      Metrics.counter(
+                              SpannerTransactionWriterDoFn.class,
+                              finalMigrationShardId + " : Successful events")
+                          .inc();
+                    }
+                    successfulEvents.inc();
                     return null;
                   });
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
       c.output(timestamp);
-      successfulEvents.inc();
+      Instant endTimestamp = Instant.now();
+      spannerWriterLatencyMs.update(new Duration(startTimestamp, endTimestamp).getMillis());
+      long currentTimestampInSeconds = System.currentTimeMillis() / 1000L;
+      long sourceTimestamp = changeEvent.get("_metadata_timestamp").asLong();
+      long datastreamTimestamp = changeEvent.get("_metadata_read_timestamp").asLong();
+      long dataflowTimestamp = changeEvent.get("_metadata_dataflow_timestamp").asLong();
+      totalLatency.update(currentTimestampInSeconds - sourceTimestamp);
+      systemLatency.update(currentTimestampInSeconds - datastreamTimestamp);
+      dataflowLatency.update(currentTimestampInSeconds - dataflowTimestamp);
 
-      // decrement the retry error count if this was retry attempt
+      // increment the successful retry count if this was retry attempt
       if (isRegularRunMode && isRetryRecord) {
-        retryableErrors.dec();
+        successfulEventRetries.inc();
       }
 
+    } catch (DroppedTableException e) {
+      // Errors when table exists in source but was dropped during conversion. We do not output any
+      // errors to dlq for this.
+      LOG.warn(e.getMessage());
+      droppedTableExceptions.inc();
     } catch (InvalidChangeEventException e) {
       // Errors that result from invalid change events.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
-      skippedEvents.inc();
+      invalidEvents.inc();
+      if (migrationShardId != null) {
+        Metrics.counter(SpannerTransactionWriterDoFn.class, migrationShardId + " : Invalid events")
+            .inc();
+      }
     } catch (ChangeEventConvertorException e) {
       // Errors that result during Event conversions are not retryable.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
+      if (migrationShardId != null) {
+        Metrics.counter(
+                SpannerTransactionWriterDoFn.class, migrationShardId + " : Permanent errors")
+            .inc();
+      }
       conversionErrors.inc();
     } catch (SpannerException | IllegalStateException ex) {
       /* Errors that happen when writing to Cloud Spanner are considered retryable.
@@ -262,6 +325,11 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       // Any other errors are considered severe and not retryable.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       failedEvents.inc();
+      if (migrationShardId != null) {
+        Metrics.counter(
+                SpannerTransactionWriterDoFn.class, migrationShardId + " : Permanent errors")
+            .inc();
+      }
     }
   }
 

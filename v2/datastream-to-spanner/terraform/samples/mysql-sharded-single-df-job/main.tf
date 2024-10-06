@@ -253,7 +253,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     google_project_service.enabled_apis, google_project_iam_member.live_migration_roles
   ] # Launch the template once the stream is created.
   provider                = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Cloud_Datastream_to_Spanner"
+  container_spec_gcs_path = "gs://khajanchi-gsql/templates/flex/Cloud_Datastream_to_Spanner"
 
   # Parameters from Dataflow Template
   parameters = {
