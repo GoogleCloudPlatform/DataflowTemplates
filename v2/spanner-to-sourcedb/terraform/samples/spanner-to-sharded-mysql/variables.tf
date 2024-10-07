@@ -5,7 +5,7 @@ variable "common_params" {
     host_project                    = optional(string)
     region                          = string
     migration_id                    = optional(string)
-    replication_bucket  = optional(string, "rr-bucket")
+    replication_bucket              = optional(string, "rr-bucket")
     add_policies_to_service_account = optional(bool, true)
   })
 }
@@ -14,29 +14,28 @@ variable "dataflow_params" {
   description = "Parameters for the Dataflow job. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/spanner-to-sourcedb/README.md for the description of the parameters below."
   type        = object({
     template_params = object({
-      change_stream_name            = string
-      instance_id                   = string
-      database_id                   = string
-      spanner_project_id            = optional(string)
-      metadata_instance_id          = optional(string)
-      metadata_database_id          = optional(string, "rr-metadatadb")
-      local_source_shards_file_path = string
-      start_timestamp               = optional(string)
-      end_timestamp                 = optional(string)
-      shadow_table_prefix           = optional(string)
-      local_session_file_path       = optional(string)
-      filtration_mode               = optional(string)
-      sharding_custom_jar_path      = optional(string)
-      sharding_custom_class_name    = optional(string)
-      sharding_custom_parameters    = optional(string)
-      source_db_timezone_offset     = optional(string)
-      dlq_gcs_pub_sub_subscription  = optional(string)
-      skip_directory_name           = optional(string)
-      max_shard_connections         = optional(string)
-      dead_letter_queue_directory   = optional(string)
-      dlq_max_retry_count           = optional(string)
-      run_mode                      = optional(string)
-      dlq_retry_minutes             = optional(string)
+      change_stream_name           = optional(string)
+      instance_id                  = string
+      database_id                  = string
+      spanner_project_id           = optional(string)
+      metadata_instance_id         = optional(string)
+      metadata_database_id         = optional(string, "rr_metadata")
+      start_timestamp              = optional(string)
+      end_timestamp                = optional(string)
+      shadow_table_prefix          = optional(string)
+      local_session_file_path      = optional(string)
+      filtration_mode              = optional(string)
+      sharding_custom_jar_path     = optional(string)
+      sharding_custom_class_name   = optional(string)
+      sharding_custom_parameters   = optional(string)
+      source_db_timezone_offset    = optional(string)
+      dlq_gcs_pub_sub_subscription = optional(string)
+      skip_directory_name          = optional(string)
+      max_shard_connections        = optional(string)
+      dead_letter_queue_directory  = optional(string)
+      dlq_max_retry_count          = optional(string)
+      run_mode                     = optional(string)
+      dlq_retry_minutes            = optional(string)
     })
     runner_params = object({
       additional_experiments = optional(set(string), [
@@ -71,7 +70,8 @@ variable "shard_list" {
     logical_shard_id   = string
     host               = string
     user               = string
-    secret_manager_uri = string
+    secret_manager_uri = optional(string)
+    password           = optional(string)
     port               = string
     db_name            = string
   }))
