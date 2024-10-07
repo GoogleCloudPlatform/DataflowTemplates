@@ -17,6 +17,7 @@ package com.google.cloud.teleport.templates.common;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -94,6 +95,7 @@ public class ErrorConverters {
   /** An entry in the Error Log. */
   @AutoValue
   @JsonDeserialize(builder = ErrorMessage.Builder.class)
+  @JsonPropertyOrder({"message", "data", "stacktrace"})
   public abstract static class ErrorMessage<T> {
     public static <T> Builder<T> newBuilder() {
       return new AutoValue_ErrorConverters_ErrorMessage.Builder<>();
