@@ -153,7 +153,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${unifiedWorker}", readonly = true, required = false)
   protected boolean unifiedWorker;
 
-  @Parameter(defaultValue = "${generateSBOM}", readonly = true, required = false)
+  @Parameter(defaultValue = "true", property = "generateSBOM", readonly = true, required = false)
   protected boolean generateSBOM;
 
   public TemplatesStageMojo() {}
