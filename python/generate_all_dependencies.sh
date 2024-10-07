@@ -14,7 +14,6 @@
 
 SCRIPTPATH=$(dirname "$0")
 
-sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/../v1/src/main/python/base_requirements.txt $SCRIPTPATH/../v1/src/main/python/requirements.txt
 sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/../python/src/main/python/streaming-llm/base_requirements.txt $SCRIPTPATH/../python/src/main/python/streaming-llm/requirements.txt
 
 # Generate a base set of dependencies to use for any templates without special dependencies

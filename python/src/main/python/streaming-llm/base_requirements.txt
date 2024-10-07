@@ -1,5 +1,0 @@
-apache-beam[gcp]
-torch
-transformers
-torchvision
-setuptools

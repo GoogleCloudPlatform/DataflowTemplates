@@ -6,8 +6,6 @@ FROM ${basePythonContainerImage} as python-base
 # Build args
 ARG WORKDIR=/template
 ARG REQUIREMENTS_FILE=requirements.txt
-ARG BEAM_VERSION=${beamVersion}
-ARG BEAM_PACKAGE=apache-beam[dataframe,gcp,test,yaml]==$BEAM_VERSION
 ARG PY_VERSION=${pythonVersion}
 
 # Copy template files to /template

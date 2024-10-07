@@ -16,9 +16,12 @@ variable "datastream_params" {
     private_connectivity = optional(object({
       private_connectivity_id = optional(string, "priv-conn")
       vpc_name                = string
-      range                   = string
+      range                   = optional(string, "10.0.0.0/29")
     }))
     private_connectivity_id       = optional(string)
+    create_firewall_rule          = optional(bool, true)
+    firewall_rule_target_tags     = optional(list(string), ["databases"])
+    firewall_rule_target_ranges   = optional(list(string)) # Set default to ["10.2.0.0/24"] if needed.
     source_connection_profile_id  = optional(string, "source-mysql")
     mysql_host                    = string
     mysql_username                = string
@@ -30,6 +33,7 @@ variable "datastream_params" {
     stream_prefix_path            = optional(string, "data")
     pubsub_topic_name             = optional(string, "live-migration")
     stream_id                     = optional(string, "mysql-stream")
+    enable_backfill               = optional(bool, true)
     max_concurrent_cdc_tasks      = optional(number, 5)
     max_concurrent_backfill_tasks = optional(number, 20)
     mysql_database = object({
@@ -37,6 +41,12 @@ variable "datastream_params" {
       tables   = optional(list(string))
     })
   })
+  validation {
+    condition = !(var.datastream_params.create_firewall_rule == true &&
+      var.datastream_params.firewall_rule_target_tags != null &&
+    var.datastream_params.firewall_rule_target_ranges != null)
+    error_message = "Exactly one of 'firewall_rule_target_tags' or 'firewall_rule_target_ranges' must be specified when 'create_firewall_rule' is true."
+  }
   validation {
     condition = (
       (var.datastream_params.private_connectivity_id == null && var.datastream_params.private_connectivity != null) ||
@@ -50,6 +60,7 @@ variable "datastream_params" {
 variable "dataflow_params" {
   description = "Parameters for the Dataflow job. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/README_Sourcedb_to_Spanner_Flex.md for the description of the parameters below."
   type = object({
+    skip_dataflow = optional(bool, false)
     template_params = object({
       shadow_table_prefix                 = optional(string)
       create_shadow_tables                = optional(bool)

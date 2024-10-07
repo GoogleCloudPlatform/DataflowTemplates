@@ -31,4 +31,12 @@ public class SourceDbToSpannerConstants {
 
   /* The tag for rows which were filtered based on custom transformation response. */
   public static final TupleTag<RowContext> FILTERED_EVENT_TAG = new TupleTag<>();
+
+  /* Misc constants */
+
+  /*
+  The max recommended limit of number of tables across all shards to migrate in a single dataflow job. If migrating
+  more than 150 tables in a single job, the Dataflow job graph construct may time out.
+  */
+  public static final int MAX_RECOMMENDED_TABLES_PER_JOB = 150;
 }
