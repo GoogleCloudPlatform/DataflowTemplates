@@ -45,15 +45,23 @@ import com.google.cloud.spanner.Struct;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.monitoring.v3.Aggregation;
+import com.google.monitoring.v3.Aggregation.Aligner;
+import com.google.monitoring.v3.TimeInterval;
+import com.google.protobuf.Timestamp;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.ExceptionUtils;
+import org.apache.beam.it.gcp.monitoring.MonitoringClient;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,6 +107,7 @@ public final class SpannerResourceManager implements ResourceManager {
   private final InstanceAdminClient instanceAdminClient;
   private final DatabaseAdminClient databaseAdminClient;
   private final int nodeCount;
+  private Timestamp startTime;
 
   private SpannerResourceManager(Builder builder) {
     this(
@@ -192,6 +201,7 @@ public final class SpannerResourceManager implements ResourceManager {
 
   private synchronized void maybeCreateDatabase() {
     checkIsUsable();
+    this.startTime = Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()).build();
     if (hasDatabase) {
       return;
     }
@@ -467,6 +477,34 @@ public final class SpannerResourceManager implements ResourceManager {
       }
     }
     LOG.info("Manager successfully cleaned up.");
+  }
+
+  /**
+   * Collects the performance metrics for the spanner database resource like Average CPU utilization.
+   *
+   * @param monitoringClient Monitoring client
+   * @param metrics The spanner metrics will be populated in this map
+   */
+  public void getMetrics(@NonNull MonitoringClient monitoringClient, @NonNull Map<String, Double> metrics) {
+    metrics.put("Spanner_AverageCpuUtilization", getAggregateCpuUtilization(monitoringClient, Aligner.ALIGN_MEAN));
+    metrics.put("Spanner_MaxCpuUtilization", getAggregateCpuUtilization(monitoringClient, Aligner.ALIGN_MAX));
+  }
+
+  private Double getAggregateCpuUtilization(MonitoringClient monitoringClient, Aligner aggregationFunction) {
+    String metricType = "spanner.googleapis.com/instance/cpu/utilization";
+
+    TimeInterval interval = TimeInterval.newBuilder()
+        .setEndTime(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()))
+        .setStartTime(this.startTime)
+        .build();
+
+    String filter = "metric.type=\"%s\" AND " +
+        "resource.type=\"spanner_instance\" AND " +
+        "resource.label.instance_id=\"%s\" AND metric.label.database=\"%s\"";
+
+    filter = String.format(filter, metricType, this.instanceId, this.databaseId);
+
+    return monitoringClient.getAggregatedMetric(this.projectId, filter, interval, aggregationFunction);
   }
 
   /** Builder for {@link SpannerResourceManager}. */

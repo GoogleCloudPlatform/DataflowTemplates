@@ -28,8 +28,11 @@ import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.cloud.pubsub.v1.SubscriptionAdminSettings;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
 import com.google.cloud.pubsub.v1.TopicAdminSettings;
+import com.google.monitoring.v3.Aggregation.Aligner;
+import com.google.monitoring.v3.TimeInterval;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.FieldMask;
+import com.google.protobuf.Timestamp;
 import com.google.pubsub.v1.Encoding;
 import com.google.pubsub.v1.ProjectName;
 import com.google.pubsub.v1.PubsubMessage;
@@ -47,14 +50,17 @@ import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.ExceptionUtils;
+import org.apache.beam.it.gcp.monitoring.MonitoringClient;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -392,6 +398,43 @@ public final class PubsubResourceManager implements ResourceManager {
         .withBackoff(FAILSAFE_RETRY_DELAY, FAILSAFE_RETRY_MAX_DELAY)
         .withJitter(FAILSAFE_RETRY_JITTER)
         .build();
+  }
+
+  /**
+   * Collects the performance metrics for the pubsub resources.
+   *
+   * @param monitoringClient Monitoring client
+   * @param metrics The pubsub metrics will be populated in this map
+   */
+  public void getMetrics(@NonNull MonitoringClient monitoringClient, @NonNull Map<String, Double> metrics) {
+    metrics.put("Pubsub_AverageOldestUnackedMessageAge", getAverageOldestUnackedMessageAge(monitoringClient));
+  }
+
+  private Double getAverageOldestUnackedMessageAge(MonitoringClient monitoringClient) {
+    String metricType = "pubsub.googleapis.com/subscription/oldest_unacked_message_age";
+
+    TimeInterval interval = TimeInterval.newBuilder()
+        .setEndTime(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()))
+        .setStartTime(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond() - 5))
+        .build();
+
+    String filterFormat = "metric.type=\"%s\" AND " +
+        "resource.label.project_id=\"%s\" AND resource.label.subscription_id=\"%s\"";
+
+    Double result = 0.0;
+    for (SubscriptionName subscription: this.createdSubscriptions) {
+      String filter = String.format(filterFormat, metricType, this.projectId, subscription.getSubscription());
+      Double metric = monitoringClient.getAggregatedMetric(this.projectId, filter, interval,
+          Aligner.ALIGN_MEAN);
+      if (metric != null) {
+        result += metric;
+      }
+    }
+    if (createdSubscriptions.size() > 0) {
+      return result / createdSubscriptions.size();
+    } else {
+      return 0.0;
+    }
   }
 
   /** Builder for {@link PubsubResourceManager}. */
