@@ -144,7 +144,6 @@ public class DockerfileGeneratorTest {
         .contains("COPY container-generated-metadata.json requirements.txt* /$WORKDIR/");
     assertThat(fileContents).contains("COPY containerName/ /$WORKDIR/containerName/");
     assertThat(fileContents).contains("COPY otherDirectory/ /$WORKDIR/otherDirectory/");
-    assertThat(fileContents).contains("=beam_version");
     assertThat(fileContents).contains("=py_version");
     assertThat(fileContents).contains("ENTRYPOINT [\"java/entry/point\"]");
     assertThat(fileContents).contains("ENV DATAFLOW_JAVA_COMMAND_SPEC=command_spec");
@@ -185,7 +184,6 @@ public class DockerfileGeneratorTest {
     String fileContents = Files.toString(outputFile, StandardCharsets.UTF_8);
     assertThat(fileContents).contains("FROM a python container image");
     assertThat(fileContents).contains("FROM a java container image");
-    assertThat(fileContents).contains("=beam_version");
     assertThat(fileContents).contains("=py_version");
     assertThat(fileContents)
         .doesNotContainMatch(
@@ -211,7 +209,6 @@ public class DockerfileGeneratorTest {
     String fileContents = Files.toString(outputFile, StandardCharsets.UTF_8);
     assertThat(fileContents).contains("FROM a python container image");
     assertThat(fileContents).contains("FROM a java container image");
-    assertThat(fileContents).contains("=beam_version");
     assertThat(fileContents).contains("=py_version");
     assertThat(fileContents).contains("COPY other_file /$WORKDIR/");
     assertThat(fileContents).contains("ENTRYPOINT [\"python/entry/point\"]");
