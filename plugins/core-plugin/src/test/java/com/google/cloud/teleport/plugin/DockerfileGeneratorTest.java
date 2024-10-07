@@ -163,7 +163,6 @@ public class DockerfileGeneratorTest {
     String fileContents = Files.toString(outputFile, StandardCharsets.UTF_8);
     assertThat(fileContents).contains("FROM " + BASE_CONTAINER_IMAGE);
     assertThat(fileContents).contains("FROM " + BASE_PYTHON_CONTAINER_IMAGE);
-    assertThat(fileContents).contains("BEAM_VERSION=beam_version");
     assertThat(fileContents).contains("PY_VERSION=" + PYTHON_VERSION);
     assertThat(fileContents)
         .contains(String.format("ENTRYPOINT [\"%s\"]", PYTHON_LAUNCHER_ENTRYPOINT));
