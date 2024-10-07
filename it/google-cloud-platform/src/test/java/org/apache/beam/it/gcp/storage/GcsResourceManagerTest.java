@@ -18,20 +18,24 @@
 package org.apache.beam.it.gcp.storage;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.api.gax.paging.Page;
+import com.google.auth.Credentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.BucketInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.cloud.storage.Storage.BucketListOption;
@@ -45,6 +49,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.artifacts.GcsArtifact;
+import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.Resources;
 import org.junit.After;
@@ -57,6 +62,7 @@ import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
@@ -102,6 +108,12 @@ public final class GcsResourceManagerTest {
   @After
   public void tearDown() {
     gcsClient.cleanupAll();
+  }
+
+  @Test
+  public void testBuilderWithoutStaticBucketWithEmptyTestClassName() {
+    assertThrows(
+        IllegalArgumentException.class, () -> GcsResourceManager.builder("", null).build());
   }
 
   @Test
@@ -156,6 +168,35 @@ public final class GcsResourceManagerTest {
     when(client.create(any(BlobInfo.class), any())).thenReturn(blob);
     assertThrows(
         IOException.class, () -> gcsClient.uploadArtifact(ARTIFACT_NAME, "/" + UUID.randomUUID()));
+  }
+
+  @Test
+  public void testGenerateBucketName_validInput() {
+    String testClassName = "MyTestClass";
+    String runId = "1234567890";
+    String expectedBucketName = "mytestclass-1234567890";
+    String actualBucketName = GcsResourceManager.generateBucketName(testClassName, runId);
+    assertEquals(expectedBucketName, actualBucketName);
+  }
+
+  @Test
+  public void testGenerateBucketName_withSpecialCharactersAndLongName() {
+    String testClassName = "My.Test.Class.With.A.Very.Long.Name";
+    String runId = "1234567890123456789012345678901234567890";
+    // Periods replaced, lowercase and length truncated.
+    String expectedBucketName = "my-test-class-with-a-very-long-name-123456789012345678901234567";
+    String actualBucketName = GcsResourceManager.generateBucketName(testClassName, runId);
+    assertEquals(expectedBucketName, actualBucketName);
+  }
+
+  @Test
+  public void testGenerateBucketName_nullInputs() {
+    assertThrows(
+        NullPointerException.class,
+        () -> GcsResourceManager.generateBucketName("MyTestClass", /* runId= */ null));
+    assertThrows(
+        NullPointerException.class,
+        () -> GcsResourceManager.generateBucketName(/* testClassName= */ null, "1234567890"));
   }
 
   @Test
@@ -320,6 +361,102 @@ public final class GcsResourceManagerTest {
 
     gcsClient.cleanupAll();
 
+    verify(client, never()).delete(anyIterable());
+  }
+
+  @Test
+  public void testConstructor_withProvidedBucket() {
+    // Arrange
+    Storage mockStorage = mock(Storage.class);
+    Credentials mockCredentials = mock(Credentials.class);
+
+    try (MockedStatic<ArtifactUtils> mockedArtifactUtils = mockStatic(ArtifactUtils.class)) {
+      mockedArtifactUtils
+          .when(() -> ArtifactUtils.createStorageClient(any(Credentials.class)))
+          .thenReturn(mockStorage);
+      mockedArtifactUtils.when(ArtifactUtils::createRunId).thenReturn("runId");
+
+      // Act
+      GcsResourceManager.builder("test-bucket", "TestClass", mockCredentials).build();
+
+      // Assert
+      verify(mockStorage, never()).create(any(BucketInfo.class));
+    }
+  }
+
+  @Test
+  public void testConstructor_withNullBucket_createsBucket() {
+    // Arrange
+    Storage mockStorage = mock(Storage.class);
+    Credentials mockCredentials = mock(Credentials.class);
+
+    try (MockedStatic<ArtifactUtils> mockedArtifactUtils = mockStatic(ArtifactUtils.class)) {
+      mockedArtifactUtils
+          .when(() -> ArtifactUtils.createStorageClient(any(Credentials.class)))
+          .thenReturn(mockStorage);
+      mockedArtifactUtils.when(ArtifactUtils::createRunId).thenReturn("runId");
+      when(mockStorage.create(any(BucketInfo.class))).thenReturn(null);
+
+      // Act
+      GcsResourceManager.builder("TestClass", mockCredentials).build();
+
+      // Assert
+      verify(mockStorage).create(BucketInfo.of("testclass-runid"));
+    }
+  }
+
+  @Test
+  public void testConstructor_withNullBucket_failsToCreateBucket() {
+    // Arrange
+    Storage mockStorage = mock(Storage.class);
+    Credentials mockCredentials = mock(Credentials.class);
+
+    try (MockedStatic<ArtifactUtils> mockedArtifactUtils = mockStatic(ArtifactUtils.class)) {
+      mockedArtifactUtils
+          .when(() -> ArtifactUtils.createStorageClient(any(Credentials.class)))
+          .thenReturn(mockStorage);
+      mockedArtifactUtils.when(ArtifactUtils::createRunId).thenReturn("runId");
+      when(mockStorage.create(any(BucketInfo.class)))
+          .thenThrow(new RuntimeException("Failed to create bucket"));
+
+      // Act & Assert
+      GcsResourceManagerException exception =
+          assertThrows(
+              GcsResourceManagerException.class,
+              () -> GcsResourceManager.builder("TestClass", mockCredentials).build());
+      assertEquals("Failed to create bucket.", exception.getMessage());
+    }
+  }
+
+  @Test
+  public void testCleanup_deleteNonStaticBucket_bucketExists() {
+    // Arrange
+    GcsResourceManager client2 = new GcsResourceManager(client, BUCKET, TEST_CLASS, true);
+
+    when(client.delete(BUCKET)).thenReturn(true);
+
+    // Act
+    client2.cleanupAll();
+
+    // Assert
+    verify(client).delete(BUCKET);
+    verify(client, never()).list(anyString(), any(BlobListOption.class));
+    verify(client, never()).delete(anyIterable());
+  }
+
+  @Test
+  public void testCleanup_deleteNonStaticBucket_bucketDoesNotExists() {
+    // Arrange
+    GcsResourceManager client2 = new GcsResourceManager(client, BUCKET, TEST_CLASS, true);
+
+    when(client.delete(BUCKET)).thenReturn(false);
+
+    // Act
+    client2.cleanupAll();
+
+    // Assert
+    verify(client).delete(BUCKET);
+    verify(client, never()).list(anyString(), any(BlobListOption.class));
     verify(client, never()).delete(anyIterable());
   }
 
