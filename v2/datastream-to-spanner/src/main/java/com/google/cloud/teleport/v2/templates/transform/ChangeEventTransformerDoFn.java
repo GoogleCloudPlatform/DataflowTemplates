@@ -169,8 +169,6 @@ public abstract class ChangeEventTransformerDoFn
     String migrationShardId = null;
     try {
       JsonNode changeEvent = mapper.readTree(msg.getOriginalPayload());
-      ((ObjectNode) changeEvent)
-          .put("migration_shard_id", changeEvent.get(Constants.EVENT_STREAM_NAME));
       Map<String, Object> sourceRecord =
           ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
 
