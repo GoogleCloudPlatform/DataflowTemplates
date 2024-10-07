@@ -152,6 +152,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${unifiedWorker}", readonly = true, required = false)
   protected boolean unifiedWorker;
 
+<<<<<<< HEAD
   @Parameter(defaultValue = "${saSecretName}", readonly = true, required = false)
   protected String saSecretName;
 
@@ -161,9 +162,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${airlockJavaRepo}", readonly = true, required = false)
   protected String airlockJavaRepo;
 
-  private boolean internalMaven;
-  @Parameter(defaultValue = "${generateSBOM}", readonly = true, required = false)
+  @Parameter(defaultValue = "false", property = "generateSBOM", readonly = true, required = false)
   protected boolean generateSBOM;
+
+  private boolean internalMaven;
 
   public TemplatesStageMojo() {}
 
