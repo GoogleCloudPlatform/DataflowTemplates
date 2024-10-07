@@ -26,7 +26,6 @@ import java.text.ParseException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;

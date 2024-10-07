@@ -406,26 +406,33 @@ public final class PubsubResourceManager implements ResourceManager {
    * @param monitoringClient Monitoring client
    * @param metrics The pubsub metrics will be populated in this map
    */
-  public void getMetrics(@NonNull MonitoringClient monitoringClient, @NonNull Map<String, Double> metrics) {
-    metrics.put("Pubsub_AverageOldestUnackedMessageAge", getAverageOldestUnackedMessageAge(monitoringClient));
+  public void getMetrics(
+      @NonNull MonitoringClient monitoringClient, @NonNull Map<String, Double> metrics) {
+    metrics.put(
+        "Pubsub_AverageOldestUnackedMessageAge",
+        getAverageOldestUnackedMessageAge(monitoringClient));
   }
 
   private Double getAverageOldestUnackedMessageAge(MonitoringClient monitoringClient) {
     String metricType = "pubsub.googleapis.com/subscription/oldest_unacked_message_age";
 
-    TimeInterval interval = TimeInterval.newBuilder()
-        .setEndTime(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()))
-        .setStartTime(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond() - 5))
-        .build();
+    TimeInterval interval =
+        TimeInterval.newBuilder()
+            .setEndTime(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()))
+            .setStartTime(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond() - 5))
+            .build();
 
-    String filterFormat = "metric.type=\"%s\" AND " +
-        "resource.label.project_id=\"%s\" AND resource.label.subscription_id=\"%s\"";
+    String filterFormat =
+        "metric.type=\"%s\" AND "
+            + "resource.label.project_id=\"%s\" AND resource.label.subscription_id=\"%s\"";
 
     Double result = 0.0;
-    for (SubscriptionName subscription: this.createdSubscriptions) {
-      String filter = String.format(filterFormat, metricType, this.projectId, subscription.getSubscription());
-      Double metric = monitoringClient.getAggregatedMetric(this.projectId, filter, interval,
-          Aligner.ALIGN_MEAN);
+    for (SubscriptionName subscription : this.createdSubscriptions) {
+      String filter =
+          String.format(filterFormat, metricType, this.projectId, subscription.getSubscription());
+      Double metric =
+          monitoringClient.getAggregatedMetric(
+              this.projectId, filter, interval, Aligner.ALIGN_MEAN);
       if (metric != null) {
         result += metric;
       }

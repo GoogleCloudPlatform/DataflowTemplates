@@ -418,9 +418,13 @@ public final class MonitoringClient {
    * @param filter filter string
    * @param interval time interval
    * @param aggregationFunction the aggregation function to apply on the time series for the whole
-   * interval
+   *     interval
    */
-  public @Nullable Double getAggregatedMetric(String projectId, String filter, TimeInterval interval, Aggregation.Aligner aggregationFunction) {
+  public @Nullable Double getAggregatedMetric(
+      String projectId,
+      String filter,
+      TimeInterval interval,
+      Aggregation.Aligner aggregationFunction) {
 
     long intervalSeconds =
         interval.getEndTime().getSeconds() - interval.getStartTime().getSeconds();
@@ -431,17 +435,19 @@ public final class MonitoringClient {
             .setPerSeriesAligner(aggregationFunction)
             .build();
 
-    ListTimeSeriesRequest request = ListTimeSeriesRequest.newBuilder()
-        .setName(projectId)
-        .setFilter(filter)
-        .setInterval(interval)
-        .setAggregation(aggregation)
-        .build();
+    ListTimeSeriesRequest request =
+        ListTimeSeriesRequest.newBuilder()
+            .setName(projectId)
+            .setFilter(filter)
+            .setInterval(interval)
+            .setAggregation(aggregation)
+            .build();
 
     List<Double> timeSeriesList = listTimeSeriesAsDouble(request);
 
     if (timeSeriesList.size() > 1) {
-      LOG.warn("More than one value present in the Aggregated time series data! Returning first value.");
+      LOG.warn(
+          "More than one value present in the Aggregated time series data! Returning first value.");
     }
     if (timeSeriesList.size() > 0) {
       return timeSeriesList.get(0);

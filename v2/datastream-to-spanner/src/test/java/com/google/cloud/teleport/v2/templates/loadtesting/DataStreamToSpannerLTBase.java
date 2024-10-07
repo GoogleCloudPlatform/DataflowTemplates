@@ -311,19 +311,31 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     return String.format("gs://%s", String.join("/", pathParts));
   }
 
-  public Map<String, Double> getCustomCounters(LaunchInfo launchInfo, Map<String, Double> metrics) throws IOException {
-    Double successfulEvents = pipelineLauncher.getMetric(project, region, launchInfo.jobId(), SUCCESSFUL_EVENTS_COUNTER_NAME);
-    metrics.put("Custom_Counter_SuccessfulEvents", successfulEvents != null ? successfulEvents: 0.0);
-    Double retryableErrors = pipelineLauncher.getMetric(project, region, launchInfo.jobId(), RETRYABLE_ERRORS_COUNTER_NAME);
-    metrics.put("Custom_Counter_RetryableErrors", retryableErrors != null ? retryableErrors: 0.0);
+  public Map<String, Double> getCustomCounters(LaunchInfo launchInfo, Map<String, Double> metrics)
+      throws IOException {
+    Double successfulEvents =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), SUCCESSFUL_EVENTS_COUNTER_NAME);
+    metrics.put(
+        "Custom_Counter_SuccessfulEvents", successfulEvents != null ? successfulEvents : 0.0);
+    Double retryableErrors =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), RETRYABLE_ERRORS_COUNTER_NAME);
+    metrics.put("Custom_Counter_RetryableErrors", retryableErrors != null ? retryableErrors : 0.0);
 
     Double permanentErrors = 0.0;
-    Double skippedEvents = pipelineLauncher.getMetric(project, region, launchInfo.jobId(), SKIPPED_EVENTS_COUNTER_NAME);
-    permanentErrors += skippedEvents != null ? skippedEvents: 0.0;
-    Double otherPermanentErrors = pipelineLauncher.getMetric(project, region, launchInfo.jobId(), OTHER_PERMANENT_ERRORS_COUNTER_NAME);
-    permanentErrors += otherPermanentErrors != null ? otherPermanentErrors: 0.0;
-    Double conversionErrors = pipelineLauncher.getMetric(project, region, launchInfo.jobId(), CONVERSION_ERRORS_COUNTER_NAME);
-    permanentErrors += conversionErrors != null ? conversionErrors: 0.0;
+    Double skippedEvents =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), SKIPPED_EVENTS_COUNTER_NAME);
+    permanentErrors += skippedEvents != null ? skippedEvents : 0.0;
+    Double otherPermanentErrors =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), OTHER_PERMANENT_ERRORS_COUNTER_NAME);
+    permanentErrors += otherPermanentErrors != null ? otherPermanentErrors : 0.0;
+    Double conversionErrors =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), CONVERSION_ERRORS_COUNTER_NAME);
+    permanentErrors += conversionErrors != null ? conversionErrors : 0.0;
 
     metrics.put("Custom_Counter_PermanentErrors", permanentErrors);
     return metrics;

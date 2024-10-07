@@ -225,20 +225,36 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
         bucket, getClass().getSimpleName(), gcsResourceManager.runId(), artifactId);
   }
 
-  public Map<String, Double> getCustomCounters(LaunchInfo launchInfo, int numShards, Map<String, Double> metrics) throws IOException {
-    Double successfulEvents = pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "success_record_count");
-    metrics.put("Custom_Counter_SuccessRecordCount", successfulEvents != null ? successfulEvents: 0.0);
-    Double retryableErrors = pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "retryable_record_count");
-    metrics.put("Custom_Counter_RetryableRecordCount", retryableErrors != null ? retryableErrors: 0.0);
+  public Map<String, Double> getCustomCounters(
+      LaunchInfo launchInfo, int numShards, Map<String, Double> metrics) throws IOException {
+    Double successfulEvents =
+        pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "success_record_count");
+    metrics.put(
+        "Custom_Counter_SuccessRecordCount", successfulEvents != null ? successfulEvents : 0.0);
+    Double retryableErrors =
+        pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "retryable_record_count");
+    metrics.put(
+        "Custom_Counter_RetryableRecordCount", retryableErrors != null ? retryableErrors : 0.0);
 
-    Double severeErrorCount = pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "severe_error_count");
-    metrics.put("Custom_Counter_SevereErrorCount", severeErrorCount != null ? severeErrorCount: 0.0);
-    Double skippedRecordCount = pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "skipped_record_count");
-    metrics.put("Custom_Counter_SkippedRecordCount", skippedRecordCount != null ? skippedRecordCount: 0.0);
+    Double severeErrorCount =
+        pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "severe_error_count");
+    metrics.put(
+        "Custom_Counter_SevereErrorCount", severeErrorCount != null ? severeErrorCount : 0.0);
+    Double skippedRecordCount =
+        pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "skipped_record_count");
+    metrics.put(
+        "Custom_Counter_SkippedRecordCount", skippedRecordCount != null ? skippedRecordCount : 0.0);
 
-    for (int i=1; i<=numShards; ++i) {
-      Double replicationLag = pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "replication_lag_in_seconds_Shard"+i+"_MEAN");
-      metrics.put("Custom_Counter_MeanReplicationLagShard"+i, replicationLag != null ? replicationLag: 0.0);
+    for (int i = 1; i <= numShards; ++i) {
+      Double replicationLag =
+          pipelineLauncher.getMetric(
+              project,
+              region,
+              launchInfo.jobId(),
+              "replication_lag_in_seconds_Shard" + i + "_MEAN");
+      metrics.put(
+          "Custom_Counter_MeanReplicationLagShard" + i,
+          replicationLag != null ? replicationLag : 0.0);
     }
     return metrics;
   }
