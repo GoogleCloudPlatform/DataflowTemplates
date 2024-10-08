@@ -23,7 +23,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.kms.v1.CryptoKey;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -235,7 +234,7 @@ public class PubSubToSplunkIT extends TemplateTestBase {
 
   @Test
   // TODO: Skip DirectRunner because batching/timers are not working appropriately
-  @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+  @Category(TemplateIntegrationTest.class)
   public void testPubSubToSplunkWithBatchAndParallelism() throws IOException {
     PipelineLauncher.LaunchConfig.Builder parameters =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
