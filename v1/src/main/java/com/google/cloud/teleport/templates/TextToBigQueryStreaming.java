@@ -286,7 +286,7 @@ public class TextToBigQueryStreaming {
                     .withExtendedErrorInfo()
                     .withoutValidation()
                     .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
-                    .withWriteDisposition(WriteDisposition.WRITE_APPEND)
+                    .withWriteDisposition(WriteDisposition.WRITE_TRUNCATE)
                     .withMethod(Method.STREAMING_INSERTS)
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
                     .withCustomGcsTempLocation(options.getBigQueryLoadingTemporaryDirectory()));
