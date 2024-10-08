@@ -14,6 +14,18 @@
 
 SCRIPTPATH=$(dirname "$0")
 
-sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/../v1/src/main/python/base_requirements.txt $SCRIPTPATH/../v1/src/main/python/requirements.txt
-sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/../python/src/main/python/word-count-python/base_requirements.txt $SCRIPTPATH/../python/src/main/python/word-count-python/requirements.txt
 sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/../python/src/main/python/streaming-llm/base_requirements.txt $SCRIPTPATH/../python/src/main/python/streaming-llm/requirements.txt
+
+# Generate a base set of dependencies to use for any templates without special dependencies
+mkdir -p $SCRIPTPATH/__build__/
+sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/default_base_python_requirements.txt $SCRIPTPATH/__build__/default_python_requirements.txt
+cp $SCRIPTPATH/__build__/default_python_requirements.txt $SCRIPTPATH/../python/src/main/python/word-count-python/requirements.txt
+
+sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/default_base_yaml_requirements.txt $SCRIPTPATH/__build__/default_yaml_requirements.txt
+cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../python/src/main/python/yaml-template/requirements.txt
+cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/googlecloud-to-elasticsearch/src/main/resources/requirements.txt
+cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/googlecloud-to-googlecloud/src/main/resources/requirements.txt
+cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/googlecloud-to-splunk/src/main/resources/requirements.txt
+cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/pubsub-binary-to-bigquery/src/main/resources/requirements.txt
+cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/pubsub-binary-to-mongodb/src/main/resources/requirements.txt
+cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/pubsub-to-mongodb/src/main/resources/requirements.txt

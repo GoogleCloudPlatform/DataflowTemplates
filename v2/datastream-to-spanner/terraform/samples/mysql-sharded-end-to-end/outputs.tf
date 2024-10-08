@@ -10,7 +10,7 @@ output "resource_ids" {
       gcs_bucket                           = google_storage_bucket.datastream_bucket[idx].name
       pubsub_topic                         = google_pubsub_topic.datastream_topic[idx].name
       pubsub_subscription                  = google_pubsub_subscription.datastream_subscription[idx].name
-      dataflow_job                         = google_dataflow_flex_template_job.live_migration_job[idx].job_id
+      dataflow_job                         = var.common_params.dataflow_params.skip_dataflow ? "" : google_dataflow_flex_template_job.live_migration_job[idx].job_id
     }
   }
 
@@ -38,7 +38,7 @@ output "resource_urls" {
       gcs_bucket                           = "https://console.cloud.google.com/storage/browser/${google_storage_bucket.datastream_bucket[idx].name}?project=${var.common_params.project}"
       pubsub_topic                         = "https://console.cloud.google.com/cloudpubsub/topic/detail/${google_pubsub_topic.datastream_topic[idx].name}?project=${var.common_params.project}"
       pubsub_subscription                  = "https://console.cloud.google.com/cloudpubsub/subscription/detail/${google_pubsub_subscription.datastream_subscription[idx].name}?project=${var.common_params.project}"
-      dataflow_job                         = "https://console.cloud.google.com/dataflow/jobs/${var.common_params.region}/${google_dataflow_flex_template_job.live_migration_job[idx].job_id}?project=${var.common_params.project}"
+      dataflow_job                         = var.common_params.dataflow_params.skip_dataflow ? "" : "https://console.cloud.google.com/dataflow/jobs/${var.common_params.region}/${google_dataflow_flex_template_job.live_migration_job[idx].job_id}?project=${var.common_params.project}"
     }
   }
 

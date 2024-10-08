@@ -42,6 +42,8 @@ public class DockerfileGenerator {
 
   public static final String BASE_CONTAINER_IMAGE =
       "gcr.io/dataflow-templates-base/java11-template-launcher-base-distroless:latest";
+  // Keep in sync with python version used in
+  // https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/python/generate_dependencies.sh
   public static final String BASE_PYTHON_CONTAINER_IMAGE =
       "gcr.io/dataflow-templates-base/python311-template-launcher-base:latest";
   public static final String PYTHON_LAUNCHER_ENTRYPOINT =

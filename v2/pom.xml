@@ -726,6 +726,6 @@
         <module>streaming-data-generator</module>
 
         <module>flagship-events</module>
- </modules>
+    </modules>
 
 </project>

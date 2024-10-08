@@ -48,6 +48,7 @@ import org.apache.beam.sdk.io.jdbc.JdbcIO.ReadWithPartitions;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
@@ -80,6 +81,7 @@ public final class JdbcIoWrapper implements IoWrapper {
     DataSourceConfiguration dataSourceConfiguration = getDataSourceConfiguration(config);
 
     DataSource dataSource = dataSourceConfiguration.buildDatasource();
+    setDataSourceLoginTimeout((BasicDataSource) dataSource, config);
 
     SchemaDiscovery schemaDiscovery =
         new SchemaDiscoveryImpl(config.dialectAdapter(), config.schemaDiscoveryBackOff());
@@ -90,6 +92,60 @@ public final class JdbcIoWrapper implements IoWrapper {
     ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> tableReaders =
         buildTableReaders(config, tableConfigs, dataSourceConfiguration, sourceSchema);
     return new JdbcIoWrapper(tableReaders, sourceSchema);
+  }
+
+  /**
+   * Set's the login timeout for the DataSource used for schema and index discoveries. This helps in
+   * early error reporting to the customer in case of unreachable or unavailable source database.
+   * The default login timeout for the {@link BasicDataSource} is infinite. Unfortunately, {@link
+   * BasicDataSource} does not directly support {@link DataSource#setLoginTimeout(int)}. This can be
+   * achieved by setting {@link BasicDataSource#setMaxWaitMillis} and connect timeout at the driver
+   * layer.
+   *
+   * @param dataSource
+   * @param config
+   */
+  @VisibleForTesting
+  protected static void setDataSourceLoginTimeout(
+      BasicDataSource dataSource, JdbcIOWrapperConfig config) {
+
+    dataSource.setMaxWaitMillis(config.schemaDiscoveryConnectivityTimeoutMilliSeconds());
+
+    String connectivityTimeout;
+    switch (config.sourceDbDialect()) {
+      case MYSQL:
+        connectivityTimeout =
+            String.valueOf(config.schemaDiscoveryConnectivityTimeoutMilliSeconds());
+        setConnectionProperty(dataSource, "connectTimeout", connectivityTimeout);
+        setConnectionProperty(dataSource, "socketTimeout", connectivityTimeout);
+        break;
+      case POSTGRESQL:
+        connectivityTimeout =
+            String.valueOf(config.schemaDiscoveryConnectivityTimeoutMilliSeconds() / 1000);
+        setConnectionProperty(dataSource, "loginTimeout", connectivityTimeout);
+        setConnectionProperty(dataSource, "connectTimeout", connectivityTimeout);
+        setConnectionProperty(dataSource, "socketTimeout", connectivityTimeout);
+        break;
+      default:
+        logger.error(
+            "No connectivity timeout overrides implemented for dialect {}. In case of misconfigured network connectivity, schema discovery could timeout without correct error reporting.");
+    }
+  }
+
+  private static void setConnectionProperty(
+      BasicDataSource dataSource, String property, String value) {
+
+    String url = dataSource.getUrl();
+    if (!url.contains(property)) {
+      dataSource.addConnectionProperty(property, value);
+      logger.info("Set {} = {}  for schema discovery of {}", property, value, dataSource);
+    } else {
+      logger.warn(
+          "Property {} already set in URL {}. Not overriding with {} for schema discovery. The default over-ride helps in failing fast in case of misconfigured network connectivity.",
+          property,
+          url,
+          value);
+    }
   }
 
   /**

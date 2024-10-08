@@ -55,9 +55,9 @@ public class DataTypesIt extends SourceDbToSpannerITBase {
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final String MYSQL_DUMP_FILE_RESOURCE = "DataTypesIt/data-types.sql";
+  private static final String MYSQL_DUMP_FILE_RESOURCE = "DataTypesIt/mysql/data-types.sql";
 
-  private static final String SPANNER_DDL_RESOURCE = "DataTypesIt/spanner-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE = "DataTypesIt/mysql/spanner-schema.sql";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class. \
