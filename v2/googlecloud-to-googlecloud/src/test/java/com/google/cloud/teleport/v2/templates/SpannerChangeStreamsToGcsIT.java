@@ -22,7 +22,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.gson.Gson;
 import java.io.IOException;
@@ -55,7 +54,7 @@ import org.junit.runners.JUnit4;
 /**
  * Integration test for {@link SpannerChangeStreamsToGcs Spanner Change Streams to GCS} template.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(SpannerChangeStreamsToGcs.class)
 @RunWith(JUnit4.class)
 public class SpannerChangeStreamsToGcsIT extends TemplateTestBase {

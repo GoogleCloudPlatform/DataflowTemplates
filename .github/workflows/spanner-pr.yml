@@ -120,6 +120,7 @@ jobs:
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4.0.1
       with:
+        name: Spanner unit test report
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: GoogleCloudPlatform/DataflowTemplates
         files: 'target/site/jacoco-aggregate/jacoco.xml'
@@ -154,6 +155,15 @@ jobs:
         name: surefire-test-results
         path: '**/surefire-reports/TEST-*.xml'
         retention-days: 1
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      with:
+        name: Spanner smoke test report
+        token: ${{ secrets.CODECOV_TOKEN }}
+        slug: GoogleCloudPlatform/DataflowTemplates
+        files: 'target/site/jacoco-aggregate/jacoco.xml'
+        # Temp fix for https://github.com/codecov/codecov-action/issues/1487
+        version: v0.6.0
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_integration_tests_templates:
@@ -183,6 +193,15 @@ jobs:
         name: surefire-test-results
         path: '**/surefire-reports/TEST-*.xml'
         retention-days: 1
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      with:
+        name: Spanner integration test report
+        token: ${{ secrets.CODECOV_TOKEN }}
+        slug: GoogleCloudPlatform/DataflowTemplates
+        files: 'target/site/jacoco-aggregate/jacoco.xml'
+        # Temp fix for https://github.com/codecov/codecov-action/issues/1487
+        version: v0.6.0
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_load_tests_templates:
