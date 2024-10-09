@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.utils;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -48,21 +49,30 @@ public class SpannerDao {
     this.spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
   }
 
-  public com.google.cloud.Timestamp getProcessedCommitTimestamp(
+  // used for unit testing
+  public SpannerDao(SpannerAccessor spannerAccessor) {
+    this.spannerAccessor = spannerAccessor;
+  }
+
+  public ShadowTableRecord getShadowTableRecord(
       String tableName, com.google.cloud.spanner.Key primaryKey) {
     try {
       DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
       Struct row =
           databaseClient
               .singleUse()
-              .readRow(tableName, primaryKey, Arrays.asList("processed_commit_ts"));
+              .readRow(
+                  tableName,
+                  primaryKey,
+                  Arrays.asList(
+                      Constants.PROCESSED_COMMIT_TS_COLUMN_NAME, Constants.RECORD_SEQ_COLUMN_NAME));
 
       // This is the first event for the primary key and hence the latest event.
       if (row == null) {
         return null;
       }
 
-      return row.getTimestamp(0);
+      return new ShadowTableRecord(row.getTimestamp(0), row.getLong(1));
     } catch (Exception e) {
       LOG.warn("The " + tableName + " table could not be read. ", e);
       // We need to throw the original exception such that the caller can
@@ -71,7 +81,7 @@ public class SpannerDao {
     }
   }
 
-  public void updateProcessedCommitTimestamp(Mutation mutation) {
+  public void updateShadowTable(Mutation mutation) {
     List<Mutation> mutations = new ArrayList<>();
     mutations.add(mutation);
     spannerAccessor.getDatabaseClient().write(mutations);

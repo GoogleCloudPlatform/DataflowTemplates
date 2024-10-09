@@ -151,7 +151,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     } catch (SQLException e) {
       logger.error(
           String.format(
-              "Sql exception while discovering table list for datasource=%s", dataSource, e));
+              "Sql exception while discovering table list for datasource=%s cause=%s",
+              dataSource, e));
       schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
     }
@@ -184,7 +185,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
     logger.info(
         String.format(
-            "Discovering tale schema for Datasource: %s, SourceSchemaReference: %s, tables: %s",
+            "Discovering table schema for Datasource: %s, SourceSchemaReference: %s, tables: %s",
             dataSource, sourceSchemaReference, tables));
 
     String discoveryQuery = getSchemaDiscoveryQuery(sourceSchemaReference);
@@ -224,7 +225,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         tableSchemaBuilder.build();
     logger.info(
         String.format(
-            "Discovered tale schema for Datasource: %s, SourceSchemaReference: %s, tables: %s, schema: %s",
+            "Discovered table schema for Datasource: %s, SourceSchemaReference: %s, tables: %s, schema: %s",
             dataSource, sourceSchemaReference, tables, tableSchema));
 
     return tableSchema;
@@ -305,7 +306,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   /**
    * Discover Indexed columns and their Collations(if applicable). You could try this on <a href =
-   * https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/2>db-fiddle</a>
+   * https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/3>db-fiddle</a>
    *
    * @param sourceSchemaReference
    * @return
@@ -354,6 +355,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   private static final ImmutableMap<String, SourceColumnIndexInfo.IndexType> INDEX_TYPE_MAPPING =
       ImmutableMap.<String, SourceColumnIndexInfo.IndexType>builder()
+          .put("BIGINT UNSIGNED", IndexType.BIG_INT_UNSIGNED)
           .put("BIGINT", IndexType.NUMERIC)
           .put("DATETIME", IndexType.DATE_TIME)
           .put("INTEGER", IndexType.NUMERIC)
@@ -440,7 +442,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         // and collation called "binary".
         // Ref https://dev.mysql.com/doc/refman/8.4/en/charset-binary-collations.html
         // In information_schema.columns query, these column types show null as character set.
-        // Ref: https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/2
+        // Ref: https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/3
         // Also for both mySQL 5.7 and 8.0 binary columns have a NO-PAD comparison.
         // Ref: https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/0.
         if (binaryColumnTypes.contains(columType) && characterSet == null) {
@@ -719,7 +721,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   protected static final class InformationSchemaCols {
     public static final String NAME_COL = "COLUMN_NAME";
-    public static final String TYPE_COL = "DATA_TYPE";
+    public static final String TYPE_COL = "COLUMN_TYPE";
     public static final String CHAR_MAX_LENGTH_COL = "CHARACTER_MAXIMUM_LENGTH";
     public static final String NUMERIC_PRECISION_COL = "NUMERIC_PRECISION";
     public static final String NUMERIC_SCALE_COL = "NUMERIC_SCALE";
@@ -739,7 +741,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     public static final String NON_UNIQ_COL = "stats.NON_UNIQUE";
     public static final String CARDINALITY_COL = "stats.CARDINALITY";
 
-    public static final String TYPE_COL = "cols.DATA_TYPE";
+    public static final String TYPE_COL = "cols.COLUMN_TYPE";
     public static final String CHAR_MAX_LENGTH_COL = "cols.CHARACTER_MAXIMUM_LENGTH";
     public static final String CHARACTER_SET_COL = "cols.CHARACTER_SET_NAME";
     public static final String COLLATION_COL = "cols.COLLATION_NAME";

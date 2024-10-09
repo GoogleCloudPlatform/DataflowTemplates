@@ -248,7 +248,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> tableSchema =
         tableSchemaBuilder.build();
     logger.info(
-        "Discovered tale schema for Datasource: {}, SourceSchemaReference: {}, tables: {}, schema: {}",
+        "Discovered table schema for Datasource: {}, SourceSchemaReference: {}, tables: {}, schema: {}",
         dataSource,
         sourceSchemaReference,
         tables,
@@ -259,7 +259,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
 
   /**
    * Discover the indexes of tables to migrate. You can try this in <a
-   * href="https://www.db-fiddle.com/f/bWFaWkW6dMw1tcNDaFnChc/0">db-fiddle</a>.
+   * href="https://www.db-fiddle.com/f/kTanXYXoM2VgCjSf6NZHjD/2">db-fiddle</a>.
    *
    * @param dataSource Provider for JDBC connection.
    * @param sourceSchemaReference Source database name and (optionally namespace)
@@ -280,14 +280,13 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         sourceSchemaReference,
         tables);
 
-    // TODO(thiagotnunes): Fix the query to work with PG versions < 11
     final String query =
         String.format(
             "SELECT a.attname AS column_name,"
                 + "  ixs.indexname AS index_name,"
                 + "  ix.indisunique AS is_unique,"
                 + "  ix.indisprimary AS is_primary,"
-                + "  ix.indnkeyatts AS cardinality,"
+                + "  c.reltuples AS cardinality,"
                 + "  a.attnum AS ordinal_position,"
                 + "  t.typname AS type_name,"
                 + "  information_schema._pg_char_max_length(a.atttypid, a.atttypmod) AS type_length,"

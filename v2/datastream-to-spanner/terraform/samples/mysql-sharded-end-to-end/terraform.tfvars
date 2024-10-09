@@ -8,10 +8,16 @@ common_params = {
   add_policies_to_service_account = "<TRUE/FALSE>"           # This will decide if roles will be attached to service accounts or not.
 
   datastream_params = {
-    stream_prefix_path            = "<YOUR_STREAM_PREFIX>"           # Prefix for Datastream stream IDs (e.g., "data")
-    max_concurrent_cdc_tasks      = "<YOUR_CDC_TASKS>"               # Maximum concurrent CDC tasks (e.g., 5)
-    max_concurrent_backfill_tasks = "<YOUR_BACKFILL_TASKS>"          # Maximum concurrent backfill tasks (e.g., 15)
-    private_connectivity_id       = "<YOUR_PRIVATE_CONNECTIVITY_ID>" # If using Private Service Connect
+    stream_prefix_path            = "<YOUR_STREAM_PREFIX>"  # Prefix for Datastream stream IDs (e.g., "data")
+    max_concurrent_cdc_tasks      = "<YOUR_CDC_TASKS>"      # Maximum concurrent CDC tasks (e.g., 5)
+    max_concurrent_backfill_tasks = "<YOUR_BACKFILL_TASKS>" # Maximum concurrent backfill tasks (e.g., 15)
+
+    create_firewall_rule      = "<TRUE/FALSE>"               # This will decide if a firewall rule allowing datastream IP ranges will be created or not.
+    firewall_rule_target_tags = "<YOUR_TARGET_NETWORK_TAGS>" # Target network tags on which the firewall rule will be applied.
+    # Specify either firewall_rule_target_tags or firewall_rule_target_ranges to allow targets in the firewall.
+    firewall_rule_target_ranges = "<YOUR_TARGET_IP_RANGES>" # Target IP ranges on which the rule firewall will be applied.
+
+    private_connectivity_id = "<YOUR_PRIVATE_CONNECTIVITY_ID>" # If using Private Service Connect
 
     private_connectivity = {
       private_connectivity_id = "<YOUR_PRIVATE_CONNECTIVITY_ID>" # If using Private Service Connect
@@ -29,6 +35,7 @@ common_params = {
   }
 
   dataflow_params = {
+    skip_dataflow = false
     template_params = {
       shadow_table_prefix                 = "<YOUR_SHADOW_TABLE_PREFIX>"            # Prefix for shadow tables (e.g., "shadow_")
       create_shadow_tables                = "<TRUE/FALSE>"                          # Whether to create shadow tables in Spanner

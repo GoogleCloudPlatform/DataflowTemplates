@@ -40,17 +40,9 @@ public class DataChangeRecordTypeConvertor {
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
     }
-    try {
-
-      /* Jackson library converts only lowercase "true" to the correct boolean.
-       * Everything else is false. Hence using BooleanUtils to do the necessary conversion.
-       */
-      JsonNode node = changeEvent.get(key);
-      return Boolean.valueOf(node.asBoolean());
-    } catch (Exception e) {
-      throw new DataChangeRecordConvertorException(
-          "Unable to convert field " + key + " to boolean ", e);
-    }
+    JsonNode node = changeEvent.get(key);
+    return Boolean.valueOf(node.asBoolean()); // This never throws exception
+    // https://fasterxml.github.io/jackson-databind/javadoc/2.7/com/fasterxml/jackson/databind/JsonNode.html#asBoolean()
   }
 
   public static Long toLong(JsonNode changeEvent, String key, boolean requiredField)
@@ -60,13 +52,10 @@ public class DataChangeRecordTypeConvertor {
       return null;
     }
 
-    try {
-      JsonNode node = changeEvent.get(key);
-      return node.asLong();
-    } catch (Exception e) {
-      throw new DataChangeRecordConvertorException(
-          "Unable to convert field " + key + " to long ", e);
-    }
+    JsonNode node = changeEvent.get(key);
+    return node.asLong(); // No exceptions are thrown
+    // https://fasterxml.github.io/jackson-databind/javadoc/2.7/com/fasterxml/jackson/databind/JsonNode.html#asLong()
+
   }
 
   public static Double toDouble(JsonNode changeEvent, String key, boolean requiredField)
@@ -75,13 +64,10 @@ public class DataChangeRecordTypeConvertor {
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
     }
-    try {
-      JsonNode node = changeEvent.get(key);
-      return Double.valueOf(node.asDouble());
-    } catch (Exception e) {
-      throw new DataChangeRecordConvertorException(
-          "Unable to convert field " + key + " to double ", e);
-    }
+    JsonNode node = changeEvent.get(key);
+    return Double.valueOf(node.asDouble()); // No exceptions are thrown
+    // https://fasterxml.github.io/jackson-databind/javadoc/2.7/com/fasterxml/jackson/databind/JsonNode.html#asDouble()
+
   }
 
   public static String toString(JsonNode changeEvent, String key, boolean requiredField)
@@ -90,13 +76,10 @@ public class DataChangeRecordTypeConvertor {
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
     }
-    try {
-      return changeEvent.get(key).asText();
-    } catch (Exception e) {
-      // Throw an exception as all conversion options are exhausted.
-      throw new DataChangeRecordConvertorException(
-          "Unable to convert field " + key + " to string ", e);
-    }
+
+    return changeEvent.get(key).asText(); // No exceptions are thrown
+    // https://fasterxml.github.io/jackson-databind/javadoc/2.7/com/fasterxml/jackson/databind/JsonNode.html#asText()
+
   }
 
   public static ByteArray toByteArray(JsonNode changeEvent, String key, boolean requiredField)

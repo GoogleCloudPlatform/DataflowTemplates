@@ -44,6 +44,9 @@ public class Constants {
   // Commit timestamp column name in shadow table
   public static final String PROCESSED_COMMIT_TS_COLUMN_NAME = "processed_commit_ts";
 
+  // Record sequence  column name in shadow table
+  public static final String RECORD_SEQ_COLUMN_NAME = "record_seq";
+
   // The tag for events failed with non-retryable errors
   public static final TupleTag<String> PERMANENT_ERROR_TAG = new TupleTag<String>() {};
 
@@ -61,4 +64,7 @@ public class Constants {
 
   // Message written to the file for no shard found records
   public static final String SHARD_NOT_PRESENT_ERROR_MESSAGE = "No shard identified for the record";
+
+  // Default parallelism for the Dataflow workers
+  public static final int DEFAULT_WORKER_HARNESS_THREAD_COUNT = 500;
 }

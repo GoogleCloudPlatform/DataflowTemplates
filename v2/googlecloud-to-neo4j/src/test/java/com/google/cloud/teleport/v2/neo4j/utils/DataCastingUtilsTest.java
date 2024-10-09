@@ -33,13 +33,6 @@ import static com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils.rowToNeo
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
-import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
-import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
-import com.google.cloud.teleport.v2.neo4j.model.job.FieldNameTuple;
-import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
-import com.google.cloud.teleport.v2.neo4j.model.job.Target;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.truth.Correspondence;
 import java.math.BigDecimal;
@@ -70,6 +63,13 @@ import org.apache.beam.sdk.values.Row;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
+import org.neo4j.importer.v1.targets.NodeMatchMode;
+import org.neo4j.importer.v1.targets.NodeTarget;
+import org.neo4j.importer.v1.targets.PropertyMapping;
+import org.neo4j.importer.v1.targets.PropertyType;
+import org.neo4j.importer.v1.targets.RelationshipTarget;
+import org.neo4j.importer.v1.targets.Target;
+import org.neo4j.importer.v1.targets.WriteMode;
 
 /** Unit tests for {@link DataCastingUtils}. */
 public class DataCastingUtilsTest {
@@ -457,10 +457,24 @@ public class DataCastingUtilsTest {
             .withFieldValue("hired", true)
             .withFieldValue("hireDate", hireDate)
             .build();
-    Target target = new Target();
-    target.setName("neo4j-target");
+    Target target =
+        new NodeTarget(
+            true,
+            "neo4j-target",
+            "a-source",
+            null,
+            WriteMode.CREATE,
+            null,
+            List.of("Label"),
+            List.of(
+                mapping("id", PropertyType.INTEGER),
+                mapping("name", PropertyType.STRING),
+                mapping("salary", PropertyType.FLOAT),
+                mapping("hired", PropertyType.BOOLEAN),
+                mapping("hireDate", PropertyType.LOCAL_DATETIME)),
+            null);
 
-    Map<String, Object> stringObjectMap = DataCastingUtils.rowToNeo4jDataMap(row, target);
+    Map<String, Object> stringObjectMap = rowToNeo4jDataMap(row, target);
     assertThat(stringObjectMap)
         .containsExactly(
             "id",
@@ -507,24 +521,33 @@ public class DataCastingUtilsTest {
             .withFieldValue("duration", "PT23H59M59S")
             .withFieldValue("bytes", "SGVsbG8gV29ybGQ=")
             .build();
-    Target target = new Target();
-    target.setName("neo4j-target");
-    target.setMappings(
-        ImmutableList.of(
-            nodePropertyMapping("int64", PropertyType.Long),
-            nodePropertyMapping("string", PropertyType.String),
-            nodePropertyMapping("double", PropertyType.Double),
-            nodePropertyMapping("boolean", PropertyType.Boolean),
-            nodePropertyMapping("localdate", PropertyType.Date),
-            nodePropertyMapping("localtime", PropertyType.LocalTime),
-            nodePropertyMapping("localdatetime", PropertyType.LocalDateTime),
-            nodePropertyMapping("offsettime", PropertyType.Time),
-            nodePropertyMapping("zoneddatetime", PropertyType.DateTime),
-            nodePropertyMapping("offsetdatetime", PropertyType.DateTime),
-            nodePropertyMapping("duration", PropertyType.Duration),
-            nodePropertyMapping("bytes", PropertyType.ByteArray)));
+    Target target =
+        new NodeTarget(
+            true,
+            "neo4j-target",
+            "a-source",
+            null,
+            WriteMode.CREATE,
+            null,
+            List.of("Label"),
+            List.of(
+                mapping("int64", PropertyType.INTEGER),
+                mapping("string", PropertyType.STRING),
+                mapping("double", PropertyType.FLOAT),
+                mapping("boolean", PropertyType.BOOLEAN),
+                mapping("localdate", PropertyType.DATE),
+                mapping("localtime", PropertyType.LOCAL_TIME),
+                mapping("localdatetime", PropertyType.LOCAL_DATETIME),
+                mapping("offsettime", PropertyType.ZONED_TIME),
+                mapping("zoneddatetime", PropertyType.ZONED_DATETIME),
+                mapping("offsetdatetime", PropertyType.ZONED_DATETIME),
+                mapping("duration", PropertyType.DURATION),
+                mapping("bytes", PropertyType.BYTE_ARRAY)),
+            null);
 
-    List<Object> convertedList = DataCastingUtils.sourceTextToTargetObjects(row, target);
+    List<Object> convertedList =
+        DataCastingUtils.sourceTextToTargetObjects(row, target, null, null);
+
     assertThat(convertedList)
         .comparingElementsUsing(Correspondence.from(Objects::deepEquals, "deep equals"))
         .containsExactly(
@@ -543,14 +566,22 @@ public class DataCastingUtilsTest {
   }
 
   @Test
-  public void labelMappingDoesNotOverrideSourceFieldValueWithSameName() {
-    Schema schema = Schema.of(Field.of("Station", FieldType.STRING));
-    Row row = Row.withSchema(schema).withFieldValue("Station", "placeholder-station").build();
-    Target target = new Target();
-    target.setName("neo4j-target");
-    target.setMappings(
-        ImmutableList.of(
-            labelMapping("Station"), nodePropertyMapping("Station", PropertyType.String)));
+  public void label_does_not_override_source_field_value_with_same_name() {
+    var schema = Schema.of(Field.of("Station", FieldType.STRING));
+    var row = Row.withSchema(schema).withFieldValue("Station", "placeholder-station").build();
+    var labels = List.of("Station");
+    var mapping = new PropertyMapping("Station", "Station", PropertyType.STRING);
+    var target =
+        new NodeTarget(
+            true,
+            "a-node-target",
+            "a-source",
+            null,
+            WriteMode.CREATE,
+            null,
+            labels,
+            List.of(mapping),
+            null);
 
     var dataMap = rowToNeo4jDataMap(row, target);
 
@@ -558,92 +589,31 @@ public class DataCastingUtilsTest {
   }
 
   @Test
-  public void typeMappingDoesNotOverrideSourceFieldValueWithSameName() {
-    Schema schema = Schema.of(Field.of("STATION", FieldType.STRING));
-    Row row = Row.withSchema(schema).withFieldValue("STATION", "placeholder-station").build();
-    Target target = new Target();
-    target.setName("neo4j-target");
-    target.setMappings(
-        ImmutableList.of(
-            typeMapping("STATION"), relationshipPropertyMapping("STATION", PropertyType.String)));
+  public void type_does_not_override_source_field_value_with_same_name() {
+    var schema = Schema.of(Field.of("STATION", FieldType.STRING));
+    var row = Row.withSchema(schema).withFieldValue("STATION", "placeholder-station").build();
+    var target =
+        new RelationshipTarget(
+            true,
+            "a-relationship-target",
+            "a-source",
+            null,
+            "STATION",
+            WriteMode.CREATE,
+            NodeMatchMode.MATCH,
+            null,
+            "a-node",
+            "a-node",
+            List.of(new PropertyMapping("STATION", "STATION", PropertyType.STRING)),
+            null);
 
     var dataMap = rowToNeo4jDataMap(row, target);
 
     assertThat(dataMap).isEqualTo(Map.of("STATION", "placeholder-station"));
   }
 
-  @Test
-  public void constantMappingForNodeOverridesSourceFieldValueWithSameName() {
-    Schema schema = Schema.of(Field.of("station", FieldType.STRING));
-    Row row = Row.withSchema(schema).withFieldValue("station", "placeholder-station").build();
-    Target target = new Target();
-    target.setName("neo4j-target");
-    target.setMappings(
-        ImmutableList.of(
-            labelMapping("Placeholder"),
-            nodeConstantPropertyMapping("station", "constant-station")));
-
-    var dataMap = rowToNeo4jDataMap(row, target);
-
-    assertThat(dataMap).isEqualTo(Map.of("station", "constant-station"));
-  }
-
-  @Test
-  public void constantMappingForRelationshipOverridesSourceFieldValueWithSameName() {
-    Schema schema = Schema.of(Field.of("station", FieldType.STRING));
-    Row row = Row.withSchema(schema).withFieldValue("station", "placeholder-station").build();
-    Target target = new Target();
-    target.setName("neo4j-target");
-    target.setMappings(
-        ImmutableList.of(
-            typeMapping("PLACEHOLDER"),
-            relationshipConstantPropertyMapping("station", "constant-station")));
-
-    var dataMap = rowToNeo4jDataMap(row, target);
-
-    assertThat(dataMap).isEqualTo(Map.of("station", "constant-station"));
-  }
-
-  private static Mapping labelMapping(String label) {
-    return new Mapping(FragmentType.node, RoleType.label, constantTuple(label, label));
-  }
-
-  private static Mapping typeMapping(String type) {
-    return new Mapping(FragmentType.rel, RoleType.type, constantTuple(type, type));
-  }
-
-  private static Mapping nodeConstantPropertyMapping(String name, String constant) {
-    return new Mapping(FragmentType.node, RoleType.property, constantTuple(name, constant));
-  }
-
-  private static Mapping nodePropertyMapping(String field, PropertyType type) {
-    Mapping mapping = new Mapping(FragmentType.node, RoleType.property, tuple(field, field));
-    mapping.setType(type);
-    return mapping;
-  }
-
-  private static Mapping relationshipConstantPropertyMapping(String name, String constant) {
-    return new Mapping(FragmentType.rel, RoleType.property, constantTuple(name, constant));
-  }
-
-  private static Mapping relationshipPropertyMapping(String field, PropertyType type) {
-    Mapping mapping = new Mapping(FragmentType.rel, RoleType.property, tuple(field, field));
-    mapping.setType(type);
-    return mapping;
-  }
-
-  private static FieldNameTuple tuple(String name, String field) {
-    FieldNameTuple tuple = new FieldNameTuple();
-    tuple.setName(name);
-    tuple.setField(field);
-    return tuple;
-  }
-
-  private static FieldNameTuple constantTuple(String name, String constant) {
-    FieldNameTuple tuple = new FieldNameTuple();
-    tuple.setName(name);
-    tuple.setConstant(constant);
-    return tuple;
+  private static PropertyMapping mapping(String field, PropertyType type) {
+    return new PropertyMapping(field, field, type);
   }
 
   private void assertConversion(FieldType type, Object input) {

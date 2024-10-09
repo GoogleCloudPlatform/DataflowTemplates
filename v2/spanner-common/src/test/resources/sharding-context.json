@@ -1,0 +1,12 @@
+{
+  "StreamToDbAndShardMap": {
+    "stream1": {
+      "shard1": "id1",
+      "shard2": "id2"
+    },
+    "stream2": {
+      "shard1": "id1",
+      "shard2": "id2"
+    }
+  }
+}

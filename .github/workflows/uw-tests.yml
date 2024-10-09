@@ -1,0 +1,61 @@
+name: UW Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      unifiedWorkerHarnessContainerImage:
+        description: 'Unified worker harness container image'
+        type: string
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+
+jobs:
+  run_uw_tests:
+    name: Runner V2 Tests
+    runs-on: [self-hosted, release]
+    steps:
+      - name: Get releaser identity
+        run: |
+          git config --global user.name '${{github.actor}}'
+          git config --global user.email '${{github.actor}}@users.noreply.github.com'
+      # Defines releaseTag as latest successful release to avoid running tests failing at HEAD
+      - name: Declare runner image and release tag
+        id: variables
+        run: |
+          echo "unifiedWorkerHarnessContainerImage=${HARNESS_IMAGE}" >> $GITHUB_OUTPUT
+          echo "releaseTag=$(curl -s https://api.github.com/repos/GoogleCLoudPlatform/DataflowTemplates/releases/latest | jq '.tag_name' | sed 's/\"//g')" >> $GITHUB_OUTPUT
+        env:
+          HARNESS_IMAGE: ${{ inputs.unifiedWorkerHarnessContainerImage }}
+      - name: Checkout code
+        uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
+        with:
+          ref: ${{ steps.variables.outputs.releaseTag }}
+          token: ${{ secrets.RELEASE_TOKEN }}
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Build
+        run: ./cicd/run-build
+      - name: Run Integration Tests
+        run: |
+          ./cicd/run-it-tests \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1" \
+          --it-spanner-host="https://batch-spanner.googleapis.com" \
+          --it-release=true \
+          --it-unified-worker-harness-container-image=$HARNESS_IMAGE \
+          --it-retry-failures=2
+        env:
+          HARNESS_IMAGE: ${{ steps.variables.outputs.unifiedWorkerHarnessContainerImage }}
+      - name: Upload Site Report
+        uses: ./.github/actions/publish-site-report
+        with:
+          output-zip-file: test-report
+        if: always()

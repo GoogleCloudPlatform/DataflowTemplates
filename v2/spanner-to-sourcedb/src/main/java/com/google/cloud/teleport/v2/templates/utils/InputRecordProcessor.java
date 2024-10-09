@@ -38,7 +38,7 @@ public class InputRecordProcessor {
       MySqlDao dao,
       String shardId,
       String sourceDbTimezoneOffset)
-      throws java.sql.SQLException {
+      throws java.sql.SQLException, ConnectionException {
 
     try {
 
@@ -57,15 +57,7 @@ public class InputRecordProcessor {
         return;
       }
 
-      Instant daoStartTime = Instant.now();
       dao.write(dmlStatement);
-      Instant daoEndTime = Instant.now();
-      LOG.info(
-          "Shard "
-              + shardId
-              + ": Write to mysql took:  "
-              + ChronoUnit.MILLIS.between(daoStartTime, daoEndTime)
-              + " milliseconds ");
 
       Counter numRecProcessedMetric =
           Metrics.counter(shardId, "records_written_to_source_" + shardId);

@@ -33,9 +33,15 @@ variable "region" {
   description = "The region in which the created job should run."
 }
 
+variable "useStorageWriteApiAtLeastOnce" {
+  type        = bool
+  description = "When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly- once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`."
+  default     = null
+}
+
 variable "mongoDbUri" {
   type        = string
-  description = "MongoDB connection URI in the format `mongodb+srv://:@`."
+  description = "The MongoDB connection URI in the format `mongodb+srv://:@.`"
 
 }
 
@@ -53,7 +59,7 @@ variable "collection" {
 
 variable "userOption" {
   type        = string
-  description = "User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the documents to the single level. `NONE` stores the whole document as a JSON string. Defaults to: NONE."
+  description = "`FLATTEN`, `JSON`, or `NONE`. `FLATTEN` flattens the documents to the single level. `JSON` stores document in BigQuery JSON format. `NONE` stores the whole document as a JSON-formatted STRING. Defaults to: NONE."
   default     = "NONE"
 }
 
@@ -63,55 +69,59 @@ variable "KMSEncryptionKey" {
   default     = null
 }
 
-variable "useStorageWriteApi" {
-  type        = bool
+variable "filter" {
+  type        = string
   description = <<EOT
-If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). The default value is false. When using Storage Write API in exactly-once mode, you must set the following parameters: "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API". If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter to true, then you don't need to set the number of streams or the triggering frequency.
+Bson filter in json format. (Example: { "val": { $gt: 0, $lt: 9 }})
 EOT
   default     = null
 }
 
-variable "useStorageWriteApiAtLeastOnce" {
+variable "useStorageWriteApi" {
   type        = bool
-  description = <<EOT
-This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-EOT
+  description = "If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api)."
   default     = null
 }
 
 variable "numStorageWriteApiStreams" {
   type        = number
-  description = "Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0."
+  description = "When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0."
   default     = null
 }
 
 variable "storageWriteApiTriggeringFrequencySec" {
   type        = number
-  description = "Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values."
+  description = "When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter."
   default     = null
 }
 
 variable "inputTopic" {
   type        = string
-  description = "Pub/Sub topic to read the input from, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name)"
+  description = "The Pub/Sub input topic to read from, in the format of projects/<PROJECT_ID>/topics/<TOPIC_NAME>."
 
 }
 
 variable "outputTableSpec" {
   type        = string
-  description = "BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects."
+  description = "The BigQuery table to write to. For example, `bigquery-project:dataset.output_table`."
 
+}
+
+variable "bigQuerySchemaPath" {
+  type        = string
+  description = "The Cloud Storage path for the BigQuery JSON schema. (Example: gs://your-bucket/your-schema.json)"
+  default     = null
 }
 
 variable "javascriptDocumentTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-transforms/*.js)"
+  description = "The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://your-bucket/your-transforms/*.js)"
   default     = null
 }
 
 variable "javascriptDocumentTransformFunctionName" {
   type        = string
-  description = "The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'. (Example: transform)"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is myTransform. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples). (Example: transform)"
   default     = null
 }
 
@@ -240,17 +250,19 @@ resource "google_dataflow_flex_template_job" "generated" {
   provider                = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/MongoDB_to_BigQuery_CDC"
   parameters = {
+    useStorageWriteApiAtLeastOnce           = tostring(var.useStorageWriteApiAtLeastOnce)
     mongoDbUri                              = var.mongoDbUri
     database                                = var.database
     collection                              = var.collection
     userOption                              = var.userOption
     KMSEncryptionKey                        = var.KMSEncryptionKey
+    filter                                  = var.filter
     useStorageWriteApi                      = tostring(var.useStorageWriteApi)
-    useStorageWriteApiAtLeastOnce           = tostring(var.useStorageWriteApiAtLeastOnce)
     numStorageWriteApiStreams               = tostring(var.numStorageWriteApiStreams)
     storageWriteApiTriggeringFrequencySec   = tostring(var.storageWriteApiTriggeringFrequencySec)
     inputTopic                              = var.inputTopic
     outputTableSpec                         = var.outputTableSpec
+    bigQuerySchemaPath                      = var.bigQuerySchemaPath
     javascriptDocumentTransformGcsPath      = var.javascriptDocumentTransformGcsPath
     javascriptDocumentTransformFunctionName = var.javascriptDocumentTransformFunctionName
   }

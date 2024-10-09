@@ -100,7 +100,7 @@ export SUBNETWORK=<my-subnetwork>
 
 gcloud dataflow flex-template run streaming-data-generator-job --project ${PROJECT}   \
 --region ${REGION}   --template-file-gcs-location $TEMPLATE_SPEC_GCSPATH  \
---parameters ^~^qps=${QPS}~messagesLimit=${MESSAGE_LIMIT}~schemaLocation=${SCHEMA_LOCATION}~sinkType=JDBC~driverClassName=${DRIVER_CLASS_NAME}~connectionUrl=${CONNECTION_URL}~username=${USERNAME}~password=${PASSWORD}~statement=${STATEMENT}~network=${NETWORK_NAME}~subnetwork=${SUBNETWORK}
+--parameters ^~^qps=${QPS}~messagesLimit=${MESSAGE_LIMIT}~schemaLocation=${SCHEMA_LOCATION}~sinkType=JDBC~driverClassName=${DRIVER_CLASS_NAME}~connectionUrl=${CONNECTION_URL}~username=${USERNAME}~password=${PASSWORD}~statement="${STATEMENT}"~network=${NETWORK_NAME}~subnetwork=${SUBNETWORK}
 ```
 
 ### Data Generation using CSV Import

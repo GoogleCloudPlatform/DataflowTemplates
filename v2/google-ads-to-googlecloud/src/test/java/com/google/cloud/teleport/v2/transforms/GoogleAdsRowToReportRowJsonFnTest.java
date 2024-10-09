@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import com.google.ads.googleads.v14.enums.CampaignStatusEnum.CampaignStatus;
-import com.google.ads.googleads.v14.resources.Campaign;
-import com.google.ads.googleads.v14.services.GoogleAdsRow;
+import com.google.ads.googleads.v17.enums.CampaignStatusEnum.CampaignStatus;
+import com.google.ads.googleads.v17.resources.Campaign;
+import com.google.ads.googleads.v17.services.GoogleAdsRow;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;

@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
 
+import static com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.INDEX_TYPE_TO_CLASS;
+
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SuitableIndexNotFoundException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
@@ -46,6 +48,7 @@ import org.apache.beam.sdk.io.jdbc.JdbcIO.ReadWithPartitions;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
@@ -78,6 +81,7 @@ public final class JdbcIoWrapper implements IoWrapper {
     DataSourceConfiguration dataSourceConfiguration = getDataSourceConfiguration(config);
 
     DataSource dataSource = dataSourceConfiguration.buildDatasource();
+    setDataSourceLoginTimeout((BasicDataSource) dataSource, config);
 
     SchemaDiscovery schemaDiscovery =
         new SchemaDiscoveryImpl(config.dialectAdapter(), config.schemaDiscoveryBackOff());
@@ -88,6 +92,60 @@ public final class JdbcIoWrapper implements IoWrapper {
     ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> tableReaders =
         buildTableReaders(config, tableConfigs, dataSourceConfiguration, sourceSchema);
     return new JdbcIoWrapper(tableReaders, sourceSchema);
+  }
+
+  /**
+   * Set's the login timeout for the DataSource used for schema and index discoveries. This helps in
+   * early error reporting to the customer in case of unreachable or unavailable source database.
+   * The default login timeout for the {@link BasicDataSource} is infinite. Unfortunately, {@link
+   * BasicDataSource} does not directly support {@link DataSource#setLoginTimeout(int)}. This can be
+   * achieved by setting {@link BasicDataSource#setMaxWaitMillis} and connect timeout at the driver
+   * layer.
+   *
+   * @param dataSource
+   * @param config
+   */
+  @VisibleForTesting
+  protected static void setDataSourceLoginTimeout(
+      BasicDataSource dataSource, JdbcIOWrapperConfig config) {
+
+    dataSource.setMaxWaitMillis(config.schemaDiscoveryConnectivityTimeoutMilliSeconds());
+
+    String connectivityTimeout;
+    switch (config.sourceDbDialect()) {
+      case MYSQL:
+        connectivityTimeout =
+            String.valueOf(config.schemaDiscoveryConnectivityTimeoutMilliSeconds());
+        setConnectionProperty(dataSource, "connectTimeout", connectivityTimeout);
+        setConnectionProperty(dataSource, "socketTimeout", connectivityTimeout);
+        break;
+      case POSTGRESQL:
+        connectivityTimeout =
+            String.valueOf(config.schemaDiscoveryConnectivityTimeoutMilliSeconds() / 1000);
+        setConnectionProperty(dataSource, "loginTimeout", connectivityTimeout);
+        setConnectionProperty(dataSource, "connectTimeout", connectivityTimeout);
+        setConnectionProperty(dataSource, "socketTimeout", connectivityTimeout);
+        break;
+      default:
+        logger.error(
+            "No connectivity timeout overrides implemented for dialect {}. In case of misconfigured network connectivity, schema discovery could timeout without correct error reporting.");
+    }
+  }
+
+  private static void setConnectionProperty(
+      BasicDataSource dataSource, String property, String value) {
+
+    String url = dataSource.getUrl();
+    if (!url.contains(property)) {
+      dataSource.addConnectionProperty(property, value);
+      logger.info("Set {} = {}  for schema discovery of {}", property, value, dataSource);
+    } else {
+      logger.warn(
+          "Property {} already set in URL {}. Not overriding with {} for schema discovery. The default over-ride helps in failing fast in case of misconfigured network connectivity.",
+          property,
+          url,
+          value);
+    }
   }
 
   /**
@@ -243,7 +301,7 @@ public final class JdbcIoWrapper implements IoWrapper {
             .forEach(tableConfigBuilder::withPartitionColum);
       } else {
         ImmutableSet<IndexType> supportedIndexTypes =
-            ImmutableSet.of(IndexType.NUMERIC, IndexType.STRING);
+            ImmutableSet.of(IndexType.NUMERIC, IndexType.STRING, IndexType.BIG_INT_UNSIGNED);
         // As of now only Primary key index with Numeric type is supported.
         // TODO:
         //    1. support non-primary unique indexes.
@@ -274,11 +332,21 @@ public final class JdbcIoWrapper implements IoWrapper {
     }
   }
 
+  @VisibleForTesting
+  protected static java.lang.Class indexTypeToColumnClass(SourceColumnIndexInfo indexInfo)
+      throws SuitableIndexNotFoundException {
+    if (INDEX_TYPE_TO_CLASS.containsKey(indexInfo.indexType())) {
+      return INDEX_TYPE_TO_CLASS.get(indexInfo.indexType());
+    } else {
+      throw new SuitableIndexNotFoundException(
+          new Throwable("No class Mapping for IndexType " + indexInfo));
+    }
+  }
+
   private static PartitionColumn partitionColumnFromIndexInfo(SourceColumnIndexInfo idxInfo) {
     return PartitionColumn.builder()
         .setColumnName(idxInfo.columnName())
-        // TODO(vardhanvthigle): handle other types
-        .setColumnClass((idxInfo.indexType() == IndexType.NUMERIC) ? Long.class : String.class)
+        .setColumnClass(indexTypeToColumnClass(idxInfo))
         .setStringCollation(idxInfo.collationReference())
         .setStringMaxLength(idxInfo.stringMaxLength())
         .build();

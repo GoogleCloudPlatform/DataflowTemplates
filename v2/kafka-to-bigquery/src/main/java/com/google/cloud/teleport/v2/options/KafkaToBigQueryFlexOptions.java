@@ -19,6 +19,7 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.kafka.dlq.BigQueryDeadLetterQueueOptions;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.kafka.options.SchemaRegistryOptions;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.Default;
 
@@ -31,7 +32,8 @@ public interface KafkaToBigQueryFlexOptions
         KafkaReadOptions,
         BigQueryStorageApiStreamingOptions,
         SchemaRegistryOptions,
-        BigQueryDeadLetterQueueOptions {
+        BigQueryDeadLetterQueueOptions,
+        JavascriptTextTransformerOptions {
   // This is a duplicate option that already exist in KafkaReadOptions but keeping it here
   // so the KafkaTopic appears above the authentication enum on the Templates UI.
   @TemplateParameter.KafkaReadTopic(

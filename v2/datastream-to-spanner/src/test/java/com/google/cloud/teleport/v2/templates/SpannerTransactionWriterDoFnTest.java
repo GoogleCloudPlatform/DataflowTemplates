@@ -38,6 +38,8 @@ import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConst
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -151,6 +153,8 @@ public class SpannerTransactionWriterDoFnTest {
         new SpannerTransactionWriterDoFn(spannerConfig, ddlView, "shadow", "mysql", true);
     spannerTransactionWriterDoFn.setMapper(mapper);
     spannerTransactionWriterDoFn.setSpannerAccessor(spannerAccessor);
+    spannerTransactionWriterDoFn.setIsInTransaction(new AtomicBoolean(false));
+    spannerTransactionWriterDoFn.setTransactionAttemptCount(new AtomicLong(0));
     spannerTransactionWriterDoFn.processElement(processContextMock);
     ArgumentCaptor<Iterable<Mutation>> argument = ArgumentCaptor.forClass(Iterable.class);
     verify(transactionContext, times(1)).buffer(argument.capture());

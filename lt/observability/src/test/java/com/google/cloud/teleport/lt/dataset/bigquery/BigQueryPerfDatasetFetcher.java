@@ -58,6 +58,9 @@ public abstract class BigQueryPerfDatasetFetcher {
       }
       return returnVal;
     } else {
+      if (value.isNull()) {
+        return null;
+      }
       switch (columnSchema.getType().getStandardType()) {
         case BOOL:
           return value.getBooleanValue();

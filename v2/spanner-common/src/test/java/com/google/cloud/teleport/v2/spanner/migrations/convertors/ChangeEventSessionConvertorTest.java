@@ -29,9 +29,12 @@ import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
@@ -39,8 +42,12 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefin
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
+import com.google.common.io.Resources;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import org.json.JSONObject;
@@ -85,7 +92,8 @@ public class ChangeEventSessionConvertorTest {
   public void transformChangeEventViaSessionFileNamesTest() {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), new ShardingContext(), "", false);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("product_id", "A");
@@ -109,7 +117,8 @@ public class ChangeEventSessionConvertorTest {
   public void transformChangeEventViaSessionFileSynthPKTest() {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", false);
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), new ShardingContext(), "", false);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");
@@ -132,7 +141,8 @@ public class ChangeEventSessionConvertorTest {
   public void transformChangeEventDataTest() throws Exception {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", true);
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), new ShardingContext(), "", true);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
@@ -297,11 +307,22 @@ public class ChangeEventSessionConvertorTest {
     return transformationContext;
   }
 
+  private static ShardingContext getShardingContext() {
+    Map<String, Map<String, String>> schemaToDbAndShardMap = new HashMap<>();
+    Map<String, String> schemaToShardId = new HashMap<>();
+    schemaToShardId.put("db_01", "id1");
+    schemaToShardId.put("db_02", "id2");
+    schemaToDbAndShardMap.put("stream1", schemaToShardId);
+    ShardingContext shardingContext = new ShardingContext(schemaToDbAndShardMap);
+    return shardingContext;
+  }
+
   @Test
   public void shardedConfigDataTest() throws Exception {
     Schema schema = getSchemaObject();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, new TransformationContext(), "", true);
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), new ShardingContext(), "", true);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
@@ -322,11 +343,12 @@ public class ChangeEventSessionConvertorTest {
   }
 
   @Test
-  public void transformChangeEventViaShardedSessionFileTest() {
+  public void transformChangeEventViaTransformationContextTest() {
     Schema schema = getShardedSchemaObject();
     TransformationContext transformationContext = getTransformationContext();
     ChangeEventSessionConvertor changeEventSessionConvertor =
-        new ChangeEventSessionConvertor(schema, transformationContext, "mysql", false);
+        new ChangeEventSessionConvertor(
+            schema, null, transformationContext, new ShardingContext(), "mysql", false);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");
@@ -345,6 +367,55 @@ public class ChangeEventSessionConvertorTest {
     changeEventNew.put("migration_shard_id", "1");
     JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
     assertEquals(expectedEvent, actualEvent);
+  }
+
+  @Test
+  public void transformChangeEventViaShardingContextTest() {
+    Schema schema = getShardedSchemaObject();
+    ShardingContext shardingContext = getShardingContext();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), shardingContext, "mysql", false);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("name", "A");
+    changeEvent.put(Constants.EVENT_STREAM_NAME, "stream1");
+    changeEvent.put(Constants.EVENT_SCHEMA_KEY, "db_01");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    changeEvent.put(Constants.EVENT_UUID_KEY, "abc-123");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    JsonNode actualEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
+
+    JSONObject changeEventNew = new JSONObject();
+    changeEventNew.put("new_name", "A");
+    changeEventNew.put(Constants.EVENT_STREAM_NAME, "stream1");
+    changeEventNew.put(Constants.EVENT_SCHEMA_KEY, "db_01");
+    changeEventNew.put(Constants.EVENT_TABLE_NAME_KEY, "new_people");
+    changeEventNew.put(Constants.EVENT_UUID_KEY, "abc-123");
+    changeEventNew.put("migration_shard_id", "id1");
+    JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
+    assertEquals(expectedEvent, actualEvent);
+  }
+
+  @Test
+  public void getShardIdInvalidSource() {
+    Schema schema = getShardedSchemaObject();
+    ShardingContext shardingContext = getShardingContext();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), shardingContext, "oracle", false);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("name", "A");
+    changeEvent.put(Constants.EVENT_STREAM_NAME, "stream1");
+    changeEvent.put(Constants.EVENT_SCHEMA_KEY, "db_01");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    changeEvent.put(Constants.EVENT_UUID_KEY, "abc-123");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    String shardId = changeEventSessionConvertor.getShardId(ce);
+    assertEquals(shardId, "");
   }
 
   public static Schema getShardedSchemaObject() {
@@ -399,5 +470,176 @@ public class ChangeEventSessionConvertorTest {
             new ColumnPK[] {new ColumnPK("c6", 1), new ColumnPK("c5", 2)},
             "c6"));
     return spSchema;
+  }
+
+  @Test
+  public void transformChangeEventViaStringOverridesForTablesTest()
+      throws InvalidChangeEventException {
+    Map<String, String> userOptionsOverrides = new HashMap<>();
+    userOptionsOverrides.put("tableOverrides", "[{Singers, Vocalists}, {Albums, Records}]");
+    SchemaStringOverridesParser schemaStringOverridesParser =
+        new SchemaStringOverridesParser(userOptionsOverrides);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            null, schemaStringOverridesParser, null, null, "mysql", false);
+
+    JSONObject changeEvent1 = new JSONObject();
+    changeEvent1.put(Constants.EVENT_TABLE_NAME_KEY, "Singers");
+    changeEvent1.put("col1", "123");
+    JsonNode ce1 = parseChangeEvent(changeEvent1.toString());
+    JsonNode actualEvent1 = changeEventSessionConvertor.transformChangeEventViaOverrides(ce1);
+
+    JSONObject changeEvent2 = new JSONObject();
+    changeEvent2.put(Constants.EVENT_TABLE_NAME_KEY, "Albums");
+    changeEvent2.put("col1", "123");
+    JsonNode ce2 = parseChangeEvent(changeEvent2.toString());
+    JsonNode actualEvent2 = changeEventSessionConvertor.transformChangeEventViaOverrides(ce2);
+
+    assertEquals("Vocalists", actualEvent1.get(Constants.EVENT_TABLE_NAME_KEY).asText());
+    assertEquals("Records", actualEvent2.get(Constants.EVENT_TABLE_NAME_KEY).asText());
+  }
+
+  @Test
+  public void transformChangeEventViaStringOverridesForColumnsTest()
+      throws InvalidChangeEventException {
+    Map<String, String> userOptionsOverrides = new HashMap<>();
+    userOptionsOverrides.put(
+        "columnOverrides",
+        "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]");
+    SchemaStringOverridesParser schemaStringOverridesParser =
+        new SchemaStringOverridesParser(userOptionsOverrides);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            null, schemaStringOverridesParser, null, null, "mysql", false);
+
+    JSONObject changeEvent1 = new JSONObject();
+    changeEvent1.put(Constants.EVENT_TABLE_NAME_KEY, "Singers");
+    changeEvent1.put("SingerName", "A");
+    JsonNode ce1 = parseChangeEvent(changeEvent1.toString());
+    JsonNode actualEvent1 = changeEventSessionConvertor.transformChangeEventViaOverrides(ce1);
+
+    JSONObject changeEvent2 = new JSONObject();
+    changeEvent2.put(Constants.EVENT_TABLE_NAME_KEY, "Albums");
+    changeEvent2.put("AlbumName", "B");
+    JsonNode ce2 = parseChangeEvent(changeEvent2.toString());
+    JsonNode actualEvent2 = changeEventSessionConvertor.transformChangeEventViaOverrides(ce2);
+
+    assertEquals("A", actualEvent1.get("TalentName").asText());
+    assertEquals("B", actualEvent2.get("RecordName").asText());
+  }
+
+  @Test
+  public void transformChangeEventViaStringOverridesForTablesAndColumnsTest()
+      throws InvalidChangeEventException {
+    Map<String, String> userOptionsOverrides = new HashMap<>();
+    userOptionsOverrides.put("tableOverrides", "[{Singers, Vocalists}, {Albums, Records}]");
+    userOptionsOverrides.put(
+        "columnOverrides",
+        "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]");
+    SchemaStringOverridesParser schemaStringOverridesParser =
+        new SchemaStringOverridesParser(userOptionsOverrides);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            null, schemaStringOverridesParser, null, null, "mysql", false);
+
+    JSONObject changeEvent1 = new JSONObject();
+    changeEvent1.put(Constants.EVENT_TABLE_NAME_KEY, "Singers");
+    changeEvent1.put("SingerName", "A");
+    JsonNode ce1 = parseChangeEvent(changeEvent1.toString());
+    JsonNode actualEvent1 = changeEventSessionConvertor.transformChangeEventViaOverrides(ce1);
+
+    JSONObject changeEvent2 = new JSONObject();
+    changeEvent2.put(Constants.EVENT_TABLE_NAME_KEY, "Albums");
+    changeEvent2.put("AlbumName", "B");
+    JsonNode ce2 = parseChangeEvent(changeEvent2.toString());
+    JsonNode actualEvent2 = changeEventSessionConvertor.transformChangeEventViaOverrides(ce2);
+
+    assertEquals("Vocalists", actualEvent1.get(Constants.EVENT_TABLE_NAME_KEY).asText());
+    assertEquals("Records", actualEvent2.get(Constants.EVENT_TABLE_NAME_KEY).asText());
+    assertEquals("A", actualEvent1.get("TalentName").asText());
+    assertEquals("B", actualEvent2.get("RecordName").asText());
+  }
+
+  @Test
+  public void transformChangeEventViaFileOverridesForTablesTest()
+      throws InvalidChangeEventException {
+    Path schemaOverridesFile =
+        Paths.get(Resources.getResource("schema-overrides-tables.json").getPath());
+    SchemaFileOverridesParser schemaFileOverridesParser =
+        new SchemaFileOverridesParser(schemaOverridesFile.toString());
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            null, schemaFileOverridesParser, null, null, "mysql", false);
+
+    JSONObject changeEvent1 = new JSONObject();
+    changeEvent1.put(Constants.EVENT_TABLE_NAME_KEY, "Singers");
+    changeEvent1.put("col1", "123");
+    JsonNode ce1 = parseChangeEvent(changeEvent1.toString());
+    JsonNode actualEvent1 = changeEventSessionConvertor.transformChangeEventViaOverrides(ce1);
+
+    JSONObject changeEvent2 = new JSONObject();
+    changeEvent2.put(Constants.EVENT_TABLE_NAME_KEY, "Albums");
+    changeEvent2.put("col1", "123");
+    JsonNode ce2 = parseChangeEvent(changeEvent2.toString());
+    JsonNode actualEvent2 = changeEventSessionConvertor.transformChangeEventViaOverrides(ce2);
+
+    assertEquals("Vocalists", actualEvent1.get(Constants.EVENT_TABLE_NAME_KEY).asText());
+    assertEquals("Records", actualEvent2.get(Constants.EVENT_TABLE_NAME_KEY).asText());
+  }
+
+  @Test
+  public void transformChangeEventViaFileOverridesForColumnsTest()
+      throws InvalidChangeEventException {
+    Path schemaOverridesFile =
+        Paths.get(Resources.getResource("schema-overrides-columns.json").getPath());
+    SchemaFileOverridesParser schemaFileOverridesParser =
+        new SchemaFileOverridesParser(schemaOverridesFile.toString());
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            null, schemaFileOverridesParser, null, null, "mysql", false);
+
+    JSONObject changeEvent1 = new JSONObject();
+    changeEvent1.put(Constants.EVENT_TABLE_NAME_KEY, "Singers");
+    changeEvent1.put("SingerName", "A");
+    JsonNode ce1 = parseChangeEvent(changeEvent1.toString());
+    JsonNode actualEvent1 = changeEventSessionConvertor.transformChangeEventViaOverrides(ce1);
+
+    JSONObject changeEvent2 = new JSONObject();
+    changeEvent2.put(Constants.EVENT_TABLE_NAME_KEY, "Albums");
+    changeEvent2.put("AlbumName", "B");
+    JsonNode ce2 = parseChangeEvent(changeEvent2.toString());
+    JsonNode actualEvent2 = changeEventSessionConvertor.transformChangeEventViaOverrides(ce2);
+
+    assertEquals("A", actualEvent1.get("TalentName").asText());
+    assertEquals("B", actualEvent2.get("RecordName").asText());
+  }
+
+  @Test
+  public void transformChangeEventViaFileOverridesForTablesAndColumnsTest()
+      throws InvalidChangeEventException {
+    Path schemaOverridesFile =
+        Paths.get(Resources.getResource("schema-overrides-cols-tables.json").getPath());
+    SchemaFileOverridesParser schemaFileOverridesParser =
+        new SchemaFileOverridesParser(schemaOverridesFile.toString());
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            null, schemaFileOverridesParser, null, null, "mysql", false);
+
+    JSONObject changeEvent1 = new JSONObject();
+    changeEvent1.put(Constants.EVENT_TABLE_NAME_KEY, "Singers");
+    changeEvent1.put("SingerName", "A");
+    JsonNode ce1 = parseChangeEvent(changeEvent1.toString());
+    JsonNode actualEvent1 = changeEventSessionConvertor.transformChangeEventViaOverrides(ce1);
+
+    JSONObject changeEvent2 = new JSONObject();
+    changeEvent2.put(Constants.EVENT_TABLE_NAME_KEY, "Albums");
+    changeEvent2.put("AlbumName", "B");
+    JsonNode ce2 = parseChangeEvent(changeEvent2.toString());
+    JsonNode actualEvent2 = changeEventSessionConvertor.transformChangeEventViaOverrides(ce2);
+
+    assertEquals("Vocalists", actualEvent1.get(Constants.EVENT_TABLE_NAME_KEY).asText());
+    assertEquals("Records", actualEvent2.get(Constants.EVENT_TABLE_NAME_KEY).asText());
+    assertEquals("A", actualEvent1.get("TalentName").asText());
+    assertEquals("B", actualEvent2.get("RecordName").asText());
   }
 }

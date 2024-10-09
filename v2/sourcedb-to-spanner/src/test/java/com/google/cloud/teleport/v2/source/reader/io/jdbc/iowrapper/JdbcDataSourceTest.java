@@ -79,6 +79,9 @@ public class JdbcDataSourceTest {
         .isEqualTo(jdbcIOWrapperConfig.minEvictableIdleTimeMillis());
     assertThat(testJdbcDataSource.getValidationQuery())
         .isEqualTo(jdbcIOWrapperConfig.validationQuery());
+    assertThat(testJdbcDataSource.toString())
+        .isEqualTo(
+            "JdbcDataSource: {\"sourceDbURL\":\"jdbc:derby://myhost/memory:TestingDB;create=true\", \"initSql\":\"[SET TIME_ZONE = '+00:00', SET SESSION NET_WRITE_TIMEOUT=1200, SET SESSION NET_READ_TIMEOUT=1200]\", \"maxConnections\",\"160\" }");
   }
 
   @Test

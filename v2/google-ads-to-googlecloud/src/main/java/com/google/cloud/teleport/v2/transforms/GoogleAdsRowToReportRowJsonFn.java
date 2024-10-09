@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.ads.googleads.lib.utils.FieldMasks;
-import com.google.ads.googleads.v14.services.GoogleAdsRow;
+import com.google.ads.googleads.v17.services.GoogleAdsRow;
 import com.google.cloud.teleport.v2.utils.GoogleAdsUtils;
 import com.google.common.io.BaseEncoding;
 import com.google.gson.Gson;

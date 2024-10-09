@@ -20,6 +20,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
@@ -27,6 +30,7 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDi
 import com.google.cloud.teleport.v2.source.reader.io.exception.SuitableIndexNotFoundException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
@@ -38,11 +42,13 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.math.BigInteger;
 import java.sql.SQLException;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -54,6 +60,8 @@ import org.mockito.junit.MockitoJUnitRunner;
 @RunWith(MockitoJUnitRunner.class)
 public class JdbcIoWrapperTest {
   @Mock DialectAdapter mockDialectAdapter;
+
+  @Mock BasicDataSource mockBasicDataSource;
 
   @BeforeClass
   public static void beforeClass() {
@@ -308,5 +316,104 @@ public class JdbcIoWrapperTest {
     assertThat(
             jdbcIOWrapperWithFeatureEnabled.getTableReaders().values().stream().findFirst().get())
         .isInstanceOf(ReadWithUniformPartitions.class);
+  }
+
+  @Test
+  public void testLoginTimeout() throws RetriableSchemaDiscoveryException {
+
+    int testLoginTimeoutMilliseconds = 1000;
+    int testLoginTimeoutSeconds = 1;
+
+    doNothing().when(mockBasicDataSource).setMaxWaitMillis(testLoginTimeoutMilliseconds);
+    when(mockBasicDataSource.getUrl())
+        .thenReturn("jdbc://testIp:3306/testDB")
+        .thenReturn("jdbc://testIp:3306/testDB")
+        .thenReturn("jdbc://testIp:3306/testDB?connectTimeout=2000&socketTimeout=2000")
+        .thenReturn("jdbc://testIp:3306/testDB?connectTimeout=2000&socketTimeout=2000")
+        .thenReturn("jdbc://testIp:3306/testDB?connectTimeout=2000&socketTimeout=2000");
+    doNothing()
+        .when(mockBasicDataSource)
+        .addConnectionProperty("connectTimeout", String.valueOf(testLoginTimeoutMilliseconds));
+    doNothing()
+        .when(mockBasicDataSource)
+        .addConnectionProperty("socketTimeout", String.valueOf(testLoginTimeoutMilliseconds));
+    doNothing()
+        .when(mockBasicDataSource)
+        .addConnectionProperty("loginTimeout", String.valueOf(testLoginTimeoutSeconds));
+
+    SourceSchemaReference testSourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
+
+    JdbcIOWrapperConfig config =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+            .setSourceSchemaReference(testSourceSchemaReference)
+            .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(testLoginTimeoutMilliseconds)
+            .setShardID("test")
+            .setTableVsPartitionColumns(ImmutableMap.of("testTable", ImmutableList.of("ID")))
+            .setDbAuth(
+                LocalCredentialsProvider.builder()
+                    .setUserName("testUser")
+                    .setPassword("testPassword")
+                    .build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+            .setDialectAdapter(mockDialectAdapter)
+            .build();
+    JdbcIOWrapperConfig configWithTimeoutSet =
+        config.toBuilder()
+            .setSourceDbDialect(SQLDialect.MYSQL)
+            .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(testLoginTimeoutMilliseconds)
+            .build();
+    JdbcIOWrapperConfig configWithUrlTimeout =
+        config.toBuilder()
+            .setSourceDbDialect(SQLDialect.POSTGRESQL)
+            .setSourceDbURL(
+                "jdbc:derby://myhost/memory:TestingDB;create=true?socketTimeout=10&connectTimeout=10")
+            .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(testLoginTimeoutMilliseconds)
+            .build();
+
+    JdbcIoWrapper.setDataSourceLoginTimeout(mockBasicDataSource, configWithTimeoutSet);
+    JdbcIoWrapper.setDataSourceLoginTimeout(mockBasicDataSource, configWithUrlTimeout);
+
+    assertThat(configWithTimeoutSet.schemaDiscoveryConnectivityTimeoutMilliSeconds())
+        .isEqualTo(testLoginTimeoutMilliseconds);
+    verify(mockBasicDataSource, times(2)).setMaxWaitMillis(testLoginTimeoutMilliseconds);
+    verify(mockBasicDataSource, times(1))
+        .addConnectionProperty("connectTimeout", String.valueOf(testLoginTimeoutMilliseconds));
+    verify(mockBasicDataSource, times(1))
+        .addConnectionProperty("socketTimeout", String.valueOf(testLoginTimeoutMilliseconds));
+    verify(mockBasicDataSource, times(1))
+        .addConnectionProperty("loginTimeout", String.valueOf(testLoginTimeoutSeconds));
+  }
+
+  @Test
+  public void testIndexTypeToColumnClass() {
+
+    assertThat(
+            JdbcIoWrapper.indexTypeToColumnClass(
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col1")
+                    .setIndexType(IndexType.BIG_INT_UNSIGNED)
+                    .setOrdinalPosition(1)
+                    .setIndexName("PRIMARY")
+                    .setIsPrimary(true)
+                    .setCardinality(42L)
+                    .setIsUnique(true)
+                    .build()))
+        .isEqualTo(BigInteger.class);
+    assertThrows(
+        SuitableIndexNotFoundException.class,
+        () ->
+            JdbcIoWrapper.indexTypeToColumnClass(
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col1")
+                    .setIndexType(IndexType.OTHER)
+                    .setOrdinalPosition(1)
+                    .setIndexName("PRIMARY")
+                    .setIsPrimary(true)
+                    .setCardinality(42L)
+                    .setIsUnique(true)
+                    .build()));
   }
 }

@@ -18,22 +18,27 @@
 package org.apache.beam.it.gcp.storage;
 
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.api.gax.paging.Page;
 import com.google.auth.Credentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.BucketInfo;
 import com.google.cloud.storage.Notification;
 import com.google.cloud.storage.NotificationInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.cloud.storage.StorageException;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -61,14 +66,36 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
 
   private final Storage client;
   private final String bucket;
+
+  // This is true if a bucket is created by the resource manager.
+  private boolean hasNonStaticBucket = false;
+
   private final String testClassName;
   private final String runId;
 
+  // Retry settings for notification creation
+  private static final int CREATE_MAX_RETRIES = 5;
+  private static final Duration CREATE_BACKOFF_DELAY = Duration.ofSeconds(10);
+  private static final Duration CREATE_BACKOFF_MAX_DELAY = Duration.ofSeconds(60);
+  private static final double CREATE_BACKOFF_JITTER = 0.1;
+
   public GcsResourceManager(Builder builder) {
     this.client = ArtifactUtils.createStorageClient(builder.credentials);
-    this.bucket = builder.bucket;
     this.testClassName = builder.testClassName;
     this.runId = ArtifactUtils.createRunId();
+    if (builder.bucket == null || builder.bucket.isBlank()) {
+      try {
+        String bucketName = generateBucketName(testClassName, runId);
+        client.create(BucketInfo.of(bucketName));
+        this.bucket = bucketName;
+        this.hasNonStaticBucket = true;
+      } catch (Exception e) {
+        cleanupAll();
+        throw new GcsResourceManagerException("Failed to create bucket.", e);
+      }
+    } else {
+      this.bucket = builder.bucket;
+    }
 
     managedTempDirs.add(joinPathParts(testClassName, runId));
   }
@@ -83,12 +110,42 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
     managedTempDirs.add(joinPathParts(testClassName, runId));
   }
 
+  @VisibleForTesting
+  GcsResourceManager(
+      Storage client, String bucket, String testClassName, Boolean hasNonStaticBucket) {
+    this.client = client;
+    this.bucket = bucket;
+    this.testClassName = testClassName;
+    this.runId = ArtifactUtils.createRunId();
+    this.hasNonStaticBucket = hasNonStaticBucket;
+
+    managedTempDirs.add(joinPathParts(testClassName, runId));
+  }
+
   /** Returns a new {@link Builder} for configuring a client. */
   public static Builder builder(String bucket, String testClassName, Credentials credentials) {
     checkArgument(!bucket.equals(""));
     checkArgument(!testClassName.equals(""));
 
     return new Builder(bucket, testClassName, credentials);
+  }
+
+  public static Builder builder(String testClassName, Credentials credentials) {
+    checkArgument(!testClassName.equals(""));
+    return new Builder(null, testClassName, credentials);
+  }
+
+  public static String generateBucketName(String testClassName, String runId) {
+    checkNotNull(runId, "runId cannot be null");
+    checkNotNull(testClassName, "testClassName cannot be null");
+
+    String lowercaseName = (testClassName + "-" + runId).toLowerCase();
+    String sanitizedName = lowercaseName.replace(".", "-");
+    // Truncate if necessary to meet the 63-character limit
+    if (sanitizedName.length() > 63) {
+      sanitizedName = sanitizedName.substring(0, 63);
+    }
+    return sanitizedName;
   }
 
   @Override
@@ -201,18 +258,30 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
             .setObjectNamePrefix(gcsPrefix)
             .setPayloadFormat(NotificationInfo.PayloadFormat.JSON_API_V1)
             .build();
-    try {
-      Notification notification = client.createNotification(bucket, notificationInfo);
-      LOG.info("Successfully created notification {}", notification);
-      notificationList.add(notification);
-      return notification;
-    } catch (StorageException e) {
-      throw new RuntimeException(
-          String.format(
-              "Unable to create notification for bucket %s. Notification: %s",
-              bucket, notificationInfo),
-          e);
-    }
+    return Failsafe.with(retryOnException())
+        .get(
+            () -> {
+              try {
+                Notification notification = client.createNotification(bucket, notificationInfo);
+                LOG.info("Successfully created notification {}", notification);
+                notificationList.add(notification);
+                return notification;
+              } catch (StorageException e) {
+                throw new RuntimeException(
+                    String.format(
+                        "Unable to create notification for bucket %s. Notification: %s",
+                        bucket, notificationInfo),
+                    e);
+              }
+            });
+  }
+
+  private static <T> RetryPolicy<T> retryOnException() {
+    return RetryPolicy.<T>builder()
+        .withMaxRetries(CREATE_MAX_RETRIES)
+        .withBackoff(CREATE_BACKOFF_DELAY, CREATE_BACKOFF_MAX_DELAY)
+        .withJitter(CREATE_BACKOFF_JITTER)
+        .build();
   }
 
   /**
@@ -226,6 +295,20 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
 
   @Override
   public synchronized void cleanupAll() {
+    // If bucket was created by manager, simply delete the bucket without worrying about other
+    // cleanups.
+    if (hasNonStaticBucket) {
+      boolean deleted = client.delete(bucket);
+      if (deleted) {
+        LOG.debug("Bucket '{}' was deleted", bucket);
+      } else {
+        LOG.warn("Bucket '{}' not deleted", bucket);
+      }
+      hasNonStaticBucket = false;
+      managedTempDirs.clear();
+      notificationList.clear();
+      return;
+    }
     if (notificationList.size() > 0) {
       for (Notification notification : notificationList) {
         client.deleteNotification(bucket, notification.getNotificationId());

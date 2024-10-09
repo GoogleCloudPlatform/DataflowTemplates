@@ -88,7 +88,7 @@ public class AssignShardIdFn
 
   private IShardIdFetcher shardIdFetcher;
 
-  private final Long maxConnectionsPerShard;
+  private final Long maxConnectionsAcrossAllShards;
 
   public AssignShardIdFn(
       SpannerConfig spannerConfig,
@@ -100,7 +100,7 @@ public class AssignShardIdFn
       String customJarPath,
       String shardingCustomClassName,
       String shardingCustomParameters,
-      Long maxConnectionsPerShard) {
+      Long maxConnectionsAcrossAllShards) {
     this.spannerConfig = spannerConfig;
     this.schema = schema;
     this.ddl = ddl;
@@ -110,7 +110,7 @@ public class AssignShardIdFn
     this.customJarPath = customJarPath;
     this.shardingCustomClassName = shardingCustomClassName;
     this.shardingCustomParameters = shardingCustomParameters;
-    this.maxConnectionsPerShard = maxConnectionsPerShard;
+    this.maxConnectionsAcrossAllShards = maxConnectionsAcrossAllShards;
   }
 
   // setSpannerAccessor is added to be used by unit tests
@@ -231,7 +231,9 @@ public class AssignShardIdFn
 
       record.setShard(qualifiedShard);
       String finalKeyString = tableName + "_" + keysJsonStr + "_" + qualifiedShard;
-      Long finalKey = finalKeyString.hashCode() % maxConnectionsPerShard;
+      Long finalKey =
+          finalKeyString.hashCode() % maxConnectionsAcrossAllShards; // The total parallelism is
+      // maxConnectionsAcrossAllShards
       c.output(KV.of(finalKey, record));
 
     } catch (Exception e) {
@@ -240,7 +242,7 @@ public class AssignShardIdFn
       LOG.error("Error fetching shard Id column: " + e.getMessage() + ": " + errors.toString());
       // The record has no shard hence will be sent to DLQ in subsequent steps
       String finalKeyString = record.getTableName() + "_" + keysJsonStr + "_" + skipDirName;
-      Long finalKey = finalKeyString.hashCode() % maxConnectionsPerShard;
+      Long finalKey = finalKeyString.hashCode() % maxConnectionsAcrossAllShards;
       c.output(KV.of(finalKey, record));
     }
   }
@@ -288,6 +290,9 @@ public class AssignShardIdFn
     return spannerRecord;
   }
 
+  // Refer https://cloud.google.com/spanner/docs/reference/standard-sql/data-types
+  // and https://cloud.google.com/spanner/docs/reference/postgresql/data-types
+  // for allowed primary key types
   private com.google.cloud.spanner.Key generateKey(String tableName, JsonNode keysJson)
       throws Exception {
     try {
@@ -329,12 +334,6 @@ public class AssignShardIdFn
           case PG_NUMERIC:
             pk.append(
                 DataChangeRecordTypeConvertor.toNumericBigDecimal(
-                    keysJson, keyColName, /* requiredField= */ true));
-            break;
-          case JSON:
-          case PG_JSONB:
-            pk.append(
-                DataChangeRecordTypeConvertor.toString(
                     keysJson, keyColName, /* requiredField= */ true));
             break;
           case BYTES:

@@ -30,9 +30,12 @@ import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
+import com.google.cloud.teleport.v2.templates.utils.WatchdogRunnable;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -102,6 +105,26 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   /* The run mode, whether it is regular or retry. */
   private final Boolean isRegularRunMode;
 
+  /*
+   * The watchdog thread monitors the progress of Spanner transactions and ensures that they
+   * are not stuck for an extended period of time. This is important because in load testing there were
+   * instances where transactions were stuck, causing bottlenecks in the Dataflow pipeline.
+   *
+   * The WatchdogRunnable is designed to track if a transaction is making progress by comparing
+   * the number of transaction attempts (`transactionAttemptCount`) over time. The `isInTransaction`
+   * flag indicates whether a transaction is currently active. If the number of attempts remains
+   * the same for a period of 15 minutes while the transaction is active, the watchdog logs a warning
+   * and terminates the process by calling `System.exit(1)`.
+   *
+   * By running in the background, this watchdog thread ensures that long-running transactions
+   * do not stall indefinitely, providing a safeguard mechanism for transaction processing in
+   * the pipeline.
+   */
+  private transient AtomicLong transactionAttemptCount;
+  private transient AtomicBoolean isInTransaction;
+  private transient AtomicBoolean keepWatchdogRunning;
+  private transient Thread watchdogThread;
+
   SpannerTransactionWriterDoFn(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
@@ -123,12 +146,24 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    // Setup and start the watchdog thread.
+    transactionAttemptCount = new AtomicLong(0);
+    isInTransaction = new AtomicBoolean(false);
+    keepWatchdogRunning = new AtomicBoolean(true);
+    watchdogThread =
+        new Thread(
+            new WatchdogRunnable(transactionAttemptCount, isInTransaction, keepWatchdogRunning),
+            "SpannerTransactionWriterDoFn.WatchdogThread");
+    watchdogThread.setDaemon(true);
+    watchdogThread.start();
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
   @Teardown
   public void teardown() {
     spannerAccessor.close();
+    // Stop the watchdog thread.
+    keepWatchdogRunning.set(false);
   }
 
   @ProcessElement
@@ -169,7 +204,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
           .run(
               (TransactionCallable<Void>)
                   transaction -> {
-
+                    isInTransaction.set(true);
+                    transactionAttemptCount.incrementAndGet();
                     // Sequence information for the last change event.
                     ChangeEventSequence previousChangeEventSequence =
                         ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
@@ -185,6 +221,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
                     // Apply shadow and data table mutations.
                     transaction.buffer(changeEventContext.getMutations());
+                    isInTransaction.set(false);
                     return null;
                   });
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
@@ -265,5 +302,13 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   public void setSpannerAccessor(SpannerAccessor spannerAccessor) {
     this.spannerAccessor = spannerAccessor;
+  }
+
+  public void setTransactionAttemptCount(AtomicLong transactionAttemptCount) {
+    this.transactionAttemptCount = transactionAttemptCount;
+  }
+
+  public void setIsInTransaction(AtomicBoolean isInTransaction) {
+    this.isInTransaction = isInTransaction;
   }
 }

@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -281,7 +282,7 @@ public class AvroToValueMapper {
         }
         return ByteArray.copyFrom(Hex.decodeHex(s));
       }
-      return ByteArray.copyFrom((byte[]) recordValue);
+      return ByteArray.copyFrom(((ByteBuffer) recordValue).array());
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
           "Unable to convert "

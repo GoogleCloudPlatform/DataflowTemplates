@@ -399,26 +399,23 @@ public class InformationSchemaScanner {
           (dialect == Dialect.GOOGLE_STANDARD_SQL)
               ? resultSet.getBoolean(5)
               : resultSet.getString(5).equalsIgnoreCase("YES");
-      String filter =
-          (dialect == Dialect.GOOGLE_STANDARD_SQL || resultSet.isNull(6))
-              ? null
-              : resultSet.getString(6);
+      String filter = resultSet.isNull(6) ? null : resultSet.getString(6);
 
       // Note that 'type' is only queried from GoogleSQL and is not from Postgres and
       // the number of columns will be different.
       String type =
-          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(6))
-              ? resultSet.getString(6)
+          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(7))
+              ? resultSet.getString(7)
               : null;
 
       ImmutableList<String> searchPartitionBy =
-          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(7))
-              ? ImmutableList.<String>builder().addAll(resultSet.getStringList(7)).build()
+          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(8))
+              ? ImmutableList.<String>builder().addAll(resultSet.getStringList(8)).build()
               : null;
 
       ImmutableList<String> searchOrderBy =
-          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(8))
-              ? ImmutableList.<String>builder().addAll(resultSet.getStringList(8)).build()
+          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(9))
+              ? ImmutableList.<String>builder().addAll(resultSet.getStringList(9)).build()
               : null;
 
       Map<String, Index.Builder> tableIndexes =
@@ -445,7 +442,7 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.index_name, t.parent_table_name, t.is_unique,"
-                + " t.is_null_filtered, t.index_type, t.search_partition_by, t.search_order_by"
+                + " t.is_null_filtered, t.filter, t.index_type, t.search_partition_by, t.search_order_by"
                 + " FROM information_schema.indexes AS t"
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') AND"

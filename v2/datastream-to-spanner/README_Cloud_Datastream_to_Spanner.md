@@ -45,7 +45,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **inputFilePattern** : The Cloud Storage file location that contains the Datastream files to replicate. Typically, this is the root path for a stream.
 * **instanceId** : The Spanner instance where the changes are replicated.
 * **databaseId** : The Spanner database where the changes are replicated.
-* **streamName** : The name or template for the stream to poll for schema information and source type.
 
 ### Optional parameters
 
@@ -53,6 +52,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from HarbourBridge.
 * **projectId** : The Spanner project ID.
 * **spannerHost** : The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
+* **streamName** : The name or template for the stream to poll for schema information and source type.
 * **gcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>.
 * **shadowTablePrefix** : The prefix used to name shadow tables. Default: `shadow_`.
 * **shouldCreateShadowTables** : This flag indicates whether shadow tables must be created in Cloud Spanner database. Defaults to: true.
@@ -73,6 +73,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **transformationClassName** : Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
 * **transformationCustomParameters** : String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
 * **filteredEventsDirectory** : This is the file path to store the events filtered via custom transformation. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
+* **shardingContextFilePath** : Sharding context file path in cloud storage used to populate shard id during migrations. It is of the format Map<stream_name, Map<db_name, shard_id>>.
 
 
 
@@ -174,6 +175,7 @@ export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
 export ROUND_JSON_DECIMALS=false
 export RUN_MODE=regular
 export TRANSFORMATION_CONTEXT_FILE_PATH=<transformationContextFilePath>
+export SHARDING_CONTEXT_FILE_PATH=<shardingContextFilePath>
 export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
 export SPANNER_PRIORITY=HIGH
 export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
@@ -213,7 +215,8 @@ gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
   --parameters "transformationClassName=$TRANSFORMATION_CLASS_NAME" \
   --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
-  --parameters "filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY"
+  --parameters "filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY" \
+  --parameters "shardingContextFilePath=$SHARDING_CONTEXT_FILE_PATH"
 ```
 
 For more information about the command, please check:
@@ -262,6 +265,7 @@ export TRANSFORMATION_JAR_PATH=""
 export TRANSFORMATION_CLASS_NAME=""
 export TRANSFORMATION_CUSTOM_PARAMETERS=""
 export FILTERED_EVENTS_DIRECTORY=""
+export SHARDING_CONTEXT_FILE_PATH=<shardingContextFilePath>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -270,7 +274,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-spanner-job" \
 -DtemplateName="Cloud_Datastream_to_Spanner" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY",shardingContextFilePath=$SHARDING_CONTEXT_FILE_PATH \
 -f v2/datastream-to-spanner
 ```
 
@@ -343,6 +347,7 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_spanner" {
     # transformationClassName = ""
     # transformationCustomParameters = ""
     # filteredEventsDirectory = ""
+    # shardingContextFilePath = "<shardingContextFilePath>"
   }
 }
 ```

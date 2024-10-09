@@ -18,7 +18,7 @@ There are two ways to add permissions -
 
 ### Using custom role and granular permissions (recommended)
 
-Following permissions are required - 
+Following permissions are required -
 
 ```shell
 - compute.globalAddresses.create
@@ -27,6 +27,9 @@ Following permissions are required -
 - compute.globalAddresses.deleteInternal
 - compute.globalAddresses.get
 - compute.globalOperations.get
+- compute.firewalls.create
+- compute.firewalls.delete
+- compute.firewalls.update
 - compute.networks.addPeering
 - compute.networks.get
 - compute.networks.listPeeringRoutes
@@ -65,15 +68,12 @@ Following permissions are required -
 - serviceusage.services.enable
 ```
 
-**Note**: Add the `roles/viewer` role as well to the service account.
-
-> **_Note on IAM:_** 
+> **_Note on IAM:_**
 >
 > 1. For ease of use, this sample automatically adds the
 > required
 > roles to the service account used for running the migration. In order to
-> do this, we need the `resourcemanager.projects.setIamPolicy` permission. If
-> granting
+> do this, we need the `resourcemanager.projects.setIamPolicy` permission. If granting
 > this role is unacceptable, please set
 > the `var.common_params.add_policies_to_service_account`
 > to **false**. This will skip adding the roles.
@@ -81,13 +81,13 @@ Following permissions are required -
 > migration will fail.**
 > Two service accounts will need to be modified manually -
 >    1. Dataflow service account - The list of roles can be found in the `main.tf`
-        file, in the `live_migration_roles` resource.
+      file, in the `live_migration_roles` resource.
 >    2. GCS service account - The list of roles can be found in the `main.tf` file,
         in the `gcs_publisher_role` resource.
-> 
-> 
-> 2. In order to create private connectivity configuration for Datastream, 
-> `compute.*` permissions are required, [as documented here](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration#shared-vpc).
+>
+>
+>2. In order to create private connectivity configuration for Datastream,
+>`compute.*` permissions are required, [as documented here](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration#shared-vpc).
 > Private connectivity cannot be created without these permissions. If you don't want to grant these permissions,
 > you can use the [pre-configured connection profiles template](../pre-configured-conn-profiles/README.md). This template
 > assumes you have created connection profiles outside of Terraform.
@@ -110,8 +110,8 @@ roles/viewer
 roles/compute.networkAdmin
 ```
 
-> **_Note on IAM:_** 
-> 
+> **_Note on IAM:_**
+>
 > 1. For ease of use, this sample automatically adds the
 > required
 > roles to the service account used for running the migration. In order to
@@ -123,15 +123,18 @@ roles/compute.networkAdmin
 > migration will fail.**
 > Two service accounts will need to be modified manually -
 >    1. Dataflow service account - The list of roles can be found in the `main.tf`
-        file, in the `live_migration_roles` resource.
+       file, in the `live_migration_roles` resource.
+
 >    2. GCS service account - The list of roles can be found in the `main.tf` file,
-        in the `gcs_publisher_role` resource.
+  in the `gcs_publisher_role` resource.
 >
 >
 >2. In order to create private connectivity configuration for Datastream,
->`networkAdmin` role is required, [as documented here](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration#shared-vpc).
+> `networkAdmin` role is
+    required, [as documented here](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration#shared-vpc).
 > Private connectivity cannot be created without these permissions. If you don't want to grant these permissions,
-> you can use the [pre-configured connection profiles template](../pre-configured-conn-profiles/README.md). This template
+> you can use the [pre-configured connection profiles template](../pre-configured-conn-profiles/README.md). This
+    template
 > assumes you have created connection profiles outside of Terraform.
 
 [This](#adding-access-to-terraform-service-account) section in the FAQ
@@ -281,16 +284,19 @@ can exclude it from the state file using `terraform state rm` command.
 #### Specifying a shared VPC
 
 You can specify the shared VPC using the `host_project` configuration.
-This will result in - 
+This will result in -
 
 1. Datastream private connectivity link will be created in the shared VPC.
 2. Dataflow jobs will be launched inside the shared VPC.
 
 > **_NOTE:_** Usage of shared VPC requires cross-project permissions. They
-> are available as a Terraform template [here](../../../../spanner-common/terraform/samples/configure-shared-vpc/README.md).
-> 
-> 1. Datastream service account permissions are documented [here](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration#shared-vpc).
-> 2. Dataflow service account permissions are documented [here](https://cloud.google.com/dataflow/docs/guides/specifying-networks#shared).
+> are available as a Terraform
+> template [here](../../../../spanner-common/terraform/samples/configure-shared-vpc/README.md).
+>
+> 1. Datastream service account permissions are
+     documented [here](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration#shared-vpc).
+> 2. Dataflow service account permissions are
+     documented [here](https://cloud.google.com/dataflow/docs/guides/specifying-networks#shared).
 
 #### Datastream Private Connectivity
 
@@ -306,7 +312,7 @@ private_connectivity = optional(object({
     }))
 ```
 
-and 
+and
 
 ```shell
 private_connectivity_id = optional(string)
@@ -348,21 +354,6 @@ and configures it in the source profile created for the Datastream stream.
 > **_NOTE:_** Private connectivity resource creation can take a long time to
 > create.
 
-
-> **ALERT:** Private connectivity resource destruction is currently not
-> supported in Terraform due to the ability to delete nested
->resources: [#17920](https://github.com/hashicorp/terraform-provider-google/issues/17290),
-> [#13054](https://github.com/hashicorp/terraform-provider-google/issues/13054).
-> Until this is supported, the private connectivity resource will need to be
-> manually deleted via the console or the gcloud CLI before running
-> `terraform destroy`.
->
-> Example -
->
->  `gcloud datastream private-connections delete 'private-conn-name' --location=us-central1 --force --quiet`
->
-> You can run `terraform destroy` after deleting the private connection from the
-> UI or the gcloud CLI to clean up the remaining resources.
 
 If this is not specified, configurations are created assuming **IP Allowlisting
 **.
@@ -497,13 +488,13 @@ After adding these permissions, configure the
 #### Using custom role and granular permissions (recommended)
 
 You can run the following gcloud command to create a custom role in your GCP
-project. 
+project.
 
 ```shell
 gcloud iam roles create live_migrations_role --project=<YOUR-PROJECT-ID> --file=perms.yaml --quiet
 ```
 
-The `YAML` file required for the above will be like so - 
+The `YAML` file required for the above will be like so -
 
 ```shell
 title: "Live Migrations Custom Role"
@@ -516,7 +507,7 @@ includedPermissions:
 ....add all permissions from the list defined above.
 ```
 
-Then attach the role to the service account - 
+Then attach the role to the service account -
 
 ```shell
 gcloud iam service-accounts add-iam-policy-binding <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com \
@@ -558,7 +549,7 @@ done
 
 #### Using custom role and granular permissions (recommended)
 
-Verify that the custom role is attached to the service account - 
+Verify that the custom role is attached to the service account -
 
 ```shell
 gcloud projects get-iam-policy <YOUR-PROJECT-ID>  \
@@ -574,6 +565,7 @@ gcloud iam roles describe live_migrations_role --project=<YOUR-PROJECT-ID>
 ```
 
 ##### Using pre-defined roles
+
 Once the roles are added, run the following command to verify them -
 
 ```shell

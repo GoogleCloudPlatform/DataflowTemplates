@@ -27,44 +27,51 @@ public abstract class DetectMetricDeviationConditionCheck extends ConditionCheck
 
   abstract double percentageDeviation();
 
+  abstract String testCaseDescription();
+
   @Override
   public String getDescription() {
-    return String.format("DetectMetricDeviation ConditionCheck for %s", metricName());
+    return String.format("DetectMetricDeviation for %s", metricName());
   }
 
   @Override
   protected CheckResult check() {
     double totalMetricValue = 0.0;
     PerfResultRow latestRow = null;
-    for (PerfResultRow perfResultRow : dataset().rows()) {
-      if (latestRow == null) {
-        latestRow = perfResultRow;
-      } else {
-        totalMetricValue += getMetricValue(perfResultRow, metricName());
+    try {
+      for (PerfResultRow perfResultRow : dataset().rows()) {
+        if (latestRow == null) {
+          latestRow = perfResultRow;
+        } else {
+          totalMetricValue += getMetricValue(perfResultRow, metricName());
+        }
       }
-    }
-    double average = totalMetricValue / (dataset().rows().size() - 1.0);
+      double average = totalMetricValue / (dataset().rows().size() - 1.0);
 
-    // Deviating more than x% of average
-    if ((getMetricValue(latestRow, metricName())
-            > average * (100.0 + percentageDeviation()) / 100.0)
-        || (getMetricValue(latestRow, metricName())
-            < average * (100.0 - percentageDeviation()) / 100.0)) {
-      return new ConditionCheck.CheckResult(
-          false,
-          String.format(
-              "Metric %s is deviating more than %.2f %% than the average. %s=%f, Average=%f\n",
-              metricName(),
-              percentageDeviation(),
-              metricName(),
-              getMetricValue(latestRow, metricName()),
-              average));
+      // Deviating more than x% of average
+      if ((getMetricValue(latestRow, metricName())
+              > average * (100.0 + percentageDeviation()) / 100.0)
+          || (getMetricValue(latestRow, metricName())
+              < average * (100.0 - percentageDeviation()) / 100.0)) {
+        return new ConditionCheck.CheckResult(
+            false,
+            String.format(
+                "Metric %s is deviating more than %.2f %% than the average. %s=%f, Average=%f\n",
+                metricName(),
+                percentageDeviation(),
+                metricName(),
+                getMetricValue(latestRow, metricName()),
+                average));
+      }
+    } catch (MetricNotFoundException e) {
+      LOG.warn("Metric " + metricName() + " not found in Dataset! Ignoring the check Condition");
     }
 
     return new ConditionCheck.CheckResult(true);
   }
 
-  public double getMetricValue(PerfResultRow resultRow, String metricName) {
+  public double getMetricValue(PerfResultRow resultRow, String metricName)
+      throws MetricNotFoundException {
     if (resultRow.row.containsKey("metrics")) {
       List<Object> metrics = (List<Object>) resultRow.row.get("metrics");
       for (Object metric : metrics) {
@@ -74,7 +81,7 @@ public abstract class DetectMetricDeviationConditionCheck extends ConditionCheck
         }
       }
     }
-    throw new IllegalArgumentException("Metric " + metricName + " not found!");
+    throw new MetricNotFoundException("Metric " + metricName + " not found!");
   }
 
   public static Builder builder() {
@@ -96,6 +103,23 @@ public abstract class DetectMetricDeviationConditionCheck extends ConditionCheck
         numRows);
   }
 
+  public void assertTrue() {
+    if (!this.get()) {
+      throw new AssertionError(
+          String.format(
+              "Metric %s is deviating more than %.2f %% than the average for %s\n",
+              metricName(), percentageDeviation(), testCaseDescription()));
+    }
+  }
+
+  public static class MetricNotFoundException extends Exception {
+    public MetricNotFoundException() {}
+
+    public MetricNotFoundException(String message) {
+      super(message);
+    }
+  }
+
   @AutoValue.Builder
   public abstract static class Builder {
 
@@ -104,6 +128,8 @@ public abstract class DetectMetricDeviationConditionCheck extends ConditionCheck
     public abstract Builder setMetricName(String metricName);
 
     public abstract Builder setPercentageDeviation(double percentageDeviation);
+
+    public abstract Builder setTestCaseDescription(String description);
 
     abstract DetectMetricDeviationConditionCheck autoBuild();
 

@@ -16,13 +16,13 @@
 package com.google.cloud.teleport.v2.neo4j.transforms;
 
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
-import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
 import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import com.google.cloud.teleport.v2.neo4j.utils.SerializableSupplier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -30,6 +30,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
 import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.summary.ResultSummary;
+import org.neo4j.importer.v1.targets.TargetType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,7 +121,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
                               "source",
                               reportedSourceType.format(),
                               "target-type",
-                              targetType.name(),
+                              targetType.name().toLowerCase(Locale.ROOT),
                               "step",
                               "import")))
                   .build());

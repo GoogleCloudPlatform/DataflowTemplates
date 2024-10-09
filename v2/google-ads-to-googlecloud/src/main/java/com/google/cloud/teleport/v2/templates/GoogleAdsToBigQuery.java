@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.ads.googleads.v14.services.GoogleAdsRow;
+import com.google.ads.googleads.v17.services.GoogleAdsRow;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -192,7 +192,7 @@ public final class GoogleAdsToBigQuery {
                         .map(Object::toString)
                         .collect(ImmutableList.toImmutableList())))
             .apply(
-                GoogleAdsIO.v14()
+                GoogleAdsIO.v17()
                     .read()
                     .withDeveloperToken(options.getGoogleAdsDeveloperToken())
                     .withLoginCustomerId(options.getLoginCustomerId())
