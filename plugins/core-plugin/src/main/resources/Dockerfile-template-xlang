@@ -19,9 +19,9 @@ RUN if ! [ -f requirements.txt ] ; then >&2 echo "error: no requirements.txt fil
 
 # Install dependencies to launch the pipeline and download to reduce startup time
 RUN python -m venv /venv \
-    && python -m ensurepip --upgrade \
+    && /venv/bin/python -m ensurepip --upgrade \
     && /venv/bin/pip install --no-cache-dir --require-hashes -U -r $REQUIREMENTS_FILE \
-    && /venv/bin/pip download --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE \
+    && /venv/bin/pip download --require-hashes --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE \
     && rm -rf /usr/local/lib/python$PY_VERSION/site-packages \
     && cp -r /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/
     # change to mv once Beam 2.57.0 is released

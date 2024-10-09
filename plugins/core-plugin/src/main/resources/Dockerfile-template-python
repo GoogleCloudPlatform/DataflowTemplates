@@ -11,6 +11,6 @@ ENV FLEX_TEMPLATE_PYTHON_PY_FILE=main.py
 RUN if ! [ -f requirements.txt ] ; then >&2 echo "error: no requirements.txt file found" && exit 1 ; fi
 
 RUN pip install -U -r --require-hashes $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE
-RUN pip download --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE
+RUN pip download --require-hashes --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE
 
 ENTRYPOINT ${entryPoint}
