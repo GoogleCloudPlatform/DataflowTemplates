@@ -48,6 +48,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -526,6 +527,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
       String dockerfileContainer = outputClassesDirectory.getPath() + "/" + containerName;
       String dockerfilePath = dockerfileContainer + "/Dockerfile";
+      LOG.info("Generating dockerfile " + dockerfilePath);
       String xlangCommandSpec = "/template/" + containerName + "/resources/" + commandSpecFileName;
       File dockerfile = new File(dockerfilePath);
       if (!dockerfile.exists()) {
@@ -533,6 +535,15 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             Map.of(
                 String.format("%s-generated-metadata.json", containerName),
                 Set.of("requirements.txt*"));
+        // Copy in requirements.txt if present
+        File sourceRequirements = new File(outputClassesDirectory.getPath() + "/requirements.txt");
+        File destRequirements = new File(dockerfileContainer + "/requirements.txt");
+        if (sourceRequirements.exists()) {
+          Files.copy(
+              sourceRequirements.toPath(),
+              destRequirements.toPath(),
+              StandardCopyOption.REPLACE_EXISTING);
+        }
         Set<String> directoriesToCopy = Set.of(containerName);
         DockerfileGenerator.builder(
                 definition.getTemplateAnnotation().type(),
@@ -699,10 +710,20 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String containerName,
       String templatePath)
       throws IOException, InterruptedException, TemplateException {
-
-    String dockerfilePath = outputClassesDirectory.getPath() + "/" + containerName + "/Dockerfile";
+    String dockerfileContainer = outputClassesDirectory.getPath() + "/" + containerName;
+    String dockerfilePath = dockerfileContainer + "/Dockerfile";
+    LOG.info("Generating dockerfile " + dockerfilePath);
     File dockerfile = new File(dockerfilePath);
     if (!dockerfile.exists()) {
+      // Copy in requirements.txt if present
+      File sourceRequirements = new File(outputClassesDirectory.getPath() + "/requirements.txt");
+      File destRequirements = new File(dockerfileContainer + "/requirements.txt");
+      if (sourceRequirements.exists()) {
+        Files.copy(
+            sourceRequirements.toPath(),
+            destRequirements.toPath(),
+            StandardCopyOption.REPLACE_EXISTING);
+      }
       Map<String, Set<String>> filesToCopy = Map.of("main.py", Set.of("requirements.txt*"));
       DockerfileGenerator.builder(
               definition.getTemplateAnnotation().type(),
@@ -919,7 +940,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --cache-repo="
               + cacheFolder);
     }
-
+    LOG.info("Submitting cloudbuild job with config: " + cloudbuildFile.getAbsolutePath());
     Process stageProcess =
         runCommand(
             new String[] {
