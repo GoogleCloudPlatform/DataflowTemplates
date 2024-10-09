@@ -15,6 +15,12 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.CONVERSION_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.OTHER_PERMANENT_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.RETRYABLE_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.SKIPPED_EVENTS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.SUCCESSFUL_EVENTS_COUNTER_NAME;
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -85,19 +91,19 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private transient SpannerAccessor spannerAccessor;
 
   private final Counter successfulEvents =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Successful events");
+      Metrics.counter(SpannerTransactionWriterDoFn.class, SUCCESSFUL_EVENTS_COUNTER_NAME);
 
   private final Counter skippedEvents =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Skipped events");
+      Metrics.counter(SpannerTransactionWriterDoFn.class, SKIPPED_EVENTS_COUNTER_NAME);
 
   private final Counter failedEvents =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Other permanent errors");
+      Metrics.counter(SpannerTransactionWriterDoFn.class, OTHER_PERMANENT_ERRORS_COUNTER_NAME);
 
   private final Counter conversionErrors =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Conversion errors");
+      Metrics.counter(SpannerTransactionWriterDoFn.class, CONVERSION_ERRORS_COUNTER_NAME);
 
   private final Counter retryableErrors =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Retryable errors");
+      Metrics.counter(SpannerTransactionWriterDoFn.class, RETRYABLE_ERRORS_COUNTER_NAME);
 
   // The max length of tag allowed in Spanner Transaction tags.
   private static final int MAX_TXN_TAG_LENGTH = 50;
