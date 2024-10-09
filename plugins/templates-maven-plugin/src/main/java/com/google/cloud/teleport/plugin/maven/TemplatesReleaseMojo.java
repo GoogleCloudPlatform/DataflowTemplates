@@ -116,7 +116,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${unifiedWorker}", readonly = true, required = false)
   protected boolean unifiedWorker;
 
-  @Parameter(defaultValue = "true", property = "generateSBOM", readonly = true, required = false)
+  @Parameter(defaultValue = "false", property = "generateSBOM", readonly = true, required = false)
   protected boolean generateSBOM;
 
   public void execute() throws MojoExecutionException {

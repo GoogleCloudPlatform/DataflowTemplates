@@ -387,7 +387,6 @@ public abstract class TemplateTestBase {
       "mvn",
       "compile",
       "package",
-      "-q",
       "-f",
       pomPath,
       "-pl",

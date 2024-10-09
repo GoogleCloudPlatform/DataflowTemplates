@@ -38,6 +38,8 @@ import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
 import com.google.common.base.Strings;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import freemarker.template.TemplateException;
 import java.io.File;
 import java.io.FileWriter;
@@ -49,6 +51,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -280,7 +283,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       if (generateSBOM) {
         String imagePath = imageSpec.getImage();
         File buildDir = new File(outputClassesDirectory.getAbsolutePath());
-        generateSystemSBOM(imagePath);
+        Failsafe.with(sbomRetryPolicy()).run(() -> generateSystemSBOM(imagePath));
         performVulnerabilityScanAndGenerateUserSBOM(imagePath, projectId, buildDir);
       }
       return stagedTemplate;
@@ -1276,6 +1279,17 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (stageProcess.waitFor() != 0) {
       throw new IllegalStateException("Error generating SBOM. Check logs for details.");
     }
+  }
+
+  private static <T> RetryPolicy<T> sbomRetryPolicy() {
+    return RetryPolicy.<T>builder()
+        .handleIf(
+            throwable ->
+                throwable.getMessage() != null
+                    && throwable.getMessage().contains("Error generating SBOM."))
+        .withBackoff(Duration.ofSeconds(10), Duration.ofSeconds(60))
+        .withMaxRetries(5)
+        .build();
   }
 
   private static Process runCommand(String[] gcloudBuildsCmd, File directory) throws IOException {
