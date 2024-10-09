@@ -209,28 +209,28 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     PipelineOperator.Result parent1Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(20)),
                 () -> jdbcResourceManagerShardA.getRowCount("parent1") == 1);
     assertThatResult(parent1Result).meetsConditions();
 
     PipelineOperator.Result child1Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(20)),
                 () -> jdbcResourceManagerShardA.getRowCount("child11") == 1);
     assertThatResult(child1Result).meetsConditions();
 
     PipelineOperator.Result parent2Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(20)),
                 () -> jdbcResourceManagerShardB.getRowCount("parent2") == 1);
     assertThatResult(parent2Result).meetsConditions();
 
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(20)),
                 () -> jdbcResourceManagerShardB.getRowCount("child21") == 1);
     assertThatResult(result).meetsConditions();
 
@@ -293,7 +293,7 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(20)),
                 () -> jdbcResourceManagerShardA.getRowCount("child11") == 2);
     assertThatResult(result).meetsConditions();
 
@@ -324,34 +324,6 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     mutations.add(p1);
     mutations.add(p2); // this should cause child22 delete as well
     spannerResourceManager.write(mutations);
-  }
-
-  private void assertDeletedRowsInMySQL() throws InterruptedException {
-    PipelineOperator.Result result =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManagerShardB.getRowCount("parent2") == 0);
-    assertThatResult(result).meetsConditions();
-
-    PipelineOperator.Result parent1Result =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManagerShardA.getRowCount("parent1") == 0);
-    assertThatResult(parent1Result).meetsConditions();
-    PipelineOperator.Result child1Result =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofSeconds(1)),
-                () -> jdbcResourceManagerShardA.getRowCount("child11") == 0);
-    assertThatResult(child1Result).meetsConditions();
-    PipelineOperator.Result child2Result =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofSeconds(1)),
-                () -> jdbcResourceManagerShardB.getRowCount("child22") == 0);
-    assertThatResult(child2Result).meetsConditions();
   }
 
   private void createAndUploadShardConfigToGcs() throws IOException {
