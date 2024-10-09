@@ -25,7 +25,6 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -500,7 +499,9 @@ public class FormatDatastreamRecordToJson
         Instant instant = Instant.ofEpochMilli(millis);
         // adding the microsecond after it was removed in the millisecond conversion
         instant = instant.plusNanos(microseconds % 1000 * 1000L);
-        jsonObject.put(fieldName, instant.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+        jsonObject.put(
+            fieldName,
+            instant.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMillis) {
         Instant timestamp = Instant.ofEpochMilli(((Long) element.get(fieldName)));
         jsonObject.put(

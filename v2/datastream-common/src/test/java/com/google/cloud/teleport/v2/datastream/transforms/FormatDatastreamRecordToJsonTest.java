@@ -199,10 +199,11 @@ public class FormatDatastreamRecordToJsonTest {
     Mockito.when(element.get(fieldNamePositiveNumber)).thenReturn(375191111000000L);
     ObjectNode jsonObject = new ObjectNode(new JsonNodeFactory(true));
 
-    FormatDatastreamRecordToJson.UnifiedTypesFormatter.handleLogicalFieldType(fieldNameNegativeNumber,fieldSchema, element, jsonObject);
+    FormatDatastreamRecordToJson.UnifiedTypesFormatter.handleLogicalFieldType(
+        fieldNameNegativeNumber, fieldSchema, element, jsonObject);
     assertTrue(jsonObject.get(fieldNameNegativeNumber).asText().equals("0001-01-01T00:00:00Z"));
-    FormatDatastreamRecordToJson.UnifiedTypesFormatter.handleLogicalFieldType(fieldNamePositiveNumber,fieldSchema, element, jsonObject);
+    FormatDatastreamRecordToJson.UnifiedTypesFormatter.handleLogicalFieldType(
+        fieldNamePositiveNumber, fieldSchema, element, jsonObject);
     assertTrue(jsonObject.get(fieldNamePositiveNumber).asText().equals("1981-11-21T11:45:11Z"));
-
   }
 }
