@@ -15,13 +15,16 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static org.apache.beam.it.splunk.SplunkResourceManagerUtils.splunkEventToMap;
-import static org.apache.beam.it.splunk.matchers.SplunkAsserts.assertThatSplunkEvents;
-import static org.apache.beam.it.splunk.matchers.SplunkAsserts.splunkEventsToRecords;
+import static com.google.cloud.teleport.it.splunk.SplunkResourceManagerUtils.splunkEventToMap;
+import static com.google.cloud.teleport.it.splunk.matchers.SplunkAsserts.assertThatSplunkEvents;
+import static com.google.cloud.teleport.it.splunk.matchers.SplunkAsserts.splunkEventsToRecords;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.kms.v1.CryptoKey;
+import com.google.cloud.teleport.TemplateTestBase;
+import com.google.cloud.teleport.it.splunk.SplunkResourceManager;
+import com.google.cloud.teleport.it.splunk.conditions.CustomSplunkEventsCheck;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -38,12 +41,9 @@ import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.kms.KMSResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
-import org.apache.beam.it.splunk.CustomSplunkResourceManager;
-import org.apache.beam.it.splunk.conditions.CustomSplunkEventsCheck;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.json.JSONObject;
@@ -68,7 +68,7 @@ public class PubSubToSplunkIT extends TemplateTestBase {
   private static final int BAD_MESSAGES_COUNT = 50;
 
   private PubsubResourceManager pubsubResourceManager;
-  private CustomSplunkResourceManager splunkResourceManager;
+  private SplunkResourceManager splunkResourceManager;
   private KMSResourceManager kmsResourceManager;
 
   private static final String KEYRING_ID = "PubSubToSplunkIT";
@@ -83,7 +83,7 @@ public class PubSubToSplunkIT extends TemplateTestBase {
   public void setUp() throws IOException {
     pubsubResourceManager =
         PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
-    splunkResourceManager = CustomSplunkResourceManager.builder(testName).build();
+    splunkResourceManager = SplunkResourceManager.builder(testName).build();
     kmsResourceManager = KMSResourceManager.builder(PROJECT, credentialsProvider).build();
 
     gcsClient.createArtifact(

@@ -196,6 +196,7 @@
     </profile>
   </profiles>
   <modules>
+    <module>common</module>
     <module>google-cloud-platform</module>
     <module>datadog</module>
     <module>conditions</module>

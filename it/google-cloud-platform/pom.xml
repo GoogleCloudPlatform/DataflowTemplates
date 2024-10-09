@@ -30,8 +30,9 @@
     </properties>
     <dependencies>
         <dependency>
-            <groupId>org.apache.beam</groupId>
-            <artifactId>beam-it-common</artifactId>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-common</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -67,20 +68,9 @@
 
         <!-- JDBC dependencies for CloudSQL -->
         <dependency>
-            <groupId>org.apache.beam</groupId>
-            <artifactId>beam-it-jdbc</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <version>${mysql-connector-java.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.oracle.database.jdbc</groupId>
-            <artifactId>ojdbc8</artifactId>
-            <version>${ojdbc8.version}</version>
-            <scope>test</scope>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-jdbc</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <!-- Google Cloud -->

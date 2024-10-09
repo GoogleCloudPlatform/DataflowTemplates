@@ -23,7 +23,7 @@
     <version>1.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>lt</artifactId>
+  <artifactId>load-testing-lib</artifactId>
   <packaging>pom</packaging>
   <modelVersion>4.0.0</modelVersion>
 
@@ -137,6 +137,7 @@
     </profile>
   </profiles>
   <modules>
+    <module>common</module>
     <module>observability</module>
   </modules>
 </project>
