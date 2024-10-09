@@ -35,7 +35,6 @@ import org.apache.avro.io.DatumReader;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 /** Tests for FormatDatastreamRecordToJson function. These check appropriate Avro-to-Json conv. */
