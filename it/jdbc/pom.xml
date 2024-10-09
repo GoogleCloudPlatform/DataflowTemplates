@@ -37,7 +37,35 @@
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-it-conditions</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
+        <!-- Drivers to test JDBC -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>${mysql-connector-java.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${postgresql.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc8</artifactId>
+            <version>${ojdbc8.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>${mssql-jdbc.version}</version>
+        </dependency>
+
+        <!-- AutoValue stuff-->
         <dependency>
             <groupId>com.google.auto.value</groupId>
             <artifactId>auto-value</artifactId>
@@ -50,4 +78,42 @@
             <version>${autovalue.version}</version>
         </dependency>
     </dependencies>
+
+    <profiles>
+        <profile>
+            <id>jdbcIntegrationTest</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>${surefire.version}</version>
+                        <configuration combine.children="append">
+                            <systemProperties combine.children="append">
+                                <property>
+                                    <name>mySqlVersion</name>
+                                    <value>${mysql-connector-java.version}</value>
+                                </property>
+                                <property>
+                                    <name>postgresVersion</name>
+                                    <value>${postgresql.version}</value>
+                                </property>
+                                <property>
+                                    <name>oracleVersion</name>
+                                    <value>${ojdbc8.version}</value>
+                                </property>
+                                <property>
+                                    <name>msSqlVersion</name>
+                                    <value>${mssql-jdbc.version}</value>
+                                </property>
+                            </systemProperties>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

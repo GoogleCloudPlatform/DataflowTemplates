@@ -169,6 +169,12 @@
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-common</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
 
   </dependencies>
 

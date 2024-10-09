@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
+import com.google.cloud.teleport.TemplateTestBase;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
@@ -32,7 +33,6 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.slf4j.Logger;
