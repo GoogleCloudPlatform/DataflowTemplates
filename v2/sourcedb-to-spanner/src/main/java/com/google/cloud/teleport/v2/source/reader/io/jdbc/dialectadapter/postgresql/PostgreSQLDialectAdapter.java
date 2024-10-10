@@ -340,19 +340,20 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
 
             String collation = resultSet.getString("collation");
             if (collation != null) {
+              String charset = resultSet.getString("charset");
+              String typeName = resultSet.getString("type_name");
               Integer typeLength = resultSet.getInt("type_length");
               if (resultSet.wasNull()) {
                 typeLength = null;
               }
               // Collation PAD SPACE is not supported in Postgresql
               // (https://www.postgresql.org/docs/current/infoschema-collations.html)
-              // The only way to have blank space padding is for specific types with pre-defined
-              // length (https://www.postgresql.org/docs/current/datatype-character.html)
-              boolean shouldPadSpace =
-                  isBlankPaddedType(resultSet.getString("type_name"), typeLength);
+              // The only way to have blank space padding is for specific types with fixed length
+              // (https://www.postgresql.org/docs/current/datatype-character.html)
+              boolean shouldPadSpace = isBlankPaddedType(typeName, typeLength);
               indexBuilder.setCollationReference(
                   CollationReference.builder()
-                      .setDbCharacterSet(resultSet.getString("charset"))
+                      .setDbCharacterSet(charset)
                       .setDbCollation(collation)
                       .setPadSpace(shouldPadSpace)
                       .build());
