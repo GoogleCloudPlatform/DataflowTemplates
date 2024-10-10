@@ -365,12 +365,27 @@ public class PostgreSQLDialectAdapterTest {
   }
 
   @Test
-  public void testCollationsOrderQuery() {
-    String collationsOrderQuery = adapter.getCollationsOrderQuery("myCharset", "myCollation");
+  public void testCollationsOrderQueryWithPadSpace() {
+    String collationsOrderQuery = adapter.getCollationsOrderQuery("myCharset", "myCollation", true);
 
     assertThat(collationsOrderQuery).contains("myCharset");
     assertThat(collationsOrderQuery).contains("myCollation");
+    assertThat(collationsOrderQuery).contains("CHAR(5)");
     assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.CHARSET_REPLACEMENT_TAG);
     assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.COLLATION_REPLACEMENT_TAG);
+    assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.RETURN_TYPE_REPLACEMENT_TAG);
+  }
+
+  @Test
+  public void testCollationsOrderQueryWithoutPadSpace() {
+    String collationsOrderQuery =
+        adapter.getCollationsOrderQuery("myCharset", "myCollation", false);
+
+    assertThat(collationsOrderQuery).contains("myCharset");
+    assertThat(collationsOrderQuery).contains("myCollation");
+    assertThat(collationsOrderQuery).contains("TEXT");
+    assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.CHARSET_REPLACEMENT_TAG);
+    assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.COLLATION_REPLACEMENT_TAG);
+    assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.RETURN_TYPE_REPLACEMENT_TAG);
   }
 }

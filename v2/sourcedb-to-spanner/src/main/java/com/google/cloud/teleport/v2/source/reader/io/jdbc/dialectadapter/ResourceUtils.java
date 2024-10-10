@@ -29,6 +29,8 @@ public class ResourceUtils {
   public static final String CHARSET_REPLACEMENT_TAG = "charset_replacement_tag";
   public static final String COLLATION_REPLACEMENT_TAG = "collation_replacement_tag";
 
+  public static final String RETURN_TYPE_REPLACEMENT_TAG = "return_type_tag";
+
   /**
    * Load a resource file as string.
    *

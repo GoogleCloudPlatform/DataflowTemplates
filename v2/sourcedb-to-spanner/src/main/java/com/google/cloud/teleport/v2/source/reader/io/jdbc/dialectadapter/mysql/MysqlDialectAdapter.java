@@ -651,9 +651,10 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    *     found.
    * @param dbCollation collation set used by the database for which collation ordering has to be
    *     found.
+   * @param padSpace pad space used by the database for which collation ordering has to be found.
    */
   @Override
-  public String getCollationsOrderQuery(String dbCharset, String dbCollation) {
+  public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
     String query = resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH);
     Map<String, String> tags = new HashMap<>();
     tags.put("'" + CHARSET_REPLACEMENT_TAG + "'", "'" + dbCharset + "'");

@@ -1,5 +1,8 @@
 -- Converts codepoint to the given charset safely. Instead of throwing errors, NULLs are returned instead.
-CREATE OR REPLACE FUNCTION pg_temp.safe_convert_from(codepoint int8, charset text) RETURNS TEXT AS
+-- The return type is defined based on PAD_SPACE. In PostgreSQL fixed length character types (CHAR(X), BPCHAR(X)),
+-- pad trailing space, while variable length character types (CHAR (no length), BPCHAR (no length), VARCHAR and TEXT)
+-- do not.
+CREATE OR REPLACE FUNCTION pg_temp.safe_convert_from(codepoint int8, charset text) RETURNS return_type_tag AS
 '
   BEGIN
     RETURN convert_from(decode(to_hex(codepoint), ''hex''), charset);

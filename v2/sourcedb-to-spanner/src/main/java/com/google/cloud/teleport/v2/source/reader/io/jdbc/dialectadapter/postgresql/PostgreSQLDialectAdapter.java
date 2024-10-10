@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgr
 
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.CHARSET_REPLACEMENT_TAG;
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.COLLATION_REPLACEMENT_TAG;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.RETURN_TYPE_REPLACEMENT_TAG;
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.replaceTagsAndSanitize;
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.resourceAsString;
 
@@ -81,6 +82,9 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   // Collations
   private static final String COLLATIONS_QUERY_RESOURCE_PATH =
       "sql/postgresql_collation_order_query.sql";
+
+  private static final String PAD_SPACE_RETURN_TYPE = "CHAR(5)";
+  private static final String NO_PAD_SPACE_RETURN_TYPE = "TEXT";
 
   private final PostgreSQLVersion version;
 
@@ -469,13 +473,19 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
    *     found.
    * @param dbCollation collation set used by the database for which collation ordering has to be
    *     found.
+   * @param padSpace pad space used by the database for which collation ordering has to be found. If
+   *     this is set to true, we use a fixed length character type to construct the query, which
+   *     ignores trailing space. If this is set to false, we use a variable length character type
+   *     instead.
    */
   @Override
-  public String getCollationsOrderQuery(String dbCharset, String dbCollation) {
+  public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
     String query = resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH);
     Map<String, String> tags = new HashMap<>();
     tags.put(CHARSET_REPLACEMENT_TAG, dbCharset);
     tags.put(COLLATION_REPLACEMENT_TAG, dbCollation);
+    tags.put(
+        RETURN_TYPE_REPLACEMENT_TAG, padSpace ? PAD_SPACE_RETURN_TYPE : NO_PAD_SPACE_RETURN_TYPE);
     return replaceTagsAndSanitize(query, tags);
   }
 
