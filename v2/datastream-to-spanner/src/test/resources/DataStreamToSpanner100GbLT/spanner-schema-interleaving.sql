@@ -1,0 +1,32 @@
+CREATE TABLE person1 (
+     first_name STRING(500),
+     last_name STRING(500),
+     ID INT64 NOT NULL,
+) PRIMARY KEY(ID);
+
+CREATE TABLE person2 (
+     first_name STRING(500),
+     last_name STRING(500),
+     FK_ID2 INT64,
+     ID INT64 NOT NULL,
+) PRIMARY KEY(ID, FK_ID2),
+  INTERLEAVE IN PARENT person1 ON DELETE CASCADE;
+
+CREATE TABLE person3 (
+     first_name STRING(500),
+     last_name STRING(500),
+     FK_ID2 INT64,
+     FK_ID3 INT64,
+     ID INT64 NOT NULL,
+) PRIMARY KEY(ID, FK_ID2, FK_ID3),
+  INTERLEAVE IN PARENT person2 ON DELETE CASCADE;
+
+CREATE TABLE person4 (
+     first_name STRING(500),
+     last_name STRING(500),
+     FK_ID2 INT64,
+     FK_ID3 INT64,
+     FK_ID4 INT64,
+     ID INT64 NOT NULL,
+) PRIMARY KEY(ID, FK_ID2, FK_ID3, FK_ID4),
+  INTERLEAVE IN PARENT person3 ON DELETE CASCADE;
