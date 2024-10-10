@@ -118,7 +118,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     if (prefix.startsWith("/")) {
       prefix = prefix.substring(1);
     }
-    prefix += "/retry";
+    prefix += "/retry/";
     gcsResourceManager.createNotification(topic.toString(), prefix);
     return subscription;
   }
