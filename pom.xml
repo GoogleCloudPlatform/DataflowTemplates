@@ -397,13 +397,6 @@
         <version>2.6</version>
       </plugin>
     </plugins>
-    <extensions>
-      <extension>
-        <groupId>com.google.cloud.artifactregistry</groupId>
-        <artifactId>artifactregistry-maven-wagon</artifactId>
-        <version>2.2.0</version>
-      </extension>
-    </extensions>
   </build>
 
   <profiles>
@@ -637,26 +630,6 @@
         <repository>
           <id>apache.candidate</id>
           <url>${beam-maven-repo}</url>
-        </repository>
-      </repositories>
-    </profile>
-    <profile>
-      <id>internalMaven</id>
-      <activation>
-        <activeByDefault>false</activeByDefault>
-      </activation>
-      <repositories>
-        <repository>
-          <id>central</id>
-          <name>Maven Central remote repository</name>
-          <url>artifactregistry://us-maven.pkg.dev/artifact-foundry-prod/maven-3p</url>
-          <layout>default</layout>
-          <releases>
-            <enabled>true</enabled>
-          </releases>
-          <snapshots>
-            <enabled>true</enabled>
-          </snapshots>
         </repository>
       </repositories>
     </profile>
