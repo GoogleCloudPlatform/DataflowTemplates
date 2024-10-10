@@ -50,6 +50,7 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,35 +67,14 @@ public class PipelineController {
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(options, ddl);
 
-    List<String> tablesToMigrate =
-        PipelineController.listTablesToMigrate(options.getTables(), schemaMapper, ddl);
-    Set<String> tablesToMigrateSet = new HashSet<>(tablesToMigrate);
+    List<String> srcTablesToMigrate = listTablesToMigrate(options.getTables(), schemaMapper, ddl);
+    Set<String> tablesToMigrateSet = new HashSet<>(srcTablesToMigrate);
 
-    // This list is all Spanner tables topologically ordered.
-    List<String> orderedSpTables = ddl.getTablesOrderedByReference();
+    List<String> spannerTablesToMigrate =
+        listSpannerTablesToMigrate(ddl, schemaMapper, tablesToMigrateSet);
 
     Map<String, PCollection<Void>> outputs = new HashMap<>();
-    // This list will contain the final list of tables that actually get migrated, which will be the
-    // intersection of Spanner and source tables.
-    List<String> finalTablesToMigrate = new ArrayList<>();
-    for (String spTable : orderedSpTables) {
-      String srcTable = schemaMapper.getSourceTableName("", spTable);
-      if (!tablesToMigrateSet.contains(srcTable)) {
-        continue;
-      }
-      finalTablesToMigrate.add(spTable);
-    }
-    LOG.info(
-        "{} Spanner tables in final selection for migration: {}",
-        finalTablesToMigrate.size(),
-        finalTablesToMigrate);
-    if (finalTablesToMigrate.size() > MAX_RECOMMENDED_TABLES_PER_JOB) {
-      LOG.warn(
-          "Migrating {} tables in a single job (max recommended: {}). Consider splitting tables across jobs to avoid launch issues.",
-          finalTablesToMigrate.size(),
-          MAX_RECOMMENDED_TABLES_PER_JOB);
-    }
-    for (String spTable : finalTablesToMigrate) {
+    for (String spTable : spannerTablesToMigrate) {
       String srcTable = schemaMapper.getSourceTableName("", spTable);
       List<PCollection<?>> parentOutputs = new ArrayList<>();
       for (String parentSpTable : ddl.tablesReferenced(spTable)) {
@@ -158,6 +138,43 @@ public class PipelineController {
     return pipeline.run();
   }
 
+  @NotNull
+  /**
+   * This list will contain the final list of tables that actually get migrated, which will be the
+   * intersection of Spanner and source tables.
+   */
+  static List<String> listSpannerTablesToMigrate(
+      Ddl ddl, ISchemaMapper schemaMapper, Set<String> tablesToMigrateSet) {
+    // This list is all Spanner tables topologically ordered.
+    List<String> orderedSpTables = ddl.getTablesOrderedByReference();
+
+    // This list will contain the final list of tables that actually get migrated, which will be the
+    // intersection of Spanner and source tables.
+    List<String> finalTablesToMigrate = new ArrayList<>();
+    for (String spTable : orderedSpTables) {
+      try {
+        String srcTable = schemaMapper.getSourceTableName("", spTable);
+        if (!tablesToMigrateSet.contains(srcTable)) {
+          continue;
+        }
+        finalTablesToMigrate.add(spTable);
+      } catch (NoSuchElementException e) {
+        LOG.info("ignoring table not identified by schema mapper: {}", spTable);
+      }
+    }
+    LOG.info(
+        "{} Spanner tables in final selection for migration: {}",
+        finalTablesToMigrate.size(),
+        finalTablesToMigrate);
+    if (finalTablesToMigrate.size() > MAX_RECOMMENDED_TABLES_PER_JOB) {
+      LOG.warn(
+          "Migrating {} tables in a single job (max recommended: {}). Consider splitting tables across jobs to avoid launch issues.",
+          finalTablesToMigrate.size(),
+          MAX_RECOMMENDED_TABLES_PER_JOB);
+    }
+    return finalTablesToMigrate;
+  }
+
   private static String generateSuffix(String shardId, String tableName) {
     String suffix = "";
     if (!StringUtils.isEmpty(shardId)) {
@@ -184,36 +201,11 @@ public class PipelineController {
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(options, ddl);
 
-    List<String> tablesToMigrate =
-        PipelineController.listTablesToMigrate(options.getTables(), schemaMapper, ddl);
-    Set<String> tablesToMigrateSet = new HashSet<>(tablesToMigrate);
-    // This list is all Spanner tables topologically ordered.
-    List<String> orderedSpTables = ddl.getTablesOrderedByReference();
-    // This list will contain the final list of tables that actually get migrated, which will be the
-    // intersection of Spanner and source tables.
-    List<String> finalTablesToMigrate = new ArrayList<>();
-    for (String spTable : orderedSpTables) {
-      String srcTable = schemaMapper.getSourceTableName("", spTable);
-      if (!tablesToMigrateSet.contains(srcTable)) {
-        continue;
-      }
-      finalTablesToMigrate.add(spTable);
-    }
-    LOG.info(
-        "{} Spanner tables in final selection for migration: {}",
-        finalTablesToMigrate.size(),
-        finalTablesToMigrate);
-    long totalTablesAcrossShards = findNumLogicalshards(shards) * finalTablesToMigrate.size();
-    if (totalTablesAcrossShards > MAX_RECOMMENDED_TABLES_PER_JOB) {
-      LOG.warn(
-          "Migrating {} tables ({} shards x {} tables/shard) in a single job. "
-              + "This exceeds the recommended maximum of {} tables per job. "
-              + "Consider splitting shards across multiple jobs to avoid launch issues.",
-          totalTablesAcrossShards,
-          findNumLogicalshards(shards),
-          finalTablesToMigrate.size(),
-          MAX_RECOMMENDED_TABLES_PER_JOB);
-    }
+    List<String> srcTablesToMigrate = listTablesToMigrate(options.getTables(), schemaMapper, ddl);
+    Set<String> tablesToMigrateSet = new HashSet<>(srcTablesToMigrate);
+
+    List<String> spannerTablesToMigrate =
+        listSpannerTablesToMigrate(ddl, schemaMapper, tablesToMigrateSet);
 
     LOG.info(
         "running migration for shards: {}",
@@ -223,7 +215,7 @@ public class PipelineController {
         // Read data from source
         String shardId = entry.getValue();
         Map<String, PCollection<Void>> outputs = new HashMap<>();
-        for (String spTable : finalTablesToMigrate) {
+        for (String spTable : spannerTablesToMigrate) {
           String srcTable = schemaMapper.getSourceTableName("", spTable);
           List<PCollection<?>> parentOutputs = new ArrayList<>();
           for (String parentSpTable : ddl.tablesReferenced(spTable)) {
