@@ -19,6 +19,7 @@ import static org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPat
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.teleport.it.jdbc.conditions.JDBCRowsCheck;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.io.Resources;
 import java.io.IOException;
@@ -32,7 +33,6 @@ import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.datagenerator.DataGenerator;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
-import org.apache.beam.it.jdbc.conditions.JDBCRowsCheck;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
