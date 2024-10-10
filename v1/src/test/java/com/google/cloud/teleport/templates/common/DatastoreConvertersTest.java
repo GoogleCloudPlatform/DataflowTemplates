@@ -23,12 +23,15 @@ import com.google.cloud.teleport.templates.common.DatastoreConverters.EntityToSc
 import com.google.cloud.teleport.templates.common.DatastoreConverters.JsonToEntity;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.JsonToKey;
 import com.google.cloud.teleport.templates.common.ErrorConverters.ErrorMessage;
+import com.google.cloud.teleport.util.TestUtils;
 import com.google.datastore.v1.ArrayValue;
 import com.google.datastore.v1.Entity;
 import com.google.datastore.v1.Key;
 import com.google.datastore.v1.Key.PathElement;
 import com.google.datastore.v1.PartitionId;
 import com.google.datastore.v1.Value;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,7 +42,10 @@ import org.apache.beam.sdk.testing.NeedsRunner;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.DoFnTester;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.junit.Assert;
@@ -184,15 +190,20 @@ public class DatastoreConvertersTest implements Serializable {
     // Add the duplicate entity at the end of the list
     testEntitiesWithConflictKey.add(dupKeyEntity);
 
-    List<String> expectedErrors = new ArrayList<>();
+    List<String> expectedErrorsSorted = new ArrayList<>();
     EntityJsonPrinter entityJsonPrinter = new EntityJsonPrinter();
     for (Entity e : Arrays.asList(entities.get(0), dupKeyEntity)) {
-      expectedErrors.add(
+      String errorMessage =
           ErrorMessage.newBuilder()
               .setMessage("Duplicate Datastore Key")
               .setData(entityJsonPrinter.print(e))
               .build()
-              .toJson());
+              .toJson();
+
+      JsonObject sortedJson =
+          TestUtils.sortJsonObject((JsonObject) JsonParser.parseString(errorMessage));
+
+      expectedErrorsSorted.add(sortedJson.toString());
     }
 
     TupleTag<Entity> goodTag = new TupleTag<Entity>("entities") {};
@@ -205,8 +216,24 @@ public class DatastoreConvertersTest implements Serializable {
                 "RemoveDupKeys",
                 CheckSameKey.newBuilder().setGoodTag(goodTag).setErrorTag(errorTag).build());
 
+    PCollection<String> errorTagSorted =
+        results
+            .get(errorTag)
+            .apply(
+                ParDo.of(
+                    new DoFn<String, String>() {
+                      @ProcessElement
+                      public void processElement(
+                          @Element String jsonString, OutputReceiver<String> out) {
+                        out.output(
+                            TestUtils.sortJsonObject(
+                                    JsonParser.parseString(jsonString).getAsJsonObject())
+                                .toString());
+                      }
+                    }));
+
     PAssert.that(results.get(goodTag)).containsInAnyOrder(entities.subList(1, entities.size()));
-    PAssert.that(results.get(errorTag)).containsInAnyOrder(expectedErrors);
+    PAssert.that(errorTagSorted).containsInAnyOrder(expectedErrorsSorted);
 
     pipeline.run();
   }
