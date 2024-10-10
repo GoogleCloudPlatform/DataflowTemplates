@@ -138,13 +138,13 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     for (SpannerToSourceDbInterleaveMultiShardIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(
+   /* ResourceManagerUtils.cleanResources(
         spannerResourceManager,
         jdbcResourceManagerShardA,
         jdbcResourceManagerShardB,
         spannerMetadataResourceManager,
         gcsResourceManager,
-        pubsubResourceManager);
+        pubsubResourceManager);*/
   }
 
   @Test
