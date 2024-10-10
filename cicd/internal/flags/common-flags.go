@@ -31,7 +31,6 @@ const (
 // Avoid making these vars public.
 var (
 	modulesToBuild string
-	internalMaven  string
 	moduleMap      = map[string][]string{
 		ALL:     {},
 		DEFAULT: {},
