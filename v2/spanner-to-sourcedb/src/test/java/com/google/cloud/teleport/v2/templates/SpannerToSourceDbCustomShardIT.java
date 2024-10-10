@@ -112,7 +112,7 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager));
+                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
