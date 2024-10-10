@@ -32,8 +32,7 @@ import java.util.TreeMap;
  * method documentation for further details.
  */
 class CassandraKeyUtils {
-
-  private static final String COLUMN_NAME_COLUMN = "column_name";
+  protected static final String COLUMN_NAME_COLUMN = "column_name";
   private static final String KIND_COLUMN = "kind";
   private static final String POSITION_COLUMN = "position";
 

@@ -35,63 +35,75 @@ variable "region" {
 
 variable "cassandraHosts" {
   type        = string
-  description = "Comma separated value list of hostnames or ips of the Cassandra nodes."
+  description = "The hosts of the Apache Cassandra nodes in a comma-separated list."
 
 }
 
 variable "cassandraPort" {
-  type        = string
-  description = "The port where cassandra can be reached. Defaults to 9042."
+  type        = number
+  description = "The TCP port to use to reach Apache Cassandra on the nodes. The default value is 9042."
   default     = null
 }
 
 variable "cassandraKeyspace" {
   type        = string
-  description = "Cassandra Keyspace where the table to be migrated can be located."
+  description = "The Apache Cassandra keyspace where the table is located."
 
 }
 
 variable "cassandraTable" {
   type        = string
-  description = "The name of the Cassandra table to Migrate"
+  description = "The Apache Cassandra table to copy."
 
 }
 
 variable "bigtableProjectId" {
   type        = string
-  description = "The Project ID where the target Bigtable Instance is running."
+  description = "The Google Cloud project ID associated with the Bigtable instance."
 
 }
 
 variable "bigtableInstanceId" {
   type        = string
-  description = "The target Bigtable Instance where you want to write the data."
+  description = "The ID of the Bigtable instance that the Apache Cassandra table is copied to."
 
 }
 
 variable "bigtableTableId" {
   type        = string
-  description = "The target Bigtable table where you want to write the data."
+  description = "The name of the Bigtable table that the Apache Cassandra table is copied to."
 
 }
 
 variable "defaultColumnFamily" {
   type        = string
-  description = <<EOT
-This specifies the default column family to write data into. If no columnFamilyMapping is specified all Columns will be written into this column family. Default value is "default"
-EOT
+  description = "The name of the column family of the Bigtable table. The default value is default."
   default     = null
 }
 
 variable "rowKeySeparator" {
   type        = string
-  description = "All primary key fields will be appended to form your Bigtable Row Key. The rowKeySeparator allows you to specify a character separator. Default separator is '#'."
+  description = "The separator used to build row-keys. The default value is '#'."
   default     = null
 }
 
 variable "splitLargeRows" {
   type        = bool
   description = "The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. "
+  default     = null
+}
+
+variable "writetimeCassandraColumnSchema" {
+  type        = string
+  description = <<EOT
+GCS path to schema to copy Cassandra writetimes to Bigtable. The command to generate this schema is ```cqlsh -e "select json * from system_schema.columns where keyspace_name='$CASSANDRA_KEYSPACE' and table_name='$CASSANDRA_TABLE'`" > column_schema.json```. Set $WRITETIME_CASSANDRA_COLUMN_SCHEMA to a GCS path, e.g. `gs://$BUCKET_NAME/column_schema.json`. Then upload the schema to GCS: `gcloud storage cp column_schema.json $WRITETIME_CASSANDRA_COLUMN_SCHEMA`. Requires Cassandra version 2.2 onwards for JSON support.
+EOT
+  default     = null
+}
+
+variable "setZeroTimestamp" {
+  type        = bool
+  description = "The flag for setting Bigtable cell timestamp to 0 if Cassandra writetime is not present. The default behavior for when this flag is not set is to set the Bigtable cell timestamp as the template replication time, i.e. now."
   default     = null
 }
 
@@ -192,16 +204,18 @@ resource "google_dataflow_job" "generated" {
   provider          = google
   template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Cassandra_To_Cloud_Bigtable"
   parameters = {
-    cassandraHosts      = var.cassandraHosts
-    cassandraPort       = var.cassandraPort
-    cassandraKeyspace   = var.cassandraKeyspace
-    cassandraTable      = var.cassandraTable
-    bigtableProjectId   = var.bigtableProjectId
-    bigtableInstanceId  = var.bigtableInstanceId
-    bigtableTableId     = var.bigtableTableId
-    defaultColumnFamily = var.defaultColumnFamily
-    rowKeySeparator     = var.rowKeySeparator
-    splitLargeRows      = tostring(var.splitLargeRows)
+    cassandraHosts                 = var.cassandraHosts
+    cassandraPort                  = tostring(var.cassandraPort)
+    cassandraKeyspace              = var.cassandraKeyspace
+    cassandraTable                 = var.cassandraTable
+    bigtableProjectId              = var.bigtableProjectId
+    bigtableInstanceId             = var.bigtableInstanceId
+    bigtableTableId                = var.bigtableTableId
+    defaultColumnFamily            = var.defaultColumnFamily
+    rowKeySeparator                = var.rowKeySeparator
+    splitLargeRows                 = tostring(var.splitLargeRows)
+    writetimeCassandraColumnSchema = var.writetimeCassandraColumnSchema
+    setZeroTimestamp               = tostring(var.setZeroTimestamp)
   }
 
   additional_experiments       = var.additional_experiments
