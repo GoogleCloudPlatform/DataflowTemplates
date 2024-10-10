@@ -124,6 +124,13 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
       required = false)
   protected String pythonVersion;
 
+  @Parameter(
+      defaultValue = "false",
+      property = "stageHelperImage",
+      readonly = true,
+      required = false)
+  protected boolean stageHelperImage;
+
   @Parameter(defaultValue = "${beamVersion}", readonly = true, required = false)
   protected String beamVersion;
 
@@ -191,7 +198,8 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
               javaTemplateLauncherEntryPoint,
               pythonVersion,
               beamVersion,
-              unifiedWorker);
+              unifiedWorker,
+              stageHelperImage);
 
       String useJobName =
           StringUtils.isNotEmpty(jobName)
