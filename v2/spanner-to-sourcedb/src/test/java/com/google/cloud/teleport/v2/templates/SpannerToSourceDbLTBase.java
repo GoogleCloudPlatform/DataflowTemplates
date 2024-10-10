@@ -79,7 +79,8 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
         createPubsubResources(
             getClass().getSimpleName(),
             pubsubResourceManager,
-            getGcsPath(artifactBucket, "dlq", gcsResourceManager));
+            getGcsPath(artifactBucket, "dlq", gcsResourceManager)
+                .replace("gs://" + artifactBucket, ""));
   }
 
   public void setupMySQLResourceManager(int numShards) throws IOException {
