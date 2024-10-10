@@ -17,6 +17,11 @@
       "default": "neo4j",
       "minLength": 1
     },
+    "custom_ca_certificate_path": {
+      "description": "Path of the trusted CA certificate required to establish connections to Neo4j",
+      "type": "string",
+      "minLength": 1
+    },
     "auth_type": {
       "description": "Authentication type",
       "type": "string",
