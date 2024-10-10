@@ -47,7 +47,6 @@ public abstract class Index implements Serializable {
   // restricted for gsql
   abstract boolean nullFiltered();
 
-  // restricted for pg
   @Nullable
   abstract String filter();
 
@@ -179,6 +178,11 @@ public abstract class Index implements Serializable {
     if (interleaveIn() != null) {
       appendable.append(", INTERLEAVE IN ").append(quoteIdentifier(interleaveIn(), dialect()));
     }
+
+    if (!nullFiltered() && filter() != null && !filter().isEmpty()) {
+      appendable.append(" WHERE ").append(filter());
+    }
+
     if (options() != null) {
       String optionsString = String.join(",", options());
       if (!optionsString.isEmpty()) {

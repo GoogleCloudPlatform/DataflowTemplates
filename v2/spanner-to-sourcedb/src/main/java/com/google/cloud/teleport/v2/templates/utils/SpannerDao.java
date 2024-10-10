@@ -49,6 +49,11 @@ public class SpannerDao {
     this.spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
   }
 
+  // used for unit testing
+  public SpannerDao(SpannerAccessor spannerAccessor) {
+    this.spannerAccessor = spannerAccessor;
+  }
+
   public ShadowTableRecord getShadowTableRecord(
       String tableName, com.google.cloud.spanner.Key primaryKey) {
     try {

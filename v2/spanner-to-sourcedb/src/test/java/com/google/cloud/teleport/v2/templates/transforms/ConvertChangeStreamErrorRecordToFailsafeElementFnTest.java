@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -62,6 +63,24 @@ public class ConvertChangeStreamErrorRecordToFailsafeElementFnTest {
         .thenReturn(gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
     convertChangeStreamErrorRecordToFailsafeElementFn.processElement(processContext);
     verify(processContext, times(1)).output(eq(failsafeElement));
+
+    // tests the untested code paths for used classes
+    // keeping it here since they do no warrant a separate test class
+    ChangeStreamErrorRecord errorRecord2 =
+        new ChangeStreamErrorRecord(errorRecord.getOriginalRecord(), errorRecord.getErrorMessage());
+    errorRecord2.setOriginalRecord(errorRecord.getOriginalRecord());
+    errorRecord2.setErrorMessage(errorRecord.getErrorMessage());
+    assertTrue(errorRecord2.equals(errorRecord));
+    assertTrue(errorRecord.equals(errorRecord));
+    assertTrue(!errorRecord.equals(message));
+    errorRecord2.setErrorMessage("test");
+    assertTrue(!errorRecord2.equals(errorRecord));
+    assertTrue(record.getNumberOfRecordsInTransaction() == 1);
+    assertTrue(record.getTransactionTag().equals("sampleTrxTag"));
+    assertTrue(record.toString().contains("parent1"));
+    assertTrue(record.equals(record));
+    assertTrue(!record.equals(message));
+    assertTrue(record.equals(getTrimmedDataChangeRecord("shardA")));
   }
 
   private TrimmedShardedDataChangeRecord getTrimmedDataChangeRecord(String shardId) {
@@ -73,6 +92,6 @@ public class ConvertChangeStreamErrorRecordToFailsafeElementFnTest {
         new Mod("{\"id\": \"42\"}", "{}", "{ \"migration_shard_id\": \"" + shardId + "\"}"),
         ModType.valueOf("INSERT"),
         1,
-        "");
+        "sampleTrxTag");
   }
 }

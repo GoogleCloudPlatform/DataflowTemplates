@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.api.gax.retrying.RetrySettings;
 import com.google.api.services.datastream.v1.model.SourceConfig;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
@@ -29,10 +30,16 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.NoopSchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardingContextReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
@@ -45,7 +52,10 @@ import com.google.common.base.Strings;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -137,7 +147,8 @@ public class DataStreamToSpanner {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions {
+  public interface Options
+      extends PipelineOptions, StreamingOptions, DataflowPipelineWorkerPoolOptions {
     @TemplateParameter.GcsReadFile(
         order = 1,
         groupName = "Source",
@@ -229,6 +240,7 @@ public class DataStreamToSpanner {
     @TemplateParameter.Text(
         order = 9,
         groupName = "Source",
+        optional = true,
         description = "Datastream stream name.",
         helpText =
             "The name or template for the stream to poll for schema information and source type.")
@@ -468,6 +480,62 @@ public class DataStreamToSpanner {
     String getFilteredEventsDirectory();
 
     void setFilteredEventsDirectory(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 29,
+        optional = true,
+        helpText =
+            "Sharding context file path in cloud storage is used to populate the shard id in spanner database for each source shard."
+                + "It is of the format Map<stream_name, Map<db_name, shard_id>>",
+        description = "Sharding context file path in cloud storage")
+    String getShardingContextFilePath();
+
+    void setShardingContextFilePath(String value);
+
+    @TemplateParameter.Text(
+        order = 30,
+        optional = true,
+        description = "Table name overrides from source to spanner",
+        regexes =
+            "^\\[([[:space:]]*\\{[[:space:]]*[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+        example = "[{Singers, Vocalists}, {Albums, Records}]",
+        helpText =
+            "These are the table name overrides from source to spanner. They are written in the"
+                + "following format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]"
+                + "This example shows mapping Singers table to Vocalists and Albums table to Records.")
+    @Default.String("")
+    String getTableOverrides();
+
+    void setTableOverrides(String value);
+
+    @TemplateParameter.Text(
+        order = 31,
+        optional = true,
+        regexes =
+            "^\\[([[:space:]]*\\{[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+        description = "Column name overrides from source to spanner",
+        example =
+            "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
+        helpText =
+            "These are the column name overrides from source to spanner. They are written in the"
+                + "following format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]"
+                + "Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides."
+                + "The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively.")
+    @Default.String("")
+    String getColumnOverrides();
+
+    void setColumnOverrides(String value);
+
+    @TemplateParameter.Text(
+        order = 32,
+        optional = true,
+        description = "File based overrides from source to spanner",
+        helpText =
+            "A file which specifies the table and the column name overrides from source to spanner.")
+    @Default.String("")
+    String getSchemaOverridesFilePath();
+
+    void setSchemaOverridesFilePath(String value);
   }
 
   private static void validateSourceType(Options options) {
@@ -564,7 +632,18 @@ public class DataStreamToSpanner {
             .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
             .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
-            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()))
+            .withCommitRetrySettings(
+                RetrySettings.newBuilder()
+                    .setTotalTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setInitialRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
+                    .setRetryDelayMultiplier(1)
+                    .setMaxRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
+                    .setInitialRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setRpcTimeoutMultiplier(1)
+                    .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setMaxAttempts(1)
+                    .build());
     /* Process information schema
      * 1) Read information schema from destination Cloud Spanner database
      * 2) Check if shadow tables are present and create if necessary
@@ -615,13 +694,19 @@ public class DataStreamToSpanner {
                       options.getGcsPubSubSubscription(),
                       options.getRfcStartDateTime())
                   .withFileReadConcurrency(options.getFileReadConcurrency())
+                  .withoutDatastreamRecordsReshuffle()
                   .withDirectoryWatchDuration(
                       Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes())));
+      int maxNumWorkers = options.getMaxNumWorkers() != 0 ? options.getMaxNumWorkers() : 1;
       jsonRecords =
           PCollectionList.of(datastreamJsonRecords)
               .and(dlqJsonRecords)
               .apply(Flatten.pCollections())
-              .apply("Reshuffle", Reshuffle.viaRandomKey());
+              .apply(
+                  "Reshuffle",
+                  Reshuffle.<FailsafeElement<String, String>>viaRandomKey()
+                      .withNumBuckets(
+                          maxNumWorkers * DatastreamToSpannerConstants.MAX_DOFN_PER_WORKER));
     } else {
       LOG.info("DLQ retry flow");
       jsonRecords =
@@ -638,16 +723,25 @@ public class DataStreamToSpanner {
         TransformationContextReader.getTransformationContext(
             options.getTransformationContextFilePath());
 
+    // Ingest sharding context file into memory.
+    ShardingContext shardingContext =
+        ShardingContextReader.getShardingContext(options.getShardingContextFilePath());
+
     CustomTransformation customTransformation =
         CustomTransformation.builder(
                 options.getTransformationJarPath(), options.getTransformationClassName())
             .setCustomParameters(options.getTransformationCustomParameters())
             .build();
 
+    // Create the overrides mapping.
+    ISchemaOverridesParser schemaOverridesParser = configureSchemaOverrides(options);
+
     ChangeEventTransformerDoFn changeEventTransformerDoFn =
         ChangeEventTransformerDoFn.create(
             schema,
+            schemaOverridesParser,
             transformationContext,
+            shardingContext,
             options.getDatastreamSourceType(),
             customTransformation,
             options.getRoundJsonDecimals(),
@@ -730,8 +824,7 @@ public class DataStreamToSpanner {
         PCollectionList.of(dlqErrorRecords)
             .and(spannerWriteResults.permanentErrors())
             .and(transformedRecords.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))
-            .apply(Flatten.pCollections())
-            .apply("Reshuffle", Reshuffle.viaRandomKey());
+            .apply(Flatten.pCollections());
     // increment the metrics
     permanentErrors
         .apply("Update metrics", ParDo.of(new MetricUpdaterDoFn(isRegularMode)))
@@ -771,5 +864,31 @@ public class DataStreamToSpanner {
       LOG.info("Dead-letter retry directory: {}", retryDlqUri);
       return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0);
     }
+  }
+
+  private static ISchemaOverridesParser configureSchemaOverrides(Options options) {
+    // incorrect configuration
+    if (!options.getSchemaOverridesFilePath().isEmpty()
+        && (!options.getTableOverrides().isEmpty() || !options.getColumnOverrides().isEmpty())) {
+      throw new IllegalArgumentException(
+          "Only one of file based or string based overrides must be configured! Please correct the configuration and re-run the job");
+    }
+    // string based overrides
+    if (!options.getTableOverrides().isEmpty() || !options.getColumnOverrides().isEmpty()) {
+      Map<String, String> userOptionsOverrides = new HashMap<>();
+      if (!options.getTableOverrides().isEmpty()) {
+        userOptionsOverrides.put("tableOverrides", options.getTableOverrides());
+      }
+      if (!options.getColumnOverrides().isEmpty()) {
+        userOptionsOverrides.put("columnOverrides", options.getColumnOverrides());
+      }
+      return new SchemaStringOverridesParser(userOptionsOverrides);
+    }
+    // file based overrides
+    if (!options.getSchemaOverridesFilePath().isEmpty()) {
+      return new SchemaFileOverridesParser(options.getSchemaOverridesFilePath());
+    }
+    // no overrides
+    return new NoopSchemaOverridesParser();
   }
 }

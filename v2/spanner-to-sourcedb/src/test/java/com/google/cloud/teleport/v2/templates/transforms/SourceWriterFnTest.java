@@ -29,7 +29,14 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
@@ -41,6 +48,7 @@ import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.util.HashMap;
+import java.util.Map;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
@@ -76,6 +84,7 @@ public class SourceWriterFnTest {
   public void doBeforeEachTest() throws Exception {
     when(mockMySqlDaoMap.get(any())).thenReturn(mockMySqlDao);
     when(mockSpannerDao.getShadowTableRecord(eq("shadow_parent1"), any())).thenReturn(null);
+    when(mockSpannerDao.getShadowTableRecord(eq("shadow_tableName"), any())).thenReturn(null);
     when(mockSpannerDao.getShadowTableRecord(eq("shadow_parent2"), any()))
         .thenThrow(new IllegalStateException("Test exception"));
     when(mockSpannerDao.getShadowTableRecord(eq("shadow_child11"), any()))
@@ -84,7 +93,22 @@ public class SourceWriterFnTest {
     doNothing().when(mockSpannerDao).updateShadowTable(any());
     doThrow(new java.sql.SQLIntegrityConstraintViolationException("a foreign key constraint fails"))
         .when(mockMySqlDao)
-        .write(contains("child21"));
+        .write(contains("2300")); // This is the child_id for which we want to test the foreign key
+    // constraint failure.
+    doThrow(
+            new java.sql.SQLNonTransientConnectionException(
+                "transient connection error", "HY000", 1161))
+        .when(mockMySqlDao)
+        .write(contains("1161")); // This is the child_id for which we want to retryable
+    // connection error
+    doThrow(
+            new java.sql.SQLNonTransientConnectionException(
+                "permanent connection error", "HY000", 4242))
+        .when(mockMySqlDao)
+        .write(contains("4242")); // no retryable error
+    doThrow(new RuntimeException("generic exception"))
+        .when(mockMySqlDao)
+        .write(contains("12345")); // to test code path of generic exception
     doNothing().when(mockMySqlDao).write(contains("parent1"));
     testShard = new Shard();
     testShard.setLogicalShardId("shardA");
@@ -297,7 +321,7 @@ public class SourceWriterFnTest {
 
   @Test
   public void testRetryableErrorForForeignKey() throws Exception {
-    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA");
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 2300);
     record.setShard("shardA");
     when(processContext.element()).thenReturn(KV.of(1L, record));
     SourceWriterFn sourceWriterFn =
@@ -322,6 +346,116 @@ public class SourceWriterFnTest {
     verify(processContext, atLeast(1))
         .output(
             Constants.RETRYABLE_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
+  @Test
+  public void testRetryableErrorConnectionFailure() throws Exception {
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 1161);
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip",
+            500);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.processElement(processContext);
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord =
+        new ChangeStreamErrorRecord(jsonRec, "transient connection error");
+    verify(processContext, atLeast(1))
+        .output(
+            Constants.RETRYABLE_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
+  @Test
+  public void testPermanentConnectionFailure() throws Exception {
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 4242);
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip",
+            500);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.processElement(processContext);
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord =
+        new ChangeStreamErrorRecord(jsonRec, "permanent connection error");
+    verify(processContext, atLeast(1))
+        .output(
+            Constants.PERMANENT_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
+  @Test
+  public void testPermanentGenericException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 12345);
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip",
+            500);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.processElement(processContext);
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord = new ChangeStreamErrorRecord(jsonRec, "generic exception");
+    verify(processContext, atLeast(1))
+        .output(
+            Constants.PERMANENT_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
+  @Test
+  public void testDMLEmpty() throws Exception {
+    TrimmedShardedDataChangeRecord record = getTrimmedDataChangeRecordToSimulateNullDML("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            getSchemaObject(),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdlForNullDML(),
+            "shadow_",
+            "skip",
+            500);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.processElement(processContext);
+    verify(mockMySqlDao, never()).write(contains("567890"));
   }
 
   static Ddl getTestDdl() {
@@ -450,6 +584,24 @@ public class SourceWriterFnTest {
         "");
   }
 
+  private TrimmedShardedDataChangeRecord getTrimmedDataChangeRecordToSimulateNullDML(
+      String shardId) {
+    return new TrimmedShardedDataChangeRecord(
+        Timestamp.parseTimestamp("2020-12-01T10:15:30.000Z"),
+        "serverTxnId",
+        "recordSeq",
+        "tableName",
+        new Mod(
+            "{\"accountId\": \"567890\"}",
+            "{}",
+            "{\"accountName\": \"abc\", \"migration_shard_id\": \""
+                + shardId
+                + "\", \"accountNumber\": 1}"),
+        ModType.valueOf("INSERT"),
+        1,
+        "");
+  }
+
   private TrimmedShardedDataChangeRecord getParent1IncorrectTrimmedDataChangeRecord(
       String shardId) {
     return new TrimmedShardedDataChangeRecord(
@@ -476,18 +628,88 @@ public class SourceWriterFnTest {
         "");
   }
 
-  private TrimmedShardedDataChangeRecord getChild21TrimmedDataChangeRecord(String shardId) {
+  private TrimmedShardedDataChangeRecord getChild21TrimmedDataChangeRecord(
+      String shardId, int childIdForMockResponse) {
     return new TrimmedShardedDataChangeRecord(
         Timestamp.parseTimestamp("2024-12-01T10:15:30.000Z"),
         "serverTxnId",
         "0",
         "child21",
         new Mod(
-            "{\"child_id\": \"42\" , \"parent_id\": \"42\"}",
+            "{\"child_id\": \"" + childIdForMockResponse + "\" , \"parent_id\": \"42\"}",
             "{}",
             "{ \"migration_shard_id\": \"" + shardId + "\"}"),
         ModType.valueOf("INSERT"),
         1,
         "");
+  }
+
+  public static Schema getSchemaObject() {
+    Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
+    Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
+    Map<String, SpannerTable> spSchema = getSampleSpSchema();
+    Map<String, NameAndCols> spannerToID = getSampleSpannerToId();
+    Schema expectedSchema = new Schema(spSchema, syntheticPKeys, srcSchema);
+    expectedSchema.setSpannerToID(spannerToID);
+    return expectedSchema;
+  }
+
+  public static Map<String, SpannerTable> getSampleSpSchema() {
+    Map<String, SpannerTable> spSchema = new HashMap<String, SpannerTable>();
+    Map<String, SpannerColumnDefinition> t1SpColDefs =
+        new HashMap<String, SpannerColumnDefinition>();
+    t1SpColDefs.put(
+        "c1", new SpannerColumnDefinition("accountId", new SpannerColumnType("STRING", false)));
+    t1SpColDefs.put(
+        "c2", new SpannerColumnDefinition("accountName", new SpannerColumnType("STRING", false)));
+    t1SpColDefs.put(
+        "c3",
+        new SpannerColumnDefinition("migration_shard_id", new SpannerColumnType("STRING", false)));
+    t1SpColDefs.put(
+        "c4", new SpannerColumnDefinition("accountNumber", new SpannerColumnType("INT", false)));
+    spSchema.put(
+        "t1",
+        new SpannerTable(
+            "tableName",
+            new String[] {"c1", "c2", "c3", "c4"},
+            t1SpColDefs,
+            new ColumnPK[] {new ColumnPK("c1", 1)},
+            "c3"));
+    return spSchema;
+  }
+
+  public static Map<String, NameAndCols> getSampleSpannerToId() {
+    Map<String, NameAndCols> spannerToId = new HashMap<String, NameAndCols>();
+    Map<String, String> t1ColIds = new HashMap<String, String>();
+    t1ColIds.put("accountId", "c1");
+    t1ColIds.put("accountName", "c2");
+    t1ColIds.put("migration_shard_id", "c3");
+    t1ColIds.put("accountNumber", "c4");
+    spannerToId.put("tableName", new NameAndCols("t1", t1ColIds));
+    return spannerToId;
+  }
+
+  static Ddl testDdlForNullDML() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("tableName")
+            .column("accountId")
+            .string()
+            .max()
+            .endColumn()
+            .column("accountName")
+            .string()
+            .max()
+            .endColumn()
+            .column("migration_shard_id")
+            .string()
+            .max()
+            .endColumn()
+            .column("accountNumber")
+            .int64()
+            .endColumn()
+            .endTable()
+            .build();
+    return ddl;
   }
 }

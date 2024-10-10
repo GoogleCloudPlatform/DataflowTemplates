@@ -1,0 +1,6 @@
+{
+  "StreamToDbAndShardMap": {
+    "jsonavrodatatypeit": {"S1L1":"L1", "S1L2": "L2"},
+    "jsonavrodatatypeitupdate": {"S2L1":"L3", "S2L2": "L4"}
+  }
+}
