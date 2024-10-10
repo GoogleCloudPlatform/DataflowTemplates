@@ -15,6 +15,12 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql;
 
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.CHARSET_REPLACEMENT_TAG;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.COLLATION_REPLACEMENT_TAG;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.RETURN_TYPE_REPLACEMENT_TAG;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.replaceTagsAndSanitize;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.resourceAsString;
+
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
@@ -34,6 +40,8 @@ import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -52,7 +60,6 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
 
   private static final Logger logger = LoggerFactory.getLogger(PostgreSQLDialectAdapter.class);
 
-  private static final String NO_PAD = "NO PAD";
   private static final int VARCHAR_MAX_LENGTH = 65535;
 
   // SQLState / Error codes
@@ -67,13 +74,19 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       ImmutableList.of("information_schema");
   private static final String EXCLUDED_SCHEMAS_STR =
       EXCLUDED_SCHEMAS.stream().map(schema -> "'" + schema + "'").collect(Collectors.joining(","));
-  private static final char SCHEMA_TABLE_SEPARATOR = '.';
 
   // Errors
   private final Counter schemaDiscoveryErrors =
       Metrics.counter(JdbcSourceRowMapper.class, MetricCounters.READER_SCHEMA_DISCOVERY_ERRORS);
 
-  private PostgreSQLVersion version;
+  // Collations
+  private static final String COLLATIONS_QUERY_RESOURCE_PATH =
+      "sql/postgresql_collation_order_query.sql";
+
+  private static final String PAD_SPACE_RETURN_TYPE = "CHAR(5)";
+  private static final String NO_PAD_SPACE_RETURN_TYPE = "TEXT";
+
+  private final PostgreSQLVersion version;
 
   public PostgreSQLDialectAdapter(PostgreSQLVersion version) {
     this.version = version;
@@ -259,7 +272,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
 
   /**
    * Discover the indexes of tables to migrate. You can try this in <a
-   * href="https://www.db-fiddle.com/f/kTanXYXoM2VgCjSf6NZHjD/2">db-fiddle</a>.
+   * href="https://www.db-fiddle.com/f/kTanXYXoM2VgCjSf6NZHjD/6">db-fiddle</a>.
    *
    * @param dataSource Provider for JDBC connection.
    * @param sourceSchemaReference Source database name and (optionally namespace)
@@ -292,7 +305,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                 + "  information_schema._pg_char_max_length(a.atttypid, a.atttypmod) AS type_length,"
                 + "  t.typcategory AS type_category,"
                 + "  ico.collation_name AS collation,"
-                + "  ico.pad_attribute AS pad"
+                + "  ico.pad_attribute AS pad,"
+                + "  pg_encoding_to_char(d.encoding) AS charset"
                 + " FROM pg_catalog.pg_indexes ixs"
                 + "  JOIN pg_catalog.pg_class c ON c.relname = ixs.indexname"
                 + "  JOIN pg_catalog.pg_index ix ON c.oid = ix.indexrelid"
@@ -300,6 +314,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                 + "  JOIN pg_catalog.pg_type t ON t.oid = a.atttypid"
                 + "  LEFT OUTER JOIN pg_catalog.pg_collation co ON co.oid = ix.indcollation[a.attnum - 1]"
                 + "  LEFT OUTER JOIN information_schema.collations ico ON ico.collation_name = co.collname"
+                + "  LEFT OUTER JOIN pg_catalog.pg_database d ON d.datname = current_database()"
                 + " WHERE ixs.tablename = ?"
                 + "  AND ixs.schemaname NOT LIKE 'pg_%%'"
                 + "  AND ixs.schemaname NOT IN (%s)"
@@ -323,25 +338,26 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                     .setOrdinalPosition(resultSet.getLong("ordinal_position"))
                     .setIndexType(indexTypeFrom(resultSet.getString("type_category")));
 
-            // TODO(thiagotnunes): Collation support and string max length
             String collation = resultSet.getString("collation");
             if (collation != null) {
+              String charset = resultSet.getString("charset");
+              String typeName = resultSet.getString("type_name");
               Integer typeLength = resultSet.getInt("type_length");
               if (resultSet.wasNull()) {
                 typeLength = null;
               }
-              boolean shouldPadSpace =
-                  isBlankPaddedType(resultSet.getString("type_name"), typeLength)
-                      || isPadSpace(resultSet.getString("pad"));
+              // Collation PAD SPACE is not supported in Postgresql
+              // (https://www.postgresql.org/docs/current/infoschema-collations.html)
+              // The only way to have blank space padding is for specific types with fixed length
+              // (https://www.postgresql.org/docs/current/datatype-character.html)
+              boolean shouldPadSpace = isBlankPaddedType(typeName, typeLength);
               indexBuilder.setCollationReference(
                   CollationReference.builder()
-                      // FIXME: Character set being hardcoded as collation
-                      .setDbCharacterSet(collation)
+                      .setDbCharacterSet(charset)
                       .setDbCollation(collation)
                       .setPadSpace(shouldPadSpace)
                       .build());
-              // FIXME: String max length being hardcoded as varchar max length
-              indexBuilder.setStringMaxLength(VARCHAR_MAX_LENGTH);
+              indexBuilder.setStringMaxLength(typeLength == null ? VARCHAR_MAX_LENGTH : typeLength);
             }
             indexInfosBuilder.add(indexBuilder.build());
           }
@@ -450,18 +466,28 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   }
 
   /**
-   * Get Query that returns order of collation. The query must return all the characters in the
-   * character set with the columns listed in {@link CollationOrderRow.CollationsOrderQueryColumns}.
+   * Ref <a href="https://www.db-fiddle.com/f/sJyGyFpqfnoxYFpEXPxR1/0"></a> Get Query that returns
+   * order of collation. The query must return all the characters in the character set with the
+   * columns listed in {@link CollationOrderRow.CollationsOrderQueryColumns}.
    *
    * @param dbCharset character set used by the database for which collation ordering has to be
    *     found.
    * @param dbCollation collation set used by the database for which collation ordering has to be
    *     found.
+   * @param padSpace pad space used by the database for which collation ordering has to be found. If
+   *     this is set to true, we use a fixed length character type to construct the query, which
+   *     ignores trailing space. If this is set to false, we use a variable length character type
+   *     instead.
    */
   @Override
-  public String getCollationsOrderQuery(String dbCharset, String dbCollation) {
-    // TODO(thiagotnunes)
-    return "";
+  public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
+    String query = resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH);
+    Map<String, String> tags = new HashMap<>();
+    tags.put(CHARSET_REPLACEMENT_TAG, dbCharset);
+    tags.put(COLLATION_REPLACEMENT_TAG, dbCollation);
+    tags.put(
+        RETURN_TYPE_REPLACEMENT_TAG, padSpace ? PAD_SPACE_RETURN_TYPE : NO_PAD_SPACE_RETURN_TYPE);
+    return replaceTagsAndSanitize(query, tags);
   }
 
   private String addWhereClause(String query, ImmutableList<String> partitionColumns) {
@@ -499,11 +525,6 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       default:
         return SourceColumnIndexInfo.IndexType.OTHER;
     }
-  }
-
-  /** Ref <a href="https://www.postgresql.org/docs/16/infoschema-collations.html"></a>. */
-  private boolean isPadSpace(@Nullable String pad) throws SQLException {
-    return pad != null && !pad.equals(NO_PAD);
   }
 
   /** Ref <a href="https://www.postgresql.org/docs/current/datatype-character.html"></a>. */
