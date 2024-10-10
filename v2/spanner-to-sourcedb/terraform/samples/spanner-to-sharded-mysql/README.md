@@ -21,34 +21,12 @@ There are two ways to add permissions -
 Following permissions are required -
 
 ```shell
-- compute.globalAddresses.create
-- compute.globalAddresses.createInternal
-- compute.globalAddresses.delete
-- compute.globalAddresses.deleteInternal
-- compute.globalAddresses.get
-- compute.globalOperations.get
 - compute.firewalls.create
 - compute.firewalls.delete
 - compute.firewalls.update
-- compute.networks.addPeering
-- compute.networks.get
-- compute.networks.listPeeringRoutes
-- compute.networks.removePeering
-- compute.networks.use
-- compute.routes.get
-- compute.routes.list
-- compute.subnetworks.get
-- compute.subnetworks.list
 - dataflow.jobs.cancel
 - dataflow.jobs.create
 - dataflow.jobs.updateContents
-- datastream.connectionProfiles.create
-- datastream.connectionProfiles.delete
-- datastream.privateConnections.create
-- datastream.privateConnections.delete
-- datastream.streams.create
-- datastream.streams.delete
-- datastream.streams.update
 - iam.roles.get
 - iam.serviceAccounts.actAs
 - pubsub.subscriptions.create
@@ -72,7 +50,7 @@ Following permissions are required -
 
 > **_Note on IAM:_**
 >
-> 1. For ease of use, this sample automatically adds the
+> For ease of use, this sample automatically adds the
 > required
 > roles to the service account used for running the migration. In order to
 > do this, we need the `resourcemanager.projects.setIamPolicy` permission. If granting
@@ -83,16 +61,9 @@ Following permissions are required -
 > migration will fail.**
 > Two service accounts will need to be modified manually -
 >    1. Dataflow service account - The list of roles can be found in the `main.tf`
-      file, in the `live_migration_roles` resource.
+      file, in the `reverse_replication_roles` resource.
 >    2. GCS service account - The list of roles can be found in the `main.tf` file,
         in the `gcs_publisher_role` resource.
->
->
->2. In order to create private connectivity configuration for Datastream,
->`compute.*` permissions are required, [as documented here](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration#shared-vpc).
-> Private connectivity cannot be created without these permissions. If you don't want to grant these permissions,
-> you can use the [pre-configured connection profiles template](../pre-configured-conn-profiles/README.md). This template
-> assumes you have created connection profiles outside of Terraform.
 
 [This](#adding-access-to-terraform-service-account) section in the FAQ
 provides instructions to add these permissions to an existing service account.
@@ -102,14 +73,14 @@ provides instructions to add these permissions to an existing service account.
 Following roles are required -
 
 ```shell
-roles/dataflow.admin
-roles/datastream.admin
+roles/dataflow.developer
 roles/iam.securityAdmin
 roles/iam.serviceAccountUser
 roles/pubsub.admin
 roles/storage.admin
 roles/viewer
 roles/compute.networkAdmin
+roles/spanner.databaseUser
 ```
 
 > **_Note on IAM:_**
@@ -125,19 +96,10 @@ roles/compute.networkAdmin
 > migration will fail.**
 > Two service accounts will need to be modified manually -
 >    1. Dataflow service account - The list of roles can be found in the `main.tf`
-       file, in the `live_migration_roles` resource.
+       file, in the `reverse_replication_roles` resource.
 
 >    2. GCS service account - The list of roles can be found in the `main.tf` file,
   in the `gcs_publisher_role` resource.
->
->
->2. In order to create private connectivity configuration for Datastream,
-> `networkAdmin` role is
-    required, [as documented here](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration#shared-vpc).
-> Private connectivity cannot be created without these permissions. If you don't want to grant these permissions,
-> you can use the [pre-configured connection profiles template](../pre-configured-conn-profiles/README.md). This
-    template
-> assumes you have created connection profiles outside of Terraform.
 
 [This](#adding-access-to-terraform-service-account) section in the FAQ
 provides instructions to add these roles to an existing service account.
@@ -146,18 +108,18 @@ provides instructions to add these roles to an existing service account.
 
 It takes the following assumptions -
 
-1. MySQL source is accessible via Datastream either via
-   [IP Allowlisting guide](https://cloud.google.com/datastream/docs/network-connectivity-options#ipallowlists)
-   or [Private connectivity](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration).
-2. If using a VPC, VPC has already been configured to work with Datastream.
-3. MySQL source has been configured to be read by Datastream by following
-   [configure your source MySQL guide](https://cloud.google.com/datastream/docs/configure-your-source-mysql-database).
-4. A Spanner instance with database containing the data-migration compatible
+1. Ensure that the MySQL instance is correctly setup.  
+     1. Check that the MySQL credentials are correctly specified in the [source shards file](#sample-source-shards-file). 
+     2. Check that the MySQL server is up. 
+     3. The MySQL user configured in the [source shards file](#sample-source-shards-file) should have [INSERT](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_insert), [UPDATE](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_update) and [DELETE](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_delete) privileges on the database. 
+2. Ensure that the MySQL instance and Dataflow workers can establish connectivity with each other. Template automatically adds networking firewalls rules to enable this access. This can differ depending on the source configuration. Please validate the template rules and ensure that network connectivity can be established.
+3. The source instance with database containing reverse-replication compatible
    schema is created.
+4. A session file has been generated to perform the spanner to source schema mapping.
 
 > **_NOTE:_**
 [SMT](https://googlecloudplatform.github.io/spanner-migration-tool/quickstart.html)
-> can be used for converting a MySQL schema to a Spanner compatible schema.
+> can be used to generate the session file.
 
 ## Description
 
@@ -180,35 +142,27 @@ This sample contains the following files -
 Given these assumptions, it uses a supplied source database connection
 configuration and creates the following resources -
 
-1. **Datastream private connection** - If configured, a Datastream private
-   connection will be deployed for your configured VPC. If not configured, IP
-   allowlisting will be assumed as the mode of Datastream access. A single private connection is created for all shards.
-2. **Source datastream connection profiles** - This allows Datastream to connect
-   to the MySQL instance (using IP allowlisting or private connectivity). A source connection profile is created per
-   physical shard.
-3. **GCS buckets** - A GCS bucket to for Datastream to write the source data to. A bucket is created per physical shard.
-4. **Target datastream connection profiles** - The connection profile to
-   configure the created bucket in Datastream. A target connection profile is created per physical shard.
-5. **Pubsub topics and subscriptions** - This contains GCS object notifications as
-   files are written to GCS for consumption by the Dataflow job. A pubsub topic & subscription is created per physical
-   shard.
-6. **Datastream streams** - A datastream stream which reads from the source
-   specified in the source connection profile and writes the data to the bucket
-   specified in the target connection profile. Note that it uses a mandatory
-   prefix path inside the bucket where it will write the data to. The default
-   prefix path is `data` (can be overridden). A stream is created per physical shard.
-7. **Bucket notifications** - Creates the GCS bucket notification which publish
-   to the pubsub topic created. Note that the bucket notification is created on
-   the mandatory prefix path specified for the stream above. A notification is created per bucket.
-8. **Dataflow job** - The Dataflow job which reads from GCS and writes to
-   Spanner. A dataflow job is created per shard.
-9. **Permissions** - It adds the required roles to the specified (or the
-   default) service accounts for the live migration to work.
+1. **Firewall rules** - These rules allow Dataflow VMs to connect to each other
+   and allow Dataflow VMs to connect to the source MySQL shards.
+2. **GCS buckets** - A GCS bucket to hold reverse replication metadata, such as
+   session and source shards files.
+3. **GCS objects** - Generates source shards configuration file to upload to
+   GCS.
+4. **Pubsub topic and subscription** - This contains GCS object notifications as
+   files are written to GCS for DLQ retrials.
+5. **Spanner metadata database** - A Spanner metadata database to keep track of
+   Spanner change streams.
+6. **Spanner change stream** - A Spanner change stream to capture change capture
+   data from the Spanner database under replication
+7. **Dataflow job** - The Dataflow job which reads from Spanner change streams
+   and writes to MySQL
+8. **Permissions** - It adds the required roles to the specified (or the
+   default) service accounts for the reverse replication to work.
 
 > **_NOTE:_** A label is attached to all the resources created via Terraform.
 > The key is `migration_id` and the value is auto-generated. The auto-generated
 > value is used as a global identifier for a migration job across resources. The
-> auto-generated value is always pre-fixed with a `smt-`.
+> auto-generated value is always pre-fixed with a `smt-rev`.
 
 ## How to run
 
@@ -242,49 +196,17 @@ terraform apply --var-file=terraform_simple.tfvars
 This will launch the configured jobs and produce an output like below -
 
 ```shell
-resource_ids = {
-  "smt-neat-walrus" = {
-    "dataflow_job" = "2024-06-27_01_16_13-12477287004098198325"
-    "datastream_source_connection_profile" = "smt-neat-walrus-source-mysql"
-    "datastream_stream" = "-smt-neat-walrus-mysql-stream"
-    "datastream_target_connection_profile" = "smt-neat-walrus-target-gcs"
-    "gcs_bucket" = "smt-neat-walrus-live-migration"
-    "pubsub_subscription" = "smt-neat-walrus-live-migration-sub"
-    "pubsub_topic" = "smt-neat-walrus-live-migration"
-  }
-  "smt-suitable-platypus" = {
-    "dataflow_job" = "2024-06-27_01_16_13-4726070354537731492"
-    "datastream_source_connection_profile" = "smt-suitable-platypus-source-mysql"
-    "datastream_stream" = "-smt-suitable-platypus-mysql-stream"
-    "datastream_target_connection_profile" = "smt-suitable-platypus-target-gcs"
-    "gcs_bucket" = "smt-suitable-platypus-live-migration"
-    "pubsub_subscription" = "smt-suitable-platypus-live-migration-sub"
-    "pubsub_topic" = "smt-suitable-platypus-live-migration"
-  }
-}
-resource_urls = {
-  "smt-neat-walrus" = {
-    "dataflow_job" = "https://console.cloud.google.com/dataflow/jobs/us-central1/2024-06-27_01_16_13-12477287004098198325?project=your-project-here"
-    "datastream_source_connection_profile" = "https://console.cloud.google.com/datastream/connection-profiles/locations/us-central1/instances/smt-neat-walrus-source-mysql?project=your-project-here"
-    "datastream_stream" = "https://console.cloud.google.com/datastream/streams/locations/us-central1/instances/-smt-neat-walrus-mysql-stream?project=your-project-here"
-    "datastream_target_connection_profile" = "https://console.cloud.google.com/datastream/connection-profiles/locations/us-central1/instances/smt-neat-walrus-target-gcs?project=your-project-here"
-    "gcs_bucket" = "https://console.cloud.google.com/storage/browser/smt-neat-walrus-live-migration?project=your-project-here"
-    "pubsub_subscription" = "https://console.cloud.google.com/cloudpubsub/subscription/detail/smt-neat-walrus-live-migration-sub?project=your-project-here"
-    "pubsub_topic" = "https://console.cloud.google.com/cloudpubsub/topic/detail/smt-neat-walrus-live-migration?project=your-project-here"
-  }
-  "smt-suitable-platypus" = {
-    "dataflow_job" = "https://console.cloud.google.com/dataflow/jobs/us-central1/2024-06-27_01_16_13-4726070354537731492?project=your-project-here"
-    "datastream_source_connection_profile" = "https://console.cloud.google.com/datastream/connection-profiles/locations/us-central1/instances/smt-suitable-platypus-source-mysql?project=your-project-here"
-    "datastream_stream" = "https://console.cloud.google.com/datastream/streams/locations/us-central1/instances/-smt-suitable-platypus-mysql-stream?project=your-project-here"
-    "datastream_target_connection_profile" = "https://console.cloud.google.com/datastream/connection-profiles/locations/us-central1/instances/smt-suitable-platypus-target-gcs?project=your-project-here"
-    "gcs_bucket" = "https://console.cloud.google.com/storage/browser/smt-suitable-platypus-live-migration?project=your-project-here"
-    "pubsub_subscription" = "https://console.cloud.google.com/cloudpubsub/subscription/detail/smt-suitable-platypus-live-migration-sub?project=your-project-here"
-    "pubsub_topic" = "https://console.cloud.google.com/cloudpubsub/topic/detail/smt-suitable-platypus-live-migration?project=your-project-here"
-  }
-}
+Outputs:
+
+dataflow_job_ids = [
+  "<JOB_ID>",
+]
+dataflow_job_urls = [
+  "https://console.cloud.google.com/dataflow/jobs/us-central1/<JOB_ID>",
+]
 ```
 
-**Note:** Each of the jobs will have a random suffix added to it to prevent name
+**Note:** Each of the jobs will have a random prefix added to it to prevent name
 collisions.
 
 ### Cleanup
@@ -308,83 +230,14 @@ can exclude it from the state file using `terraform state rm` command.
 #### Specifying a shared VPC
 
 You can specify the shared VPC using the `host_project` configuration.
-This will result in -
-
-1. Datastream private connectivity link will be created in the shared VPC.
-2. Dataflow jobs will be launched inside the shared VPC.
+This will result in Dataflow jobs will be launched inside the shared VPC.
 
 > **_NOTE:_** Usage of shared VPC requires cross-project permissions. They
 > are available as a Terraform
-> template [here](../../../../spanner-common/terraform/samples/configure-shared-vpc/README.md).
 >
-> 1. Datastream service account permissions are
-     documented [here](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration#shared-vpc).
-> 2. Dataflow service account permissions are
-     documented [here](https://cloud.google.com/dataflow/docs/guides/specifying-networks#shared).
-
-#### Datastream Private Connectivity
-
-> **_NOTE:_** By default, **IP Allowlisting** based connectivity is assumed.
-
-There are two variables of the type below in `variables.tf` -
-
-```shell
-private_connectivity = optional(object({
-      private_connectivity_id = string
-      vpc_name                = string
-      range                   = string
-    }))
-```
-
-and
-
-```shell
-private_connectivity_id = optional(string)
-```
-
-You have the option of either specifying the `id` of an existing private
-connectivity configuration or letting Terraform create one for you.
-
-To re-use an existing private connectivity configuration, specify the `id` in
-the `private_connectivity_id` variable.
-
-Alternatively, to create a private connectivity configuration via Terraform for Datastream, specify this
-configuration in your `*.tfvars`. For example -
-
-```shell
- ...
- mysql_databases = [
-    {
-      database = "lorem"
-    }
-  ]
-  private_connectivity = {
-    private_connectivity_id = "abc"
-    range                   = "xyz"
-    vpc_name                = "pqr"
-  }
-  ...
-```
-
-Note that `vpc_name` and `range` are mandatory and for the [private connectivity
-configuration](https://cloud.google.com/datastream/docs/create-a-private-connectivity-configuration).
-
-In the `mysql_host` configuration, specify the private IP instead of the
-public IP.
-
-This configuration creates a private connection configuration in Datastream
-and configures it in the source profile created for the Datastream stream.
-
-> **_NOTE:_** Private connectivity resource creation can take a long time to
-> create.
-
-
-If this is not specified, configurations are created assuming **IP Allowlisting
-**.
-
-If you are facing issue with Datastream connectivity, check the following
-Datastream [guide](https://cloud.google.com/datastream/docs/diagnose-issues#connectivity-errors)
-to debug common networking issues.
+template [here](../../../../spanner-common/terraform/samples/configure-shared-vpc/README.md).
+> Dataflow service account permissions are
+> documented [here](https://cloud.google.com/dataflow/docs/guides/specifying-networks#shared).
 
 #### Dataflow
 
@@ -411,12 +264,10 @@ existing job with an `UPDATED` state and creating a new job in its place. All
 of this is done seamlessly by Dataflow and there is no risk to the fidelity of
 an already executing job.
 
-Example update: Changing `round_json_decimals` to `true` from `false`.
-
 Look for the following log during `terraform apply` -
 
 ```shell
-  # google_dataflow_flex_template_job.live_migration_job will be updated in-place
+  # google_dataflow_flex_template_job.reverse_replication_job will be updated in-place
 ```
 
 ### Updating workers of a Dataflow job
@@ -426,7 +277,7 @@ support updating the workers of a Dataflow job.
 If the worker counts are changed in `tfvars` and a Terraform apply is run,
 Terraform will attempt to cancel/drain the existing Dataflow job and replace it
 with a new one.
-**This is not recommended**. Instead use the `gcloud` CLI to update the worker
+**This is not recommended**. Instead, use the `gcloud` CLI to update the worker
 counts of a launched Dataflow job.
 
 ```shell
@@ -447,92 +298,35 @@ If you want Terraform to only create the GCS bucket but skip its deletion
 during `terraform destroy`, you will have to use the `terraform state rm` API to
 delete GCS resource from being traced by Terraform after the `apply` command.
 
-### Configuring Databases and Tables in Datastream
+### Source shard configuration file
 
-Which databases and tables to replicate can be configured via the following
-variable definition -
+Source shard configuration file that is supplied to the dataflow is automatically
+created by Terraform. A sample file that this uploaded to GCS looks like
+below - 
 
-In `variables.tf`, following definition exists -
-
-```shell
-mysql_databases = list(object({
-      database = string
-      tables   = optional(list(string))
-    }))
-```
-
-To configure, create `*.tfvars` as follows -
-
-```shell
-mysql_databases = [
+```json
+[
     {
-      database = "<YOUR_DATABASE_NAME>"
-      tables   = ["TABLE_1", "TABLE_2"]
-      # Optionally list specific tables, or remove "tables" all together for all tables
+    "logicalShardId": "shard1",
+    "host": "10.11.12.13",
+    "user": "root",
+    "secretManagerUri":"projects/123/secrets/rev-cmek-cred-shard1/versions/latest",
+    "port": "3306",
+    "dbName": "db1"
     },
     {
-      database = "<YOUR_DATABASE_NAME>"
-      tables   = ["TABLE_1", "TABLE_2"]
-      # Optionally list specific tables, or remove "tables" all together for all tables
-    },
-  ]
+    "logicalShardId": "shard2",
+    "host": "10.11.12.14",
+    "user": "root",
+    "secretManagerUri":"projects/123/secrets/rev-cmek-cred-shard2/versions/latest",
+    "port": "3306",
+    "dbName": "db2"
+    }
+]
 ```
 
-### Specifying schema overrides
-
-By default, the Dataflow job performs a like-like mapping between
-source and Spanner. Any schema changes between source and Spanner can be
-specified using the `session file`. To specify a session file -
-
-1. Copy the SMT generated `session file` to the Terraform working directory.
-   Name this file `session.json`.
-2. Set
-   the `var.common_params.dataflow_params.template_params.local_session_file_path`
-   variable to `"session.json"` (or the relative path to the name of the
-   session file).
-
-This will automatically upload the GCS bucket and configure it in the Dataflow
-job.
-
-### Specifying transformation context
-
-Transformation context is used to populate the `migration_shard_id` column
-added by SMT to each table of your schema. This allows the customer to trace
-the source of each record in Spanner, back to the source shards.
-
-By default, `migration_shard_id` is populated with
-the `"${mysql_host_ip}-${dbName}"`.
-Alternatively, for each shard, a transformation context file can be specified.
-To
-specify a transformation context file -
-
-1. Create a transformation context file per shard.
-2. Set
-   the `var.shard_list[*].dataflow_params.template_params.local_transformation_context_path`
-   variable to the relative path from working directory to the transformation
-   context file.
-
-### Overriding Dataflow workers per shard
-
-The values configured in `var.common_params.dataflow_params.runner_params`
-define
-the `num_workers`, `max_workers` and `machine_type` for all the Dataflow jobs.
-This can be overridden by specifying the same values at the shard level.
-Do so by specifying the same values
-in `var.shard_list[*].dataflow_params.runner_params`.
-
-This can be useful when trying to provide asymmetric resources to different
-shards as well as selective update scenarios.
-
-### Cross project writes to Spanner
-
-The dataflow job can write to Spanner in a different project. In order to do so,
-the service account running the Dataflow job needs to have the
-`roles/spanner.databaseAdmin`role (or the corresponding permissions to write
-data to Spanner).
-
-After adding these permissions, configure the
-`var.dataflow_params.template_params.spanner_project_id` variable.
+This file is generated from the configuration provided in the `var.shard_list`
+parameter.
 
 ### Adding access to Terraform service account
 
@@ -554,7 +348,6 @@ stage: "GA"
 includedPermissions:
 - iam.roles.get
 - iam.serviceAccounts.actAs
-- datastream.connectionProfiles.create
 ....add all permissions from the list defined above.
 ```
 
@@ -658,6 +451,10 @@ the recommended approach.
    ```shell
    gcloud auth application-default login --impersonate-service-account <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com
    ```
+
+## Observe, tune and troubleshoot
+
+Follow the instructions provided [here](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/spanner-to-sourcedb/README.md#observe-tune-and-troubleshoot).
 
 ## Advanced Topics
 

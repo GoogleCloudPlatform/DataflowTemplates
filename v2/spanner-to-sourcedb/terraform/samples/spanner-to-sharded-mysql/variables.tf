@@ -19,7 +19,7 @@ variable "dataflow_params" {
       database_id                  = string
       spanner_project_id           = optional(string)
       metadata_instance_id         = optional(string)
-      metadata_database_id         = optional(string, "rr_metadata")
+      metadata_database_id         = optional(string)
       start_timestamp              = optional(string)
       end_timestamp                = optional(string)
       shadow_table_prefix          = optional(string)
@@ -40,7 +40,7 @@ variable "dataflow_params" {
     runner_params = object({
       additional_experiments = optional(set(string), [
         "enable_google_cloud_profiler", "enable_stackdriver_agent_metrics",
-        "disable_runner_v2", "enable_google_cloud_heap_sampling"
+        "use_runner_v2", "enable_google_cloud_heap_sampling"
       ])
       autoscaling_algorithm        = optional(string)
       enable_streaming_engine      = optional(bool, true)
@@ -67,12 +67,12 @@ variable "dataflow_params" {
 variable "shard_list" {
   description = "Details of the source shards to do the reverse replication to"
   type        = list(object({
-    logical_shard_id   = string
+    logicalShardId   = string
     host               = string
     user               = string
-    secret_manager_uri = optional(string)
+    secretManagerUri = optional(string)
     password           = optional(string)
     port               = string
-    db_name            = string
+    dbName            = string
   }))
 }

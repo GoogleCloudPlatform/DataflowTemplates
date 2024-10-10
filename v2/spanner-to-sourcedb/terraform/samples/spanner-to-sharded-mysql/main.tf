@@ -4,6 +4,7 @@ resource "random_pet" "migration_id" {
 
 locals {
   migration_id = var.common_params.migration_id != null ? var.common_params.migration_id : random_pet.migration_id.id
+  change_stream = replace(local.migration_id, "-", "_")
 }
 
 # Setup network firewalls rules to enable Dataflow access to source.
@@ -115,8 +116,7 @@ resource "google_pubsub_subscription" "dlq_pubsub_subscription" {
 
 resource "google_spanner_database" "reverse_replication_metadata_database" {
   instance            = var.dataflow_params.template_params.instance_id
-  name                = var.dataflow_params.template_params.metadata_database_id
-  ddl                 = ["CREATE DATABASE ${var.dataflow_params.template_params.metadata_database_id};"]
+  name                = var.dataflow_params.template_params.metadata_database_id != null ? var.dataflow_params.template_params.metadata_database_id : local.change_stream
   deletion_protection = false
 }
 
@@ -125,7 +125,7 @@ resource "null_resource" "create_spanner_change_stream" {
   triggers = {
     database_id = var.dataflow_params.template_params.database_id
     instance_id = var.dataflow_params.template_params.instance_id
-    change_stream = replace(local.migration_id, "-", "_")
+    change_stream = local.change_stream
   }
   provisioner "local-exec" {
     command = <<EOT
@@ -141,9 +141,9 @@ EOT
   provisioner "local-exec" {
     when = destroy
     command = <<EOT
-gcloud spanner databases execute-sql ${self.triggers.database_id} \
+gcloud spanner databases ddl update ${self.triggers.database_id} \
   --instance=${self.triggers.instance_id} \
-  --sql="DROP CHANGE STREAM ${self.triggers.change_stream}"
+  --ddl="DROP CHANGE STREAM ${self.triggers.change_stream}"
 EOT
   }
 }
@@ -164,19 +164,19 @@ resource "google_project_iam_member" "reverse_replication_roles" {
 # Dataflow Flex Template Job (for Spanner to SourceDB)
 resource "google_dataflow_flex_template_job" "reverse_replication_job" {
   depends_on = [
-    google_project_service.enabled_apis, google_project_iam_member.reverse_replication_roles, google_spanner_database.reverse_replication_metadata_database, null_resource.create_spanner_change_stream
+    google_project_service.enabled_apis, google_project_iam_member.reverse_replication_roles, google_spanner_database.reverse_replication_metadata_database, null_resource.create_spanner_change_stream, google_pubsub_subscription.dlq_pubsub_subscription
   ] # Launch the template once the stream is created.
   provider                = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Spanner_to_SourceDb"
 
   # Parameters from Dataflow Template
   parameters = {
-    changeStreamName                 = var.dataflow_params.template_params.change_stream_name != null ? var.dataflow_params.template_params.change_stream_name : local.migration_id
+    changeStreamName                 = var.dataflow_params.template_params.change_stream_name != null ? var.dataflow_params.template_params.change_stream_name : local.change_stream
     instanceId                = var.dataflow_params.template_params.instance_id
     databaseId                 = var.dataflow_params.template_params.database_id
     spannerProjectId                      = var.dataflow_params.template_params.spanner_project_id != null ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
     metadataInstance                      = var.dataflow_params.template_params.metadata_instance_id != null ? var.dataflow_params.template_params.metadata_instance_id : var.dataflow_params.template_params.instance_id
-    metadataDatabase                       = var.dataflow_params.template_params.metadata_database_id
+    metadataDatabase                       = var.dataflow_params.template_params.metadata_database_id != null ? var.dataflow_params.template_params.metadata_database_id : local.change_stream
     sourceShardsFilePath                     = "gs://${google_storage_bucket_object.source_shards_file_object.bucket}/${google_storage_bucket_object.source_shards_file_object.name}"
     startTimestamp           = var.dataflow_params.template_params.start_timestamp
     endTimestamp                      = var.dataflow_params.template_params.end_timestamp
