@@ -23,6 +23,7 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -87,7 +88,8 @@ public class DataTypesIT extends SourceDbToSpannerITBase {
             spannerResourceManager,
             jobParameters,
             null);
-    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
+    PipelineOperator.Result result =
+        pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(30L)));
     assertThatResult(result).isLaunchFinished();
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
