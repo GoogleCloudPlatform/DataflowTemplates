@@ -91,7 +91,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     if (prefix.startsWith("/")) {
       prefix = prefix.substring(1);
     }
-    prefix += "/retry";
+    prefix += "/retry/";
     gcsClient.createNotification(topic.toString(), prefix);
     return subscription;
   }

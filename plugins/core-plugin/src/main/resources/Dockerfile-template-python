@@ -8,11 +8,9 @@ WORKDIR $WORKDIR
 ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=requirements.txt
 ENV FLEX_TEMPLATE_PYTHON_PY_FILE=main.py
 
-ARG BEAM_VERSION=${beamVersion}
-ARG BEAM_PACKAGE=apache-beam[gcp]==$BEAM_VERSION
+RUN if ! [ -f requirements.txt ] ; then >&2 echo "error: no requirements.txt file found" && exit 1 ; fi
 
-RUN pip install $BEAM_PACKAGE
-RUN pip install -U -r $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE
-RUN pip download --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE
+RUN pip install -U -r --require-hashes $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE
+RUN pip download --require-hashes --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE
 
 ENTRYPOINT ${entryPoint}
