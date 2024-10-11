@@ -79,7 +79,8 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
         createPubsubResources(
             getClass().getSimpleName(),
             pubsubResourceManager,
-            getGcsPath(artifactBucket, "dlq", gcsResourceManager));
+            getGcsPath(artifactBucket, "dlq", gcsResourceManager)
+                .replace("gs://" + artifactBucket, ""));
   }
 
   public void setupMySQLResourceManager(int numShards) throws IOException {
@@ -117,7 +118,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     if (prefix.startsWith("/")) {
       prefix = prefix.substring(1);
     }
-    prefix += "/retry";
+    prefix += "/retry/";
     gcsResourceManager.createNotification(topic.toString(), prefix);
     return subscription;
   }
