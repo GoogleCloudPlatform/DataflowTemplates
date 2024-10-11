@@ -48,9 +48,6 @@ COPY --from=python-base /opt/google/dataflow/python_template_launcher /opt/googl
 COPY --from=python-base /usr/local/bin/python$PY_VERSION /usr/local/bin/python
 COPY --from=python-base /usr/local/lib/python$PY_VERSION /usr/local/lib/python$PY_VERSION
 
-# Workaround until Beam 2.57.0 is released
-COPY --from=python-base /venv /root/.apache_beam/cache/venvs/py-$PY_VERSION-beam-${beamVersion}-da39a3ee5e6b4b0d3255bfef95601890afd80709
-
 # Copy required shared libraries from python-base
 COPY --from=python-base /lib/$CHIPSET_ARCH/ld-*so* /lib64/
 COPY --from=python-base /lib/$CHIPSET_ARCH/lib*so* /lib/$CHIPSET_ARCH/
