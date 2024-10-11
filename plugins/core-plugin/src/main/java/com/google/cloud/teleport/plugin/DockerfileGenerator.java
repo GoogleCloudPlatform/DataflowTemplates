@@ -163,11 +163,7 @@ public class DockerfileGenerator {
       return this;
     }
 
-    public Builder setEntryPoint(String entryPoint) {
-      return setEntryPoint(new String[] {entryPoint});
-    }
-
-    public Builder setEntryPoint(String[] entryPoint) {
+    public Builder setEntryPoint(List<String> entryPoint) {
       List<String> entries = new ArrayList<>();
       for (String cmd : entryPoint) {
         entries.add(String.format("\"%s\"", cmd));
@@ -176,15 +172,12 @@ public class DockerfileGenerator {
       return this;
     }
 
-    public Builder setFilesToCopy(Map<String, Set<String>> filesToCopy) {
-      StringBuilder files = new StringBuilder();
-      for (String file : filesToCopy.keySet()) {
-        files.append(String.format("COPY %s", file));
-        if (!filesToCopy.get(file).isEmpty()) {
-          files.append(String.format(" %s", String.join(" ", filesToCopy.get(file))));
-        }
-        files.append(" /$WORKDIR/\n");
+    public Builder setFilesToCopy(List<String> filesToCopy) {
+      StringBuilder files = new StringBuilder("COPY");
+      for (String file : filesToCopy) {
+        files.append(String.format(" %s", file));
       }
+      files.append(" $WORKDIR/\n");
       this.parameters.put("filesToCopy", files);
       return this;
     }
@@ -193,7 +186,7 @@ public class DockerfileGenerator {
       StringBuilder directories = new StringBuilder();
       for (String directory : directoriesToCopy) {
         directory = directory.replaceAll("/*$", "");
-        directories.append(String.format("COPY %s/ /$WORKDIR/%s/\n", directory, directory));
+        directories.append(String.format("COPY %s/ $WORKDIR/%s/\n", directory, directory));
       }
       this.parameters.put("directoriesToCopy", directories);
       return this;

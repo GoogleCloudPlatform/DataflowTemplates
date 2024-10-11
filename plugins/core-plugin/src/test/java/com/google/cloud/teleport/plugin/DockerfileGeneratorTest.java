@@ -29,7 +29,7 @@ import freemarker.template.TemplateException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -65,8 +65,8 @@ public class DockerfileGeneratorTest {
             Template.TemplateType.PYTHON, "beam_version", "word-count", outputFolder)
         .setBasePythonContainerImage("a python container image")
         .setBaseJavaContainerImage("a java container image")
-        .setFilesToCopy(Map.of("main.py", Set.of("requirements.txt*")))
-        .setEntryPoint("python/entry/point")
+        .setFilesToCopy(List.of("main.py", "requirements.txt*"))
+        .setEntryPoint(List.of("python/entry/point"))
         .build()
         .generate();
     File outputFile = new File(outputFolder.getAbsolutePath() + "/word-count/Dockerfile");
@@ -76,7 +76,7 @@ public class DockerfileGeneratorTest {
     assertThat(fileContents).contains("FROM a python container image");
     assertThat(fileContents)
         .contains("RUN pip install -U -r --require-hashes $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE");
-    assertThat(fileContents).contains("COPY main.py requirements.txt* /$WORKDIR/");
+    assertThat(fileContents).contains("COPY main.py requirements.txt* $WORKDIR/");
     assertThat(fileContents).contains("ENTRYPOINT [\"python/entry/point\"]");
   }
 
@@ -116,8 +116,7 @@ public class DockerfileGeneratorTest {
     File artifactPath = new File(outputFolder.getAbsolutePath() + "/artifactPath");
     artifactPath.mkdirs();
 
-    Map<String, Set<String>> filesToCopy =
-        Map.of("container-generated-metadata.json", Set.of("requirements.txt*"));
+    List<String> filesToCopy = List.of("container-generated-metadata.json", "requirements.txt*");
     Set<String> directoriesToCopy = Set.of("containerName", "otherDirectory");
     DockerfileGenerator.builder(
             Template.TemplateType.XLANG,
@@ -127,7 +126,7 @@ public class DockerfileGeneratorTest {
         .setBasePythonContainerImage("a python container image")
         .setBaseJavaContainerImage("a java container image")
         .setPythonVersion("py_version")
-        .setEntryPoint("java/entry/point")
+        .setEntryPoint(List.of("java/entry/point"))
         .setCommandSpec("command_spec")
         .setFilesToCopy(filesToCopy)
         .setDirectoriesToCopy(directoriesToCopy)
@@ -141,9 +140,9 @@ public class DockerfileGeneratorTest {
     assertThat(fileContents).contains("FROM a python container image");
     assertThat(fileContents).contains("FROM a java container image");
     assertThat(fileContents)
-        .contains("COPY container-generated-metadata.json requirements.txt* /$WORKDIR/");
-    assertThat(fileContents).contains("COPY containerName/ /$WORKDIR/containerName/");
-    assertThat(fileContents).contains("COPY otherDirectory/ /$WORKDIR/otherDirectory/");
+        .contains("COPY container-generated-metadata.json requirements.txt* $WORKDIR/");
+    assertThat(fileContents).contains("COPY containerName/ $WORKDIR/containerName/");
+    assertThat(fileContents).contains("COPY otherDirectory/ $WORKDIR/otherDirectory/");
     assertThat(fileContents).contains("=py_version");
     assertThat(fileContents).contains("ENTRYPOINT [\"java/entry/point\"]");
     assertThat(fileContents).contains("ENV DATAFLOW_JAVA_COMMAND_SPEC=command_spec");
@@ -175,7 +174,7 @@ public class DockerfileGeneratorTest {
         .setBasePythonContainerImage("a python container image")
         .setBaseJavaContainerImage("a java container image")
         .setPythonVersion("py_version")
-        .setEntryPoint("python/entry/point")
+        .setEntryPoint(List.of("python/entry/point"))
         .build()
         .generate();
     File outputFile = new File(outputFolder.getAbsolutePath() + "/word-count/Dockerfile");
@@ -199,8 +198,8 @@ public class DockerfileGeneratorTest {
         .setBasePythonContainerImage("a python container image")
         .setBaseJavaContainerImage("a java container image")
         .setPythonVersion("py_version")
-        .setEntryPoint("python/entry/point")
-        .setFilesToCopy(Map.of("other_file", Set.of()))
+        .setEntryPoint(List.of("python/entry/point"))
+        .setFilesToCopy(List.of("other_file"))
         .build()
         .generate();
     File outputFile = new File(outputFolder.getAbsolutePath() + "/word-count/Dockerfile");
@@ -210,7 +209,7 @@ public class DockerfileGeneratorTest {
     assertThat(fileContents).contains("FROM a python container image");
     assertThat(fileContents).contains("FROM a java container image");
     assertThat(fileContents).contains("=py_version");
-    assertThat(fileContents).contains("COPY other_file /$WORKDIR/");
+    assertThat(fileContents).contains("COPY other_file $WORKDIR/");
     assertThat(fileContents).contains("ENTRYPOINT [\"python/entry/point\"]");
   }
 }

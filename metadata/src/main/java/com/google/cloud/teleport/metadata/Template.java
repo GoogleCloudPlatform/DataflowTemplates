@@ -107,21 +107,19 @@ public @interface Template {
     JAVA,
     PYTHON,
     YAML,
-    XLANG,
-    NONE
+    XLANG
   }
 
   /** Marker if the template is still in preview / pre-GA. */
   boolean preview() default false;
 
   /**
-   * Comma-separated list of files to include in Template image when building with Dockerfile. Only
-   * works for YAML and XLANG types. Must be in the path of the build files, i.e. copied to target
-   * folder.
+   * List of files to include in Template image when building with Dockerfile. Only works for YAML
+   * and XLANG types. Must be in the path of the build files, i.e. copied to target folder.
    *
    * <p>Will be copied as such, using Docker command: COPY ${otherFiles} /template/
    */
-  String filesToCopy() default "";
+  String[] filesToCopy() default {};
 
   StreamingMode defaultStreamingMode() default StreamingMode.UNSPECIFIED;
 
@@ -130,6 +128,12 @@ public @interface Template {
    * or released.
    */
   boolean testOnly() default false;
+
+  /** Set to true to stage the template image without creating a spec file in GCS. */
+  boolean stageImageOnly() default false;
+
+  /** Override the entry point for the image. */
+  String[] entryPoint() default "";
 
   enum StreamingMode {
     UNSPECIFIED,

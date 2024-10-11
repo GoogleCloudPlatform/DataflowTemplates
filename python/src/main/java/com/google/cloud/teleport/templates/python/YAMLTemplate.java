@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.templates.python;
 
-import com.google.cloud.teleport.metadata.HelperImage;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -40,10 +39,6 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
     requirements = {
       "A valid Beam YAML pipeline.",
     })
-@HelperImage(
-    containerName = "job-builder-server",
-    filesToCopy = "server.py",
-    entryPoint = {"python", "server.py"})
 public interface YAMLTemplate {
   @TemplateParameter.Text(
       order = 1,
