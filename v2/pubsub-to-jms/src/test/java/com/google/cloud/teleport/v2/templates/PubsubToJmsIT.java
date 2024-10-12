@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.templates;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -55,7 +54,7 @@ import org.testcontainers.utility.DockerImageName;
 
 /** Integration test for {@link PubsubToJms}. */
 @TemplateIntegrationTest(PubsubToJms.class)
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
 public final class PubsubToJmsIT extends TemplateTestBase {
 

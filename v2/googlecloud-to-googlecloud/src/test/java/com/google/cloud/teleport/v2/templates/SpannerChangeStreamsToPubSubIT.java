@@ -22,7 +22,6 @@ import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -59,7 +58,7 @@ import org.junit.runners.JUnit4;
  * Integration test for {@link SpannerChangeStreamsToPubSub Spanner Change Streams to PubSub}
  * template.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(SpannerChangeStreamsToPubSub.class)
 @RunWith(JUnit4.class)
 public class SpannerChangeStreamsToPubSubIT extends TemplateTestBase {
