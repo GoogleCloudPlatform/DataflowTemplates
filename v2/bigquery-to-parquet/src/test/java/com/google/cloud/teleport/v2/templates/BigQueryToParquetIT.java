@@ -25,7 +25,6 @@ import com.google.cloud.Tuple;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.List;
@@ -49,7 +48,7 @@ import org.junit.runners.JUnit4;
 
 /** Integration test for {@link BigQueryToParquet}. */
 // SkipDirectRunnerTest: BigQueryIO fails mutation check https://github.com/apache/beam/issues/25319
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(BigQueryToParquet.class)
 @RunWith(JUnit4.class)
 public final class BigQueryToParquetIT extends TemplateTestBase {

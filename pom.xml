@@ -99,6 +99,8 @@
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.15.2</postgres-socket-factory.version>
 
+    <jacoco.check.skip>false</jacoco.check.skip>
+
     <!-- Test categories -->
     <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
     <load.tests>com.google.cloud.teleport.metadata.TemplateLoadTest</load.tests>
@@ -593,11 +595,30 @@
               <includes>
                 <include>**/*IT.java</include>
               </includes>
+              <excludedGroups>
+                com.google.cloud.teleport.metadata.SkipDirectRunnerTest
+              </excludedGroups>
               <groups>
+                ${integration.tests}
                 ${direct-runner.tests}
                 org.apache.beam.it.testcontainers.TestContainersIntegrationTest
                 org.apache.beam.it.gcp.GoogleCloudIntegrationTest
               </groups>
+              <systemProperties>
+                <!-- Pass on the flag directRunnerTest to the templates test base -->
+                <property>
+                  <name>directRunnerTest</name>
+                  <value>true</value>
+                </property>
+                <property>
+                  <name>directRunnerTimeout</name>
+                  <value>15</value>
+                </property>
+                <property>
+                  <name>directRunnerCheck</name>
+                  <value>15</value>
+                </property>
+              </systemProperties>
               <reuseForks>true</reuseForks>
               <parallel>${itParallelismType}</parallel>
               <threadCount>${itParallelism}</threadCount>

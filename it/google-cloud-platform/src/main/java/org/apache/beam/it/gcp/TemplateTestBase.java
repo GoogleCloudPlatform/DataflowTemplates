@@ -41,6 +41,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.JobState;
@@ -132,6 +133,8 @@ public abstract class TemplateTestBase {
   protected GcsResourceManager artifactClient;
 
   private boolean usingDirectRunner;
+  private long directRunnerTimeout;
+  private long directRunnerCheck;
   protected PipelineLauncher pipelineLauncher;
   protected boolean skipBaseCleanup;
 
@@ -144,6 +147,10 @@ public abstract class TemplateTestBase {
     MultiTemplateIntegrationTest multiAnnotation =
         getClass().getAnnotation(MultiTemplateIntegrationTest.class);
     usingDirectRunner = System.getProperty("directRunnerTest") != null;
+    directRunnerTimeout =
+        Long.parseLong(Objects.requireNonNullElse(System.getProperty("directRunnerTimeout"), "4"));
+    directRunnerCheck =
+        Long.parseLong(Objects.requireNonNullElse(System.getProperty("directRunnerCheck"), "5"));
     try {
       Method testMethod = getClass().getMethod(testName);
       annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
@@ -600,14 +607,16 @@ public abstract class TemplateTestBase {
     Config.Builder configBuilder =
         Config.builder().setJobId(info.jobId()).setProject(PROJECT).setRegion(REGION);
 
-    if (duration != null) {
-      configBuilder = configBuilder.setTimeoutAfter(duration);
-    }
-
     // For DirectRunner tests, reduce the max time and the interval, as there is no worker required
     if (usingDirectRunner) {
       configBuilder =
-          configBuilder.setTimeoutAfter(Duration.ofMinutes(4)).setCheckAfter(Duration.ofSeconds(5));
+          configBuilder
+              .setTimeoutAfter(Duration.ofMinutes(directRunnerTimeout))
+              .setCheckAfter(Duration.ofSeconds(directRunnerCheck));
+    }
+
+    if (duration != null) {
+      configBuilder = configBuilder.setTimeoutAfter(duration);
     }
 
     return wrapConfiguration(configBuilder).build();
