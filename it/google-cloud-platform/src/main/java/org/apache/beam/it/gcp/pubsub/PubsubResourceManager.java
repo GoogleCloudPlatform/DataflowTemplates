@@ -91,6 +91,8 @@ public final class PubsubResourceManager implements ResourceManager {
 
   private final SchemaServiceClient schemaServiceClient;
 
+  private final MonitoringClient monitoringClient;
+
   private final Set<TopicName> createdTopics;
   private final Set<SubscriptionName> createdSubscriptions;
 
@@ -112,7 +114,8 @@ public final class PubsubResourceManager implements ResourceManager {
         SchemaServiceClient.create(
             SchemaServiceSettings.newBuilder()
                 .setCredentialsProvider(builder.credentialsProvider)
-                .build()));
+                .build()),
+        builder.monitoringClient);
   }
 
   @VisibleForTesting
@@ -122,7 +125,8 @@ public final class PubsubResourceManager implements ResourceManager {
       PubsubPublisherFactory publisherFactory,
       TopicAdminClient topicAdminClient,
       SubscriptionAdminClient subscriptionAdminClient,
-      SchemaServiceClient schemaServiceClient) {
+      SchemaServiceClient schemaServiceClient,
+      MonitoringClient monitoringClient) {
     this.projectId = projectId;
     this.testId = PubsubUtils.createTestId(testName);
     this.publisherFactory = publisherFactory;
@@ -132,6 +136,7 @@ public final class PubsubResourceManager implements ResourceManager {
     this.createdSubscriptions = Collections.synchronizedSet(new HashSet<>());
     this.createdSchemas = Collections.synchronizedSet(new HashSet<>());
     this.schemaServiceClient = schemaServiceClient;
+    this.monitoringClient = monitoringClient;
   }
 
   public static Builder builder(
@@ -403,14 +408,22 @@ public final class PubsubResourceManager implements ResourceManager {
   /**
    * Collects the performance metrics for the pubsub resources.
    *
-   * @param monitoringClient Monitoring client
    * @param metrics The pubsub metrics will be populated in this map
    */
-  public void getMetrics(
-      @NonNull MonitoringClient monitoringClient, @NonNull Map<String, Double> metrics) {
+  public void getMetrics(@NonNull Map<String, Double> metrics) {
+    hasMonitoringClient();
     metrics.put(
         "Pubsub_AverageOldestUnackedMessageAge",
         getAverageOldestUnackedMessageAge(monitoringClient));
+  }
+
+  private void hasMonitoringClient() {
+    if (monitoringClient == null) {
+      throw new PubsubResourceManagerException(
+          "PubsubResourceManager needs to be initialized with Monitoring client in order to export "
+              + "metrics. Please use PubsubResourceManager.Builder(...).setMonitoringClient(...) to"
+              + " initialize the monitoring client.");
+    }
   }
 
   private Double getAverageOldestUnackedMessageAge(MonitoringClient monitoringClient) {
@@ -450,6 +463,7 @@ public final class PubsubResourceManager implements ResourceManager {
     private final String projectId;
     private final String testName;
     private CredentialsProvider credentialsProvider;
+    private MonitoringClient monitoringClient;
 
     private Builder(String testName, String projectId, CredentialsProvider credentialsProvider) {
       this.testName = testName;
@@ -459,6 +473,11 @@ public final class PubsubResourceManager implements ResourceManager {
 
     public Builder credentialsProvider(CredentialsProvider credentialsProvider) {
       this.credentialsProvider = credentialsProvider;
+      return this;
+    }
+
+    public Builder setMonitoringClient(MonitoringClient monitoringClient) {
+      this.monitoringClient = monitoringClient;
       return this;
     }
 

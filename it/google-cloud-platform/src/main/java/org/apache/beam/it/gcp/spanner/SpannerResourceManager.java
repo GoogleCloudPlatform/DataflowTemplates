@@ -107,6 +107,7 @@ public final class SpannerResourceManager implements ResourceManager {
   private final DatabaseAdminClient databaseAdminClient;
   private final int nodeCount;
   private Timestamp startTime;
+  private MonitoringClient monitoringClient;
 
   private SpannerResourceManager(Builder builder) {
     this(
@@ -153,6 +154,7 @@ public final class SpannerResourceManager implements ResourceManager {
     this.instanceAdminClient = spanner.getInstanceAdminClient();
     this.databaseAdminClient = spanner.getDatabaseAdminClient();
     this.nodeCount = builder.nodeCount;
+    this.monitoringClient = builder.monitoringClient;
   }
 
   public static Builder builder(String testId, String projectId, String region) {
@@ -482,17 +484,26 @@ public final class SpannerResourceManager implements ResourceManager {
    * Collects the performance metrics for the spanner database resource like Average CPU
    * utilization.
    *
-   * @param monitoringClient Monitoring client
    * @param metrics The spanner metrics will be populated in this map
    */
-  public void getMetrics(
-      @NonNull MonitoringClient monitoringClient, @NonNull Map<String, Double> metrics) {
+  public void getMetrics(@NonNull Map<String, Double> metrics) {
+    hasMonitoringClient();
+    checkHasInstanceAndDatabase();
     metrics.put(
         "Spanner_AverageCpuUtilization",
         getAggregateCpuUtilization(monitoringClient, Aligner.ALIGN_MEAN));
     metrics.put(
         "Spanner_MaxCpuUtilization",
         getAggregateCpuUtilization(monitoringClient, Aligner.ALIGN_MAX));
+  }
+
+  private void hasMonitoringClient() {
+    if (monitoringClient == null) {
+      throw new SpannerResourceManagerException(
+          "SpannerResourceManager needs to be initialized with Monitoring client in order to export"
+              + " metrics. Please use SpannerResourceManager.Builder(...).setMonitoringClient(...) "
+              + "to initialize the monitoring client.");
+    }
   }
 
   private Double getAggregateCpuUtilization(
@@ -528,6 +539,7 @@ public final class SpannerResourceManager implements ResourceManager {
     private Credentials credentials;
     private String host;
     private int nodeCount;
+    private MonitoringClient monitoringClient;
 
     private Builder(String testId, String projectId, String region, Dialect dialect) {
       this.testId = testId;
@@ -601,6 +613,16 @@ public final class SpannerResourceManager implements ResourceManager {
      */
     public Builder setNodeCount(int nodeCount) {
       this.nodeCount = nodeCount;
+      return this;
+    }
+
+    /**
+     * Sets Monitoring Client instance to be used for getMetrics method.
+     *
+     * @return monitoring client
+     */
+    public Builder setMonitoringClient(MonitoringClient monitoringClient) {
+      this.monitoringClient = monitoringClient;
       return this;
     }
 

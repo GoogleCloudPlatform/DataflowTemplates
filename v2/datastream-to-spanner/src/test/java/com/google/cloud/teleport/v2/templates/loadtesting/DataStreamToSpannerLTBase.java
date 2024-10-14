@@ -84,9 +84,12 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
         SpannerResourceManager.builder(testName, project, region)
             .maybeUseStaticInstance()
             .setNodeCount(10)
+            .setMonitoringClient(monitoringClient)
             .build();
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER).build();
+        PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER)
+            .setMonitoringClient(monitoringClient)
+            .build();
 
     gcsResourceManager =
         GcsResourceManager.builder(artifactBucket, testRootDir, CREDENTIALS).build();
@@ -189,8 +192,8 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
   }
 
   public void getResourceManagerMetrics(Map<String, Double> metrics) {
-    pubsubResourceManager.getMetrics(monitoringClient, metrics);
-    spannerResourceManager.getMetrics(monitoringClient, metrics);
+    pubsubResourceManager.getMetrics(metrics);
+    spannerResourceManager.getMetrics(metrics);
   }
 
   /**
