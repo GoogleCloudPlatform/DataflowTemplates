@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.plugin;
 
 import com.google.cloud.teleport.metadata.Template.TemplateType;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
@@ -53,6 +55,7 @@ public class DockerfileGenerator {
 
   // Keep pythonVersion below in sync with version in image
   public static final String PYTHON_VERSION = "3.11";
+  public static final String DEFAULT_WORKING_DIRECTORY = "/template";
 
   private static final Logger LOG = Logger.getLogger(DockerfileGenerator.class.getName());
 
@@ -69,12 +72,28 @@ public class DockerfileGenerator {
     this.templateType = builder.templateType;
   }
 
+  /**
+   * Create a {@link Builder} instance for {@link DockerfileGenerator}.
+   *
+   * @param templateType A {@link TemplateType}.
+   * @param beamVersion The Beam version to use in the Dockerfile.
+   * @param containerName The container name for the Template.
+   * @param targetDirectory The directory to write the Dockerfile to.
+   * @return the {@link Builder} instance.
+   */
   public static Builder builder(
       TemplateType templateType, String beamVersion, String containerName, File targetDirectory) {
     return new DockerfileGenerator.Builder(
         templateType, beamVersion, containerName, targetDirectory);
   }
 
+  /**
+   * Generate the Dockerfile.
+   *
+   * @throws IOException if there is an error writing the Dockerfile to the file system.
+   * @throws TemplateException if there is an error constructing the final Dockerfile from the
+   *     Dockerfile template.
+   */
   public void generate() throws IOException, TemplateException {
     Configuration freemarkerConfig = new Configuration(Configuration.VERSION_2_3_32);
     freemarkerConfig.setDefaultEncoding("UTF-8");
@@ -116,6 +135,7 @@ public class DockerfileGenerator {
     }
   }
 
+  /** Builder for {@link DockerfileGenerator}. */
   public static class Builder {
 
     private final TemplateType templateType;
@@ -130,6 +150,7 @@ public class DockerfileGenerator {
       this.targetDirectory = targetDirectory;
 
       this.parameters = new HashMap<>();
+      this.parameters.put("workingDirectory", DEFAULT_WORKING_DIRECTORY);
       this.parameters.put("beamVersion", beamVersion);
 
       this.parameters.put("basePythonContainerImage", BASE_PYTHON_CONTAINER_IMAGE);
@@ -148,56 +169,182 @@ public class DockerfileGenerator {
       this.parameters.put("commandSpec", "");
     }
 
+    /**
+     * Sets the Base python image to use for the Docker image. This image is used as the python
+     * builder for installing packages. To set the Base java image used as the base for the output
+     * image, see {@link Builder#setBaseJavaContainerImage(String)}.
+     *
+     * <p>Default is {@value DockerfileGenerator#BASE_PYTHON_CONTAINER_IMAGE}
+     *
+     * @param basePythonContainerImage Base python image to use.
+     * @return this {@link Builder}.
+     * @throws IllegalArgumentException if basePythonContainerImage is null or empty.
+     */
     public Builder setBasePythonContainerImage(String basePythonContainerImage) {
-      this.parameters.put("basePythonContainerImage", basePythonContainerImage);
-      return this;
+      return addStringParameter("basePythonContainerImage", basePythonContainerImage);
     }
 
+    /**
+     * Sets the Base java image to use for the Docker image. This image is used as the base image
+     * for the output image. To set the Base python builder image used for installing packages, see
+     * {@link Builder#setBasePythonContainerImage(String)}.
+     *
+     * <p>Default is {@value DockerfileGenerator#BASE_CONTAINER_IMAGE}
+     *
+     * @param baseJavaContainerImage Base java image to use.
+     * @return this {@link Builder}.
+     * @throws IllegalArgumentException if baseJavaContainerImage is null or empty.
+     */
     public Builder setBaseJavaContainerImage(String baseJavaContainerImage) {
-      this.parameters.put("baseJavaContainerImage", baseJavaContainerImage);
-      return this;
+      return addStringParameter("baseJavaContainerImage", baseJavaContainerImage);
     }
 
+    /**
+     * Set the python version to use. This should correspond with the python version installed in
+     * the base python image set by {@link Builder#setBasePythonContainerImage(String)}.
+     *
+     * <p>Default is version {@value DockerfileGenerator#PYTHON_VERSION}
+     *
+     * @param pythonVersion Python version to use.
+     * @return this {@link Builder}.
+     * @throws IllegalArgumentException if pythonVersion is null or empty.
+     */
     public Builder setPythonVersion(String pythonVersion) {
-      this.parameters.put("pythonVersion", pythonVersion);
-      return this;
+      return addStringParameter("pythonVersion", pythonVersion);
     }
 
+    /**
+     * Set the Entrypoint override for the image. For example, an entryPoint of {"some_command",
+     * "some_arg"} would format as:
+     *
+     * <p>ENTRYPOINT ["some_command", "some_arg"]
+     *
+     * <p>Defaults:
+     *
+     * <ul>
+     *   <li>PYTHON/YAML: {@value DockerfileGenerator#PYTHON_LAUNCHER_ENTRYPOINT}
+     *   <li>XLANG: {@value DockerfileGenerator#JAVA_LAUNCHER_ENTRYPOINT}
+     * </ul>
+     *
+     * @param entryPoint entryPoint to use as override for Dockerfile.
+     * @return this {@link Builder}.
+     * @throws IllegalArgumentException if entryPoint is null or empty.
+     */
     public Builder setEntryPoint(List<String> entryPoint) {
+      Preconditions.checkNotNull(entryPoint);
+      Preconditions.checkArgument(!entryPoint.isEmpty());
+
       List<String> entries = new ArrayList<>();
       for (String cmd : entryPoint) {
         entries.add(String.format("\"%s\"", cmd));
       }
-      this.parameters.put("entryPoint", "[" + String.join(", ", entries) + "]");
-      return this;
+
+      return addStringParameter("entryPoint", "[" + String.join(", ", entries) + "]");
     }
 
+    /**
+     * Sets the list of files to copy into the image's working directory (Default to {@value
+     * DockerfileGenerator#DEFAULT_WORKING_DIRECTORY}).
+     *
+     * <p>To change the working directory, see {@link Builder#setWorkingDirectory(String)}.
+     *
+     * <p><b>Note</b>: Make sure when using wildcards, to specify an existing file first.
+     *
+     * <p>For example, if copying in a file, main.py, and an optional requirements.txt, pass the
+     * list {@code {"main.py", "requirements.txt*"} }.
+     *
+     * @param filesToCopy list of files to copy into image.
+     * @return this {@link Builder}.
+     * @throws IllegalArgumentException if filesToCopy is null or empty.
+     */
     public Builder setFilesToCopy(List<String> filesToCopy) {
+      Preconditions.checkNotNull(filesToCopy);
+      Preconditions.checkArgument(!filesToCopy.isEmpty());
+
       StringBuilder files = new StringBuilder("COPY");
       for (String file : filesToCopy) {
         files.append(String.format(" %s", file));
       }
       files.append(" $WORKDIR/\n");
-      this.parameters.put("filesToCopy", files);
-      return this;
+
+      return addStringParameter("filesToCopy", files.toString());
     }
 
+    /**
+     * Sets the list of directories to copy into the image's working directory (Default to {@value
+     * DockerfileGenerator#DEFAULT_WORKING_DIRECTORY}).
+     *
+     * <p>To change the working directory, see {@link Builder#setWorkingDirectory(String)}.
+     *
+     * @param directoriesToCopy list of directories to copy into image.
+     * @return this {@link Builder}.
+     * @throws IllegalArgumentException if directoriesToCopy is null or empty.
+     */
     public Builder setDirectoriesToCopy(Set<String> directoriesToCopy) {
+      Preconditions.checkNotNull(directoriesToCopy);
+      Preconditions.checkArgument(!directoriesToCopy.isEmpty());
+
       StringBuilder directories = new StringBuilder();
       for (String directory : directoriesToCopy) {
         directory = directory.replaceAll("/*$", "");
         directories.append(String.format("COPY %s/ $WORKDIR/%s/\n", directory, directory));
       }
-      this.parameters.put("directoriesToCopy", directories);
-      return this;
+
+      return addStringParameter("directoriesToCopy", directories.toString());
     }
 
+    /**
+     * For XLANG templates, set the {@code DATAFLOW_JAVA_COMMAND_SPEC} env variable to the command
+     * spec location on the image.
+     *
+     * @param commandSpec location of command spec file on image.
+     * @return this {@link Builder}.
+     * @throws IllegalArgumentException if commandSpec is null or empty.
+     */
     public Builder setCommandSpec(String commandSpec) {
-      this.parameters.put("commandSpec", commandSpec);
-      return this;
+      return addStringParameter("commandSpec", commandSpec);
     }
 
+    /**
+     * Sets the working directory for the image.
+     *
+     * <p>Defaults to {@value DockerfileGenerator#DEFAULT_WORKING_DIRECTORY}.
+     *
+     * @param workingDirectory path to use for working directory.
+     * @return this {@link Builder}.
+     * @throws IllegalArgumentException if workingDirectory is null or empty.
+     */
+    public Builder setWorkingDirectory(String workingDirectory) {
+      return addStringParameter("workingDirectory", workingDirectory);
+    }
+
+    /**
+     * Set a custom String parameter in the Dockerfile template.
+     *
+     * @param parameter name of parameter to set.
+     * @param value to use for the parameter.
+     * @return this {@link Builder}.
+     * @throws IllegalArgumentException if the parameter name or value are null or empty.
+     */
+    public Builder addStringParameter(String parameter, String value) {
+      Preconditions.checkArgument(!Strings.isNullOrEmpty(value));
+
+      return addParameter(parameter, value);
+    }
+
+    /**
+     * Set a custom parameter in the Dockerfile template.
+     *
+     * @param parameter name of parameter to set.
+     * @param value to use for the parameter.
+     * @return this {@link Builder}.
+     * @throws IllegalArgumentException if the parameter name is null or empty, or if the value is
+     *     null.
+     */
     public Builder addParameter(String parameter, Object value) {
+      Preconditions.checkArgument(!Strings.isNullOrEmpty(parameter));
+      Preconditions.checkNotNull(value);
+
       this.parameters.put(parameter, value);
       return this;
     }

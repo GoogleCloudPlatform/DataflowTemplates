@@ -1,6 +1,6 @@
 FROM ${basePythonContainerImage}
 
-ARG WORKDIR=/template
+ARG WORKDIR=${workingDirectory}
 RUN mkdir -p $WORKDIR
 ${filesToCopy}
 WORKDIR $WORKDIR
