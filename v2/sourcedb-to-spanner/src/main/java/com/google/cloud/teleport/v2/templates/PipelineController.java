@@ -114,11 +114,15 @@ public class PipelineController {
             "Output PCollection for parent table should not be null.");
         parentOutputs.add(parentOutputPcollection);
       }
-      ReaderImpl reader =
-          ReaderImpl.of(
-              JdbcIoWrapper.of(
-                  OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
-                      options, List.of(srcTable), null, Wait.on(parentOutputs))));
+      JdbcIoWrapper jdbcIoWrapper =
+          JdbcIoWrapper.of(
+              OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
+                  options, List.of(srcTable), null, Wait.on(parentOutputs)));
+      if (jdbcIoWrapper.getTableReaders().isEmpty()) {
+        LOG.info("not creating reader as table is not found at source: {}", srcTable);
+        continue;
+      }
+      ReaderImpl reader = ReaderImpl.of(jdbcIoWrapper);
       String suffix = generateSuffix("", srcTable);
       String shardIdColumn = "";
       PCollection<Void> output =
@@ -239,25 +243,32 @@ public class PipelineController {
                 "Output PCollection for parent table should not be null.");
             parentOutputs.add(parentOutputPcollection);
           }
-          ReaderImpl reader =
-              ReaderImpl.of(
-                  JdbcIoWrapper.of(
-                      OptionsToConfigBuilder.getJdbcIOWrapperConfig(
-                          sqlDialect,
-                          List.of(srcTable),
-                          null,
-                          shard.getHost(),
-                          shard.getConnectionProperties(),
-                          Integer.parseInt(shard.getPort()),
-                          shard.getUserName(),
-                          shard.getPassword(),
-                          entry.getKey(),
-                          shardId,
-                          options.getJdbcDriverClassName(),
-                          options.getJdbcDriverJars(),
-                          options.getMaxConnections(),
-                          options.getNumPartitions(),
-                          Wait.on(parentOutputs))));
+          JdbcIoWrapper jdbcIoWrapper =
+              JdbcIoWrapper.of(
+                  OptionsToConfigBuilder.getJdbcIOWrapperConfig(
+                      sqlDialect,
+                      List.of(srcTable),
+                      null,
+                      shard.getHost(),
+                      shard.getConnectionProperties(),
+                      Integer.parseInt(shard.getPort()),
+                      shard.getUserName(),
+                      shard.getPassword(),
+                      entry.getKey(),
+                      shardId,
+                      options.getJdbcDriverClassName(),
+                      options.getJdbcDriverJars(),
+                      options.getMaxConnections(),
+                      options.getNumPartitions(),
+                      Wait.on(parentOutputs)));
+          if (jdbcIoWrapper.getTableReaders().isEmpty()) {
+            LOG.info(
+                "not creating reader as table is not found at source: {} shard: {}",
+                srcTable,
+                shard.getLogicalShardId());
+            continue;
+          }
+          ReaderImpl reader = ReaderImpl.of(jdbcIoWrapper);
           String suffix = generateSuffix(shardId, srcTable);
           String shardIdColumn =
               schemaMapper.getShardIdColumnName(
