@@ -210,10 +210,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       stagePrefix = stagePrefix.substring(0, stagePrefix.length() - 1);
     }
 
-    if (beamVersion == null || beamVersion.isEmpty()) {
-      beamVersion = project.getProperties().getProperty("beam-python.version");
-    }
-
     try {
       URLClassLoader loader = buildClassloader();
 
@@ -384,6 +380,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     imageSpec.setImage(
         generateFlexTemplateImagePath(
             containerName, projectId, artifactRegion, artifactRegistry, stagePrefix));
+
+    if (beamVersion == null || beamVersion.isEmpty()) {
+      beamVersion = project.getProperties().getProperty("beam-python.version");
+    }
 
     String currentTemplateName = definition.getTemplateAnnotation().name();
     TemplateSpecsGenerator generator = new TemplateSpecsGenerator();
