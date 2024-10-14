@@ -32,7 +32,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerBlobTable extends DataStreamToSpannerLTBase {
   @Test
-  public void backfill100GbBlobTable() throws IOException, ParseException, InterruptedException {
+  public void backfill100GbBlobTableLT() throws IOException, ParseException, InterruptedException {
     setUpResourceManagers("DataStreamToSpanner100GbLT/spanner-schema-blob.sql");
     HashMap<String, Integer> tables100GB = new HashMap<>();
     tables100GB.put("person", 8610000);
