@@ -32,7 +32,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerInterleavedTable extends DataStreamToSpannerLTBase {
   @Test
-  public void backfill100Gb() throws IOException, ParseException, InterruptedException {
+  public void backfill100GbInterleavedTable() throws IOException, ParseException, InterruptedException {
     setUpResourceManagers("DataStreamToSpanner100GbLT/spanner-schema-interleaving.sql");
     HashMap<String, Integer> tables100GB = new HashMap<>();
     for (int i = 1; i <= 4; i++) {
