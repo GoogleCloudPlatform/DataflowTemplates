@@ -105,7 +105,9 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   }
 
   public PubsubResourceManager setUpPubSubResourceManager() throws IOException {
-    return PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER).build();
+    return PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER)
+        .setMonitoringClient(monitoringClient)
+        .build();
   }
 
   public SubscriptionName createPubsubResources(
@@ -270,6 +272,6 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   }
 
   public void getResourceManagerMetrics(Map<String, Double> metrics) {
-    pubsubResourceManager.getMetrics(monitoringClient, metrics);
+    pubsubResourceManager.getMetrics(metrics);
   }
 }
