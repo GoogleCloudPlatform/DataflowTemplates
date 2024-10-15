@@ -288,7 +288,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
             + "  JOIN pg_catalog.pg_type t ON t.oid = a.atttypid"
             + "  LEFT OUTER JOIN pg_catalog.pg_collation co ON co.oid = ix.indcollation[a.attnum - 1]"
             + "  LEFT OUTER JOIN information_schema.collations ico ON ico.collation_name = co.collname"
-            + " WHERE ixs.schamename = ?"
+            + " WHERE ixs.schemaname = ?"
             + "  AND ixs.tablename = ?"
             + " ORDER BY ix.indexrelid, ordinal_position ASC;";
     ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> tableIndexesBuilder =
