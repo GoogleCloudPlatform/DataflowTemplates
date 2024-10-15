@@ -151,7 +151,7 @@ public class BigtableToJsonIT extends TemplateTestBase {
   }
 
   @Test
-  public void testBigtableToJsonDefaultParams() throws IOException {
+  public void testBigtableToJsonDefaultPrefix() throws IOException {
     // Arrange
     String tableId = generateTableId(testName);
     bigtableResourceManager.createTable(tableId, ImmutableList.of("col1"));
@@ -172,6 +172,7 @@ public class BigtableToJsonIT extends TemplateTestBase {
             .addParameter("bigtableProjectId", PROJECT)
             .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
             .addParameter("bigtableTableId", tableId)
+            .addParameter("outputDirectory", getGcsPath("output/"))
             .addParameter("userOption", "FLATTEN")
             .addParameter("bigtableAppProfileId", appProfileId);
 
@@ -184,7 +185,7 @@ public class BigtableToJsonIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    List<Artifact> artifacts = gcsClient.listArtifacts("./", Pattern.compile(".*"));
+    List<Artifact> artifacts = gcsClient.listArtifacts("output/", Pattern.compile(".*"));
     assertThat(artifacts).isNotEmpty();
 
     assertThatArtifacts(artifacts)

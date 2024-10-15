@@ -122,6 +122,7 @@ public class BigtableToVectorEmbeddings {
         description = "Cloud Storage directory for storing JSON files",
         helpText = "The Cloud Storage path where the output JSON files are stored.",
         example = "gs://your-bucket/your-path/")
+    @Default.String("")
     ValueProvider<String> getOutputDirectory();
 
     @SuppressWarnings("unused")
