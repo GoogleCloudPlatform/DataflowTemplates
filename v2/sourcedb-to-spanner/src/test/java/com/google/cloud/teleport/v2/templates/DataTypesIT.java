@@ -21,6 +21,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -87,7 +88,8 @@ public class DataTypesIT extends SourceDbToSpannerITBase {
             spannerResourceManager,
             null,
             null);
-    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
+    PipelineOperator.Result result =
+        pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(35L)));
     assertThatResult(result).isLaunchFinished();
 
     // Validate supported data types.
