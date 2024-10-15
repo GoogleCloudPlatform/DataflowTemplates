@@ -45,6 +45,7 @@ import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -118,11 +119,10 @@ public class BigtableToVectorEmbeddings {
     @TemplateParameter.GcsWriteFolder(
         order = 4,
         groupName = "Target",
-        optional = true,
         description = "Cloud Storage directory for storing JSON files",
         helpText = "The Cloud Storage path where the output JSON files are stored.",
         example = "gs://your-bucket/your-path/")
-    @Default.String("")
+    @Required
     ValueProvider<String> getOutputDirectory();
 
     @SuppressWarnings("unused")
