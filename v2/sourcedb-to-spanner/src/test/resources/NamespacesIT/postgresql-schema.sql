@@ -18,8 +18,8 @@ ON "my-namespace"."albums" ("album_serial_number");
 
 INSERT INTO "my-namespace"."singers" ("singer_id", "first_name")
 VALUES
-  (1, "Singer 1"),
-  (2, "Singer 2");
+  (1, 'Singer 1'),
+  (2, 'Singer 2');
 
 INSERT INTO "my-namespace"."albums" ("singer_id", "album_id", "album_serial_number")
 VALUES
