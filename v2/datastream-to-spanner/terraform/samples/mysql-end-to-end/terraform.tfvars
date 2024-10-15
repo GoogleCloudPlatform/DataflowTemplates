@@ -26,6 +26,12 @@ datastream_params = {
     database = "<YOUR_DATABASE_NAME>"
     tables   = [] # List specific tables to replicate (optional)
   }
+
+  create_firewall_rule      = "<TRUE/FALSE>"               # This will decide if a firewall rule allowing datastream IP ranges will be created or not.
+  firewall_rule_target_tags = "<YOUR_TARGET_NETWORK_TAGS>" # Target network tags on which the firewall rule will be applied.
+  # Specify either firewall_rule_target_tags or firewall_rule_target_ranges to allow targets in the firewall.
+  firewall_rule_target_ranges = "<YOUR_TARGET_IP_RANGES>" # Target IP ranges on which the rule firewall will be applied.
+
   private_connectivity_id = "<YOUR_PRIVATE_CONNECTIVITY_ID>"
   # Only one of `private_connectivity_id` or `private_connectivity` block
   # may exist. Use `private_connectivity_id` to specify an existing
@@ -43,6 +49,7 @@ datastream_params = {
 
 # Dataflow Parameters
 dataflow_params = {
+  skip_dataflow = false
   template_params = {
     shadow_table_prefix                 = "<YOUR_SHADOW_TABLE_PREFIX>" # e.g., "shadow_" (optional)
     create_shadow_tables                = true                         # true or false

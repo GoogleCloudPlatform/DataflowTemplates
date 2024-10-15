@@ -22,15 +22,14 @@ import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConsta
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
-import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSessionConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventToMapConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
@@ -79,6 +78,9 @@ public abstract class ChangeEventTransformerDoFn
   public abstract Schema schema();
 
   @Nullable
+  public abstract ISchemaOverridesParser schemaOverridesParser();
+
+  @Nullable
   public abstract TransformationContext transformationContext();
 
   @Nullable
@@ -125,6 +127,7 @@ public abstract class ChangeEventTransformerDoFn
 
   public static ChangeEventTransformerDoFn create(
       Schema schema,
+      ISchemaOverridesParser schemaOverridesParser,
       TransformationContext transformationContext,
       ShardingContext shardingContext,
       String sourceType,
@@ -134,6 +137,7 @@ public abstract class ChangeEventTransformerDoFn
       SpannerConfig spannerConfig) {
     return new AutoValue_ChangeEventTransformerDoFn(
         schema,
+        schemaOverridesParser,
         transformationContext,
         shardingContext,
         sourceType,
@@ -153,6 +157,7 @@ public abstract class ChangeEventTransformerDoFn
     changeEventSessionConvertor =
         new ChangeEventSessionConvertor(
             schema(),
+            schemaOverridesParser(),
             transformationContext(),
             shardingContext(),
             sourceType(),
@@ -168,10 +173,12 @@ public abstract class ChangeEventTransformerDoFn
     Ddl ddl = c.sideInput(ddlView());
     String migrationShardId = null;
     try {
+
       JsonNode changeEvent = mapper.readTree(msg.getOriginalPayload());
       Map<String, Object> sourceRecord =
           ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
 
+      // TODO: Transformation via session file should be marked deprecated and removed.
       if (!schema().isEmpty()) {
         schema().verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
         changeEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent);
@@ -179,6 +186,11 @@ public abstract class ChangeEventTransformerDoFn
 
       if (changeEvent.get(SHARD_ID_COLUMN_NAME) != null) {
         migrationShardId = changeEvent.get(changeEvent.get(SHARD_ID_COLUMN_NAME).asText()).asText();
+      }
+
+      // Perform mapping as per overrides
+      if (schemaOverridesParser() != null) {
+        changeEvent = changeEventSessionConvertor.transformChangeEventViaOverrides(changeEvent);
       }
 
       changeEvent =

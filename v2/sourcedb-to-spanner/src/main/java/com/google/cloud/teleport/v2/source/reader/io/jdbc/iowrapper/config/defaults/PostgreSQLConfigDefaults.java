@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider.Pos
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.common.collect.ImmutableList;
 import org.apache.beam.sdk.util.FluentBackoff;
+import org.joda.time.Duration;
 
 // TODO(thiagotnunes): Fine-tune the defaults based on benchmarking.
 
@@ -41,11 +42,14 @@ public class PostgreSQLConfigDefaults {
   public static final Long DEFAULT_POSTGRESQL_MAX_CONNECTIONS = 160L;
 
   public static final FluentBackoff DEFAULT_POSTGRESQL_SCHEMA_DISCOVERY_BACKOFF =
-      FluentBackoff.DEFAULT;
+      FluentBackoff.DEFAULT.withMaxCumulativeBackoff(Duration.standardMinutes(5L));
 
   /** Default Initialization Sequence for the JDBC connection. */
   public static final ImmutableList<String> DEFAULT_POSTGRESQL_INIT_SEQ =
-      ImmutableList.of("SET TIME ZONE 'UTC'");
+      ImmutableList.of(
+          // Using an offset of 0 instead of UTC, as it's possible for a customer's database to not
+          // have named timezone information pre-installed.
+          "SET TIME ZONE '+00:00'");
 
   private PostgreSQLConfigDefaults() {}
 }

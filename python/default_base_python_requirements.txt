@@ -1,1 +1,2 @@
 apache-beam[gcp]
+setuptools

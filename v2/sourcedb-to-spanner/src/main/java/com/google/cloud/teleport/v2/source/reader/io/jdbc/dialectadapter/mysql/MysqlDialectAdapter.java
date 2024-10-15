@@ -151,7 +151,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     } catch (SQLException e) {
       logger.error(
           String.format(
-              "Sql exception while discovering table list for datasource=%s", dataSource, e));
+              "Sql exception while discovering table list for datasource=%s cause=%s",
+              dataSource, e));
       schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
     }
@@ -184,7 +185,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
     logger.info(
         String.format(
-            "Discovering tale schema for Datasource: %s, SourceSchemaReference: %s, tables: %s",
+            "Discovering table schema for Datasource: %s, SourceSchemaReference: %s, tables: %s",
             dataSource, sourceSchemaReference, tables));
 
     String discoveryQuery = getSchemaDiscoveryQuery(sourceSchemaReference);
@@ -224,7 +225,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         tableSchemaBuilder.build();
     logger.info(
         String.format(
-            "Discovered tale schema for Datasource: %s, SourceSchemaReference: %s, tables: %s, schema: %s",
+            "Discovered table schema for Datasource: %s, SourceSchemaReference: %s, tables: %s, schema: %s",
             dataSource, sourceSchemaReference, tables, tableSchema));
 
     return tableSchema;

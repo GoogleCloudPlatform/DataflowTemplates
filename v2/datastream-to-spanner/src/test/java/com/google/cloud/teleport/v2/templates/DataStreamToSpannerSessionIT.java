@@ -92,6 +92,7 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
                     put("inputFileFormat", "avro");
                   }
                 },
+                null,
                 null);
       }
     }

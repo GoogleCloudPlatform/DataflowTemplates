@@ -34,12 +34,4 @@ public class ShadowTableRecord {
   public long getRecordSequence() {
     return recordSequence;
   }
-
-  public void setProcessedCommitTimestamp(Timestamp processedCommitTimestamp) {
-    this.processedCommitTimestamp = processedCommitTimestamp;
-  }
-
-  public void setRecordSequence(long recordSequence) {
-    this.recordSequence = recordSequence;
-  }
 }

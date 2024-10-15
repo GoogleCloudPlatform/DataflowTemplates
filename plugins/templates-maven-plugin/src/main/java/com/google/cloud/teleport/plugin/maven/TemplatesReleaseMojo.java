@@ -16,6 +16,11 @@
 package com.google.cloud.teleport.plugin.maven;
 
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.bucketNameOnly;
+import static com.google.cloud.teleport.plugin.DockerfileGenerator.BASE_CONTAINER_IMAGE;
+import static com.google.cloud.teleport.plugin.DockerfileGenerator.BASE_PYTHON_CONTAINER_IMAGE;
+import static com.google.cloud.teleport.plugin.DockerfileGenerator.JAVA_LAUNCHER_ENTRYPOINT;
+import static com.google.cloud.teleport.plugin.DockerfileGenerator.PYTHON_LAUNCHER_ENTRYPOINT;
+import static com.google.cloud.teleport.plugin.DockerfileGenerator.PYTHON_VERSION;
 
 import com.google.api.gax.rpc.InvalidArgumentException;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
@@ -71,17 +76,42 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   protected String gcpTempLocation;
 
   @Parameter(
-      name = "baseContainerImage",
-      defaultValue =
-          "gcr.io/dataflow-templates-base/java11-template-launcher-base-distroless:latest",
+      defaultValue = BASE_CONTAINER_IMAGE,
+      property = "baseContainerImage",
+      readonly = true,
       required = false)
   protected String baseContainerImage;
 
   @Parameter(
-      name = "basePythonContainerImage",
-      defaultValue = "gcr.io/dataflow-templates-base/python311-template-launcher-base:latest",
+      defaultValue = BASE_PYTHON_CONTAINER_IMAGE,
+      property = "basePythonContainerImage",
+      readonly = true,
       required = false)
   protected String basePythonContainerImage;
+
+  @Parameter(
+      defaultValue = PYTHON_LAUNCHER_ENTRYPOINT,
+      property = "pythonTemplateLauncherEntryPoint",
+      readonly = true,
+      required = false)
+  protected String pythonTemplateLauncherEntryPoint;
+
+  @Parameter(
+      defaultValue = JAVA_LAUNCHER_ENTRYPOINT,
+      property = "javaTemplateLauncherEntryPoint",
+      readonly = true,
+      required = false)
+  protected String javaTemplateLauncherEntryPoint;
+
+  @Parameter(
+      defaultValue = PYTHON_VERSION,
+      property = "pythonVersion",
+      readonly = true,
+      required = false)
+  protected String pythonVersion;
+
+  @Parameter(defaultValue = "${beamVersion}", readonly = true, required = false)
+  protected String beamVersion;
 
   @Parameter(defaultValue = "${unifiedWorker}", readonly = true, required = false)
   protected boolean unifiedWorker;
@@ -148,6 +178,10 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                 gcpTempLocation,
                 baseContainerImage,
                 basePythonContainerImage,
+                pythonTemplateLauncherEntryPoint,
+                javaTemplateLauncherEntryPoint,
+                pythonVersion,
+                beamVersion,
                 unifiedWorker);
 
         String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);

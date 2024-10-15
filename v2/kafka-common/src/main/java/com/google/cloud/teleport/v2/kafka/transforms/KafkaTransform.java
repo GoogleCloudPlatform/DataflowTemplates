@@ -20,7 +20,6 @@ import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
@@ -55,7 +54,6 @@ public class KafkaTransform {
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
-      @Nullable Map<String, Object> sslConfig,
       Boolean enableCommitOffsets) {
     KafkaIO.Read<String, String> kafkaRecords =
         KafkaIO.<String, String>read()
@@ -65,11 +63,9 @@ public class KafkaTransform {
                 StringDeserializer.class, NullableCoder.of(StringUtf8Coder.of()))
             .withValueDeserializerAndCoder(
                 StringDeserializer.class, NullableCoder.of(StringUtf8Coder.of()))
-            .withConsumerConfigUpdates(config);
-    if (sslConfig != null) {
-      kafkaRecords = kafkaRecords.withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
-    }
-    if (enableCommitOffsets) {
+            .withConsumerConfigUpdates(config)
+            .withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
+    if (enableCommitOffsets != null && enableCommitOffsets) {
       kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
     }
     return kafkaRecords;
@@ -89,7 +85,7 @@ public class KafkaTransform {
       List<String> topicsList,
       Map<String, Object> config,
       String avroSchema,
-      @Nullable Map<String, Object> sslConfig) {
+      Boolean enableCommitOffsets) {
     KafkaIO.Read<byte[], GenericRecord> kafkaRecords =
         KafkaIO.<byte[], GenericRecord>read()
             .withBootstrapServers(bootstrapServers)
@@ -97,9 +93,10 @@ public class KafkaTransform {
             .withKeyDeserializerAndCoder(
                 ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
             .withValueDeserializer(new KafkaSchemaDeserializerProvider(avroSchema))
-            .withConsumerConfigUpdates(config);
-    if (sslConfig != null) {
-      kafkaRecords = kafkaRecords.withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
+            .withConsumerConfigUpdates(config)
+            .withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
+    if (enableCommitOffsets != null && enableCommitOffsets) {
+      kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
     }
     return kafkaRecords.withoutMetadata();
   }
@@ -128,7 +125,7 @@ public class KafkaTransform {
             .withConsumerConfigUpdates(config)
             .withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
 
-    if (enableCommitOffsets) {
+    if (enableCommitOffsets != null && enableCommitOffsets) {
       kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
     }
     return kafkaRecords;

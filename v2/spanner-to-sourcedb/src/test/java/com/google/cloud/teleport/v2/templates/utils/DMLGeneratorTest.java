@@ -19,7 +19,14 @@ import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.gson.FieldNamingPolicy;
@@ -27,6 +34,8 @@ import com.google.gson.GsonBuilder;
 import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
@@ -674,5 +683,269 @@ public final class DMLGeneratorTest {
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     assertTrue(sql.contains("LastName = BINARY(FROM_BASE64('YmlsX2NvbA=='))"));
+  }
+
+  @Test
+  public void testSpannerTableNotInSchema() {
+    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String tableName = "SomeRandomTableNotInSchema";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SingerId\":\"999\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    assertTrue(sql.isEmpty());
+  }
+
+  @Test
+  public void testSpannerKeyIsNull() {
+    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SingerId\":null}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    assertTrue(
+        sql.contains("INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (NULL,'kk','ll')"));
+  }
+
+  @Test
+  public void testKeyInNewValuesJson() {
+    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\",\"SingerId\":null}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SmthingElse\":null}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+    assertTrue(
+        sql.contains("INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (NULL,'kk','ll')"));
+  }
+
+  @Test
+  public void testSourcePKNotInSpanner() {
+    Schema schema = SessionFileReader.read("src/test/resources/errorSchemaSession.json");
+    String tableName = "customer";
+    String newValuesString = "{\"Does\":\"not\",\"matter\":\"junk\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"Dont\":\"care\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "DELETE";
+
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    assertTrue(sql.isEmpty());
+  }
+
+  @Test
+  public void primaryKeyMismatchSpannerNull() {
+    Schema schema = SessionFileReader.read("src/test/resources/primarykeyMismatchSession.json");
+    String tableName = "Singers";
+    String newValuesString = "{\"SingerId\":\"999\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"FirstName\":null}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+
+    /* The expected sql is:
+    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,NULL,'ll') ON DUPLICATE KEY"
+        + " UPDATE  FirstName = NULL , LastName = 'll'";*/
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    assertTrue(sql.contains("FirstName = NULL"));
+  }
+
+  @Test
+  public void testUnsupportedModType() {
+    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SingerId\":\"999\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "JUNK";
+
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    assertTrue(sql.isEmpty());
+  }
+
+  @Test
+  public void testUpdateModType() {
+    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SingerId\":\"999\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "UPDATE";
+
+    /*The expected sql is:
+    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
+        + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    assertTrue(sql.contains("FirstName = 'kk'"));
+    assertTrue(sql.contains("LastName = 'll'"));
+  }
+
+  @Test
+  public void testSpannerTableIdMismatch() {
+    Schema schema = SessionFileReader.read("src/test/resources/errorSchemaSession.json");
+    String tableName = "Singers";
+    String newValuesString = "{\"Does\":\"not\",\"matter\":\"junk\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"Dont\":\"care\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "DELETE";
+
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    assertTrue(sql.isEmpty());
+  }
+
+  @Test
+  public void testSourcePkNull() {
+    Schema schema = SessionFileReader.read("src/test/resources/errorSchemaSession.json");
+    String tableName = "Persons";
+    String newValuesString = "{\"Does\":\"not\",\"matter\":\"junk\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"Dont\":\"care\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    assertTrue(sql.isEmpty());
+  }
+
+  @Test
+  public void testSourceTableNotInSchema() {
+    Schema schema = getSchemaObject();
+    String tableName = "contacts";
+    String newValuesString = "{\"accountId\": \"Id1\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"Dont\":\"care\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    assertTrue(sql.isEmpty());
+  }
+
+  @Test
+  public void testSpannerTableNotInSchemaObject() {
+    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String tableName = "Singers";
+    schema.getSpSchema().remove(schema.getSpannerToID().get(tableName).getName());
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\",\"SingerId\":null}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SmthingElse\":null}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    assertTrue(sql.isEmpty());
+  }
+
+  @Test
+  public void testSpannerColDefsNull() {
+    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String tableName = "Singers";
+
+    String spannerTableId = schema.getSpannerToID().get(tableName).getName();
+    SpannerTable spannerTable = schema.getSpSchema().get(spannerTableId);
+    spannerTable.getColDefs().remove("c5");
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SingerId\":\"23\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+    DMLGenerator test = new DMLGenerator(); // to add that last bit of code coverage
+    InputRecordProcessor test2 =
+        new InputRecordProcessor(); // to add that last bit of code coverage
+    assertTrue(sql.isEmpty());
+  }
+
+  public static Schema getSchemaObject() {
+    Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
+    Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
+    Map<String, SpannerTable> spSchema = getSampleSpSchema();
+    Map<String, NameAndCols> spannerToID = getSampleSpannerToId();
+    Schema expectedSchema = new Schema(spSchema, syntheticPKeys, srcSchema);
+    expectedSchema.setSpannerToID(spannerToID);
+    return expectedSchema;
+  }
+
+  public static Map<String, SpannerTable> getSampleSpSchema() {
+    Map<String, SpannerTable> spSchema = new HashMap<String, SpannerTable>();
+    Map<String, SpannerColumnDefinition> t1SpColDefs =
+        new HashMap<String, SpannerColumnDefinition>();
+    t1SpColDefs.put(
+        "c1", new SpannerColumnDefinition("accountId", new SpannerColumnType("STRING", false)));
+    t1SpColDefs.put(
+        "c2", new SpannerColumnDefinition("accountName", new SpannerColumnType("STRING", false)));
+    t1SpColDefs.put(
+        "c3",
+        new SpannerColumnDefinition("migration_shard_id", new SpannerColumnType("STRING", false)));
+    t1SpColDefs.put(
+        "c4", new SpannerColumnDefinition("accountNumber", new SpannerColumnType("INT", false)));
+    spSchema.put(
+        "t1",
+        new SpannerTable(
+            "tableName",
+            new String[] {"c1", "c2", "c3", "c4"},
+            t1SpColDefs,
+            new ColumnPK[] {new ColumnPK("c1", 1)},
+            "c3"));
+    return spSchema;
+  }
+
+  public static Map<String, NameAndCols> getSampleSpannerToId() {
+    Map<String, NameAndCols> spannerToId = new HashMap<String, NameAndCols>();
+    Map<String, String> t1ColIds = new HashMap<String, String>();
+    t1ColIds.put("accountId", "c1");
+    t1ColIds.put("accountName", "c2");
+    t1ColIds.put("migration_shard_id", "c3");
+    t1ColIds.put("accountNumber", "c4");
+    spannerToId.put("tableName", new NameAndCols("t1", t1ColIds));
+    return spannerToId;
   }
 }

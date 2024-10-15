@@ -2,6 +2,25 @@ resource "random_pet" "migration_id" {
   count  = length(var.shard_list)
   prefix = "smt"
 }
+
+# Setup network firewalls for datastream if creating a private connection.
+resource "google_compute_firewall" "allow-datastream" {
+  depends_on  = [google_project_service.enabled_apis]
+  count       = var.common_params.datastream_params.create_firewall_rule == true ? 1 : 0
+  project     = var.common_params.host_project != null ? var.common_params.host_project : var.common_params.project
+  name        = "allow-datastream"
+  network     = var.common_params.host_project != null ? "projects/${var.common_params.host_project}/global/networks/${var.common_params.datastream_params.private_connectivity.vpc_name}" : "projects/${var.common_params.project}/global/networks/${var.common_params.datastream_params.private_connectivity.vpc_name}"
+  description = "Allow traffic from private connectivity endpoint of Datastream"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["3306"]
+  }
+  source_ranges      = [var.common_params.datastream_params.private_connectivity.range]
+  target_tags        = var.common_params.datastream_params.firewall_rule_target_tags != null ? var.common_params.datastream_params.firewall_rule_target_tags : []
+  destination_ranges = var.common_params.datastream_params.firewall_rule_target_ranges != null ? var.common_params.datastream_params.firewall_rule_target_ranges : []
+}
+
 # Create a private connectivity configuration if needed.
 resource "google_datastream_private_connection" "datastream_private_connection" {
   depends_on            = [google_project_service.enabled_apis]
@@ -182,7 +201,14 @@ resource "google_datastream_stream" "mysql_to_gcs" {
   location      = var.common_params.region
   display_name  = "${var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id}-${var.shard_list[count.index].datastream_params.stream_id}"
   desired_state = "RUNNING"
-  backfill_all {
+  dynamic "backfill_all" {
+    for_each = var.common_params.datastream_params.enable_backfill ? [1] : []
+    content {}
+  }
+
+  dynamic "backfill_none" {
+    for_each = var.common_params.datastream_params.enable_backfill ? [] : [1]
+    content {}
   }
 
   source_config {
@@ -243,7 +269,7 @@ resource "google_project_iam_member" "live_migration_roles" {
 }
 # Dataflow Flex Template Job (for CDC to Spanner)
 resource "google_dataflow_flex_template_job" "live_migration_job" {
-  count = length(var.shard_list)
+  count = var.common_params.dataflow_params.skip_dataflow ? 0 : length(var.shard_list)
   depends_on = [
     google_project_service.enabled_apis, google_project_iam_member.live_migration_roles
   ] # Launch the template once the stream is created.

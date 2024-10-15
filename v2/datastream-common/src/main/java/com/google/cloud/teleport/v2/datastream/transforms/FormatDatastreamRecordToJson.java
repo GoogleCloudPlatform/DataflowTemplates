@@ -499,14 +499,14 @@ public class FormatDatastreamRecordToJson
         Duration duration = Duration.ofMillis(((Long) element.get(fieldName)));
         jsonObject.put(fieldName, duration.toString());
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMicros) {
-        Long nanoseconds = (Long) element.get(fieldName) * TimeUnit.MICROSECONDS.toNanos(1);
-        Instant timestamp =
-            Instant.ofEpochSecond(
-                TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
-                nanoseconds % TimeUnit.SECONDS.toNanos(1));
+        Long microseconds = (Long) element.get(fieldName);
+        Long millis = TimeUnit.MICROSECONDS.toMillis(microseconds);
+        Instant instant = Instant.ofEpochMilli(millis);
+        // adding the microsecond after it was removed in the millisecond conversion
+        instant = instant.plusNanos(microseconds % 1000 * 1000L);
         jsonObject.put(
             fieldName,
-            timestamp.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+            instant.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMillis) {
         Instant timestamp = Instant.ofEpochMilli(((Long) element.get(fieldName)));
         jsonObject.put(
