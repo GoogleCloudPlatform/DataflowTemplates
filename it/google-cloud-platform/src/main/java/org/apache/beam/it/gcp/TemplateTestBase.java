@@ -308,8 +308,8 @@ public abstract class TemplateTestBase {
 
               if (exec.waitFor() != 0) {
                 throw new RuntimeException(
-                    "Error staging template, check Maven logs for command: {}",
-                    String.join(" ", mavenCmd));
+                    "Error staging template, check Maven logs for command: "
+                        + String.join(" ", mavenCmd));
               }
 
               boolean flex =
