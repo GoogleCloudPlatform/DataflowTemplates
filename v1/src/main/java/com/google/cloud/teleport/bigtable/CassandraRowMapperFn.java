@@ -41,6 +41,8 @@ import org.apache.beam.sdk.schemas.Schema.Field;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.values.Row;
 import org.joda.time.DateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This is an implementation of the Cassandra Mapper interface which allows custom Row Mapping logic
@@ -51,6 +53,8 @@ import org.joda.time.DateTime;
  *     .0/org/apache/beam/sdk/io/cassandra/Mapper.html"> The Cassandra Mapper Interface</a>
  */
 class CassandraRowMapperFn implements Mapper<Row>, Serializable {
+
+  private static final Logger LOG = LoggerFactory.getLogger(CassandraRowMapperFn.class);
 
   private final Session session;
   private final ValueProvider<String> table;
