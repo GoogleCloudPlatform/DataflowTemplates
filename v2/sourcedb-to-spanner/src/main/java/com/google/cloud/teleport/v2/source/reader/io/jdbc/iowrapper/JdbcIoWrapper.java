@@ -258,6 +258,10 @@ public final class JdbcIoWrapper implements IoWrapper {
     ImmutableList<String> discoveredTables =
         schemaDiscovery.discoverTables(dataSource, config.sourceSchemaReference());
     ImmutableList<String> tables = getTablesToMigrate(config.tables(), discoveredTables);
+    if (tables.isEmpty()) {
+      logger.info("source does not contain matching tables: {}", config.tables());
+      return ImmutableList.of();
+    }
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexes =
         schemaDiscovery.discoverTableIndexes(dataSource, config.sourceSchemaReference(), tables);
     ImmutableList.Builder<TableConfig> tableConfigsBuilder = ImmutableList.builder();
