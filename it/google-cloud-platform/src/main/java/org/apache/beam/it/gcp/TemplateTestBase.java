@@ -307,7 +307,9 @@ public abstract class TemplateTestBase {
               IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
 
               if (exec.waitFor() != 0) {
-                throw new RuntimeException("Error staging template, check Maven logs.");
+                throw new RuntimeException(
+                    "Error staging template, check Maven logs for command: {}",
+                    String.join(" ", mavenCmd));
               }
 
               boolean flex =
