@@ -159,6 +159,7 @@ public class PipelineController {
       try {
         String srcTable = schemaMapper.getSourceTableName("", spTable);
         if (!tablesToMigrateSet.contains(srcTable)) {
+          LOG.info("ignoring table as no source maps to this spanner table: {}", spTable);
           continue;
         }
         finalTablesToMigrate.add(spTable);

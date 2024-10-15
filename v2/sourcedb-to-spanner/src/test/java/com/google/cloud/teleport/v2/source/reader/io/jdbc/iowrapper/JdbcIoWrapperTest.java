@@ -260,6 +260,11 @@ public class JdbcIoWrapperTest {
     assertTrue(tablesToMigrate3.contains("p"));
     assertTrue(tablesToMigrate3.contains("q"));
     assertTrue(tablesToMigrate3.contains("r"));
+
+    // To handle scenarios where the configured tables are different from the tables at source
+    ImmutableList<String> tablesToMigrateDiffTables =
+        JdbcIoWrapper.getTablesToMigrate(ImmutableList.of("a"), ImmutableList.of("x", "y"));
+    assertEquals(0, tablesToMigrateDiffTables.size());
   }
 
   @Test
