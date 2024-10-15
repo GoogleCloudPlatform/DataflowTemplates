@@ -51,8 +51,8 @@ public class NamespaceIT extends SourceDbToSpannerITBase {
   public static PostgresResourceManager postgresSQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final String POSTGRESQL_DDL_RESOURCE = "NamespaceIT/postgresql-schema.sql";
-  private static final String SPANNER_DDL_RESOURCE = "NamespaceIT/spanner-schema.sql";
+  private static final String POSTGRESQL_DDL_RESOURCE = "NamespacesIT/postgresql-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE = "NamespacesIT/spanner-schema.sql";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class. \
