@@ -24,6 +24,8 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
+import com.google.cloud.teleport.util.DualInputNestedValueProvider;
+import com.google.cloud.teleport.util.DualInputNestedValueProvider.TranslatorInput;
 import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -32,7 +34,9 @@ import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -228,7 +232,7 @@ public class BigtableToJson {
             "Transform to JSON",
             MapElements.via(
                 new BigtableToJsonFn(userOption.equals("FLATTEN"), options.getColumnsAliases())))
-        .apply("Write to storage", TextIO.write().to(outputFilePathWithPrefix).withSuffix(".json"));
+        .apply("Write to storage", TextIO.write().to(filePathPrefix).withSuffix(".json"));
 
     return pipeline.run();
   }

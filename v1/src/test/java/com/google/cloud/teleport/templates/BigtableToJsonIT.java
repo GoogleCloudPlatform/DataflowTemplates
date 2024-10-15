@@ -150,7 +150,6 @@ public class BigtableToJsonIT extends TemplateTestBase {
         .hasRecordsWithStrings(ImmutableList.of("new-value1", "new-value2", "new-value3"));
   }
 
-  
   @Test
   public void testBigtableToJsonDefaultParams() throws IOException {
     // Arrange
