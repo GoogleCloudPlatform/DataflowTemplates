@@ -25,4 +25,4 @@ INSERT INTO "my-namespace"."albums" ("singer_id", "album_id", "album_serial_numb
 VALUES
   (1, 1, 10),
   (1, 2, 11),
-  (2, 3, 20);
+  (2, 2, 20);
