@@ -241,6 +241,51 @@ public class JdbcIoWrapperTest {
   }
 
   @Test
+  public void testJdbcIoWrapperDifferentTables() throws RetriableSchemaDiscoveryException {
+    // Test to check what happens if config passes tables not present in source
+    SourceSchemaReference testSourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
+    String testCol = "ID";
+    SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
+    when(mockDialectAdapter.discoverTables(any(), any())).thenReturn(ImmutableList.of("testTable"));
+    when(mockDialectAdapter.discoverTableIndexes(any(), any(), any()))
+        .thenReturn(
+            ImmutableMap.of(
+                "testTable",
+                ImmutableList.of(
+                    SourceColumnIndexInfo.builder()
+                        .setIndexType(IndexType.NUMERIC)
+                        .setIndexName("PRIMARY")
+                        .setIsPrimary(true)
+                        .setCardinality(42L)
+                        .setColumnName(testCol)
+                        .setIsUnique(true)
+                        .setOrdinalPosition(1)
+                        .build())));
+    when(mockDialectAdapter.discoverTableSchema(any(), any(), any()))
+        .thenReturn(ImmutableMap.of("testTable", ImmutableMap.of(testCol, testColType)));
+    JdbcIoWrapper jdbcIoWrapper =
+        JdbcIoWrapper.of(
+            JdbcIOWrapperConfig.builderWithMySqlDefaults()
+                .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+                .setSourceSchemaReference(testSourceSchemaReference)
+                .setShardID("test")
+                .setDbAuth(
+                    LocalCredentialsProvider.builder()
+                        .setUserName("testUser")
+                        .setPassword("testPassword")
+                        .build())
+                .setJdbcDriverJars("")
+                .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+                .setDialectAdapter(mockDialectAdapter)
+                .setTables(ImmutableList.of("spanner_table"))
+                .build());
+    ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> tableReaders =
+        jdbcIoWrapper.getTableReaders();
+    assertThat(tableReaders.size()).isEqualTo(0);
+  }
+
+  @Test
   public void testGetTablesToMigrate() {
     ImmutableList<String> tablesToMigrate =
         JdbcIoWrapper.getTablesToMigrate(ImmutableList.of("a", "b"), ImmutableList.of("a"));
