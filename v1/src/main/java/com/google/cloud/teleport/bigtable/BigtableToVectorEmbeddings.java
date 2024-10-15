@@ -281,19 +281,18 @@ public class BigtableToVectorEmbeddings {
     }
 
     // Concatenating cloud storage folder with file prefix to get complete path
-    ValueProvider<String> outputFilePrefix = options.getFilenamePrefix();
-
-    ValueProvider<String> outputFilePathWithPrefix =
-        ValueProvider.NestedValueProvider.of(
+    ValueProvider<String> filePathPrefix =
+        DualInputNestedValueProvider.of(
             options.getOutputDirectory(),
-            (SerializableFunction<String, String>)
-                folder -> {
-                  if (!folder.endsWith("/")) {
-                    // Appending the slash if not provided by user
-                    folder = folder + "/";
-                  }
-                  return folder + outputFilePrefix.get();
-                });
+            options.getFilenamePrefix(),
+            new SerializableFunction<TranslatorInput<String, String>, String>() {
+              @Override
+              public String apply(TranslatorInput<String, String> input) {
+                return FileSystems.matchNewResource(input.getX(), true)
+                    .resolve(input.getY(), StandardResolveOptions.RESOLVE_FILE)
+                    .toString();
+              }
+            });
     pipeline
         .apply("Read from Bigtable", read)
         .apply(
