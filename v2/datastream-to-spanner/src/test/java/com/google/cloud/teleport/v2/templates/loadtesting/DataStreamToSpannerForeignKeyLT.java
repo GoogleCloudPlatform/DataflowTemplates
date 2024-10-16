@@ -32,7 +32,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerForeignKeyLT extends DataStreamToSpannerLTBase {
   @Test
-  public void backfill100GbForeignKeyTableLT()
+  public void backfill100GbForeignKeyTable()
       throws IOException, ParseException, InterruptedException {
     setUpResourceManagers("DataStreamToSpanner100GbLT/spanner-schema-foreign-key.sql");
     HashMap<String, Integer> tables100GB = new HashMap<>();

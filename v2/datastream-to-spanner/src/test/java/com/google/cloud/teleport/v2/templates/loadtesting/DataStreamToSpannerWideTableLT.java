@@ -32,7 +32,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerWideTableLT extends DataStreamToSpannerLTBase {
   @Test
-  public void backfill100GbWideTableLT() throws IOException, ParseException, InterruptedException {
+  public void backfill100GbWideTable() throws IOException, ParseException, InterruptedException {
     setUpResourceManagers("DataStreamToSpanner100GbLT/spanner-schema-wide-table.sql");
     HashMap<String, Integer> tables100GB = new HashMap<>();
     tables100GB.put("person", 28600000);
