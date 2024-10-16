@@ -30,7 +30,7 @@ import org.junit.runners.JUnit4;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerForeignKey extends DataStreamToSpannerLTBase {
+public class DataStreamToSpannerForeignKeyLT extends DataStreamToSpannerLTBase {
   @Test
   public void backfill100GbForeignKeyTableLT()
       throws IOException, ParseException, InterruptedException {
