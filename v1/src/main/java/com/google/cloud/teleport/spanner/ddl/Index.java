@@ -122,7 +122,7 @@ public abstract class Index implements Serializable {
 
   private void prettyPrintGsql(Appendable appendable) throws IOException {
     appendable.append("CREATE");
-    if (type() != null && type().equals("SEARCH") || type().equals("VECTOR")) {
+    if (type() != null && (type().equals("SEARCH") || type().equals("VECTOR"))) {
       appendable.append(" " + type());
     } else if (unique()) {
       appendable.append(" UNIQUE");
