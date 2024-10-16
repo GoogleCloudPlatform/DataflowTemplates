@@ -1,11 +1,11 @@
 CREATE TABLE bigint_table (
   id INT64 NOT NULL,
-  bigint_col NUMERIC,
+  bigint_col int64,
 ) PRIMARY KEY(id);
 
 CREATE TABLE bigint_unsigned_table (
   id INT64 NOT NULL,
-  bigint_unsigned_col INT64,
+  bigint_unsigned_col NUMERIC,
 ) PRIMARY KEY(id);
 
 CREATE TABLE binary_table (
