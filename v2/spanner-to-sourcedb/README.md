@@ -330,7 +330,7 @@ To check if there are worker restarts - in the Dataflow UI, navigate to the Job 
 
 1. Count the number of rows in Spanner and source databae - this may take long, but is it the only definitive way. If the reverse replication is still going on - the counts would not match due to replication lag - and an acceptable RPO should be considered to cut-back.
 
-2. If the count of records is not possible - check the DataWatermark of the Write to SourceDb stage. This gives a rough estimate of the lag between Spanner and Source. Consider taking some buffer - say 5 minutes and add this to the lag. If this lag is acceptable - perform the cutback else wait for the pipeline to catchup. In addition to the DataWatermark, also check the DataFreshness and the mean replication lag for the shards, and once it is under acceptable RPO, cut-back can be done. Querying these metrics is listed in the [metrics](#metrics-for-dataflow-job) section. 
+2. If the count of records is not possible - check the DataWatermark of the Write to SourceDb stage. This gives a rough estimate of the lag between Spanner and Source. Consider taking some buffer - say 5 minutes and add this to the lag. If this lag is acceptable - perform the cutback else wait for the pipeline to catchup. In addition to the DataWatermark, also check the DataFreshness and the mean replication lag for the shards, and once it is under acceptable RPO, cut-back can be done. Querying these metrics is listed in the [metrics](#metrics-for-dataflow-job) section.
 Also, [alerts](https://cloud.google.com/monitoring/alerts) can be set up when the replciation lag, DataFreshness or DataWatermarks cross a threshold to take debugging actions.
 
 ### What to do in case of pause and resume scenarios
