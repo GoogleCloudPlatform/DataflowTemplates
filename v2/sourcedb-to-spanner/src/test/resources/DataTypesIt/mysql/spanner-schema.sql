@@ -1,6 +1,6 @@
 CREATE TABLE bigint_table (
   id INT64 NOT NULL,
-  bigint_col INT64,
+  bigint_col NUMERIC,
 ) PRIMARY KEY(id);
 
 CREATE TABLE bigint_table (
@@ -75,7 +75,7 @@ CREATE TABLE int_table (
 
 CREATE TABLE `integer_unsigned_table` (
   id INT64 NOT NULL,
-  int_col INT64,
+  integer_unsigned_col INT64,
 ) PRIMARY KEY(id);
 
 CREATE TABLE json_table (
