@@ -535,7 +535,8 @@ public final class SpannerResourceManagerTest {
   @Test
   public void testCollectMetricsThrowsExceptionWhenMonitoringClientIsNotInitialized() {
     assertThrows(
-        SpannerResourceManagerException.class, () -> testManager.collectSpannerMetrics(new HashMap<>()));
+        SpannerResourceManagerException.class,
+        () -> testManager.collectSpannerMetrics(new HashMap<>()));
   }
 
   @Test

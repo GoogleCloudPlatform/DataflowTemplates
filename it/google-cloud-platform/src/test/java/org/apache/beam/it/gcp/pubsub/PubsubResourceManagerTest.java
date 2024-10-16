@@ -303,7 +303,8 @@ public final class PubsubResourceManagerTest {
   @Test
   public void testCollectMetricsThrowsExceptionWhenMonitoringClientIsNotInitialized() {
     assertThrows(
-        PubsubResourceManagerException.class, () -> testManager.collectPubSubMetrics(new HashMap<>()));
+        PubsubResourceManagerException.class,
+        () -> testManager.collectPubSubMetrics(new HashMap<>()));
   }
 
   @Test
