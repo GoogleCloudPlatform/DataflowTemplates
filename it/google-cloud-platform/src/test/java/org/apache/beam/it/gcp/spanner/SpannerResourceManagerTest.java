@@ -533,13 +533,13 @@ public final class SpannerResourceManagerTest {
   }
 
   @Test
-  public void testGetMetricsThrowsExceptionWhenMonitoringClientIsNotInitialized() {
+  public void testCollectMetricsThrowsExceptionWhenMonitoringClientIsNotInitialized() {
     assertThrows(
-        SpannerResourceManagerException.class, () -> testManager.getMetrics(new HashMap<>()));
+        SpannerResourceManagerException.class, () -> testManager.collectSpannerMetrics(new HashMap<>()));
   }
 
   @Test
-  public void testGetMetricsShouldThrowExceptionWhenDatabaseIsNotCreated() {
+  public void testCollectMetricsShouldThrowExceptionWhenDatabaseIsNotCreated() {
     when(monitoringClient.getAggregatedMetric(any(), any(), any(), any())).thenReturn(1.1);
     SpannerResourceManager testManagerWithMonitoringClient =
         new SpannerResourceManager(
@@ -548,11 +548,11 @@ public final class SpannerResourceManagerTest {
             spanner);
     assertThrows(
         IllegalStateException.class,
-        () -> testManagerWithMonitoringClient.getMetrics(new HashMap<>()));
+        () -> testManagerWithMonitoringClient.collectSpannerMetrics(new HashMap<>()));
   }
 
   @Test
-  public void testGetMetricsShouldWorkWhenMonitoringClientAndDatabaseIsInitialized()
+  public void testCollectMetricsShouldWorkWhenMonitoringClientAndDatabaseIsInitialized()
       throws ExecutionException, InterruptedException {
     when(monitoringClient.getAggregatedMetric(any(), any(), any(), any())).thenReturn(1.1);
     SpannerResourceManager testManagerWithMonitoringClient =
@@ -565,7 +565,7 @@ public final class SpannerResourceManagerTest {
     testManagerWithMonitoringClient.executeDdlStatement("");
 
     Map<String, Double> metrics = new HashMap<>();
-    testManagerWithMonitoringClient.getMetrics(metrics);
+    testManagerWithMonitoringClient.collectSpannerMetrics(metrics);
 
     assertEquals(2, metrics.size());
     assertEquals(1.1, metrics.get("Spanner_AverageCpuUtilization"), 0.0);

@@ -192,8 +192,8 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
   }
 
   public void getResourceManagerMetrics(Map<String, Double> metrics) {
-    pubsubResourceManager.getMetrics(metrics);
-    spannerResourceManager.getMetrics(metrics);
+    pubsubResourceManager.collectPubSubMetrics(metrics);
+    spannerResourceManager.collectSpannerMetrics(metrics);
   }
 
   /**

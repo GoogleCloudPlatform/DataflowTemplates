@@ -301,13 +301,13 @@ public final class PubsubResourceManagerTest {
   }
 
   @Test
-  public void testGetMetricsThrowsExceptionWhenMonitoringClientIsNotInitialized() {
+  public void testCollectMetricsThrowsExceptionWhenMonitoringClientIsNotInitialized() {
     assertThrows(
-        PubsubResourceManagerException.class, () -> testManager.getMetrics(new HashMap<>()));
+        PubsubResourceManagerException.class, () -> testManager.collectPubSubMetrics(new HashMap<>()));
   }
 
   @Test
-  public void testGetMetricsShouldWorkWhenMonitoringClientIsInitialized() {
+  public void testCollectMetricsShouldWorkWhenMonitoringClientIsInitialized() {
     PubsubResourceManager testManagerWithMonitoringClient =
         new PubsubResourceManager(
             TEST_ID,
@@ -342,7 +342,7 @@ public final class PubsubResourceManagerTest {
     testManagerWithMonitoringClient.createSubscription(createdTopic1, "topic1-sub2");
 
     Map<String, Double> metrics = new HashMap<>();
-    testManagerWithMonitoringClient.getMetrics(metrics);
+    testManagerWithMonitoringClient.collectPubSubMetrics(metrics);
 
     assertEquals(1, metrics.size());
     assertEquals(2.0, metrics.get("Pubsub_AverageOldestUnackedMessageAge"), 0.0);
@@ -356,7 +356,7 @@ public final class PubsubResourceManagerTest {
   }
 
   @Test
-  public void testGetMetricsShouldWorkEvenIfNoSubscriptions() {
+  public void testCollectMetricsShouldWorkEvenIfNoSubscriptions() {
     PubsubResourceManager testManagerWithMonitoringClient =
         new PubsubResourceManager(
             TEST_ID,
@@ -368,7 +368,7 @@ public final class PubsubResourceManagerTest {
             monitoringClient);
 
     Map<String, Double> metrics = new HashMap<>();
-    testManagerWithMonitoringClient.getMetrics(metrics);
+    testManagerWithMonitoringClient.collectPubSubMetrics(metrics);
 
     assertEquals(1, metrics.size());
     assertEquals(0.0, metrics.get("Pubsub_AverageOldestUnackedMessageAge"), 0.0);

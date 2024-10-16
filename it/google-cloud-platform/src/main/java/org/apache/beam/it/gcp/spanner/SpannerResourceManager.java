@@ -486,7 +486,7 @@ public final class SpannerResourceManager implements ResourceManager {
    *
    * @param metrics The spanner metrics will be populated in this map
    */
-  public void getMetrics(@NonNull Map<String, Double> metrics) {
+  public void collectSpannerMetrics(@NonNull Map<String, Double> metrics) {
     hasMonitoringClient();
     checkHasInstanceAndDatabase();
     metrics.put(
