@@ -204,7 +204,8 @@ public class GenericRecordTypeConvertor {
       // Handle logical/record types.
       fieldValue = handleNonPrimitiveAvroTypes(fieldValue, fieldSchema, fieldName);
       // Standardising the types for custom jar input.
-      if (fieldSchema.getLogicalType() != null || fieldSchema.getType() == Schema.Type.RECORD) {
+      if (fieldSchema.getProp(LOGICAL_TYPE) != null
+          || fieldSchema.getType() == Schema.Type.RECORD) {
         map.put(fieldName, fieldValue);
         continue;
       }
