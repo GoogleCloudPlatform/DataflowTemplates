@@ -441,6 +441,22 @@
                   <name>beamMavenRepo</name>
                   <value>${beam-maven-repo}</value>
                 </property>
+                <property>
+                  <name>mySqlVersion</name>
+                  <value>${mysql-connector-java.version}</value>
+                </property>
+                <property>
+                  <name>postgresVersion</name>
+                  <value>${postgresql.version}</value>
+                </property>
+                <property>
+                  <name>oracleVersion</name>
+                  <value>${ojdbc8.version}</value>
+                </property>
+                <property>
+                  <name>msSqlVersion</name>
+                  <value>${mssql-jdbc.version}</value>
+                </property>
               </systemProperties>
               <includes>
                 <include>**/*IT.java</include>
