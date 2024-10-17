@@ -24,8 +24,10 @@ class NoAuthConnectionParams extends ConnectionParams {
 
   @JsonCreator
   public NoAuthConnectionParams(
-      @JsonProperty("server_url") String serverUrl, @JsonProperty("database") String database) {
-    super(serverUrl, database);
+      @JsonProperty("server_url") String serverUrl,
+      @JsonProperty("database") String database,
+      @JsonProperty("custom_ca_certificate_path") String customCertificatePath) {
+    super(serverUrl, database, customCertificatePath);
   }
 
   @Override

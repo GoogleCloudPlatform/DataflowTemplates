@@ -28,8 +28,9 @@ class BearerConnectionParams extends ConnectionParams {
   public BearerConnectionParams(
       @JsonProperty("server_url") String serverUrl,
       @JsonProperty("database") String database,
+      @JsonProperty("custom_ca_certificate_path") String customCertificatePath,
       @JsonProperty("token") String token) {
-    super(serverUrl, database);
+    super(serverUrl, database, customCertificatePath);
     this.token = token;
   }
 
