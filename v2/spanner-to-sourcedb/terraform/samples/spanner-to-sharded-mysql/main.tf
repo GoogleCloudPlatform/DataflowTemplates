@@ -3,12 +3,13 @@ resource "random_pet" "migration_id" {
 }
 
 locals {
-  migration_id = var.common_params.migration_id != null ? var.common_params.migration_id : random_pet.migration_id.id
+  migration_id  = var.common_params.migration_id != null ? var.common_params.migration_id : random_pet.migration_id.id
   change_stream = replace(local.migration_id, "-", "_")
 }
 
 # Setup network firewalls rules to enable Dataflow access to source.
 resource "google_compute_firewall" "allow_dataflow_to_source" {
+  count       = var.common_params.target_tags != null ? 1 : 0
   depends_on  = [google_project_service.enabled_apis]
   project     = var.common_params.host_project != null ? var.common_params.host_project : var.common_params.project
   name        = "allow-dataflow-to-source"
@@ -20,7 +21,7 @@ resource "google_compute_firewall" "allow_dataflow_to_source" {
     ports    = ["3306"]
   }
   source_tags = ["dataflow"]
-  target_tags = ["databases"]
+  target_tags = var.common_params.target_tags
 }
 
 # Setup network firewalls rules to enable Dataflow VMs to talk to each other
@@ -67,7 +68,7 @@ resource "google_storage_bucket_object" "source_shards_file_object" {
   name         = "source_shards.json"
   content_type = "application/json"
   bucket       = google_storage_bucket.reverse_replication_bucket.id
-  content = jsonencode(var.shard_list)
+  content      = jsonencode(var.shard_list)
 }
 
 # Pub/Sub topic for reverse replication DLQ
@@ -123,8 +124,8 @@ resource "google_spanner_database" "reverse_replication_metadata_database" {
 resource "null_resource" "create_spanner_change_stream" {
   count = var.dataflow_params.template_params.change_stream_name == null ? 1 : 0
   triggers = {
-    database_id = var.dataflow_params.template_params.database_id
-    instance_id = var.dataflow_params.template_params.instance_id
+    database_id   = var.dataflow_params.template_params.database_id
+    instance_id   = var.dataflow_params.template_params.instance_id
     change_stream = local.change_stream
   }
   provisioner "local-exec" {
@@ -139,7 +140,7 @@ gcloud spanner databases ddl update ${self.triggers.database_id} \
 EOT
   }
   provisioner "local-exec" {
-    when = destroy
+    when    = destroy
     command = <<EOT
 gcloud spanner databases ddl update ${self.triggers.database_id} \
   --instance=${self.triggers.instance_id} \
@@ -171,29 +172,29 @@ resource "google_dataflow_flex_template_job" "reverse_replication_job" {
 
   # Parameters from Dataflow Template
   parameters = {
-    changeStreamName                 = var.dataflow_params.template_params.change_stream_name != null ? var.dataflow_params.template_params.change_stream_name : local.change_stream
-    instanceId                = var.dataflow_params.template_params.instance_id
-    databaseId                 = var.dataflow_params.template_params.database_id
-    spannerProjectId                      = var.dataflow_params.template_params.spanner_project_id != null ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
-    metadataInstance                      = var.dataflow_params.template_params.metadata_instance_id != null ? var.dataflow_params.template_params.metadata_instance_id : var.dataflow_params.template_params.instance_id
-    metadataDatabase                       = var.dataflow_params.template_params.metadata_database_id != null ? var.dataflow_params.template_params.metadata_database_id : local.change_stream
-    sourceShardsFilePath                     = "gs://${google_storage_bucket_object.source_shards_file_object.bucket}/${google_storage_bucket_object.source_shards_file_object.name}"
+    changeStreamName         = var.dataflow_params.template_params.change_stream_name != null ? var.dataflow_params.template_params.change_stream_name : local.change_stream
+    instanceId               = var.dataflow_params.template_params.instance_id
+    databaseId               = var.dataflow_params.template_params.database_id
+    spannerProjectId         = var.dataflow_params.template_params.spanner_project_id != null ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
+    metadataInstance         = var.dataflow_params.template_params.metadata_instance_id != null ? var.dataflow_params.template_params.metadata_instance_id : var.dataflow_params.template_params.instance_id
+    metadataDatabase         = var.dataflow_params.template_params.metadata_database_id != null ? var.dataflow_params.template_params.metadata_database_id : local.change_stream
+    sourceShardsFilePath     = "gs://${google_storage_bucket_object.source_shards_file_object.bucket}/${google_storage_bucket_object.source_shards_file_object.name}"
     startTimestamp           = var.dataflow_params.template_params.start_timestamp
-    endTimestamp                      = var.dataflow_params.template_params.end_timestamp
-    shadowTablePrefix               = var.dataflow_params.template_params.shadow_table_prefix
-    sessionFilePath        = "gs://${google_storage_bucket_object.session_file_object.bucket}/${google_storage_bucket_object.session_file_object.name}"
-    filtrationMode                = var.dataflow_params.template_params.filtration_mode
-    shardingCustomJarPath             = var.dataflow_params.template_params.sharding_custom_jar_path
-    shardingCustomClassName        = var.dataflow_params.template_params.sharding_custom_class_name
-    shardingCustomParameters                 = var.dataflow_params.template_params.sharding_custom_parameters
-    sourceDbTimezoneOffset                = var.dataflow_params.template_params.source_db_timezone_offset
-    dlqGcsPubSubSubscription               = google_pubsub_subscription.dlq_pubsub_subscription.id
-    skipDirectoryName            = var.dataflow_params.template_params.skip_directory_name
-    maxShardConnections               = var.dataflow_params.template_params.max_shard_connections
-    deadLetterQueueDirectory                         = "${google_storage_bucket.reverse_replication_bucket.url}/dlq"
-    dlqMaxRetryCount   = var.dataflow_params.template_params.dlq_max_retry_count
-    runMode = var.dataflow_params.template_params.run_mode
-    dlqRetryMinutes                 = var.dataflow_params.template_params.dlq_retry_minutes
+    endTimestamp             = var.dataflow_params.template_params.end_timestamp
+    shadowTablePrefix        = var.dataflow_params.template_params.shadow_table_prefix
+    sessionFilePath          = "gs://${google_storage_bucket_object.session_file_object.bucket}/${google_storage_bucket_object.session_file_object.name}"
+    filtrationMode           = var.dataflow_params.template_params.filtration_mode
+    shardingCustomJarPath    = var.dataflow_params.template_params.sharding_custom_jar_path
+    shardingCustomClassName  = var.dataflow_params.template_params.sharding_custom_class_name
+    shardingCustomParameters = var.dataflow_params.template_params.sharding_custom_parameters
+    sourceDbTimezoneOffset   = var.dataflow_params.template_params.source_db_timezone_offset
+    dlqGcsPubSubSubscription = google_pubsub_subscription.dlq_pubsub_subscription.id
+    skipDirectoryName        = var.dataflow_params.template_params.skip_directory_name
+    maxShardConnections      = var.dataflow_params.template_params.max_shard_connections
+    deadLetterQueueDirectory = "${google_storage_bucket.reverse_replication_bucket.url}/dlq"
+    dlqMaxRetryCount         = var.dataflow_params.template_params.dlq_max_retry_count
+    runMode                  = var.dataflow_params.template_params.run_mode
+    dlqRetryMinutes          = var.dataflow_params.template_params.dlq_retry_minutes
   }
 
   # Additional Job Configurations

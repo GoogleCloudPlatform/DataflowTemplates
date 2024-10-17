@@ -1,18 +1,19 @@
 variable "common_params" {
   description = "Parameters that are common to multiple resources"
-  type        = object({
+  type = object({
     project                         = string
     host_project                    = optional(string)
     region                          = string
     migration_id                    = optional(string)
     replication_bucket              = optional(string, "rr-bucket")
     add_policies_to_service_account = optional(bool, true)
+    target_tags                     = optional(list(string))
   })
 }
 
 variable "dataflow_params" {
   description = "Parameters for the Dataflow job. Please refer to https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/spanner-to-sourcedb/README.md for the description of the parameters below."
-  type        = object({
+  type = object({
     template_params = object({
       change_stream_name           = optional(string)
       instance_id                  = string
@@ -66,13 +67,13 @@ variable "dataflow_params" {
 
 variable "shard_list" {
   description = "Details of the source shards to do the reverse replication to"
-  type        = list(object({
+  type = list(object({
     logicalShardId   = string
-    host               = string
-    user               = string
+    host             = string
+    user             = string
     secretManagerUri = optional(string)
-    password           = optional(string)
-    port               = string
-    dbName            = string
+    password         = optional(string)
+    port             = string
+    dbName           = string
   }))
 }
