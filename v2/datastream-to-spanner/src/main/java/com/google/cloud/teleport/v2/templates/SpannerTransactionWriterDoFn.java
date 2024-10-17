@@ -37,8 +37,10 @@ import com.google.cloud.teleport.v2.templates.utils.WatchdogRunnable;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -90,12 +92,15 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
   private transient SpannerAccessor spannerAccessor;
 
+  // Number of events successfully written to Spanner.
   private final Counter successfulEvents =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Successful events");
 
+  // Number of events that have a schema incompatible with the spanner schema.
   private final Counter invalidEvents =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Invalid events");
 
+  // Number of events skipped from being written to spanner because the events were stale.
   private final Counter skippedEvents =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Skipped events");
 
@@ -108,19 +113,29 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private final Counter retryableErrors =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Retryable errors");
 
+  // Number of events that were successfully read from dlq/retry and written to spanner.
   private final Counter successfulEventRetries =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Successful event retries");
 
+  // Distribution of retries done for any event.
   private final Distribution eventRetries =
       Metrics.distribution(SpannerTransactionWriterDoFn.class, "Event retries");
 
+  // Time taken from events being read by Datastream to being written to Cloud Spanner. Time
+  // duration between datastream_read_timestamp and write_timestamp
   private final Distribution systemLatency =
       Metrics.distribution(SpannerTransactionWriterDoFn.class, "Replication lag system latency");
+
+  // Time taken for events to get processed by the Dataflow pipeline. Time duration between
+  // dataflow_read_timestamp and write_timestamp.
   private final Distribution dataflowLatency =
       Metrics.distribution(SpannerTransactionWriterDoFn.class, "Replication lag dataflow latency");
+
+  // Time duration between source_timestamp and write_timestamp.
   private final Distribution totalLatency =
       Metrics.distribution(SpannerTransactionWriterDoFn.class, "Replication lag total latency");
 
+  // Latency of creating and writing mutations from change events to spanner.
   private final Distribution spannerWriterLatencyMs =
       Metrics.distribution(SpannerTransactionWriterDoFn.class, "spanner_writer_latency_ms");
 
@@ -199,7 +214,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     FailsafeElement<String, String> msg = c.element();
     Ddl ddl = c.sideInput(ddlView);
     Instant startTimestamp = Instant.now();
-    String migrationShardId = null;
+    AtomicReference<String> migrationShardId = null;
     boolean isRetryRecord = false;
     /*
      * Try Catch block to capture any exceptions that might occur while processing
@@ -209,9 +224,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     try {
 
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
-      if (changeEvent.get(SHARD_ID_COLUMN_NAME) != null) {
-        migrationShardId = changeEvent.get(changeEvent.get(SHARD_ID_COLUMN_NAME).asText()).asText();
-      }
+      Optional.ofNullable(changeEvent.get(SHARD_ID_COLUMN_NAME))
+          .ifPresent(
+              shardIdNode -> migrationShardId.set(changeEvent.get(shardIdNode.asText()).asText()));
       JsonNode retryCount = changeEvent.get("_metadata_retry_count");
 
       if (retryCount != null) {
@@ -228,7 +243,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
               changeEventContext);
 
       // Start transaction
-      String finalMigrationShardId = migrationShardId;
+      String finalMigrationShardId = migrationShardId.get();
       spannerAccessor
           .getDatabaseClient()
           .readWriteTransaction(
@@ -267,15 +282,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                   });
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
       c.output(timestamp);
-      Instant endTimestamp = Instant.now();
-      spannerWriterLatencyMs.update(new Duration(startTimestamp, endTimestamp).getMillis());
-      long currentTimestampInSeconds = System.currentTimeMillis() / 1000L;
-      long sourceTimestamp = changeEvent.get("_metadata_timestamp").asLong();
-      long datastreamTimestamp = changeEvent.get("_metadata_read_timestamp").asLong();
-      long dataflowTimestamp = changeEvent.get("_metadata_dataflow_timestamp").asLong();
-      totalLatency.update(currentTimestampInSeconds - sourceTimestamp);
-      systemLatency.update(currentTimestampInSeconds - datastreamTimestamp);
-      dataflowLatency.update(currentTimestampInSeconds - dataflowTimestamp);
+      updateLatencyMetrics(changeEvent, startTimestamp);
 
       // increment the successful retry count if this was retry attempt
       if (isRegularRunMode && isRetryRecord) {
@@ -291,14 +298,14 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       // Errors that result from invalid change events.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       invalidEvents.inc();
-      if (migrationShardId != null) {
+      if (migrationShardId.get() != null) {
         Metrics.counter(SpannerTransactionWriterDoFn.class, migrationShardId + " : Invalid events")
             .inc();
       }
     } catch (ChangeEventConvertorException e) {
       // Errors that result during Event conversions are not retryable.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
-      if (migrationShardId != null) {
+      if (migrationShardId.get() != null) {
         Metrics.counter(
                 SpannerTransactionWriterDoFn.class, migrationShardId + " : Permanent errors")
             .inc();
@@ -325,12 +332,24 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       // Any other errors are considered severe and not retryable.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       failedEvents.inc();
-      if (migrationShardId != null) {
+      if (migrationShardId.get() != null) {
         Metrics.counter(
                 SpannerTransactionWriterDoFn.class, migrationShardId + " : Permanent errors")
             .inc();
       }
     }
+  }
+
+  void updateLatencyMetrics(JsonNode changeEvent, Instant startTimestamp) {
+    Instant endTimestamp = Instant.now();
+    spannerWriterLatencyMs.update(new Duration(startTimestamp, endTimestamp).getMillis());
+    long currentTimestampInSeconds = System.currentTimeMillis() / 1000L;
+    long sourceTimestamp = changeEvent.get("_metadata_timestamp").asLong();
+    long datastreamTimestamp = changeEvent.get("_metadata_read_timestamp").asLong();
+    long dataflowTimestamp = changeEvent.get("_metadata_dataflow_timestamp").asLong();
+    totalLatency.update(currentTimestampInSeconds - sourceTimestamp);
+    systemLatency.update(currentTimestampInSeconds - datastreamTimestamp);
+    dataflowLatency.update(currentTimestampInSeconds - dataflowTimestamp);
   }
 
   void outputWithErrorTag(

@@ -118,10 +118,12 @@ public abstract class ChangeEventTransformerDoFn
   private final Counter customTransformationException =
       Metrics.counter(ChangeEventTransformerDoFn.class, "Custom Transformation Exceptions");
 
+  // Latency of applying custom transformations to the events.
   private final Distribution applyCustomTransformationResponseTimeMetric =
       Metrics.distribution(
           ChangeEventTransformerDoFn.class, "apply_custom_transformation_impl_latency_ms");
 
+  // Latency of applying transformation to the events.
   private final Distribution transformationLatencyMs =
       Metrics.distribution(ChangeEventTransformerDoFn.class, "transformation_latency_ms");
 
