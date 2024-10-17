@@ -613,6 +613,23 @@ public class InformationSchemaScannerIT {
   }
 
   @Test
+  public void vectorIndexes() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE `Base` ("
+                + " `K`                                     INT64,"
+                + " `V`                                     INT64,"
+                + " `Embeddings`                            ARRAY<FLOAT32>(vector_length=>128),"
+                + " ) PRIMARY KEY (`K` ASC)",
+            " CREATE VECTOR INDEX `VI` ON `Base`(`Embeddings` ) WHERE Embeddings IS NOT NULL"
+                + " OPTIONS (distance_type=\"COSINE\")");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
   public void pgIndexes() throws Exception {
     // Prefix indexes to ensure ordering.
     // Unique index is implicitly null-filtered.
