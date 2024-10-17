@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.AvroToSpannerScdPipeline",
+  "classPath": "/template/gcs-avro-to-spanner-scd/gcs-avro-to-spanner-scd-conscrypt.jar:/template/gcs-avro-to-spanner-scd/*:/template/gcs-avro-to-spanner-scd/libs/*:/template/gcs-avro-to-spanner-scd/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"gcs_avro_to_spanner_scd\"}"
+  }
+}
