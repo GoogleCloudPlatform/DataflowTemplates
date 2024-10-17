@@ -72,7 +72,8 @@ public interface UniformSplitterDBAdapter extends Serializable {
    *     found.
    * @param dbCollation collation set used by the database for which collation ordering has to be
    *     found.
+   * @param padSpace pad space used by the database for which collation ordering has to be found.
    * @return Query to get the order of collation.
    */
-  String getCollationsOrderQuery(String dbCharset, String dbCollation);
+  String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace);
 }

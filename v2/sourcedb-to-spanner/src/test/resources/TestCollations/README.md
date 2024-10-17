@@ -20,7 +20,7 @@ Note it's recommended to make a copy of the sql file before editing to avoid un-
 
 2. Run the edited copy of the sql file and dump the output to a tsv.
 ```bash
-time mysql -u '<user_name>' -p'<password>' -h <ip> <db> <  mysql_collation_oder_query.sql 2>&1 > /tmp/output.tsv 
+time mysql -u '<user_name>' -p'<password>' -h <ip> <db> <  mysql_collation_order_query.sql 2>&1 > /tmp/output.tsv 
 ```
 3. Ensure that the dump has all the control characters escaped. Mysql does a good job at escaping most of the control characters when it dumps the output to a file, execept for \r which causes a line break.
 

@@ -23,4 +23,18 @@ INSERT INTO "employee" VALUES
     (102,1,'emp3','add3','2012-01-01'),
     (300,3,'emp300','add300','1996-01-01');
 
+CREATE TABLE "employee_attribute" (
+    "employee_id" int8 NOT NULL,
+    "attribute_name" varchar(100) NOT NULL,
+    "value" varchar(100) DEFAULT NULL,
+    "updated_on" date,
+    PRIMARY KEY ("employee_id","attribute_name")
+);
+
+INSERT INTO "employee_attribute" VALUES
+    (100,'iq','150','2024-06-10'),
+    (101,'iq','120','2024-06-10'),
+    (102,'iq','20','2024-06-10'),
+    (300,'endurance','20','2024-06-10');
+
 CREATE VIEW "company_view" AS SELECT "company_id" FROM "company";
