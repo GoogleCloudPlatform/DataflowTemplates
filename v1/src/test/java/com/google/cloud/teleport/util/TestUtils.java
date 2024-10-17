@@ -16,12 +16,16 @@
 package com.google.cloud.teleport.util;
 
 import com.google.common.io.ByteStreams;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import org.apache.beam.sdk.io.Compression;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.ResourceId;
@@ -71,5 +75,35 @@ public class TestUtils {
     }
 
     return resourceId;
+  }
+
+  /**
+   * Helper to sort a json object lexicographically.
+   *
+   * @param jsonObject The json object that is to be sorted
+   * @return The sorted json object
+   */
+  public static JsonObject sortJsonObject(JsonObject jsonObject) {
+    TreeMap<String, JsonElement> sortedMap = new TreeMap<>();
+
+    for (Map.Entry<String, JsonElement> entry : jsonObject.entrySet()) {
+      String key = entry.getKey();
+      JsonElement value = entry.getValue();
+
+      if (value.isJsonObject()) {
+        // Recursively sorting multi-level json objects
+        sortedMap.put(key, sortJsonObject(value.getAsJsonObject()));
+      } else {
+        sortedMap.put(key, value);
+      }
+    }
+
+    JsonObject sortedJsonObject = new JsonObject();
+    // Putting the sortedTreeMap values into a json object
+    for (Map.Entry<String, JsonElement> entry : sortedMap.entrySet()) {
+      sortedJsonObject.add(entry.getKey(), entry.getValue());
+    }
+
+    return sortedJsonObject;
   }
 }
