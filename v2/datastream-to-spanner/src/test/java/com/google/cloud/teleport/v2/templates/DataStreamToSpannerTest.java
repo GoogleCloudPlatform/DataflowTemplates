@@ -101,18 +101,32 @@ public class DataStreamToSpannerTest {
     ISchemaOverridesParser parser = DataStreamToSpanner.configureSchemaOverrides(options);
 
     assertEquals(SchemaFileOverridesParser.class, parser.getClass());
+
+    // Check the expected values in the overrides
+    SchemaFileOverridesParser fileOverridesParser = (SchemaFileOverridesParser) parser;
+    String tableOverride = fileOverridesParser.getTableOverride("person1");
+    String columnOverride = fileOverridesParser.getColumnOverride("person1", "first_name1");
+    assertEquals("human1", tableOverride);
+    assertEquals("name1", columnOverride);
   }
 
   @Test
   public void testConfigureSchemaOverrides_stringBased() {
     DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
     when(options.getSchemaOverridesFilePath()).thenReturn("");
-    when(options.getTableOverrides()).thenReturn("table1=schema1,table2=schema2");
-    when(options.getColumnOverrides()).thenReturn("table1.col1=type1,table2.col2=type2");
+    when(options.getTableOverrides()).thenReturn("[{person1, human1}]");
+    when(options.getColumnOverrides()).thenReturn("[{person1.first_name1, person1.name1}]");
 
     ISchemaOverridesParser parser = DataStreamToSpanner.configureSchemaOverrides(options);
 
     assertEquals(SchemaStringOverridesParser.class, parser.getClass());
+
+    // Check the expected values in the overrides
+    SchemaStringOverridesParser stringParser = (SchemaStringOverridesParser) parser;
+    String tableOverride = stringParser.getTableOverride("person1");
+    String columnOverride = stringParser.getColumnOverride("person1", "first_name1");
+    assertEquals("human1", tableOverride);
+    assertEquals("name1", columnOverride);
   }
 
   @Test
