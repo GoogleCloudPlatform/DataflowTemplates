@@ -16,7 +16,15 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.NoopSchemaOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesParser;
+import com.google.common.io.Resources;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Rule;
 import org.junit.Test;
@@ -79,5 +87,68 @@ public class DataStreamToSpannerTest {
             .withValidation()
             .as(DataStreamToSpanner.Options.class);
     String result = DataStreamToSpanner.getSourceType(options);
+  }
+
+  @Test
+  public void testConfigureSchemaOverrides_fileBased() {
+    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    when(options.getSchemaOverridesFilePath())
+        .thenReturn(
+            Resources.getResource("DataStreamToSpannerFileOverridesIT/override.json").getPath());
+    when(options.getTableOverrides()).thenReturn("");
+    when(options.getColumnOverrides()).thenReturn("");
+
+    ISchemaOverridesParser parser = DataStreamToSpanner.configureSchemaOverrides(options);
+
+    assertEquals(SchemaFileOverridesParser.class, parser.getClass());
+
+    // Check the expected values in the overrides
+    SchemaFileOverridesParser fileOverridesParser = (SchemaFileOverridesParser) parser;
+    String tableOverride = fileOverridesParser.getTableOverride("person1");
+    String columnOverride = fileOverridesParser.getColumnOverride("person1", "first_name1");
+    assertEquals("human1", tableOverride);
+    assertEquals("name1", columnOverride);
+  }
+
+  @Test
+  public void testConfigureSchemaOverrides_stringBased() {
+    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    when(options.getSchemaOverridesFilePath()).thenReturn("");
+    when(options.getTableOverrides()).thenReturn("[{person1, human1}]");
+    when(options.getColumnOverrides()).thenReturn("[{person1.first_name1, person1.name1}]");
+
+    ISchemaOverridesParser parser = DataStreamToSpanner.configureSchemaOverrides(options);
+
+    assertEquals(SchemaStringOverridesParser.class, parser.getClass());
+
+    // Check the expected values in the overrides
+    SchemaStringOverridesParser stringParser = (SchemaStringOverridesParser) parser;
+    String tableOverride = stringParser.getTableOverride("person1");
+    String columnOverride = stringParser.getColumnOverride("person1", "first_name1");
+    assertEquals("human1", tableOverride);
+    assertEquals("name1", columnOverride);
+  }
+
+  @Test
+  public void testConfigureSchemaOverrides_noOverrides() {
+    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    when(options.getSchemaOverridesFilePath()).thenReturn("");
+    when(options.getTableOverrides()).thenReturn("");
+    when(options.getColumnOverrides()).thenReturn("");
+
+    ISchemaOverridesParser parser = DataStreamToSpanner.configureSchemaOverrides(options);
+
+    assertEquals(NoopSchemaOverridesParser.class, parser.getClass());
+  }
+
+  @Test
+  public void testConfigureSchemaOverrides_incorrectConfiguration() {
+    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    when(options.getSchemaOverridesFilePath()).thenReturn("/path/to/overrides.json");
+    when(options.getTableOverrides()).thenReturn("table1=schema1");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> DataStreamToSpanner.configureSchemaOverrides(options));
   }
 }

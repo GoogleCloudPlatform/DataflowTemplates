@@ -866,7 +866,7 @@ public class DataStreamToSpanner {
     }
   }
 
-  private static ISchemaOverridesParser configureSchemaOverrides(Options options) {
+  static ISchemaOverridesParser configureSchemaOverrides(Options options) {
     // incorrect configuration
     if (!options.getSchemaOverridesFilePath().isEmpty()
         && (!options.getTableOverrides().isEmpty() || !options.getColumnOverrides().isEmpty())) {

@@ -18,12 +18,9 @@ package com.google.cloud.teleport.v2.spanner.type;
 import com.google.cloud.spanner.Dialect;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
@@ -401,54 +398,6 @@ public final class Type implements Serializable {
     Preconditions.checkState(
         code == Type.Code.ARRAY || code == Type.Code.PG_ARRAY, "Illegal call for non-ARRAY type");
     return arrayElementType;
-  }
-
-  /**
-   * Returns the fields of this {@code STRUCT} type.
-   *
-   * @return an immutable list of the fields
-   * @throws IllegalStateException if {@code code() != Code.STRUCT}
-   */
-  public List<Type.StructField> getStructFields() {
-    Preconditions.checkState(code == Type.Code.STRUCT, "Illegal call for non-STRUCT type");
-    return structFields;
-  }
-
-  /**
-   * Returns the index of the field named {@code fieldName} in this {@code STRUCT} type.
-   *
-   * @throws IllegalArgumentException if there is not exactly one element of {@link
-   *     #getStructFields()} with {@link Type.StructField#getName()} equal to {@code fieldName}
-   * @throws IllegalStateException if {@code code() != Code.STRUCT}
-   */
-  public int getFieldIndex(String fieldName) {
-    Preconditions.checkState(code == Type.Code.STRUCT, "Illegal call for non-STRUCT type");
-
-    if (fieldsByName == null) {
-      Map<String, Integer> tmp = new TreeMap<>();
-      for (int i = 0; i < getStructFields().size(); ++i) {
-        Type.StructField field = getStructFields().get(i);
-        if (tmp.put(field.getName(), i) != null) {
-          // Column name appears more than once: mark as ambiguous.
-          tmp.put(field.getName(), AMBIGUOUS_FIELD);
-        }
-      }
-      // Benign race: Java's final field semantics mean that if we see a non-null "fieldsByName",
-      // we are guaranteed to see it in a fully initialized state.  It is thus important that we
-      // use an ImmutableMap here, which necessarily uses final fields or equivalent reasoning.
-      // Since all computations of "fieldsByName" produce the same value, there is no risk of
-      // inconsistency.
-      fieldsByName = ImmutableMap.copyOf(tmp);
-    }
-
-    Integer index = fieldsByName.get(fieldName);
-    if (index == null) {
-      throw new IllegalArgumentException("Field not found: " + fieldName);
-    }
-    if (index == AMBIGUOUS_FIELD) {
-      throw new IllegalArgumentException("Ambiguous field name: " + fieldName);
-    }
-    return index;
   }
 
   void toString(StringBuilder b) {
