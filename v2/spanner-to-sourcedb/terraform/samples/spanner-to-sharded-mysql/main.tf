@@ -127,11 +127,13 @@ resource "null_resource" "create_spanner_change_stream" {
     database_id   = var.dataflow_params.template_params.database_id
     instance_id   = var.dataflow_params.template_params.instance_id
     change_stream = local.change_stream
+    project       = var.common_params.project
   }
   provisioner "local-exec" {
     command = <<EOT
 gcloud spanner databases ddl update ${self.triggers.database_id} \
   --instance=${self.triggers.instance_id} \
+  --project=${self.triggers.project} \
   --ddl="CREATE CHANGE STREAM ${self.triggers.change_stream}
           FOR ALL OPTIONS (
             retention_period = '7d',

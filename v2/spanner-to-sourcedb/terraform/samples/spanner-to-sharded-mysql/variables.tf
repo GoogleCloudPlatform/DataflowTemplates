@@ -24,7 +24,7 @@ variable "dataflow_params" {
       start_timestamp              = optional(string)
       end_timestamp                = optional(string)
       shadow_table_prefix          = optional(string)
-      local_session_file_path      = optional(string)
+      local_session_file_path      = string
       filtration_mode              = optional(string)
       sharding_custom_jar_path     = optional(string)
       sharding_custom_class_name   = optional(string)
