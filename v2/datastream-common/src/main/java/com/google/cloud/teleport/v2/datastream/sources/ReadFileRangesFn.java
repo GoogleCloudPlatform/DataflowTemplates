@@ -26,6 +26,8 @@ import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.ReadableFile;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.range.OffsetRange;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
@@ -47,6 +49,9 @@ public class ReadFileRangesFn<T> extends DoFn<ReadableFile, T> implements Serial
   private final ReadFileRangesFnExceptionHandler exceptionHandler;
   private boolean acquiredPermit = false;
   private static final Semaphore jvmThreads = new Semaphore(5, true);
+
+  private final Counter gcsFilesRead =
+      Metrics.counter(ReadFileRangesFn.class, "Total GCS files processed");
 
   public ReadFileRangesFn(
       SerializableFunction<String, ? extends FileBasedSource<T>> createSource,
@@ -82,6 +87,7 @@ public class ReadFileRangesFn<T> extends DoFn<ReadableFile, T> implements Serial
 
   @ProcessElement
   public void process(ProcessContext c) throws IOException {
+    gcsFilesRead.inc();
     ReadableFile file = c.element();
     ResourceId resourceId = file.getMetadata().resourceId();
     try {

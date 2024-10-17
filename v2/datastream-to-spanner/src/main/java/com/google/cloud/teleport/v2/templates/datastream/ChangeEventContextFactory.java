@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.datastream;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 
 /** Factory classes that provides creation methods for ChangeEventContext. */
@@ -38,7 +39,7 @@ public class ChangeEventContextFactory {
    */
   public static ChangeEventContext createChangeEventContext(
       JsonNode changeEvent, Ddl ddl, String shadowTablePrefix, String sourceType)
-      throws ChangeEventConvertorException, InvalidChangeEventException {
+      throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
     String sourceTypeFromChangeEvent;
     try {
       sourceTypeFromChangeEvent = getSourceType(changeEvent);

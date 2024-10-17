@@ -121,6 +121,7 @@ public class FormatDatastreamRecordToJson
     outputObject.put("_metadata_stream", getStreamName(record));
     outputObject.put("_metadata_timestamp", getSourceTimestamp(record));
     outputObject.put("_metadata_read_timestamp", getMetadataTimestamp(record));
+    outputObject.put("_metadata_dataflow_timestamp", getCurrentTimestamp());
     outputObject.put("_metadata_read_method", record.get("read_method").toString());
     outputObject.put("_metadata_source_type", sourceType);
 
@@ -205,6 +206,10 @@ public class FormatDatastreamRecordToJson
   private long getMetadataTimestamp(GenericRecord record) {
     long unixTimestampMilli = (long) record.get("read_timestamp");
     return unixTimestampMilli / 1000;
+  }
+
+  private long getCurrentTimestamp() {
+    return System.currentTimeMillis() / 1000L;
   }
 
   private long getSourceTimestamp(GenericRecord record) {
