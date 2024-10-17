@@ -28,8 +28,11 @@ import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.cloud.pubsub.v1.SubscriptionAdminSettings;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
 import com.google.cloud.pubsub.v1.TopicAdminSettings;
+import com.google.monitoring.v3.Aggregation.Aligner;
+import com.google.monitoring.v3.TimeInterval;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.FieldMask;
+import com.google.protobuf.Timestamp;
 import com.google.pubsub.v1.Encoding;
 import com.google.pubsub.v1.ProjectName;
 import com.google.pubsub.v1.PubsubMessage;
@@ -47,14 +50,17 @@ import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.ExceptionUtils;
+import org.apache.beam.it.gcp.monitoring.MonitoringClient;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,6 +91,8 @@ public final class PubsubResourceManager implements ResourceManager {
 
   private final SchemaServiceClient schemaServiceClient;
 
+  private final MonitoringClient monitoringClient;
+
   private final Set<TopicName> createdTopics;
   private final Set<SubscriptionName> createdSubscriptions;
 
@@ -106,7 +114,8 @@ public final class PubsubResourceManager implements ResourceManager {
         SchemaServiceClient.create(
             SchemaServiceSettings.newBuilder()
                 .setCredentialsProvider(builder.credentialsProvider)
-                .build()));
+                .build()),
+        builder.monitoringClient);
   }
 
   @VisibleForTesting
@@ -116,7 +125,8 @@ public final class PubsubResourceManager implements ResourceManager {
       PubsubPublisherFactory publisherFactory,
       TopicAdminClient topicAdminClient,
       SubscriptionAdminClient subscriptionAdminClient,
-      SchemaServiceClient schemaServiceClient) {
+      SchemaServiceClient schemaServiceClient,
+      MonitoringClient monitoringClient) {
     this.projectId = projectId;
     this.testId = PubsubUtils.createTestId(testName);
     this.publisherFactory = publisherFactory;
@@ -126,6 +136,7 @@ public final class PubsubResourceManager implements ResourceManager {
     this.createdSubscriptions = Collections.synchronizedSet(new HashSet<>());
     this.createdSchemas = Collections.synchronizedSet(new HashSet<>());
     this.schemaServiceClient = schemaServiceClient;
+    this.monitoringClient = monitoringClient;
   }
 
   public static Builder builder(
@@ -394,12 +405,65 @@ public final class PubsubResourceManager implements ResourceManager {
         .build();
   }
 
+  /**
+   * Collects the performance metrics for the pubsub resources.
+   *
+   * @param metrics The pubsub metrics will be populated in this map
+   */
+  public void collectMetrics(@NonNull Map<String, Double> metrics) {
+    hasMonitoringClient();
+    metrics.put(
+        "Pubsub_AverageOldestUnackedMessageAge",
+        getAverageOldestUnackedMessageAge(monitoringClient));
+  }
+
+  private void hasMonitoringClient() {
+    if (monitoringClient == null) {
+      throw new PubsubResourceManagerException(
+          "PubsubResourceManager needs to be initialized with Monitoring client in order to export "
+              + "metrics. Please use PubsubResourceManager.Builder(...).setMonitoringClient(...) to"
+              + " initialize the monitoring client.");
+    }
+  }
+
+  private Double getAverageOldestUnackedMessageAge(MonitoringClient monitoringClient) {
+    String metricType = "pubsub.googleapis.com/subscription/oldest_unacked_message_age";
+
+    TimeInterval interval =
+        TimeInterval.newBuilder()
+            .setEndTime(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()))
+            .setStartTime(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond() - 5))
+            .build();
+
+    String filterFormat =
+        "metric.type=\"%s\" AND "
+            + "resource.label.project_id=\"%s\" AND resource.label.subscription_id=\"%s\"";
+
+    Double result = 0.0;
+    for (SubscriptionName subscription : this.createdSubscriptions) {
+      String filter =
+          String.format(filterFormat, metricType, this.projectId, subscription.getSubscription());
+      Double metric =
+          monitoringClient.getAggregatedMetric(
+              this.projectId, filter, interval, Aligner.ALIGN_MEAN);
+      if (metric != null) {
+        result += metric;
+      }
+    }
+    if (createdSubscriptions.size() > 0) {
+      return result / createdSubscriptions.size();
+    } else {
+      return 0.0;
+    }
+  }
+
   /** Builder for {@link PubsubResourceManager}. */
   public static final class Builder {
 
     private final String projectId;
     private final String testName;
     private CredentialsProvider credentialsProvider;
+    private MonitoringClient monitoringClient;
 
     private Builder(String testName, String projectId, CredentialsProvider credentialsProvider) {
       this.testName = testName;
@@ -409,6 +473,11 @@ public final class PubsubResourceManager implements ResourceManager {
 
     public Builder credentialsProvider(CredentialsProvider credentialsProvider) {
       this.credentialsProvider = credentialsProvider;
+      return this;
+    }
+
+    public Builder setMonitoringClient(MonitoringClient monitoringClient) {
+      this.monitoringClient = monitoringClient;
       return this;
     }
 

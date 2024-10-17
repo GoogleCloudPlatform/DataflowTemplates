@@ -25,6 +25,7 @@ import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
@@ -104,7 +106,9 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   }
 
   public PubsubResourceManager setUpPubSubResourceManager() throws IOException {
-    return PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER).build();
+    return PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER)
+        .setMonitoringClient(monitoringClient)
+        .build();
   }
 
   public SubscriptionName createPubsubResources(
@@ -222,5 +226,53 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
       String bucket, String artifactId, GcsResourceManager gcsResourceManager) {
     return ArtifactUtils.getFullGcsPath(
         bucket, getClass().getSimpleName(), gcsResourceManager.runId(), artifactId);
+  }
+
+  public Map<String, Double> getCustomCounters(
+      LaunchInfo launchInfo, int numShards, Map<String, Double> metrics) throws IOException {
+    Double successfulEvents =
+        pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "success_record_count");
+    metrics.put(
+        "Custom_Counter_SuccessRecordCount", successfulEvents != null ? successfulEvents : 0.0);
+    Double retryableErrors =
+        pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "retryable_record_count");
+    metrics.put(
+        "Custom_Counter_RetryableRecordCount", retryableErrors != null ? retryableErrors : 0.0);
+
+    Double severeErrorCount =
+        pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "severe_error_count");
+    metrics.put(
+        "Custom_Counter_SevereErrorCount", severeErrorCount != null ? severeErrorCount : 0.0);
+    Double skippedRecordCount =
+        pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "skipped_record_count");
+    metrics.put(
+        "Custom_Counter_SkippedRecordCount", skippedRecordCount != null ? skippedRecordCount : 0.0);
+
+    for (int i = 1; i <= numShards; ++i) {
+      Double replicationLag =
+          pipelineLauncher.getMetric(
+              project,
+              region,
+              launchInfo.jobId(),
+              "replication_lag_in_seconds_Shard" + i + "_MEAN");
+      metrics.put(
+          "Custom_Counter_MeanReplicationLagShard" + i,
+          replicationLag != null ? replicationLag : 0.0);
+    }
+    return metrics;
+  }
+
+  public void exportMetrics(PipelineLauncher.LaunchInfo jobInfo, int numShards)
+      throws ParseException, IOException, InterruptedException {
+    Map<String, Double> metrics = getMetrics(jobInfo);
+    getCustomCounters(jobInfo, numShards, metrics);
+    getResourceManagerMetrics(metrics);
+
+    // export results
+    exportMetricsToBigQuery(jobInfo, metrics);
+  }
+
+  public void getResourceManagerMetrics(Map<String, Double> metrics) {
+    pubsubResourceManager.collectMetrics(metrics);
   }
 }
