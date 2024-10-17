@@ -36,6 +36,7 @@ import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
+import org.apache.beam.it.neo4j.DatabaseWaitOptions;
 import org.apache.beam.it.neo4j.Neo4jResourceManager;
 import org.apache.beam.it.neo4j.conditions.Neo4jQueryCheck;
 import org.junit.After;
@@ -58,6 +59,7 @@ public class PropertyMappingsIT extends TemplateTestBase {
     bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
     neo4jClient =
         Neo4jResourceManager.builder(testName)
+            .setDatabaseName(null, DatabaseWaitOptions.waitDatabase(60))
             .setAdminPassword("letmein!")
             .setHost(TestProperties.hostIp())
             .build();
