@@ -84,6 +84,7 @@ public class OptionsToConfigBuilderTest {
             "mypassword",
             "mydb",
             null,
+            null,
             "com.mysql.jdbc.Driver",
             "mysql-jar",
             10,
@@ -101,6 +102,7 @@ public class OptionsToConfigBuilderTest {
             "myuser",
             "mypassword",
             "mydb",
+            null,
             null,
             "com.mysql.jdbc.Driver",
             "mysql-jar",
@@ -141,7 +143,7 @@ public class OptionsToConfigBuilderTest {
             null,
             Wait.on(dummyPCollection));
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
-    assertThat(config.sourceDbURL()).isEqualTo(testUrl);
+    assertThat(config.sourceDbURL()).isEqualTo(testUrl + "?currentSchema=public");
     assertThat(config.tables())
         .containsExactlyElementsIn(new String[] {"table1", "table2", "table3"});
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
@@ -165,6 +167,7 @@ public class OptionsToConfigBuilderTest {
             "mypassword",
             "mydb",
             null,
+            null,
             "com.mysql.jdbc.Driver",
             "mysql-jar",
             10,
@@ -182,15 +185,42 @@ public class OptionsToConfigBuilderTest {
             "mypassword",
             "mydb",
             null,
+            null,
             "com.mysql.jdbc.Driver",
             "mysql-jar",
             10,
             0,
             Wait.on(dummyPCollection));
     assertThat(configWithoutConnectionParameters.sourceDbURL())
-        .isEqualTo("jdbc:postgresql://myhost:5432/mydb");
+        .isEqualTo("jdbc:postgresql://myhost:5432/mydb?currentSchema=public");
     assertThat(configWithConnectionParameters.sourceDbURL())
-        .isEqualTo("jdbc:postgresql://myhost:5432/mydb?testParam=testValue");
+        .isEqualTo("jdbc:postgresql://myhost:5432/mydb?currentSchema=public&testParam=testValue");
+  }
+
+  @Test
+  public void testConfigWithPostgreSqlUrlWithNamespace() {
+    PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
+    JdbcIOWrapperConfig configWithNamespace =
+        OptionsToConfigBuilder.getJdbcIOWrapperConfig(
+            SQLDialect.POSTGRESQL,
+            List.of("table1", "table2"),
+            null,
+            "myhost",
+            "",
+            5432,
+            "myuser",
+            "mypassword",
+            "mydb",
+            "mynamespace",
+            null,
+            "com.mysql.jdbc.Driver",
+            "mysql-jar",
+            10,
+            0,
+            Wait.on(dummyPCollection));
+    assertThat(configWithNamespace.sourceDbURL())
+        .isEqualTo("jdbc:postgresql://myhost:5432/mydb?currentSchema=mynamespace");
   }
 
   @Test
