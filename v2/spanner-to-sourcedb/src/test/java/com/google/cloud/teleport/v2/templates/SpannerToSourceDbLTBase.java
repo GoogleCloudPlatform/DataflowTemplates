@@ -272,6 +272,6 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   }
 
   public void getResourceManagerMetrics(Map<String, Double> metrics) {
-    pubsubResourceManager.collectPubSubMetrics(metrics);
+    pubsubResourceManager.collectMetrics(metrics);
   }
 }

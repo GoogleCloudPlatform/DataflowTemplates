@@ -410,7 +410,7 @@ public final class PubsubResourceManager implements ResourceManager {
    *
    * @param metrics The pubsub metrics will be populated in this map
    */
-  public void collectPubSubMetrics(@NonNull Map<String, Double> metrics) {
+  public void collectMetrics(@NonNull Map<String, Double> metrics) {
     hasMonitoringClient();
     metrics.put(
         "Pubsub_AverageOldestUnackedMessageAge",

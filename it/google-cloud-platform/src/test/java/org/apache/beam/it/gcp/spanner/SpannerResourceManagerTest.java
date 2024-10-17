@@ -535,8 +535,7 @@ public final class SpannerResourceManagerTest {
   @Test
   public void testCollectMetricsThrowsExceptionWhenMonitoringClientIsNotInitialized() {
     assertThrows(
-        SpannerResourceManagerException.class,
-        () -> testManager.collectSpannerMetrics(new HashMap<>()));
+        SpannerResourceManagerException.class, () -> testManager.collectMetrics(new HashMap<>()));
   }
 
   @Test
@@ -549,7 +548,7 @@ public final class SpannerResourceManagerTest {
             spanner);
     assertThrows(
         IllegalStateException.class,
-        () -> testManagerWithMonitoringClient.collectSpannerMetrics(new HashMap<>()));
+        () -> testManagerWithMonitoringClient.collectMetrics(new HashMap<>()));
   }
 
   @Test
@@ -566,7 +565,7 @@ public final class SpannerResourceManagerTest {
     testManagerWithMonitoringClient.executeDdlStatement("");
 
     Map<String, Double> metrics = new HashMap<>();
-    testManagerWithMonitoringClient.collectSpannerMetrics(metrics);
+    testManagerWithMonitoringClient.collectMetrics(metrics);
 
     assertEquals(2, metrics.size());
     assertEquals(1.1, metrics.get("Spanner_AverageCpuUtilization"), 0.0);
