@@ -33,21 +33,6 @@ public interface SQLServerToBigQueryOptions extends JdbcToBigQueryOptions {
       example = "jdbc:sqlserver://localhost;databaseName=sampledb")
   String getConnectionURL();
 
-  @TemplateParameter.Text(
-      optional = true,
-      regexes = {"(^.+$|projects/.*/secrets/.*/versions/.*)"},
-      description = "JDBC connection username.",
-      helpText =
-          "The username to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string. Can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}.")
-  String getUsername();
-
-  @TemplateParameter.Password(
-      optional = true,
-      description = "JDBC connection password.",
-      helpText =
-          "The password to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string. Can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}.")
-  String getPassword();
-
   @TemplateIgnoreParameter
   default String getDriverClassName() {
     return "com.microsoft.sqlserver.jdbc.SQLServerDriver";
