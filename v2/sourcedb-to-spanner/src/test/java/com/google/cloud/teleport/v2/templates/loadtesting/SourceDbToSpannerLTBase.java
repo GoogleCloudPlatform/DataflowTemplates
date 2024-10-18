@@ -55,7 +55,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
   private static final int NUM_WORKERS = 10;
   private static final Duration JOB_TIMEOUT = Duration.ofHours(4);
   private static final Duration CHECK_INTERVAL = Duration.ofMinutes(5);
-  private static final Duration CANCEL_TIMEOUT = Duration.ofMinutes(20);
+  private static final Duration DONE_TIMEOUT = Duration.ofMinutes(20);
 
   private SQLDialect dialect;
   private GcsResourceManager gcsResourceManager;
@@ -179,7 +179,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
             createConfig(jobInfo, JOB_TIMEOUT, CHECK_INTERVAL), checks);
     assertThatResult(result).meetsConditions();
 
-    result = pipelineOperator.cancelJobAndFinish(createConfig(jobInfo, CANCEL_TIMEOUT));
+    result = pipelineOperator.waitUntilDone(createConfig(jobInfo, DONE_TIMEOUT));
     assertThatResult(result).isLaunchFinished();
 
     // Export results
