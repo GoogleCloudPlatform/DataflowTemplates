@@ -15,6 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates.loadtesting;
 
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.CONVERSION_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.OTHER_PERMANENT_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.RETRYABLE_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.SKIPPED_EVENTS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.SUCCESSFUL_EVENTS_COUNTER_NAME;
 import static java.util.Arrays.stream;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -34,6 +39,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -78,9 +84,12 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
         SpannerResourceManager.builder(testName, project, region)
             .maybeUseStaticInstance()
             .setNodeCount(10)
+            .setMonitoringClient(monitoringClient)
             .build();
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER).build();
+        PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER)
+            .setMonitoringClient(monitoringClient)
+            .build();
 
     gcsResourceManager =
         GcsResourceManager.builder(artifactBucket, testRootDir, CREDENTIALS).build();
@@ -174,8 +183,17 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     result = pipelineOperator.cancelJobAndFinish(createConfig(jobInfo, Duration.ofMinutes(20)));
     assertThatResult(result).isLaunchFinished();
 
+    Map<String, Double> metrics = getMetrics(jobInfo);
+    getCustomCounters(jobInfo, metrics);
+    getResourceManagerMetrics(metrics);
+
     // export results
-    exportMetricsToBigQuery(jobInfo, getMetrics(jobInfo));
+    exportMetricsToBigQuery(jobInfo, metrics);
+  }
+
+  public void getResourceManagerMetrics(Map<String, Double> metrics) {
+    pubsubResourceManager.collectMetrics(metrics);
+    spannerResourceManager.collectMetrics(metrics);
   }
 
   /**
@@ -294,5 +312,35 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
         stream(pathParts).noneMatch(Strings::isNullOrEmpty), "No path part can be null or empty");
 
     return String.format("gs://%s", String.join("/", pathParts));
+  }
+
+  public Map<String, Double> getCustomCounters(LaunchInfo launchInfo, Map<String, Double> metrics)
+      throws IOException {
+    Double successfulEvents =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), SUCCESSFUL_EVENTS_COUNTER_NAME);
+    metrics.put(
+        "Custom_Counter_SuccessfulEvents", successfulEvents != null ? successfulEvents : 0.0);
+    Double retryableErrors =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), RETRYABLE_ERRORS_COUNTER_NAME);
+    metrics.put("Custom_Counter_RetryableErrors", retryableErrors != null ? retryableErrors : 0.0);
+
+    Double permanentErrors = 0.0;
+    Double skippedEvents =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), SKIPPED_EVENTS_COUNTER_NAME);
+    permanentErrors += skippedEvents != null ? skippedEvents : 0.0;
+    Double otherPermanentErrors =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), OTHER_PERMANENT_ERRORS_COUNTER_NAME);
+    permanentErrors += otherPermanentErrors != null ? otherPermanentErrors : 0.0;
+    Double conversionErrors =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), CONVERSION_ERRORS_COUNTER_NAME);
+    permanentErrors += conversionErrors != null ? conversionErrors : 0.0;
+
+    metrics.put("Custom_Counter_PermanentErrors", permanentErrors);
+    return metrics;
   }
 }
