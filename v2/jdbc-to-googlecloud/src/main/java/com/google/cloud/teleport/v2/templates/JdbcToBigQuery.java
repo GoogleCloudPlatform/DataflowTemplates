@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.options.JdbcToBigQueryOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.GCSAwareValueProvider;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -108,9 +109,14 @@ public class JdbcToBigQuery {
     JdbcIO.DataSourceConfiguration dataSourceConfiguration =
         JdbcIO.DataSourceConfiguration.create(
                 StaticValueProvider.of(options.getDriverClassName()),
-                maybeDecrypt(options.getConnectionURL(), options.getKMSEncryptionKey()))
-            .withUsername(maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()))
-            .withPassword(maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()));
+                maybeDecrypt(
+                    maybeParseSecret(options.getConnectionURL()), options.getKMSEncryptionKey()))
+            .withUsername(
+                maybeDecrypt(
+                    maybeParseSecret(options.getUsername()), options.getKMSEncryptionKey()))
+            .withPassword(
+                maybeDecrypt(
+                    maybeParseSecret(options.getPassword()), options.getKMSEncryptionKey()));
 
     if (options.getDriverJars() != null) {
       dataSourceConfiguration = dataSourceConfiguration.withDriverJars(options.getDriverJars());
@@ -201,5 +207,26 @@ public class JdbcToBigQuery {
     }
 
     return write;
+  }
+
+  /**
+   * Retrieves a secret value from SecretManagerUtils if the input string matches the specified
+   * pattern.
+   *
+   * @param secret The input string representing a potential secret.
+   * @return The secret value if the input matches the pattern and the secret is found, otherwise
+   *     the original input string.
+   */
+  private static String maybeParseSecret(String secret) {
+    // Check if the input string is not null.
+    if (secret != null) {
+      // Check if the input string matches the pattern for secrets stored in SecretManagerUtils.
+      if (secret.matches("projects/.*/secrets/.*/versions/.*")) { // Use .* to match any characters
+        // Retrieve the secret value from SecretManagerUtils.
+        return SecretManagerUtils.getSecret(secret);
+      }
+    }
+    // If the input is null or doesn't match the pattern, return the original input.
+    return secret;
   }
 }
