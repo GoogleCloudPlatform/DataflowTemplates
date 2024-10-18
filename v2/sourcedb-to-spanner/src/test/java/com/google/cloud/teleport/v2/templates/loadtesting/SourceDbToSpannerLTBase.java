@@ -19,7 +19,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
@@ -33,6 +32,7 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.TestProperties;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
 import org.apache.beam.it.gcp.secretmanager.SecretManagerResourceManager;
@@ -42,6 +42,7 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.AbstractJDBCResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.Resources;
+import org.junit.After;
 
 public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
 
@@ -61,11 +62,14 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
   private AbstractJDBCResourceManager<?> sourceDatabaseResourceManager;
   private SpannerResourceManager spannerResourceManager;
 
+  private final String artifactBucket;
+  ;
   private final SecretManagerResourceManager secretClient;
   private final String testRootDir;
 
   public SourceDbToSpannerLTBase() {
     try {
+      artifactBucket = TestProperties.artifactBucket();
       testRootDir = getClass().getSimpleName();
       secretClient = SecretManagerResourceManager.builder(project, CREDENTIALS_PROVIDER).build();
     } catch (IOException e) {
@@ -85,9 +89,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
             .build();
 
     gcsResourceManager =
-        GcsResourceManager.builder(
-                TestProperties.artifactBucket(), getClass().getSimpleName(), CREDENTIALS)
-            .build();
+        GcsResourceManager.builder(artifactBucket, getClass().getSimpleName(), CREDENTIALS).build();
 
     if (dialect == SQLDialect.POSTGRESQL) {
       sourceDatabaseResourceManager =
@@ -132,8 +134,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
     // Add all parameters for the template
     String outputDirectory =
         String.join(
-            File.pathSeparator,
-            new String[] {testRootDir, gcsResourceManager.runId(), testName, "output"});
+            "/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "output"});
     Map<String, String> params =
         new HashMap<>() {
           {
@@ -144,7 +145,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
             put("sourceConfigURL", sourceDatabaseResourceManager.getUri());
             put("username", sourceDatabaseResourceManager.getUsername());
             put("password", sourceDatabaseResourceManager.getPassword());
-            put("outputDirectory", "gs://" + outputDirectory);
+            put("outputDirectory", "gs://" + artifactBucket + "/" + outputDirectory);
             put("jdbcDriverClassName", driverClassName());
           }
         };
@@ -183,6 +184,17 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
 
     // Export results
     exportMetricsToBigQuery(jobInfo, getMetrics(jobInfo));
+  }
+
+  /**
+   * Cleanup resource managers.
+   *
+   * @throws IOException
+   */
+  @After
+  public void cleanUp() throws IOException {
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager, sourceDatabaseResourceManager, gcsResourceManager);
   }
 
   private String driverClassName() {
