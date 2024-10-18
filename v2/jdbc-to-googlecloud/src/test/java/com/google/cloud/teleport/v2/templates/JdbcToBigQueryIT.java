@@ -27,8 +27,6 @@ import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.kms.v1.CryptoKey;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
-
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
