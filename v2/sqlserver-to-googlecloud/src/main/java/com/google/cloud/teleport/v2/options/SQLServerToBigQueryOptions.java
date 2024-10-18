@@ -29,7 +29,7 @@ public interface SQLServerToBigQueryOptions extends JdbcToBigQueryOptions {
       groupName = "Source",
       description = "JDBC connection URL string.",
       helpText =
-          "The JDBC connection URL string. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. Can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}.",
+          "The JDBC connection URL string. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key, or can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}.",
       example = "jdbc:sqlserver://localhost;databaseName=sampledb")
   String getConnectionURL();
 
