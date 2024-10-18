@@ -446,7 +446,7 @@ public class InformationSchemaScanner {
                 + " FROM information_schema.indexes AS t"
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') AND"
-                + " (t.index_type='INDEX' OR t.index_type='SEARCH') AND t.spanner_is_managed = FALSE"
+                + " (t.index_type='INDEX' OR t.index_type='SEARCH' OR t.index_type='VECTOR') AND t.spanner_is_managed = FALSE"
                 + " ORDER BY t.table_name, t.index_name");
       case POSTGRESQL:
         return Statement.of(
@@ -483,9 +483,12 @@ public class InformationSchemaScanner {
           pkBuilder.desc(columnName).end();
         }
         pkBuilder.end().endTable();
-      } else if (indexType != null && indexType.equals("SEARCH")) {
-        if (!spannerType.equals("TOKENLIST") && ordering != null) {
-          continue;
+      } else {
+        if (indexType != null && ordering != null) {
+          if ((indexType.equals("SEARCH") && !spannerType.equals("TOKENLIST"))
+              || (indexType.equals("VECTOR") && !spannerType.startsWith("ARRAY"))) {
+            continue;
+          }
         }
         Map<String, Index.Builder> tableIndexes = indexes.get(tableName);
         if (tableIndexes == null) {
@@ -502,30 +505,10 @@ public class InformationSchemaScanner {
         }
         IndexColumn.IndexColumnsBuilder<Index.Builder> indexColumnsBuilder =
             indexBuilder.columns().create().name(columnName);
-
-        if (spannerType.equals("TOKENLIST")) {
+        if (spannerType != null
+            && (spannerType.equals("TOKENLIST") || spannerType.startsWith("ARRAY"))) {
           indexColumnsBuilder.none();
         } else if (ordering == null) {
-          indexColumnsBuilder.storing();
-        }
-        indexColumnsBuilder.endIndexColumn().end();
-      } else {
-        Map<String, Index.Builder> tableIndexes = indexes.get(tableName);
-        if (tableIndexes == null) {
-          continue;
-        }
-        String indexName =
-            dialect == Dialect.POSTGRESQL
-                ? indexLocalName
-                : getQualifiedName(resultSet.getString(0), indexLocalName);
-        Index.Builder indexBuilder = tableIndexes.get(indexName);
-        if (indexBuilder == null) {
-          LOG.warn("Can not find index using name {}", indexName);
-          continue;
-        }
-        IndexColumn.IndexColumnsBuilder<Index.Builder> indexColumnsBuilder =
-            indexBuilder.columns().create().name(columnName);
-        if (ordering == null) {
           indexColumnsBuilder.storing();
         } else {
           ordering = ordering.toUpperCase();
