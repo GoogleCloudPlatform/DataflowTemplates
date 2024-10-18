@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.templates;
 import static org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
@@ -25,6 +27,8 @@ import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.kms.v1.CryptoKey;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
+
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -418,5 +422,27 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     }
 
     return data;
+  }
+
+  // Since maybeParseSecret is private, we need to use reflection to access it
+  private static String invokeMaybeParseSecret(String secret) throws Exception {
+    java.lang.reflect.Method method = JdbcToBigQuery.class.getDeclaredMethod("maybeParseSecret", String.class);
+    method.setAccessible(true);
+    return (String) method.invoke(null, secret);
+  }
+
+  @Test
+  void testMaybeParseSecret_invalidSecretPath_returnsOriginalString() throws Exception {
+      String secretPath = "not-a-secret";
+      String expectedSecret = "not-a-secret";
+      String actualSecret = invokeMaybeParseSecret(secretPath);
+      assertEquals(expectedSecret, actualSecret);
+  }
+
+  @Test
+  void testMaybeParseSecret_nullInput_returnsNull() throws Exception {
+      String secretPath = null;
+      String actualSecret = invokeMaybeParseSecret(secretPath);
+      assertNull(actualSecret);
   }
 }
