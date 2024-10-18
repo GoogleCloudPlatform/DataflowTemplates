@@ -347,7 +347,7 @@ While it should be rare to pause a running template and start it again, in case 
 If the job has been running for longer than the change stream retention period, then:
 1. Set the startTimestamp to current date - change stream retention period.
 2. To avoid data-loss, ensure that the DataFreshness for the Write to SourceDb stage has not crossed the change stream retention period, meaning it should not cross 7 days - this would be an unlikey event and if alerts are set-up, it should be caught early on.
-3. If there are any reocrds on the retry directory, do the below:
+3. If there are any records on the retry directory, do the below:
 - Before pausing the job,remove the [GCS notification](https://cloud.google.com/storage/docs/reporting-changes#removing)
 - Stop the job
 - Recursively [copy](https://cloud.google.com/sdk/gcloud/reference/storage/cp) the retry files to a different bucket
