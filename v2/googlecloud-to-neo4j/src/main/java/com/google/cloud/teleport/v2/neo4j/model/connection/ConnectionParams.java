@@ -19,8 +19,12 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 import java.io.Serializable;
+import java.net.URI;
+import java.nio.file.Paths;
 import java.util.Objects;
 import org.neo4j.driver.AuthToken;
+import org.neo4j.driver.Config;
+import org.neo4j.driver.Config.TrustStrategy;
 
 @JsonTypeInfo(use = Id.NAME, property = "auth_type", defaultImpl = BasicConnectionParams.class)
 @JsonSubTypes({
@@ -34,10 +38,12 @@ public abstract class ConnectionParams implements Serializable {
 
   private final String serverUrl;
   private final String database;
+  private final String customCertificatePath;
 
-  public ConnectionParams(String serverUrl, String database) {
+  public ConnectionParams(String serverUrl, String database, String customCertificatePath) {
     this.serverUrl = serverUrl;
     this.database = database == null ? "neo4j" : database;
+    this.customCertificatePath = customCertificatePath;
   }
 
   public String getServerUrl() {
@@ -48,23 +54,36 @@ public abstract class ConnectionParams implements Serializable {
     return database;
   }
 
+  public String getCustomCertificatePath() {
+    return customCertificatePath;
+  }
+
   public abstract AuthToken asAuthToken();
+
+  public TrustStrategy asTrustStrategy() {
+    if (customCertificatePath == null) {
+      return Config.defaultConfig().trustStrategy();
+    }
+    return TrustStrategy.trustCustomCertificateSignedBy(
+        Paths.get(URI.create(customCertificatePath)).toFile());
+  }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof ConnectionParams)) {
       return false;
     }
-
     ConnectionParams that = (ConnectionParams) o;
-    return Objects.equals(serverUrl, that.serverUrl) && Objects.equals(database, that.database);
+    return Objects.equals(serverUrl, that.serverUrl)
+        && Objects.equals(database, that.database)
+        && Objects.equals(customCertificatePath, that.customCertificatePath);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(serverUrl, database);
+    return Objects.hash(serverUrl, database, customCertificatePath);
   }
 }

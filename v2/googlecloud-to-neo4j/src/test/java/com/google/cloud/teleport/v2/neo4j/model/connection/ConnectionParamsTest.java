@@ -39,7 +39,8 @@ public class ConnectionParamsTest {
 
     assertThat(connectionParams).isInstanceOf(BasicConnectionParams.class);
     assertThat(connectionParams)
-        .isEqualTo(new BasicConnectionParams("bolt://example.com", null, "neo4j", "password"));
+        .isEqualTo(
+            new BasicConnectionParams("bolt://example.com", null, null, "neo4j", "password"));
   }
 
   @Test
@@ -47,11 +48,13 @@ public class ConnectionParamsTest {
     ConnectionParams connectionParams =
         Json.map(
             json(
-                "{\"auth_type\": \"basic\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"username\": \"neo4j\", \"pwd\": \"password\"}"),
+                "{\"auth_type\": \"basic\", \"server_url\": \"bolt://example.com\", \"custom_ca_certificate_path\": \"gs://example.com/my/cert\", \"database\": \"db\", \"username\": \"neo4j\", \"pwd\": \"password\"}"),
             ConnectionParams.class);
 
     assertThat(connectionParams)
-        .isEqualTo(new BasicConnectionParams("bolt://example.com", "db", "neo4j", "password"));
+        .isEqualTo(
+            new BasicConnectionParams(
+                "bolt://example.com", "db", "gs://example.com/my/cert", "neo4j", "password"));
   }
 
   @Test
@@ -62,7 +65,8 @@ public class ConnectionParamsTest {
             ConnectionParams.class);
 
     assertThat(connectionParams).isInstanceOf(NoAuthConnectionParams.class);
-    assertThat(connectionParams).isEqualTo(new NoAuthConnectionParams("bolt://example.com", null));
+    assertThat(connectionParams)
+        .isEqualTo(new NoAuthConnectionParams("bolt://example.com", null, null));
   }
 
   @Test
@@ -70,10 +74,12 @@ public class ConnectionParamsTest {
     ConnectionParams connectionParams =
         Json.map(
             json(
-                "{\"auth_type\": \"none\", \"server_url\": \"bolt://example.com\", \"database\": \"db\"}"),
+                "{\"auth_type\": \"none\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"custom_ca_certificate_path\": \"gs://example.com/my/cert\"}"),
             ConnectionParams.class);
 
-    assertThat(connectionParams).isEqualTo(new NoAuthConnectionParams("bolt://example.com", "db"));
+    assertThat(connectionParams)
+        .isEqualTo(
+            new NoAuthConnectionParams("bolt://example.com", "db", "gs://example.com/my/cert"));
   }
 
   @Test
@@ -87,7 +93,8 @@ public class ConnectionParamsTest {
     assertThat(connectionParams).isInstanceOf(KerberosConnectionParams.class);
     assertThat(connectionParams)
         .isEqualTo(
-            new KerberosConnectionParams("bolt://example.com", null, "dGhpcyBpcyBhIHRpY2tldA=="));
+            new KerberosConnectionParams(
+                "bolt://example.com", null, null, "dGhpcyBpcyBhIHRpY2tldA=="));
   }
 
   @Test
@@ -95,12 +102,16 @@ public class ConnectionParamsTest {
     ConnectionParams connectionParams =
         Json.map(
             json(
-                "{\"auth_type\": \"kerberos\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"ticket\": \"dGhpcyBpcyBhIHRpY2tldA==\"}"),
+                "{\"auth_type\": \"kerberos\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"custom_ca_certificate_path\": \"gs://example.com/my/cert\", \"ticket\": \"dGhpcyBpcyBhIHRpY2tldA==\"}"),
             ConnectionParams.class);
 
     assertThat(connectionParams)
         .isEqualTo(
-            new KerberosConnectionParams("bolt://example.com", "db", "dGhpcyBpcyBhIHRpY2tldA=="));
+            new KerberosConnectionParams(
+                "bolt://example.com",
+                "db",
+                "gs://example.com/my/cert",
+                "dGhpcyBpcyBhIHRpY2tldA=="));
   }
 
   @Test
@@ -113,7 +124,7 @@ public class ConnectionParamsTest {
 
     assertThat(connectionParams).isInstanceOf(BearerConnectionParams.class);
     assertThat(connectionParams)
-        .isEqualTo(new BearerConnectionParams("bolt://example.com", null, "a-token"));
+        .isEqualTo(new BearerConnectionParams("bolt://example.com", null, null, "a-token"));
   }
 
   @Test
@@ -121,11 +132,13 @@ public class ConnectionParamsTest {
     ConnectionParams connectionParams =
         Json.map(
             json(
-                "{\"auth_type\": \"bearer\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"token\": \"a-token\"}"),
+                "{\"auth_type\": \"bearer\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"custom_ca_certificate_path\": \"gs://example.com/ca/cert\", \"token\": \"a-token\"}"),
             ConnectionParams.class);
 
     assertThat(connectionParams)
-        .isEqualTo(new BearerConnectionParams("bolt://example.com", "db", "a-token"));
+        .isEqualTo(
+            new BearerConnectionParams(
+                "bolt://example.com", "db", "gs://example.com/ca/cert", "a-token"));
   }
 
   @Test
@@ -142,6 +155,7 @@ public class ConnectionParamsTest {
             new CustomConnectionParams(
                 "bolt://example.com",
                 null,
+                null,
                 "a-principal",
                 "some-credentials",
                 null,
@@ -154,7 +168,7 @@ public class ConnectionParamsTest {
     ConnectionParams connectionParams =
         Json.map(
             json(
-                "{\"auth_type\": \"custom\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"principal\": \"a-principal\", \"credentials\": \"some-credentials\", \"realm\": \"a-realm\", \"scheme\": \"a-scheme\", \"parameters\": {\"foo\": \"bar\", \"baz\": true}}"),
+                "{\"auth_type\": \"custom\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"custom_ca_certificate_path\": \"gs://example.com/my/cert\", \"principal\": \"a-principal\", \"credentials\": \"some-credentials\", \"realm\": \"a-realm\", \"scheme\": \"a-scheme\", \"parameters\": {\"foo\": \"bar\", \"baz\": true}}"),
             ConnectionParams.class);
 
     assertThat(connectionParams)
@@ -162,6 +176,7 @@ public class ConnectionParamsTest {
             new CustomConnectionParams(
                 "bolt://example.com",
                 "db",
+                "gs://example.com/my/cert",
                 "a-principal",
                 "some-credentials",
                 "a-realm",
