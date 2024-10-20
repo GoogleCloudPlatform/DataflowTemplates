@@ -44,4 +44,19 @@ public class DatastreamToSpannerConstants {
 
   /* Max DoFns per dataflow worker in a streaming pipeline. */
   public static final int MAX_DOFN_PER_WORKER = 500;
+
+  /* The counter name for Successful events */
+  public static final String SUCCESSFUL_EVENTS_COUNTER_NAME = "Successful events";
+
+  /* The counter name for Skipped events */
+  public static final String SKIPPED_EVENTS_COUNTER_NAME = "Skipped events";
+
+  /* The counter name for Other permanent errors */
+  public static final String OTHER_PERMANENT_ERRORS_COUNTER_NAME = "Other permanent errors";
+
+  /* The counter name for Conversion errors */
+  public static final String CONVERSION_ERRORS_COUNTER_NAME = "Conversion errors";
+
+  /* The counter name for Retryable errors */
+  public static final String RETRYABLE_ERRORS_COUNTER_NAME = "Retryable errors";
 }
