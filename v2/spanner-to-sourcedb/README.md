@@ -1,3 +1,12 @@
+<div style="border:1px solid #ebccd1; padding:10px; border-radius:5px;">
+  ⚠️ <b>Important:</b>
+
+If you're using the same metadata database for multiple migration runs, **you must manually delete the change stream metadata table before each re-run**. This is due to a known issue in Apache Beam ([details](https://github.com/apache/beam/issues/32509)).
+
+The table name follows this pattern: `Metadata_<metadata database name>_<uuid>`.
+
+A fix is in progress ([see here](https://github.com/apache/beam/pull/32689)).
+</div>
 
 # Cloud Spanner Reverse Replication User Guide
 
