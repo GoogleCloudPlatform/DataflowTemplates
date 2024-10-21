@@ -20,6 +20,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.FieldList;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
@@ -305,6 +306,11 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             .waitForConditionsAndFinish(
                 createConfig(info), conditions.toArray(new ConditionCheck[0]));
     // Assert
+    TableResult dlqRecords = bigQueryClient.readTable(deadletterTableId);
+    FieldList fields = dlqRecords.getSchema().getFields();
+    assert (fields.contains(Field.of("topic", StandardSQLTypeName.STRING)));
+    assert (fields.contains(Field.of("sourceOffset", StandardSQLTypeName.STRING)));
+    assert (fields.contains(Field.of("partition", StandardSQLTypeName.STRING)));
     assertThatResult(result).meetsConditions();
   }
 
