@@ -20,6 +20,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.GENERATION_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GOOGLE_FORMAT_VERSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GOOGLE_STORAGE;
 import static com.google.cloud.teleport.spanner.AvroUtil.HIDDEN;
+import static com.google.cloud.teleport.spanner.AvroUtil.IDENTITY_COLUMN;
 import static com.google.cloud.teleport.spanner.AvroUtil.INPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
 import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
@@ -167,7 +168,16 @@ public class DdlToAvroSchemaConverter {
           // which are semantically logical entities.
           fieldBuilder.type(SchemaBuilder.builder().nullType()).withDefault(null);
         } else {
-          if (cm.defaultExpression() != null) {
+          if (cm.isIdentityColumn()) {
+            fieldBuilder.prop(IDENTITY_COLUMN, Boolean.toString(cm.isIdentityColumn()));
+            if (cm.sequenceKind() != null) {
+              fieldBuilder.prop(SPANNER_SEQUENCE_KIND, cm.sequenceKind());
+            }
+            fieldBuilder.prop(
+                SPANNER_SEQUENCE_COUNTER_START, String.valueOf(cm.counterStartValue()));
+            fieldBuilder.prop(SPANNER_SEQUENCE_SKIP_RANGE_MIN, String.valueOf(cm.skipRangeMin()));
+            fieldBuilder.prop(SPANNER_SEQUENCE_SKIP_RANGE_MAX, String.valueOf(cm.skipRangeMax()));
+          } else if (cm.defaultExpression() != null) {
             fieldBuilder.prop(DEFAULT_EXPRESSION, cm.defaultExpression());
           }
           Schema avroType = avroType(cm.type(), table.name() + "_" + columnOrdinal++);
