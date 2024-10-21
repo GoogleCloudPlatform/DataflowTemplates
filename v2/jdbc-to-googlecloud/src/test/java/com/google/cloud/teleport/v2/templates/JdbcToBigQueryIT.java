@@ -424,23 +424,24 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
   // Since maybeParseSecret is private, we need to use reflection to access it
   private static String invokeMaybeParseSecret(String secret) throws Exception {
-    java.lang.reflect.Method method = JdbcToBigQuery.class.getDeclaredMethod("maybeParseSecret", String.class);
+    java.lang.reflect.Method method =
+        JdbcToBigQuery.class.getDeclaredMethod("maybeParseSecret", String.class);
     method.setAccessible(true);
     return (String) method.invoke(null, secret);
   }
 
   @Test
   void testMaybeParseSecret_invalidSecretPath_returnsOriginalString() throws Exception {
-      String secretPath = "not-a-secret";
-      String expectedSecret = "not-a-secret";
-      String actualSecret = invokeMaybeParseSecret(secretPath);
-      assertEquals(expectedSecret, actualSecret);
+    String secretPath = "not-a-secret";
+    String expectedSecret = "not-a-secret";
+    String actualSecret = invokeMaybeParseSecret(secretPath);
+    assertEquals(expectedSecret, actualSecret);
   }
 
   @Test
   void testMaybeParseSecret_nullInput_returnsNull() throws Exception {
-      String secretPath = null;
-      String actualSecret = invokeMaybeParseSecret(secretPath);
-      assertNull(actualSecret);
+    String secretPath = null;
+    String actualSecret = invokeMaybeParseSecret(secretPath);
+    assertNull(actualSecret);
   }
 }
