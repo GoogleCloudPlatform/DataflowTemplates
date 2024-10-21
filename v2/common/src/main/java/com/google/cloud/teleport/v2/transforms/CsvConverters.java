@@ -57,10 +57,10 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Splitter;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Throwables;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -642,7 +642,7 @@ public class CsvConverters {
       this.linesTag = linesTag;
       this.csvFormat = getCsvFormat(csvFormat, delimiter);
       this.fileEncoding = fileEncoding;
-      this.delimiter = String.valueOf(this.csvFormat.getDelimiter());
+      this.delimiter = this.csvFormat.getDelimiterString();
     }
 
     @ProcessElement
@@ -652,7 +652,7 @@ public class CsvConverters {
       try {
         BufferedReader bufferedReader =
             new BufferedReader(
-                Channels.newReader(filePath.open(), Charset.forName(this.fileEncoding).name()));
+                Channels.newReader(filePath.open(), Charset.forName(this.fileEncoding)));
         CSVParser parser =
             CSVParser.parse(bufferedReader, this.csvFormat.withFirstRecordAsHeader());
         outputReceiver
@@ -676,17 +676,17 @@ public class CsvConverters {
    */
   public static class StringToGenericRecordFn extends DoFn<String, GenericRecord> {
     private String serializedSchema;
-    private final String delimiter;
+    private CSVFormat csvFormat = CSVFormat.DEFAULT;
     private Schema schema;
     private boolean logDetailedCsvConversionErrors = false;
 
     public StringToGenericRecordFn(String schemaLocation, String delimiter) {
       withSchemaLocation(schemaLocation);
-      this.delimiter = delimiter;
+      this.csvFormat = CSVFormat.DEFAULT.builder().setDelimiter(delimiter).build();
     }
 
     public StringToGenericRecordFn(String delimiter) {
-      this.delimiter = delimiter;
+      this.csvFormat = CSVFormat.DEFAULT.builder().setDelimiter(delimiter).build();
     }
 
     public StringToGenericRecordFn withSchemaLocation(String schemaLocation) {
@@ -713,8 +713,7 @@ public class CsvConverters {
     @ProcessElement
     public void processElement(ProcessContext context) throws IllegalArgumentException {
       GenericRecord genericRecord = new GenericData.Record(schema);
-      String[] rowValue =
-          Splitter.on(delimiter).splitToList(context.element()).toArray(new String[0]);
+      CSVRecord csvRecord = parseString(context.element(), csvFormat);
       List<Schema.Field> fields = schema.getFields();
 
       try {
@@ -729,18 +728,18 @@ public class CsvConverters {
 
             // Check if Csv data is null.
             if ((dataType1.equals("null") || dataType2.equals("null"))
-                && rowValue[index].length() == 0) {
+                && csvRecord.get(index).isEmpty()) {
               genericRecord.put(field.name(), null);
             } else {
               // Add valid data type to generic record.
               if (dataType1.equals("null")) {
-                populateGenericRecord(genericRecord, dataType2, rowValue[index], field.name());
+                populateGenericRecord(genericRecord, dataType2, csvRecord.get(index), field.name());
               } else {
-                populateGenericRecord(genericRecord, dataType1, rowValue[index], field.name());
+                populateGenericRecord(genericRecord, dataType1, csvRecord.get(index), field.name());
               }
             }
           } else {
-            populateGenericRecord(genericRecord, fieldType, rowValue[index], field.name());
+            populateGenericRecord(genericRecord, fieldType, csvRecord.get(index), field.name());
           }
         }
       } catch (ArrayIndexOutOfBoundsException e) {
@@ -749,6 +748,16 @@ public class CsvConverters {
             "Number of fields in the Avro schema and number of Csv headers do not match.");
       }
       context.output(genericRecord);
+    }
+
+    private static CSVRecord parseString(String element, CSVFormat format) {
+      try (CSVParser parser = CSVParser.parse(element, format)) {
+        List<CSVRecord> records = parser.getRecords();
+        return records.get(0);
+      } catch (IOException e) {
+        LOG.error(e.getMessage());
+        throw new RuntimeException(e);
+      }
     }
 
     private void populateGenericRecord(
