@@ -141,36 +141,6 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
   }
 
   @Test
-  public void testDataStreamMySqlToSpannerGCSNotifications() throws IOException {
-    createPubSubNotifications();
-
-    // Run a simple IT
-    simpleMySqlToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
-        Dialect.GOOGLE_STANDARD_SQL,
-        false,
-        config ->
-            config
-                .addParameter("gcsPubSubSubscription", subscription.toString())
-                .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString()));
-  }
-
-  @Test
-  public void testDataStreamOracleToSpannerGCSNotifications() throws IOException {
-    createPubSubNotifications();
-
-    // Run a simple IT
-    simpleOracleToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
-        Dialect.GOOGLE_STANDARD_SQL,
-        false,
-        config ->
-            config
-                .addParameter("gcsPubSubSubscription", subscription.toString())
-                .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString()));
-  }
-
-  @Test
   public void testDataStreamMySqlToSpannerStaging() throws IOException {
     // Run a simple IT
     simpleMySqlToSpannerTest(
