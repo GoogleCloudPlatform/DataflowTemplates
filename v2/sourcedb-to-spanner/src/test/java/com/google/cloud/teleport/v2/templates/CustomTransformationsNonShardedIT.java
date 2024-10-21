@@ -107,8 +107,7 @@ public class CustomTransformationsNonShardedIT extends SourceDbToSpannerITBase {
     row.put("decimal_column", 12346.6789);
     row.put("datetime_column", "2024-06-21T17:10:00Z");
     row.put("timestamp_column", "2022-12-31T23:59:57Z");
-    // TODO (b/349257952): update once TIME handling is made consistent for bulk and live.
-    // row.put("time_column", "43200000000");
+    row.put("time_column", "18:00:00");
     row.put("year_column", "2025");
     row.put("blob_column", "V29ybWQ=");
     row.put("enum_column", "1");
@@ -132,7 +131,7 @@ public class CustomTransformationsNonShardedIT extends SourceDbToSpannerITBase {
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery(
-                "SELECT varchar_column, tinyint_column, text_column, date_column, int_column, bigint_column, float_column, double_column, decimal_column, datetime_column, timestamp_column, year_column, blob_column, enum_column, bool_column, varbinary_column, bit_column, binary_column, char_column, longblob_column,"
+                "SELECT varchar_column, tinyint_column, text_column, date_column, int_column, bigint_column, float_column, double_column, decimal_column, datetime_column, timestamp_column, time_column, year_column, blob_column, enum_column, bool_column, varbinary_column, bit_column, binary_column, char_column, longblob_column,"
                     + "longtext_column, mediumblob_column, mediumint_column, mediumtext_column, set_column, smallint_column,"
                     + "tinyblob_column, tinytext_column, json_column FROM AllDatatypeTransformation"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);

@@ -56,8 +56,8 @@ public class DataTypesIT extends SourceDbToSpannerITBase {
   public static PostgresResourceManager postgreSQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final String POSTGRESQL_DDL_RESOURCE = "DataTypesIt/postgresql/data-types.sql";
-  private static final String SPANNER_DDL_RESOURCE = "DataTypesIt/postgresql/spanner-schema.sql";
+  private static final String POSTGRESQL_DDL_RESOURCE = "DataTypesIT/postgresql/data-types.sql";
+  private static final String SPANNER_DDL_RESOURCE = "DataTypesIT/postgresql/spanner-schema.sql";
 
   /** Setup resource managers. */
   @Before

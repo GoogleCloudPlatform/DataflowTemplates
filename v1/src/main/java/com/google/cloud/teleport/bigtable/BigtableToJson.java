@@ -24,6 +24,8 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
+import com.google.cloud.teleport.util.DualInputNestedValueProvider;
+import com.google.cloud.teleport.util.DualInputNestedValueProvider.TranslatorInput;
 import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -32,11 +34,14 @@ import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -108,10 +113,10 @@ public class BigtableToJson {
     @TemplateParameter.GcsWriteFolder(
         order = 4,
         groupName = "Target",
-        optional = true,
         description = "Cloud Storage directory for storing JSON files",
         helpText = "The Cloud Storage path where the output JSON files are stored.",
         example = "gs://your-bucket/your-path/")
+    @Required
     ValueProvider<String> getOutputDirectory();
 
     @SuppressWarnings("unused")
@@ -120,6 +125,7 @@ public class BigtableToJson {
     @TemplateParameter.Text(
         order = 5,
         groupName = "Target",
+        optional = true,
         description = "JSON file prefix",
         helpText =
             "The prefix of the JSON file name. For example, \"table1-\". If no value is provided, defaults to `part`.")
@@ -208,20 +214,19 @@ public class BigtableToJson {
       read = read.withoutValidation();
     }
 
-    // Concatenating cloud storage folder with file prefix to get complete path
-    ValueProvider<String> outputFilePrefix = options.getFilenamePrefix();
-
-    ValueProvider<String> outputFilePathWithPrefix =
-        ValueProvider.NestedValueProvider.of(
+    ValueProvider<String> filePathPrefix =
+        DualInputNestedValueProvider.of(
             options.getOutputDirectory(),
-            (SerializableFunction<String, String>)
-                folder -> {
-                  if (!folder.endsWith("/")) {
-                    // Appending the slash if not provided by user
-                    folder = folder + "/";
-                  }
-                  return folder + outputFilePrefix.get();
-                });
+            options.getFilenamePrefix(),
+            new SerializableFunction<TranslatorInput<String, String>, String>() {
+              @Override
+              public String apply(TranslatorInput<String, String> input) {
+                return FileSystems.matchNewResource(input.getX(), true)
+                    .resolve(input.getY(), StandardResolveOptions.RESOLVE_FILE)
+                    .toString();
+              }
+            });
+
     String userOption = options.getUserOption();
     pipeline
         .apply("Read from Bigtable", read)
@@ -229,7 +234,7 @@ public class BigtableToJson {
             "Transform to JSON",
             MapElements.via(
                 new BigtableToJsonFn(userOption.equals("FLATTEN"), options.getColumnsAliases())))
-        .apply("Write to storage", TextIO.write().to(outputFilePathWithPrefix).withSuffix(".json"));
+        .apply("Write to storage", TextIO.write().to(filePathPrefix).withSuffix(".json"));
 
     return pipeline.run();
   }
