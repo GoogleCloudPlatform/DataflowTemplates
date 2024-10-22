@@ -223,4 +223,15 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String getTransformationCustomParameters();
 
   void setTransformationCustomParameters(String value);
+
+  @TemplateParameter.Text(
+      order = 19,
+      optional = true,
+      description = "Namespace",
+      helpText =
+          "Namespace to exported. For PostgreSQL, if no namespace is provided, 'public' will be used")
+  @Default.String("")
+  String getNamespace();
+
+  void setNamespace(String value);
 }

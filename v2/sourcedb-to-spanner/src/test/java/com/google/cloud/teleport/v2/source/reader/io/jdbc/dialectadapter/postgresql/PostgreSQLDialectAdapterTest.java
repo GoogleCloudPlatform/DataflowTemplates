@@ -62,7 +62,8 @@ public class PostgreSQLDialectAdapterTest {
 
   @Before
   public void setUp() throws Exception {
-    sourceSchemaReference = SourceSchemaReference.builder().setDbName("testDB").build();
+    sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").setNamespace("public").build();
     adapter = new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT);
   }
 

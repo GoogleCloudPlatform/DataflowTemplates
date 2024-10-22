@@ -37,7 +37,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class OptionsToConfigBuilder {
+
   private static final Logger LOG = LoggerFactory.getLogger(OptionsToConfigBuilder.class);
+  public static final String DEFAULT_POSTGRESQL_NAMESPACE = "public";
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfigWithDefaults(
       SourceDbToSpannerOptions options,
@@ -49,6 +51,7 @@ public final class OptionsToConfigBuilder {
     String dbName = extractDbFromURL(sourceDbURL);
     String username = options.getUsername();
     String password = options.getPassword();
+    String namespace = options.getNamespace();
 
     String jdbcDriverClassName = options.getJdbcDriverClassName();
     String jdbcDriverJars = options.getJdbcDriverJars();
@@ -66,6 +69,7 @@ public final class OptionsToConfigBuilder {
         username,
         password,
         dbName,
+        namespace,
         shardId,
         jdbcDriverClassName,
         jdbcDriverJars,
@@ -84,6 +88,7 @@ public final class OptionsToConfigBuilder {
       String username,
       String password,
       String dbName,
+      String namespace,
       String shardId,
       String jdbcDriverClassName,
       String jdbcDriverJars,
@@ -91,9 +96,11 @@ public final class OptionsToConfigBuilder {
       Integer numPartitions,
       Wait.OnSignal<?> waitOn) {
     JdbcIOWrapperConfig.Builder builder = builderWithDefaultsFor(sqlDialect);
+    SourceSchemaReference sourceSchemaReference =
+        sourceSchemaReferenceFrom(sqlDialect, dbName, namespace);
     builder =
         builder
-            .setSourceSchemaReference(SourceSchemaReference.builder().setDbName(dbName).build())
+            .setSourceSchemaReference(sourceSchemaReference)
             .setDbAuth(
                 LocalCredentialsProvider.builder()
                     .setUserName(
@@ -123,8 +130,9 @@ public final class OptionsToConfigBuilder {
         if (sourceDbURL == null) {
           sourceDbURL = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
         }
+        sourceDbURL = sourceDbURL + "?currentSchema=" + sourceSchemaReference.namespace();
         if (StringUtils.isNotBlank(connectionProperties)) {
-          sourceDbURL = sourceDbURL + "?" + connectionProperties;
+          sourceDbURL = sourceDbURL + "&" + connectionProperties;
         }
         break;
     }
@@ -226,6 +234,20 @@ public final class OptionsToConfigBuilder {
       return builderWithPostgreSQLDefaults();
     }
     return builderWithMySqlDefaults();
+  }
+
+  private static SourceSchemaReference sourceSchemaReferenceFrom(
+      SQLDialect dialect, String dbName, String namespace) {
+    SourceSchemaReference.Builder builder = SourceSchemaReference.builder();
+    // Namespaces are not supported for MySQL
+    if (dialect == SQLDialect.POSTGRESQL) {
+      if (StringUtils.isBlank(namespace)) {
+        builder.setNamespace(DEFAULT_POSTGRESQL_NAMESPACE);
+      } else {
+        builder.setNamespace(namespace);
+      }
+    }
+    return builder.setDbName(dbName).build();
   }
 
   private OptionsToConfigBuilder() {}

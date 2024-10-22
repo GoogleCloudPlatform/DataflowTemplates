@@ -69,12 +69,6 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   private static final Set<String> TIMEOUT_SQL_STATES =
       Sets.newHashSet(SQL_STATE_ER_QUERY_CANCELLED, SQL_STATE_ER_LOCK_TIMEOUT);
 
-  // Information schema / System tables constants
-  private static final ImmutableList<String> EXCLUDED_SCHEMAS =
-      ImmutableList.of("information_schema");
-  private static final String EXCLUDED_SCHEMAS_STR =
-      EXCLUDED_SCHEMAS.stream().map(schema -> "'" + schema + "'").collect(Collectors.joining(","));
-
   // Errors
   private final Counter schemaDiscoveryErrors =
       Metrics.counter(JdbcSourceRowMapper.class, MetricCounters.READER_SCHEMA_DISCOVERY_ERRORS);
@@ -111,18 +105,16 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     logger.info("Discovering tables for DataSource: {}", dataSource);
 
     final String query =
-        String.format(
-            "SELECT table_name"
-                + " FROM information_schema.tables"
-                + " WHERE table_type = 'BASE TABLE'"
-                + "  AND table_catalog = ?"
-                + "  AND table_schema NOT LIKE 'pg_%%'"
-                + "  AND table_schema NOT IN (%s)",
-            EXCLUDED_SCHEMAS_STR);
+        "SELECT table_name"
+            + " FROM information_schema.tables"
+            + " WHERE table_type = 'BASE TABLE'"
+            + "  AND table_catalog = ?"
+            + "  AND table_schema = ?";
 
     ImmutableList.Builder<String> tablesBuilder = ImmutableList.builder();
     try (PreparedStatement stmt = dataSource.getConnection().prepareStatement(query)) {
       stmt.setString(1, sourceSchemaReference.dbName());
+      stmt.setString(2, sourceSchemaReference.namespace());
       try (ResultSet rs = stmt.executeQuery()) {
         while (rs.next()) {
           tablesBuilder.add(rs.getString("table_name"));
@@ -176,25 +168,23 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         tables);
 
     final String query =
-        String.format(
-            "SELECT column_name,"
-                + "  data_type,"
-                + "  character_maximum_length,"
-                + "  numeric_precision,"
-                + "  numeric_scale"
-                + " FROM information_schema.columns"
-                + " WHERE table_catalog = ?"
-                + "  AND table_name = ?"
-                + "  AND table_schema NOT LIKE 'pg_%%'"
-                + "  AND table_schema NOT IN (%s)",
-            EXCLUDED_SCHEMAS_STR);
+        "SELECT column_name,"
+            + "  data_type,"
+            + "  character_maximum_length,"
+            + "  numeric_precision,"
+            + "  numeric_scale"
+            + " FROM information_schema.columns"
+            + " WHERE table_catalog = ?"
+            + "  AND table_schema = ?"
+            + "  AND table_name = ?";
 
     ImmutableMap.Builder<String, ImmutableMap<String, SourceColumnType>> tableSchemaBuilder =
         ImmutableMap.builder();
     try (PreparedStatement statement = dataSource.getConnection().prepareStatement(query)) {
       for (String table : tables) {
         statement.setString(1, sourceSchemaReference.dbName());
-        statement.setString(2, table);
+        statement.setString(2, sourceSchemaReference.namespace());
+        statement.setString(3, table);
         logger.info("Executing query " + query + ": " + statement);
         try (ResultSet resultSet = statement.executeQuery()) {
           ImmutableMap.Builder<String, SourceColumnType> schema = ImmutableMap.builder();
@@ -294,37 +284,35 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         tables);
 
     final String query =
-        String.format(
-            "SELECT a.attname AS column_name,"
-                + "  ixs.indexname AS index_name,"
-                + "  ix.indisunique AS is_unique,"
-                + "  ix.indisprimary AS is_primary,"
-                + "  c.reltuples AS cardinality,"
-                + "  a.attnum AS ordinal_position,"
-                + "  t.typname AS type_name,"
-                + "  information_schema._pg_char_max_length(a.atttypid, a.atttypmod) AS type_length,"
-                + "  t.typcategory AS type_category,"
-                + "  ico.collation_name AS collation,"
-                + "  ico.pad_attribute AS pad,"
-                + "  pg_encoding_to_char(d.encoding) AS charset"
-                + " FROM pg_catalog.pg_indexes ixs"
-                + "  JOIN pg_catalog.pg_class c ON c.relname = ixs.indexname"
-                + "  JOIN pg_catalog.pg_index ix ON c.oid = ix.indexrelid"
-                + "  JOIN pg_catalog.pg_attribute a ON c.oid = a.attrelid"
-                + "  JOIN pg_catalog.pg_type t ON t.oid = a.atttypid"
-                + "  LEFT OUTER JOIN pg_catalog.pg_collation co ON co.oid = ix.indcollation[a.attnum - 1]"
-                + "  LEFT OUTER JOIN information_schema.collations ico ON ico.collation_name = co.collname"
-                + "  LEFT OUTER JOIN pg_catalog.pg_database d ON d.datname = current_database()"
-                + " WHERE ixs.tablename = ?"
-                + "  AND ixs.schemaname NOT LIKE 'pg_%%'"
-                + "  AND ixs.schemaname NOT IN (%s)"
-                + " ORDER BY ix.indexrelid, ordinal_position ASC;",
-            EXCLUDED_SCHEMAS_STR);
+        "SELECT a.attname AS column_name,"
+            + "  ixs.indexname AS index_name,"
+            + "  ix.indisunique AS is_unique,"
+            + "  ix.indisprimary AS is_primary,"
+            + "  c.reltuples AS cardinality,"
+            + "  a.attnum AS ordinal_position,"
+            + "  t.typname AS type_name,"
+            + "  information_schema._pg_char_max_length(a.atttypid, a.atttypmod) AS type_length,"
+            + "  t.typcategory AS type_category,"
+            + "  ico.collation_name AS collation,"
+            + "  ico.pad_attribute AS pad,"
+            + "  pg_encoding_to_char(d.encoding) AS charset"
+            + " FROM pg_catalog.pg_indexes ixs"
+            + "  JOIN pg_catalog.pg_class c ON c.relname = ixs.indexname"
+            + "  JOIN pg_catalog.pg_index ix ON c.oid = ix.indexrelid"
+            + "  JOIN pg_catalog.pg_attribute a ON c.oid = a.attrelid"
+            + "  JOIN pg_catalog.pg_type t ON t.oid = a.atttypid"
+            + "  LEFT OUTER JOIN pg_catalog.pg_collation co ON co.oid = ix.indcollation[a.attnum - 1]"
+            + "  LEFT OUTER JOIN information_schema.collations ico ON ico.collation_name = co.collname"
+            + "  LEFT OUTER JOIN pg_catalog.pg_database d ON d.datname = current_database()"
+            + " WHERE ixs.schemaname = ?"
+            + "  AND ixs.tablename = ?"
+            + " ORDER BY ix.indexrelid, ordinal_position ASC;";
     ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> tableIndexesBuilder =
         ImmutableMap.builder();
     try (PreparedStatement statement = dataSource.getConnection().prepareStatement(query)) {
       for (String table : tables) {
-        statement.setString(1, table);
+        statement.setString(1, sourceSchemaReference.namespace());
+        statement.setString(2, table);
         ImmutableList.Builder<SourceColumnIndexInfo> indexInfosBuilder = ImmutableList.builder();
         try (ResultSet resultSet = statement.executeQuery()) {
           while (resultSet.next()) {
