@@ -431,7 +431,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   @Test
-  void testMaybeParseSecret_invalidSecretPath_returnsOriginalString() throws Exception {
+  public void testMaybeParseSecret_invalidSecretPath_returnsOriginalString() throws Exception {
     String secretPath = "not-a-secret";
     String expectedSecret = "not-a-secret";
     String actualSecret = invokeMaybeParseSecret(secretPath);
@@ -439,7 +439,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   @Test
-  void testMaybeParseSecret_nullInput_returnsNull() throws Exception {
+  public void testMaybeParseSecret_nullInput_returnsNull() throws Exception {
     String secretPath = null;
     String actualSecret = invokeMaybeParseSecret(secretPath);
     assertNull(actualSecret);
