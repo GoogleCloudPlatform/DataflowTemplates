@@ -117,6 +117,7 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
                 null,
                 null,
                 null,
+                null,
                 null);
       }
     }

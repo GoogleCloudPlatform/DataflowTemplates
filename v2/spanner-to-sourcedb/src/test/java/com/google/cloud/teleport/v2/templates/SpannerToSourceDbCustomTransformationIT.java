@@ -21,12 +21,15 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Options;
-import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
+import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
@@ -53,16 +56,22 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
+public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbITBase {
+  private static final Logger LOG =
+      LoggerFactory.getLogger(SpannerToSourceDbCustomTransformationIT.class);
 
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbIT.class);
-
-  private static final String SPANNER_DDL_RESOURCE = "SpannerToSourceDbIT/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE = "SpannerToSourceDbIT/session.json";
-  private static final String MYSQL_SCHEMA_FILE_RESOURCE = "SpannerToSourceDbIT/mysql-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE =
+      "SpannerToSourceDbCustomTransformationIT/spanner-schema.sql";
+  private static final String SESSION_FILE_RESOURCE =
+      "SpannerToSourceDbCustomTransformationIT/session.json";
+  private static final String MYSQL_SCHEMA_FILE_RESOURCE =
+      "SpannerToSourceDbCustomTransformationIT/mysql-schema.sql";
 
   private static final String TABLE = "Users";
-  private static final HashSet<SpannerToSourceDbIT> testInstances = new HashSet<>();
+
+  private static final String TABLE2 = "AllDatatypeTransformation";
+  private static final HashSet<SpannerToSourceDbCustomTransformationIT> testInstances =
+      new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
@@ -77,17 +86,20 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
    * @throws IOException
    */
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
-    synchronized (SpannerToSourceDbIT.class) {
+    synchronized (SpannerToSourceDbCustomTransformationIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        spannerResourceManager = createSpannerDatabase(SpannerToSourceDbIT.SPANNER_DDL_RESOURCE);
+        spannerResourceManager =
+            createSpannerDatabase(SpannerToSourceDbCustomTransformationIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
-        createMySQLSchema(jdbcResourceManager, SpannerToSourceDbIT.MYSQL_SCHEMA_FILE_RESOURCE);
+        createMySQLSchema(
+            jdbcResourceManager,
+            SpannerToSourceDbCustomTransformationIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
@@ -101,6 +113,11 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
                 getClass().getSimpleName(),
                 pubsubResourceManager,
                 getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+        CustomTransformation customTransformation =
+            CustomTransformation.builder(
+                    "customTransformation.jar", "com.custom.CustomTransformationWithShardForLiveIT")
+                .build();
+        createAndUploadJarToGcs(gcsResourceManager);
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -111,7 +128,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
                 null,
                 null,
                 null,
-                null);
+                customTransformation);
       }
     }
   }
@@ -123,7 +140,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToSourceDbIT instance : testInstances) {
+    for (SpannerToSourceDbCustomTransformationIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
@@ -135,7 +152,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
   }
 
   @Test
-  public void spannerToSourceDbBasic() throws InterruptedException {
+  public void spannerToSourceDbWithCustomTransformation() throws InterruptedException {
     assertThatPipeline(jobInfo).isRunning();
     // Write row in Spanner
     writeRowInSpanner();
@@ -163,7 +180,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
             Options.tag("txBy=forwardMigration"),
             Options.priority(spannerConfig.getRpcPriority().get()))
         .run(
-            (TransactionCallable<Void>)
+            (TransactionRunner.TransactionCallable<Void>)
                 transaction -> {
                   Mutation m2 =
                       Mutation.newInsertOrUpdateBuilder("Users")
@@ -177,16 +194,80 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
                 });
   }
 
-  private void assertRowInMySQL() throws InterruptedException {
+  private void assertRowInMySQL() {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManager.getRowCount(TABLE) == 1); // only one row is inserted
+                () -> jdbcResourceManager.getRowCount(TABLE) == 1);
     assertThatResult(result).meetsConditions();
+
+    result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(1)),
+                () -> jdbcResourceManager.getRowCount(TABLE2) == 2);
+    assertThatResult(result).meetsConditions();
+
     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE);
     assertThat(rows).hasSize(1);
     assertThat(rows.get(0).get("id")).isEqualTo(1);
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
+
+    rows =
+        jdbcResourceManager.runSQLQuery(
+            String.format("select * from %s order by %s", TABLE2, "varchar_column"));
+    assertThat(rows).hasSize(2);
+    assertThat(rows.get(1).get("varchar_column")).isEqualTo("example2");
+    assertThat(rows.get(1).get("bigint_column")).isEqualTo(1000);
+    assertThat(rows.get(1).get("binary_column"))
+        .isEqualTo("bin_column".getBytes(StandardCharsets.UTF_8));
+    assertThat(rows.get(1).get("bit_column")).isEqualTo("1".getBytes(StandardCharsets.UTF_8));
+    assertThat(rows.get(1).get("blob_column"))
+        .isEqualTo("blob_column".getBytes(StandardCharsets.UTF_8));
+    assertThat(rows.get(1).get("bool_column")).isEqualTo(true);
+    assertThat(rows.get(1).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
+    assertThat(rows.get(1).get("datetime_column"))
+        .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 56));
+    assertThat(rows.get(1).get("decimal_column")).isEqualTo(new BigDecimal("99999.99"));
+    assertThat(rows.get(1).get("double_column")).isEqualTo(123456.123);
+    assertThat(rows.get(1).get("enum_column")).isEqualTo("1");
+    assertThat(rows.get(1).get("float_column")).isEqualTo(12345.67f);
+    assertThat(rows.get(1).get("int_column")).isEqualTo(100);
+    assertThat(rows.get(1).get("text_column")).isEqualTo("Sample text for entry 2");
+    assertThat(rows.get(1).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:30:00"));
+    assertThat(rows.get(1).get("timestamp_column"))
+        .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"));
+    assertThat(rows.get(1).get("tinyint_column")).isEqualTo(2);
+    assertThat(rows.get(1).get("year_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
+
+    assertThat(rows.get(0).get("varchar_column")).isEqualTo("example");
+    assertThat(rows.get(0).get("bigint_column")).isEqualTo(12346);
+    assertThat(rows.get(0).get("binary_column"))
+        .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
+    assertThat(rows.get(0).get("bit_column")).isEqualTo("5".getBytes(StandardCharsets.UTF_8));
+    assertThat(rows.get(0).get("blob_column"))
+        .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
+    assertThat(rows.get(0).get("bool_column")).isEqualTo(false);
+    assertThat(rows.get(0).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-02"));
+    assertThat(rows.get(0).get("datetime_column"))
+        .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55));
+    assertThat(rows.get(0).get("decimal_column")).isEqualTo(new BigDecimal("12344.67"));
+    assertThat(rows.get(0).get("double_column")).isEqualTo(124.456);
+    assertThat(rows.get(0).get("enum_column")).isEqualTo("3");
+    assertThat(rows.get(0).get("float_column")).isEqualTo(124.45f);
+    assertThat(rows.get(0).get("int_column")).isEqualTo(124);
+    assertThat(rows.get(0).get("text_column")).isEqualTo("Sample text append");
+    assertThat(rows.get(0).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:40:00"));
+    assertThat(rows.get(0).get("timestamp_column"))
+        .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
+    assertThat(rows.get(0).get("tinyint_column")).isEqualTo(2);
+    assertThat(rows.get(0).get("year_column")).isEqualTo(java.sql.Date.valueOf("2025-01-01"));
+
+    rows =
+        jdbcResourceManager.runSQLQuery(
+            String.format(
+                "select * from %s where %s like '%s'", TABLE2, "varchar_column", "example1"));
+    assertThat(rows).hasSize(0);
   }
 }

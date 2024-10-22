@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -123,7 +124,8 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       String identifierSuffix,
       String shardingCustomJarPath,
       String shardingCustomClassName,
-      String sourceDbTimezoneOffset)
+      String sourceDbTimezoneOffset,
+      CustomTransformation customTransformation)
       throws IOException {
     // default parameters
 
@@ -143,6 +145,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("maxShardConnections", "5");
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
+            put("writeFilteredEventsToGcs", "true");
           }
         };
 
@@ -157,6 +160,13 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
     if (sourceDbTimezoneOffset != null) {
       params.put("sourceDbTimezoneOffset", sourceDbTimezoneOffset);
+    }
+
+    if (customTransformation != null) {
+      params.put(
+          "transformationJarPath",
+          getGcsPath("input/" + customTransformation.jarPath(), gcsResourceManager));
+      params.put("transformationClassName", customTransformation.classPath());
     }
 
     // Construct template
