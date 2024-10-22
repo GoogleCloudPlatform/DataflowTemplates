@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.templates.loadtesting.postgresql;
 
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
-import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import com.google.cloud.teleport.v2.templates.loadtesting.SourceDbToSpannerLTBase;
 import java.io.IOException;
 import java.text.ParseException;
@@ -29,7 +29,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @Category(TemplateLoadTest.class)
-@TemplateLoadTest(DataStreamToSpanner.class)
+@TemplateLoadTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class SourceDbToSpannerLT extends SourceDbToSpannerLTBase {
 
