@@ -178,9 +178,9 @@ CREATE TABLE set_table (
 );
 
 
-CREATE TABLE `bigint_unsigned_pk_table` (
-    `id` BIGINT UNSIGNED PRIMARY KEY,
-    `bigint_unsigned_col` BIGINT UNSIGNED NOT NULL
+CREATE TABLE bigint_unsigned_pk_table (
+    id BIGINT UNSIGNED PRIMARY KEY,
+    bigint_unsigned_pk_col BIGINT UNSIGNED NOT NULL
 );
 
 ALTER TABLE `bigint_table` MODIFY `id` INT AUTO_INCREMENT;
@@ -303,7 +303,7 @@ INSERT INTO `year_table` (`year_col`) VALUES (2022);
 INSERT INTO `year_table` (`year_col`) VALUES (1901);
 INSERT INTO `year_table` (`year_col`) VALUES (2155);
 INSERT INTO `set_table` (`set_col`) VALUES ('v1,v2');
-INSERT INTO `bigint_unsigned_pk_table` (`id`, `bigint_unsigned_col`) VALUES ('0', '0'), ('42', '42'), ('18446744073709551615', '18446744073709551615');
+INSERT INTO `bigint_unsigned_pk_table` (`id`, `bigint_unsigned_pk_col`) VALUES ('0', '0'), ('42', '42'), ('18446744073709551615', '18446744073709551615');
 
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (NULL);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (NULL);
