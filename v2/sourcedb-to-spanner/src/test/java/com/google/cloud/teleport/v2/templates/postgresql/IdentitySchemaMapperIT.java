@@ -51,7 +51,7 @@ public class IdentitySchemaMapperIT extends SourceDbToSpannerITBase {
 
   private static final String POSTGRESQL_DDL_RESOURCE =
       "SchemaMapperIT/company-postgresql-schema.sql";
-  private static final String SPANNER_DDL_RESOURCE = "SchemaMapperIT/company-spanner-schema-pg.sql";
+  private static final String SPANNER_DDL_RESOURCE = "SchemaMapperIT/company-spanner-schema.sql";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class. \
@@ -100,5 +100,11 @@ public class IdentitySchemaMapperIT extends SourceDbToSpannerITBase {
 
     SpannerAsserts.assertThatStructs(employeeSpanner)
         .hasRecordsUnorderedCaseInsensitiveColumns(employeePostgreSQL);
+
+    ImmutableList<Struct> employeeAttribute =
+        spannerResourceManager.readTableRecords(
+            "employee_attribute", "employee_id", "attribute_name", "value");
+
+    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(4); // Supports composite keys
   }
 }

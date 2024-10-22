@@ -60,11 +60,12 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
   private final int numWorkers = 20;
   private PipelineLauncher.LaunchInfo jobInfo;
   private PipelineLauncher.LaunchInfo readerJobInfo;
+  private final int numShards = 1;
 
   @Before
   public void setup() throws IOException {
     setupResourceManagers(spannerDdlResource, sessionFileResource, artifactBucket);
-    setupMySQLResourceManager(1);
+    setupMySQLResourceManager(numShards);
     generatorSchemaPath =
         getFullGcsPath(
             artifactBucket,
@@ -122,8 +123,7 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
 
     assertThatResult(result1).isLaunchFinished();
 
-    // export results
-    exportMetricsToBigQuery(jobInfo, getMetrics(jobInfo));
+    exportMetrics(jobInfo, numShards);
   }
 
   private void createMySQLSchema(List<JDBCResourceManager> jdbcResourceManagers) {

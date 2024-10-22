@@ -20,6 +20,10 @@ package org.apache.beam.it.gcp.pubsub;
 /** Custom exception for {@link PubsubResourceManager} implementations. */
 class PubsubResourceManagerException extends RuntimeException {
 
+  PubsubResourceManagerException(String errorMessage) {
+    super(errorMessage);
+  }
+
   PubsubResourceManagerException(String errorMessage, Throwable err) {
     super(errorMessage, err);
   }

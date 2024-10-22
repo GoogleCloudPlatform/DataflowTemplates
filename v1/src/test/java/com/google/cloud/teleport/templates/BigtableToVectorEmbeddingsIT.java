@@ -158,7 +158,6 @@ public class BigtableToVectorEmbeddingsIT extends TemplateTestBase {
             .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
             .addParameter("bigtableTableId", tableId)
             .addParameter("outputDirectory", getGcsPath("output/"))
-            .addParameter("filenamePrefix", "bigtable-to-json-output-")
             .addParameter("idColumn", "_key")
             .addParameter("embeddingColumn", "cf1:embedding")
             .addParameter("crowdingTagColumn", "cf2:crowding")

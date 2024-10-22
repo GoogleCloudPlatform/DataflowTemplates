@@ -4,7 +4,7 @@
 FROM ${basePythonContainerImage} as python-base
 
 # Build args
-ARG WORKDIR=/template
+ARG WORKDIR=${workingDirectory}
 ARG REQUIREMENTS_FILE=requirements.txt
 ARG PY_VERSION=${pythonVersion}
 
