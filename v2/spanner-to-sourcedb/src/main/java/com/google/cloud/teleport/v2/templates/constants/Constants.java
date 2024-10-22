@@ -59,11 +59,18 @@ public class Constants {
   // The Tag for skipped records
   public static final TupleTag<String> SKIPPED_TAG = new TupleTag<String>() {};
 
+  // The Tag for records filtered via custom transformation.
+  public static final TupleTag<String> FILTERED_TAG = new TupleTag<String>() {};
+
   // Message written to the file for skipped records
   public static final String SKIPPED_TAG_MESSAGE = "Skipped record from reverse replication";
 
   // Message written to the file for no shard found records
   public static final String SHARD_NOT_PRESENT_ERROR_MESSAGE = "No shard identified for the record";
+
+  // Message written to the file for filtered records
+  public static final String FILTERED_TAG_MESSAGE =
+      "Filtered record from custom transformation in reverse replication";
 
   // Default parallelism for the Dataflow workers
   public static final int DEFAULT_WORKER_HARNESS_THREAD_COUNT = 500;

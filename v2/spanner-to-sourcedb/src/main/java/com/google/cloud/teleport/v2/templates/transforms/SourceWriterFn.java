@@ -23,10 +23,14 @@ import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
+import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -74,6 +78,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final Counter skippedRecordCountMetric =
       Metrics.counter(SourceWriterFn.class, "skipped_record_count");
 
+  private final Counter invalidTransformationException =
+      Metrics.counter(SourceWriterFn.class, "custom_transformation_exception");
+
   private final Distribution lagMetric =
       Metrics.distribution(SourceWriterFn.class, "replication_lag_in_milli");
   private transient Map<String, MySqlDao> mySqlDaoMap = new HashMap<>();
@@ -88,6 +95,10 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final String skipDirName;
   private final int maxThreadPerDataflowWorker;
 
+  private final CustomTransformation customTransformation;
+
+  private ISpannerMigrationTransformer spannerToSourceTransformer;
+
   public SourceWriterFn(
       List<Shard> shards,
       Schema schema,
@@ -96,7 +107,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       Ddl ddl,
       String shadowTablePrefix,
       String skipDirName,
-      int maxThreadPerDataflowWorker) {
+      int maxThreadPerDataflowWorker,
+      CustomTransformation customTransformation) {
 
     this.schema = schema;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
@@ -106,6 +118,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
     this.maxThreadPerDataflowWorker = maxThreadPerDataflowWorker;
+    this.customTransformation = customTransformation;
   }
 
   // for unit testing purposes
@@ -138,6 +151,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
           new MySqlDao(sourceConnectionUrl, shard.getUserName(), shard.getPassword()));
     }
     spannerDao = new SpannerDao(spannerConfig);
+    spannerToSourceTransformer =
+        CustomTransformationImplFetcher.getCustomTransformationLogicImpl(customTransformation);
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
@@ -191,8 +206,15 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
           MySqlDao mySqlDao = mySqlDaoMap.get(shardId);
 
           InputRecordProcessor.processRecord(
-              spannerRec, schema, mySqlDao, shardId, sourceDbTimezoneOffset);
-
+              spannerRec,
+              schema,
+              mySqlDao,
+              shardId,
+              sourceDbTimezoneOffset,
+              spannerToSourceTransformer);
+          if (InputRecordProcessor.isEventFiltered()) {
+            outputWithTag(c, Constants.FILTERED_TAG, Constants.FILTERED_TAG_MESSAGE, spannerRec);
+          }
           spannerDao.updateShadowTable(
               getShadowTableMutation(
                   tableName,
@@ -207,6 +229,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         }
         com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
         c.output(Constants.SUCCESS_TAG, timestamp.toString());
+      } catch (InvalidTransformationException ex) {
+        invalidTransformationException.inc();
+        outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (ChangeEventConvertorException ex) {
         outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (SpannerException

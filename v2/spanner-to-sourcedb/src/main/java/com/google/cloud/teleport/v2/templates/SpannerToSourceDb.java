@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
@@ -356,6 +357,64 @@ public class SpannerToSourceDb {
     Integer getDlqRetryMinutes();
 
     void setDlqRetryMinutes(Integer value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 24,
+        optional = true,
+        description = "Custom transformation jar location in Cloud Storage",
+        helpText =
+            "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records"
+                + " in reverse replication.")
+    @Default.String("")
+    String getTransformationJarPath();
+
+    void setTransformationJarPath(String value);
+
+    @TemplateParameter.Text(
+        order = 25,
+        optional = true,
+        description = "Custom class name for transformation",
+        helpText =
+            "Fully qualified class name having the custom transformation logic.  It is a"
+                + " mandatory field in case transformationJarPath is specified")
+    @Default.String("")
+    String getTransformationClassName();
+
+    void setTransformationClassName(String value);
+
+    @TemplateParameter.Text(
+        order = 26,
+        optional = true,
+        description = "Custom parameters for transformation",
+        helpText =
+            "String containing any custom parameters to be passed to the custom transformation class.")
+    @Default.String("")
+    String getTransformationCustomParameters();
+
+    void setTransformationCustomParameters(String value);
+
+    @TemplateParameter.Boolean(
+        order = 27,
+        optional = true,
+        description = "Write filtered events to GCS",
+        helpText =
+            "This is a flag which if set to true will write filtered events from custom transformation to GCS.")
+    @Default.Boolean(false)
+    Boolean getWriteFilteredEventsToGcs();
+
+    void setWriteFilteredEventsToGcs(Boolean value);
+
+    @TemplateParameter.Text(
+        order = 18,
+        optional = true,
+        description = "Directory name for holding filtered records",
+        helpText =
+            "Records skipped from reverse replication are written to this directory. Default"
+                + " directory name is skip.")
+    @Default.String("filteredEvents")
+    String getFilterEventsDirectoryName();
+
+    void setFilterEventsDirectoryName(String value);
   }
 
   /**
@@ -523,6 +582,11 @@ public class SpannerToSourceDb {
     } else {
       mergedRecords = dlqRecords;
     }
+    CustomTransformation customTransformation =
+        CustomTransformation.builder(
+                options.getTransformationJarPath(), options.getTransformationClassName())
+            .setCustomParameters(options.getTransformationCustomParameters())
+            .build();
     SourceWriterTransform.Result sourceWriterOutput =
         mergedRecords
             .apply(
@@ -559,7 +623,8 @@ public class SpannerToSourceDb {
                     ddl,
                     options.getShadowTablePrefix(),
                     options.getSkipDirectoryName(),
-                    connectionPoolSizePerWorker));
+                    connectionPoolSizePerWorker,
+                    customTransformation));
 
     PCollection<FailsafeElement<String, String>> dlqPermErrorRecords =
         reconsumedElements
@@ -645,6 +710,33 @@ public class SpannerToSourceDb {
                 .setIncludePaneInfo(true)
                 .build());
 
+    if (options.getWriteFilteredEventsToGcs()) {
+      PCollection<FailsafeElement<String, String>> filteredRecords =
+          sourceWriterOutput
+              .filteredWrites()
+              .setCoder(StringUtf8Coder.of())
+              .apply(
+                  "Reshuffle6",
+                  Reshuffle.<String>viaRandomKey().withNumBuckets(reshuffleBucketSize))
+              .apply(
+                  "Convert filtered records from source writer to DLQ format",
+                  ParDo.of(new ConvertChangeStreamErrorRecordToFailsafeElementFn()))
+              .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+      filteredRecords
+          .apply(
+              "Write filtered records to GCS",
+              MapElements.via(new StringDeadLetterQueueSanitizer()))
+          .setCoder(StringUtf8Coder.of())
+          .apply(
+              "Writing filtered records to GCS",
+              DLQWriteTransform.WriteDLQ.newBuilder()
+                  .withDlqDirectory(
+                      options.getDeadLetterQueueDirectory() + "/" + options.getSkipDirectoryName())
+                  .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_skip/")
+                  .setIncludePaneInfo(true)
+                  .build());
+    }
     return pipeline.run();
   }
 
