@@ -133,7 +133,7 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${parameters}", readonly = true, required = true)
   protected String parameters;
 
-  @Parameter(defaultValue = "true", property = "generateSBOM", readonly = true, required = false)
+  @Parameter(defaultValue = "false", property = "generateSBOM", readonly = true, required = false)
   protected boolean generateSBOM;
 
   public void execute() throws MojoExecutionException {
