@@ -25,11 +25,14 @@ on:
       - '**.xml'
       # Include python files and Dockerfiles used for YAML and xlang templates.
       - '**.py'
+      - 'python/**/*.yaml'
+      - 'yaml/**/*.yaml'
       - 'plugins/core-plugin/src/main/resources/**'
       # Include relevant GitHub Action files for running these checks.
       # This will make it easier to verify action changes don't break anything.
       - '.github/actions/setup-env/*'
       - '.github/workflows/java-pr.yml'
+      - 'cicd/**'
       # Exclude spanner paths from global run (covered in https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/spanner-pr.yml)
       - '!v2/datastream-to-spanner/**'
       - '!v2/spanner-common/**'

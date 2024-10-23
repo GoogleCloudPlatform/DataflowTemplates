@@ -21,6 +21,11 @@ on:
     branches:
     - 'main'
     paths:
+      # Core files that affect all modules
+      - 'pom.xml'
+      - 'v2/pom.xml'
+      - 'it/**'
+      # Relevant Spanner paths
       # Template wide common modules
       - 'v2/common/**'
       - 'v2/datastream-common/**'

@@ -1,5 +1,41 @@
 # review when someone opens a pull request
 
+# Core templates cicd
+.github/ @GoogleCloudPlatform/dataflow-templates-wg
+cicd/ @GoogleCloudPlatform/dataflow-templates-wg
+
+# Core templates infra
+metadata/ @GoogleCloudPlatform/dataflow-templates-wg
+plaintext-logging/ @GoogleCloudPlatform/dataflow-templates-wg
+plugins/ @GoogleCloudPlatform/dataflow-templates-wg
+structured-logging/ @GoogleCloudPlatform/dataflow-templates-wg
+checkstyle/ @GoogleCloudPlatform/dataflow-templates-wg
+
+# Templates testing infra
+it/ @GoogleCloudPlatform/dataflow-templates-wg
+
+# Root template files
+.gitignore @GoogleCloudPlatform/dataflow-templates-wg
+cloudbuild.yaml @GoogleCloudPlatform/dataflow-templates-wg
+CONTRIBUTING.md @GoogleCloudPlatform/dataflow-templates-wg
+CONTRIBUTORS.md @GoogleCloudPlatform/dataflow-templates-wg
+JAVA_LICENSE_HEADER @GoogleCloudPlatform/dataflow-templates-wg
+LICENSE @GoogleCloudPlatform/dataflow-templates-wg
+README.md @GoogleCloudPlatform/dataflow-templates-wg
+SECURITY.md @GoogleCloudPlatform/dataflow-templates-wg
+
+# Top-level maven files
+pom.xml @GoogleCloudPlatform/dataflow-templates-wg
+v2/pom.xml @GoogleCloudPlatform/dataflow-templates-wg
+v1/pom.xml @GoogleCloudPlatform/dataflow-templates-wg
+
+# YAML and Python templates
+python/ @GoogleCloudPlatform/dataflow-templates-wg
+yaml/ @GoogleCloudPlatform/dataflow-templates-wg
+
+# Docs
+contributor-docs/ @GoogleCloudPlatform/dataflow-templates-wg
+
 # Spanner Import Export templates
 v1/src/main/java/com/google/cloud/teleport/spanner/ @GoogleCloudPlatform/spanner-migrations-team
 v1/src/test/java/com/google/cloud/teleport/spanner/ @GoogleCloudPlatform/spanner-migrations-team
@@ -20,6 +56,15 @@ v2/gcs-to-sourcedb/ @GoogleCloudPlatform/spanner-migrations-team
 v2/spanner-migrations-sdk/ @GoogleCloudPlatform/spanner-migrations-team
 v2/spanner-custom-shard/ @GoogleCloudPlatform/spanner-migrations-team
 v2/spanner-to-sourcedb/ @GoogleCloudPlatform/spanner-migrations-team
+
+# Spanner testing infra
+it/google-cloud-platform/src/main/java/org/apache/beam/it/gcp/spanner @GoogleCloudPlatform/dataflow-templates-wg
+lt/
+
+# Spanner workflow files
+.github/workflows/spanner-pr.yml @GoogleCloudPlatform/spanner-migrations-team
+.github/workflows/spanner-load-tests.yml @GoogleCloudPlatform/spanner-migrations-team
+.github/workflows/spanner-terraform-validator.yml @GoogleCloudPlatform/spanner-migrations-team
 
 # Datastream Templates
 v2/datastream-to-sql/ @GoogleCloudPlatform/datastream
