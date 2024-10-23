@@ -63,7 +63,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
 
 ### Building Template
 
@@ -224,6 +224,17 @@ mvn clean package -PtemplatesRun \
 -Dparameters="bigQueryDataset=$BIG_QUERY_DATASET,writeRowkeyAsBytes=$WRITE_ROWKEY_AS_BYTES,writeValuesAsBytes=$WRITE_VALUES_AS_BYTES,writeNumericTimestamps=$WRITE_NUMERIC_TIMESTAMPS,bigQueryProjectId=$BIG_QUERY_PROJECT_ID,bigQueryChangelogTableName=$BIG_QUERY_CHANGELOG_TABLE_NAME,bigQueryChangelogTablePartitionGranularity=$BIG_QUERY_CHANGELOG_TABLE_PARTITION_GRANULARITY,bigQueryChangelogTablePartitionExpirationMs=$BIG_QUERY_CHANGELOG_TABLE_PARTITION_EXPIRATION_MS,bigQueryChangelogTableFieldsToIgnore=$BIG_QUERY_CHANGELOG_TABLE_FIELDS_TO_IGNORE,dlqDirectory=$DLQ_DIRECTORY,bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID,bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID,bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE,bigtableChangeStreamCharset=$BIGTABLE_CHANGE_STREAM_CHARSET,bigtableChangeStreamStartTimestamp=$BIGTABLE_CHANGE_STREAM_START_TIMESTAMP,bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES,bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS,bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME,bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME,bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID,bigtableReadTableId=$BIGTABLE_READ_TABLE_ID,bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID" \
 -f v2/googlecloud-to-googlecloud
 ```
+
+#### Troubleshooting
+If there are compilation errors related to template metadata or template plugin framework,
+make sure the plugin dependencies are up-to-date by running:
+```
+mvn clean install -pl plugins/templates-maven-plugin,metadata -am
+```
+See [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin)
+for more information.
+
+
 
 ## Terraform
 
