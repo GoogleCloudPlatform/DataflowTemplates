@@ -219,7 +219,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     FailsafeElement<String, String> msg = c.element();
     Ddl ddl = c.sideInput(ddlView);
     Instant startTimestamp = Instant.now();
-    AtomicReference<String> migrationShardId = null;
+    AtomicReference<String> migrationShardId = new AtomicReference<>(null);
     boolean isRetryRecord = false;
     /*
      * Try Catch block to capture any exceptions that might occur while processing
