@@ -37,7 +37,6 @@ import com.google.cloud.teleport.plugin.TemplatePluginUtils;
 import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
-import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import freemarker.template.TemplateException;
 import java.io.File;
@@ -266,12 +265,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       return stageClassicTemplate(definition, imageSpec, pluginManager);
     } else {
       String stagedTemplate = stageFlexTemplate(definition, imageSpec, pluginManager);
-      if (generateSBOM) {
-        String imagePath = imageSpec.getImage();
-        File buildDir = new File(outputClassesDirectory.getAbsolutePath());
-        Failsafe.with(sbomRetryPolicy()).run(() -> generateSystemSBOM(imagePath));
-        performVulnerabilityScanAndGenerateUserSBOM(imagePath, projectId, buildDir);
-      }
+      //      if (generateSBOM) {
+      //        String imagePath = imageSpec.getImage();
+      //        File buildDir = new File(outputClassesDirectory.getAbsolutePath());
+      //        Failsafe.with(sbomRetryPolicy()).run(() -> generateSystemSBOM(imagePath));
+      //        performVulnerabilityScanAndGenerateUserSBOM(imagePath, projectId, buildDir);
+      //      }
       return stagedTemplate;
     }
   }
