@@ -500,6 +500,108 @@ public class DdlTest {
   }
 
   @Test
+  public void testIndex() {
+    Index.Builder builder =
+        Index.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .name("user_index")
+            .table("User")
+            .unique()
+            .filter("`first_name` IS NOT NULL AND `last_name` IS NOT NULL");
+    builder
+        .columns()
+        .create()
+        .name("first_name")
+        .asc()
+        .endIndexColumn()
+        .create()
+        .name("last_name")
+        .desc()
+        .endIndexColumn()
+        .create()
+        .name("full_name")
+        .storing()
+        .endIndexColumn()
+        .end();
+    Index index = builder.build();
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE UNIQUE INDEX `user_index` ON `User`(`first_name` ASC,"
+                + " `last_name` DESC) STORING (`full_name`) WHERE `first_name` IS"
+                + " NOT NULL AND `last_name` IS NOT NULL"));
+    assertTrue(index.equals(index));
+    assertFalse(index.equals(Boolean.TRUE));
+    builder = index.autoToBuilder();
+    builder
+        .columns()
+        .create()
+        .name("first_name")
+        .asc()
+        .endIndexColumn()
+        .create()
+        .name("last_name")
+        .desc()
+        .endIndexColumn()
+        .create()
+        .name("full_name")
+        .storing()
+        .endIndexColumn()
+        .end();
+    Index index1 = builder.build();
+    assertTrue(index.equals(index1));
+    assertNotNull(index.hashCode());
+  }
+
+  @Test
+  public void testSearchIndex() {
+    Index.Builder builder =
+        Index.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .name("SearchIndex")
+            .type("SEARCH")
+            .table("Messages")
+            .interleaveIn("Users")
+            .partitionBy(ImmutableList.of("UserId"))
+            .options(ImmutableList.of("sort_order_sharding=TRUE"));
+    builder
+        .columns()
+        .create()
+        .name("Subject_Tokens")
+        .none()
+        .endIndexColumn()
+        .create()
+        .name("Body_Tokens")
+        .none()
+        .endIndexColumn()
+        .create()
+        .name("Data")
+        .storing()
+        .endIndexColumn()
+        .end();
+    Index index = builder.build();
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE SEARCH INDEX `SearchIndex` ON `Messages`(`Subject_Tokens` , `Body_Tokens` )"
+                + " STORING (`Data`) PARTITION BY `UserId`, INTERLEAVE IN `Users` OPTIONS (sort_order_sharding=TRUE)"));
+  }
+
+  @Test
+  public void testVectorIndex() {
+    Index.Builder builder =
+        Index.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .name("VectorIndex")
+            .type("VECTOR")
+            .table("Base")
+            .options(ImmutableList.of("distance_type=\"COSINE\""));
+    builder.columns().create().name("Embeddings").none().endIndexColumn().end();
+    Index index = builder.build();
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE VECTOR INDEX `VectorIndex` ON `Base`(`Embeddings` ) OPTIONS (distance_type=\"COSINE\")"));
+  }
+
+  @Test
   public void pgTestIndex() {
     Index.Builder builder =
         Index.builder(Dialect.POSTGRESQL)
