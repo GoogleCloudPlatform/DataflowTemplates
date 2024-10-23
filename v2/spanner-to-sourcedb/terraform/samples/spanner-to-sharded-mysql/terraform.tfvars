@@ -56,7 +56,7 @@ dataflow_params = {
     # Optional maximum retry count for DLQ
     dlq_max_retry_count = "5"
     # Optional run mode
-    run_mode = "parallel"
+    run_mode = "regular"
     # Optional retry minutes for DLQ
     dlq_retry_minutes = "10"
   }

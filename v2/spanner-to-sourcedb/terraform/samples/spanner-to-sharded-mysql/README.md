@@ -2,7 +2,7 @@
 
 > **_SCENARIO:_** This Terraform example illustrates launching a reverse replication
 > jobs to replicate spanner writes for a sharded MySQL source, setting up all the required cloud infrastructure.
-> **Only the source details of physical shards are needed as input.**
+> **Details of MySQL shards are needed as input.**
 
 ## Terraform permissions
 
@@ -109,13 +109,13 @@ provides instructions to add these roles to an existing service account.
 It takes the following assumptions -
 
 1. Ensure that the MySQL instance is correctly setup.  
-     1. Check that the MySQL credentials are correctly specified in the [source shards file](#sample-source-shards-file). 
+     1. Check that the MySQL credentials are correctly specified in the `tfvars` file. 
      2. Check that the MySQL server is up. 
-     3. The MySQL user configured in the [source shards file](#sample-source-shards-file) should have [INSERT](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_insert), [UPDATE](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_update) and [DELETE](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_delete) privileges on the database. 
+     3. The MySQL user configured in the `tfvars` file should have [INSERT](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_insert), [UPDATE](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_update) and [DELETE](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_delete) privileges on the database. 
 2. Ensure that the MySQL instance and Dataflow workers can establish connectivity with each other. Template automatically adds networking firewalls rules to enable this access. This can differ depending on the source configuration. Please validate the template rules and ensure that network connectivity can be established.
-3. The source instance with database containing reverse-replication compatible
+3. The MySQL instance with database containing reverse-replication compatible
    schema is created.
-4. A session file has been generated to perform the spanner to source schema mapping.
+4. A session file has been generated to perform the spanner to MySQL schema mapping.
 
 > **_NOTE:_**
 [SMT](https://googlecloudplatform.github.io/spanner-migration-tool/quickstart.html)
@@ -234,8 +234,8 @@ This will result in Dataflow jobs will be launched inside the shared VPC.
 
 > **_NOTE:_** Usage of shared VPC requires cross-project permissions. They
 > are available as a Terraform
->
-template [here](../../../../spanner-common/terraform/samples/configure-shared-vpc/README.md).
+>template [here](../../../../spanner-common/terraform/samples/configure-shared-vpc/README.md).
+
 > Dataflow service account permissions are
 > documented [here](https://cloud.google.com/dataflow/docs/guides/specifying-networks#shared).
 
@@ -304,6 +304,8 @@ Source shard configuration file that is supplied to the dataflow is automaticall
 created by Terraform. A sample file that this uploaded to GCS looks like
 below - 
 
+#### Using Secrets Manager to specify password 
+
 ```json
 [
     {
@@ -319,6 +321,29 @@ below -
     "host": "10.11.12.14",
     "user": "root",
     "secretManagerUri":"projects/123/secrets/rev-cmek-cred-shard2/versions/latest",
+    "port": "3306",
+    "dbName": "db2"
+    }
+]
+```
+
+#### Specifying plaintext password
+
+```json
+[
+    {
+    "logicalShardId": "shard1",
+    "host": "10.11.12.13",
+    "user": "root",
+    "password":"<YOUR_PWD_HERE>",
+    "port": "3306",
+    "dbName": "db1"
+    },
+    {
+    "logicalShardId": "shard2",
+    "host": "10.11.12.14",
+    "user": "root",
+    "password":"<YOUR_PWD_HERE>",
     "port": "3306",
     "dbName": "db2"
     }

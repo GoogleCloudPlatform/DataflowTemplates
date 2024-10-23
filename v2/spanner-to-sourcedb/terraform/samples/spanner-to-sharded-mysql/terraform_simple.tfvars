@@ -27,7 +27,7 @@ shard_list = [
     logicalShardId = "<YOUR_SHARD_ID1>"            # Value of the shard populated in Spanner
     host           = "<YOUR_IP_ADDRESS"            # Public or private IP address of shard
     user           = "<YOUR_USERNAME>"             # user of the source MySQL shard
-    password       = "<YOUR_PASSWORD>",            # password of the source MySQL shard
+    password       = "<YOUR_PASSWORD>",            # password of the source MySQL shard. For production migrations, use the secretManagerUri variable instead.
     port           = "<YOUR_PORT>"                 # Port, usually 3306
     dbName         = "<YOUR_SOURCE_DATABASE_NAME>" # name of the source database to replicate to
   },
