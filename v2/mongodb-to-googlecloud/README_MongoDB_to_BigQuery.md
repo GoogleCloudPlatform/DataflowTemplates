@@ -21,7 +21,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **mongoDbUri** : The MongoDB connection URI in the format `mongodb+srv://:@.`.
 * **database** : Database in MongoDB to read the collection from. (Example: my-db).
 * **collection** : Name of the collection inside MongoDB database. (Example: my-collection).
-* **userOption** : `FLATTEN` or `NONE`. `FLATTEN` flattens the documents to the single level. `NONE` stores the whole document as a JSON string. Defaults to: NONE.
+* **userOption** : `FLATTEN`, `JSON`, or `NONE`. `FLATTEN` flattens the documents to the single level. `JSON` stores document in BigQuery JSON format. `NONE` stores the whole document as a JSON-formatted STRING. Defaults to: NONE.
 * **outputTableSpec** : The BigQuery table to write to. For example, `bigquery-project:dataset.output_table`.
 
 ### Optional parameters

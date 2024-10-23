@@ -35,6 +35,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
+* **sourceDbDialect** : Possible values are `MYSQL` and `POSTGRESQL`. Defaults to: MYSQL.
 * **jdbcDriverJars** : The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar). Defaults to empty.
 * **jdbcDriverClassName** : The JDBC driver class name. (Example: com.mysql.jdbc.Driver). Defaults to: com.mysql.jdbc.Driver.
 * **username** : The username to be used for the JDBC connection. Defaults to empty.
@@ -134,6 +135,7 @@ export PROJECT_ID=<projectId>
 export OUTPUT_DIRECTORY=<outputDirectory>
 
 ### Optional
+export SOURCE_DB_DIALECT=MYSQL
 export JDBC_DRIVER_JARS=""
 export JDBC_DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
 export USERNAME=""
@@ -153,6 +155,7 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --parameters "sourceDbDialect=$SOURCE_DB_DIALECT" \
   --parameters "jdbcDriverJars=$JDBC_DRIVER_JARS" \
   --parameters "jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME" \
   --parameters "sourceConfigURL=$SOURCE_CONFIG_URL" \
@@ -197,6 +200,7 @@ export PROJECT_ID=<projectId>
 export OUTPUT_DIRECTORY=<outputDirectory>
 
 ### Optional
+export SOURCE_DB_DIALECT=MYSQL
 export JDBC_DRIVER_JARS=""
 export JDBC_DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
 export USERNAME=""
@@ -219,7 +223,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-Dparameters="sourceDbDialect=$SOURCE_DB_DIALECT,jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
 -f v2/sourcedb-to-spanner
 ```
 
@@ -280,6 +284,7 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     databaseId = "<databaseId>"
     projectId = "<projectId>"
     outputDirectory = "<outputDirectory>"
+    # sourceDbDialect = "MYSQL"
     # jdbcDriverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
     # jdbcDriverClassName = "com.mysql.jdbc.Driver"
     # username = ""
