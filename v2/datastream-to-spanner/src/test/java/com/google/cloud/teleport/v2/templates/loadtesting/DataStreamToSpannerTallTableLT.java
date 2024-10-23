@@ -30,24 +30,20 @@ import org.junit.runners.JUnit4;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerForeignKey extends DataStreamToSpannerLTBase {
+public class DataStreamToSpannerTallTableLT extends DataStreamToSpannerLTBase {
   @Test
-  public void backfill100Gb() throws IOException, ParseException, InterruptedException {
-    setUpResourceManagers("DataStreamToSpanner100GbLT/spanner-schema-foreign-key.sql");
+  public void backfill100GbTallTable() throws IOException, ParseException, InterruptedException {
+    setUpResourceManagers("DataStreamToSpanner100GbLT/spanner-schema-tall-table.sql");
     HashMap<String, Integer> tables100GB = new HashMap<>();
-    tables100GB.put("person1", 650000);
-    for (int i = 2; i <= 5; i++) {
-      tables100GB.put("person" + i, 6200000);
-    }
+    tables100GB.put("person", 350000000);
 
     // Setup Datastream
     String hostIp =
-        secretClient.accessSecret(
-            "projects/269744978479/secrets/foreign-key-ip-address/versions/1");
+        secretClient.accessSecret("projects/269744978479/secrets/tall-table-ip/versions/1");
     String username =
-        secretClient.accessSecret("projects/269744978479/secrets/foreign-key-username/versions/1");
+        secretClient.accessSecret("projects/269744978479/secrets/tall-table-user/versions/1");
     String password =
-        secretClient.accessSecret("projects/269744978479/secrets/foreign-key-password/versions/1");
+        secretClient.accessSecret("projects/269744978479/secrets/tall-table-password/versions/1");
 
     JDBCSource mySQLSource = getMySQLSource(hostIp, username, password);
     runLoadTest(tables100GB, mySQLSource);

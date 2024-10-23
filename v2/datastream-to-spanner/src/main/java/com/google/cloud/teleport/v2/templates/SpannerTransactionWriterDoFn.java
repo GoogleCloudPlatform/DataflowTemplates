@@ -15,6 +15,12 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.CONVERSION_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.OTHER_PERMANENT_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.RETRYABLE_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.SKIPPED_EVENTS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.SUCCESSFUL_EVENTS_COUNTER_NAME;
+
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.SHARD_ID_COLUMN_NAME;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -94,7 +100,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   // Number of events successfully written to Spanner.
   private final Counter successfulEvents =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Successful events");
+      Metrics.counter(SpannerTransactionWriterDoFn.class, SUCCESSFUL_EVENTS_COUNTER_NAME);
 
   // Number of events that have a schema incompatible with the spanner schema.
   private final Counter invalidEvents =
@@ -102,16 +108,16 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   // Number of events skipped from being written to spanner because the events were stale.
   private final Counter skippedEvents =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Skipped events");
+      Metrics.counter(SpannerTransactionWriterDoFn.class, SKIPPED_EVENTS_COUNTER_NAME);
 
   private final Counter failedEvents =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Other permanent errors");
+      Metrics.counter(SpannerTransactionWriterDoFn.class, OTHER_PERMANENT_ERRORS_COUNTER_NAME);
 
   private final Counter conversionErrors =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Conversion errors");
+      Metrics.counter(SpannerTransactionWriterDoFn.class, CONVERSION_ERRORS_COUNTER_NAME);
 
   private final Counter retryableErrors =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Retryable errors");
+      Metrics.counter(SpannerTransactionWriterDoFn.class, RETRYABLE_ERRORS_COUNTER_NAME);
 
   // Number of events that were successfully read from dlq/retry and written to spanner.
   private final Counter successfulEventRetries =

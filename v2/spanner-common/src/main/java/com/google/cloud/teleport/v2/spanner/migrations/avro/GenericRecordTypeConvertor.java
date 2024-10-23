@@ -65,6 +65,8 @@ public class GenericRecordTypeConvertor {
 
   private final ISpannerMigrationTransformer customTransformer;
 
+  static final String LOGICAL_TYPE = "logicalType";
+
   private static final Schema CUSTOM_TRANSFORMATION_AVRO_SCHEMA =
       new LogicalType("custom_transform").addToSchema(SchemaBuilder.builder().stringType());
 
@@ -202,7 +204,8 @@ public class GenericRecordTypeConvertor {
       // Handle logical/record types.
       fieldValue = handleNonPrimitiveAvroTypes(fieldValue, fieldSchema, fieldName);
       // Standardising the types for custom jar input.
-      if (fieldSchema.getLogicalType() != null || fieldSchema.getType() == Schema.Type.RECORD) {
+      if (fieldSchema.getProp(LOGICAL_TYPE) != null
+          || fieldSchema.getType() == Schema.Type.RECORD) {
         map.put(fieldName, fieldValue);
         continue;
       }
@@ -316,7 +319,7 @@ public class GenericRecordTypeConvertor {
    */
   private Object handleNonPrimitiveAvroTypes(
       Object recordValue, Schema fieldSchema, String recordColName) {
-    if (fieldSchema.getLogicalType() != null) {
+    if (fieldSchema.getLogicalType() != null || fieldSchema.getProp(LOGICAL_TYPE) != null) {
       recordValue = handleLogicalFieldType(recordColName, recordValue, fieldSchema);
     } else if (fieldSchema.getType().equals(Schema.Type.RECORD)) {
       // Get the avro field of type record from the whole record.
@@ -394,17 +397,17 @@ public class GenericRecordTypeConvertor {
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMillis) {
       Instant timestamp = Instant.ofEpochMilli(Long.valueOf(recordValue.toString()));
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-    } else if (fieldSchema.getLogicalType() != null
-        && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.JSON)) {
+    } else if (fieldSchema.getProp(LOGICAL_TYPE) != null
+        && fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.JSON)) {
       return recordValue.toString();
-    } else if (fieldSchema.getLogicalType() != null
-        && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.NUMBER)) {
+    } else if (fieldSchema.getProp(LOGICAL_TYPE) != null
+        && fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.NUMBER)) {
       return recordValue.toString();
-    } else if (fieldSchema.getLogicalType() != null
-        && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.VARCHAR)) {
+    } else if (fieldSchema.getProp(LOGICAL_TYPE) != null
+        && fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.VARCHAR)) {
       return recordValue.toString();
-    } else if (fieldSchema.getLogicalType() != null
-        && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.TIME_INTERVAL)) {
+    } else if (fieldSchema.getProp(LOGICAL_TYPE) != null
+        && fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.TIME_INTERVAL)) {
       Long timeMicrosTotal = Long.valueOf(recordValue.toString());
       boolean isNegative = false;
       if (timeMicrosTotal < 0) {
@@ -426,8 +429,8 @@ public class GenericRecordTypeConvertor {
         timeString += String.format(".%d", micros);
       }
       return isNegative ? "-" + timeString : timeString;
-    } else if (fieldSchema.getLogicalType() != null
-        && fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.UNSUPPORTED)) {
+    } else if (fieldSchema.getProp(LOGICAL_TYPE) != null
+        && fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.UNSUPPORTED)) {
       return null;
     } else {
       LOG.error("Unknown field type {} for field {} in {}.", fieldSchema, fieldName, recordValue);

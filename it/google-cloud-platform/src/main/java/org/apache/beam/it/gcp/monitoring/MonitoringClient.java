@@ -410,6 +410,53 @@ public final class MonitoringClient {
     return Collections.max(timeSeries);
   }
 
+  /**
+   * Gets aggregated metric for a given filter string for the given interval. The aggregation will
+   * be applied over the entire interval and only one value will be returned.
+   *
+   * @param projectId the project id
+   * @param filter filter string
+   * @param interval time interval
+   * @param aggregationFunction the aggregation function to apply on the time series for the whole
+   *     interval
+   */
+  public @Nullable Double getAggregatedMetric(
+      String projectId,
+      String filter,
+      TimeInterval interval,
+      Aggregation.Aligner aggregationFunction) {
+
+    long intervalSeconds =
+        interval.getEndTime().getSeconds() - interval.getStartTime().getSeconds();
+
+    Aggregation aggregation =
+        Aggregation.newBuilder()
+            .setAlignmentPeriod(Duration.newBuilder().setSeconds(intervalSeconds).build())
+            .setPerSeriesAligner(aggregationFunction)
+            .build();
+
+    ListTimeSeriesRequest request =
+        ListTimeSeriesRequest.newBuilder()
+            .setName(projectId)
+            .setFilter(filter)
+            .setInterval(interval)
+            .setAggregation(aggregation)
+            .build();
+
+    List<Double> timeSeriesList = listTimeSeriesAsDouble(request);
+
+    if (timeSeriesList.size() > 1) {
+      LOG.warn(
+          "More than one value present in the Aggregated time series data! Returning first value.");
+    }
+    if (timeSeriesList.size() > 0) {
+      return timeSeriesList.get(0);
+    } else {
+      LOG.warn("No aggregated data found!");
+      return null;
+    }
+  }
+
   public synchronized void cleanupAll() {
     LOG.info("Attempting to cleanup monitoring client.");
     metricServiceClient.close();

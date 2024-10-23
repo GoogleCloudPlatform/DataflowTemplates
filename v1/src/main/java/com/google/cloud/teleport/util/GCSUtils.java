@@ -15,11 +15,14 @@
  */
 package com.google.cloud.teleport.util;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toList;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
+import com.google.common.io.CharStreams;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Reader;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.List;
@@ -32,6 +35,21 @@ import org.apache.commons.io.IOUtils;
  * The {@link GCSUtils} class provides common utilities for reading files from Google Cloud Storage.
  */
 public class GCSUtils {
+  /**
+   * Reads a file from GCS and returns it as a string.
+   *
+   * @param filePath path to file in GCS
+   * @return contents of the file as a string
+   * @throws RuntimeException thrown if not able to read or parse file
+   */
+  public static String getGcsFileAsString(String filePath) throws IOException {
+    ReadableByteChannel channel = getGcsFileByteChannel(filePath);
+    try (Reader reader = Channels.newReader(channel, UTF_8.name())) {
+      return CharStreams.toString(reader);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
 
   /**
    * The {@link GCSUtils#getGcsFileAsBytes(String)} reads a file from GCS and returns it as raw

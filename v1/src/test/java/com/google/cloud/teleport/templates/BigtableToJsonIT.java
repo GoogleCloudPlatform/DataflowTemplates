@@ -86,7 +86,6 @@ public class BigtableToJsonIT extends TemplateTestBase {
             .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
             .addParameter("bigtableTableId", tableId)
             .addParameter("outputDirectory", getGcsPath("output/"))
-            .addParameter("filenamePrefix", "bigtable-to-json-output-")
             .addParameter("bigtableAppProfileId", appProfileId);
 
     // Act

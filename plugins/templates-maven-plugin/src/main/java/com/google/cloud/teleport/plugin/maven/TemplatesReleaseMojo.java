@@ -185,12 +185,15 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                 unifiedWorker);
 
         String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
-        LOG.info("Template staged: {}", templatePath);
 
-        // Export the specs for collection
-        generator.saveMetadata(definition, imageSpec.getMetadata(), targetDirectory);
-        if (definition.isFlex()) {
-          generator.saveImageSpec(definition, imageSpec, targetDirectory);
+        if (!definition.getTemplateAnnotation().stageImageOnly()) {
+          LOG.info("Template staged: {}", templatePath);
+
+          // Export the specs for collection
+          generator.saveMetadata(definition, imageSpec.getMetadata(), targetDirectory);
+          if (definition.isFlex()) {
+            generator.saveImageSpec(definition, imageSpec, targetDirectory);
+          }
         }
       }
 
