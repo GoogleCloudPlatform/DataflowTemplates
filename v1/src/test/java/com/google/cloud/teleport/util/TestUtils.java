@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.util;
 
 import com.google.common.io.ByteStreams;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonStreamParser;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.channels.Channels;
@@ -71,5 +73,19 @@ public class TestUtils {
     }
 
     return resourceId;
+  }
+
+  /**
+   * Method to parse a string containing a list of json objects into a singular json array.
+   *
+   * @param jsonString The string containing a list of json objects.
+   */
+  public static JsonArray parseJsonArray(String jsonString) {
+    JsonStreamParser parser = new JsonStreamParser(jsonString);
+    JsonArray jsonArray = new JsonArray();
+    while (parser.hasNext()) {
+      jsonArray.add(parser.next());
+    }
+    return jsonArray;
   }
 }

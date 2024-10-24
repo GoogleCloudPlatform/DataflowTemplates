@@ -23,9 +23,11 @@ import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpContent;
 import com.google.api.client.util.ExponentialBackOff;
+import com.google.cloud.teleport.util.TestUtils;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
+import com.google.gson.JsonArray;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
@@ -123,7 +125,10 @@ public class HttpEventPublisherTest {
             + "\"source\":\"test-source-2\",\"sourcetype\":\"test-source-type-2\","
             + "\"index\":\"test-index-2\",\"event\":\"test-event-2\"}";
 
-    assertThat(expected, is(equalTo(actual)));
+    JsonArray jsonArrayActual = TestUtils.parseJsonArray(actual);
+    JsonArray jsonArrayExpected = TestUtils.parseJsonArray(expected);
+
+    assertThat(jsonArrayExpected, is(equalTo(jsonArrayActual)));
   }
 
   /** Test whether {@link HttpContent} is created from the list of {@link SplunkEvent}s. */
@@ -155,7 +160,9 @@ public class HttpEventPublisherTest {
       HttpContent actualContent = publisher.getContent(SPLUNK_EVENTS);
       actualContent.writeTo(bos);
       String actualString = new String(bos.toByteArray(), StandardCharsets.UTF_8);
-      assertThat(actualString, is(equalTo(expectedString)));
+      JsonArray actualArray = TestUtils.parseJsonArray(actualString);
+      JsonArray expectedArray = TestUtils.parseJsonArray(expectedString);
+      assertThat(actualArray, is(equalTo(expectedArray)));
     }
   }
 
