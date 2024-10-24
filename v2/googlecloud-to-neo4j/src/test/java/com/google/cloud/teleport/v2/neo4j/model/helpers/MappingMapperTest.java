@@ -51,26 +51,34 @@ public class MappingMapperTest {
 
     var result = MappingMapper.parseEdgeNode(edge, "source", WriteMode.CREATE);
 
-    assertThat(result)
-        .isEqualTo(
-            new NodeTarget(
-                true,
-                "an-edge-source",
-                "a-source",
-                null,
-                WriteMode.CREATE,
-                null,
-                List.of("Placeholder"),
-                List.of(
-                    new PropertyMapping("key1", "value1", null),
-                    new PropertyMapping("key2", "value2", null)),
-                nodeKeys(
-                    List.of(
-                        new NodeKeyConstraint(
-                            "an-edge-source-Placeholder-node-single-key-for-value1-value2",
-                            "Placeholder",
-                            List.of("value1", "value2"),
-                            null)))));
+    assertThat(result.isActive()).isTrue();
+    assertThat(result.getName()).isEqualTo("an-edge-source");
+    assertThat(result.getSource()).isEqualTo("a-source");
+    assertThat(result.getDependencies()).isEmpty();
+    assertThat(result.getWriteMode()).isEqualTo(WriteMode.CREATE);
+    assertThat(result.getSourceTransformations()).isNull();
+    assertThat(result.getProperties())
+        .containsExactly(
+            new PropertyMapping("key1", "value1", null),
+            new PropertyMapping("key2", "value2", null));
+    var schema = result.getSchema();
+    assertThat(schema.getFullTextIndexes()).isEmpty();
+    assertThat(schema.getPointIndexes()).isEmpty();
+    assertThat(schema.getRangeIndexes()).isEmpty();
+    assertThat(schema.getTextIndexes()).isEmpty();
+    assertThat(schema.getVectorIndexes()).isEmpty();
+    assertThat(schema.getTypeConstraints()).isEmpty();
+    assertThat(schema.getExistenceConstraints()).isEmpty();
+    assertThat(schema.getUniqueConstraints()).isEmpty();
+    assertThat(schema.getKeyConstraints()).hasSize(1);
+    var keyConstraint = schema.getKeyConstraints().get(0);
+    String constraintName = keyConstraint.getName();
+    assertThat(constraintName).startsWith("an-edge-source-Placeholder-node-single-key-for-");
+    assertThat(nLastChars("valueX-valueX".length(), constraintName))
+        .isIn(List.of("value1-value2", "value2-value1"));
+    assertThat(keyConstraint.getLabel()).isEqualTo("Placeholder");
+    assertThat(keyConstraint.getOptions()).isNull();
+    assertThat(keyConstraint.getProperties()).containsExactly("value1", "value2");
   }
 
   @Test
@@ -93,33 +101,44 @@ public class MappingMapperTest {
 
     NodeTarget result = MappingMapper.parseEdgeNode(edge, "source", WriteMode.MERGE);
 
-    assertThat(result)
-        .isEqualTo(
-            new NodeTarget(
-                true,
-                "an-edge-source",
-                "a-source",
-                null,
-                WriteMode.MERGE,
-                null,
-                List.of("Placeholder"),
-                List.of(
-                    new PropertyMapping("key1", "value1", null),
-                    new PropertyMapping("key2", "value2", null),
-                    new PropertyMapping("key3", "value3", null),
-                    new PropertyMapping("key4", "value4", null)),
-                nodeKeys(
-                    List.of(
-                        new NodeKeyConstraint(
-                            "an-edge-source-Placeholder-node-key-for-value1-value2",
-                            "Placeholder",
-                            List.of("value1", "value2"),
-                            null),
-                        new NodeKeyConstraint(
-                            "an-edge-source-Placeholder-node-key-for-value3-value4",
-                            "Placeholder",
-                            List.of("value3", "value4"),
-                            null)))));
+    assertThat(result.isActive()).isTrue();
+    assertThat(result.getName()).isEqualTo("an-edge-source");
+    assertThat(result.getSource()).isEqualTo("a-source");
+    assertThat(result.getDependencies()).isEmpty();
+    assertThat(result.getWriteMode()).isEqualTo(WriteMode.MERGE);
+    assertThat(result.getSourceTransformations()).isNull();
+    assertThat(result.getProperties())
+        .containsExactly(
+            new PropertyMapping("key1", "value1", null),
+            new PropertyMapping("key2", "value2", null),
+            new PropertyMapping("key3", "value3", null),
+            new PropertyMapping("key4", "value4", null));
+    var schema = result.getSchema();
+    assertThat(schema.getFullTextIndexes()).isEmpty();
+    assertThat(schema.getPointIndexes()).isEmpty();
+    assertThat(schema.getRangeIndexes()).isEmpty();
+    assertThat(schema.getTextIndexes()).isEmpty();
+    assertThat(schema.getVectorIndexes()).isEmpty();
+    assertThat(schema.getTypeConstraints()).isEmpty();
+    assertThat(schema.getExistenceConstraints()).isEmpty();
+    assertThat(schema.getUniqueConstraints()).isEmpty();
+    assertThat(schema.getKeyConstraints()).hasSize(2);
+    var firstKeyConstraint = schema.getKeyConstraints().get(0);
+    String firstConstraintName = firstKeyConstraint.getName();
+    assertThat(firstConstraintName).startsWith("an-edge-source-Placeholder-node-key-for-");
+    assertThat(nLastChars("valueX-valueX".length(), firstConstraintName))
+        .isIn(List.of("value1-value2", "value2-value1"));
+    assertThat(firstKeyConstraint.getLabel()).isEqualTo("Placeholder");
+    assertThat(firstKeyConstraint.getOptions()).isNull();
+    assertThat(firstKeyConstraint.getProperties()).containsExactly("value1", "value2");
+    var secondKeyConstraint = schema.getKeyConstraints().get(1);
+    String secondConstraintName = secondKeyConstraint.getName();
+    assertThat(secondConstraintName).startsWith("an-edge-source-Placeholder-node-key-for-");
+    assertThat(nLastChars("valueX-valueX".length(), secondConstraintName))
+        .isIn(List.of("value3-value4", "value4-value3"));
+    assertThat(secondKeyConstraint.getLabel()).isEqualTo("Placeholder");
+    assertThat(secondKeyConstraint.getOptions()).isNull();
+    assertThat(secondKeyConstraint.getProperties()).containsExactly("value3", "value4");
   }
 
   @Test
@@ -301,5 +320,9 @@ public class MappingMapperTest {
 
   private static NodeSchema nodeKeys(List<NodeKeyConstraint> keys) {
     return new NodeSchema(null, keys, null, null, null, null, null, null, null);
+  }
+
+  private static String nLastChars(int length, String string) {
+    return string.substring(string.length() - length);
   }
 }
