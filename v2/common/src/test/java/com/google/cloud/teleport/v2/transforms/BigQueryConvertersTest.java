@@ -347,6 +347,22 @@ public class BigQueryConvertersTest {
   }
 
   /**
+   * Tests {@link BigQueryConverters.BigQueryReadOptions} works with some options.
+   */
+  @Test
+  public void testBigQueryReadOptions() {
+
+    BigQueryConverters.BigQueryReadOptions options =
+            PipelineOptionsFactory.create().as(BigQueryConverters.BigQueryReadOptions.class);
+
+    options.setInputTableSpec(null);
+    options.setQuery("select * from sampledb.sample_table");
+    options.setQueryTempDataset("temp_dataset");
+
+  }
+
+
+  /**
    * Tests that {@link BigQueryConverters.TableRowToFailsafeJsonDocument} transform returns the
    * correct element.
    */
