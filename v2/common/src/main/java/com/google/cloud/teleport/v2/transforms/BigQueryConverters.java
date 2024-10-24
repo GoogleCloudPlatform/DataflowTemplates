@@ -231,13 +231,13 @@ public class BigQueryConverters {
     void setQueryLocation(String query);
 
     @TemplateParameter.Text(
-            order = 6,
-            optional = true,
-            description = "BigQuery temporary dataset reference when reading from the query.",
-            helpText =
-                    "With this option, you can set an existing dataset to create the temporary table "
-                        + "to store the results of the query.",
-            example = "temp_dataset")
+        order = 6,
+        optional = true,
+        description = "BigQuery temporary dataset reference when reading from the query.",
+        helpText =
+            "With this option, you can set an existing dataset to create the temporary table "
+                + "to store the results of the query.",
+        example = "temp_dataset")
     String getQueryTempDataset();
 
     void setQueryTempDataset(String queryTempDataset);
