@@ -30,9 +30,10 @@ class BasicConnectionParams extends ConnectionParams {
   public BasicConnectionParams(
       @JsonProperty("server_url") String serverUrl,
       @JsonProperty("database") String database,
+      @JsonProperty("custom_ca_certificate_path") String customCertificatePath,
       @JsonProperty("username") String username,
       @JsonProperty("pwd") String password) {
-    super(serverUrl, database);
+    super(serverUrl, database, customCertificatePath);
     this.username = username;
     this.password = password;
   }

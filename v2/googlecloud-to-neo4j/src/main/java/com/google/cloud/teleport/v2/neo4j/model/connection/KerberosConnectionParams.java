@@ -28,8 +28,9 @@ class KerberosConnectionParams extends ConnectionParams {
   public KerberosConnectionParams(
       @JsonProperty("server_url") String serverUrl,
       @JsonProperty("database") String database,
+      @JsonProperty("custom_ca_certificate_path") String customCertificatePath,
       @JsonProperty("ticket") String ticket) {
-    super(serverUrl, database);
+    super(serverUrl, database, customCertificatePath);
     this.ticket = ticket;
   }
 
