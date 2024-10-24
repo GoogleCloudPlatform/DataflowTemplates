@@ -58,8 +58,8 @@ v2/spanner-custom-shard/ @GoogleCloudPlatform/spanner-migrations-team
 v2/spanner-to-sourcedb/ @GoogleCloudPlatform/spanner-migrations-team
 
 # Spanner testing infra
-it/google-cloud-platform/src/main/java/org/apache/beam/it/gcp/spanner @GoogleCloudPlatform/dataflow-templates-wg
-lt/
+it/google-cloud-platform/src/main/java/org/apache/beam/it/gcp/spanner @GoogleCloudPlatform/spanner-migrations-team
+lt/ @GoogleCloudPlatform/spanner-migrations-team
 
 # Spanner workflow files
 .github/workflows/spanner-pr.yml @GoogleCloudPlatform/spanner-migrations-team
