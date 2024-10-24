@@ -356,6 +356,9 @@ public class BigQueryConvertersTest {
     options.setInputTableSpec(null);
     options.setQuery("select * from sampledb.sample_table");
     options.setQueryTempDataset("temp_dataset");
+
+    pipeline.apply(
+        BigQueryConverters.ReadBigQueryTableRows.newBuilder().setOptions(options).build());
   }
 
   /**
