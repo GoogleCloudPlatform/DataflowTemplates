@@ -29,6 +29,7 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -533,7 +534,7 @@ public class ChangeEventConvertorTest {
     ChangeEventConvertor.verifySpannerSchema(ddl, ce);
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = DroppedTableException.class)
   public void validateSpannerSchemaWithIncorrectTableName() throws Exception {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = new JSONObject();

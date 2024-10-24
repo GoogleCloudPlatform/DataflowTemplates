@@ -203,7 +203,7 @@ public class SpannerTransactionWriterDoFnTest {
     DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, "random");
     outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users1");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
@@ -227,7 +227,7 @@ public class SpannerTransactionWriterDoFnTest {
     verify(processContextMock, times(1))
         .output(eq(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG), argument.capture());
     assertEquals(
-        "Table from change event does not exist in Spanner. table=Users1",
+        "Change event with invalid source. Actual(random), Expected(mysql)",
         argument.getValue().getErrorMessage());
   }
 }

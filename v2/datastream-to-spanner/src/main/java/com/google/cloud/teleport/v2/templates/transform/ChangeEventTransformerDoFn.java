@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.transform;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.SHARD_ID_COLUMN_NAME;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_CHANGE_TYPE_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_TABLE_NAME_KEY;
 
@@ -106,17 +107,25 @@ public abstract class ChangeEventTransformerDoFn
   private final Counter transformedEvents =
       Metrics.counter(ChangeEventTransformerDoFn.class, "Transformed events");
 
-  private final Counter skippedEvents =
-      Metrics.counter(ChangeEventTransformerDoFn.class, "Skipped events");
+  private final Counter invalidEvents =
+      Metrics.counter(ChangeEventTransformerDoFn.class, "Invalid events");
+
+  private final Counter droppedTableExceptions =
+      Metrics.counter(ChangeEventTransformerDoFn.class, "Dropped table exceptions");
   private final Counter failedEvents =
       Metrics.counter(ChangeEventTransformerDoFn.class, "Other permanent errors");
 
   private final Counter customTransformationException =
       Metrics.counter(ChangeEventTransformerDoFn.class, "Custom Transformation Exceptions");
 
+  // Latency of applying custom transformations to the events.
   private final Distribution applyCustomTransformationResponseTimeMetric =
       Metrics.distribution(
           ChangeEventTransformerDoFn.class, "apply_custom_transformation_impl_latency_ms");
+
+  // Latency of applying transformation to the events.
+  private final Distribution transformationLatencyMs =
+      Metrics.distribution(ChangeEventTransformerDoFn.class, "transformation_latency_ms");
 
   public static ChangeEventTransformerDoFn create(
       Schema schema,
@@ -162,7 +171,9 @@ public abstract class ChangeEventTransformerDoFn
   public void processElement(ProcessContext c) {
     FailsafeElement<String, String> msg = c.element();
     processedEvents.inc();
+    Instant startTimestamp = Instant.now();
     Ddl ddl = c.sideInput(ddlView());
+    String migrationShardId = null;
     try {
 
       JsonNode changeEvent = mapper.readTree(msg.getOriginalPayload());
@@ -173,6 +184,10 @@ public abstract class ChangeEventTransformerDoFn
       if (!schema().isEmpty()) {
         schema().verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
         changeEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent);
+      }
+
+      if (changeEvent.get(SHARD_ID_COLUMN_NAME) != null) {
+        migrationShardId = changeEvent.get(changeEvent.get(SHARD_ID_COLUMN_NAME).asText()).asText();
       }
 
       // Perform mapping as per overrides
@@ -200,11 +215,17 @@ public abstract class ChangeEventTransformerDoFn
             changeEvent =
                 ChangeEventToMapConvertor.transformChangeEventViaCustomTransformation(
                     changeEvent, migrationTransformationResponse.getResponseRow());
+            if (changeEvent.get(SHARD_ID_COLUMN_NAME) != null) {
+              migrationShardId =
+                  changeEvent.get(changeEvent.get(SHARD_ID_COLUMN_NAME).asText()).asText();
+            }
           }
         } catch (Exception e) {
           throw new InvalidTransformationException(e);
         }
       }
+      Instant endTimestamp = Instant.now();
+      transformationLatencyMs.update(new Duration(startTimestamp, endTimestamp).getMillis());
       transformedEvents.inc();
       // Adding the original payload to the Failsafe element to ensure that input is not mutated in
       // case of retries.
@@ -215,19 +236,27 @@ public abstract class ChangeEventTransformerDoFn
       // Errors when table exists in source but was dropped during conversion. We do not output any
       // errors to dlq for this.
       LOG.warn(e.getMessage());
-      skippedEvents.inc();
+      droppedTableExceptions.inc();
     } catch (InvalidTransformationException e) {
       // Errors that result from the custom JAR during transformation are not retryable.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       customTransformationException.inc();
+      if (migrationShardId != null) {
+        Metrics.counter(ChangeEventTransformerDoFn.class, migrationShardId + " : Permanent errors")
+            .inc();
+      }
     } catch (InvalidChangeEventException e) {
       // Errors that result from invalid change events.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
-      skippedEvents.inc();
+      invalidEvents.inc();
     } catch (Exception e) {
       // Any other errors are considered severe and not retryable.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       failedEvents.inc();
+      if (migrationShardId != null) {
+        Metrics.counter(ChangeEventTransformerDoFn.class, migrationShardId + " : Permanent errors")
+            .inc();
+      }
     }
   }
 

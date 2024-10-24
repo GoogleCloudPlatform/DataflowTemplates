@@ -21,6 +21,7 @@ import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constant
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_TABLE_NAME_KEY;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_UUID_KEY;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.SHARD_ID_COLUMN_NAME;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -162,6 +163,7 @@ public class ChangeEventSessionConvertor {
       return changeEvent;
     }
     String shardId = getShardId(changeEvent);
+    ((ObjectNode) changeEvent).put(SHARD_ID_COLUMN_NAME, shardIdColDef.getName());
     ((ObjectNode) changeEvent).put(shardIdColDef.getName(), shardId);
     return changeEvent;
   }
