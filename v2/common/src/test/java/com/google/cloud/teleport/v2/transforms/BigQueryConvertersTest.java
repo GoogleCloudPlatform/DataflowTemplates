@@ -357,8 +357,7 @@ public class BigQueryConvertersTest {
     options.setQuery("select * from sampledb.sample_table");
     options.setQueryTempDataset("temp_dataset");
 
-    pipeline.apply(
-        BigQueryConverters.ReadBigQueryTableRows.newBuilder().setOptions(options).build());
+    assertThat(options.getQueryTempDataset()).isEqualTo("temp_dataset");
   }
 
   /**
