@@ -49,9 +49,9 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class SourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
-  private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerSimpleIT.class);
-  private static HashSet<SourceDbToSpannerSimpleIT> testInstances = new HashSet<>();
+public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
+  private static final Logger LOG = LoggerFactory.getLogger(MySQLSourceDbToSpannerSimpleIT.class);
+  private static HashSet<MySQLSourceDbToSpannerSimpleIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   public static MySQLResourceManager mySQLResourceManager;

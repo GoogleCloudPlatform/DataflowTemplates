@@ -13,12 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.loadtesting.postgresql;
+package com.google.cloud.teleport.v2.templates.loadtesting;
 
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
-import com.google.cloud.teleport.v2.templates.loadtesting.SourceDbToSpannerLTBase;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.HashMap;
@@ -31,7 +30,7 @@ import org.junit.runners.JUnit4;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class SourceDbToSpannerLT extends SourceDbToSpannerLTBase {
+public class PostgreSQLSourceDbToSpannerLT extends SourceDbToSpannerLTBase {
 
   @Test
   public void backfill100Gb() throws IOException, ParseException, InterruptedException {
@@ -53,7 +52,7 @@ public class SourceDbToSpannerLT extends SourceDbToSpannerLTBase {
                 "projects/269744978479/secrets/nokill-sourcedb-postgresql-to-spanner-cloudsql-port/versions/1"));
 
     setUp(SQLDialect.POSTGRESQL, host, port, username, password, database);
-    createSpannerDDL("SourceDbToSpannerLT/postgresql/spanner-schema.sql");
+    createSpannerDDL("SourceDbToSpannerLT/postgresql-spanner-schema.sql");
 
     Map<String, Integer> expectedCountPerTable =
         new HashMap<>() {

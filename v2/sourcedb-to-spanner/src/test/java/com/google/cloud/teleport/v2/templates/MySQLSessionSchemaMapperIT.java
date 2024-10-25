@@ -44,22 +44,17 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class SessionSchemaMapperWithTransformationIT extends SourceDbToSpannerITBase {
-  private static final Logger LOG =
-      LoggerFactory.getLogger(SessionSchemaMapperWithTransformationIT.class);
-  private static final HashSet<SessionSchemaMapperWithTransformationIT> testInstances =
-      new HashSet<>();
+public class MySQLSessionSchemaMapperIT extends SourceDbToSpannerITBase {
+  private static final Logger LOG = LoggerFactory.getLogger(MySQLSessionSchemaMapperIT.class);
+  private static final HashSet<MySQLSessionSchemaMapperIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
+  private static final String SESSION_FILE_RESOURCE = "SchemaMapperIT/company-session.json";
   private static final String MYSQL_DDL_RESOURCE = "SchemaMapperIT/company-mysql-schema.sql";
-
-  private static final String SESSION_FILE_WITH_TRANSFORMATION_RESOURCE =
-      "SchemaMapperIT/company-session-with-transformation.json";
-  private static final String SPANNER_DDL_WITH_TRANSFORMATION_RESOURCE =
-      "SchemaMapperIT/company-spanner-schema-with-transformation.sql";
+  private static final String SPANNER_DDL_RESOURCE = "SchemaMapperIT/company-spanner-schema.sql";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class. \
@@ -77,13 +72,13 @@ public class SessionSchemaMapperWithTransformationIT extends SourceDbToSpannerIT
   }
 
   @Test
-  public void transformationTest() throws Exception {
+  public void noTransformationTest() throws Exception {
     loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
-    createSpannerDDL(spannerResourceManager, SPANNER_DDL_WITH_TRANSFORMATION_RESOURCE);
+    createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
-            SESSION_FILE_WITH_TRANSFORMATION_RESOURCE,
+            SESSION_FILE_RESOURCE,
             "mapper",
             mySQLResourceManager,
             spannerResourceManager,
@@ -98,27 +93,21 @@ public class SessionSchemaMapperWithTransformationIT extends SourceDbToSpannerIT
 
     SpannerAsserts.assertThatStructs(companySpanner)
         .hasRecordsUnorderedCaseInsensitiveColumns(companyMySQL);
-    SpannerAsserts.assertThatStructs(companySpanner).hasRows(companyMySQL.size());
 
-    List<Map<String, Object>> employeeMySQL = mySQLResourceManager.readTable("employee");
+    List<Map<String, Object>> employeeMySQL =
+        mySQLResourceManager.runSQLQuery(
+            "SELECT employee_id, company_id, employee_name, employee_address FROM employee");
     ImmutableList<Struct> employeeSpanner =
         spannerResourceManager.readTableRecords(
-            "employee_sp", "employee_id", "company_id", "employee_name", "employee_address_sp");
-
-    LOG.info(
-        "renaming mysql columns as per transformation"); // AS alias does not work in these tests
-    for (Map<String, Object> emp : employeeMySQL) {
-      emp.put("employee_address_sp", emp.remove("employee_address"));
-      emp.remove("created_on");
-    }
+            "employee", "employee_id", "company_id", "employee_name", "employee_address");
 
     SpannerAsserts.assertThatStructs(employeeSpanner)
         .hasRecordsUnorderedCaseInsensitiveColumns(employeeMySQL);
-    SpannerAsserts.assertThatStructs(employeeSpanner).hasRows(employeeMySQL.size());
 
     ImmutableList<Struct> employeeAttribute =
         spannerResourceManager.readTableRecords(
             "employee_attribute", "employee_id", "attribute_name", "value");
-    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(4); // Works for composite keys
+
+    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(4); // Supports composite keys
   }
 }

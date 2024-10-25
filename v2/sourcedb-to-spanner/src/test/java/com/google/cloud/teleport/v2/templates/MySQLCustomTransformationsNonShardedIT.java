@@ -45,10 +45,10 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class CustomTransformationsNonShardedIT extends SourceDbToSpannerITBase {
+public class MySQLCustomTransformationsNonShardedIT extends SourceDbToSpannerITBase {
   private static final Logger LOG =
-      LoggerFactory.getLogger(CustomTransformationsNonShardedIT.class);
-  private static final HashSet<IdentitySchemaMapperIT> testInstances = new HashSet<>();
+      LoggerFactory.getLogger(MySQLCustomTransformationsNonShardedIT.class);
+  private static final HashSet<MySQLIdentitySchemaMapperIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   public static MySQLResourceManager mySQLResourceManager;
