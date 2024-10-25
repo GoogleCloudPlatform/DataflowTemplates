@@ -19,9 +19,11 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.ByteArray;
+import com.google.cloud.Date;
+import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Options;
-import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
@@ -31,6 +33,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -41,8 +44,6 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -165,33 +166,168 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     Mutation m =
         Mutation.newInsertOrUpdateBuilder("Users").set("id").to(1).set("name").to("FF").build();
     spannerResourceManager.write(m);
-
-    // Write a single record to Spanner for the given logical shard
-    // Add the record with the transaction tag as txBy=
-    SpannerConfig spannerConfig =
-        SpannerConfig.create()
-            .withProjectId(PROJECT)
-            .withInstanceId(spannerResourceManager.getInstanceId())
-            .withDatabaseId(spannerResourceManager.getDatabaseId());
-    SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-    spannerAccessor
-        .getDatabaseClient()
-        .readWriteTransaction(
-            Options.tag("txBy=forwardMigration"),
-            Options.priority(spannerConfig.getRpcPriority().get()))
-        .run(
-            (TransactionRunner.TransactionCallable<Void>)
-                transaction -> {
-                  Mutation m2 =
-                      Mutation.newInsertOrUpdateBuilder("Users")
-                          .set("id")
-                          .to(2)
-                          .set("name")
-                          .to("GG")
-                          .build();
-                  transaction.buffer(m2);
-                  return null;
-                });
+    m =
+        Mutation.newInsertOrUpdateBuilder("AllDatatypeTransformation")
+            .set("varchar_column")
+            .to("example2")
+            .set("bigint_column")
+            .to(1000)
+            .set("binary_column")
+            .to(ByteArray.copyFrom(Base64.getDecoder().decode("YmluX2NvbHVtbg==")))
+            .set("bit_column")
+            .to(ByteArray.copyFrom(Base64.getDecoder().decode("MQ==")))
+            .set("blob_column")
+            .to(ByteArray.copyFrom(Base64.getDecoder().decode("YmxvYl9jb2x1bW4=")))
+            .set("bool_column")
+            .to(true)
+            .set("date_column")
+            .to(Date.parseDate("2024-01-01"))
+            .set("datetime_column")
+            .to(Timestamp.parseTimestamp("2024-01-01T12:34:56Z"))
+            .set("decimal_column")
+            .to("99999.99")
+            .set("double_column")
+            .to(123456.123)
+            .set("enum_column")
+            .to("1")
+            .set("float_column")
+            .to(12345.67)
+            .set("int_column")
+            .to(100)
+            .set("text_column")
+            .to("Sample text for entry 2")
+            .set("time_column")
+            .to("410000")
+            .set("timestamp_column")
+            .to(Timestamp.parseTimestamp("2024-01-01T12:34:56Z"))
+            .set("tinyint_column")
+            .to(2)
+            .set("year_column")
+            .to(2024)
+            .build();
+    spannerResourceManager.write(m);
+    m =
+        Mutation.newUpdateBuilder("AllDatatypeTransformation")
+            .set("varchar_column")
+            .to("example2")
+            .set("bigint_column")
+            .to(1000)
+            .set("binary_column")
+            .to(ByteArray.copyFrom(Base64.getDecoder().decode("YmluX2NvbHVtbg==")))
+            .set("bit_column")
+            .to(ByteArray.copyFrom(Base64.getDecoder().decode("MQ==")))
+            .set("blob_column")
+            .to(ByteArray.copyFrom(Base64.getDecoder().decode("YmxvYl9jb2x1bW4=")))
+            .set("bool_column")
+            .to(true)
+            .set("date_column")
+            .to(Date.parseDate("2024-01-01"))
+            .set("datetime_column")
+            .to(Timestamp.parseTimestamp("2024-01-01T12:34:56Z"))
+            .set("decimal_column")
+            .to("99999.99")
+            .set("double_column")
+            .to(123456.123)
+            .set("enum_column")
+            .to("1")
+            .set("float_column")
+            .to(12345.67)
+            .set("int_column")
+            .to(100)
+            .set("text_column")
+            .to("Sample text for entry 2")
+            .set("time_column")
+            .to("143000")
+            .set("timestamp_column")
+            .to(Timestamp.parseTimestamp("2024-01-01T12:34:56Z"))
+            .set("tinyint_column")
+            .to(2)
+            .set("year_column")
+            .to(2024)
+            .build();
+    spannerResourceManager.write(m);
+    m = Mutation.delete("AllDatatypeTransformation", Key.of("example2"));
+    spannerResourceManager.write(m);
+    m =
+        Mutation.newInsertBuilder("AllDatatypeTransformation")
+            .set("varchar_column")
+            .to("example1")
+            .set("bigint_column")
+            .to(1000)
+            .set("binary_column")
+            .to(ByteArray.copyFrom(Base64.getDecoder().decode("ZXhhbXBsZWJpbmFyeTE=")))
+            .set("bit_column")
+            .to(ByteArray.copyFrom(Base64.getDecoder().decode("ZXhhbXBsZWJpdDE=")))
+            .set("blob_column")
+            .to(ByteArray.copyFrom(Base64.getDecoder().decode("ZXhhbXBsZWJsb2Ix")))
+            .set("bool_column")
+            .to(true)
+            .set("date_column")
+            .to(Date.parseDate("2024-01-01"))
+            .set("datetime_column")
+            .to(Timestamp.parseTimestamp("2024-01-01T12:34:56Z"))
+            .set("decimal_column")
+            .to("99999.99")
+            .set("double_column")
+            .to(123456.123)
+            .set("enum_column")
+            .to("1")
+            .set("float_column")
+            .to(12345.67)
+            .set("int_column")
+            .to(100)
+            .set("text_column")
+            .to("Sample text for entry 1")
+            .set("time_column")
+            .to("143000")
+            .set("timestamp_column")
+            .to(Timestamp.parseTimestamp("2024-01-01T12:34:56Z"))
+            .set("tinyint_column")
+            .to(1)
+            .set("year_column")
+            .to(2024)
+            .build();
+    spannerResourceManager.write(m);
+    m =
+        Mutation.newInsertBuilder("AllDatatypeTransformation")
+            .set("varchar_column")
+            .to("example")
+            .set("bigint_column")
+            .to(12345)
+            .set("binary_column")
+            .to(ByteArray.copyFrom(Base64.getDecoder().decode("U29tZSBiaW5hcnkgZGF0YQ==")))
+            .set("bit_column")
+            .to(ByteArray.copyFrom(Base64.getDecoder().decode("U29tZSBiaW5hcnkgZGF0YQ==")))
+            .set("blob_column")
+            .to(ByteArray.copyFrom(Base64.getDecoder().decode("U29tZSBiaW5hcnkgZGF0YQ==")))
+            .set("bool_column")
+            .to(true)
+            .set("date_column")
+            .to(Date.parseDate("2024-01-01"))
+            .set("datetime_column")
+            .to(Timestamp.parseTimestamp("2024-01-01T12:34:56Z"))
+            .set("decimal_column")
+            .to("12345.67")
+            .set("double_column")
+            .to(123.456)
+            .set("enum_column")
+            .to("1")
+            .set("float_column")
+            .to(123.45)
+            .set("int_column")
+            .to(123)
+            .set("text_column")
+            .to("Sample text")
+            .set("time_column")
+            .to("143000")
+            .set("timestamp_column")
+            .to(Timestamp.parseTimestamp("2024-01-01T12:34:56Z"))
+            .set("tinyint_column")
+            .to(1)
+            .set("year_column")
+            .to(2024)
+            .build();
+    spannerResourceManager.write(m);
   }
 
   private void assertRowInMySQL() {
