@@ -78,10 +78,10 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Text(
       order = 5,
       optional = true,
-      regexes = {"^.+$"},
+      regexes = {"(^.+$|projects/.*/secrets/.*/versions/.*)"},
       description = "JDBC connection username.",
       helpText =
-          "The username to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string.")
+          "The username to use for the JDBC connection. Can be passed in as a string that's encrypted with a Cloud KMS key, or can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}.")
   String getUsername();
 
   void setUsername(String username);
@@ -91,7 +91,7 @@ public interface JdbcToBigQueryOptions
       optional = true,
       description = "JDBC connection password.",
       helpText =
-          "The password to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string.")
+          "The password to use for the JDBC connection. Can be passed in as a string that's encrypted with a Cloud KMS key, or can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}.")
   String getPassword();
 
   void setPassword(String password);
