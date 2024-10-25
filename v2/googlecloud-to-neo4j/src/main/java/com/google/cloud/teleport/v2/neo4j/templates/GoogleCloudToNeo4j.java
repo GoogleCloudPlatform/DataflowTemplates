@@ -274,6 +274,7 @@ public class GoogleCloudToNeo4j {
                     Entry::getKey, mapping(Entry::getValue, Collectors.<PCollection<?>>toList())));
     var sourceRows = new ArrayList<PCollection<?>>(importSpecification.getSources().size());
     var targetRows = new HashMap<TargetType, List<PCollection<?>>>(targetCount());
+    var allActiveNodeTargets = importSpecification.getTargets().getNodes();
 
     ////////////////////////////
     // Process sources
@@ -373,8 +374,10 @@ public class GoogleCloudToNeo4j {
                 .nullableSourceRows(nullableSourceBeamRows)
                 .sourceBeamSchema(sourceBeamSchema)
                 .target(target)
-                .startNodeTarget(findNodeTargetByName(nodeTargets, target.getStartNodeReference()))
-                .endNodeTarget(findNodeTargetByName(nodeTargets, target.getEndNodeReference()))
+                .startNodeTarget(
+                    findNodeTargetByName(allActiveNodeTargets, target.getStartNodeReference()))
+                .endNodeTarget(
+                    findNodeTargetByName(allActiveNodeTargets, target.getEndNodeReference()))
                 .build();
         PCollection<Row> preInsertBeamRows;
         String relationshipStepDescription =
@@ -567,7 +570,8 @@ public class GoogleCloudToNeo4j {
     return nodes.stream()
         .filter(target -> reference.equals(target.getName()))
         .findFirst()
-        .orElse(null);
+        .orElseThrow(
+            () -> new IllegalArgumentException("Could not find active node target: " + reference));
   }
 
   @SuppressWarnings("unchecked")
