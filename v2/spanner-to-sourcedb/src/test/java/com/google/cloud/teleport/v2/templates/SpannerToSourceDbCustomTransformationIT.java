@@ -39,12 +39,10 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
-import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -139,18 +137,18 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
    *
    * @throws IOException
    */
-  @AfterClass
-  public static void cleanUp() throws IOException {
-    for (SpannerToSourceDbCustomTransformationIT instance : testInstances) {
-      instance.tearDownBase();
-    }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        jdbcResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
-  }
+  //  @AfterClass
+  //  public static void cleanUp() throws IOException {
+  //    for (SpannerToSourceDbCustomTransformationIT instance : testInstances) {
+  //      instance.tearDownBase();
+  //    }
+  //    ResourceManagerUtils.cleanResources(
+  //        spannerResourceManager,
+  //        jdbcResourceManager,
+  //        spannerMetadataResourceManager,
+  //        gcsResourceManager,
+  //        pubsubResourceManager);
+  //  }
 
   @Test
   public void spannerToSourceDbWithCustomTransformation() throws InterruptedException {

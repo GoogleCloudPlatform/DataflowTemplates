@@ -23,3 +23,9 @@ CREATE TABLE AllDatatypeTransformation (
 	binary_column BYTES(MAX),
 	bit_column BYTES(MAX),
 ) PRIMARY KEY (varchar_column);
+
+CREATE CHANGE STREAM allstream
+  FOR ALL OPTIONS (
+  value_capture_type = 'NEW_ROW',
+  retention_period = '7d'
+);
