@@ -181,7 +181,7 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
   }
 
   @Test
-  public void testDataStreamOracleToSpannerStaging() throws IOException {
+  public void testDataStreamAracleToSpannerStaging() throws IOException {
     // Run a simple IT
     simpleOracleToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
@@ -251,7 +251,7 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
   }
 
   @Test
-  public void testDataStreamOracleToSpannerJsonStaging() throws IOException {
+  public void testDataStreamAracleToSpannerJsonStaging() throws IOException {
     // Run a simple IT
     simpleOracleToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT,
