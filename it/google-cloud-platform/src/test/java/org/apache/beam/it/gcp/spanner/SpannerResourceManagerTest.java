@@ -155,8 +155,7 @@ public final class SpannerResourceManagerTest {
             + ") PRIMARY KEY (SingerId)";
 
     // act & assert
-    assertThrows(
-        FailsafeException.class, () -> testManager.executeDdlStatement(statement));
+    assertThrows(FailsafeException.class, () -> testManager.executeDdlStatement(statement));
   }
 
   @Test
