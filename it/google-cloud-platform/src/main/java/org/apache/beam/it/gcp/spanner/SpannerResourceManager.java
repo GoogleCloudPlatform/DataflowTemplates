@@ -54,7 +54,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
@@ -310,11 +309,16 @@ public final class SpannerResourceManager implements ResourceManager {
 
     LOG.info("Executing DDL statements '{}' on database {}.", statements, databaseId);
     try {
-      databaseAdminClient
-          .updateDatabaseDdl(instanceId, databaseId, statements, /* operationId= */ null)
-          .get();
+      // executeDdlStatments can fail for spanner staging because of failfast.
+      Failsafe.with(retryOnQuotaException())
+          .run(
+              () ->
+                  databaseAdminClient
+                      .updateDatabaseDdl(
+                          instanceId, databaseId, statements, /* operationId= */ null)
+                      .get());
       LOG.info("Successfully executed DDL statements '{}' on database {}.", statements, databaseId);
-    } catch (ExecutionException | InterruptedException | SpannerException e) {
+    } catch (SpannerException e) {
       throw new SpannerResourceManagerException("Failed to execute statement.", e);
     }
   }
