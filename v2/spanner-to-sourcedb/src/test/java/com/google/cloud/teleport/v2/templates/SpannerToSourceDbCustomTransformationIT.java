@@ -114,7 +114,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
                 getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
         CustomTransformation customTransformation =
             CustomTransformation.builder(
-                    "customTransformation.jar", "com.custom.CustomTransformationWithShardForLiveIT")
+                    "input/customShard.jar", "com.custom.CustomTransformationWithShardForLiveIT")
                 .build();
         createAndUploadJarToGcs(gcsResourceManager);
         jobInfo =
