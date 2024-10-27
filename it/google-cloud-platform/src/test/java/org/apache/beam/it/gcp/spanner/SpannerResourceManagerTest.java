@@ -43,6 +43,7 @@ import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Struct;
 import com.google.common.collect.ImmutableList;
+import dev.failsafe.FailsafeException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -155,7 +156,7 @@ public final class SpannerResourceManagerTest {
 
     // act & assert
     assertThrows(
-        SpannerResourceManagerException.class, () -> testManager.executeDdlStatement(statement));
+        FailsafeException.class, () -> testManager.executeDdlStatement(statement));
   }
 
   @Test
