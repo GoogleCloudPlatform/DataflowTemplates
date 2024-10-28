@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.postgresql;
+package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -21,8 +21,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
-import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -50,14 +48,14 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataTypesIT extends SourceDbToSpannerITBase {
-  private static final Logger LOG = LoggerFactory.getLogger(DataTypesIT.class);
+public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
+  private static final Logger LOG = LoggerFactory.getLogger(PostgreSQLDataTypesIT.class);
 
   public static PostgresResourceManager postgreSQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final String POSTGRESQL_DDL_RESOURCE = "DataTypesIT/postgresql/data-types.sql";
-  private static final String SPANNER_DDL_RESOURCE = "DataTypesIT/postgresql/spanner-schema.sql";
+  private static final String POSTGRESQL_DDL_RESOURCE = "DataTypesIT/postgresql-data-types.sql";
+  private static final String SPANNER_DDL_RESOURCE = "DataTypesIT/postgresql-spanner-schema.sql";
 
   /** Setup resource managers. */
   @Before

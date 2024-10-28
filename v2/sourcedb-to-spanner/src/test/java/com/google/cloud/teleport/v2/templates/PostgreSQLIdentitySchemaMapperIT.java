@@ -19,8 +19,6 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -28,15 +26,13 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * An integration test for {@link SourceDbToSpanner} Flex template which tests a basic migration on
@@ -45,76 +41,68 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class IdentitySchemaMapperWithTransformationIT extends SourceDbToSpannerITBase {
-  private static final Logger LOG =
-      LoggerFactory.getLogger(IdentitySchemaMapperWithTransformationIT.class);
-  private static final HashSet<IdentitySchemaMapperWithTransformationIT> testInstances =
-      new HashSet<>();
+public class PostgreSQLIdentitySchemaMapperIT extends SourceDbToSpannerITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
 
-  public static MySQLResourceManager mySQLResourceManager;
+  public static PostgresResourceManager postgresSQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final String MYSQL_DDL_RESOURCE = "SchemaMapperIT/company-mysql-schema.sql";
-
-  private static final String SPANNER_DDL_WITH_TRANSFORMATION_RESOURCE =
-      "SchemaMapperIT/company-spanner-schema-with-transformation.sql";
+  private static final String POSTGRESQL_DDL_RESOURCE =
+      "SchemaMapperIT/company-postgresql-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE = "SchemaMapperIT/company-spanner-schema.sql";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class. \
    */
   @Before
   public void setUp() {
-    mySQLResourceManager = setUpMySQLResourceManager();
+    postgresSQLResourceManager = setUpPostgreSQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
   }
 
   /** Cleanup dataflow job and all the resources and resource managers. */
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, postgresSQLResourceManager);
   }
 
   @Test
-  public void autoInferSchemaWithTableFilter() throws Exception {
-    loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
-    createSpannerDDL(spannerResourceManager, SPANNER_DDL_WITH_TRANSFORMATION_RESOURCE);
-
-    Map<String, String> jobParameters = new HashMap<>();
-    jobParameters.put("tables", "company");
+  public void simpleTest() throws Exception {
+    loadSQLFileResource(postgresSQLResourceManager, POSTGRESQL_DDL_RESOURCE);
+    createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
             null,
             null,
-            mySQLResourceManager,
+            postgresSQLResourceManager,
             spannerResourceManager,
-            jobParameters,
+            null,
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
-    List<Map<String, Object>> companyMySQL =
-        mySQLResourceManager.runSQLQuery("SELECT company_id, company_name FROM company");
+    List<Map<String, Object>> companyPostgreSQL =
+        postgresSQLResourceManager.runSQLQuery("SELECT company_id, company_name FROM company");
     ImmutableList<Struct> companySpanner =
         spannerResourceManager.readTableRecords("company", "company_id", "company_name");
 
     SpannerAsserts.assertThatStructs(companySpanner)
-        .hasRecordsUnorderedCaseInsensitiveColumns(companyMySQL);
-    SpannerAsserts.assertThatStructs(companySpanner).hasRows(companyMySQL.size());
+        .hasRecordsUnorderedCaseInsensitiveColumns(companyPostgreSQL);
 
+    List<Map<String, Object>> employeePostgreSQL =
+        postgresSQLResourceManager.runSQLQuery(
+            "SELECT employee_id, company_id, employee_name, employee_address FROM employee");
     ImmutableList<Struct> employeeSpanner =
         spannerResourceManager.readTableRecords(
-            "employee_sp",
-            "employee_id",
-            "company_id",
-            "employee_name",
-            "employee_address_sp",
-            "created_on");
-    SpannerAsserts.assertThatStructs(employeeSpanner).hasRows(0); // As the table is filtered
+            "employee", "employee_id", "company_id", "employee_name", "employee_address");
+
+    SpannerAsserts.assertThatStructs(employeeSpanner)
+        .hasRecordsUnorderedCaseInsensitiveColumns(employeePostgreSQL);
 
     ImmutableList<Struct> employeeAttribute =
         spannerResourceManager.readTableRecords(
-            "employee_attribute", "employee_id", "attribute_name", "value", "updated_on");
-    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(0); // As the table is filtered
+            "employee_attribute", "employee_id", "attribute_name", "value");
+
+    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(4); // Supports composite keys
   }
 }

@@ -15,16 +15,19 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
-import static org.junit.Assert.assertEquals;
-
+import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import java.util.Arrays;
+import com.google.common.collect.ImmutableList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
@@ -36,22 +39,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An integration test for {@link SourceDbToSpanner} Flex template which tests FK dependency
- * migration.
+ * An integration test for {@link SourceDbToSpanner} Flex template which tests a basic migration on
+ * a simple schema.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class ForeignKeyDependencyIT extends SourceDbToSpannerITBase {
-  private static final Logger LOG = LoggerFactory.getLogger(ForeignKeyDependencyIT.class);
+public class MySQLIdentitySchemaMapperWithTransformationIT extends SourceDbToSpannerITBase {
+  private static final Logger LOG =
+      LoggerFactory.getLogger(MySQLIdentitySchemaMapperWithTransformationIT.class);
+  private static final HashSet<MySQLIdentitySchemaMapperWithTransformationIT> testInstances =
+      new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final String MYSQL_DUMP_FILE_RESOURCE = "ForeignKeyDependencyIT/mysql-schema.sql";
+  private static final String MYSQL_DDL_RESOURCE = "SchemaMapperIT/company-mysql-schema.sql";
 
-  private static final String SPANNER_DDL_RESOURCE = "ForeignKeyDependencyIT/spanner-schema.sql";
+  private static final String SPANNER_DDL_WITH_TRANSFORMATION_RESOURCE =
+      "SchemaMapperIT/company-spanner-schema-with-transformation.sql";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class. \
@@ -69,9 +76,12 @@ public class ForeignKeyDependencyIT extends SourceDbToSpannerITBase {
   }
 
   @Test
-  public void linearDependencyTest() throws Exception {
-    loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
-    createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+  public void autoInferSchemaWithTableFilter() throws Exception {
+    loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
+    createSpannerDDL(spannerResourceManager, SPANNER_DDL_WITH_TRANSFORMATION_RESOURCE);
+
+    Map<String, String> jobParameters = new HashMap<>();
+    jobParameters.put("tables", "company");
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
@@ -79,17 +89,32 @@ public class ForeignKeyDependencyIT extends SourceDbToSpannerITBase {
             null,
             mySQLResourceManager,
             spannerResourceManager,
-            null,
+            jobParameters,
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
-    assertThatResult(result).isLaunchFinished();
 
-    for (String tableName :
-        Arrays.asList("t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10")) {
-      assertEquals(
-          "Asserting count for " + tableName,
-          10L,
-          spannerResourceManager.getRowCount(tableName).longValue());
-    }
+    List<Map<String, Object>> companyMySQL =
+        mySQLResourceManager.runSQLQuery("SELECT company_id, company_name FROM company");
+    ImmutableList<Struct> companySpanner =
+        spannerResourceManager.readTableRecords("company", "company_id", "company_name");
+
+    SpannerAsserts.assertThatStructs(companySpanner)
+        .hasRecordsUnorderedCaseInsensitiveColumns(companyMySQL);
+    SpannerAsserts.assertThatStructs(companySpanner).hasRows(companyMySQL.size());
+
+    ImmutableList<Struct> employeeSpanner =
+        spannerResourceManager.readTableRecords(
+            "employee_sp",
+            "employee_id",
+            "company_id",
+            "employee_name",
+            "employee_address_sp",
+            "created_on");
+    SpannerAsserts.assertThatStructs(employeeSpanner).hasRows(0); // As the table is filtered
+
+    ImmutableList<Struct> employeeAttribute =
+        spannerResourceManager.readTableRecords(
+            "employee_attribute", "employee_id", "attribute_name", "value", "updated_on");
+    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(0); // As the table is filtered
   }
 }
