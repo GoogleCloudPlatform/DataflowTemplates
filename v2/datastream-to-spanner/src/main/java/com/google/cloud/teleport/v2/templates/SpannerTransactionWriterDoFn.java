@@ -97,7 +97,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
   private transient SpannerAccessor spannerAccessor;
 
-  // Number of events successfully written to Spanner.
+  // Number of events successfully processed.
   private final Counter successfulEvents =
       Metrics.counter(SpannerTransactionWriterDoFn.class, SUCCESSFUL_EVENTS_COUNTER_NAME);
 
@@ -248,7 +248,6 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
               changeEventContext);
 
       // Start transaction
-      String finalMigrationShardId = migrationShardId.get();
       spannerAccessor
           .getDatabaseClient()
           .readWriteTransaction(
@@ -276,17 +275,17 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                     // Apply shadow and data table mutations.
                     transaction.buffer(changeEventContext.getMutations());
                     isInTransaction.set(false);
-                    if (finalMigrationShardId != null) {
-                      Metrics.counter(
-                              SpannerTransactionWriterDoFn.class,
-                              finalMigrationShardId + " : Successful events")
-                          .inc();
-                    }
-                    successfulEvents.inc();
                     return null;
                   });
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
       c.output(timestamp);
+      if (migrationShardId.get() != null) {
+        Metrics.counter(
+                SpannerTransactionWriterDoFn.class,
+                migrationShardId.get() + " : " + SUCCESSFUL_EVENTS_COUNTER_NAME)
+            .inc();
+      }
+      successfulEvents.inc();
       updateLatencyMetrics(changeEvent, startTimestamp);
 
       // increment the successful retry count if this was retry attempt
@@ -312,7 +311,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       if (migrationShardId.get() != null) {
         Metrics.counter(
-                SpannerTransactionWriterDoFn.class, migrationShardId + " : Permanent errors")
+                SpannerTransactionWriterDoFn.class,
+                migrationShardId + " : " + CONVERSION_ERRORS_COUNTER_NAME)
             .inc();
       }
       conversionErrors.inc();
