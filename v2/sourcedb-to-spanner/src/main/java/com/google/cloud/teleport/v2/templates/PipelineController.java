@@ -256,6 +256,8 @@ public class PipelineController {
                       shard.getUserName(),
                       shard.getPassword(),
                       entry.getKey(),
+                      // TODO(thiagotnunes): Specify the namespace from a shard
+                      null,
                       shardId,
                       options.getJdbcDriverClassName(),
                       options.getJdbcDriverJars(),
