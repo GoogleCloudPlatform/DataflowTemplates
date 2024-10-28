@@ -52,6 +52,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **pubsubAPI** : The Pub/Sub API used to implement the pipeline. Allowed APIs are `pubsubio` and `native_client`. For a small number of queries per second (QPS), `native_client` has less latency. For a large number of QPS, `pubsubio` provides better and more stable performance. The default is `pubsubio`.
 * **pubsubProjectId** : Project of Pub/Sub topic. The default for this parameter is the project where the Dataflow pipeline is running.
 * **rpcPriority** : The request priority for Spanner calls. Allowed values are HIGH, MEDIUM, and LOW. Defaults to: HIGH).
+* **includeSpannerSource** : Whether or not to include the spanner database id and instance id to read the change stream from in the output message data. Defaults to: false.
+* **outputMessageMetadata** : The string value for the custom field outputMessageMetadata in output pub/sub message. Defaults to empty and the field outputMessageMetadata is only populated if this value is non-empty. Please escape any special characters when entering the value here(ie: double quotes).
 
 
 
@@ -148,6 +150,8 @@ export OUTPUT_DATA_FORMAT=JSON
 export PUBSUB_API=pubsubio
 export PUBSUB_PROJECT_ID=""
 export RPC_PRIORITY=HIGH
+export INCLUDE_SPANNER_SOURCE=false
+export OUTPUT_MESSAGE_METADATA=""
 
 gcloud dataflow flex-template run "spanner-change-streams-to-pubsub-job" \
   --project "$PROJECT" \
@@ -168,7 +172,9 @@ gcloud dataflow flex-template run "spanner-change-streams-to-pubsub-job" \
   --parameters "pubsubAPI=$PUBSUB_API" \
   --parameters "pubsubProjectId=$PUBSUB_PROJECT_ID" \
   --parameters "pubsubTopic=$PUBSUB_TOPIC" \
-  --parameters "rpcPriority=$RPC_PRIORITY"
+  --parameters "rpcPriority=$RPC_PRIORITY" \
+  --parameters "includeSpannerSource=$INCLUDE_SPANNER_SOURCE" \
+  --parameters "outputMessageMetadata=$OUTPUT_MESSAGE_METADATA"
 ```
 
 For more information about the command, please check:
@@ -205,6 +211,8 @@ export OUTPUT_DATA_FORMAT=JSON
 export PUBSUB_API=pubsubio
 export PUBSUB_PROJECT_ID=""
 export RPC_PRIORITY=HIGH
+export INCLUDE_SPANNER_SOURCE=false
+export OUTPUT_MESSAGE_METADATA=""
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -213,7 +221,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-change-streams-to-pubsub-job" \
 -DtemplateName="Spanner_Change_Streams_to_PubSub" \
--Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabase=$SPANNER_DATABASE,spannerDatabaseRole=$SPANNER_DATABASE_ROLE,spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID,spannerMetadataDatabase=$SPANNER_METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,spannerHost=$SPANNER_HOST,outputDataFormat=$OUTPUT_DATA_FORMAT,pubsubAPI=$PUBSUB_API,pubsubProjectId=$PUBSUB_PROJECT_ID,pubsubTopic=$PUBSUB_TOPIC,rpcPriority=$RPC_PRIORITY" \
+-Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabase=$SPANNER_DATABASE,spannerDatabaseRole=$SPANNER_DATABASE_ROLE,spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID,spannerMetadataDatabase=$SPANNER_METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,spannerHost=$SPANNER_HOST,outputDataFormat=$OUTPUT_DATA_FORMAT,pubsubAPI=$PUBSUB_API,pubsubProjectId=$PUBSUB_PROJECT_ID,pubsubTopic=$PUBSUB_TOPIC,rpcPriority=$RPC_PRIORITY,includeSpannerSource=$INCLUDE_SPANNER_SOURCE,outputMessageMetadata=$OUTPUT_MESSAGE_METADATA" \
 -f v2/googlecloud-to-googlecloud
 ```
 
@@ -274,6 +282,8 @@ resource "google_dataflow_flex_template_job" "spanner_change_streams_to_pubsub" 
     # pubsubAPI = "pubsubio"
     # pubsubProjectId = ""
     # rpcPriority = "HIGH"
+    # includeSpannerSource = "false"
+    # outputMessageMetadata = ""
   }
 }
 ```
