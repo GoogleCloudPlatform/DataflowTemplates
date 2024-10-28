@@ -19,7 +19,6 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -45,10 +44,10 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class SessionSchemaMapperWithTableFilterIT extends SourceDbToSpannerITBase {
+public class MySQLSessionSchemaMapperWithTransformationIT extends SourceDbToSpannerITBase {
   private static final Logger LOG =
-      LoggerFactory.getLogger(SessionSchemaMapperWithTableFilterIT.class);
-  private static final HashSet<SessionSchemaMapperWithTableFilterIT> testInstances =
+      LoggerFactory.getLogger(MySQLSessionSchemaMapperWithTransformationIT.class);
+  private static final HashSet<MySQLSessionSchemaMapperWithTransformationIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
@@ -81,9 +80,6 @@ public class SessionSchemaMapperWithTableFilterIT extends SourceDbToSpannerITBas
   public void transformationTest() throws Exception {
     loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_WITH_TRANSFORMATION_RESOURCE);
-
-    Map<String, String> jobParameters = new HashMap<>();
-    jobParameters.put("tables", "company");
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
@@ -91,7 +87,7 @@ public class SessionSchemaMapperWithTableFilterIT extends SourceDbToSpannerITBas
             "mapper",
             mySQLResourceManager,
             spannerResourceManager,
-            jobParameters,
+            null,
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
@@ -104,19 +100,25 @@ public class SessionSchemaMapperWithTableFilterIT extends SourceDbToSpannerITBas
         .hasRecordsUnorderedCaseInsensitiveColumns(companyMySQL);
     SpannerAsserts.assertThatStructs(companySpanner).hasRows(companyMySQL.size());
 
+    List<Map<String, Object>> employeeMySQL = mySQLResourceManager.readTable("employee");
     ImmutableList<Struct> employeeSpanner =
         spannerResourceManager.readTableRecords(
-            "employee_sp",
-            "employee_id",
-            "company_id",
-            "employee_name",
-            "employee_address_sp",
-            "created_on");
-    SpannerAsserts.assertThatStructs(employeeSpanner).hasRows(0); // As the table is filtered
+            "employee_sp", "employee_id", "company_id", "employee_name", "employee_address_sp");
+
+    LOG.info(
+        "renaming mysql columns as per transformation"); // AS alias does not work in these tests
+    for (Map<String, Object> emp : employeeMySQL) {
+      emp.put("employee_address_sp", emp.remove("employee_address"));
+      emp.remove("created_on");
+    }
+
+    SpannerAsserts.assertThatStructs(employeeSpanner)
+        .hasRecordsUnorderedCaseInsensitiveColumns(employeeMySQL);
+    SpannerAsserts.assertThatStructs(employeeSpanner).hasRows(employeeMySQL.size());
 
     ImmutableList<Struct> employeeAttribute =
         spannerResourceManager.readTableRecords(
-            "employee_attribute", "employee_id", "attribute_name", "value", "updated_on");
-    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(0); // As the table is filtered
+            "employee_attribute", "employee_id", "attribute_name", "value");
+    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(4); // Works for composite keys
   }
 }

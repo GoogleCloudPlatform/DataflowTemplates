@@ -74,7 +74,6 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
 
   private static final String SPANNER_DDL_RESOURCE =
       "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/spanner-schema.sql";
-  public static final int CUTOVER_MILLIS = 30 * 1000;
 
   private static HashSet<DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT>
       testInstances = new HashSet<>();

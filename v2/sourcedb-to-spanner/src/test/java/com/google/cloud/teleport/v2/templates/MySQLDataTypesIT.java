@@ -49,16 +49,16 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataTypesIT extends SourceDbToSpannerITBase {
-  private static final Logger LOG = LoggerFactory.getLogger(DataTypesIT.class);
+public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
+  private static final Logger LOG = LoggerFactory.getLogger(MySQLDataTypesIT.class);
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final String MYSQL_DUMP_FILE_RESOURCE = "DataTypesIT/mysql/data-types.sql";
+  private static final String MYSQL_DUMP_FILE_RESOURCE = "DataTypesIT/mysql-data-types.sql";
 
-  private static final String SPANNER_DDL_RESOURCE = "DataTypesIT/mysql/spanner-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE = "DataTypesIT/mysql-spanner-schema.sql";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class. \
