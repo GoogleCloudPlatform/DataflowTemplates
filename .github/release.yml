@@ -5,10 +5,10 @@ changelog:
   categories:
     - title: New Templates
       labels:
-        - new-templates
+        - new-template
     - title: Improvements
       labels:
         - improvement
     - title: Bug fixes
       labels:
-        - bug-fixes
+        - bug-fix
