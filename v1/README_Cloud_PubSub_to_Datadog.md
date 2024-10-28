@@ -16,7 +16,9 @@ in a Cloud KMS key along with the base64-encoded API key parameter encrypted wit
 the Cloud KMS key. For additional details about encrypting your API key
 parameter, see the <a
 href="https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt">Cloud
-KMS API encryption endpoint</a>.
+KMS API encryption endpoint</a>.For more information check out <a
+href="https://docs.datadoghq.com/integrations/google_cloud_platform/?tab=project#log-collection">Datadog's
+log collection process</a>.
 
 
 :memo: This is a Google-provided template! Please
