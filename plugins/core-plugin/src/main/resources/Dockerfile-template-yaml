@@ -17,18 +17,24 @@ WORKDIR $WORKDIR
 # Throw if requirements.txt file not provided
 RUN if ! [ -f requirements.txt ] ; then >&2 echo "error: no requirements.txt file found" && exit 1 ; fi
 
+# Set up custom PyPi repository, if applicable
+${airlockConfig}
+
 # Install dependencies to launch the pipeline and download to reduce startup time
-# TODO - remove `pip uninstall apache-beam` line when repo is upgraded to Beam 2.59.0
 RUN python -m venv /venv \
-    && /venv/bin/pip uninstall apache-beam -y \
-    && /venv/bin/pip install --require-hashes --no-cache-dir -U -r $REQUIREMENTS_FILE \
+    && /venv/bin/pip install --require-hashes --no-deps --no-cache-dir -U -r $REQUIREMENTS_FILE \
     && /venv/bin/pip download --require-hashes --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE \
-    && rm -rf /usr/local/lib/python$PY_VERSION/site-packages  \
+    && rm -rf /usr/local/lib/python$PY_VERSION/site-packages \
     && mv /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/
 
 # Cache provider environments for faster startup and expansion time
 RUN python -m apache_beam.yaml.cache_provider_artifacts
 
+<#if saSecretName?? && airlockJavaRepo??>
+COPY cache_provider_jars.py /template
+RUN mkdir -p $HOME/.apache_beam/cache/jars
+RUN python cache_provider_jars.py --cache_dir="/root/.apache_beam/cache/jars/" --maven_central_repository_url="https://_json_key_base64:$(gcloud secrets versions access latest --secret=${saSecretName} | base64 -w 0)@us-maven.pkg.dev/artifact-foundry-prod/${airlockJavaRepo}"
+</#if>
 
 #============================================================#
 # Create Distroless xlang image compatible with YamlTemplate #
@@ -44,8 +50,8 @@ ENV FLEX_TEMPLATE_PYTHON_PY_FILE=main.py
 
 # Copy template, python wheels and python launcher script from python-base
 COPY --from=python-base /template /template
-COPY --from=python-base /tmp/dataflow-requirements-cache /tmp/dataflow-requirements-cache
 COPY --from=python-base /opt/google/dataflow/python_template_launcher /opt/google/dataflow/python_template_launcher
+COPY --from=python-base /tmp/dataflow-requirements-cache /tmp/dataflow-requirements-cache
 
 # Copy python and installed packages from python-base
 COPY --from=python-base /usr/local/bin/python$PY_VERSION /usr/local/bin/python
@@ -60,6 +66,11 @@ COPY --from=python-base /usr/local/lib/libpython$PY_VERSION* /usr/local/lib/
 # Copy minimal commands from python-base needed to execute template
 COPY --from=python-base /bin/dash /bin/sh
 COPY --from=python-base /usr/bin/which.debianutils /usr/bin/which
+
+# Copy cached beam library cache from python-base
+COPY --from=python-base /bin/mkdir /bin/mkdir
+RUN mkdir -p /root/.apache_beam/cache
+COPY --from=python-base /root/.apache_beam/cache /root/.apache_beam/cache
 
 # Copy licenses
 COPY --from=python-base /usr/licenses/ /usr/licenses/
