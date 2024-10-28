@@ -318,7 +318,7 @@ public final class SpannerResourceManager implements ResourceManager {
                           instanceId, databaseId, statements, /* operationId= */ null)
                       .get());
       LOG.info("Successfully executed DDL statements '{}' on database {}.", statements, databaseId);
-    } catch (SpannerException e) {
+    } catch (Exception e) {
       throw new SpannerResourceManagerException("Failed to execute statement.", e);
     }
   }
