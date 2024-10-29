@@ -137,7 +137,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
       optional = true,
       description = "Cloud Spanner Endpoint to call",
       helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
-      example = "https://batch-spanner.googleapis.com")
+      example = "`https://batch-spanner.googleapis.com`")
   String getSpannerHost();
 
   void setSpannerHost(String value);
