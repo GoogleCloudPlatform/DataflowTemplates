@@ -4,7 +4,9 @@ Pub/Sub to Datadog template
 The Pub/Sub to Datadog template is a streaming pipeline that reads messages from
 a Pub/Sub subscription and writes the message payload to Datadog by using a
 Datadog endpoint. The most common use case for this template is to export log
-files to Datadog.
+files to Datadog. For more information check out <a
+href="https://docs.datadoghq.com/integrations/google_cloud_platform/?tab=project#log-collection">Datadog's
+log collection process</a>.
 
 Before writing to Datadog, you can apply a JavaScript user-defined function to
 the message payload. Any messages that experience processing failures are
@@ -16,9 +18,7 @@ in a Cloud KMS key along with the base64-encoded API key parameter encrypted wit
 the Cloud KMS key. For additional details about encrypting your API key
 parameter, see the <a
 href="https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt">Cloud
-KMS API encryption endpoint</a>. For more information check out <a
-href="https://docs.datadoghq.com/integrations/google_cloud_platform/?tab=project#log-collection">Datadog's
-log collection process</a>.
+KMS API encryption endpoint</a>.
 
 
 :memo: This is a Google-provided template! Please
