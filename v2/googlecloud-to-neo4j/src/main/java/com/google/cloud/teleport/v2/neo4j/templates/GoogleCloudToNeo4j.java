@@ -121,7 +121,7 @@ import org.slf4j.LoggerFactory;
                 + "- `sources` - data source definitions (relational).\n"
                 + "- `targets` - data target definitions (graph: nodes/relationships/custom queries).\n"
                 + "- `actions` - pre/post-load actions.\n"
-                + "For more information, see <a href=\"https://neo4j.com/docs/dataflow-google-cloud/job-specification/\" class=\"external\">Create a job specification file</a> in the Neo4j documentation."
+                + "For more information, see <a href=\"https://neo4j.com/docs/dataflow-google-cloud/current/job-specification/\" class=\"external\">Create a job specification file</a> in the Neo4j documentation."
           })
     },
     preview = true)
