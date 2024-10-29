@@ -160,7 +160,7 @@ public class DataStreamToSQL {
         order = 6,
         optional = true,
         description = "Datastream API Root URL (only required for testing)",
-        helpText = "Datastream API Root URL")
+        helpText = "Datastream API root URL")
     @Default.String("https://datastream.googleapis.com/")
     String getDataStreamRootUrl();
 
