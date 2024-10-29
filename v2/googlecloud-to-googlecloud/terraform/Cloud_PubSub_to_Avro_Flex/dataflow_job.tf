@@ -71,19 +71,19 @@ variable "avroTempDirectory" {
 
 variable "outputShardTemplate" {
   type        = string
-  description = "Defines the unique/dynamic portion of each windowed file. Recommended: use the default (W-P-SS-of-NN). At runtime, 'W' is replaced with the window date range and 'P' is replaced with the pane info. Repeating sequences of the letters 'S' or 'N' are replaced with the shard number and number of shards respectively. The pipeline assumes a single file output and will produce the text of '00-of-01' by default."
+  description = "The shard template defines the dynamic portion of each windowed file. By default, the pipeline uses a single shard for output to the file system within each window. This means that all data outputs into a single file per window. The `outputShardTemplate` defaults to `W-P-SS-of-NN` where `W` is the window date range, `P` is the pane info, `S` is the shard number, and `N` is the number of shards. In case of a single file, the `SS-of-NN` portion of the `outputShardTemplate` is `00-of-01`."
   default     = null
 }
 
 variable "numShards" {
-  type        = string
+  type        = number
   description = "The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 0."
   default     = null
 }
 
 variable "windowDuration" {
   type        = string
-  description = "The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 5m."
+  description = "The window duration is the interval in which data is written to the output directory. Configure the duration based on the pipeline's throughput. For example, a higher throughput might require smaller window sizes so that the data fits into memory. Defaults to 5m (5 minutes), with a minimum of 1s (1 second). Allowed formats are: [int]s (for seconds, example: 5s), [int]m (for minutes, example: 12m), [int]h (for hours, example: 2h). (Example: 5m)"
   default     = null
 }
 
@@ -249,7 +249,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     outputFilenameSuffix = var.outputFilenameSuffix
     avroTempDirectory    = var.avroTempDirectory
     outputShardTemplate  = var.outputShardTemplate
-    numShards            = var.numShards
+    numShards            = tostring(var.numShards)
     windowDuration       = var.windowDuration
     yearPattern          = var.yearPattern
     monthPattern         = var.monthPattern

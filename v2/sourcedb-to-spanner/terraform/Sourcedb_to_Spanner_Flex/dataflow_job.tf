@@ -33,6 +33,12 @@ variable "region" {
   description = "The region in which the created job should run."
 }
 
+variable "sourceDbDialect" {
+  type        = string
+  description = "Possible values are `MYSQL` and `POSTGRESQL`. Defaults to: MYSQL."
+  default     = null
+}
+
 variable "jdbcDriverJars" {
   type        = string
   description = "The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar). Defaults to empty."
@@ -45,9 +51,9 @@ variable "jdbcDriverClassName" {
   default     = null
 }
 
-variable "sourceDbURL" {
+variable "sourceConfigURL" {
   type        = string
-  description = "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`."
+  description = "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8` or the shard config"
 
 }
 
@@ -65,7 +71,7 @@ variable "password" {
 
 variable "tables" {
   type        = string
-  description = "Tables to read from using partitions. Defaults to empty."
+  description = "Tables to migrate from source. Defaults to empty."
   default     = null
 }
 
@@ -111,10 +117,34 @@ variable "sessionFilePath" {
   default     = null
 }
 
-variable "DLQDirectory" {
+variable "outputDirectory" {
   type        = string
-  description = "This directory is used to dump the failed records in a migration."
+  description = "This directory is used to dump the failed/skipped/filtered records in a migration."
 
+}
+
+variable "transformationJarPath" {
+  type        = string
+  description = "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records. Defaults to empty."
+  default     = null
+}
+
+variable "transformationClassName" {
+  type        = string
+  description = "Fully qualified class name having the custom transformation logic. It is a mandatory field in case transformationJarPath is specified. Defaults to empty."
+  default     = null
+}
+
+variable "transformationCustomParameters" {
+  type        = string
+  description = "String containing any custom parameters to be passed to the custom transformation class. Defaults to empty."
+  default     = null
+}
+
+variable "namespace" {
+  type        = string
+  description = "Namespace to exported. For PostgreSQL, if no namespace is provided, 'public' will be used. Defaults to empty."
+  default     = null
 }
 
 variable "disabledAlgorithms" {
@@ -126,12 +156,6 @@ variable "disabledAlgorithms" {
 variable "extraFilesToStage" {
   type        = string
   description = "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>)"
-  default     = null
-}
-
-variable "defaultLogLevel" {
-  type        = string
-  description = "Set Log level in the workers. Supported options are OFF, ERROR, WARN, INFO, DEBUG, TRACE. Defaults to INFO"
   default     = null
 }
 
@@ -260,23 +284,27 @@ resource "google_dataflow_flex_template_job" "generated" {
   provider                = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Sourcedb_to_Spanner_Flex"
   parameters = {
-    jdbcDriverJars      = var.jdbcDriverJars
-    jdbcDriverClassName = var.jdbcDriverClassName
-    sourceDbURL         = var.sourceDbURL
-    username            = var.username
-    password            = var.password
-    tables              = var.tables
-    numPartitions       = tostring(var.numPartitions)
-    instanceId          = var.instanceId
-    databaseId          = var.databaseId
-    projectId           = var.projectId
-    spannerHost         = var.spannerHost
-    maxConnections      = tostring(var.maxConnections)
-    sessionFilePath     = var.sessionFilePath
-    DLQDirectory        = var.DLQDirectory
-    disabledAlgorithms  = var.disabledAlgorithms
-    extraFilesToStage   = var.extraFilesToStage
-    defaultLogLevel     = var.defaultLogLevel
+    sourceDbDialect                = var.sourceDbDialect
+    jdbcDriverJars                 = var.jdbcDriverJars
+    jdbcDriverClassName            = var.jdbcDriverClassName
+    sourceConfigURL                = var.sourceConfigURL
+    username                       = var.username
+    password                       = var.password
+    tables                         = var.tables
+    numPartitions                  = tostring(var.numPartitions)
+    instanceId                     = var.instanceId
+    databaseId                     = var.databaseId
+    projectId                      = var.projectId
+    spannerHost                    = var.spannerHost
+    maxConnections                 = tostring(var.maxConnections)
+    sessionFilePath                = var.sessionFilePath
+    outputDirectory                = var.outputDirectory
+    transformationJarPath          = var.transformationJarPath
+    transformationClassName        = var.transformationClassName
+    transformationCustomParameters = var.transformationCustomParameters
+    namespace                      = var.namespace
+    disabledAlgorithms             = var.disabledAlgorithms
+    extraFilesToStage              = var.extraFilesToStage
   }
 
   additional_experiments       = var.additional_experiments

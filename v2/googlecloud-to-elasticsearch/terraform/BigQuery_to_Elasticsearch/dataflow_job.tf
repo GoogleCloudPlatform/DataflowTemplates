@@ -35,25 +35,25 @@ variable "region" {
 
 variable "inputTableSpec" {
   type        = string
-  description = "BigQuery source table spec. (Example: bigquery-project:dataset.input_table)"
+  description = "The BigQuery table to read from. Format: `projectId:datasetId.tablename`. If you specify `inputTableSpec`, the template reads the data directly from BigQuery storage by using the BigQuery Storage Read API (https://cloud.google.com/bigquery/docs/reference/storage). For information about limitations in the Storage Read API, see https://cloud.google.com/bigquery/docs/reference/storage#limitations. You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter. (Example: bigquery-project:dataset.input_table)"
   default     = null
 }
 
 variable "outputDeadletterTable" {
   type        = string
-  description = "Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. (Example: your-project-id:your-dataset.your-table-name)"
+  description = "The BigQuery table for messages that failed to reach the output table, in the format <PROJECT_ID>:<DATASET_NAME>.<DEADLETTER_TABLE>. If a table doesn't exist, is is created during pipeline execution. If not specified, `<outputTableSpec>_error_records` is used. (Example: your-project-id:your-dataset.your-table-name)"
   default     = null
 }
 
 variable "query" {
   type        = string
-  description = "Query to be executed on the source to extract the data. (Example: select * from sampledb.sample_table)"
+  description = "The SQL query to use to read data from BigQuery. If the BigQuery dataset is in a different project than the Dataflow job, specify the full dataset name in the SQL query, for example: <PROJECT_ID>.<DATASET_NAME>.<TABLE_NAME>. By default, the `query` parameter uses GoogleSQL (https://cloud.google.com/bigquery/docs/introduction-sql), unless `useLegacySql` is `true`. You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter. (Example: select * from sampledb.sample_table)"
   default     = null
 }
 
 variable "useLegacySql" {
   type        = bool
-  description = "Set to true to use legacy SQL (only applicable if supplying query). Defaults to: false."
+  description = "Set to true to use legacy SQL. This parameter only applies when using the `query` parameter. Defaults to: false."
   default     = null
 }
 
@@ -63,133 +63,135 @@ variable "queryLocation" {
   default     = null
 }
 
+variable "queryTempDataset" {
+  type        = string
+  description = "With this option, you can set an existing dataset to create the temporary table to store the results of the query. (Example: temp_dataset)"
+  default     = null
+}
+
 variable "connectionUrl" {
   type        = string
-  description = "Elasticsearch URL in the format https://hostname:[port] or specify CloudID if using Elastic Cloud (Example: https://elasticsearch-host:9200)"
+  description = "The Elasticsearch URL in the format https://hostname:[port]. If using Elastic Cloud, specify the CloudID. (Example: https://elasticsearch-host:9200)"
 
 }
 
 variable "apiKey" {
   type        = string
-  description = "Base64 Encoded API Key for access without requiring basic authentication. Refer to: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request"
+  description = "The Base64-encoded API key to use for authentication."
 
 }
 
 variable "elasticsearchUsername" {
   type        = string
-  description = "Username for Elasticsearch endpoint. Overrides ApiKey option if specified"
+  description = "The Elasticsearch username to authenticate with. If specified, the value of 'apiKey' is ignored"
   default     = null
 }
 
 variable "elasticsearchPassword" {
   type        = string
-  description = "Password for Elasticsearch endpoint. Overrides ApiKey option if specified"
+  description = "The Elasticsearch password to authenticate with. If specified, the value of 'apiKey' is ignored."
   default     = null
 }
 
 variable "index" {
   type        = string
-  description = "The index toward which the requests will be issued (Example: my-index)"
+  description = "The Elasticsearch index that the requests are issued to, such as `my-index.` (Example: my-index)"
 
 }
 
 variable "batchSize" {
   type        = number
-  description = "Batch Size used for batch insertion of messages into Elasticsearch. Defaults to: 1000."
+  description = "The batch size in number of documents. Defaults to: 1000."
   default     = null
 }
 
 variable "batchSizeBytes" {
   type        = number
-  description = "Batch Size in bytes used for batch insertion of messages into elasticsearch. Default: 5242880 (5mb)"
+  description = "The batch size in number of bytes. Defaults to: 5242880 (5mb)."
   default     = null
 }
 
 variable "maxRetryAttempts" {
   type        = number
-  description = "Max retry attempts, must be > 0. Default: no retries"
+  description = "The maximum number of retry attempts. Must be greater than zero. Defaults to: no retries."
   default     = null
 }
 
 variable "maxRetryDuration" {
   type        = number
-  description = "Max retry duration in milliseconds, must be > 0. Default: no retries"
+  description = "The maximum retry duration in milliseconds. Must be greater than zero. Defaults to: no retries."
   default     = null
 }
 
 variable "propertyAsIndex" {
   type        = string
-  description = "A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precedence over an _index UDF)."
+  description = "The property in the document being indexed whose value specifies `_index` metadata to include with the document in bulk requests. Takes precedence over an `_index` UDF. Defaults to: none."
   default     = null
 }
 
 variable "javaScriptIndexFnGcsPath" {
   type        = string
-  description = "Cloud Storage path to JavaScript UDF source for function that will specify _index metadata to be included with document in bulk request."
+  description = "The Cloud Storage path to the JavaScript UDF source for a function that specifies `_index` metadata to include with the document in bulk requests. Defaults to: none."
   default     = null
 }
 
 variable "javaScriptIndexFnName" {
   type        = string
-  description = "UDF JavaScript Function Name for function that will specify _index metadata to be included with document in bulk request"
+  description = "The name of the UDF JavaScript function that specifies `_index` metadata to include with the document in bulk requests. Defaults to: none."
   default     = null
 }
 
 variable "propertyAsId" {
   type        = string
-  description = "A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precedence over an _id UDF)."
+  description = "A property in the document being indexed whose value specifies `_id` metadata to include with the document in bulk requests. Takes precedence over an `_id` UDF. Defaults to: none."
   default     = null
 }
 
 variable "javaScriptIdFnGcsPath" {
   type        = string
-  description = "Cloud Storage path to JavaScript UDF source for function that will specify _id metadata to be included with document in bulk request."
+  description = "The Cloud Storage path to the JavaScript UDF source for the function that specifies `_id` metadata to include with the document in bulk requests. Defaults to: none."
   default     = null
 }
 
 variable "javaScriptIdFnName" {
   type        = string
-  description = "UDF JavaScript Function Name for function that will specify _id metadata to be included with document in bulk request."
+  description = "The name of the UDF JavaScript function that specifies the `_id` metadata to include with the document in bulk requests. Defaults to: none."
   default     = null
 }
 
 variable "javaScriptTypeFnGcsPath" {
   type        = string
-  description = "Cloud Storage path to JavaScript UDF source for function that will specify _type metadata to be included with document in bulk request."
+  description = "The Cloud Storage path to the JavaScript UDF source for a function that specifies `_type` metadata to include with documents in bulk requests. Default: none."
   default     = null
 }
 
 variable "javaScriptTypeFnName" {
   type        = string
-  description = "UDF JavaScript Function Name for function that will specify _type metadata to be included with document in bulk request"
+  description = "The name of the UDF JavaScript function that specifies the `_type` metadata to include with the document in bulk requests. Defaults to: none."
   default     = null
 }
 
 variable "javaScriptIsDeleteFnGcsPath" {
   type        = string
-  description = <<EOT
-Cloud Storage path to JavaScript UDF source for function that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false".
-EOT
+  description = "The Cloud Storage path to the JavaScript UDF source for the function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to: none."
   default     = null
 }
 
 variable "javaScriptIsDeleteFnName" {
   type        = string
-  description = <<EOT
-UDF JavaScript Function Name for function that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false".
-EOT
+  description = "The name of the UDF JavaScript function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to: none."
   default     = null
 }
 
 variable "usePartialUpdate" {
   type        = bool
-  description = "Whether to use partial updates (update rather than create or index, allowing partial docs) with Elasticsearch requests. Defaults to: false."
+  description = "Whether to use partial updates (update rather than create or index, allowing partial documents) with Elasticsearch requests. Defaults to: false."
   default     = null
 }
 
 variable "bulkInsertMethod" {
   type        = string
-  description = "Whether to use INDEX (index, allows upsert) or CREATE (create, errors on duplicate _id) with Elasticsearch bulk requests. Defaults to: CREATE."
+  description = "Whether to use `INDEX` (index, allows upserts) or `CREATE` (create, errors on duplicate _id) with Elasticsearch bulk requests. Defaults to: CREATE."
   default     = null
 }
 
@@ -201,7 +203,7 @@ variable "trustSelfSignedCerts" {
 
 variable "disableCertificateValidation" {
   type        = bool
-  description = "Disable SSL certificate validation (true/false). Default false (validation enabled). If true, all certificates are considered trusted."
+  description = "If 'true', trust the self-signed SSL certificate. An Elasticsearch instance might have a self-signed certificate. To bypass validation for the certificate, set this parameter to 'true'. Default: false."
   default     = null
 }
 
@@ -223,15 +225,21 @@ variable "apiKeySource" {
   default     = null
 }
 
+variable "socketTimeout" {
+  type        = number
+  description = "If set, overwrites the default max retry timeout and default socket timeout (30000ms) in the Elastic RestClient"
+  default     = null
+}
+
 variable "javascriptTextTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js)"
+  description = "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js)"
   default     = null
 }
 
 variable "javascriptTextTransformFunctionName" {
   type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1')"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)."
   default     = null
 }
 
@@ -365,6 +373,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     query                               = var.query
     useLegacySql                        = tostring(var.useLegacySql)
     queryLocation                       = var.queryLocation
+    queryTempDataset                    = var.queryTempDataset
     connectionUrl                       = var.connectionUrl
     apiKey                              = var.apiKey
     elasticsearchUsername               = var.elasticsearchUsername
@@ -391,6 +400,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     apiKeyKMSEncryptionKey              = var.apiKeyKMSEncryptionKey
     apiKeySecretId                      = var.apiKeySecretId
     apiKeySource                        = var.apiKeySource
+    socketTimeout                       = tostring(var.socketTimeout)
     javascriptTextTransformGcsPath      = var.javascriptTextTransformGcsPath
     javascriptTextTransformFunctionName = var.javascriptTextTransformFunctionName
   }

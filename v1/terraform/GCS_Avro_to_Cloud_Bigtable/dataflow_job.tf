@@ -35,25 +35,25 @@ variable "region" {
 
 variable "bigtableProjectId" {
   type        = string
-  description = "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to"
+  description = "The ID of the Google Cloud project that contains the Bigtable instance that you want to write data to."
 
 }
 
 variable "bigtableInstanceId" {
   type        = string
-  description = "The ID of the Cloud Bigtable instance that contains the table"
+  description = "The ID of the Bigtable instance that contains the table."
 
 }
 
 variable "bigtableTableId" {
   type        = string
-  description = "The ID of the Cloud Bigtable table to write"
+  description = "The ID of the Bigtable table to import."
 
 }
 
 variable "inputFilePattern" {
   type        = string
-  description = "The Cloud Storage location of the files you'd like to process. (Example: gs://your-bucket/your-files/*.avro)"
+  description = "The Cloud Storage path pattern where data is located. (Example: gs://<BUCKET>/<FOLDER>/<PREFIX>*)"
 
 }
 

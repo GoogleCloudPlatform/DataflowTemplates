@@ -41,7 +41,7 @@ variable "invalidOutputPath" {
 
 variable "inputFileSpec" {
   type        = string
-  description = "Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv"
+  description = "The Cloud Storage file pattern to search for CSV files. Example: gs://mybucket/test-*.csv."
 
 }
 
@@ -71,7 +71,7 @@ variable "csvFormat" {
 
 variable "jsonSchemaPath" {
   type        = string
-  description = "Path to JSON schema. Default: null. (Example: gs://path/to/schema)"
+  description = "The path to the JSON schema. Defaults to: null. (Example: gs://path/to/schema)"
   default     = null
 }
 
@@ -83,7 +83,7 @@ variable "largeNumFiles" {
 
 variable "csvFileEncoding" {
   type        = string
-  description = "CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, UTF-16. Defaults to: UTF-8."
+  description = "The CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, and UTF-16. Defaults to: UTF-8."
   default     = null
 }
 
@@ -161,13 +161,13 @@ variable "enableGzipHttpCompression" {
 
 variable "javascriptTextTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js)"
+  description = "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js)"
   default     = null
 }
 
 variable "javascriptTextTransformFunctionName" {
   type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1')"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)."
   default     = null
 }
 

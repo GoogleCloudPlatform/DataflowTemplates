@@ -35,31 +35,31 @@ variable "region" {
 
 variable "bigtableProject" {
   type        = string
-  description = "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to. Defaults to --project."
+  description = "The ID of the Google Cloud project that contains the Bigtable instance that you want to write data to."
 
 }
 
 variable "bigtableInstanceId" {
   type        = string
-  description = "The ID of the Cloud Bigtable instance that contains the table"
+  description = "The ID of the Bigtable instance that contains the table."
 
 }
 
 variable "bigtableTableId" {
   type        = string
-  description = "The ID of the Cloud Bigtable table to import"
+  description = "The ID of the Bigtable table to import."
 
 }
 
 variable "bigtableAppProfileId" {
   type        = string
-  description = "The ID of the Cloud Bigtable application profile to be used for the import"
+  description = "The ID of the Bigtable application profile to use for the import. If you don't specify an application profile, Bigtable uses the instance's default application profile (https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile)."
   default     = null
 }
 
 variable "sourcePattern" {
   type        = string
-  description = "Cloud Storage path pattern where data is located. (Example: gs://your-bucket/your-path/prefix*)"
+  description = "The Cloud Storage path pattern to the location of the data. (Example: gs://your-bucket/your-path/prefix*)"
 
 }
 

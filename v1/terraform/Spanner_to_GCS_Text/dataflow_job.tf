@@ -35,37 +35,37 @@ variable "region" {
 
 variable "csvTempDirectory" {
   type        = string
-  description = "The Cloud Storage path where the temporary CSV files can be stored. (Example: gs://your-bucket/your-path)"
+  description = "The Cloud Storage path where temporary CSV files are written. (Example: gs://your-bucket/your-path)"
   default     = null
 }
 
 variable "spannerPriority" {
   type        = string
-  description = "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]."
+  description = "The request priority (https://cloud.google.com/spanner/docs/reference/rest/v1/RequestOptions) for Spanner calls. Possible values are `HIGH`, `MEDIUM`, `LOW`. The default value is `MEDIUM`."
   default     = null
 }
 
 variable "spannerTable" {
   type        = string
-  description = "Spanner Table to read from"
+  description = "The Spanner table to read the data from."
 
 }
 
 variable "spannerProjectId" {
   type        = string
-  description = "The Google Cloud Project Id of the Cloud Spanner database that you want to read data from"
+  description = "The ID of the Google Cloud project that contains the Spanner database to read data from."
 
 }
 
 variable "spannerInstanceId" {
   type        = string
-  description = "Instance of requested table."
+  description = "The instance ID of the requested table."
 
 }
 
 variable "spannerDatabaseId" {
   type        = string
-  description = "Database of requested table."
+  description = "The database ID of the requested table."
 
 }
 
@@ -77,19 +77,21 @@ variable "spannerHost" {
 
 variable "spannerSnapshotTime" {
   type        = string
-  description = "If set, specifies the time when the snapshot must be taken. String is in the RFC 3339 format in UTC time.  Timestamp must be in the past and Maximum timestamp staleness applies.https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness (Example: 1990-12-31T23:59:60Z). Defaults to empty."
+  description = <<EOT
+The timestamp that corresponds to the version of the Spanner database that you want to read from. The timestamp must be specified in the RFC 3339 (https://tools.ietf.org/html/rfc3339) UTC "Zulu" format. The timestamp must be in the past and maximum timestamp staleness (https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness) applies. (Example: 1990-12-31T23:59:60Z). Defaults to empty.
+EOT
   default     = null
 }
 
 variable "dataBoostEnabled" {
   type        = bool
-  description = "Use Spanner on-demand compute so the export job will run on independent compute resources and have no impact to current Spanner workloads. This will incur additional charges in Spanner. Defaults to: false."
+  description = "Set to `true` to use the compute resources of Spanner Data Boost to run the job with near-zero impact on Spanner OLTP workflows. When true, requires the `spanner.databases.useDataBoost` Identity and Access Management (IAM) permission. For more information, see Data Boost overview (https://cloud.google.com/spanner/docs/databoost/databoost-overview). Defaults to: false."
   default     = null
 }
 
 variable "textWritePrefix" {
   type        = string
-  description = "The path and filename prefix for writing output files. (Example: gs://your-bucket/your-path)"
+  description = "The Cloud Storage path prefix that specifies where the data is written. (Example: gs://mybucket/somefolder/)"
 
 }
 

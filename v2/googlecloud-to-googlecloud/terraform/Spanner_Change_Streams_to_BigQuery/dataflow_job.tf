@@ -35,7 +35,7 @@ variable "region" {
 
 variable "spannerProjectId" {
   type        = string
-  description = "Project to read change streams from. The default for this parameter is the project where the Dataflow pipeline is running."
+  description = "The project to read change streams from. This value is also the project where the change streams connector metadata table is created. The default value for this parameter is the project where the Dataflow pipeline is running."
   default     = null
 }
 
@@ -53,7 +53,7 @@ variable "spannerDatabase" {
 
 variable "spannerDatabaseRole" {
   type        = string
-  description = "Database role user assumes while reading from the change stream. The database role should have required privileges to read from change stream. If a database role is not specified, the user should have required IAM permissions to read from the database."
+  description = "The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a fine-grained access control user. The database role must have the SELECT privilege on the change stream and the EXECUTE privilege on the change stream's read function. For more information, see Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams)."
   default     = null
 }
 
@@ -65,13 +65,13 @@ variable "spannerMetadataInstanceId" {
 
 variable "spannerMetadataDatabase" {
   type        = string
-  description = "The Spanner database to use for the change streams connector metadata table. For change streams tracking all tables in a database, we recommend putting the metadata table in a separate database."
+  description = "The Spanner database to use for the change streams connector metadata table."
 
 }
 
 variable "spannerMetadataTableName" {
   type        = string
-  description = "The Cloud Spanner change streams connector metadata table name to use. If not provided, a Cloud Spanner change streams connector metadata table will automatically be created during the pipeline flow. This parameter must be provided when updating an existing pipeline and should not be provided otherwise."
+  description = "The Spanner change streams connector metadata table name to use. If not provided, a Spanner change streams connector metadata table is automatically created during the pipeline flow. You must provide this parameter when updating an existing pipeline. Otherwise, don't provide this parameter."
   default     = null
 }
 
@@ -83,7 +83,7 @@ variable "spannerChangeStreamName" {
 
 variable "rpcPriority" {
   type        = string
-  description = "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]. Defaults to: HIGH."
+  description = "The request priority for Spanner calls. The value must be one of the following values: `HIGH`, `MEDIUM`, or `LOW`. The default value is `HIGH`."
   default     = null
 }
 
@@ -95,49 +95,49 @@ variable "spannerHost" {
 
 variable "startTimestamp" {
   type        = string
-  description = "The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts."
+  description = "The starting DateTime (https://datatracker.ietf.org/doc/html/rfc3339), inclusive, to use for reading change streams. Ex-2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, that is, the current time."
   default     = null
 }
 
 variable "endTimestamp" {
   type        = string
-  description = "The ending DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). Ex-2022-05-05T07:59:59Z. Defaults to an infinite time in the future."
+  description = "The ending DateTime (https://datatracker.ietf.org/doc/html/rfc3339), inclusive, to use for reading change streams.Ex-2021-10-12T07:20:50.52Z. Defaults to an infinite time in the future."
   default     = null
 }
 
 variable "bigQueryDataset" {
   type        = string
-  description = "The BigQuery dataset for change streams output. Both the dataSetName and the full dataSetId (i.e. bigQueryProjectId.dataSetName) are acceptable."
+  description = "The BigQuery dataset for change streams output."
 
 }
 
 variable "bigQueryProjectId" {
   type        = string
-  description = "The BigQuery Project. Default is the project for the Dataflow job."
+  description = "The BigQuery project. The default value is the project for the Dataflow job."
   default     = null
 }
 
 variable "bigQueryChangelogTableNameTemplate" {
   type        = string
-  description = "The Template for the BigQuery table name that contains the change log. Defaults to: {_metadata_spanner_table_name}_changelog."
+  description = "The template for the name of the BigQuery table that contains the changelog. Defaults to: {_metadata_spanner_table_name}_changelog."
   default     = null
 }
 
 variable "deadLetterQueueDirectory" {
   type        = string
-  description = "The file path to store any unprocessed records with the reason they failed to be processed. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions."
+  description = "The path to store any unprocessed records. The default path is a directory under the Dataflow job's temp location. The default value is usually sufficient."
   default     = null
 }
 
 variable "dlqRetryMinutes" {
   type        = number
-  description = "The number of minutes between dead letter queue retries. Defaults to 10."
+  description = "The number of minutes between dead-letter queue retries. The default value is 10."
   default     = null
 }
 
 variable "ignoreFields" {
   type        = string
-  description = "Comma separated list of fields to be ignored, these could be fields of tracked tables, or metadata fields which are _metadata_spanner_mod_type, _metadata_spanner_table_name, _metadata_spanner_commit_timestamp, _metadata_spanner_server_transaction_id, _metadata_spanner_record_sequence, _metadata_spanner_is_last_record_in_transaction_in_partition, _metadata_spanner_number_of_records_in_transaction, _metadata_spanner_number_of_partitions_in_transaction, _metadata_big_query_commit_timestamp. Defaults to empty."
+  description = "A comma-separated list of fields (case sensitive) to ignore. These fields might be fields of watched tables, or metadata fields added by the pipeline. Ignored fields aren't inserted into BigQuery. When you ignore the _metadata_spanner_table_name field, the bigQueryChangelogTableNameTemplate parameter is also ignored. Defaults to empty."
   default     = null
 }
 
@@ -149,29 +149,25 @@ variable "disableDlqRetries" {
 
 variable "useStorageWriteApi" {
   type        = bool
-  description = <<EOT
-If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). The default value is false. When using Storage Write API in exactly-once mode, you must set the following parameters: "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API". If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter to true, then you don't need to set the number of streams or the triggering frequency.
-EOT
+  description = "If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api)."
   default     = null
 }
 
 variable "useStorageWriteApiAtLeastOnce" {
   type        = bool
-  description = <<EOT
-This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-EOT
+  description = " When using the Storage Write API, specifies the write semantics. To use at-least once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`."
   default     = null
 }
 
 variable "numStorageWriteApiStreams" {
   type        = number
-  description = "Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0."
+  description = "When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0."
   default     = null
 }
 
 variable "storageWriteApiTriggeringFrequencySec" {
   type        = number
-  description = "Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values."
+  description = "When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter."
   default     = null
 }
 

@@ -35,37 +35,37 @@ variable "region" {
 
 variable "jmsServer" {
   type        = string
-  description = "Server IP for JMS Host (Example: host:5672)"
+  description = "The JMS (ActiveMQ) Server IP. (Example: tcp://10.0.0.1:61616)"
   default     = null
 }
 
 variable "inputName" {
   type        = string
-  description = "JMS Queue/Topic Name to read the input from. (Example: queue)"
+  description = "The name of the JMS topic or queue that data is read from. (Example: queue)"
 
 }
 
 variable "inputType" {
   type        = string
-  description = "JMS Destination Type to read the input from. (Example: queue)"
+  description = "The JMS destination type to read data from. Can be a queue or a topic. (Example: queue)"
 
 }
 
 variable "outputTopic" {
   type        = string
-  description = "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name)"
+  description = "The name of the Pub/Sub topic to publish data to, in the format `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`. (Example: projects/your-project-id/topics/your-topic-name)"
 
 }
 
 variable "username" {
   type        = string
-  description = "JMS username for authentication with JMS server (Example: sampleusername)"
+  description = "The username to use for authentication on the JMS server. (Example: sampleusername)"
 
 }
 
 variable "password" {
   type        = string
-  description = "Password for username provided for authentication with JMS server (Example: samplepassword)"
+  description = "The password associated with the provided username. (Example: samplepassword)"
 
 }
 
