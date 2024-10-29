@@ -19,6 +19,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+
+import com.google.cloud.teleport.v2.templates.mysql.MySqlDao;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -32,10 +34,10 @@ public class InputRecordProcessor {
 
   private static final Logger LOG = LoggerFactory.getLogger(InputRecordProcessor.class);
 
-  public static void processRecord(
+  public void processRecord(
       TrimmedShardedDataChangeRecord spannerRecord,
       Schema schema,
-      MySqlDao dao,
+      ISourceDao dao,
       String shardId,
       String sourceDbTimezoneOffset)
       throws java.sql.SQLException, ConnectionException {

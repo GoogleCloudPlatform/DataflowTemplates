@@ -30,12 +30,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.utils.ConnectionException;
-import com.google.cloud.teleport.v2.templates.utils.ConnectionHelper;
-import com.google.cloud.teleport.v2.templates.utils.InputRecordProcessor;
-import com.google.cloud.teleport.v2.templates.utils.MySqlDao;
-import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
-import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
+import com.google.cloud.teleport.v2.templates.utils.*;
+import com.google.cloud.teleport.v2.templates.mysql.MySqlDao;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.io.Serializable;
@@ -50,8 +46,6 @@ import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
-import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.slf4j.Logger;
@@ -76,7 +70,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
   private final Distribution lagMetric =
       Metrics.distribution(SourceWriterFn.class, "replication_lag_in_milli");
-  private transient Map<String, MySqlDao> mySqlDaoMap = new HashMap<>();
+  private transient Map<String, ISourceDao> sourceDaoMap = new HashMap<>();
 
   private final Schema schema;
   private final String sourceDbTimezoneOffset;
@@ -114,8 +108,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   }
 
   // for unit testing purposes
-  public void setMySqlDaoMap(Map<String, MySqlDao> mySqlDaoMap) {
-    this.mySqlDaoMap = mySqlDaoMap;
+  public void setSourceDaoMap(Map<String, ISourceDao> sourceDaoMap) {
+    this.sourceDaoMap = sourceDaoMap;
   }
 
   // for unit testing purposes
@@ -125,17 +119,17 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
   /** Setup function connects to Cloud Spanner. */
   @Setup
-  public void setup() {
+  public void setup() throws Exception {
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     ConnectionHelper.init(shards, null, maxThreadPerDataflowWorker);
-    mySqlDaoMap = new HashMap<>();
+    sourceDaoMap = new HashMap<>();
     for (Shard shard : shards) {
       String sourceConnectionUrl =
           "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
-      mySqlDaoMap.put(
-          shard.getLogicalShardId(),
-          new MySqlDao(sourceConnectionUrl, shard.getUserName(), shard.getPassword()));
+      ISourceDao mySqlDao = new MySqlDao();
+      mySqlDao.initialize(sourceConnectionUrl, shard.getUserName(), shard.getPassword());
+      sourceDaoMap.put(shard.getLogicalShardId(), mySqlDao);
     }
     spannerDao = new SpannerDao(spannerConfig);
   }
@@ -144,7 +138,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   @Teardown
   public void teardown() throws Exception {
     spannerDao.close();
-    mySqlDaoMap.clear();
+    sourceDaoMap.clear();
   }
 
   @ProcessElement
@@ -188,9 +182,10 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                             > Long.parseLong(spannerRec.getRecordSequence())));
 
         if (!isSourceAhead) {
-          MySqlDao mySqlDao = mySqlDaoMap.get(shardId);
+          ISourceDao mySqlDao = sourceDaoMap.get(shardId);
 
-          InputRecordProcessor.processRecord(
+          InputRecordProcessor inputRecordProcessor = new InputRecordProcessor();
+          inputRecordProcessor.processRecord(
               spannerRec, schema, mySqlDao, shardId, sourceDbTimezoneOffset);
 
           spannerDao.updateShadowTable(
