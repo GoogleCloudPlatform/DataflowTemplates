@@ -38,6 +38,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
@@ -214,7 +215,7 @@ public class PipelineController {
 
     LOG.info(
         "running migration for shards: {}",
-        shards.stream().map(s -> s.getHost()).collect(Collectors.toList()));
+        shards.stream().map(Shard::getHost).collect(Collectors.toList()));
     for (Shard shard : shards) {
       for (Map.Entry<String, String> entry : shard.getDbNameToLogicalShardIdMap().entrySet()) {
         // Read data from source
@@ -244,6 +245,10 @@ public class PipelineController {
                 "Output PCollection for parent table should not be null.");
             parentOutputs.add(parentOutputPcollection);
           }
+          // If a namespace is configured for a shard uses that, otherwise uses the namespace
+          // configured in the options if there is one.
+          String namespace =
+              Optional.ofNullable(shard.getNamespace()).orElse(options.getNamespace());
           JdbcIoWrapper jdbcIoWrapper =
               JdbcIoWrapper.of(
                   OptionsToConfigBuilder.getJdbcIOWrapperConfig(
@@ -256,8 +261,7 @@ public class PipelineController {
                       shard.getUserName(),
                       shard.getPassword(),
                       entry.getKey(),
-                      // TODO(thiagotnunes): Specify the namespace from a shard
-                      null,
+                      namespace,
                       shardId,
                       options.getJdbcDriverClassName(),
                       options.getJdbcDriverJars(),

@@ -44,8 +44,9 @@ public final class ShardFileReaderTest {
     List<Shard> shards = shardFileReader.getOrderedShardDetails("src/test/resources/shard.json");
     List<Shard> expectedShards =
         Arrays.asList(
-            new Shard("shardA", "hostShardA", "3306", "test", "test", "test", null, null),
-            new Shard("shardB", "hostShardB", "3306", "test", "test", "test", null, null));
+            new Shard(
+                "shardA", "hostShardA", "3306", "test", "test", "test", "namespaceA", null, null),
+            new Shard("shardB", "hostShardB", "3306", "test", "test", "test", null, null, null));
 
     assertEquals(shards, expectedShards);
   }
@@ -83,6 +84,7 @@ public final class ShardFileReaderTest {
                 "test",
                 "secretA",
                 "test",
+                "namespaceA",
                 "projects/123/secrets/secretA/versions/latest",
                 null),
             new Shard(
@@ -92,6 +94,7 @@ public final class ShardFileReaderTest {
                 "test",
                 "secretB",
                 "test",
+                null,
                 "projects/123/secrets/secretB",
                 null),
             new Shard(
@@ -101,9 +104,10 @@ public final class ShardFileReaderTest {
                 "test",
                 "secretC",
                 "test",
+                "namespaceC",
                 "projects/123/secrets/secretC/",
                 null),
-            new Shard("shardD", "hostShardD", "3306", "test", "test", "test", null, null));
+            new Shard("shardD", "hostShardD", "3306", "test", "test", "test", null, null, null));
 
     assertEquals(shards, expectedShards);
   }
@@ -147,10 +151,19 @@ public final class ShardFileReaderTest {
         shardFileReader.readForwardMigrationShardingConfig(
             "src/test/resources/bulk-migration-shards.json");
     Shard shard1 =
-        new Shard("", "1.1.1.1", "3306", "test1", "pass1", "", null, testConnectionProperties);
+        new Shard(
+            "",
+            "1.1.1.1",
+            "3306",
+            "test1",
+            "pass1",
+            "",
+            "namespace1",
+            null,
+            testConnectionProperties);
     shard1.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-1-person");
     shard1.getDbNameToLogicalShardIdMap().put("person2", "1-1-1-1-person2");
-    Shard shard2 = new Shard("", "1.1.1.2", "3306", "test1", "pass1", "", null, "");
+    Shard shard2 = new Shard("", "1.1.1.2", "3306", "test1", "pass1", "", null, null, "");
     shard2.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-2-person");
     shard2.getDbNameToLogicalShardIdMap().put("person20", "1-1-1-2-person2");
     List<Shard> expectedShards = new ArrayList<>(Arrays.asList(shard1, shard2));
@@ -185,6 +198,7 @@ public final class ShardFileReaderTest {
             "test1",
             "secretA",
             "",
+            null,
             "projects/123/secrets/secretA/versions/latest",
             "");
     shard1.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-1-person");
@@ -197,6 +211,7 @@ public final class ShardFileReaderTest {
             "test1",
             "secretB",
             "",
+            null,
             "projects/123/secrets/secretB/versions/latest",
             "");
     shard2.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-2-person");
