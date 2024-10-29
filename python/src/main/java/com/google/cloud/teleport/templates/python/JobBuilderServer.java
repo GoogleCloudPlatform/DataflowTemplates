@@ -30,6 +30,6 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
             + "For more information on Beam YAML, see https://cloud.google.com/dataflow/docs/guides/job-builder",
     flexContainerName = "yaml-template/job-builder-server",
     entryPoint = {"python", "server.py"},
-    filesToCopy = {"server.py"},
+    filesToCopy = {"server.py", "requirements.txt"},
     stageImageOnly = true)
 public interface JobBuilderServer {}
