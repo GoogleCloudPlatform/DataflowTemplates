@@ -122,7 +122,7 @@ public class DMLGenerator {
       String colName = entry.getKey();
       String colValue = entry.getValue();
 
-      allColumns += colName + ",";
+      allColumns += "`" + colName + "`,";
       allValues += colValue + ",";
     }
 
@@ -140,10 +140,10 @@ public class DMLGenerator {
     for (Map.Entry<String, String> entry : columnNameValues.entrySet()) {
       String colName = entry.getKey();
       String colValue = entry.getValue();
-      allColumns += colName;
+      allColumns += "`" + colName + "`";
       allValues += colValue;
       if (!primaryKeys.contains(colName)) {
-        updateValues += " " + colName + " = " + colValue;
+        updateValues += " `" + colName + "` = " + colValue;
       }
 
       if (index + 1 < columnNameValues.size()) {
@@ -177,7 +177,7 @@ public class DMLGenerator {
       String colName = entry.getKey();
       String colValue = entry.getValue();
 
-      deleteValues += " " + colName + " = " + colValue;
+      deleteValues += " `" + colName + "` = " + colValue;
       if (index + 1 < pkcolumnNameValues.size()) {
         deleteValues += " AND ";
       }
