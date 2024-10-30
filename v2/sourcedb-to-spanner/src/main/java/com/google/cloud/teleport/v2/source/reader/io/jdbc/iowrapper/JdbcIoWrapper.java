@@ -347,9 +347,21 @@ public final class JdbcIoWrapper implements IoWrapper {
     }
   }
 
+  /**
+   * Delimit the Column Names as per <a
+   * href=https://github.com/ronsavage/SQL/blob/master/sql-99.bnf>sql-99</a>.
+   *
+   * @param columnName
+   * @return
+   */
+  @VisibleForTesting
+  protected static String delimitColumnName(String columnName) {
+    return "\"" + columnName.replaceAll("\"", "\"\"") + "\"";
+  }
+
   private static PartitionColumn partitionColumnFromIndexInfo(SourceColumnIndexInfo idxInfo) {
     return PartitionColumn.builder()
-        .setColumnName(idxInfo.columnName())
+        .setColumnName(delimitColumnName(idxInfo.columnName()))
         .setColumnClass(indexTypeToColumnClass(idxInfo))
         .setStringCollation(idxInfo.collationReference())
         .setStringMaxLength(idxInfo.stringMaxLength())

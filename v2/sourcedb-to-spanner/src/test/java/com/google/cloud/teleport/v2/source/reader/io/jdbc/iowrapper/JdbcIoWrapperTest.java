@@ -466,4 +466,10 @@ public class JdbcIoWrapperTest {
                     .setIsUnique(true)
                     .build()));
   }
+
+  @Test
+  public void testColumnNameEscaping() {
+    assertThat(JdbcIoWrapper.delimitColumnName("key")).isEqualTo("\"key\"");
+    assertThat(JdbcIoWrapper.delimitColumnName("ke\"y")).isEqualTo("\"ke\"\"y\"");
+  }
 }
