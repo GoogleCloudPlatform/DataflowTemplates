@@ -540,7 +540,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         if (filesToCopy.isEmpty()) {
           filesToCopy =
               List.of(
-                  String.format("%s-generated-metadata.json", containerName), "requirements.txt*");
+                  String.format("%s-generated-metadata.json", containerName), "requirements.txt");
         }
         List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
         if (entryPoint.isEmpty()) {
@@ -648,7 +648,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (!dockerfile.exists()) {
       List<String> filesToCopy = List.of(definition.getTemplateAnnotation().filesToCopy());
       if (filesToCopy.isEmpty()) {
-        filesToCopy = List.of("main.py", "requirements.txt*");
+        filesToCopy = List.of("main.py", "requirements.txt");
       }
       List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
       if (entryPoint.isEmpty()) {
@@ -725,7 +725,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (!dockerfile.exists()) {
       List<String> filesToCopy = List.of(definition.getTemplateAnnotation().filesToCopy());
       if (filesToCopy.isEmpty()) {
-        filesToCopy = List.of("main.py", "requirements.txt*");
+        filesToCopy = List.of("main.py", "requirements.txt");
       }
       List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
       if (entryPoint.isEmpty()) {

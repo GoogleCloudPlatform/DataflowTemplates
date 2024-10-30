@@ -70,7 +70,7 @@ public class DockerfileGeneratorTest {
     createDockerfileGeneratorBuilder(Template.TemplateType.PYTHON, outputFolder)
         .setBasePythonContainerImage("a python container image")
         .setBaseJavaContainerImage("a java container image")
-        .setFilesToCopy(List.of("main.py", "requirements.txt*"))
+        .setFilesToCopy(List.of("main.py", "requirements.txt"))
         .setEntryPoint(List.of("python/entry/point"))
         .build()
         .generate();
@@ -82,7 +82,7 @@ public class DockerfileGeneratorTest {
     assertThat(fileContents).contains("FROM a python container image");
     assertThat(fileContents)
         .contains("RUN pip install -U -r --require-hashes $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE");
-    assertThat(fileContents).contains("COPY main.py requirements.txt* $WORKDIR/");
+    assertThat(fileContents).contains("COPY main.py requirements.txt $WORKDIR/");
     assertThat(fileContents).contains("ENTRYPOINT [\"python/entry/point\"]");
   }
 
@@ -119,7 +119,7 @@ public class DockerfileGeneratorTest {
     File artifactPath = new File(outputFolder.getAbsolutePath() + "/artifactPath");
     artifactPath.mkdirs();
 
-    List<String> filesToCopy = List.of("container-generated-metadata.json", "requirements.txt*");
+    List<String> filesToCopy = List.of("container-generated-metadata.json", "requirements.txt");
     Set<String> directoriesToCopy = Set.of(containerName, "otherDirectory");
     createDockerfileGeneratorBuilder(
             Template.TemplateType.XLANG, new File(outputFolder.getPath() + "/classes"))
@@ -140,7 +140,7 @@ public class DockerfileGeneratorTest {
     assertThat(fileContents).contains("FROM a python container image");
     assertThat(fileContents).contains("FROM a java container image");
     assertThat(fileContents)
-        .contains("COPY container-generated-metadata.json requirements.txt* $WORKDIR/");
+        .contains("COPY container-generated-metadata.json requirements.txt $WORKDIR/");
     assertThat(fileContents)
         .contains("COPY " + containerName + "/ $WORKDIR/" + containerName + "/");
     assertThat(fileContents).contains("COPY otherDirectory/ $WORKDIR/otherDirectory/");

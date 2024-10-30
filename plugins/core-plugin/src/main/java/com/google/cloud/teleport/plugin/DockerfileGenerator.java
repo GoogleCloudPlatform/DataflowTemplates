@@ -251,7 +251,7 @@ public class DockerfileGenerator {
      * <p><b>Note</b>: Make sure when using wildcards, to specify an existing file first.
      *
      * <p>For example, if copying in a file, main.py, and an optional requirements.txt, pass the
-     * list {@code {"main.py", "requirements.txt*"} }.
+     * list {@code {"main.py", "requirements.txt"} }.
      *
      * @param filesToCopy list of files to copy into image.
      * @return this {@link Builder}.
