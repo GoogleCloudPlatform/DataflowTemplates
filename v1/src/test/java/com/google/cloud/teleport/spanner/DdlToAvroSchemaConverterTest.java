@@ -176,7 +176,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(8));
+    assertThat(fields, hasSize(9));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -247,15 +247,15 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("2000"));
     assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("3000"));
 
-    assertThat(fields.get(7).name(), equalTo("identity_column_no_kind"));
-    assertThat(fields.get(7).schema(), equalTo(nullableUnion(Schema.Type.LONG)));
-    assertThat(fields.get(7).getProp(SQL_TYPE), equalTo("INT64"));
-    assertThat(fields.get(7).getProp(NOT_NULL), equalTo(null));
-    assertThat(fields.get(7).getProp(IDENTITY_COLUMN), equalTo("true"));
-    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_KIND), equalTo(null));
-    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("1000"));
-    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("2000"));
-    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("3000"));
+    assertThat(fields.get(8).name(), equalTo("identity_column_no_kind"));
+    assertThat(fields.get(8).schema(), equalTo(nullableUnion(Schema.Type.LONG)));
+    assertThat(fields.get(8).getProp(SQL_TYPE), equalTo("INT64"));
+    assertThat(fields.get(8).getProp(NOT_NULL), equalTo(null));
+    assertThat(fields.get(8).getProp(IDENTITY_COLUMN), equalTo("true"));
+    assertThat(fields.get(8).getProp(SPANNER_SEQUENCE_KIND), equalTo(null));
+    assertThat(fields.get(8).getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("1000"));
+    assertThat(fields.get(8).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("2000"));
+    assertThat(fields.get(8).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("3000"));
 
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("`id` ASC"));
