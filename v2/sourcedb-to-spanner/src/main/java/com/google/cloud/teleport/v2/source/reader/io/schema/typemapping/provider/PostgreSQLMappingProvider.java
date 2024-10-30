@@ -39,21 +39,21 @@ public final class PostgreSQLMappingProvider {
           .put("BOOL", UnifiedMappingProvider.Type.BOOLEAN)
           .put("BOOLEAN", UnifiedMappingProvider.Type.BOOLEAN)
           .put("BYTEA", UnifiedMappingProvider.Type.BYTES)
-          // TODO(thiagotnunes): Refine mapping type according to
+          // TODO: Refine mapping type according to
           // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
           // for length we should use varchar instead)
           .put("CHAR", UnifiedMappingProvider.Type.STRING)
-          // TODO(thiagotnunes): Refine mapping type according to
+          // TODO: Refine mapping type according to
           // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
           // for length we should use varchar instead)
           .put("CHARACTER", UnifiedMappingProvider.Type.STRING)
-          // TODO(thiagotnunes): Refine mapping type according to
+          // TODO: Refine mapping type according to
           // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
           // for length we should use varchar instead)
           .put("CHARACTER VARYING", UnifiedMappingProvider.Type.STRING)
           .put("CITEXT", UnifiedMappingProvider.Type.STRING)
           .put("DATE", UnifiedMappingProvider.Type.DATE)
-          // TODO(thiagotnunes): Refine mapping type according to
+          // TODO: Refine mapping type according to
           // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a
           // precision and scale are >= 0, map to DECIMAL)
           .put("DECIMAL", UnifiedMappingProvider.Type.NUMBER)
@@ -68,6 +68,7 @@ public final class PostgreSQLMappingProvider {
           .put("JSON", UnifiedMappingProvider.Type.JSON)
           .put("JSONB", UnifiedMappingProvider.Type.JSON)
           .put("MONEY", UnifiedMappingProvider.Type.DOUBLE)
+          // TODO: Refine mapping type according to
           // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a
           // precision and scale are >= 0, map to DECIMAL)
           .put("NUMERIC", UnifiedMappingProvider.Type.NUMBER)
@@ -79,7 +80,7 @@ public final class PostgreSQLMappingProvider {
           .put("SERIAL8", UnifiedMappingProvider.Type.LONG)
           .put("SMALLINT", UnifiedMappingProvider.Type.INTEGER)
           .put("SMALLSERIAL", UnifiedMappingProvider.Type.INTEGER)
-          // TODO(thiagotnunes): Refine mapping type according to
+          // TODO: Refine mapping type according to
           // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
           // for length we should use varchar instead)
           .put("TEXT", UnifiedMappingProvider.Type.STRING)
@@ -89,7 +90,7 @@ public final class PostgreSQLMappingProvider {
           .put("TIMESTAMP WITHOUT TIME ZONE", UnifiedMappingProvider.Type.TIMESTAMP)
           .put("UUID", UnifiedMappingProvider.Type.STRING)
           .put("VARBIT", UnifiedMappingProvider.Type.BYTES)
-          // TODO(thiagotnunes): Refine mapping type according to
+          // TODO: Refine mapping type according to
           // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
           // for length we should use varchar instead)
           .put("VARCHAR", UnifiedMappingProvider.Type.STRING)
