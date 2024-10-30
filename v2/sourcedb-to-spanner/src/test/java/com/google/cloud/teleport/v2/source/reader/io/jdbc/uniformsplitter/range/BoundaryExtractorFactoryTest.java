@@ -116,6 +116,23 @@ public class BoundaryExtractorFactoryTest {
   }
 
   @Test
+  public void testFromBigIntegersEmptyTable() throws SQLException {
+    final BigInteger unsignedBigIntMax = new BigInteger("18446744073709551615");
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(BigInteger.class).build();
+    BoundaryExtractor<BigInteger> extractor = BoundaryExtractorFactory.create(BigInteger.class);
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getBigDecimal(1)).thenReturn(null);
+    // BigInt Unsigned Max in MySQL
+    when(mockResultSet.getBigDecimal(2)).thenReturn(null);
+    Boundary<BigInteger> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+
+    assertThat(boundary.start()).isNull();
+    assertThat(boundary.end()).isNull();
+    assertThat(boundary.split(null).getLeft().end()).isNull();
+  }
+
+  @Test
   public void testFromStrings() throws SQLException {
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
