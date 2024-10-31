@@ -30,12 +30,6 @@ RUN python -m venv /venv \
 # Cache provider environments for faster startup and expansion time
 RUN python -m apache_beam.yaml.cache_provider_artifacts
 
-<#if saSecretName?? && airlockJavaRepo??>
-COPY cache_provider_jars.py /template
-RUN mkdir -p $HOME/.apache_beam/cache/jars
-RUN python cache_provider_jars.py --cache_dir="/root/.apache_beam/cache/jars/" --maven_central_repository_url="https://_json_key_base64:$(gcloud secrets versions access latest --secret=${saSecretName} | base64 -w 0)@us-maven.pkg.dev/artifact-foundry-prod/${airlockJavaRepo}"
-</#if>
-
 #============================================================#
 # Create Distroless xlang image compatible with YamlTemplate #
 #============================================================#
