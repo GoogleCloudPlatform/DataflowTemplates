@@ -206,12 +206,12 @@ public class PipelineController {
     return schemaMapper;
   }
 
-  static interface DbConfigContainer {
+  interface DbConfigContainer {
 
-    public JdbcIOWrapperConfig getJDBCIOWrapperConfig(
+    JdbcIOWrapperConfig getJDBCIOWrapperConfig(
         List<String> sourceTables, Wait.OnSignal<?> waitOnSignal);
 
-    public String getShardId();
+    String getShardId();
   }
 
   static class ShardedDbConfigContainer implements DbConfigContainer {

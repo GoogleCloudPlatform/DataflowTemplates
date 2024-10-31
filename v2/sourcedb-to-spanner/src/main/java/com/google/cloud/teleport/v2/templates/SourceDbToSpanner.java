@@ -108,7 +108,6 @@ public class SourceDbToSpanner {
               .readForwardMigrationShardingConfig(options.getSourceConfigURL());
       return PipelineController.executeShardedMigration(options, pipeline, shards, spannerConfig);
     } else {
-      // return PipelineController.executeSingleInstanceMigration(options, pipeline, spannerConfig);
       return PipelineController.executeSingleInstanceMigration(options, pipeline, spannerConfig);
     }
   }
