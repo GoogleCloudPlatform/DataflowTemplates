@@ -35,7 +35,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -49,8 +51,12 @@ import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Wait;
+import org.apache.beam.sdk.transforms.Wait.OnSignal;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
+import org.checkerframework.checker.initialization.qual.Initialized;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,83 +68,135 @@ public class PipelineController {
   private static final Counter tablesCompleted =
       Metrics.counter(PipelineController.class, "tablesCompleted");
 
-  static PipelineResult executeSingleInstanceMigration(
+  // static PipelineResult executeSingleInstanceMigration(
+  //     SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
+  //
+  //   Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
+  //   ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(options, ddl);
+  //
+  //   List<String> srcTablesToMigrate = listTablesToMigrate(options.getTables(), schemaMapper, ddl);
+  //   Set<String> tablesToMigrateSet = new HashSet<>(srcTablesToMigrate);
+  //
+  //   List<String> spannerTablesToMigrate =
+  //       listSpannerTablesToMigrate(ddl, schemaMapper, tablesToMigrateSet);
+  //
+  //   Map<String, PCollection<Void>> outputs = new HashMap<>();
+  //   for (String spTable : spannerTablesToMigrate) {
+  //     String srcTable = schemaMapper.getSourceTableName("", spTable);
+  //     List<PCollection<?>> parentOutputs = new ArrayList<>();
+  //     for (String parentSpTable : ddl.tablesReferenced(spTable)) {
+  //       String parentSrcName;
+  //       try {
+  //         parentSrcName = schemaMapper.getSourceTableName("", parentSpTable);
+  //       } catch (NoSuchElementException e) {
+  //         // This will occur when the spanner table name does not exist in source for
+  //         // sessionBasedMapper.
+  //         LOG.warn(
+  //             spTable
+  //                 + " references table "
+  //                 + parentSpTable
+  //                 + " which does not have an equivalent source table. Writes to "
+  //                 + spTable
+  //                 + " could fail, check DLQ for failed records.");
+  //         continue;
+  //       }
+  //       // This parent is not in tables selected for migration.
+  //       if (!tablesToMigrateSet.contains(parentSrcName)) {
+  //         LOG.warn(
+  //             spTable
+  //                 + " references table "
+  //                 + parentSpTable
+  //                 + " which is not selected for migration (Provide the source table name "
+  //                 + parentSrcName
+  //                 + " via the 'tables' option if this is a mistake!). Writes to "
+  //                 + spTable
+  //                 + " could fail, check DLQ for failed records.");
+  //         continue;
+  //       }
+  //       PCollection<Void> parentOutputPcollection = outputs.get(parentSrcName);
+  //       // Since we are iterating the tables topologically, all parents should have been
+  //       // processed.
+  //       Preconditions.checkState(
+  //           parentOutputPcollection != null,
+  //           "Output PCollection for parent table should not be null.");
+  //       parentOutputs.add(parentOutputPcollection);
+  //     }
+  //     JdbcIoWrapper jdbcIoWrapper =
+  //         JdbcIoWrapper.of(
+  //             OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
+  //                 options, List.of(srcTable), null, Wait.on(parentOutputs)));
+  //     if (jdbcIoWrapper.getTableReaders().isEmpty()) {
+  //       LOG.info("not creating reader as table is not found at source: {}", srcTable);
+  //       continue;
+  //     }
+  //     ReaderImpl reader = ReaderImpl.of(jdbcIoWrapper);
+  //     String suffix = generateSuffix("", srcTable);
+  //     String shardIdColumn = "";
+  //     PCollection<Void> output =
+  //         pipeline.apply(
+  //             "Migrate" + suffix,
+  //             new MigrateTableTransform(
+  //                 options, spannerConfig, ddl, schemaMapper, reader, "", shardIdColumn));
+  //     outputs.put(srcTable, output);
+  //   }
+  //
+  //   // Add transform to increment table counter
+  //   Map<String, Wait.OnSignal<?>> waitOnsMap =
+  //       outputs.entrySet().stream()
+  //           .collect(Collectors.toMap(Map.Entry::getKey, entry -> Wait.on(entry.getValue())));
+  //   pipeline.apply("Increment_table_counters", new IncrementTableCounter(waitOnsMap, ""));
+  //
+  //   return pipeline.run();
+  // }
+
+
+  static PipelineResult executeMigration(
       SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
 
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(options, ddl);
+    TableSelector tableSelector = new TableSelector(options.getTables(), ddl, schemaMapper);
 
-    List<String> srcTablesToMigrate = listTablesToMigrate(options.getTables(), schemaMapper, ddl);
-    Set<String> tablesToMigrateSet = new HashSet<>(srcTablesToMigrate);
-
-    List<String> spannerTablesToMigrate =
-        listSpannerTablesToMigrate(ddl, schemaMapper, tablesToMigrateSet);
-
-    Map<String, PCollection<Void>> outputs = new HashMap<>();
-    for (String spTable : spannerTablesToMigrate) {
-      String srcTable = schemaMapper.getSourceTableName("", spTable);
-      List<PCollection<?>> parentOutputs = new ArrayList<>();
-      for (String parentSpTable : ddl.tablesReferenced(spTable)) {
-        String parentSrcName;
-        try {
-          parentSrcName = schemaMapper.getSourceTableName("", parentSpTable);
-        } catch (NoSuchElementException e) {
-          // This will occur when the spanner table name does not exist in source for
-          // sessionBasedMapper.
-          LOG.warn(
-              spTable
-                  + " references table "
-                  + parentSpTable
-                  + " which does not have an equivalent source table. Writes to "
-                  + spTable
-                  + " could fail, check DLQ for failed records.");
-          continue;
-        }
-        // This parent is not in tables selected for migration.
-        if (!tablesToMigrateSet.contains(parentSrcName)) {
-          LOG.warn(
-              spTable
-                  + " references table "
-                  + parentSpTable
-                  + " which is not selected for migration (Provide the source table name "
-                  + parentSrcName
-                  + " via the 'tables' option if this is a mistake!). Writes to "
-                  + spTable
-                  + " could fail, check DLQ for failed records.");
-          continue;
-        }
-        PCollection<Void> parentOutputPcollection = outputs.get(parentSrcName);
-        // Since we are iterating the tables topologically, all parents should have been
-        // processed.
-        Preconditions.checkState(
-            parentOutputPcollection != null,
-            "Output PCollection for parent table should not be null.");
-        parentOutputs.add(parentOutputPcollection);
-      }
+    Map<Integer, List<String>> levelToSpannerTableList = tableSelector.levelOrderedSpannerTables();
+    Map<String, PCollection<Void>> levelVsOutputMap = new HashMap<>();
+    Map<String, Wait.OnSignal<?>> tableCompletionMap = new HashMap<>();
+    for (int currentLevel = 0; currentLevel < levelToSpannerTableList.size(); currentLevel++) {
+      List<String> spannerTables = levelToSpannerTableList.get(currentLevel);
+      LOG.info("processing level: {} spanner tables: {}", currentLevel, spannerTables);
+      List<String> sourceTables =
+          spannerTables.stream()
+              .map(t -> tableSelector.getSchemaMapper().getSourceTableName("", t))
+              .collect(Collectors.toList());
+      LOG.info("level: {} source tables: {}", currentLevel, spannerTables);
+      OnSignal<@UnknownKeyFor @Nullable @Initialized Object> waitOnSignal =
+          currentLevel > 0 ? Wait.on(levelVsOutputMap.get(currentLevel - 1)) : null;
       JdbcIoWrapper jdbcIoWrapper =
           JdbcIoWrapper.of(
               OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
-                  options, List.of(srcTable), null, Wait.on(parentOutputs)));
+                  options, sourceTables, null, waitOnSignal));
       if (jdbcIoWrapper.getTableReaders().isEmpty()) {
-        LOG.info("not creating reader as table is not found at source: {}", srcTable);
+        LOG.info("not creating reader as tables are not found at source: {}", sourceTables);
+        //If tables of 1 level are ignored in middle, then the subsequent level will not wait to
+        //begin processing.
         continue;
       }
       ReaderImpl reader = ReaderImpl.of(jdbcIoWrapper);
-      String suffix = generateSuffix("", srcTable);
+      String suffix = generateSuffix("", currentLevel + "");
       String shardIdColumn = "";
       PCollection<Void> output =
           pipeline.apply(
               "Migrate" + suffix,
-              new MigrateTableTransform(
-                  options, spannerConfig, ddl, schemaMapper, reader, "", shardIdColumn));
-      outputs.put(srcTable, output);
+              new MigrateTableTransform(options, spannerConfig, tableSelector.getDdl(),
+                  tableSelector.getSchemaMapper(), reader, "", shardIdColumn));
+      levelVsOutputMap.put(currentLevel + "", output);
+
+      for (String srcTable : sourceTables) {
+        tableCompletionMap.put(srcTable, Wait.on(output));
+      }
     }
 
     // Add transform to increment table counter
-    Map<String, Wait.OnSignal<?>> waitOnsMap =
-        outputs.entrySet().stream()
-            .collect(Collectors.toMap(Map.Entry::getKey, entry -> Wait.on(entry.getValue())));
-    pipeline.apply("Increment_table_counters", new IncrementTableCounter(waitOnsMap, ""));
+    pipeline.apply("Increment_table_counters", new IncrementTableCounter(tableCompletionMap, ""));
 
     return pipeline.run();
   }
@@ -363,7 +421,9 @@ public class PipelineController {
             spannerTable);
       } else {
         // source table has matching spanner table on current spanner instance
-        tablesToMigrate.add(srcTable);
+        if (!tablesToMigrate.contains(srcTable)) {
+          tablesToMigrate.add(srcTable);
+        }
       }
     }
 
@@ -373,4 +433,124 @@ public class PipelineController {
     }
     return tablesToMigrate;
   }
+
+  static class TableSelector {
+
+    private String configuredTableList;
+    private Ddl ddl;
+    private ISchemaMapper schemaMapper;
+    private List<String> srcTablesToMigrate;
+    private List<String> spTablesToMigrate;
+
+    public TableSelector(String configuredTableList, Ddl ddl, ISchemaMapper schemaMapper) {
+      this.configuredTableList = configuredTableList;
+      this.ddl = ddl;
+      this.schemaMapper = schemaMapper;
+      init();
+    }
+
+    private void init() {
+      srcTablesToMigrate = listTablesToMigrate(configuredTableList, schemaMapper, ddl);
+      spTablesToMigrate =
+          listSpannerTablesToMigrate(ddl, schemaMapper, new HashSet<>(srcTablesToMigrate));
+
+      for (String spTable : spTablesToMigrate) {
+        try {
+          checkTableConfigIssues(spTable);
+        } catch (RuntimeException e) {
+          LOG.warn(e.getMessage());
+        }
+      }
+    }
+
+    public Ddl getDdl() {
+      return ddl;
+    }
+
+    public ISchemaMapper getSchemaMapper() {
+      return schemaMapper;
+    }
+
+    public List<String> getSrcTablesToMigrate() {
+      return srcTablesToMigrate;
+    }
+
+    public List<String> getSpTablesToMigrate() {
+      return spTablesToMigrate;
+    }
+
+    public Map<Integer, List<String>> levelOrderedSpannerTables() {
+      Map<Integer, List<String>> levelOrderedTables = new HashMap<>();
+      // This does not handle scenarios where tables are split into multiple tables.
+      // In that case if the level of tables is different this logic may not work
+      // The logic will need to change to create source levels based on Spanner tables
+
+      List<String> tablesToProcess = new LinkedList<>(spTablesToMigrate);
+      Map<String, List<String>> referencedTablesMap =
+          spTablesToMigrate.stream()
+              .collect(Collectors.toMap(e -> e, e -> ddl.getAllReferencedTables(e)));
+
+      List<String> allTablesAddedToLevels = new ArrayList<>();
+      // 1. Identify tables without references - add to level 0 and remove from list
+      // 2. Identify tables which have been processed in above levels and add to current level
+      // Repeat until no tables are left to process
+      // In the worst case - there will be 1 table per level, so this loop should not execute more
+      // times than the number of tables.
+      int currentLevel = 0;
+      while (!tablesToProcess.isEmpty()) {
+        if (currentLevel > spTablesToMigrate.size()) {
+          throw new RuntimeException(
+              "too many iterations while creating level ordered tables:" + currentLevel);
+        }
+        List<String> currentLevelTables = new ArrayList<>();
+        ListIterator<String> iter = tablesToProcess.listIterator();
+        while (iter.hasNext()) {
+          String currentTableName = iter.next();
+          List<String> referencedTables = referencedTablesMap.get(currentTableName);
+          if (referencedTables.isEmpty() || allTablesAddedToLevels.containsAll(referencedTables)) {
+            LOG.debug("all referenced tables are marked for processing: {}", currentTableName);
+            currentLevelTables.add(currentTableName);
+            iter.remove();
+          }
+        }
+        levelOrderedTables.put(currentLevel, currentLevelTables);
+        allTablesAddedToLevels.addAll(currentLevelTables);
+        currentLevel++;
+      }
+      return levelOrderedTables;
+    }
+
+    private void checkTableConfigIssues(String spTable) {
+      for (String parentSpTable : ddl.tablesReferenced(spTable)) {
+        try {
+          String parentSrcName = schemaMapper.getSourceTableName("", parentSpTable);
+
+          // This parent is not in tables selected for migration.
+          if (!srcTablesToMigrate.contains(parentSrcName)) {
+            throw new RuntimeException(
+                spTable
+                    + " references table "
+                    + parentSpTable
+                    + " which is not selected for migration (Provide the source table name "
+                    + parentSrcName
+                    + " via the 'tables' option if this is a mistake!). Writes to "
+                    + spTable
+                    + " could fail, check DLQ for failed records.");
+          }
+        } catch (NoSuchElementException e) {
+          // This will occur when the spanner table name does not exist in source for
+          // sessionBasedMapper.
+          throw new RuntimeException(
+              spTable
+                  + " references table "
+                  + parentSpTable
+                  + " which does not have an equivalent source table. Writes to "
+                  + spTable
+                  + " could fail, check DLQ for failed records.");
+        }
+      }
+    }
+  }
+
+
 }

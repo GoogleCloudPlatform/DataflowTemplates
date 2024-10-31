@@ -89,7 +89,6 @@ final class RangeBoundaryDoFn extends DoFn<ColumnForBoundaryQuery, Range> implem
       throws SQLException {
     String boundaryQuery =
         dbAdapter.getBoundaryQuery(tableName, partitionColumns, input.columnName());
-
     try (Connection conn = acquireConnection()) {
       PreparedStatement stmt =
           conn.prepareStatement(

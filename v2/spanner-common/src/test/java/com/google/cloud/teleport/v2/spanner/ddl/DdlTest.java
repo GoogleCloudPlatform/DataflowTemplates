@@ -391,6 +391,8 @@ public class DdlTest {
     Ddl ddl = generateDdlFromDAG(Arrays.asList("t1", "t2", "t3", "t4"), dependencies);
     List<String> actualOrder = ddl.getTablesOrderedByReference();
     verifyOrderingFromDependencies("#1: basic dag", actualOrder, dependencies);
+    assertTrue(ddl.getAllReferencedTables("t3").containsAll(Arrays.asList("t1", "t4", "t2")));
+    assertTrue(!ddl.getAllReferencedTables("t3").contains("t3"));
 
     // Test 2: Diamond shaped
     dependencies =
@@ -402,6 +404,10 @@ public class DdlTest {
     ddl = generateDdlFromDAG(Arrays.asList("t1", "t2", "t3", "t4"), dependencies);
     actualOrder = ddl.getTablesOrderedByReference();
     verifyOrderingFromDependencies("#2: diamond dag", actualOrder, dependencies);
+    assertTrue(ddl.getAllReferencedTables("t1").containsAll(Arrays.asList("t2", "t3", "t4")));
+    assertTrue(!ddl.getAllReferencedTables("t1").contains("t1"));
+    assertTrue(ddl.getAllReferencedTables("t3").containsAll(Arrays.asList("t4")));
+    assertTrue(!ddl.getAllReferencedTables("t3").contains("t3"));
 
     // Test 3: Empty Dependency List
     ddl = generateDdlFromDAG(Arrays.asList("t1", "t2"), List.of());
@@ -412,12 +418,17 @@ public class DdlTest {
     ddl = generateDdlFromDAG(Arrays.asList("t1"), List.of());
     actualOrder = ddl.getTablesOrderedByReference();
     assertEquals("#4: Single Node", List.of("t1"), actualOrder);
+    assertTrue(ddl.getAllReferencedTables("t1").isEmpty());
 
     // Test 5: Disconnected Components
     dependencies = Arrays.asList(Arrays.asList("t2", "t1"));
     ddl = generateDdlFromDAG(Arrays.asList("t1", "t2", "t3"), dependencies);
     actualOrder = ddl.getTablesOrderedByReference();
     verifyOrderingFromDependencies("#5: Disconnected components", actualOrder, dependencies);
+    assertTrue(ddl.getAllReferencedTables("t2").containsAll(Arrays.asList("t1")));
+    assertTrue(!ddl.getAllReferencedTables("t2").contains("t2"));
+    assertTrue(ddl.getAllReferencedTables("t1").isEmpty());
+    assertTrue(ddl.getAllReferencedTables("t3").isEmpty());
 
     // Test 6: Complex Graph
     dependencies =
