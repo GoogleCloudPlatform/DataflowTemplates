@@ -184,7 +184,7 @@ public class CsvConverters {
         order = 1,
         description = "The input filepattern to read from.",
         helpText =
-            "The Cloud Storage file pattern to search for CSV files. Example: `gs://mybucket/test-*.csv`.")
+            "The Cloud Storage file pattern to search for CSV files. For example, `gs://mybucket/test-*.csv`.")
     String getInputFileSpec();
 
     void setInputFileSpec(String inputFileSpec);
@@ -214,7 +214,7 @@ public class CsvConverters {
         order = 4,
         optional = true,
         description = "Column delimiter of the data files.",
-        helpText = "The column delimiter of the input text files. Default: `,`",
+        helpText = "The column delimiter of the input text files. The default is `,`.",
         example = ",")
     @Default.InstanceFactory(DelimiterFactory.class)
     String getDelimiter();
@@ -226,7 +226,7 @@ public class CsvConverters {
         optional = true,
         description = "CSV Format to use for parsing records.",
         helpText =
-            "CSV format specification to use for parsing records. Default is: `Default`. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: "
+            "CSV format specification to use for parsing records. The default value is `Default`. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: "
                 + "https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html")
     @Default.String("Default")
     String getCsvFormat();
@@ -237,7 +237,7 @@ public class CsvConverters {
         order = 6,
         optional = true,
         description = "Path to JSON schema",
-        helpText = "The path to the JSON schema. Defaults to: `null`.",
+        helpText = "The path to the JSON schema. Defaults to `null`.",
         example = "gs://path/to/schema")
     String getJsonSchemaPath();
 
@@ -248,7 +248,7 @@ public class CsvConverters {
         optional = true,
         description = "Set to true if number of files is in the tens of thousands",
         helpText =
-            "Set to true if number of files is in the tens of thousands. Defaults to: `false`.")
+            "Set to true if number of files is in the tens of thousands. Defaults to `false`.")
     @Default.Boolean(false)
     Boolean getLargeNumFiles();
 
@@ -272,7 +272,7 @@ public class CsvConverters {
         description = "Log detailed CSV conversion errors",
         helpText =
             "Set to `true` to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords)."
-                + " Default: `false`.")
+                + " Defaults to`false`.")
     @Default.Boolean(false)
     Boolean getLogDetailedCsvConversionErrors();
 

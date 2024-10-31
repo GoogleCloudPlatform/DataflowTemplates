@@ -211,7 +211,7 @@ public class BigQueryConverters {
         description = "Set to true to use legacy SQL",
         helpText =
             "Set to `true` to use legacy SQL. This parameter only applies when using"
-                + " the `query` parameter. Defaults to: `false`.")
+                + " the `query` parameter. Defaults to `false`.")
     @Default.Boolean(false)
     Boolean getUseLegacySql();
 
