@@ -29,16 +29,13 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptions
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
-import com.google.cloud.teleport.v2.templates.PipelineController.TableSelector;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
@@ -164,7 +161,9 @@ public class PipelineControllerTest {
   public void listTablesToMigrateIdentity() {
     SourceDbToSpannerOptions mockOptions = createOptionsHelper("", "");
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    List<String> tables = PipelineController.listTablesToMigrate("", schemaMapper, spannerDdl);
+    TableSelector tableSelector =
+        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
+    List<String> tables = tableSelector.getSrcTablesToMigrate();
     List<String> ddlTables =
         spannerDdl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
     assertEquals(2, tables.size());
@@ -175,8 +174,9 @@ public class PipelineControllerTest {
   public void listTablesToMigrateIdentityOverride() {
     SourceDbToSpannerOptions mockOptions = createOptionsHelper("", "new_cart");
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    List<String> tables =
-        PipelineController.listTablesToMigrate(mockOptions.getTables(), schemaMapper, spannerDdl);
+    TableSelector tableSelector =
+        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
+    List<String> tables = tableSelector.getSrcTablesToMigrate();
     List<String> ddlTables =
         spannerDdl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
     assertEquals(1, tables.size());
@@ -191,8 +191,9 @@ public class PipelineControllerTest {
                 .toString(),
             "cart,people");
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    List<String> tables =
-        PipelineController.listTablesToMigrate(mockOptions.getTables(), schemaMapper, spannerDdl);
+    TableSelector tableSelector =
+        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
+    List<String> tables = tableSelector.getSrcTablesToMigrate();
 
     assertEquals(2, tables.size());
     assertTrue(tables.contains("cart"));
@@ -207,8 +208,9 @@ public class PipelineControllerTest {
                 .toString(),
             "cart");
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    List<String> tables =
-        PipelineController.listTablesToMigrate(mockOptions.getTables(), schemaMapper, spannerDdl);
+    TableSelector tableSelector =
+        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
+    List<String> tables = tableSelector.getSrcTablesToMigrate();
 
     assertEquals(1, tables.size());
     assertTrue(tables.contains("cart"));
@@ -222,8 +224,9 @@ public class PipelineControllerTest {
                 .toString(),
             "asd");
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    List<String> tables =
-        PipelineController.listTablesToMigrate(mockOptions.getTables(), schemaMapper, spannerDdl);
+    TableSelector tableSelector =
+        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
+    List<String> tables = tableSelector.getSrcTablesToMigrate();
   }
 
   @Test
@@ -235,9 +238,9 @@ public class PipelineControllerTest {
             "cart,people");
     ISchemaMapper schemaMapper =
         PipelineController.getSchemaMapper(mockOptions, spannerDdlWithExtraTable);
-    List<String> tables =
-        PipelineController.listSpannerTablesToMigrate(
-            spannerDdl, schemaMapper, new HashSet<>(schemaMapper.getSourceTablesToMigrate("")));
+    TableSelector tableSelector =
+        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
+    List<String> tables = tableSelector.getSpTablesToMigrate();
 
     assertEquals(2, tables.size());
     assertTrue(tables.contains("new_cart"));
@@ -253,11 +256,9 @@ public class PipelineControllerTest {
             "cart,people");
     ISchemaMapper schemaMapper =
         PipelineController.getSchemaMapper(mockOptions, spannerDdlWithExtraTable);
-    List<String> tables =
-        PipelineController.listSpannerTablesToMigrate(
-            spannerDdlWithExtraTable,
-            schemaMapper,
-            new HashSet<>(schemaMapper.getSourceTablesToMigrate("")));
+    TableSelector tableSelector =
+        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
+    List<String> tables = tableSelector.getSpTablesToMigrate();
 
     assertEquals(2, tables.size());
     assertTrue(tables.contains("new_cart"));
@@ -270,13 +271,12 @@ public class PipelineControllerTest {
         createOptionsHelper(
             Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
                 .toString(),
-            "cart,people");
+            "cart");
     ISchemaMapper schemaMapper =
         PipelineController.getSchemaMapper(mockOptions, spannerDdlWithExtraTable);
-    Set<String> srcTables = new HashSet<String>();
-    srcTables.add("cart");
-    List<String> tables =
-        PipelineController.listSpannerTablesToMigrate(spannerDdl, schemaMapper, srcTables);
+    TableSelector tableSelector =
+        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
+    List<String> tables = tableSelector.getSpTablesToMigrate();
 
     assertEquals(1, tables.size());
     assertTrue(tables.contains("new_cart"));

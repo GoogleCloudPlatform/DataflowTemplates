@@ -150,7 +150,7 @@ public final class OptionsToConfigBuilder {
     builder = builder.setTables(ImmutableList.copyOf(tables));
     return builder.build();
   }
-  
+
   @VisibleForTesting
   protected static String addParamToJdbcUrl(String jdbcUrl, String paramName, String paramValue) {
     // URI/ URL libraries don't seem to handle jdbc URLs well
