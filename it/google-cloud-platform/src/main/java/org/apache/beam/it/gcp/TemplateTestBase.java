@@ -137,16 +137,20 @@ public abstract class TemplateTestBase {
 
   @Before
   public void setUpBase() throws ExecutionException {
+    setUp(null);
+  }
 
+  protected void setUp(TemplateIntegrationTest annotation) throws ExecutionException {
     testId = PipelineUtils.createJobName("test", 10);
 
-    TemplateIntegrationTest annotation = null;
     MultiTemplateIntegrationTest multiAnnotation =
         getClass().getAnnotation(MultiTemplateIntegrationTest.class);
     usingDirectRunner = System.getProperty("directRunnerTest") != null;
     try {
       Method testMethod = getClass().getMethod(testName);
-      annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
+      if (annotation == null) {
+        annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
+      }
       Category category = testMethod.getAnnotation(Category.class);
       if (category != null) {
         usingDirectRunner =
@@ -167,7 +171,7 @@ public abstract class TemplateTestBase {
     }
     if (annotation != null && multiAnnotation != null) {
       LOG.warn(
-          "{} specifies both @TemplateIntegrationTest or @MultiTemplateIntegrationTest, please use"
+          "{} specifies both @TemplateIntegrationTest and @MultiTemplateIntegrationTest, please use"
               + " only of either.",
           getClass());
       return;
@@ -371,6 +375,10 @@ public abstract class TemplateTestBase {
       // Flex templates run on parent pom and -pl {path-to-folder}
       moduleBuild = String.join(",", getModulesBuild(pomPath));
       pomPath = pomPath.replaceAll("/v2/.*", "/pom.xml");
+    } else if (pomPath.contains("yaml/pom.xml")) {
+      // YAML templates run on parent pom and -pl {path-to-folder}
+      pomPath = new File(pom.getParentFile().getParentFile(), "pom.xml").getAbsolutePath();
+      moduleBuild = String.join(",", List.of("metadata", "yaml"));
     } else {
       LOG.warn(
           "Specific module POM was not found, so scanning all modules... Stage step may take a"

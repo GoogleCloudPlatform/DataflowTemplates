@@ -3,7 +3,7 @@ pipeline:
   transforms:
     - type: ReadFromPubSub
       config:
-        subscription: {{ SUBSCRIPTION }}
+        subscription: {{ inputSubscription }}
         format: json
         schema:
           type: object
@@ -11,9 +11,16 @@ pipeline:
             id: {type: integer}
             job: {type: string}
             name: {type: string}
+    - type: MapToFields
+      config:
+        language: python
+        append: true
+        drop: [ name ]
+        fields:
+          name: name.upper()
     - type: WriteToBigQuery
       config:
-        table: {{ BQ_TABLE }}
+        table: {{ outputTableSpec }}
   windowing:
     type: fixed
     size: 5s

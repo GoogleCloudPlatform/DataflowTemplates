@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.templates.python;
+package com.google.cloud.teleport.templates.yaml;
 
 import static org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
@@ -24,25 +24,20 @@ import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
-import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.metadata.YAMLTemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.io.Resources;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -56,17 +51,14 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link YAMLTemplate} Flex template. */
-@Category(TemplateIntegrationTest.class)
-@TemplateIntegrationTest(YAMLTemplate.class)
+@Category(YAMLTemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
-public class PubSubToBigQueryYamlIT extends TemplateTestBase {
+public class PubSubToBigQueryYamlIT extends YAMLTemplateTestBase {
 
   private PubsubResourceManager pubsubResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
 
   private static final int MESSAGES_COUNT = 10;
-  private static final String YAML_PIPELINE = "PubSubToBigQueryYamlIT.yaml";
-  private static final String YAML_PIPELINE_GCS_PATH = "input/" + YAML_PIPELINE;
 
   @Before
   public void setUp() throws IOException {
@@ -74,8 +66,6 @@ public class PubSubToBigQueryYamlIT extends TemplateTestBase {
         PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
     bigQueryResourceManager =
         BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
-
-    gcsClient.createArtifact(YAML_PIPELINE_GCS_PATH, createSimpleYamlMessage());
   }
 
   @After
@@ -84,12 +74,11 @@ public class PubSubToBigQueryYamlIT extends TemplateTestBase {
   }
 
   @Test
-  public void testPubSubToBigQuery() throws IOException {
-    basePubSubToBigQuery(Function.identity()); // no extra parameters
+  public void testPubSubToBigQueryYaml() throws IOException {
+    basePubSubToBigQuery(); // no extra parameters
   }
 
-  private void basePubSubToBigQuery(
-      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
+  private void basePubSubToBigQuery() throws IOException {
     // Arrange
     List<Field> bqSchemaFields =
         Arrays.asList(
@@ -105,25 +94,21 @@ public class PubSubToBigQueryYamlIT extends TemplateTestBase {
         pubsubResourceManager.createSubscription(topic, "sub-1-" + nameSuffix);
     TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
 
-    LaunchConfig.Builder options =
-        paramsAdder.apply(
-            LaunchConfig.builder(testName, specPath)
-                .addParameter("yaml_pipeline_file", getGcsPath(YAML_PIPELINE_GCS_PATH))
-                .addParameter(
-                    "jinja_variables",
-                    String.format(
-                        "{" + "\"SUBSCRIPTION\": \"%s\", " + "\"BQ_TABLE\": \"%s\"" + "}",
-                        subscription.toString(), toTableSpecStandard(table))));
+    Map<String, String> parameters = new HashMap<>();
+    parameters.put("inputSubscription", subscription.toString());
+    parameters.put("outputTableSpec", toTableSpecStandard(table));
 
     // Act
-    LaunchInfo info = launchTemplate(options);
+    LaunchInfo info = launchYamlTemplate(parameters);
     assertThatPipeline(info).isRunning();
 
     List<Map<String, Object>> expectedMessages = new ArrayList<>();
     for (int i = 1; i <= MESSAGES_COUNT; i++) {
-      Map<String, Object> message = Map.of("id", i, "job", testName, "name", "message");
+      Map<String, Object> message =
+          new HashMap<>(Map.of("id", i, "job", testName, "name", "message"));
       ByteString messageData = ByteString.copyFromUtf8(new JSONObject(message).toString());
       pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
+      message.put("name", message.get("name").toString().toUpperCase());
       expectedMessages.add(message);
     }
 
@@ -142,9 +127,5 @@ public class PubSubToBigQueryYamlIT extends TemplateTestBase {
 
     // Make sure record can be read
     assertThatBigQueryRecords(records).hasRecordsUnordered(expectedMessages);
-  }
-
-  private String createSimpleYamlMessage() throws IOException {
-    return Files.readString(Paths.get(Resources.getResource(YAML_PIPELINE).getPath()));
   }
 }

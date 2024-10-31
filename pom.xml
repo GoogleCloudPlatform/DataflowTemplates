@@ -104,6 +104,7 @@
     <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
     <load.tests>com.google.cloud.teleport.metadata.TemplateLoadTest</load.tests>
     <direct-runner.tests>com.google.cloud.teleport.metadata.DirectRunnerTest</direct-runner.tests>
+    <yaml-integration.tests>com.google.cloud.teleport.metadata.YAMLTemplateIntegrationTest</yaml-integration.tests>
     <excluded.spanner.tests></excluded.spanner.tests>
 
     <licenseHeaderFile>JAVA_LICENSE_HEADER</licenseHeaderFile>
@@ -442,7 +443,10 @@
               <excludes>
                 <exclude>**/KafkaToKafkaIT.java</exclude>
               </excludes>
-              <excludedGroups>${direct-runner.tests}</excludedGroups>
+              <excludedGroups>
+                ${direct-runner.tests}
+                ${yaml-integration.tests}
+              </excludedGroups>
               <groups>
                 ${integration.tests}
               </groups>
@@ -541,6 +545,7 @@
                 <include>**/*IT.java</include>
               </includes>
               <excludedGroups>
+                ${yaml-integration.tests}
                 com.google.cloud.teleport.metadata.SkipDirectRunnerTest
               </excludedGroups>
               <groups>
@@ -587,10 +592,63 @@
               <includes>
                 <include>**/*IT.java</include>
               </includes>
+              <excludedGroups>
+                ${yaml-integration.tests}
+              </excludedGroups>
               <groups>
                 ${direct-runner.tests}
                 org.apache.beam.it.testcontainers.TestContainersIntegrationTest
                 org.apache.beam.it.gcp.GoogleCloudIntegrationTest
+              </groups>
+              <reuseForks>true</reuseForks>
+              <parallel>${itParallelismType}</parallel>
+              <threadCount>${itParallelism}</threadCount>
+              <trimStackTrace>false</trimStackTrace>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>templatesYamlIntegrationTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <!-- Skip coverage checks, unit tests are skipped -->
+        <jacoco.skip>true</jacoco.skip>
+        <!-- Some modules may yield no integration tests -->
+        <failIfNoTests>false</failIfNoTests>
+        <!-- Parallelism settings. Default is 2, set to consider methods -->
+        <itParallelismType>classesAndMethods</itParallelismType>
+        <itParallelism>2</itParallelism>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration combine.self="override">
+              <systemProperties>
+                <property>
+                  <name>beamPythonVersion</name>
+                  <value>${beam-python.version}</value>
+                </property>
+                <property>
+                  <name>beamJavaVersion</name>
+                  <value>${beam.version}</value>
+                </property>
+                <property>
+                  <name>beamMavenRepo</name>
+                  <value>${beam-maven-repo}</value>
+                </property>
+              </systemProperties>
+              <includes>
+                <include>**/*IT.java</include>
+              </includes>
+              <groups>
+                ${yaml-integration.tests}
               </groups>
               <reuseForks>true</reuseForks>
               <parallel>${itParallelismType}</parallel>
