@@ -139,8 +139,15 @@ public class PipelineController {
               .map(t -> tableSelector.getSchemaMapper().getSourceTableName("", t))
               .collect(Collectors.toList());
       LOG.info("level: {} source tables: {}", currentLevel, spannerTables);
+      PCollection<Void> previousLevelPCollection = levelVsOutputMap.get((currentLevel - 1) + "");
+      if (currentLevel > 0 && previousLevelPCollection == null) {
+        LOG.warn(
+            "proceeding without waiting for parent. current level: {}  tables: {}",
+            currentLevel,
+            spannerTables);
+      }
       OnSignal<@UnknownKeyFor @Nullable @Initialized Object> waitOnSignal =
-          currentLevel > 0 ? Wait.on(levelVsOutputMap.get(currentLevel - 1)) : null;
+          previousLevelPCollection != null ? Wait.on(previousLevelPCollection) : null;
       JdbcIoWrapper jdbcIoWrapper =
           JdbcIoWrapper.of(configContainer.getJDBCIOWrapperConfig(sourceTables, waitOnSignal));
       if (jdbcIoWrapper.getTableReaders().isEmpty()) {

@@ -120,6 +120,8 @@ public class TableSelector {
         }
       }
       levelOrderedTables.put(currentLevel, currentLevelTables);
+      LOG.info(
+          "level based tables generated. level: {} tables: {}", currentLevel, currentLevelTables);
       allTablesAddedToLevels.addAll(currentLevelTables);
       currentLevel++;
     }
