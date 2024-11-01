@@ -12,6 +12,7 @@
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
+            <!-- Also update repo values in plugins/core-plugin/s.m.j.c.g.c.t/plugin/DockerfileGenerator.java-->
             <repositories>
                 <repository>
                     <id>central</id>
@@ -26,6 +27,11 @@
                     </snapshots>
                 </repository>
             </repositories>
+            <properties>
+                <airlockJavaRepo>ah-3p-staging-maven</airlockJavaRepo>
+                <airlockPythonRepo>python-3p</airlockPythonRepo>
+                <saSecretName>default-service-account-key-file</saSecretName>
+            </properties>
         </profile>
     </profiles>
     <mirrors>

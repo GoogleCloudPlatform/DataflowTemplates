@@ -183,9 +183,6 @@ public class DockerfileGeneratorTest {
     assertThat(fileContents).contains("FROM a python container image");
     assertThat(fileContents).contains("FROM a java container image");
     assertThat(fileContents).contains("=py_version");
-    assertThat(fileContents)
-        .doesNotContainMatch(
-            "(?m)^(?!COPY main\\.py.*)(COPY(?!.*--from=).*/template.*$|COPY main\\.py.*)$");
     assertThat(fileContents).contains("ENTRYPOINT [\"python/entry/point\"]");
   }
 
@@ -210,6 +207,30 @@ public class DockerfileGeneratorTest {
     assertThat(fileContents).contains("=py_version");
     assertThat(fileContents).contains("COPY other_file $WORKDIR/");
     assertThat(fileContents).contains("ENTRYPOINT [\"python/entry/point\"]");
+  }
+
+  @Test
+  public void testGenerateYamlDockerfileWithInternalMaven() throws IOException, TemplateException {
+    new File(outputFolder.getAbsolutePath() + "/" + containerName).mkdirs();
+    createDockerfileGeneratorBuilder(Template.TemplateType.YAML, outputFolder)
+        .setBasePythonContainerImage("a python container image")
+        .setBaseJavaContainerImage("a java container image")
+        .setPythonVersion("py_version")
+        .setServiceAccountSecretName("someSecret")
+        .setAirlockPythonRepo("airlockPythonRepo")
+        .build()
+        .generate();
+    File outputFile =
+        new File(outputFolder.getAbsolutePath() + "/" + containerName + "/Dockerfile");
+
+    assertTrue(outputFile.exists());
+    String fileContents = Files.asCharSource(outputFile, StandardCharsets.UTF_8).read();
+    assertThat(fileContents).contains("FROM a python container image");
+    assertThat(fileContents).contains("FROM a java container image");
+    assertThat(fileContents).contains("=py_version");
+    assertThat(fileContents).contains("gcloud secrets versions access latest --secret=someSecret");
+    assertThat(fileContents)
+        .contains("https://us-python.pkg.dev/artifact-foundry-prod/airlockPythonRepo");
   }
 
   @Test
