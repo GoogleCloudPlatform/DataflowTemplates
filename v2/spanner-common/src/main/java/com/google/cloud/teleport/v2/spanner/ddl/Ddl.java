@@ -141,7 +141,7 @@ public class Ddl implements Serializable {
 
   public List<String> getAllReferencedTables(String tableName) {
     Table table = tables.get(tableName.toLowerCase());
-    if (!tables.containsKey(tableName)) {
+    if (!tables.containsKey(tableName.toLowerCase())) {
       throw new IllegalStateException(
           "cannot fetch referenced tables for table which does not exist"
               + " in spanner:"

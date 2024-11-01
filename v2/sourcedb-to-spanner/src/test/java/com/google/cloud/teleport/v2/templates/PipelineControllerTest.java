@@ -386,6 +386,24 @@ public class PipelineControllerTest {
     runTableOrderTest("complex", "", complexTableNames, complexDependencies, expectedOutput);
   }
 
+  @Test
+  public void testLevelOrderSpecialTableName() {
+    // Test 1: Linear dag - Capital Table names
+    SourceDbToSpannerOptions mockOptions = createOptionsHelper("", "");
+    List<List<String>> dagDependencies =
+        Arrays.asList(
+            Arrays.asList("T3", "T1"), Arrays.asList("T1", "T4"), Arrays.asList("T4", "T2"));
+    List<String> dagTableNames = Arrays.asList("T1", "T2", "T3", "T4");
+
+    runTableOrderTest(
+        "dag",
+        "",
+        dagTableNames,
+        dagDependencies,
+        Arrays.asList(
+            Arrays.asList("T2"), Arrays.asList("T4"), Arrays.asList("T1"), Arrays.asList("T3")));
+  }
+
   @Test(expected = Exception.class)
   public void testLevelOrderedTablesNoMatch() {
     runTableOrderTest(

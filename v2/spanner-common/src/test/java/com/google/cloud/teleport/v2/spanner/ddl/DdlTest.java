@@ -472,6 +472,19 @@ public class DdlTest {
     assertThrows(IllegalStateException.class, () -> finalDdl.getTablesOrderedByReference());
   }
 
+  @Test
+  public void testGetTablesOrderedByReferenceSpecialChar() {
+    // Test 1: Linear dag
+    List<List<String>> dependencies =
+        Arrays.asList(
+            Arrays.asList("T3", "t1"), Arrays.asList("t1", "T4"), Arrays.asList("T4", "T2"));
+    Ddl ddl = generateDdlFromDAG(Arrays.asList("t1", "T2", "T3", "T4"), dependencies);
+    List<String> actualOrder = ddl.getTablesOrderedByReference();
+    verifyOrderingFromDependencies("basic dag with capitals", actualOrder, dependencies);
+    assertTrue(ddl.getAllReferencedTables("T3").containsAll(Arrays.asList("t1", "T4", "T2")));
+    assertTrue(!ddl.getAllReferencedTables("T3").contains("T3"));
+  }
+
   private void verifyOrderingFromDependencies(
       String msg, List<String> actualOrder, List<List<String>> dependencies) {
     for (List<String> dependency : dependencies) {

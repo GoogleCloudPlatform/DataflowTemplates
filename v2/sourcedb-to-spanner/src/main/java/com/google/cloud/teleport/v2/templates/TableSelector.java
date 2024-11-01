@@ -94,7 +94,7 @@ public class TableSelector {
     List<String> tablesToProcess = new LinkedList<>(spTablesToMigrate);
     Map<String, List<String>> referencedTablesMap =
         spTablesToMigrate.stream()
-            .collect(Collectors.toMap(e -> e, e -> ddl.getAllReferencedTables(e)));
+            .collect(Collectors.toMap(t -> t, t -> ddl.getAllReferencedTables(t)));
 
     List<String> allTablesAddedToLevels = new ArrayList<>();
     // 1. Identify tables without references - add to level 0 and remove from list
