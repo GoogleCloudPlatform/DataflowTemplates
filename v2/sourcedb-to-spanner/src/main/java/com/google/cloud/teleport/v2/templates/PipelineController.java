@@ -129,8 +129,7 @@ public class PipelineController {
       TableSelector tableSelector,
       Map<Integer, List<String>> levelToSpannerTableList,
       DbConfigContainer configContainer) {
-    Map<String, PCollection<Void>> levelVsOutputMap = new HashMap<>();
-    Map<String, OnSignal<?>> tableCompletionMap = new HashMap<>();
+    Map<Integer, PCollection<Void>> levelVsOutputMap = new HashMap<>();
     for (int currentLevel = 0; currentLevel < levelToSpannerTableList.size(); currentLevel++) {
       List<String> spannerTables = levelToSpannerTableList.get(currentLevel);
       LOG.info("processing level: {} spanner tables: {}", currentLevel, spannerTables);
@@ -139,7 +138,7 @@ public class PipelineController {
               .map(t -> tableSelector.getSchemaMapper().getSourceTableName("", t))
               .collect(Collectors.toList());
       LOG.info("level: {} source tables: {}", currentLevel, spannerTables);
-      PCollection<Void> previousLevelPCollection = levelVsOutputMap.get((currentLevel - 1) + "");
+      PCollection<Void> previousLevelPCollection = levelVsOutputMap.get(currentLevel - 1);
       if (currentLevel > 0 && previousLevelPCollection == null) {
         LOG.warn(
             "proceeding without waiting for parent. current level: {}  tables: {}",
@@ -170,17 +169,16 @@ public class PipelineController {
                   reader,
                   configContainer.getShardId(),
                   shardIdColumn));
-      levelVsOutputMap.put(currentLevel + "", output);
-
-      for (String srcTable : sourceTables) {
-        tableCompletionMap.put(srcTable, Wait.on(output));
-      }
+      levelVsOutputMap.put(currentLevel, output);
     }
 
     // Add transform to increment table counter
+    Map<Integer, OnSignal<?>> tableCompletionMap =
+        levelVsOutputMap.entrySet().stream()
+            .collect(Collectors.toMap(e -> e.getKey(), e -> Wait.on(e.getValue())));
     pipeline.apply(
         "Increment_table_counters" + generateSuffix(configContainer.getShardId(), null),
-        new IncrementTableCounter(tableCompletionMap, ""));
+        new IncrementTableCounter(tableCompletionMap, "", levelToSpannerTableList));
   }
 
   private static String generateSuffix(String shardId, String tableName) {
