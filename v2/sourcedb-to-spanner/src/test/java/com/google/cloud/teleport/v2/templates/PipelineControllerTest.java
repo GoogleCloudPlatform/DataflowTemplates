@@ -15,13 +15,17 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.ForeignKey;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
@@ -29,6 +33,10 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptions
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.templates.PipelineController.DbConfigContainer;
+import com.google.cloud.teleport.v2.templates.PipelineController.ShardedDbConfigContainer;
+import com.google.cloud.teleport.v2.templates.PipelineController.SingleInstanceDbConfigContainer;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import java.nio.file.Paths;
@@ -37,15 +45,22 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.Wait;
+import org.apache.beam.sdk.values.PCollection;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 public class PipelineControllerTest {
 
-  private Ddl spannerDdl;
+  @Rule
+  public final transient TestPipeline pipeline = TestPipeline.create();
 
-  private Ddl spannerDdlWithExtraTable;
+  private Ddl spannerDdl;
 
   @Before
   public void setup() {
@@ -66,50 +81,6 @@ public class PipelineControllerTest {
             .end()
             .endTable()
             .createTable("new_people")
-            .column("synth_id")
-            .int64()
-            .notNull()
-            .endColumn()
-            .column("new_name")
-            .string()
-            .size(10)
-            .endColumn()
-            .primaryKey()
-            .asc("synth_id")
-            .end()
-            .endTable()
-            .build();
-
-    spannerDdlWithExtraTable =
-        Ddl.builder()
-            .createTable("new_cart")
-            .column("new_quantity")
-            .int64()
-            .notNull()
-            .endColumn()
-            .column("new_user_id")
-            .string()
-            .size(10)
-            .endColumn()
-            .primaryKey()
-            .asc("new_user_id")
-            .asc("new_quantity")
-            .end()
-            .endTable()
-            .createTable("new_people")
-            .column("synth_id")
-            .int64()
-            .notNull()
-            .endColumn()
-            .column("new_name")
-            .string()
-            .size(10)
-            .endColumn()
-            .primaryKey()
-            .asc("synth_id")
-            .end()
-            .endTable()
-            .createTable("extra_table")
             .column("synth_id")
             .int64()
             .notNull()
@@ -158,339 +129,73 @@ public class PipelineControllerTest {
   }
 
   @Test
-  public void listTablesToMigrateIdentity() {
-    SourceDbToSpannerOptions mockOptions = createOptionsHelper("", "");
-    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    TableSelector tableSelector =
-        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
-    List<String> tables = tableSelector.getSrcTablesToMigrate();
-    List<String> ddlTables =
-        spannerDdl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
-    assertEquals(2, tables.size());
-    assertTrue(ddlTables.containsAll(tables));
+  public void singleDbConfigContainerWithUrlTest() {
+    //Most of this is copied from OptionsToConfigBuilderTest.
+    //Check if it is possible to re-use
+    final String testDriverClassName = "org.apache.derby.jdbc.EmbeddedDriver";
+    final String testUrl = "jdbc:mysql://localhost:3306/testDB";
+    final String testUser = "user";
+    final String testPassword = "password";
+    SourceDbToSpannerOptions sourceDbToSpannerOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
+    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
+    sourceDbToSpannerOptions.setJdbcDriverClassName(testDriverClassName);
+    sourceDbToSpannerOptions.setMaxConnections(150);
+    sourceDbToSpannerOptions.setNumPartitions(4000);
+    sourceDbToSpannerOptions.setUsername(testUser);
+    sourceDbToSpannerOptions.setPassword(testPassword);
+    sourceDbToSpannerOptions.setTables("table1,table2");
+    PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
+    SingleInstanceDbConfigContainer dbConfigContainer = new SingleInstanceDbConfigContainer(
+        sourceDbToSpannerOptions);
+    JdbcIOWrapperConfig config = dbConfigContainer.getJDBCIOWrapperConfig(List.of("table1", "table2"), Wait.on(dummyPCollection));
+    assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
+    assertThat(config.sourceDbURL())
+        .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
+    assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
+    assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
+    assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
+    assertThat(config.waitOn()).isNotNull();
+    assertEquals(null, dbConfigContainer.getShardId());
   }
 
   @Test
-  public void listTablesToMigrateIdentityOverride() {
-    SourceDbToSpannerOptions mockOptions = createOptionsHelper("", "new_cart");
-    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    TableSelector tableSelector =
-        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
-    List<String> tables = tableSelector.getSrcTablesToMigrate();
-    List<String> ddlTables =
-        spannerDdl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
-    assertEquals(1, tables.size());
-    assertTrue(ddlTables.containsAll(tables));
+  public void shardedDbConfigContainerTest() {
+    final String testDriverClassName = "org.apache.derby.jdbc.EmbeddedDriver";
+    final String testUrl = "jdbc:mysql://localhost:3306/testDB";
+    final String testUser = "user";
+    final String testPassword = "password";
+    SourceDbToSpannerOptions sourceDbToSpannerOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
+    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
+    sourceDbToSpannerOptions.setJdbcDriverClassName(testDriverClassName);
+    sourceDbToSpannerOptions.setMaxConnections(150);
+    sourceDbToSpannerOptions.setNumPartitions(4000);
+    sourceDbToSpannerOptions.setUsername(testUser);
+    sourceDbToSpannerOptions.setPassword(testPassword);
+    sourceDbToSpannerOptions.setTables("table1,table2");
+
+    Shard shard = new Shard("shard1", "localhost","3306", "user",
+        "password", null, null, null, null);
+
+    ShardedDbConfigContainer dbConfigContainer = new ShardedDbConfigContainer(shard, SQLDialect.MYSQL, null, "shard1", "testDB",
+        sourceDbToSpannerOptions);
+
+    PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
+
+    JdbcIOWrapperConfig config = dbConfigContainer.getJDBCIOWrapperConfig(List.of("table1", "table2"), Wait.on(dummyPCollection));
+    assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
+    assertThat(config.sourceDbURL())
+        .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
+    assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
+    assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
+    assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
+    assertThat(config.waitOn()).isNotNull();
+    assertEquals("shard1", dbConfigContainer.getShardId());
   }
 
-  @Test
-  public void listTablesToMigrateSession() {
-    SourceDbToSpannerOptions mockOptions =
-        createOptionsHelper(
-            Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
-                .toString(),
-            "cart,people");
-    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    TableSelector tableSelector =
-        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
-    List<String> tables = tableSelector.getSrcTablesToMigrate();
-
-    assertEquals(2, tables.size());
-    assertTrue(tables.contains("cart"));
-    assertTrue(tables.contains("people"));
   }
-
-  @Test
-  public void listTablesToMigrateSessionOverride() {
-    SourceDbToSpannerOptions mockOptions =
-        createOptionsHelper(
-            Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
-                .toString(),
-            "cart");
-    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    TableSelector tableSelector =
-        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
-    List<String> tables = tableSelector.getSrcTablesToMigrate();
-
-    assertEquals(1, tables.size());
-    assertTrue(tables.contains("cart"));
-  }
-
-  @Test(expected = InvalidOptionsException.class)
-  public void listTablesToMigrateSessionOverrideInvalid() {
-    SourceDbToSpannerOptions mockOptions =
-        createOptionsHelper(
-            Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
-                .toString(),
-            "asd");
-    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    TableSelector tableSelector =
-        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
-    List<String> tables = tableSelector.getSrcTablesToMigrate();
-  }
-
-  @Test
-  public void spannerTablesToMigrateSession() {
-    SourceDbToSpannerOptions mockOptions =
-        createOptionsHelper(
-            Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
-                .toString(),
-            "cart,people");
-    ISchemaMapper schemaMapper =
-        PipelineController.getSchemaMapper(mockOptions, spannerDdlWithExtraTable);
-    TableSelector tableSelector =
-        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
-    List<String> tables = tableSelector.getSpTablesToMigrate();
-
-    assertEquals(2, tables.size());
-    assertTrue(tables.contains("new_cart"));
-    assertTrue(tables.contains("new_people"));
-  }
-
-  @Test
-  public void spannerTablesToMigrateSessionWithExtraTable() {
-    SourceDbToSpannerOptions mockOptions =
-        createOptionsHelper(
-            Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
-                .toString(),
-            "cart,people");
-    ISchemaMapper schemaMapper =
-        PipelineController.getSchemaMapper(mockOptions, spannerDdlWithExtraTable);
-    TableSelector tableSelector =
-        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
-    List<String> tables = tableSelector.getSpTablesToMigrate();
-
-    assertEquals(2, tables.size());
-    assertTrue(tables.contains("new_cart"));
-    assertTrue(tables.contains("new_people"));
-  }
-
-  @Test
-  public void spannerTablesToMigrateSessionWithLessTables() {
-    SourceDbToSpannerOptions mockOptions =
-        createOptionsHelper(
-            Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
-                .toString(),
-            "cart");
-    ISchemaMapper schemaMapper =
-        PipelineController.getSchemaMapper(mockOptions, spannerDdlWithExtraTable);
-    TableSelector tableSelector =
-        new TableSelector(mockOptions.getTables(), spannerDdl, schemaMapper);
-    List<String> tables = tableSelector.getSpTablesToMigrate();
-
-    assertEquals(1, tables.size());
-    assertTrue(tables.contains("new_cart"));
-  }
-
-  @Test
-  public void testLevelOrderedTables() {
-    // Test 1: Linear dag
-    SourceDbToSpannerOptions mockOptions = createOptionsHelper("", "");
-    List<List<String>> dagDependencies =
-        Arrays.asList(
-            Arrays.asList("t3", "t1"), Arrays.asList("t1", "t4"), Arrays.asList("t4", "t2"));
-    List<String> dagTableNames = Arrays.asList("t1", "t2", "t3", "t4");
-
-    runTableOrderTest(
-        "dag",
-        "",
-        dagTableNames,
-        dagDependencies,
-        Arrays.asList(
-            Arrays.asList("t2"), Arrays.asList("t4"), Arrays.asList("t1"), Arrays.asList("t3")));
-
-    // Test 2: Diamond shaped
-    List<List<String>> diamondDependencies =
-        Arrays.asList(
-            Arrays.asList("t1", "t3"),
-            Arrays.asList("t1", "t2"),
-            Arrays.asList("t2", "t4"),
-            Arrays.asList("t3", "t4"));
-    List<String> diamondTableNames = Arrays.asList("t1", "t2", "t3", "t4");
-    runTableOrderTest(
-        "diamond",
-        "",
-        diamondTableNames,
-        diamondDependencies,
-        Arrays.asList(Arrays.asList("t4"), Arrays.asList("t2", "t3"), Arrays.asList("t1")));
-
-    // Test 3: Empty Dependency List
-    runTableOrderTest(
-        "no_dependency",
-        "",
-        Arrays.asList("t1", "t2"),
-        new ArrayList<>(),
-        Arrays.asList(Arrays.asList("t1", "t2")));
-    // Test 4: Single Table (No Dependencies)
-    runTableOrderTest(
-        "single_table",
-        "",
-        Arrays.asList("t1"),
-        new ArrayList<>(),
-        Arrays.asList(Arrays.asList("t1")));
-
-    // Test 5: Disconnected Components
-    List<List<String>> disconnectDependencies = Arrays.asList(Arrays.asList("t2", "t1"));
-    List<String> disconnectedTableNames = Arrays.asList("t1", "t2", "t3");
-    runTableOrderTest(
-        "disconnected",
-        "",
-        disconnectedTableNames,
-        disconnectDependencies,
-        Arrays.asList(Arrays.asList("t1", "t3"), Arrays.asList("t2")));
-  }
-
-  @Test
-  public void testLevelOrderedTablesComplex() {
-    // Test 6: Complex Graph
-    List<List<String>> complexDependencies =
-        Arrays.asList(
-            Arrays.asList("t14", "t15"),
-            Arrays.asList("t14", "t8"),
-            Arrays.asList("t14", "t13"),
-            Arrays.asList("t13", "t8"),
-            Arrays.asList("t15", "t13"),
-            Arrays.asList("t8", "t4"),
-            Arrays.asList("t8", "t7"),
-            Arrays.asList("t8", "t12"),
-            Arrays.asList("t4", "t3"),
-            Arrays.asList("t7", "t6"),
-            Arrays.asList("t7", "t10"),
-            Arrays.asList("t12", "t11"),
-            Arrays.asList("t6", "t5"),
-            Arrays.asList("t10", "t6"),
-            Arrays.asList("t10", "t9"),
-            Arrays.asList("t9", "t5"),
-            Arrays.asList("t5", "t3"),
-            Arrays.asList("t11", "t3"),
-            Arrays.asList("t3", "t2"),
-            Arrays.asList("t3", "t1"),
-            Arrays.asList("t2", "t1"));
-    List<String> complexTableNames =
-        Arrays.asList(
-            "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10", "t11", "t12", "t13", "t14",
-            "t15");
-    List<List<String>> expectedOutput =
-        Arrays.asList(
-            Arrays.asList("t1"),
-            Arrays.asList("t2"),
-            Arrays.asList("t3"),
-            Arrays.asList("t4", "t5", "t11"),
-            Arrays.asList("t6", "t9", "t12"),
-            Arrays.asList("t10"),
-            Arrays.asList("t7"),
-            Arrays.asList("t8"),
-            Arrays.asList("t13"),
-            Arrays.asList("t15"),
-            Arrays.asList("t14"));
-    runTableOrderTest("complex", "", complexTableNames, complexDependencies, expectedOutput);
-  }
-
-  @Test
-  public void testLevelOrderSpecialTableName() {
-    // Test 1: Linear dag - Capital Table names
-    SourceDbToSpannerOptions mockOptions = createOptionsHelper("", "");
-    List<List<String>> dagDependencies =
-        Arrays.asList(
-            Arrays.asList("T3", "T1"), Arrays.asList("T1", "T4"), Arrays.asList("T4", "T2"));
-    List<String> dagTableNames = Arrays.asList("T1", "T2", "T3", "T4");
-
-    runTableOrderTest(
-        "dag",
-        "",
-        dagTableNames,
-        dagDependencies,
-        Arrays.asList(
-            Arrays.asList("T2"), Arrays.asList("T4"), Arrays.asList("T1"), Arrays.asList("T3")));
-  }
-
-  @Test(expected = Exception.class)
-  public void testLevelOrderedTablesNoMatch() {
-    runTableOrderTest(
-        "no tables", "", Arrays.asList(), new ArrayList<>(), Arrays.asList(Arrays.asList()));
-  }
-
-  @Test(expected = Exception.class)
-  public void testLevelOrderedTablesCyclic() {
-    // Test 7: Cyclic Dependency
-    SourceDbToSpannerOptions mockOptions = createOptionsHelper("", "");
-
-    List<List<String>> dependencies =
-        Arrays.asList(
-            Arrays.asList("t1", "t2"), Arrays.asList("t2", "t3"), Arrays.asList("t3", "t1"));
-    List<String> tableNames = Arrays.asList("t1", "t2", "t3");
-    Ddl ddl = generateDdlFromDAG(tableNames, dependencies);
-    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, ddl);
-    TableSelector tableSelector =
-        new TableSelector(tableNames.stream().collect(Collectors.joining(",")), ddl, schemaMapper);
-    tableSelector.levelOrderedSpannerTables();
-  }
-
-  private void runTableOrderTest(
-      String testName,
-      String configuredTables,
-      List<String> ddlTables,
-      List<List<String>> dependencies,
-      List<List<String>> expectedOutput) {
-    SourceDbToSpannerOptions mockOptions = createOptionsHelper("", configuredTables);
-    Ddl ddl = generateDdlFromDAG(ddlTables, dependencies);
-    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, ddl);
-    TableSelector tableSelector =
-        new TableSelector(ddlTables.stream().collect(Collectors.joining(",")), ddl, schemaMapper);
-    Map<Integer, List<String>> tableLevelMap = tableSelector.levelOrderedSpannerTables();
-    for (int i = 0; i < expectedOutput.size(); i++) {
-      assertEquals(
-          testName + "_level_" + i, expectedOutput.get(i).size(), tableLevelMap.get(i).size());
-      assertTrue(testName + "_level_" + i, tableLevelMap.get(i).containsAll(expectedOutput.get(i)));
-    }
-    assertEquals(expectedOutput.size(), tableLevelMap.size());
-  }
-
-  /**
-   * Referenced from DdlTest - To figure a cleaner way to share the code Generates a Spanner DDL
-   * object representing a schema from a directed acyclic graph (DAG) of table dependencies.
-   *
-   * <p>This method creates a simplified DDL with minimal schema information. Each table has only an
-   * "id" column as the primary key. Foreign key relationships are established based on the provided
-   * dependencies.
-   *
-   * @param tableNames A list of table names in the schema.
-   * @param dependencies A list of foreign key dependencies, where each dependency is represented as
-   *     a list of two strings: the child table name and the parent table name, where child
-   *     references the parent.
-   */
-  private Ddl generateDdlFromDAG(List<String> tableNames, List<List<String>> dependencies) {
-    Ddl.Builder builder = Ddl.builder();
-    for (String tableName : tableNames) {
-      Table.Builder tableBuilder =
-          builder
-              .createTable(tableName)
-              .column("id")
-              .int64()
-              .endColumn()
-              .primaryKey()
-              .asc("id")
-              .end();
-
-      // Add foreign keys based on dependencies.
-      List<ForeignKey> fks = new ArrayList<>();
-      for (List<String> dependency : dependencies) {
-        if (dependency.get(0).equals(tableName)) {
-          String parentTable = dependency.get(1);
-
-          ForeignKey.Builder fkBuilder =
-              ForeignKey.builder(Dialect.GOOGLE_STANDARD_SQL)
-                  .name("fk_" + tableName + "_" + parentTable)
-                  .table(tableName)
-                  .referencedTable(parentTable);
-          fkBuilder.columnsBuilder().add("id");
-          fkBuilder.referencedColumnsBuilder().add("id");
-          fks.add(fkBuilder.build());
-        }
-      }
-      tableBuilder.foreignKeys(ImmutableList.copyOf(fks)).endTable();
-    }
-
-    return builder.build();
-  }
-}

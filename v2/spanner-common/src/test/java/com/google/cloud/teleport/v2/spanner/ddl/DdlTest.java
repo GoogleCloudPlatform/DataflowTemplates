@@ -394,6 +394,9 @@ public class DdlTest {
     assertTrue(ddl.getAllReferencedTables("t3").containsAll(Arrays.asList("t1", "t4", "t2")));
     assertTrue(!ddl.getAllReferencedTables("t3").contains("t3"));
 
+    final Ddl ddl2 = ddl;
+    assertThrows(IllegalStateException.class, () -> ddl2.getAllReferencedTables("t5"));
+
     // Test 2: Diamond shaped
     dependencies =
         Arrays.asList(
@@ -563,6 +566,8 @@ public class DdlTest {
     List<String> accountTablesReferenced = ddl.tablesReferenced("Account");
     assertTrue(accountTablesReferenced.containsAll(List.of("Users", "BalanceNames")));
     assertTrue(accountTablesReferenced.size() == 2);
+
+    assertThrows(IllegalStateException.class, ()->ddl.tablesReferenced("unknown_table"));
   }
 
   @Test

@@ -188,12 +188,6 @@ public class TableSelector {
         "{} Spanner tables in final selection for migration: {}",
         finalTablesToMigrate.size(),
         finalTablesToMigrate);
-    if (finalTablesToMigrate.size() > MAX_RECOMMENDED_TABLES_PER_JOB) {
-      LOG.warn(
-          "Migrating {} tables in a single job (max recommended: {}). Consider splitting tables across jobs to avoid launch issues.",
-          finalTablesToMigrate.size(),
-          MAX_RECOMMENDED_TABLES_PER_JOB);
-    }
     return finalTablesToMigrate;
   }
 
