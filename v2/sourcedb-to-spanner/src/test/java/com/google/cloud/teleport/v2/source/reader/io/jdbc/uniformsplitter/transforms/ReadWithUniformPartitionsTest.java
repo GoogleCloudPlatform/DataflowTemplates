@@ -289,7 +289,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
-            .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
+            .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DERBY))
             .setDataSourceProviderFn(dataSourceProviderFn)
             .setAdditionalOperationsOnRanges(testRangesPeek)
             .setRowMapper(

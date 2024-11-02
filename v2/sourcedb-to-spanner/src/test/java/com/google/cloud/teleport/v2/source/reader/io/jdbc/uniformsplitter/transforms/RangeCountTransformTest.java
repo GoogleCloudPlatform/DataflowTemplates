@@ -91,7 +91,7 @@ public class RangeCountTransformTest {
     PCollection<Range> input = testPipeline.apply(Create.of(singleColNonLastRange, bothColRange));
     RangeCountTransform rangeCountTransform =
         RangeCountTransform.builder()
-            .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
+            .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DERBY))
             .setPartitionColumns(partitionCols)
             .setDataSourceProviderFn(dataSourceProviderFn)
             .setTimeoutMillis(42L)

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms;
 
+import com.google.cloud.teleport.v2.utilities.DerbyUtils;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -34,20 +35,39 @@ class TransformTestUtils {
   static void createDerbyTable(String tableName) throws SQLException {
     try (java.sql.Connection connection = getConnection()) {
       Statement stmtCreateTable = connection.createStatement();
+      String col1Name = DerbyUtils.quote("col1");
+      String col2Name = DerbyUtils.quote("col2");
+      String dataName = DerbyUtils.quote("data");
       String createTableSQL =
           "CREATE TABLE "
-              + tableName
+              + DerbyUtils.quote(tableName)
               + " ("
-              + "col1 INT,"
-              + "col2 INT,"
-              + "data VARCHAR(20),"
-              + "PRIMARY KEY (col1, col2)"
+              + col1Name
+              + " INT,"
+              + col2Name
+              + " INT,"
+              + dataName
+              + " VARCHAR(20),"
+              + "PRIMARY KEY ("
+              + col1Name
+              + ", "
+              + col2Name
+              + ")"
               + ")";
-      stmtCreateTable.executeUpdate(createTableSQL);
+      stmtCreateTable.executeUpdate(DerbyUtils.modifyQuery(createTableSQL));
 
       // 2.2 Insert Data (Using PreparedStatement for Efficiency & Security)
-      String insertSQL = "INSERT INTO " + tableName + " (col1, col2, data) VALUES (?, ?, ?)";
-      PreparedStatement stmtInsert = connection.prepareStatement(insertSQL);
+      String insertSQL =
+          "INSERT INTO "
+              + DerbyUtils.quote(tableName)
+              + "("
+              + col1Name
+              + ", "
+              + col2Name
+              + ", "
+              + dataName
+              + ") VALUES (?, ?, ?)";
+      PreparedStatement stmtInsert = connection.prepareStatement(DerbyUtils.modifyQuery(insertSQL));
 
       // Batch the insert operations
       stmtInsert.setInt(1, 10);
@@ -87,7 +107,7 @@ class TransformTestUtils {
   static void dropDerbyTable(String tableName) throws SQLException {
     try (Connection connection = getConnection()) {
       Statement statement = connection.createStatement();
-      statement.executeUpdate("drop table " + tableName);
+      statement.executeUpdate(DerbyUtils.modifyQuery("drop table " + DerbyUtils.quote(tableName)));
     }
   }
 

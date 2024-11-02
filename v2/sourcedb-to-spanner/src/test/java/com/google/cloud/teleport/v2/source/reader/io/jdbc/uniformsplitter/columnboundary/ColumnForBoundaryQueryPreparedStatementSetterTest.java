@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.M
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.utilities.DerbyUtils;
 import com.google.common.collect.ImmutableList;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -60,17 +61,40 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
   private void createDerbyTable() throws SQLException {
     Statement stmtCreateTable = connection.createStatement();
+    String tableName = "test_table_column_boundary";
+    String col1Name = DerbyUtils.quote("col1");
+    String col2Name = DerbyUtils.quote("col2");
+    String dataName = DerbyUtils.quote("data");
     String createTableSQL =
-        "CREATE TABLE test_table_column_boundary ("
-            + "col1 INT,"
-            + "col2 INT,"
-            + "PRIMARY KEY (col1, col2)"
+        "CREATE TABLE "
+            + DerbyUtils.quote(tableName)
+            + " ("
+            + col1Name
+            + " INT,"
+            + col2Name
+            + " INT,"
+            + dataName
+            + " VARCHAR(20),"
+            + "PRIMARY KEY ("
+            + col1Name
+            + ", "
+            + col2Name
+            + ")"
             + ")";
-    stmtCreateTable.executeUpdate(createTableSQL);
+    stmtCreateTable.executeUpdate(DerbyUtils.modifyQuery(createTableSQL));
 
     // 2.2 Insert Data (Using PreparedStatement for Efficiency & Security)
-    String insertSQL = "INSERT INTO test_table_column_boundary (col1, col2) VALUES (?, ?)";
-    PreparedStatement stmtInsert = connection.prepareStatement(insertSQL);
+    String insertSQL =
+        "INSERT INTO "
+            + DerbyUtils.quote(tableName)
+            + "("
+            + col1Name
+            + ", "
+            + col2Name
+            + ", "
+            + dataName
+            + ") VALUES (?, ?, ?)";
+    PreparedStatement stmtInsert = connection.prepareStatement(DerbyUtils.modifyQuery(insertSQL));
 
     // Batch the insert operations
     stmtInsert.setInt(1, 10);
@@ -94,7 +118,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
   private void dropDerbyTable() throws SQLException {
     Statement statement = connection.createStatement();
-    statement.executeUpdate("drop table test_table_column_boundary");
+    statement.executeUpdate("drop table " + DerbyUtils.quote("test_table_column_boundary"));
   }
 
   @Test
@@ -124,12 +148,12 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .build();
 
     String boundaryQueryCol1 =
-        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+        new MysqlDialectAdapter(MySqlVersion.DERBY)
             .getBoundaryQuery("test_table_column_boundary", partitionCols, "col1");
     PreparedStatement boundaryStmtCol1 = connection.prepareStatement(boundaryQueryCol1);
 
     String boundaryQueryCol2 =
-        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+        new MysqlDialectAdapter(MySqlVersion.DERBY)
             .getBoundaryQuery("test_table_column_boundary", partitionCols, "col2");
     PreparedStatement boundaryStmtCol2 = connection.prepareStatement(boundaryQueryCol2);
 

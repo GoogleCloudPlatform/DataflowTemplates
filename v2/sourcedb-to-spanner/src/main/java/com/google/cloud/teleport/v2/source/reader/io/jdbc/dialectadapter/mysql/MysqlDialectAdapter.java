@@ -572,7 +572,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       // range to define the where clause. `col >= range.start() AND (col < range.end() OR
       // (range.isLast() = TRUE AND col = range.end()))`
       queryBuilder.append(
-          String.format("(%1$s >= ? AND (%1$s < ? OR (? = TRUE AND %1$s = ?)))", backtick(partitionColumn)));
+          String.format(
+              "(%1$s >= ? AND (%1$s < ? OR (? = TRUE AND %1$s = ?)))", safe(partitionColumn)));
       queryBuilder.append(")");
       firstDone = true;
     }
@@ -588,7 +589,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    */
   @Override
   public String getReadQuery(String tableName, ImmutableList<String> partitionColumns) {
-    return addWhereClause("select * from " + backtick(tableName), partitionColumns);
+    return addWhereClause("select * from " + safe(tableName), partitionColumns);
   }
 
   /**
@@ -604,8 +605,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       String tableName, ImmutableList<String> partitionColumns, long timeoutMillis) {
     return addWhereClause(
         String.format(
-            "select /*+ MAX_EXECUTION_TIME(%s) */ COUNT(*) from %s", timeoutMillis,
-            backtick(tableName)), partitionColumns);
+            "select /*+ MAX_EXECUTION_TIME(%s) */ COUNT(*) from %s",
+            timeoutMillis, safe(tableName)),
+        partitionColumns);
   }
 
   /**
@@ -620,12 +622,19 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   public String getBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
     return addWhereClause(
-        String.format("select MIN(%s),MAX(%s) from %s", backtick(colName), backtick(colName),
-            backtick(tableName)), partitionColumns);
+        String.format(
+            "select MIN(%s),MAX(%s) from %s", safe(colName), safe(colName), safe(tableName)),
+        partitionColumns);
   }
 
-  private String backtick(String s) {
-    return "`"+s+"`";
+  private String safe(String s) {
+    switch (mySqlVersion) {
+      case DERBY:
+        return "\"" + s + "\"";
+      case DEFAULT:
+      default:
+        return "`" + s + "`";
+    }
   }
 
   /**
@@ -675,6 +684,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    */
   public enum MySqlVersion {
     DEFAULT,
+    DERBY
   }
 
   protected static final class InformationSchemaCols {

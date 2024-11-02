@@ -111,7 +111,7 @@ public class RangeBoundaryTransformTest {
         testPipeline.apply(Create.of(firstColumnForBoundaryQuery, secondColumnForBoundaryQuery));
     RangeBoundaryTransform rangeBoundaryTransform =
         RangeBoundaryTransform.builder()
-            .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
+            .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DERBY))
             .setPartitionColumns(partitionCols)
             .setDataSourceProviderFn(dataSourceProviderFn)
             .setTableName(tableName)

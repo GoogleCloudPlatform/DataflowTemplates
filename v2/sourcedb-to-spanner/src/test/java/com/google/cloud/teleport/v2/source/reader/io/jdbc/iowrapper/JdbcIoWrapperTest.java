@@ -248,20 +248,6 @@ public class JdbcIoWrapperTest {
     String testCol = "ID";
     SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
     when(mockDialectAdapter.discoverTables(any(), any())).thenReturn(ImmutableList.of("testTable"));
-    when(mockDialectAdapter.discoverTableIndexes(any(), any(), any()))
-        .thenReturn(
-            ImmutableMap.of(
-                "testTable",
-                ImmutableList.of(
-                    SourceColumnIndexInfo.builder()
-                        .setIndexType(IndexType.NUMERIC)
-                        .setIndexName("PRIMARY")
-                        .setIsPrimary(true)
-                        .setCardinality(42L)
-                        .setColumnName(testCol)
-                        .setIsUnique(true)
-                        .setOrdinalPosition(1)
-                        .build())));
     when(mockDialectAdapter.discoverTableSchema(any(), any(), any()))
         .thenReturn(ImmutableMap.of("testTable", ImmutableMap.of(testCol, testColType)));
     JdbcIoWrapper jdbcIoWrapper =
