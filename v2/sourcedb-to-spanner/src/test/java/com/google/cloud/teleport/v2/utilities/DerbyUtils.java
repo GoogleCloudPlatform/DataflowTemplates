@@ -16,9 +16,7 @@
 package com.google.cloud.teleport.v2.utilities;
 
 /**
- * Utilities to run test cases on derby
- *
- * @see org.apache.beam.it.jdbc.MySQLResourceManager
+ * Utilities to run test cases on derby.
  */
 public class DerbyUtils {
 
