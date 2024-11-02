@@ -27,8 +27,6 @@ import com.google.cloud.teleport.v2.spanner.ddl.ForeignKey;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import java.nio.file.Paths;
@@ -42,7 +40,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 public class TableSelectorTest {
-
 
   private Ddl spannerDdl;
 

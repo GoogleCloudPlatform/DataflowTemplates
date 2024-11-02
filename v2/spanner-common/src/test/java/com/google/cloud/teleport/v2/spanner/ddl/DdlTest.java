@@ -567,7 +567,7 @@ public class DdlTest {
     assertTrue(accountTablesReferenced.containsAll(List.of("Users", "BalanceNames")));
     assertTrue(accountTablesReferenced.size() == 2);
 
-    assertThrows(IllegalStateException.class, ()->ddl.tablesReferenced("unknown_table"));
+    assertThrows(IllegalStateException.class, () -> ddl.tablesReferenced("unknown_table"));
   }
 
   @Test

@@ -21,30 +21,19 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.google.cloud.spanner.Dialect;
-import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.ddl.ForeignKey;
-import com.google.cloud.teleport.v2.spanner.ddl.Table;
-import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.templates.PipelineController.DbConfigContainer;
 import com.google.cloud.teleport.v2.templates.PipelineController.ShardedDbConfigContainer;
 import com.google.cloud.teleport.v2.templates.PipelineController.SingleInstanceDbConfigContainer;
-import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -57,8 +46,7 @@ import org.mockito.Mockito;
 
 public class PipelineControllerTest {
 
-  @Rule
-  public final transient TestPipeline pipeline = TestPipeline.create();
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   private Ddl spannerDdl;
 
@@ -130,8 +118,8 @@ public class PipelineControllerTest {
 
   @Test
   public void singleDbConfigContainerWithUrlTest() {
-    //Most of this is copied from OptionsToConfigBuilderTest.
-    //Check if it is possible to re-use
+    // Most of this is copied from OptionsToConfigBuilderTest.
+    // Check if it is possible to re-use
     final String testDriverClassName = "org.apache.derby.jdbc.EmbeddedDriver";
     final String testUrl = "jdbc:mysql://localhost:3306/testDB";
     final String testUser = "user";
@@ -148,9 +136,11 @@ public class PipelineControllerTest {
     sourceDbToSpannerOptions.setTables("table1,table2");
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
-    SingleInstanceDbConfigContainer dbConfigContainer = new SingleInstanceDbConfigContainer(
-        sourceDbToSpannerOptions);
-    JdbcIOWrapperConfig config = dbConfigContainer.getJDBCIOWrapperConfig(List.of("table1", "table2"), Wait.on(dummyPCollection));
+    SingleInstanceDbConfigContainer dbConfigContainer =
+        new SingleInstanceDbConfigContainer(sourceDbToSpannerOptions);
+    JdbcIOWrapperConfig config =
+        dbConfigContainer.getJDBCIOWrapperConfig(
+            List.of("table1", "table2"), Wait.on(dummyPCollection));
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
     assertThat(config.sourceDbURL())
         .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
@@ -178,16 +168,19 @@ public class PipelineControllerTest {
     sourceDbToSpannerOptions.setPassword(testPassword);
     sourceDbToSpannerOptions.setTables("table1,table2");
 
-    Shard shard = new Shard("shard1", "localhost","3306", "user",
-        "password", null, null, null, null);
+    Shard shard =
+        new Shard("shard1", "localhost", "3306", "user", "password", null, null, null, null);
 
-    ShardedDbConfigContainer dbConfigContainer = new ShardedDbConfigContainer(shard, SQLDialect.MYSQL, null, "shard1", "testDB",
-        sourceDbToSpannerOptions);
+    ShardedDbConfigContainer dbConfigContainer =
+        new ShardedDbConfigContainer(
+            shard, SQLDialect.MYSQL, null, "shard1", "testDB", sourceDbToSpannerOptions);
 
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
 
-    JdbcIOWrapperConfig config = dbConfigContainer.getJDBCIOWrapperConfig(List.of("table1", "table2"), Wait.on(dummyPCollection));
+    JdbcIOWrapperConfig config =
+        dbConfigContainer.getJDBCIOWrapperConfig(
+            List.of("table1", "table2"), Wait.on(dummyPCollection));
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
     assertThat(config.sourceDbURL())
         .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
@@ -197,5 +190,4 @@ public class PipelineControllerTest {
     assertThat(config.waitOn()).isNotNull();
     assertEquals("shard1", dbConfigContainer.getShardId());
   }
-
-  }
+}

@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants.MAX_RECOMMENDED_TABLES_PER_JOB;
-
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
