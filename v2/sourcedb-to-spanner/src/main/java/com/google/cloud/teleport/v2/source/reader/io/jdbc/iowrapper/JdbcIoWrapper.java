@@ -361,7 +361,7 @@ public final class JdbcIoWrapper implements IoWrapper {
 
   private static PartitionColumn partitionColumnFromIndexInfo(SourceColumnIndexInfo idxInfo) {
     return PartitionColumn.builder()
-        .setColumnName(delimitColumnName(idxInfo.columnName()))
+        .setColumnName(idxInfo.columnName())
         .setColumnClass(indexTypeToColumnClass(idxInfo))
         .setStringCollation(idxInfo.collationReference())
         .setStringMaxLength(idxInfo.stringMaxLength())
