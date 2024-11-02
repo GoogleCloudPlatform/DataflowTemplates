@@ -572,7 +572,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       // range to define the where clause. `col >= range.start() AND (col < range.end() OR
       // (range.isLast() = TRUE AND col = range.end()))`
       queryBuilder.append(
-          String.format("(%1$s >= ? AND (%1$s < ? OR (? = TRUE AND %1$s = ?)))", partitionColumn));
+          String.format("(%1$s >= ? AND (%1$s < ? OR (? = TRUE AND %1$s = ?)))", backtick(partitionColumn)));
       queryBuilder.append(")");
       firstDone = true;
     }
@@ -588,7 +588,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    */
   @Override
   public String getReadQuery(String tableName, ImmutableList<String> partitionColumns) {
-    return addWhereClause("select * from " + tableName, partitionColumns);
+    return addWhereClause("select * from " + backtick(tableName), partitionColumns);
   }
 
   /**
@@ -604,8 +604,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       String tableName, ImmutableList<String> partitionColumns, long timeoutMillis) {
     return addWhereClause(
         String.format(
-            "select /*+ MAX_EXECUTION_TIME(%s) */ COUNT(*) from %s", timeoutMillis, tableName),
-        partitionColumns);
+            "select /*+ MAX_EXECUTION_TIME(%s) */ COUNT(*) from %s", timeoutMillis,
+            backtick(tableName)), partitionColumns);
   }
 
   /**
@@ -620,8 +620,12 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   public String getBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
     return addWhereClause(
-        String.format("select MIN(%s),MAX(%s) from %s", colName, colName, tableName),
-        partitionColumns);
+        String.format("select MIN(%s),MAX(%s) from %s", backtick(colName), backtick(colName),
+            backtick(tableName)), partitionColumns);
+  }
+
+  private String backtick(String s) {
+    return "`"+s+"`";
   }
 
   /**
