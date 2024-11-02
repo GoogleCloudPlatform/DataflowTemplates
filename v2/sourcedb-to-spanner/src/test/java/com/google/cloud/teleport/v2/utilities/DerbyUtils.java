@@ -15,9 +15,7 @@
  */
 package com.google.cloud.teleport.v2.utilities;
 
-/**
- * Utilities to run test cases on derby.
- */
+/** Utilities to run test cases on derby. */
 public class DerbyUtils {
 
   public static String quote(String element) {
