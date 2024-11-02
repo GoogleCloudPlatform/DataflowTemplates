@@ -572,9 +572,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       // range to define the where clause. `col >= range.start() AND (col < range.end() OR
       // (range.isLast() = TRUE AND col = range.end()))`
       queryBuilder.append(
-          String.format(
-              "(%1$s >= ? AND (%1$s < ? OR (? = TRUE AND %1$s = ?)))",
-              wrapQuotes(partitionColumn)));
+          String.format("(%1$s >= ? AND (%1$s < ? OR (? = TRUE AND %1$s = ?)))", partitionColumn));
       queryBuilder.append(")");
       firstDone = true;
     }
@@ -590,8 +588,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    */
   @Override
   public String getReadQuery(String tableName, ImmutableList<String> partitionColumns) {
-    return addWhereClause(
-        String.format("select * from %s", wrapQuotes(tableName)), partitionColumns);
+    return addWhereClause("select * from " + tableName, partitionColumns);
   }
 
   /**
@@ -607,8 +604,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       String tableName, ImmutableList<String> partitionColumns, long timeoutMillis) {
     return addWhereClause(
         String.format(
-            "select /*+ MAX_EXECUTION_TIME(%s) */ COUNT(*) from %s",
-            timeoutMillis, wrapQuotes(tableName)),
+            "select /*+ MAX_EXECUTION_TIME(%s) */ COUNT(*) from %s", timeoutMillis, tableName),
         partitionColumns);
   }
 
@@ -624,14 +620,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   public String getBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
     return addWhereClause(
-        String.format(
-            "select MIN(%s),MAX(%s) from %s",
-            wrapQuotes(colName), wrapQuotes(colName), wrapQuotes(tableName)),
+        String.format("select MIN(%s),MAX(%s) from %s", colName, colName, tableName),
         partitionColumns);
-  }
-
-  private String wrapQuotes(String elementName) {
-    return "`" + elementName + "`";
   }
 
   /**
