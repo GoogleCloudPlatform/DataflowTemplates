@@ -34,6 +34,8 @@ import com.google.cloud.teleport.v2.templates.PipelineController.SingleInstanceD
 import com.google.common.io.Resources;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -49,6 +51,8 @@ public class PipelineControllerTest {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   private Ddl spannerDdl;
+
+  private Ddl shardedDdl;
 
   @Before
   public void setup() {
@@ -82,6 +86,42 @@ public class PipelineControllerTest {
             .end()
             .endTable()
             .build();
+
+    shardedDdl =
+        Ddl.builder()
+            .createTable("new_cart")
+            .column("new_quantity")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("new_product_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .column("new_user_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .primaryKey()
+            .asc("new_user_id")
+            .asc("new_product_id")
+            .end()
+            .endTable()
+            .createTable("new_people")
+            .column("migration_shard_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .column("new_name")
+            .string()
+            .size(20)
+            .endColumn()
+            .primaryKey()
+            .asc("migration_shard_id")
+            .asc("new_name")
+            .end()
+            .endTable()
+            .build();
   }
 
   @Test
@@ -106,6 +146,40 @@ public class PipelineControllerTest {
   public void createInvalidSchemaMapper_withException() {
     SourceDbToSpannerOptions mockOptions = createOptionsHelper("invalid-file", "");
     PipelineController.getSchemaMapper(mockOptions, spannerDdl);
+  }
+
+  @Test
+  public void tableToShardIdColumnNonSharded() {
+    String sessionFilePath =
+        Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
+            .toString();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFilePath, spannerDdl);
+    Map<String, String> mapAllTables =
+        PipelineController.getSrcTableToShardIdColumnMap(
+            schemaMapper, "", List.of("new_cart", "new_people"));
+    assertThat(mapAllTables.isEmpty());
+  }
+
+  @Test
+  public void tableToShardIdColumnSharded() {
+    String shardedSessionFilePath =
+        Paths.get(Resources.getResource("session-file-sharded.json").getPath()).toString();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(shardedSessionFilePath, shardedDdl);
+    Map<String, String> mapAllTables =
+        PipelineController.getSrcTableToShardIdColumnMap(
+            schemaMapper, "", List.of("new_cart", "new_people"));
+    assertEquals(1, mapAllTables.size());
+    assertEquals("migration_shard_id", mapAllTables.get("people"));
+  }
+
+  @Test(expected = NoSuchElementException.class)
+  public void tableToShardIdColumnInvalidTable() {
+    String sessionFilePath =
+        Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
+            .toString();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFilePath, spannerDdl);
+    PipelineController.getSrcTableToShardIdColumnMap(
+        schemaMapper, "", List.of("cart")); // Only accepts spanner table names
   }
 
   private SourceDbToSpannerOptions createOptionsHelper(String sessionFile, String tables) {
