@@ -183,7 +183,7 @@ public final class JdbcIoWrapper implements IoWrapper {
               return Map.entry(
                   SourceTableReference.builder()
                       .setSourceSchemaReference(sourceSchema.schemaReference())
-                      .setSourceTableName(sourceTableSchema.tableName())
+                      .setSourceTableName(delimitIdentifier(sourceTableSchema.tableName()))
                       .setSourceTableSchemaUUID(sourceTableSchema.tableSchemaUUID())
                       .build(),
                   (config.readWithUniformPartitionsFeatureEnabled())
@@ -348,20 +348,21 @@ public final class JdbcIoWrapper implements IoWrapper {
   }
 
   /**
-   * Delimit the Column Names as per <a
-   * href=https://github.com/ronsavage/SQL/blob/master/sql-99.bnf>sql-99</a>.
+   * Delimit the Identifiers as per <a
+   * href=https://github.com/ronsavage/SQL/blob/master/sql-99.bnf>sql-99</a>. This is needed to
+   * handle cases where the user might use reserved keywords as column or table names.
    *
-   * @param columnName
+   * @param identifier
    * @return
    */
   @VisibleForTesting
-  protected static String delimitColumnName(String columnName) {
-    return "\"" + columnName.replaceAll("\"", "\"\"") + "\"";
+  protected static String delimitIdentifier(String identifier) {
+    return "\"" + identifier.replaceAll("\"", "\"\"") + "\"";
   }
 
   private static PartitionColumn partitionColumnFromIndexInfo(SourceColumnIndexInfo idxInfo) {
     return PartitionColumn.builder()
-        .setColumnName(idxInfo.columnName())
+        .setColumnName(delimitIdentifier(idxInfo.columnName()))
         .setColumnClass(indexTypeToColumnClass(idxInfo))
         .setStringCollation(idxInfo.collationReference())
         .setStringMaxLength(idxInfo.stringMaxLength())

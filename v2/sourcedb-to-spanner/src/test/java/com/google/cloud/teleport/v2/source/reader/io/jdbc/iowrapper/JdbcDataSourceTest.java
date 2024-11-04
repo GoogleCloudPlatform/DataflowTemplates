@@ -20,6 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.common.collect.ImmutableList;
 import java.io.ByteArrayInputStream;
@@ -81,7 +82,9 @@ public class JdbcDataSourceTest {
         .isEqualTo(jdbcIOWrapperConfig.validationQuery());
     assertThat(testJdbcDataSource.toString())
         .isEqualTo(
-            "JdbcDataSource: {\"sourceDbURL\":\"jdbc:derby://myhost/memory:TestingDB;create=true\", \"initSql\":\"[SET TIME_ZONE = '+00:00', SET SESSION NET_WRITE_TIMEOUT=1200, SET SESSION NET_READ_TIMEOUT=1200]\", \"maxConnections\",\"160\" }");
+            "JdbcDataSource: {\"sourceDbURL\":\"jdbc:derby://myhost/memory:TestingDB;create=true\", \"initSql\":\"[SET TIME_ZONE = '+00:00', SET SESSION NET_WRITE_TIMEOUT=1200, SET SESSION NET_READ_TIMEOUT=1200, "
+                + MySqlConfigDefaults.ENABLE_ANSI_QUOTES_INIT_SEQ
+                + "]\", \"maxConnections\",\"160\" }");
   }
 
   @Test

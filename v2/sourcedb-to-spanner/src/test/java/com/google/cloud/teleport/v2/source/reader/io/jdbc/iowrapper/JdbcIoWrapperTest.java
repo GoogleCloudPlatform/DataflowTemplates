@@ -468,8 +468,8 @@ public class JdbcIoWrapperTest {
   }
 
   @Test
-  public void testColumnNameEscaping() {
-    assertThat(JdbcIoWrapper.delimitColumnName("key")).isEqualTo("\"key\"");
-    assertThat(JdbcIoWrapper.delimitColumnName("ke\"y")).isEqualTo("\"ke\"\"y\"");
+  public void testIdentifierEscaping() {
+    assertThat(JdbcIoWrapper.delimitIdentifier("key")).isEqualTo("\"key\"");
+    assertThat(JdbcIoWrapper.delimitIdentifier("ke\"y")).isEqualTo("\"ke\"\"y\"");
   }
 }
