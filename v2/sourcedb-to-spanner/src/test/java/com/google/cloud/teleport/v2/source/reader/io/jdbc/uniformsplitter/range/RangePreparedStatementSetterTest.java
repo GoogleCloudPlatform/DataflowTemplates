@@ -19,7 +19,6 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
-import com.google.cloud.teleport.v2.utilities.DerbyUtils;
 import com.google.common.collect.ImmutableList;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -127,10 +126,9 @@ public class RangePreparedStatementSetterTest {
             .setIsLast(false)
             .build();
     String readQuery =
-        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+        new MysqlDialectAdapter(MySqlVersion.DERBY)
             .getReadQuery("test_table_range_setter", partitionCols);
-    PreparedStatement readStmtSingleColNonLast =
-        connection.prepareStatement(DerbyUtils.modifyQuery(readQuery));
+    PreparedStatement readStmtSingleColNonLast = connection.prepareStatement(readQuery);
     rangePreparedStatementSetter.setParameters(singleColNonLastRange, readStmtSingleColNonLast);
     ResultSet readStmtSingleColNonLastResultSet = readStmtSingleColNonLast.executeQuery();
     ImmutableList.Builder<String> readSingleColNonLastRangedataPointsBuilder =
@@ -141,10 +139,9 @@ public class RangePreparedStatementSetterTest {
     }
 
     String countQuery =
-        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+        new MysqlDialectAdapter(MySqlVersion.DERBY)
             .getCountQuery("test_table_range_setter", partitionCols, 0);
-    PreparedStatement countStmtSingleColNonLast =
-        connection.prepareStatement(DerbyUtils.modifyQuery(countQuery));
+    PreparedStatement countStmtSingleColNonLast = connection.prepareStatement(countQuery);
     rangePreparedStatementSetter.setParameters(singleColNonLastRange, countStmtSingleColNonLast);
     ResultSet countStmtSingleColNonLastResultSet = countStmtSingleColNonLast.executeQuery();
     countStmtSingleColNonLastResultSet.next();
@@ -177,8 +174,7 @@ public class RangePreparedStatementSetterTest {
                     .setEnd(40)
                     .build(),
                 null);
-    PreparedStatement countStmtBothCol =
-        connection.prepareStatement(DerbyUtils.modifyQuery(countQuery));
+    PreparedStatement countStmtBothCol = connection.prepareStatement(countQuery);
     rangePreparedStatementSetter.setParameters(bothColRange, countStmtBothCol);
     ResultSet countStmtBothColResultSet = countStmtBothCol.executeQuery();
     countStmtBothColResultSet.next();

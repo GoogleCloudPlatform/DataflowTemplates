@@ -21,8 +21,4 @@ public class DerbyUtils {
   public static String quote(String element) {
     return "\"" + element + "\"";
   }
-
-  public static String modifyQuery(String query) {
-    return query.replaceAll("`", "\"");
-  }
 }

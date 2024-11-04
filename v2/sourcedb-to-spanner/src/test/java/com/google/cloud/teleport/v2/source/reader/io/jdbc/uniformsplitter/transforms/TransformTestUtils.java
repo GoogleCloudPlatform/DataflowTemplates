@@ -54,7 +54,7 @@ class TransformTestUtils {
               + col2Name
               + ")"
               + ")";
-      stmtCreateTable.executeUpdate(DerbyUtils.modifyQuery(createTableSQL));
+      stmtCreateTable.executeUpdate(createTableSQL);
 
       // 2.2 Insert Data (Using PreparedStatement for Efficiency & Security)
       String insertSQL =
@@ -67,7 +67,7 @@ class TransformTestUtils {
               + ", "
               + dataName
               + ") VALUES (?, ?, ?)";
-      PreparedStatement stmtInsert = connection.prepareStatement(DerbyUtils.modifyQuery(insertSQL));
+      PreparedStatement stmtInsert = connection.prepareStatement(insertSQL);
 
       // Batch the insert operations
       stmtInsert.setInt(1, 10);
@@ -107,7 +107,7 @@ class TransformTestUtils {
   static void dropDerbyTable(String tableName) throws SQLException {
     try (Connection connection = getConnection()) {
       Statement statement = connection.createStatement();
-      statement.executeUpdate(DerbyUtils.modifyQuery("drop table " + DerbyUtils.quote(tableName)));
+      statement.executeUpdate("drop table " + DerbyUtils.quote(tableName));
     }
   }
 

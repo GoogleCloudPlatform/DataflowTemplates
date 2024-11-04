@@ -81,7 +81,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             + col2Name
             + ")"
             + ")";
-    stmtCreateTable.executeUpdate(DerbyUtils.modifyQuery(createTableSQL));
+    stmtCreateTable.executeUpdate(createTableSQL);
 
     // 2.2 Insert Data (Using PreparedStatement for Efficiency & Security)
     String insertSQL =
@@ -94,7 +94,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             + ", "
             + dataName
             + ") VALUES (?, ?, ?)";
-    PreparedStatement stmtInsert = connection.prepareStatement(DerbyUtils.modifyQuery(insertSQL));
+    PreparedStatement stmtInsert = connection.prepareStatement(insertSQL);
 
     // Batch the insert operations
     stmtInsert.setInt(1, 10);
