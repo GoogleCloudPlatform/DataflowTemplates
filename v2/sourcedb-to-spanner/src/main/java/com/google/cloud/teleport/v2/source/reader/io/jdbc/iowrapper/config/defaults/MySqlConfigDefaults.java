@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.M
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider.MysqlJdbcValueMappings;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.Calendar;
@@ -66,6 +67,15 @@ public class MySqlConfigDefaults {
   public static final FluentBackoff DEFAULT_MYSQL_SCHEMA_DISCOVERY_BACKOFF =
       FluentBackoff.DEFAULT.withMaxCumulativeBackoff(Duration.standardMinutes(5L));
 
+  /** Init Seq for enable ANSI Quotes. * */
+  @VisibleForTesting
+  public static final String ENABLE_ANSI_QUOTES_INIT_SEQ =
+      "SET SESSION sql_mode = \n"
+          + "  CASE \n"
+          + "    WHEN @@sql_mode LIKE '%ANSI_QUOTES%' THEN @@sql_mode \n"
+          + "    ELSE CONCAT(@@sql_mode, ',ANSI_QUOTES') \n"
+          + "  END;";
+
   /**
    * Default Initialization Sequence for the JDBC connection.
    *
@@ -89,7 +99,8 @@ public class MySqlConfigDefaults {
           // have named timezone information pre-installed.
           "SET TIME_ZONE = '+00:00'",
           "SET SESSION NET_WRITE_TIMEOUT=1200",
-          "SET SESSION NET_READ_TIMEOUT=1200");
+          "SET SESSION NET_READ_TIMEOUT=1200",
+          ENABLE_ANSI_QUOTES_INIT_SEQ);
 
   private MySqlConfigDefaults() {}
 }
