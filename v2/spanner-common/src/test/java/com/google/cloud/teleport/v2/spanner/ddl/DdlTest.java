@@ -391,6 +391,11 @@ public class DdlTest {
     Ddl ddl = generateDdlFromDAG(Arrays.asList("t1", "t2", "t3", "t4"), dependencies);
     List<String> actualOrder = ddl.getTablesOrderedByReference();
     verifyOrderingFromDependencies("#1: basic dag", actualOrder, dependencies);
+    assertTrue(ddl.getAllReferencedTables("t3").containsAll(Arrays.asList("t1", "t4", "t2")));
+    assertTrue(!ddl.getAllReferencedTables("t3").contains("t3"));
+
+    final Ddl ddl2 = ddl;
+    assertThrows(IllegalStateException.class, () -> ddl2.getAllReferencedTables("t5"));
 
     // Test 2: Diamond shaped
     dependencies =
@@ -402,6 +407,10 @@ public class DdlTest {
     ddl = generateDdlFromDAG(Arrays.asList("t1", "t2", "t3", "t4"), dependencies);
     actualOrder = ddl.getTablesOrderedByReference();
     verifyOrderingFromDependencies("#2: diamond dag", actualOrder, dependencies);
+    assertTrue(ddl.getAllReferencedTables("t1").containsAll(Arrays.asList("t2", "t3", "t4")));
+    assertTrue(!ddl.getAllReferencedTables("t1").contains("t1"));
+    assertTrue(ddl.getAllReferencedTables("t3").containsAll(Arrays.asList("t4")));
+    assertTrue(!ddl.getAllReferencedTables("t3").contains("t3"));
 
     // Test 3: Empty Dependency List
     ddl = generateDdlFromDAG(Arrays.asList("t1", "t2"), List.of());
@@ -412,12 +421,17 @@ public class DdlTest {
     ddl = generateDdlFromDAG(Arrays.asList("t1"), List.of());
     actualOrder = ddl.getTablesOrderedByReference();
     assertEquals("#4: Single Node", List.of("t1"), actualOrder);
+    assertTrue(ddl.getAllReferencedTables("t1").isEmpty());
 
     // Test 5: Disconnected Components
     dependencies = Arrays.asList(Arrays.asList("t2", "t1"));
     ddl = generateDdlFromDAG(Arrays.asList("t1", "t2", "t3"), dependencies);
     actualOrder = ddl.getTablesOrderedByReference();
     verifyOrderingFromDependencies("#5: Disconnected components", actualOrder, dependencies);
+    assertTrue(ddl.getAllReferencedTables("t2").containsAll(Arrays.asList("t1")));
+    assertTrue(!ddl.getAllReferencedTables("t2").contains("t2"));
+    assertTrue(ddl.getAllReferencedTables("t1").isEmpty());
+    assertTrue(ddl.getAllReferencedTables("t3").isEmpty());
 
     // Test 6: Complex Graph
     dependencies =
@@ -459,6 +473,19 @@ public class DdlTest {
     ddl = generateDdlFromDAG(Arrays.asList("t1", "t2", "t3"), dependencies);
     Ddl finalDdl = ddl;
     assertThrows(IllegalStateException.class, () -> finalDdl.getTablesOrderedByReference());
+  }
+
+  @Test
+  public void testGetTablesOrderedByReferenceSpecialChar() {
+    // Test 1: Linear dag
+    List<List<String>> dependencies =
+        Arrays.asList(
+            Arrays.asList("T3", "t1"), Arrays.asList("t1", "T4"), Arrays.asList("T4", "T2"));
+    Ddl ddl = generateDdlFromDAG(Arrays.asList("t1", "T2", "T3", "T4"), dependencies);
+    List<String> actualOrder = ddl.getTablesOrderedByReference();
+    verifyOrderingFromDependencies("basic dag with capitals", actualOrder, dependencies);
+    assertTrue(ddl.getAllReferencedTables("T3").containsAll(Arrays.asList("t1", "T4", "T2")));
+    assertTrue(!ddl.getAllReferencedTables("T3").contains("T3"));
   }
 
   private void verifyOrderingFromDependencies(
@@ -539,6 +566,8 @@ public class DdlTest {
     List<String> accountTablesReferenced = ddl.tablesReferenced("Account");
     assertTrue(accountTablesReferenced.containsAll(List.of("Users", "BalanceNames")));
     assertTrue(accountTablesReferenced.size() == 2);
+
+    assertThrows(IllegalStateException.class, () -> ddl.tablesReferenced("unknown_table"));
   }
 
   @Test

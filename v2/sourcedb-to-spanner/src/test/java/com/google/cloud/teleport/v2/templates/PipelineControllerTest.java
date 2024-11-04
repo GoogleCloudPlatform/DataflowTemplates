@@ -15,32 +15,40 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.templates.PipelineController.ShardedDbConfigContainer;
+import com.google.cloud.teleport.v2.templates.PipelineController.SingleInstanceDbConfigContainer;
 import com.google.common.io.Resources;
 import java.nio.file.Paths;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.Wait;
+import org.apache.beam.sdk.values.PCollection;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 public class PipelineControllerTest {
 
-  private Ddl spannerDdl;
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
-  private Ddl spannerDdlWithExtraTable;
+  private Ddl spannerDdl;
 
   @Before
   public void setup() {
@@ -61,50 +69,6 @@ public class PipelineControllerTest {
             .end()
             .endTable()
             .createTable("new_people")
-            .column("synth_id")
-            .int64()
-            .notNull()
-            .endColumn()
-            .column("new_name")
-            .string()
-            .size(10)
-            .endColumn()
-            .primaryKey()
-            .asc("synth_id")
-            .end()
-            .endTable()
-            .build();
-
-    spannerDdlWithExtraTable =
-        Ddl.builder()
-            .createTable("new_cart")
-            .column("new_quantity")
-            .int64()
-            .notNull()
-            .endColumn()
-            .column("new_user_id")
-            .string()
-            .size(10)
-            .endColumn()
-            .primaryKey()
-            .asc("new_user_id")
-            .asc("new_quantity")
-            .end()
-            .endTable()
-            .createTable("new_people")
-            .column("synth_id")
-            .int64()
-            .notNull()
-            .endColumn()
-            .column("new_name")
-            .string()
-            .size(10)
-            .endColumn()
-            .primaryKey()
-            .asc("synth_id")
-            .end()
-            .endTable()
-            .createTable("extra_table")
             .column("synth_id")
             .int64()
             .notNull()
@@ -153,124 +117,77 @@ public class PipelineControllerTest {
   }
 
   @Test
-  public void listTablesToMigrateIdentity() {
-    SourceDbToSpannerOptions mockOptions = createOptionsHelper("", "");
-    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    List<String> tables = PipelineController.listTablesToMigrate("", schemaMapper, spannerDdl);
-    List<String> ddlTables =
-        spannerDdl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
-    assertEquals(2, tables.size());
-    assertTrue(ddlTables.containsAll(tables));
+  public void singleDbConfigContainerWithUrlTest() {
+    // Most of this is copied from OptionsToConfigBuilderTest.
+    // Check if it is possible to re-use
+    final String testDriverClassName = "org.apache.derby.jdbc.EmbeddedDriver";
+    final String testUrl = "jdbc:mysql://localhost:3306/testDB";
+    final String testUser = "user";
+    final String testPassword = "password";
+    SourceDbToSpannerOptions sourceDbToSpannerOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
+    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
+    sourceDbToSpannerOptions.setJdbcDriverClassName(testDriverClassName);
+    sourceDbToSpannerOptions.setMaxConnections(150);
+    sourceDbToSpannerOptions.setNumPartitions(4000);
+    sourceDbToSpannerOptions.setUsername(testUser);
+    sourceDbToSpannerOptions.setPassword(testPassword);
+    sourceDbToSpannerOptions.setTables("table1,table2");
+    PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
+    SingleInstanceDbConfigContainer dbConfigContainer =
+        new SingleInstanceDbConfigContainer(sourceDbToSpannerOptions);
+    JdbcIOWrapperConfig config =
+        dbConfigContainer.getJDBCIOWrapperConfig(
+            List.of("table1", "table2"), Wait.on(dummyPCollection));
+    assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
+    assertThat(config.sourceDbURL())
+        .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
+    assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
+    assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
+    assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
+    assertThat(config.waitOn()).isNotNull();
+    assertEquals(null, dbConfigContainer.getShardId());
   }
 
   @Test
-  public void listTablesToMigrateIdentityOverride() {
-    SourceDbToSpannerOptions mockOptions = createOptionsHelper("", "new_cart");
-    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    List<String> tables =
-        PipelineController.listTablesToMigrate(mockOptions.getTables(), schemaMapper, spannerDdl);
-    List<String> ddlTables =
-        spannerDdl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
-    assertEquals(1, tables.size());
-    assertTrue(ddlTables.containsAll(tables));
-  }
+  public void shardedDbConfigContainerTest() {
+    final String testDriverClassName = "org.apache.derby.jdbc.EmbeddedDriver";
+    final String testUrl = "jdbc:mysql://localhost:3306/testDB";
+    final String testUser = "user";
+    final String testPassword = "password";
+    SourceDbToSpannerOptions sourceDbToSpannerOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
+    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
+    sourceDbToSpannerOptions.setJdbcDriverClassName(testDriverClassName);
+    sourceDbToSpannerOptions.setMaxConnections(150);
+    sourceDbToSpannerOptions.setNumPartitions(4000);
+    sourceDbToSpannerOptions.setUsername(testUser);
+    sourceDbToSpannerOptions.setPassword(testPassword);
+    sourceDbToSpannerOptions.setTables("table1,table2");
 
-  @Test
-  public void listTablesToMigrateSession() {
-    SourceDbToSpannerOptions mockOptions =
-        createOptionsHelper(
-            Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
-                .toString(),
-            "cart,people");
-    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    List<String> tables =
-        PipelineController.listTablesToMigrate(mockOptions.getTables(), schemaMapper, spannerDdl);
+    Shard shard =
+        new Shard("shard1", "localhost", "3306", "user", "password", null, null, null, null);
 
-    assertEquals(2, tables.size());
-    assertTrue(tables.contains("cart"));
-    assertTrue(tables.contains("people"));
-  }
+    ShardedDbConfigContainer dbConfigContainer =
+        new ShardedDbConfigContainer(
+            shard, SQLDialect.MYSQL, null, "shard1", "testDB", sourceDbToSpannerOptions);
 
-  @Test
-  public void listTablesToMigrateSessionOverride() {
-    SourceDbToSpannerOptions mockOptions =
-        createOptionsHelper(
-            Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
-                .toString(),
-            "cart");
-    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    List<String> tables =
-        PipelineController.listTablesToMigrate(mockOptions.getTables(), schemaMapper, spannerDdl);
+    PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
 
-    assertEquals(1, tables.size());
-    assertTrue(tables.contains("cart"));
-  }
-
-  @Test(expected = InvalidOptionsException.class)
-  public void listTablesToMigrateSessionOverrideInvalid() {
-    SourceDbToSpannerOptions mockOptions =
-        createOptionsHelper(
-            Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
-                .toString(),
-            "asd");
-    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
-    List<String> tables =
-        PipelineController.listTablesToMigrate(mockOptions.getTables(), schemaMapper, spannerDdl);
-  }
-
-  @Test
-  public void spannerTablesToMigrateSession() {
-    SourceDbToSpannerOptions mockOptions =
-        createOptionsHelper(
-            Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
-                .toString(),
-            "cart,people");
-    ISchemaMapper schemaMapper =
-        PipelineController.getSchemaMapper(mockOptions, spannerDdlWithExtraTable);
-    List<String> tables =
-        PipelineController.listSpannerTablesToMigrate(
-            spannerDdl, schemaMapper, new HashSet<>(schemaMapper.getSourceTablesToMigrate("")));
-
-    assertEquals(2, tables.size());
-    assertTrue(tables.contains("new_cart"));
-    assertTrue(tables.contains("new_people"));
-  }
-
-  @Test
-  public void spannerTablesToMigrateSessionWithExtraTable() {
-    SourceDbToSpannerOptions mockOptions =
-        createOptionsHelper(
-            Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
-                .toString(),
-            "cart,people");
-    ISchemaMapper schemaMapper =
-        PipelineController.getSchemaMapper(mockOptions, spannerDdlWithExtraTable);
-    List<String> tables =
-        PipelineController.listSpannerTablesToMigrate(
-            spannerDdlWithExtraTable,
-            schemaMapper,
-            new HashSet<>(schemaMapper.getSourceTablesToMigrate("")));
-
-    assertEquals(2, tables.size());
-    assertTrue(tables.contains("new_cart"));
-    assertTrue(tables.contains("new_people"));
-  }
-
-  @Test
-  public void spannerTablesToMigrateSessionWithLessTables() {
-    SourceDbToSpannerOptions mockOptions =
-        createOptionsHelper(
-            Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
-                .toString(),
-            "cart,people");
-    ISchemaMapper schemaMapper =
-        PipelineController.getSchemaMapper(mockOptions, spannerDdlWithExtraTable);
-    Set<String> srcTables = new HashSet<String>();
-    srcTables.add("cart");
-    List<String> tables =
-        PipelineController.listSpannerTablesToMigrate(spannerDdl, schemaMapper, srcTables);
-
-    assertEquals(1, tables.size());
-    assertTrue(tables.contains("new_cart"));
+    JdbcIOWrapperConfig config =
+        dbConfigContainer.getJDBCIOWrapperConfig(
+            List.of("table1", "table2"), Wait.on(dummyPCollection));
+    assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
+    assertThat(config.sourceDbURL())
+        .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
+    assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
+    assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
+    assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
+    assertThat(config.waitOn()).isNotNull();
+    assertEquals("shard1", dbConfigContainer.getShardId());
   }
 }
