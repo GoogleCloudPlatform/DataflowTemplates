@@ -11,7 +11,8 @@
       "Name": "Users",
       "ColIds": [
         "c142",
-        "c143"
+        "c143",
+        "c200"
       ],
       "ShardIdColumn": "",
       "ColDefs": {
@@ -36,6 +37,17 @@
           "NotNull": false,
           "Comment": "From: name varchar(25)",
           "Id": "c143"
+        },
+        "c200": {
+          "Name": "from",
+          "T": {
+            "Name": "STRING",
+            "Len": 25,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: from varchar(25)",
+          "Id": "c200"
         }
       },
       "PrimaryKeys": [
@@ -98,6 +110,26 @@
             "AutoIncrement": false
           },
           "Id": "c143"
+        },
+        "c200": {
+          "Name": "from",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              25
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c200"
         }
       },
       "PrimaryKeys": [
@@ -118,7 +150,8 @@
         "c142": [
           14
         ],
-        "c143": []
+        "c143": [],
+        "c200": []
       },
       "TableLevelIssues": null
     }
