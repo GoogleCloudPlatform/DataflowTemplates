@@ -182,11 +182,11 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                             > Long.parseLong(spannerRec.getRecordSequence())));
 
         if (!isSourceAhead) {
-          ISourceDao mySqlDao = sourceDaoMap.get(shardId);
+          ISourceDao sourceDao = sourceDaoMap.get(shardId);
 
           InputRecordProcessor inputRecordProcessor = new InputRecordProcessor();
           inputRecordProcessor.processRecord(
-              spannerRec, schema, mySqlDao, shardId, sourceDbTimezoneOffset);
+              spannerRec, schema, sourceDao, shardId, sourceDbTimezoneOffset);
 
           spannerDao.updateShadowTable(
               getShadowTableMutation(

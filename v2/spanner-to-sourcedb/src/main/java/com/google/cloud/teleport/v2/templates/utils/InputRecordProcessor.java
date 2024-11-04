@@ -40,7 +40,7 @@ public class InputRecordProcessor {
       ISourceDao dao,
       String shardId,
       String sourceDbTimezoneOffset)
-      throws java.sql.SQLException, ConnectionException {
+          throws Exception {
 
     try {
 
