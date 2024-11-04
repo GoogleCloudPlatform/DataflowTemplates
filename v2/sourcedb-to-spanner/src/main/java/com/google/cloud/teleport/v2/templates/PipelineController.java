@@ -157,7 +157,11 @@ public class PipelineController {
       }
       ReaderImpl reader = ReaderImpl.of(jdbcIoWrapper);
       String suffix = generateSuffix(configContainer.getShardId(), currentLevel + "");
-      String shardIdColumn = ""; // TODO- Check if this is needed
+
+      Map<String, String> srcTableToShardIdColumnMap =
+          getSrcTableToShardIdColumnMap(
+              tableSelector.getSchemaMapper(), configContainer.getNamespace(), spannerTables);
+
       PCollection<Void> output =
           pipeline.apply(
               "Migrate" + suffix,
@@ -168,7 +172,7 @@ public class PipelineController {
                   tableSelector.getSchemaMapper(),
                   reader,
                   configContainer.getShardId(),
-                  shardIdColumn));
+                  srcTableToShardIdColumnMap));
       levelVsOutputMap.put(currentLevel, output);
     }
 
@@ -179,6 +183,28 @@ public class PipelineController {
     pipeline.apply(
         "Increment_table_counters" + generateSuffix(configContainer.getShardId(), null),
         new IncrementTableCounter(tableCompletionMap, "", levelToSpannerTableList));
+  }
+
+  /**
+   * For the spanner tables that contain the shard id column, returns the source table to
+   * shardColumn.
+   *
+   * @param schemaMapper
+   * @param namespace
+   * @param spannerTables
+   * @return
+   */
+  static Map<String, String> getSrcTableToShardIdColumnMap(
+      ISchemaMapper schemaMapper, String namespace, List<String> spannerTables) {
+    Map<String, String> srcTableToShardIdMap = new HashMap<>();
+    for (String spTable : spannerTables) {
+      String shardIdColumn = schemaMapper.getShardIdColumnName(namespace, spTable);
+      if (shardIdColumn != null) {
+        String srcTable = schemaMapper.getSourceTableName(namespace, spTable);
+        srcTableToShardIdMap.put(srcTable, shardIdColumn);
+      }
+    }
+    return srcTableToShardIdMap;
   }
 
   private static String generateSuffix(String shardId, String tableName) {
@@ -215,6 +241,8 @@ public class PipelineController {
 
     JdbcIOWrapperConfig getJDBCIOWrapperConfig(
         List<String> sourceTables, Wait.OnSignal<?> waitOnSignal);
+
+    String getNamespace();
 
     String getShardId();
   }
@@ -269,6 +297,12 @@ public class PipelineController {
           waitOnSignal);
     }
 
+    @Override
+    public String getNamespace() {
+      return namespace;
+    }
+
+    @Override
     public String getShardId() {
       return shardId;
     }
@@ -285,6 +319,11 @@ public class PipelineController {
         List<String> sourceTables, Wait.OnSignal<?> waitOnSignal) {
       return OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
           options, sourceTables, null, waitOnSignal);
+    }
+
+    @Override
+    public String getNamespace() {
+      return options.getNamespace();
     }
 
     public String getShardId() {
