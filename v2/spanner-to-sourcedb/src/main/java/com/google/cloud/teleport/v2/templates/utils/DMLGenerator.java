@@ -132,7 +132,7 @@ public class DMLGenerator {
       allValues = allValues.substring(0, allValues.length() - 1);
 
       String returnVal =
-          "INSERT INTO " + tableName + "(" + allColumns + ")" + " VALUES (" + allValues + ") ";
+          "INSERT INTO `" + tableName + "`(" + allColumns + ")" + " VALUES (" + allValues + ") ";
       return returnVal;
     }
     int index = 0;
@@ -154,9 +154,9 @@ public class DMLGenerator {
       index++;
     }
     String returnVal =
-        "INSERT INTO "
+        "INSERT INTO `"
             + tableName
-            + "("
+            + "`("
             + allColumns
             + ")"
             + " VALUES ("
@@ -183,7 +183,7 @@ public class DMLGenerator {
       }
       index++;
     }
-    String returnVal = "DELETE FROM " + tableName + " WHERE " + deleteValues;
+    String returnVal = "DELETE FROM `" + tableName + "` WHERE " + deleteValues;
 
     return returnVal;
   }

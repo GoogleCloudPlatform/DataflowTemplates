@@ -364,7 +364,7 @@ public final class DMLGeneratorTest {
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`SingerId` = 999"));
-    assertTrue(sql.contains("DELETE FROM Singers WHERE"));
+    assertTrue(sql.contains("DELETE FROM `Singers` WHERE"));
   }
 
   @Test
@@ -718,7 +718,7 @@ public final class DMLGeneratorTest {
 
     assertTrue(
         sql.contains(
-            "INSERT INTO Singers(`SingerId`,`FirstName`,`LastName`) VALUES (NULL,'kk','ll')"));
+            "INSERT INTO `Singers`(`SingerId`,`FirstName`,`LastName`) VALUES (NULL,'kk','ll')"));
   }
 
   @Test
@@ -736,7 +736,7 @@ public final class DMLGeneratorTest {
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
     assertTrue(
         sql.contains(
-            "INSERT INTO Singers(`SingerId`,`FirstName`,`LastName`) VALUES (NULL,'kk','ll')"));
+            "INSERT INTO `Singers`(`SingerId`,`FirstName`,`LastName`) VALUES (NULL,'kk','ll')"));
   }
 
   @Test
