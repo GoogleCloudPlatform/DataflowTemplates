@@ -45,7 +45,6 @@ import java.io.Serializable;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -219,7 +218,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     FailsafeElement<String, String> msg = c.element();
     Ddl ddl = c.sideInput(ddlView);
     Instant startTimestamp = Instant.now();
-    AtomicReference<String> migrationShardId = new AtomicReference<>(null);
+    String migrationShardId = null;
     boolean isRetryRecord = false;
     /*
      * Try Catch block to capture any exceptions that might occur while processing
@@ -229,9 +228,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     try {
 
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
-      Optional.ofNullable(changeEvent.get(SHARD_ID_COLUMN_NAME))
-          .ifPresent(
-              shardIdNode -> migrationShardId.set(changeEvent.get(shardIdNode.asText()).asText()));
+      migrationShardId =
+          Optional.ofNullable(changeEvent.get(SHARD_ID_COLUMN_NAME))
+              .map(shardIdNode -> changeEvent.get(shardIdNode.asText()).asText())
+              .orElse(null);
       JsonNode retryCount = changeEvent.get("_metadata_retry_count");
 
       if (retryCount != null) {
@@ -279,10 +279,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                   });
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
       c.output(timestamp);
-      if (migrationShardId.get() != null) {
+      if (migrationShardId != null) {
         Metrics.counter(
                 SpannerTransactionWriterDoFn.class,
-                migrationShardId.get() + " : " + SUCCESSFUL_EVENTS_COUNTER_NAME)
+                migrationShardId + " : " + SUCCESSFUL_EVENTS_COUNTER_NAME)
             .inc();
       }
       successfulEvents.inc();
@@ -302,14 +302,14 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       // Errors that result from invalid change events.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       invalidEvents.inc();
-      if (migrationShardId.get() != null) {
+      if (migrationShardId != null) {
         Metrics.counter(SpannerTransactionWriterDoFn.class, migrationShardId + " : Invalid events")
             .inc();
       }
     } catch (ChangeEventConvertorException e) {
       // Errors that result during Event conversions are not retryable.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
-      if (migrationShardId.get() != null) {
+      if (migrationShardId != null) {
         Metrics.counter(
                 SpannerTransactionWriterDoFn.class,
                 migrationShardId + " : " + CONVERSION_ERRORS_COUNTER_NAME)
@@ -337,7 +337,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       // Any other errors are considered severe and not retryable.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       failedEvents.inc();
-      if (migrationShardId.get() != null) {
+      if (migrationShardId != null) {
         Metrics.counter(
                 SpannerTransactionWriterDoFn.class, migrationShardId + " : Permanent errors")
             .inc();
