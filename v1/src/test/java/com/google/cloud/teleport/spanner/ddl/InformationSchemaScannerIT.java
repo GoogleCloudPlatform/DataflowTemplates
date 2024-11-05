@@ -156,6 +156,7 @@ public class InformationSchemaScannerIT {
             + " `arr_proto_field_2`     ARRAY<`com.google.cloud.teleport.spanner.tests.Order`>,"
             + " `arr_nested_enum`       ARRAY<`com.google.cloud.teleport.spanner.tests.Order.PaymentMode`>,"
             + " `arr_enum_field`        ARRAY<`com.google.cloud.teleport.spanner.tests.TestEnum`>,"
+            + " `hidden_column`         STRING(MAX) HIDDEN,"
             + " ) PRIMARY KEY (`first_name` ASC, `last_name` DESC, `id` ASC)";
 
     FileDescriptorSet.Builder fileDescriptorSetBuilder = FileDescriptorSet.newBuilder();
@@ -174,7 +175,7 @@ public class InformationSchemaScannerIT {
     assertThat(ddl.table("aLlTYPeS"), notNullValue());
 
     Table table = ddl.table("alltypes");
-    assertThat(table.columns(), hasSize(28));
+    assertThat(table.columns(), hasSize(29));
 
     // Check case sensitiveness.
     assertThat(table.column("first_name"), notNullValue());
@@ -231,6 +232,8 @@ public class InformationSchemaScannerIT {
     assertThat(
         table.column("arr_enum_field").type(),
         equalTo(Type.array(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum"))));
+    assertThat(table.column("hidden_column").type(), equalTo(Type.string()));
+    assertThat(table.column("hidden_column").isHidden(), is(true));
 
     // Check not-null.
     assertThat(table.column("first_name").notNull(), is(false));

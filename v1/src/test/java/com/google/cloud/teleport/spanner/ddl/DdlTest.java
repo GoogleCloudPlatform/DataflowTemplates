@@ -96,6 +96,11 @@ public class DdlTest {
         .generatedAs("CONCAT(first_name, ' ', last_name)")
         .stored()
         .endColumn()
+        .column("HiddenColumn")
+        .type(Type.string())
+        .max()
+        .isHidden(true)
+        .endColumn()
         .primaryKey()
         .asc("id")
         .asc("gen_id")
@@ -133,6 +138,7 @@ public class DdlTest {
                 + " `first_name` STRING(10) DEFAULT ('John'),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " `HiddenColumn`                          STRING(MAX) HIDDEN,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
                 + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
@@ -152,6 +158,7 @@ public class DdlTest {
                 + " `first_name` STRING(10) DEFAULT ('John'),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " `HiddenColumn`                          STRING(MAX) HIDDEN,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
                 + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC)"));
     assertThat(
