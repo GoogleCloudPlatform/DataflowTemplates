@@ -1,0 +1,28 @@
+{
+    "source": {
+        "type": "text",
+        "name": "data",
+        "ordered_field_names": "int64,datetime",
+        "uri": "$externalcsvuri"
+    },
+    "targets": [
+        {
+            "node": {
+                "name": "Node",
+                "source": "data",
+                "mode": "append",
+                "mappings": {
+                    "label": "\"Node\"",
+                    "properties": {
+                        "keys": [
+                            "int64"
+                        ],
+                        "dates": [
+                            "datetime"
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}

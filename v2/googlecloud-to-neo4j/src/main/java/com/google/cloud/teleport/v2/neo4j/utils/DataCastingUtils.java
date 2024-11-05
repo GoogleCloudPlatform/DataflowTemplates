@@ -100,6 +100,11 @@ public class DataCastingUtils {
         continue;
       }
 
+      if (objVal instanceof String && ((String) objVal).isBlank()) {
+        castVals.add(null);
+        continue;
+      }
+
       try {
         TypeName typeName = type.getTypeName();
         switch (typeName) {

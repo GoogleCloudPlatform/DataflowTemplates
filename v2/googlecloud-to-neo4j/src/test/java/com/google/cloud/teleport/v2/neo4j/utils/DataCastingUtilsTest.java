@@ -566,6 +566,70 @@ public class DataCastingUtilsTest {
   }
 
   @Test
+  public void testEmptySourceTextToTargetObjects() {
+    Schema schema =
+        Schema.of(
+            Field.of("int64", FieldType.STRING), // int64
+            Field.of("string", FieldType.STRING), // string
+            Field.of("double", FieldType.STRING), // double
+            Field.of("boolean", FieldType.STRING), // boolean
+            Field.of("localdate", FieldType.STRING), // localdate
+            Field.of("localtime", FieldType.STRING), // localtime
+            Field.of("localdatetime", FieldType.STRING), // localdatetime
+            Field.of("offsettime", FieldType.STRING), // localtime
+            Field.of("zoneddatetime", FieldType.STRING), // zoneddatetime
+            Field.of("offsetdatetime", FieldType.STRING), // offsetdatetime
+            Field.of("duration", FieldType.STRING), // duration
+            Field.of("bytes", FieldType.STRING));
+
+    Row row =
+        Row.withSchema(schema)
+            .withFieldValue("int64", "")
+            .withFieldValue("string", "  ")
+            .withFieldValue("double", "  ")
+            .withFieldValue("boolean", " ")
+            .withFieldValue("localdate", "")
+            .withFieldValue("localtime", "")
+            .withFieldValue("localdatetime", "  ")
+            .withFieldValue("offsettime", "")
+            .withFieldValue("zoneddatetime", "   ")
+            .withFieldValue("offsetdatetime", "  ")
+            .withFieldValue("duration", "")
+            .withFieldValue("bytes", "  ")
+            .build();
+    Target target =
+        new NodeTarget(
+            true,
+            "neo4j-target",
+            "a-source",
+            null,
+            WriteMode.CREATE,
+            null,
+            List.of("Label"),
+            List.of(
+                mapping("int64", PropertyType.INTEGER),
+                mapping("string", PropertyType.STRING),
+                mapping("double", PropertyType.FLOAT),
+                mapping("boolean", PropertyType.BOOLEAN),
+                mapping("localdate", PropertyType.DATE),
+                mapping("localtime", PropertyType.LOCAL_TIME),
+                mapping("localdatetime", PropertyType.LOCAL_DATETIME),
+                mapping("offsettime", PropertyType.ZONED_TIME),
+                mapping("zoneddatetime", PropertyType.ZONED_DATETIME),
+                mapping("offsetdatetime", PropertyType.ZONED_DATETIME),
+                mapping("duration", PropertyType.DURATION),
+                mapping("bytes", PropertyType.BYTE_ARRAY)),
+            null);
+
+    List<Object> convertedList =
+        DataCastingUtils.sourceTextToTargetObjects(row, target, null, null);
+
+    assertThat(convertedList)
+        .comparingElementsUsing(Correspondence.from(Objects::deepEquals, "deep equals"))
+        .containsExactly(null, null, null, null, null, null, null, null, null, null, null, null);
+  }
+
+  @Test
   public void label_does_not_override_source_field_value_with_same_name() {
     var schema = Schema.of(Field.of("Station", FieldType.STRING));
     var row = Row.withSchema(schema).withFieldValue("Station", "placeholder-station").build();
