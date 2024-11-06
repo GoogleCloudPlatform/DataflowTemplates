@@ -19,6 +19,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
@@ -35,6 +36,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.avro.Conversions;
@@ -95,21 +98,47 @@ public class GenericRecordTypeConvertor {
   public Map<String, Value> transformChangeEvent(GenericRecord record, String srcTableName)
       throws InvalidTransformationException {
     Map<String, Value> result = new HashMap<>();
+    result = populateCustomTransformations(result, record, srcTableName);
+
     String spannerTableName = schemaMapper.getSpannerTableName(namespace, srcTableName);
     List<String> spannerColNames = schemaMapper.getSpannerColumns(namespace, spannerTableName);
     // This is null/blank for identity/non-sharded cases.
     String shardIdCol = schemaMapper.getShardIdColumnName(namespace, spannerTableName);
     for (String spannerColName : spannerColNames) {
-      /**
-       * TODO: Handle columns that will not exist at source - synth id - multi-column
-       * transformations - auto-gen keys - Default columns - generated columns
-       */
       try {
+        // Skip if the column was already populated by custom transformation.
+        if (result.containsKey(spannerColName)) {
+          continue;
+        }
         // If current column is migration shard id, populate value.
         if (spannerColName.equals(shardIdCol)) {
           result = populateShardId(result, shardIdCol);
           continue;
         }
+
+        // For session based mapper, populate synthetic primary key with UUID. For identity mapper,
+        // the schemaMapper returns null.
+        if (spannerColName.equals(
+            schemaMapper.getSyntheticPrimaryKeyColName(namespace, spannerTableName))) {
+          result.put(spannerColName, Value.string(getUUID()));
+          continue;
+        }
+
+        // If a Spanner column does not exist in the source data, there are several possible
+        // explanations:
+        // 1. The column might be an auto-value column in Spanner, such as generated column,
+        // default, auto-gen keys.
+        // 2. Column was supposed to be populated by custom transform, but user error missed this
+        // column during custom transform.
+        // 3. The column might have been accidentally left over in the Spanner column without the
+        // right handling.
+        // In all of these cases, we omit this column from the Spanner mutation and user errors will
+        // fail on Spanner. The writer's Dead Letter Queue (DLQ) is responsible for catching any
+        // misconfigurations  where a required column is missing.
+        if (!colExistsAtSource(namespace, spannerTableName, spannerColName, record)) {
+          continue;
+        }
+        // TODO add unit tests
         String srcColName =
             schemaMapper.getSourceColumnName(namespace, spannerTableName, spannerColName);
         Type spannerColumnType =
@@ -136,8 +165,28 @@ public class GenericRecordTypeConvertor {
             e);
       }
     }
-    result = populateCustomTransformations(result, record, srcTableName);
     return result;
+  }
+
+  private String getUUID() {
+    return UUID.randomUUID().toString();
+  }
+
+  // Returns true if the column exists at source. For identity mapper, it checks if the column
+  // exists in the GenericRecord.
+  private boolean colExistsAtSource(
+      String namespace, String spannerTable, String spannerColumn, GenericRecord record) {
+    if (schemaMapper instanceof IdentityMapper) {
+      return record.hasField(spannerColumn);
+    } else {
+      // Session based mapper.
+      try {
+        schemaMapper.getSourceColumnName(namespace, spannerTable, spannerColumn);
+        return true;
+      } catch (NoSuchElementException e) {
+        return false;
+      }
+    }
   }
 
   /**
@@ -203,7 +252,7 @@ public class GenericRecordTypeConvertor {
       Schema fieldSchema = filterNullSchema(field.schema(), fieldName, fieldValue);
       // Handle logical/record types.
       fieldValue = handleNonPrimitiveAvroTypes(fieldValue, fieldSchema, fieldName);
-      // Standardising the types for custom jar input.
+      // Standardizing the types for custom jar input.
       if (fieldSchema.getProp(LOGICAL_TYPE) != null
           || fieldSchema.getType() == Schema.Type.RECORD) {
         map.put(fieldName, fieldValue);

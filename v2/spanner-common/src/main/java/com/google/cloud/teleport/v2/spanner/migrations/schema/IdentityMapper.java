@@ -114,4 +114,9 @@ public class IdentityMapper implements ISchemaMapper, Serializable {
   public String getShardIdColumnName(String namespace, String spannerTableName) {
     return null;
   }
+
+  @Override
+  public String getSyntheticPrimaryKeyColName(String namespace, String spannerTableName) {
+    return null;
+  }
 }
