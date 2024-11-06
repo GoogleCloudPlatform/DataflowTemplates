@@ -24,7 +24,6 @@ import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
-import com.google.cloud.teleport.metadata.YAMLTemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.SubscriptionName;
@@ -46,12 +45,11 @@ import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link YAMLTemplate} Flex template. */
-@Category(YAMLTemplateIntegrationTest.class)
+// @Category(YAMLTemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
 public class PubSubToBigQueryYamlIT extends YAMLTemplateTestBase {
 

@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.gcp.JDBCBaseIT;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -58,6 +59,8 @@ public abstract class YAMLTemplateTestBase extends TemplateTestBase {
               return YAMLTemplate.class.getAnnotation(Template.class).name();
             }
           });
+
+      JDBCBaseIT.uploadArtifacts(gcsClient);
 
     } catch (Exception e) {
       throw new RuntimeException(e);

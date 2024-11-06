@@ -20,7 +20,9 @@ package org.apache.beam.it.gcp;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.function.Function;
 import org.apache.beam.it.common.utils.IORedirectUtil;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,10 +38,10 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
   private static final String JAR_SUFFIX = ".jar";
 
   // The JDBC Driver fully-qualified class names
-  protected static final String MYSQL_DRIVER = "com.mysql.jdbc.Driver";
-  protected static final String POSTGRES_DRIVER = "org.postgresql.Driver";
-  protected static final String ORACLE_DRIVER = "oracle.jdbc.driver.OracleDriver";
-  protected static final String MSSQL_DRIVER = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
+  public static final String MYSQL_DRIVER = "com.mysql.jdbc.Driver";
+  public static final String POSTGRES_DRIVER = "org.postgresql.Driver";
+  public static final String ORACLE_DRIVER = "oracle.jdbc.driver.OracleDriver";
+  public static final String MSSQL_DRIVER = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
 
   // The relative path to the JDBC drivers under Maven's `.m2/repository` directory
   private static final String MYSQL_LOCAL_PATH = "mysql/mysql-connector-java";
@@ -63,6 +65,10 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
   @Before
   public void setUpJDBC() throws IOException {
 
+    uploadArtifacts(gcsClient);
+  }
+
+  public static void uploadArtifacts(GcsResourceManager gcsClient) throws IOException {
     String basePath = getMvnBaseRepoPath();
 
     String mySqlDriverGCSRelativePath = GCS_PREFIX + mySqlDriverLocalJar();
@@ -77,19 +83,35 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
   }
 
   protected String mySqlDriverGCSPath() {
-    return getGcsPath(GCS_PREFIX + mySqlDriverLocalJar());
+    return mySqlDriverGCSPath(this::getGcsPath);
+  }
+
+  public static String mySqlDriverGCSPath(Function<String, String> getGcsPath) {
+    return getGcsPath.apply(GCS_PREFIX + mySqlDriverLocalJar());
   }
 
   protected String postgresDriverGCSPath() {
-    return getGcsPath(GCS_PREFIX + postgresDriverLocalJar());
+    return postgresDriverGCSPath(this::getGcsPath);
+  }
+
+  public static String postgresDriverGCSPath(Function<String, String> getGcsPath) {
+    return getGcsPath.apply(GCS_PREFIX + postgresDriverLocalJar());
   }
 
   protected String oracleDriverGCSPath() {
-    return getGcsPath(GCS_PREFIX + oracleDriverLocalJar());
+    return oracleDriverGCSPath(this::getGcsPath);
+  }
+
+  public static String oracleDriverGCSPath(Function<String, String> getGcsPath) {
+    return getGcsPath.apply(GCS_PREFIX + oracleDriverLocalJar());
   }
 
   protected String msSqlDriverGCSPath() {
-    return getGcsPath(GCS_PREFIX + msSqlDriverLocalJar());
+    return msSqlDriverGCSPath(this::getGcsPath);
+  }
+
+  public static String msSqlDriverGCSPath(Function<String, String> getGcsPath) {
+    return getGcsPath.apply(GCS_PREFIX + msSqlDriverLocalJar());
   }
 
   private static String mySqlDriverLocalJar() {
@@ -125,7 +147,7 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
     return String.join("/", basePath, MSSQL_LOCAL_PATH, MSSQL_VERSION, msSqlDriverLocalJar());
   }
 
-  private String getMvnBaseRepoPath() {
+  private static String getMvnBaseRepoPath() {
     // Try to get specified maven repo path from args
     if (System.getProperty("mavenRepository") != null) {
       String basePath = System.getProperty("mavenRepository");
