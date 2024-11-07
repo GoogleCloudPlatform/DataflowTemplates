@@ -99,7 +99,10 @@ public class GenericRecordTypeConvertor {
       throws InvalidTransformationException {
     Map<String, Value> result = new HashMap<>();
     result = populateCustomTransformations(result, record, srcTableName);
-
+    // If the row needs to be filtered.
+    if (result == null) {
+      return null;
+    }
     String spannerTableName = schemaMapper.getSpannerTableName(namespace, srcTableName);
     List<String> spannerColNames = schemaMapper.getSpannerColumns(namespace, spannerTableName);
     // This is null/blank for identity/non-sharded cases.
