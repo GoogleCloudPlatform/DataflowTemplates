@@ -351,4 +351,19 @@ public class SessionBasedMapperTest {
   public void testSourceTablesToMigrateNamespace() {
     mapper.getSourceTablesToMigrate("test");
   }
+
+  @Test
+  public void testGetSyntheticPrimaryKeyColName() {
+    // Table with synthetic PK
+    String result = mapper.getSyntheticPrimaryKeyColName("", "new_people");
+    assertEquals("synth_id", result);
+
+    // Table without synthetic PK
+    assertNull(mapper.getSyntheticPrimaryKeyColName("", "new_cart"));
+  }
+
+  @Test(expected = NoSuchElementException.class)
+  public void testGetSyntheticPrimaryKeyColNameMissingTable() {
+    mapper.getSyntheticPrimaryKeyColName("", "nonexistent_table");
+  }
 }

@@ -138,7 +138,6 @@ public class GenericRecordTypeConvertor {
         if (!colExistsAtSource(namespace, spannerTableName, spannerColName, record)) {
           continue;
         }
-        // TODO add unit tests
         String srcColName =
             schemaMapper.getSourceColumnName(namespace, spannerTableName, spannerColName);
         Type spannerColumnType =
