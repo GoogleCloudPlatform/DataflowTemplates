@@ -307,42 +307,40 @@ public class DataConversionIT extends TemplateTestBase {
   @Test
   public void treatsEmptyCsvStringsAsNulls() throws IOException {
     gcsClient.createArtifact(
-            "external.csv", contentOf("/testing-specs/data-conversion/empty-strings.csv"));
+        "external.csv", contentOf("/testing-specs/data-conversion/empty-strings.csv"));
     gcsClient.createArtifact(
-            "spec.json", contentOf("/testing-specs/data-conversion/empty-strings-spec.json"));
+        "spec.json", contentOf("/testing-specs/data-conversion/empty-strings-spec.json"));
     gcsClient.createArtifact(
-            "neo4j.json",
-            String.format(
-                    "{\n"
-                            + "  \"server_url\": \"%s\",\n"
-                            + "  \"database\": \"%s\",\n"
-                            + "  \"auth_type\": \"basic\",\n"
-                            + "  \"username\": \"neo4j\",\n"
-                            + "  \"pwd\": \"%s\"\n"
-                            + "}",
-                    neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+        "neo4j.json",
+        String.format(
+            "{\n"
+                + "  \"server_url\": \"%s\",\n"
+                + "  \"database\": \"%s\",\n"
+                + "  \"auth_type\": \"basic\",\n"
+                + "  \"username\": \"neo4j\",\n"
+                + "  \"pwd\": \"%s\"\n"
+                + "}",
+            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
-            LaunchConfig.builder(testName, specPath)
-                    .addParameter("jobSpecUri", getGcsPath("spec.json"))
-                    .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"))
-                    .addParameter(
-                            "optionsJson",
-                            String.format("{\"externalcsvuri\": \"%s\"}", getGcsPath("external.csv")));
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jobSpecUri", getGcsPath("spec.json"))
+            .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"))
+            .addParameter(
+                "optionsJson",
+                String.format("{\"externalcsvuri\": \"%s\"}", getGcsPath("external.csv")));
 
     LaunchInfo info = launchTemplate(options);
 
     assertThatPipeline(info).isRunning();
     PipelineOperator.Result result =
-            pipelineOperator()
-                    .waitForCondition(
-                            createConfig(info),
-                            Neo4jQueryCheck.builder(neo4jClient)
-                                    .setQuery(
-                                            "MATCH (n:Node) RETURN n {.*} as properties")
-                                    .setExpectedResult(
-                                            List.of(Map.of("properties", Map.of("int64", "1"))))
-                                    .build());
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(info),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery("MATCH (n:Node) RETURN n {.*} as properties")
+                    .setExpectedResult(List.of(Map.of("properties", Map.of("int64", "1"))))
+                    .build());
     assertThatResult(result).meetsConditions();
   }
 
