@@ -101,6 +101,10 @@ public class GenericRecordTypeConvertor {
     result = populateCustomTransformations(result, record, srcTableName);
     // If the row needs to be filtered.
     if (result == null) {
+      LOG.debug(
+          "Filtered out row based on Customer Transformation response for table {}, record {}",
+          srcTableName,
+          record);
       return null;
     }
     String spannerTableName = schemaMapper.getSpannerTableName(namespace, srcTableName);
@@ -174,8 +178,12 @@ public class GenericRecordTypeConvertor {
     return UUID.randomUUID().toString();
   }
 
-  // Returns true if the column exists at source. For identity mapper, it checks if the column
-  // exists in the GenericRecord.
+  /**
+   * Returns true if the column exists at source. For identity mapper, it checks if the column
+   * exists in the GenericRecord. This ideally should have been a method for the schemaMapper
+   * interface. However, the identity mapper currently is not aware of the source and relies on the
+   * record columns to verify.
+   */
   private boolean colExistsAtSource(
       String namespace, String spannerTable, String spannerColumn, GenericRecord record) {
     if (schemaMapper instanceof IdentityMapper) {
