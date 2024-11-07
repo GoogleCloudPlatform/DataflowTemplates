@@ -478,6 +478,8 @@ public class GenericRecordTypeConvertorTest {
         .thenReturn("bool_col");
     when(mockSchemaMapper.getSpannerColumnType(anyString(), anyString(), anyString()))
         .thenReturn(Type.array(Type.bool()));
+    when(mockSchemaMapper.colExistsAtSource(anyString(), anyString(), anyString()))
+        .thenReturn(true);
 
     GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
     genericRecord.put("bool_col", true);
@@ -498,6 +500,8 @@ public class GenericRecordTypeConvertorTest {
         .thenReturn("bool_col");
     when(mockSchemaMapper.getSpannerColumnType(anyString(), anyString(), anyString()))
         .thenReturn(Type.array(Type.bool()));
+    when(mockSchemaMapper.colExistsAtSource(anyString(), anyString(), anyString()))
+        .thenReturn(true);
 
     GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
     genericRecord.put("bool_col", true);
@@ -517,7 +521,7 @@ public class GenericRecordTypeConvertorTest {
     when(mockSchemaMapper.getSpannerTableName(anyString(), anyString())).thenReturn("test");
     when(mockSchemaMapper.getSpannerColumns(anyString(), anyString()))
         .thenReturn(List.of("bool_col"));
-    when(mockSchemaMapper.getSourceColumnName(anyString(), anyString(), anyString()))
+    when(mockSchemaMapper.getSyntheticPrimaryKeyColName(anyString(), anyString()))
         .thenThrow(new RuntimeException());
 
     GenericRecordTypeConvertor genericRecordTypeConvertor =
@@ -526,7 +530,7 @@ public class GenericRecordTypeConvertorTest {
         RuntimeException.class,
         () -> genericRecordTypeConvertor.transformChangeEvent(null, "all_types"));
     // Verify that the mock method was called.
-    Mockito.verify(mockSchemaMapper).getSourceColumnName(anyString(), anyString(), anyString());
+    Mockito.verify(mockSchemaMapper).getSyntheticPrimaryKeyColName(anyString(), anyString());
   }
 
   @Test

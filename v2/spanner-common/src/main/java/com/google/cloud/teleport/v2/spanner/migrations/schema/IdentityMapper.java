@@ -119,4 +119,9 @@ public class IdentityMapper implements ISchemaMapper, Serializable {
   public String getSyntheticPrimaryKeyColName(String namespace, String spannerTableName) {
     return null;
   }
+
+  @Override
+  public boolean colExistsAtSource(String namespace, String spannerTable, String spannerColumn) {
+    return true;
+  }
 }

@@ -289,4 +289,14 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
                 new NoSuchElementException(
                     String.format("Invalid column definition for table %s", spannerTableName)));
   }
+
+  @Override
+  public boolean colExistsAtSource(String namespace, String spannerTable, String spannerColumn) {
+    try {
+      getSourceColumnName(namespace, spannerTable, spannerColumn);
+      return true;
+    } catch (NoSuchElementException e) {
+      return false;
+    }
+  }
 }

@@ -19,7 +19,6 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
@@ -36,7 +35,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.apache.arrow.util.VisibleForTesting;
@@ -142,9 +140,12 @@ public class GenericRecordTypeConvertor {
         // In all of these cases, we omit this column from the Spanner mutation and user errors will
         // fail on Spanner. The writer's Dead Letter Queue (DLQ) is responsible for catching any
         // misconfigurations  where a required column is missing.
-        if (!colExistsAtSource(namespace, spannerTableName, spannerColName, record)) {
+        if (!(schemaMapper.colExistsAtSource(namespace, spannerTableName, spannerColName)
+            && record.hasField(
+                schemaMapper.getSourceColumnName(namespace, spannerTableName, spannerColName)))) {
           continue;
         }
+
         String srcColName =
             schemaMapper.getSourceColumnName(namespace, spannerTableName, spannerColName);
         Type spannerColumnType =
@@ -176,27 +177,6 @@ public class GenericRecordTypeConvertor {
 
   private String getUUID() {
     return UUID.randomUUID().toString();
-  }
-
-  /**
-   * Returns true if the column exists at source. For identity mapper, it checks if the column
-   * exists in the GenericRecord. This ideally should have been a method for the schemaMapper
-   * interface. However, the identity mapper currently is not aware of the source and relies on the
-   * record columns to verify.
-   */
-  private boolean colExistsAtSource(
-      String namespace, String spannerTable, String spannerColumn, GenericRecord record) {
-    if (schemaMapper instanceof IdentityMapper) {
-      return record.hasField(spannerColumn);
-    } else {
-      // Session based mapper.
-      try {
-        schemaMapper.getSourceColumnName(namespace, spannerTable, spannerColumn);
-        return true;
-      } catch (NoSuchElementException e) {
-        return false;
-      }
-    }
   }
 
   /**
