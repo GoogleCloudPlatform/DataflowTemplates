@@ -229,6 +229,7 @@ public class WriteToElasticsearchTest {
     options.setMaxRetryAttempts(3);
     options.setMaxRetryDuration(10L);
     options.setSocketTimeout(1);
+    options.setCompressionEnabled(true);
 
     // Create some dummy input data for testing
     PCollection<String> input = testPipeline.apply(Create.of("json string 1", "json string 2"));
