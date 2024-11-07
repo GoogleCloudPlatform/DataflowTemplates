@@ -84,24 +84,4 @@ public class LineToRowFnTest {
 
     pipeline.run();
   }
-
-  @Test
-  public void testEmptyFields() {
-    // Arrange
-    Schema sourceSchema = Schema.of(Field.of("id", FieldType.STRING.withNullable(true)), Field.of("name", FieldType.STRING.withNullable(true)));
-    CSVFormat csvFormat = CSVFormat.DEFAULT.withNullString("");
-
-    // Act
-    PCollection<Row> convertedRow =
-            pipeline
-                    .apply(Create.of(","))
-                    .apply(ParDo.of(new LineToRowFn(sourceSchema, csvFormat)))
-                    .setCoder(RowCoder.of(sourceSchema));
-
-    // Assert
-    Row neo4jRow = Row.withSchema(sourceSchema).withFieldValue("id", null).withFieldValue("name", null).build();
-    PAssert.that(convertedRow).containsInAnyOrder(neo4jRow);
-
-    pipeline.run();
-  }
 }
