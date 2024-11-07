@@ -157,6 +157,8 @@ public abstract class Column implements Serializable {
         return Type.Code.JSON.getName();
       case PG_JSONB:
         return Type.Code.PG_JSONB.getName();
+      case TOKENLIST:
+        return Type.Code.TOKENLIST.getName();
       case ARRAY:
         {
           Type arrayType = type.getArrayElementType();
@@ -366,6 +368,9 @@ public abstract class Column implements Serializable {
           }
           if (spannerType.equals(Type.Code.JSON.getName())) {
             return t(Type.json(), null);
+          }
+          if (spannerType.equals(Type.Code.TOKENLIST.getName())) {
+            return t(Type.tokenlist(), null);
           }
           if (spannerType.startsWith(Type.Code.ARRAY.getName())) {
             // Substring "ARRAY<"xxx">"
