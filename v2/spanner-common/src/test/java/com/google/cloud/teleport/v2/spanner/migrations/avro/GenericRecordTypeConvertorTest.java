@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.avro;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -477,6 +478,8 @@ public class GenericRecordTypeConvertorTest {
         .thenReturn("bool_col");
     when(mockSchemaMapper.getSpannerColumnType(anyString(), anyString(), anyString()))
         .thenReturn(Type.array(Type.bool()));
+    when(mockSchemaMapper.colExistsAtSource(anyString(), anyString(), anyString()))
+        .thenReturn(true);
 
     GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
     genericRecord.put("bool_col", true);
@@ -497,6 +500,8 @@ public class GenericRecordTypeConvertorTest {
         .thenReturn("bool_col");
     when(mockSchemaMapper.getSpannerColumnType(anyString(), anyString(), anyString()))
         .thenReturn(Type.array(Type.bool()));
+    when(mockSchemaMapper.colExistsAtSource(anyString(), anyString(), anyString()))
+        .thenReturn(true);
 
     GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
     genericRecord.put("bool_col", true);
@@ -516,7 +521,7 @@ public class GenericRecordTypeConvertorTest {
     when(mockSchemaMapper.getSpannerTableName(anyString(), anyString())).thenReturn("test");
     when(mockSchemaMapper.getSpannerColumns(anyString(), anyString()))
         .thenReturn(List.of("bool_col"));
-    when(mockSchemaMapper.getSourceColumnName(anyString(), anyString(), anyString()))
+    when(mockSchemaMapper.getSyntheticPrimaryKeyColName(anyString(), anyString()))
         .thenThrow(new RuntimeException());
 
     GenericRecordTypeConvertor genericRecordTypeConvertor =
@@ -525,7 +530,7 @@ public class GenericRecordTypeConvertorTest {
         RuntimeException.class,
         () -> genericRecordTypeConvertor.transformChangeEvent(null, "all_types"));
     // Verify that the mock method was called.
-    Mockito.verify(mockSchemaMapper).getSourceColumnName(anyString(), anyString(), anyString());
+    Mockito.verify(mockSchemaMapper).getSyntheticPrimaryKeyColName(anyString(), anyString());
   }
 
   @Test
@@ -632,5 +637,163 @@ public class GenericRecordTypeConvertorTest {
     actual = genericRecordTypeConvertor.transformChangeEvent(genericRecord, "people");
     // Shard id should not be present.
     assertEquals(Map.of("new_name", Value.string("name1")), actual);
+  }
+
+  @Test
+  public void transformChangeEventTest_IdentityMapper_ExtraSpannerColumns()
+      throws InvalidTransformationException {
+    GenericRecord genericRecord =
+        new GenericData.Record(
+            SchemaBuilder.record("simple_table")
+                .namespace("com.test.schema")
+                .fields()
+                .name("col1")
+                .type(unionNullType(Schema.create(Schema.Type.INT)))
+                .noDefault()
+                .endRecord());
+    genericRecord.put("col1", 123);
+
+    // Create an identityMapper using a ddl with 1 extra column.
+    Ddl ddl =
+        Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .createTable("simple_table")
+            .column("col1")
+            .int64()
+            .endColumn()
+            .column("extra_col")
+            .string()
+            .size(10)
+            .endColumn()
+            .primaryKey()
+            .asc("col1")
+            .end()
+            .endTable()
+            .build();
+
+    ISchemaMapper identityMapper = new IdentityMapper(ddl);
+
+    // Transform the generic record
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(identityMapper, "", null, null);
+    Map<String, Value> actual =
+        genericRecordTypeConvertor.transformChangeEvent(genericRecord, "simple_table");
+
+    // Assert that the extra column is not in the final result set
+    assertEquals(1, actual.size());
+    assertEquals(Value.int64(123), actual.get("col1"));
+  }
+
+  @Test
+  public void transformChangeEventTest_SessionMapper_ExtraSpannerColumns()
+      throws InvalidTransformationException {
+    GenericRecord genericRecord =
+        new GenericData.Record(
+            SchemaBuilder.record("my_table")
+                .namespace("com.test.schema")
+                .fields()
+                .name("id")
+                .type(unionNullType(Schema.create(Schema.Type.INT)))
+                .noDefault()
+                .name("name")
+                .type(unionNullType(Schema.create(Schema.Type.STRING)))
+                .noDefault()
+                .endRecord());
+    genericRecord.put("id", 1);
+    genericRecord.put("name", "name1");
+
+    // Create an identityMapper using a ddl with 1 extra column.
+    Ddl ddl =
+        Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .createTable("my_table")
+            .column("id")
+            .int64()
+            .endColumn()
+            .column("name")
+            .string()
+            .size(10)
+            .endColumn()
+            .column("extra_col")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    String sessionFileWithExtraColumn =
+        Paths.get(Resources.getResource("session-file-with-extra-spanner-column.json").getPath())
+            .toString();
+    ISchemaMapper mapper = new SessionBasedMapper(sessionFileWithExtraColumn, ddl);
+
+    // Transform the generic record
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(mapper, "", null, null);
+    Map<String, Value> actual =
+        genericRecordTypeConvertor.transformChangeEvent(genericRecord, "my_table");
+
+    // Assert that the extra column is not in the final result set
+    assertEquals(2, actual.size());
+    assertEquals(Value.int64(1), actual.get("id"));
+    assertEquals(Value.string("name1"), actual.get("name"));
+  }
+
+  @Test
+  public void transformChangeEventTest_SynthPKPopulation() throws InvalidTransformationException {
+    String sessionFilePath =
+        Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
+            .toString();
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("new_cart")
+            .column("new_quantity")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("new_user_id")
+            .string()
+            .size(10)
+            .endColumn()
+            .primaryKey()
+            .asc("new_user_id")
+            .asc("new_quantity")
+            .end()
+            .endTable()
+            .createTable("new_people")
+            .column("synth_id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("new_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .primaryKey()
+            .asc("synth_id")
+            .end()
+            .endTable()
+            .build();
+
+    ISchemaMapper sessionMapper = new SessionBasedMapper(sessionFilePath, ddl);
+
+    GenericRecord genericRecord =
+        new GenericData.Record(
+            SchemaBuilder.record("people")
+                .namespace("com.test.schema")
+                .fields()
+                .name("name")
+                .type(unionNullType(Schema.create(Schema.Type.STRING)))
+                .noDefault()
+                .endRecord());
+    genericRecord.put("name", "name1");
+
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(sessionMapper, "", null, null);
+    Map<String, Value> actual =
+        genericRecordTypeConvertor.transformChangeEvent(genericRecord, "people");
+
+    // Check that the synthetic primary key column exists in the result set.
+    assertTrue(actual.containsKey("synth_id"));
+    assertEquals(Value.string("name1"), actual.get("new_name"));
   }
 }
