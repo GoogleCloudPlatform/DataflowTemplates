@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** IoWrapper for various sources. */
-package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
+/** IoWrapper for jdbc sources. */
+package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.jdbc;

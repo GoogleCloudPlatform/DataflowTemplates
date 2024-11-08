@@ -23,6 +23,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryRetriesExhaustedException;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
@@ -31,7 +32,6 @@ import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.sql.SQLTransientConnectionException;
-import javax.sql.DataSource;
 import org.apache.beam.sdk.util.BackOff;
 import org.apache.beam.sdk.util.FluentBackoff;
 import org.joda.time.Duration;
@@ -46,6 +46,7 @@ public class SchemaDiscoveryImplTest {
   @Mock RetriableSchemaDiscovery mockRetriableSchemaDiscovery;
 
   @Mock DataSource mockDataSource;
+  @Mock javax.sql.DataSource mockJdbcDataSource;
 
   @Mock SourceSchemaReference mockSourceSchemaReference;
 
@@ -53,6 +54,7 @@ public class SchemaDiscoveryImplTest {
   public void testSchemaDiscoveryImpl() throws RetriableSchemaDiscoveryException {
     final int testRetryCount = 2;
     final int expectedCallsCount = testRetryCount + 1;
+    when(mockDataSource.jdbc()).thenReturn(mockJdbcDataSource);
     when(mockRetriableSchemaDiscovery.discoverTableSchema(
             mockDataSource, mockSourceSchemaReference, ImmutableList.of()))
         .thenThrow(new RetriableSchemaDiscoveryException(new SQLTransientConnectionException()))
@@ -80,6 +82,7 @@ public class SchemaDiscoveryImplTest {
 
     when(mockFluentBackoff.backoff()).thenReturn(mockBackoff);
     when(mockBackoff.nextBackOffMillis()).thenThrow(new IOException("test"));
+    when(mockDataSource.jdbc()).thenReturn(mockJdbcDataSource);
     when(mockRetriableSchemaDiscovery.discoverTableSchema(
             mockDataSource, mockSourceSchemaReference, ImmutableList.of()))
         .thenThrow(new RetriableSchemaDiscoveryException(new SQLTransientConnectionException()));
@@ -100,6 +103,7 @@ public class SchemaDiscoveryImplTest {
 
     final int testRetryCount = 2;
     final int expectedCallsCount = testRetryCount + 1;
+    when(mockDataSource.jdbc()).thenReturn(mockJdbcDataSource);
     when(mockRetriableSchemaDiscovery.discoverTableSchema(
             mockDataSource, mockSourceSchemaReference, ImmutableList.of()))
         .thenThrow(new RetriableSchemaDiscoveryException(new SQLTransientConnectionException()));
@@ -124,6 +128,7 @@ public class SchemaDiscoveryImplTest {
     final int testRetryCount = 2;
     final int expectedCallsCount = testRetryCount + 1;
     final ImmutableList<String> testTables = ImmutableList.of("testTable1", "testTable2");
+    when(mockDataSource.jdbc()).thenReturn(mockJdbcDataSource);
     when(mockRetriableSchemaDiscovery.discoverTables(mockDataSource, mockSourceSchemaReference))
         .thenThrow(new RetriableSchemaDiscoveryException(new SQLTransientConnectionException()))
         .thenThrow(new RetriableSchemaDiscoveryException(new SQLTransientConnectionException()))
@@ -157,6 +162,7 @@ public class SchemaDiscoveryImplTest {
                     .setOrdinalPosition(1)
                     .setIndexType(IndexType.NUMERIC)
                     .build()));
+    when(mockDataSource.jdbc()).thenReturn(mockJdbcDataSource);
     when(mockRetriableSchemaDiscovery.discoverTableIndexes(
             mockDataSource, mockSourceSchemaReference, ImmutableList.of("testTable1")))
         .thenThrow(new RetriableSchemaDiscoveryException(new SQLTransientConnectionException()))

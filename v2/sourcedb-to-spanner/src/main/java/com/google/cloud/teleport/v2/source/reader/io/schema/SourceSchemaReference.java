@@ -15,21 +15,45 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.schema;
 
-import com.google.auto.value.AutoValue;
+import com.google.auto.value.AutoOneOf;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import java.io.Serializable;
-import javax.annotation.Nullable;
 
-/** Value class to enclose the database name and PG namespace. */
-@AutoValue
+/**
+ * Different sources employ varying styles for referencing a schema. For instance, a Postgres source
+ * uses a database name and namespace, while a Cassandra source uses a cluster name and keyspace. In
+ * the below Value class we enclose the schema reference. Note: In most of the cases an interface
+ * would be a better choice to a `OneOf` pattern. In this particular case though, it's not possible
+ * to have a common minimal interface that encodes getters and setters for properties like nameSpace
+ * or ClusterName. If we go that route, we would either have to compriamise on readability (like
+ * level1, level2 reference etc), or have a bloated interface. Hence, a oneOf of independent (but
+ * conceptually related) classes suits a better pattern to encode this information.
+ *
+ * @see: <a
+ *     heref=https://github.com/google/auto/blob/main/value/userguide/howto.md#-make-a-class-where-only-one-of-its-properties-is-ever-set>autoOneOf</a>
+ */
+@AutoOneOf(SourceSchemaReference.Kind.class)
 public abstract class SourceSchemaReference implements Serializable {
 
-  public abstract String dbName();
+  public enum Kind {
+    JDBC,
+    CASSANDRA
+  };
 
-  @Nullable
-  public abstract String namespace();
+  public abstract Kind getKind();
 
-  public static Builder builder() {
-    return new AutoValue_SourceSchemaReference.Builder().setNamespace(null);
+  public abstract JdbcSchemaReference jdbc();
+
+  public abstract CassandraSchemaReference cassandra();
+
+  public static SourceSchemaReference ofJdbc(JdbcSchemaReference jdbcSchemaReference) {
+    return AutoOneOf_SourceSchemaReference.jdbc(jdbcSchemaReference);
+  }
+
+  public static SourceSchemaReference ofCassandra(
+      CassandraSchemaReference cassandraSchemaReference) {
+    return AutoOneOf_SourceSchemaReference.cassandra(cassandraSchemaReference);
   }
 
   /**
@@ -38,21 +62,13 @@ public abstract class SourceSchemaReference implements Serializable {
    * @return name of the {@link SourceTableReference}
    */
   public String getName() {
-    StringBuilder stringBuilder = new StringBuilder();
-    stringBuilder.append("Db.").append(this.dbName());
-    if (this.namespace() != null) {
-      stringBuilder.append(".Namespace.").append(this.namespace());
+    switch (this.getKind()) {
+      case JDBC:
+        return this.jdbc().getName();
+      case CASSANDRA:
+        return this.cassandra().getName();
+      default:
+        throw new IllegalStateException("name not implemented for kind " + this.getKind());
     }
-    return stringBuilder.toString();
-  }
-
-  @AutoValue.Builder
-  public abstract static class Builder {
-
-    public abstract Builder setDbName(String value);
-
-    public abstract Builder setNamespace(String value);
-
-    public abstract SourceSchemaReference build();
   }
 }
