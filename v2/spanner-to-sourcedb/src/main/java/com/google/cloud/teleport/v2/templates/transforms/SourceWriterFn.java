@@ -29,9 +29,13 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
+import com.google.cloud.teleport.v2.templates.common.ISourceDao;
+import com.google.cloud.teleport.v2.templates.common.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.utils.*;
-import com.google.cloud.teleport.v2.templates.mysql.MySqlDao;
+import com.google.cloud.teleport.v2.templates.utils.ConnectionException;
+import com.google.cloud.teleport.v2.templates.utils.InputRecordProcessor;
+import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
+import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.io.Serializable;
@@ -81,6 +85,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final String shadowTablePrefix;
   private final String skipDirName;
   private final int maxThreadPerDataflowWorker;
+  private final String source;
+  private final String shardingMode;
 
   public SourceWriterFn(
       List<Shard> shards,
@@ -90,7 +96,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       Ddl ddl,
       String shadowTablePrefix,
       String skipDirName,
-      int maxThreadPerDataflowWorker) {
+      int maxThreadPerDataflowWorker,
+      String source,
+      String shardingMode) {
 
     this.schema = schema;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
@@ -100,6 +108,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
     this.maxThreadPerDataflowWorker = maxThreadPerDataflowWorker;
+    this.source = source;
+    this.shardingMode = shardingMode;
   }
 
   // for unit testing purposes
@@ -122,15 +132,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   public void setup() throws Exception {
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-    ConnectionHelper.init(shards, null, maxThreadPerDataflowWorker);
-    sourceDaoMap = new HashMap<>();
-    for (Shard shard : shards) {
-      String sourceConnectionUrl =
-          "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
-      ISourceDao mySqlDao = new MySqlDao();
-      mySqlDao.initialize(sourceConnectionUrl, shard.getUserName(), shard.getPassword());
-      sourceDaoMap.put(shard.getLogicalShardId(), mySqlDao);
-    }
+    sourceDaoMap =
+        SourceProcessorFactory.getSourceDaoMap(source, shards, maxThreadPerDataflowWorker);
     spannerDao = new SpannerDao(spannerConfig);
   }
 
@@ -150,7 +153,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       // no shard found, move to permanent error
       outputWithTag(
           c, Constants.PERMANENT_ERROR_TAG, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE, spannerRec);
-    } else if (shardId.equals(skipDirName)) {
+    } else if (shardId != null && shardId.equals(skipDirName)) {
       // the record is skipped
       skippedRecordCountMetric.inc();
       outputWithTag(c, Constants.SKIPPED_TAG, Constants.SKIPPED_TAG_MESSAGE, spannerRec);
@@ -186,7 +189,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
           InputRecordProcessor inputRecordProcessor = new InputRecordProcessor();
           inputRecordProcessor.processRecord(
-              spannerRec, schema, sourceDao, shardId, sourceDbTimezoneOffset);
+              spannerRec, schema, sourceDao, shardId, sourceDbTimezoneOffset, source);
 
           spannerDao.updateShadowTable(
               getShadowTableMutation(

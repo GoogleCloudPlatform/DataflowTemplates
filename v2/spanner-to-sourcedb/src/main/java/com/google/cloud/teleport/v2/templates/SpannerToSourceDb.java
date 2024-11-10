@@ -356,6 +356,16 @@ public class SpannerToSourceDb {
     Integer getDlqRetryMinutes();
 
     void setDlqRetryMinutes(Integer value);
+
+    @TemplateParameter.Text(
+        order = 24,
+        optional = true,
+        description = "Source database type, ex: mysql",
+        helpText = "The type of source database to reverse replicate to.")
+    @Default.String("mysql")
+    String getSourceType();
+
+    void setSourceType(String value);
   }
 
   /**
@@ -454,9 +464,14 @@ public class SpannerToSourceDb {
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
     List<Shard> shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
-    String shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
-    if (shards.size() > 1) {
-      shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
+    String shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
+    if (shards.size() == 1) {
+      shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+
+      Shard singleShard = shards.get(0);
+      if (singleShard.getLogicalShardId() == null) {
+        singleShard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
+      }
     }
     boolean isRegularMode = "regular".equals(options.getRunMode());
     PCollectionTuple reconsumedElements = null;
@@ -559,7 +574,9 @@ public class SpannerToSourceDb {
                     ddl,
                     options.getShadowTablePrefix(),
                     options.getSkipDirectoryName(),
-                    connectionPoolSizePerWorker));
+                    connectionPoolSizePerWorker,
+                    options.getSourceType(),
+                    shardingMode));
 
     PCollection<FailsafeElement<String, String>> dlqPermErrorRecords =
         reconsumedElements

@@ -15,38 +15,48 @@
  */
 package com.google.cloud.teleport.v2.templates.mysql;
 
+import com.google.cloud.teleport.v2.templates.common.ISourceDao;
+import com.google.cloud.teleport.v2.templates.utils.ConnectionException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import com.google.cloud.teleport.v2.templates.utils.ConnectionHelper;
-import com.google.cloud.teleport.v2.templates.utils.ISourceDao;
 
 public class MySqlDao implements ISourceDao {
   private String sqlUrl;
   private String sqlUser;
   private String sqlPasswd;
-  private Connection connObj;
 
-  @Override
-  public void initialize(String url, String user, String password) throws Exception {
-    this.sqlUrl = url;
-    this.sqlUser = user;
-    this.sqlPasswd = password;
-    Class.forName("com.mysql.cj.jdbc.Driver");
-    this.connObj = ConnectionHelper.getConnection(this.sqlUrl, this.sqlUser, this.sqlPasswd);
+  public MySqlDao(String sqlUrl, String sqlUser, String sqlPasswd) {
+    this.sqlUrl = sqlUrl;
+    this.sqlUser = sqlUser;
+    this.sqlPasswd = sqlPasswd;
   }
 
-  @Override
-  public void write(String sqlStatement) throws SQLException {
-    try (Statement statement = connObj.createStatement()) {
+  public String getSourceConnectionUrl() {
+    return sqlUrl;
+  }
+
+  public void write(String sqlStatement) throws SQLException, ConnectionException {
+    Connection connObj = null;
+    Statement statement = null;
+
+    try {
+
+      connObj = MySQLConnectionHelper.getConnection(this.sqlUrl, this.sqlUser, this.sqlPasswd);
+      if (connObj == null) {
+        throw new ConnectionException("Connection is null");
+      }
+      statement = connObj.createStatement();
       statement.executeUpdate(sqlStatement);
-    }
-  }
 
-  @Override
-  public void close() throws SQLException {
-    if (connObj != null && !connObj.isClosed()) {
-      connObj.close();
+    } finally {
+
+      if (statement != null) {
+        statement.close();
+      }
+      if (connObj != null) {
+        connObj.close();
+      }
     }
   }
 }

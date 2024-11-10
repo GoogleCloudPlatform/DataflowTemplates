@@ -13,14 +13,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.utils;
+package com.google.cloud.teleport.v2.templates.mysql;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
+import com.google.cloud.teleport.v2.templates.common.DMLGeneratorRequest;
+import com.google.cloud.teleport.v2.templates.common.IDMLGenerator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -31,37 +32,40 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Creates DML statements. */
-public class DMLGenerator {
-  private static final Logger LOG = LoggerFactory.getLogger(DMLGenerator.class);
+public class MySQLDMLGenerator implements IDMLGenerator {
+  private static final Logger LOG = LoggerFactory.getLogger(MySQLDMLGenerator.class);
 
-  public static String getDMLStatement(
-      String modType,
-      String spannerTableName,
-      Schema schema,
-      JSONObject newValuesJson,
-      JSONObject keyValuesJson,
-      String sourceDbTimezoneOffset) {
+  public String getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
 
-    if (schema.getSpannerToID().get(spannerTableName) == null) {
+    if (dmlGeneratorRequest
+            .getSchema()
+            .getSpannerToID()
+            .get(dmlGeneratorRequest.getSpannerTableName())
+        == null) {
       LOG.warn(
           "The spanner table {} was not found in session file, dropping the record",
-          spannerTableName);
+          dmlGeneratorRequest.getSpannerTableName());
       return "";
     }
 
-    String spannerTableId = schema.getSpannerToID().get(spannerTableName).getName();
-    SpannerTable spannerTable = schema.getSpSchema().get(spannerTableId);
+    String spannerTableId =
+        dmlGeneratorRequest
+            .getSchema()
+            .getSpannerToID()
+            .get(dmlGeneratorRequest.getSpannerTableName())
+            .getName();
+    SpannerTable spannerTable = dmlGeneratorRequest.getSchema().getSpSchema().get(spannerTableId);
 
     if (spannerTable == null) {
       LOG.warn(
           "The spanner table {} was not found in session file, dropping the record",
-          spannerTableName);
+          dmlGeneratorRequest.getSpannerTableName());
       return "";
     }
 
-    SourceTable sourceTable = schema.getSrcSchema().get(spannerTableId);
+    SourceTable sourceTable = dmlGeneratorRequest.getSchema().getSrcSchema().get(spannerTableId);
     if (sourceTable == null) {
-      LOG.warn("The table {} was not found in source", spannerTableName);
+      LOG.warn("The table {} was not found in source", dmlGeneratorRequest.getSpannerTableName());
       return "";
     }
 
@@ -72,10 +76,15 @@ public class DMLGenerator {
       return "";
     }
 
-    if ("INSERT".equals(modType) || "UPDATE".equals(modType)) {
+    if ("INSERT".equals(dmlGeneratorRequest.getModType())
+        || "UPDATE".equals(dmlGeneratorRequest.getModType())) {
       Map<String, String> pkcolumnNameValues =
           getPkColumnValues(
-              spannerTable, sourceTable, newValuesJson, keyValuesJson, sourceDbTimezoneOffset);
+              spannerTable,
+              sourceTable,
+              dmlGeneratorRequest.getNewValuesJson(),
+              dmlGeneratorRequest.getKeyValuesJson(),
+              dmlGeneratorRequest.getSourceDbTimezoneOffset());
       if (pkcolumnNameValues == null) {
         LOG.warn(
             "Cannot reverse replicate for table {} without primary key, skipping the record",
@@ -84,17 +93,25 @@ public class DMLGenerator {
       }
       Map<String, String> columnNameValues =
           getColumnValues(
-              spannerTable, sourceTable, newValuesJson, keyValuesJson, sourceDbTimezoneOffset);
+              spannerTable,
+              sourceTable,
+              dmlGeneratorRequest.getNewValuesJson(),
+              dmlGeneratorRequest.getKeyValuesJson(),
+              dmlGeneratorRequest.getSourceDbTimezoneOffset());
       return getUpsertStatement(
           sourceTable.getName(),
           sourceTable.getPrimaryKeySet(),
           columnNameValues,
           pkcolumnNameValues);
-    } else if ("DELETE".equals(modType)) {
+    } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
 
       Map<String, String> pkcolumnNameValues =
           getPkColumnValues(
-              spannerTable, sourceTable, newValuesJson, keyValuesJson, sourceDbTimezoneOffset);
+              spannerTable,
+              sourceTable,
+              dmlGeneratorRequest.getNewValuesJson(),
+              dmlGeneratorRequest.getKeyValuesJson(),
+              dmlGeneratorRequest.getSourceDbTimezoneOffset());
       if (pkcolumnNameValues == null) {
         LOG.warn(
             "Cannot reverse replicate for table {} without primary key, skipping the record",
@@ -103,7 +120,7 @@ public class DMLGenerator {
       }
       return getDeleteStatement(sourceTable.getName(), pkcolumnNameValues);
     } else {
-      LOG.warn("Unsupported modType: " + modType);
+      LOG.warn("Unsupported modType: " + dmlGeneratorRequest.getModType());
       return "";
     }
   }

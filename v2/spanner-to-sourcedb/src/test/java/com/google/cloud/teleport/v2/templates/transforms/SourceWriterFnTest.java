@@ -41,6 +41,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
+import com.google.cloud.teleport.v2.templates.common.ISourceDao;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.mysql.MySqlDao;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
@@ -70,7 +71,7 @@ public class SourceWriterFnTest {
   @Rule public final MockitoRule mocktio = MockitoJUnit.rule();
   @Mock private MySqlDao mockMySqlDao;
   @Mock private SpannerDao mockSpannerDao;
-  @Mock HashMap<String, MySqlDao> mockMySqlDaoMap;
+  @Mock HashMap<String, ISourceDao> mockSourceDaoMap;
   @Mock private SpannerConfig mockSpannerConfig;
   @Mock private DoFn.ProcessContext processContext;
   private static Gson gson = new Gson();
@@ -82,7 +83,7 @@ public class SourceWriterFnTest {
 
   @Before
   public void doBeforeEachTest() throws Exception {
-    when(mockMySqlDaoMap.get(any())).thenReturn(mockMySqlDao);
+    when(mockSourceDaoMap.get(any())).thenReturn(mockMySqlDao);
     when(mockSpannerDao.getShadowTableRecord(eq("shadow_parent1"), any())).thenReturn(null);
     when(mockSpannerDao.getShadowTableRecord(eq("shadow_tableName"), any())).thenReturn(null);
     when(mockSpannerDao.getShadowTableRecord(eq("shadow_parent2"), any()))
@@ -137,12 +138,14 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            "mysql",
+            Constants.SHARDING_MODE_MULTI_SHARD);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockMySqlDao, never()).write(any());
@@ -164,12 +167,14 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            "mysql",
+            Constants.SHARDING_MODE_MULTI_SHARD);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockMySqlDao, never()).write(any());
@@ -190,12 +195,14 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            "mysql",
+            Constants.SHARDING_MODE_MULTI_SHARD);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockMySqlDao, atLeast(1)).write(any());
@@ -215,12 +222,14 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            "mysql",
+            Constants.SHARDING_MODE_MULTI_SHARD);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
@@ -245,12 +254,14 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            "mysql",
+            Constants.SHARDING_MODE_MULTI_SHARD);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
@@ -273,12 +284,14 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            "mysql",
+            Constants.SHARDING_MODE_MULTI_SHARD);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
@@ -305,12 +318,14 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            "mysql",
+            Constants.SHARDING_MODE_MULTI_SHARD);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord = new ChangeStreamErrorRecord(jsonRec, "Test exception");
@@ -333,12 +348,14 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            "mysql",
+            Constants.SHARDING_MODE_MULTI_SHARD);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
@@ -362,12 +379,14 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            "mysql",
+            Constants.SHARDING_MODE_MULTI_SHARD);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
@@ -391,12 +410,14 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            "mysql",
+            Constants.SHARDING_MODE_MULTI_SHARD);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
@@ -420,12 +441,14 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            "mysql",
+            Constants.SHARDING_MODE_MULTI_SHARD);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord = new ChangeStreamErrorRecord(jsonRec, "generic exception");
@@ -448,12 +471,14 @@ public class SourceWriterFnTest {
             testDdlForNullDML(),
             "shadow_",
             "skip",
-            500);
+            500,
+            "mysql",
+            Constants.SHARDING_MODE_MULTI_SHARD);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setMySqlDaoMap(mockMySqlDaoMap);
+    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     verify(mockMySqlDao, never()).write(contains("567890"));
   }

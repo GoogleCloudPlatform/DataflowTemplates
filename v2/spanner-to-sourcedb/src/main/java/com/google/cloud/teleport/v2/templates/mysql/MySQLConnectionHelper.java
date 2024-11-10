@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.utils;
+package com.google.cloud.teleport.v2.templates.mysql;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.zaxxer.hikari.HikariConfig;
@@ -29,9 +29,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** This is a per Dataflow worker singleton that holds connection pool. */
-public class ConnectionHelper {
+public class MySQLConnectionHelper {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ConnectionHelper.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MySQLConnectionHelper.class);
   private static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
   private static Map<String, HikariDataSource> connectionPoolMap = null;
 
