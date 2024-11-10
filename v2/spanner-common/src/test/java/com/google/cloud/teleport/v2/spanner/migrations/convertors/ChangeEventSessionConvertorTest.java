@@ -365,6 +365,7 @@ public class ChangeEventSessionConvertorTest {
     changeEventNew.put(Constants.EVENT_TABLE_NAME_KEY, "new_people");
     changeEventNew.put(Constants.EVENT_UUID_KEY, "abc-123");
     changeEventNew.put("migration_shard_id", "1");
+    changeEventNew.put(Constants.SHARD_ID_COLUMN_NAME, "migration_shard_id");
     JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
     assertEquals(expectedEvent, actualEvent);
   }
@@ -394,6 +395,7 @@ public class ChangeEventSessionConvertorTest {
     changeEventNew.put(Constants.EVENT_TABLE_NAME_KEY, "new_people");
     changeEventNew.put(Constants.EVENT_UUID_KEY, "abc-123");
     changeEventNew.put("migration_shard_id", "id1");
+    changeEventNew.put(Constants.SHARD_ID_COLUMN_NAME, "migration_shard_id");
     JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
     assertEquals(expectedEvent, actualEvent);
   }

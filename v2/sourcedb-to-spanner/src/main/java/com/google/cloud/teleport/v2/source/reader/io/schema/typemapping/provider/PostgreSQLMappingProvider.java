@@ -29,7 +29,6 @@ import java.util.Map.Entry;
  *     unified types to source and destination data types</a>
  */
 public final class PostgreSQLMappingProvider {
-  // TODO(thiagotnunes): Add missing type mappings
   private static final ImmutableMap<String, UnifiedTypeMapping> MAPPING =
       ImmutableMap.<String, UnifiedMappingProvider.Type>builder()
           .put("BIGINT", UnifiedMappingProvider.Type.LONG)

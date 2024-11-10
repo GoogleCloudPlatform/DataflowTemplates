@@ -306,7 +306,8 @@ When running to reprocess the 'severe' DLQ directory, run the Dataflow job with 
   1. Currently only MySQL source database is supported.
   2. If forward migration and reverse replication are running in parallel, there is no mechanism to prevent the forward migration of data that was written to source via the reverse replication flow. The impact of this is unnecessary processing of redundant data. The best practice is to start reverse replication post cutover when forward migration has ended.
   3. Schema changes are not supported.
-  4. Certain transformations are not supported, below section lists those:
+  4. Session file modifications to add backticks in table or column names is not supported.
+  5. Certain transformations are not supported, below section lists those:
 
 ### Reverse transformations
 Reverse transformation can not be supported for following scenarios out of the box:

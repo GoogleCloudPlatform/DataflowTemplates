@@ -185,4 +185,16 @@ public class IdentityMapperTest {
     assertNull(mapper.getShardIdColumnName("", ""));
     assertNull(mapper.getShardIdColumnName("xyz", "abc"));
   }
+
+  @Test
+  public void getSyntheticPrimaryKeyColName() {
+    assertNull(mapper.getSyntheticPrimaryKeyColName("", ""));
+    assertNull(mapper.getSyntheticPrimaryKeyColName("xyz", "abc"));
+  }
+
+  @Test
+  public void testColExistsAtSource() {
+    assertTrue(mapper.colExistsAtSource("", "", ""));
+    assertTrue(mapper.colExistsAtSource("", "Users", "id"));
+  }
 }

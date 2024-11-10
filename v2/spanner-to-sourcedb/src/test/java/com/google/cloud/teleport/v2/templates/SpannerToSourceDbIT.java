@@ -145,7 +145,14 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
   private void writeRowInSpanner() {
     // Write a single record to Spanner
     Mutation m =
-        Mutation.newInsertOrUpdateBuilder("Users").set("id").to(1).set("name").to("FF").build();
+        Mutation.newInsertOrUpdateBuilder("Users")
+            .set("id")
+            .to(1)
+            .set("name")
+            .to("FF")
+            .set("from")
+            .to("AA")
+            .build();
     spannerResourceManager.write(m);
 
     // Write a single record to Spanner for the given logical shard
@@ -187,5 +194,6 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     assertThat(rows).hasSize(1);
     assertThat(rows.get(0).get("id")).isEqualTo(1);
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
+    assertThat(rows.get(0).get("from")).isEqualTo("AA");
   }
 }

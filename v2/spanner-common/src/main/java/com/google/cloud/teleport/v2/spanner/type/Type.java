@@ -40,6 +40,7 @@ public final class Type implements Serializable {
   private static final Type TYPE_NUMERIC = new Type(Type.Code.NUMERIC, null, null);
   private static final Type TYPE_STRING = new Type(Type.Code.STRING, null, null);
   private static final Type TYPE_JSON = new Type(Type.Code.JSON, null, null);
+  private static final Type TYPE_TOKENLIST = new Type(Code.TOKENLIST, null, null);
   private static final Type TYPE_BYTES = new Type(Type.Code.BYTES, null, null);
   private static final Type TYPE_TIMESTAMP = new Type(Type.Code.TIMESTAMP, null, null);
   private static final Type TYPE_DATE = new Type(Type.Code.DATE, null, null);
@@ -131,6 +132,11 @@ public final class Type implements Serializable {
   /** Returns the descriptor for the {@code JSON} type. */
   public static Type json() {
     return TYPE_JSON;
+  }
+
+  /** Returns the descriptor for the {@code TOKENLIST} type. */
+  public static Type tokenlist() {
+    return TYPE_TOKENLIST;
   }
 
   /** Returns the descriptor for the {@code BYTES} type: a variable-length byte string. */
@@ -306,6 +312,8 @@ public final class Type implements Serializable {
     FLOAT64("FLOAT64", Dialect.GOOGLE_STANDARD_SQL),
     STRING("STRING", Dialect.GOOGLE_STANDARD_SQL),
     JSON("JSON", Dialect.GOOGLE_STANDARD_SQL),
+    // This type is not supported on PG Spanner.
+    TOKENLIST("TOKENLIST", Dialect.GOOGLE_STANDARD_SQL),
     BYTES("BYTES", Dialect.GOOGLE_STANDARD_SQL),
     TIMESTAMP("TIMESTAMP", Dialect.GOOGLE_STANDARD_SQL),
     DATE("DATE", Dialect.GOOGLE_STANDARD_SQL),
