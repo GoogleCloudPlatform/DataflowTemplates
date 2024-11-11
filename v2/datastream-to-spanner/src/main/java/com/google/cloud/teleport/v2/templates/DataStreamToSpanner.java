@@ -157,7 +157,7 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Datastream output file format (avro/json).",
         helpText =
-            "The format of the output file produced by Datastream. For example `avro,json`. Defaults to: `avro`.")
+            "The format of the output file produced by Datastream. For example `avro,json`. Defaults to `avro`.")
     @Default.String("avro")
     String getInputFileFormat();
 
@@ -425,7 +425,7 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Custom jar location in Cloud Storage",
         helpText =
-            "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records"
+            "Custom JAR file location in Cloud Storage for the file that contains the custom transformation logic for processing records"
                 + " in forward migration.")
     @Default.String("")
     String getTransformationJarPath();

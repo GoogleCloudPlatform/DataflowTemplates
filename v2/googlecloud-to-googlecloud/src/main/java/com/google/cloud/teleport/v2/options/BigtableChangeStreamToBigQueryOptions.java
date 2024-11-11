@@ -55,7 +55,7 @@ public interface BigtableChangeStreamToBigQueryOptions
       optional = true,
       description = "Write values as BigQuery BYTES",
       helpText =
-          "When set to `true`, values are written to the BYTES column. Otherwise, values are written to the STRING column. "
+          "When set to `true`, values are written to a column of type BYTES, otherwise to a column of type STRING . "
               + "Defaults to: `false`.")
   @Default.Boolean(false)
   Boolean getWriteValuesAsBytes();
