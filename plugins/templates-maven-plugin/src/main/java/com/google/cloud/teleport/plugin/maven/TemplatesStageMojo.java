@@ -37,6 +37,9 @@ import com.google.cloud.teleport.plugin.TemplatePluginUtils;
 import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
+import com.google.common.base.Strings;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import freemarker.template.TemplateException;
 import java.io.File;
 import java.io.FileWriter;
@@ -48,6 +51,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -151,6 +155,20 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${unifiedWorker}", readonly = true, required = false)
   protected boolean unifiedWorker;
 
+  @Parameter(defaultValue = "${saSecretName}", readonly = true, required = false)
+  protected String saSecretName;
+
+  @Parameter(defaultValue = "${airlockPythonRepo}", readonly = true, required = false)
+  protected String airlockPythonRepo;
+
+  @Parameter(defaultValue = "${airlockJavaRepo}", readonly = true, required = false)
+  protected String airlockJavaRepo;
+
+  @Parameter(defaultValue = "false", property = "generateSBOM", readonly = true, required = false)
+  protected boolean generateSBOM;
+
+  private boolean internalMaven;
+
   public TemplatesStageMojo() {}
 
   public TemplatesStageMojo(
@@ -174,7 +192,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String javaTemplateLauncherEntryPoint,
       String pythonVersion,
       String beamVersion,
-      boolean unifiedWorker) {
+      boolean unifiedWorker,
+      boolean generateSBOM) {
     this.project = project;
     this.session = session;
     this.outputDirectory = outputDirectory;
@@ -196,6 +215,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     this.pythonVersion = pythonVersion;
     this.beamVersion = beamVersion;
     this.unifiedWorker = unifiedWorker;
+    this.internalMaven = false;
+    this.generateSBOM = generateSBOM;
   }
 
   public void execute() throws MojoExecutionException {
@@ -234,12 +255,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         }
 
         LOG.info("Staging template {}...", currentTemplateName);
-
-        if (definition.isFlex()) {
-          stageFlexTemplate(definition, imageSpec, pluginManager);
-        } else {
-          stageClassicTemplate(definition, imageSpec, pluginManager);
-        }
+        stageTemplate(definition, imageSpec, pluginManager);
       }
 
     } catch (DependencyResolutionRequiredException e) {
@@ -262,7 +278,14 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (definition.isClassic()) {
       return stageClassicTemplate(definition, imageSpec, pluginManager);
     } else {
-      return stageFlexTemplate(definition, imageSpec, pluginManager);
+      String stagedTemplate = stageFlexTemplate(definition, imageSpec, pluginManager);
+      if (generateSBOM) {
+        String imagePath = imageSpec.getImage();
+        File buildDir = new File(outputClassesDirectory.getAbsolutePath());
+        performVulnerabilityScanAndGenerateUserSBOM(imagePath, projectId, buildDir);
+        Failsafe.with(sbomRetryPolicy()).run(() -> generateSystemSBOM(imagePath));
+      }
+      return stagedTemplate;
     }
   }
 
@@ -371,6 +394,16 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       TemplateDefinitions definition, ImageSpec imageSpec, BuildPluginManager pluginManager)
       throws MojoExecutionException, IOException, InterruptedException, TemplateException {
 
+    // These are set by the .mvn/settings.xml file. This tells the plugin to use Airlock repos
+    // for building artifacts in Dockerfile-based images (XLANG, PYTHON, YAML). Airlock deps are
+    // only available when running PRs on DataflowTemplates GitHub repo and when releasing
+    // internally, so avoid specifying these 3 parameters when building custom templates externally.
+    if (!Strings.isNullOrEmpty(saSecretName)
+        && !Strings.isNullOrEmpty(airlockPythonRepo)
+        && !Strings.isNullOrEmpty(airlockJavaRepo)) {
+      internalMaven = true;
+    }
+
     // Override some image spec attributes available only during staging/release:
     String version = TemplateDefinitionsParser.parseVersion(stagePrefix);
     String containerName = definition.getTemplateAnnotation().flexContainerName();
@@ -389,9 +422,15 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     String imagePath = imageSpec.getImage();
     LOG.info("Stage image to GCR: {}", imagePath);
 
-    File imageSpecFile = generator.saveImageSpec(definition, imageSpec, outputClassesDirectory);
-    File metadataFile =
-        generator.saveMetadata(definition, imageSpec.getMetadata(), outputClassesDirectory);
+    boolean stageImageOnly = definition.getTemplateAnnotation().stageImageOnly();
+
+    String metadataFile = "";
+    if (!stageImageOnly) {
+      metadataFile =
+          generator
+              .saveMetadata(definition, imageSpec.getMetadata(), outputClassesDirectory)
+              .getName();
+    }
 
     File xlangOutputDir;
     File commandSpecFile;
@@ -407,8 +446,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     String templatePath =
         "gs://" + bucketNameOnly(bucketName) + "/" + stagePrefix + "/flex/" + currentTemplateName;
-
-    boolean stageImageOnly = definition.getTemplateAnnotation().stageImageOnly();
 
     if (definition.getTemplateAnnotation().type() == TemplateType.JAVA
         || definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
@@ -431,6 +468,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       // metadata we'll have to update gcloud CLI logic accordingly.
       // TODO: Check if the same should be applied to Python templates:
       if (!stageImageOnly) {
+        File imageSpecFile = generator.saveImageSpec(definition, imageSpec, outputClassesDirectory);
         LOG.info(
             "Overriding Flex template spec file generated by gcloud command at [{}] with local file"
                 + " [{}]",
@@ -458,13 +496,15 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       BuildPluginManager pluginManager,
       String currentTemplateName,
       String imagePath,
-      File metadataFile,
+      String metadataFile,
       String appRoot,
       String commandSpec,
       String commandSpecFileName,
       String templatePath)
       throws MojoExecutionException, IOException, InterruptedException, TemplateException {
     String containerName = definition.getTemplateAnnotation().flexContainerName();
+    String tarFileName =
+        String.format("%s/%s/%s.tar", outputDirectory.getPath(), containerName, containerName);
     Plugin plugin =
         plugin(
             "com.google.cloud.tools",
@@ -487,6 +527,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             element("entrypoint", "INHERIT"),
             // Point to the command spec
             element("environment", element("DATAFLOW_JAVA_COMMAND_SPEC", commandSpec))));
+    elements.add(element("outputPaths", element("tar", tarFileName)));
 
     // Only use shaded JAR and exclude libraries if shade was not disabled
     if (System.getProperty("skipShade") == null
@@ -535,7 +576,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         if (filesToCopy.isEmpty()) {
           filesToCopy =
               List.of(
-                  String.format("%s-generated-metadata.json", containerName), "requirements.txt*");
+                  String.format("%s-generated-metadata.json", containerName), "requirements.txt");
         }
         List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
         if (entryPoint.isEmpty()) {
@@ -554,21 +595,31 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               StandardCopyOption.REPLACE_EXISTING);
         }
 
+        // Generate Dockerfile
+        LOG.info("Generating dockerfile " + dockerfilePath);
         Set<String> directoriesToCopy = Set.of(containerName);
-        DockerfileGenerator.builder(
-                definition.getTemplateAnnotation().type(),
-                beamVersion,
-                containerName,
-                outputClassesDirectory)
-            .setBasePythonContainerImage(basePythonContainerImage)
-            .setBaseJavaContainerImage(baseContainerImage)
-            .setPythonVersion(pythonVersion)
-            .setEntryPoint(entryPoint)
-            .setCommandSpec(xlangCommandSpec)
-            .setFilesToCopy(filesToCopy)
-            .setDirectoriesToCopy(directoriesToCopy)
-            .build()
-            .generate();
+        DockerfileGenerator.Builder dockerfileBuilder =
+            DockerfileGenerator.builder(
+                    definition.getTemplateAnnotation().type(),
+                    beamVersion,
+                    containerName,
+                    outputClassesDirectory)
+                .setBasePythonContainerImage(basePythonContainerImage)
+                .setBaseJavaContainerImage(baseContainerImage)
+                .setPythonVersion(pythonVersion)
+                .setEntryPoint(entryPoint)
+                .setCommandSpec(xlangCommandSpec)
+                .setFilesToCopy(filesToCopy)
+                .setDirectoriesToCopy(directoriesToCopy);
+
+        // Set Airlock parameters
+        if (internalMaven) {
+          dockerfileBuilder
+              .setServiceAccountSecretName(saSecretName)
+              .setAirlockPythonRepo(airlockPythonRepo);
+        }
+
+        dockerfileBuilder.build().generate();
       }
 
       // Copy java classes and libs to build directory
@@ -576,72 +627,50 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
       LOG.info("Staging XLANG image using Dockerfile");
       stageXlangUsingDockerfile(imagePath, containerName);
-
-      // Skip GCS spec file creation
-      if (definition.getTemplateAnnotation().stageImageOnly()) {
-        return;
-      }
-
-      flexTemplateBuildCmd =
-          new String[] {
-            "gcloud",
-            "dataflow",
-            "flex-template",
-            "build",
-            templatePath,
-            "--image",
-            imagePath,
-            "--project",
-            projectId,
-            "--sdk-language",
-            "JAVA",
-            "--metadata-file",
-            outputClassesDirectory.getAbsolutePath() + "/" + metadataFile.getName(),
-            "--additional-user-labels",
-            "goog-dataflow-provided-template-name="
-                + currentTemplateName.toLowerCase()
-                + ",goog-dataflow-provided-template-version="
-                + TemplateDefinitionsParser.parseVersion(stagePrefix)
-                + ",goog-dataflow-provided-template-type=flex"
-          };
     } else {
       // Jib's LayerFilter extension is not thread-safe, do only one at a time
       synchronized (TemplatesStageMojo.class) {
         executeMojo(
             plugin,
-            goal("build"),
+            goal(generateSBOM ? "buildTar" : "build"),
             configuration(elements.toArray(new Element[elements.size()])),
             executionEnvironment(project, session, pluginManager));
       }
 
-      // Skip GCS spec file creation
-      if (definition.getTemplateAnnotation().stageImageOnly()) {
-        return;
+      if (generateSBOM) {
+        // Send image tar to Cloud Build for vulnerability scanning before pushing
+        LOG.info("Using Cloud Build to push image {}", imagePath);
+        stageFlexTemplateUsingCloudBuild(new File(tarFileName), imagePath);
       }
-
-      flexTemplateBuildCmd =
-          new String[] {
-            "gcloud",
-            "dataflow",
-            "flex-template",
-            "build",
-            templatePath,
-            "--image",
-            imagePath,
-            "--project",
-            projectId,
-            "--sdk-language",
-            definition.getTemplateAnnotation().type().name(),
-            "--metadata-file",
-            outputClassesDirectory.getAbsolutePath() + "/" + metadataFile.getName(),
-            "--additional-user-labels",
-            "goog-dataflow-provided-template-name="
-                + currentTemplateName.toLowerCase()
-                + ",goog-dataflow-provided-template-version="
-                + TemplateDefinitionsParser.parseVersion(stagePrefix)
-                + ",goog-dataflow-provided-template-type=flex"
-          };
     }
+
+    // Skip GCS spec file creation
+    if (definition.getTemplateAnnotation().stageImageOnly()) {
+      return;
+    }
+
+    flexTemplateBuildCmd =
+        new String[] {
+          "gcloud",
+          "dataflow",
+          "flex-template",
+          "build",
+          templatePath,
+          "--image",
+          imagePath,
+          "--project",
+          projectId,
+          "--sdk-language",
+          "JAVA",
+          "--metadata-file",
+          outputClassesDirectory.getAbsolutePath() + "/" + metadataFile,
+          "--additional-user-labels",
+          "goog-dataflow-provided-template-name="
+              + currentTemplateName.toLowerCase()
+              + ",goog-dataflow-provided-template-version="
+              + TemplateDefinitionsParser.parseVersion(stagePrefix)
+              + ",goog-dataflow-provided-template-type=flex"
+        };
 
     LOG.info("Running: {}", String.join(" ", flexTemplateBuildCmd));
 
@@ -660,7 +689,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       TemplateDefinitions definition,
       String currentTemplateName,
       String imagePath,
-      File metadataFile,
+      String metadataFile,
       String containerName,
       String templatePath)
       throws IOException, InterruptedException, TemplateException {
@@ -671,26 +700,38 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (!dockerfile.exists()) {
       List<String> filesToCopy = List.of(definition.getTemplateAnnotation().filesToCopy());
       if (filesToCopy.isEmpty()) {
-        filesToCopy = List.of("main.py", "requirements.txt*");
+        filesToCopy = List.of("main.py", "requirements.txt");
       }
       List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
       if (entryPoint.isEmpty()) {
         entryPoint = List.of(pythonTemplateLauncherEntryPoint);
       }
-      DockerfileGenerator.builder(
-              definition.getTemplateAnnotation().type(),
-              beamVersion,
-              containerName,
-              outputClassesDirectory)
-          .setBasePythonContainerImage(basePythonContainerImage)
-          .setBaseJavaContainerImage(baseContainerImage)
-          .setPythonVersion(pythonVersion)
-          .setEntryPoint(entryPoint)
-          .setFilesToCopy(filesToCopy)
-          .build()
-          .generate();
+
+      // Generate Dockerfile
+      LOG.info("Generating dockerfile " + dockerfilePath);
+      DockerfileGenerator.Builder dockerfileBuilder =
+          DockerfileGenerator.builder(
+                  definition.getTemplateAnnotation().type(),
+                  beamVersion,
+                  containerName,
+                  outputClassesDirectory)
+              .setBasePythonContainerImage(basePythonContainerImage)
+              .setBaseJavaContainerImage(baseContainerImage)
+              .setPythonVersion(pythonVersion)
+              .setEntryPoint(entryPoint)
+              .setFilesToCopy(filesToCopy);
+
+      // Set Airlock parameters
+      if (internalMaven) {
+        dockerfileBuilder
+            .setServiceAccountSecretName(saSecretName)
+            .setAirlockPythonRepo(airlockPythonRepo)
+            .setAirlockJavaRepo(airlockJavaRepo);
+      }
+      dockerfileBuilder.build().generate();
     }
 
+    LOG.info("Staging YAML image using Dockerfile");
     stageYamlUsingDockerfile(imagePath, containerName);
 
     // Skip GCS spec file creation
@@ -712,7 +753,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           "--sdk-language",
           "PYTHON",
           "--metadata-file",
-          outputClassesDirectory.getAbsolutePath() + "/" + metadataFile.getName(),
+          outputClassesDirectory.getAbsolutePath() + "/" + metadataFile,
           "--additional-user-labels",
           "goog-dataflow-provided-template-name="
               + currentTemplateName.toLowerCase()
@@ -737,18 +778,17 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       TemplateDefinitions definition,
       String currentTemplateName,
       String imagePath,
-      File metadataFile,
+      String metadataFile,
       String containerName,
       String templatePath)
       throws IOException, InterruptedException, TemplateException {
     String dockerfileContainer = outputClassesDirectory.getPath() + "/" + containerName;
     String dockerfilePath = dockerfileContainer + "/Dockerfile";
-    LOG.info("Generating dockerfile " + dockerfilePath);
     File dockerfile = new File(dockerfilePath);
     if (!dockerfile.exists()) {
       List<String> filesToCopy = List.of(definition.getTemplateAnnotation().filesToCopy());
       if (filesToCopy.isEmpty()) {
-        filesToCopy = List.of("main.py", "requirements.txt*");
+        filesToCopy = List.of("main.py", "requirements.txt");
       }
       List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
       if (entryPoint.isEmpty()) {
@@ -765,17 +805,29 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             StandardCopyOption.REPLACE_EXISTING);
       }
 
-      DockerfileGenerator.builder(
-              definition.getTemplateAnnotation().type(),
-              beamVersion,
-              containerName,
-              targetDirectory)
-          .setBasePythonContainerImage(basePythonContainerImage)
-          .setFilesToCopy(filesToCopy)
-          .setEntryPoint(entryPoint)
-          .build()
-          .generate();
+      // Generate Dockerfile
+      LOG.info("Generating dockerfile " + dockerfilePath);
+      DockerfileGenerator.Builder dockerfileBuilder =
+          DockerfileGenerator.builder(
+                  definition.getTemplateAnnotation().type(),
+                  beamVersion,
+                  containerName,
+                  targetDirectory)
+              .setBasePythonContainerImage(basePythonContainerImage)
+              .setFilesToCopy(filesToCopy)
+              .setEntryPoint(entryPoint);
+
+      // Set Airlock parameters
+      if (internalMaven) {
+        dockerfileBuilder
+            .setServiceAccountSecretName(saSecretName)
+            .setAirlockPythonRepo(airlockPythonRepo);
+      }
+
+      dockerfileBuilder.build().generate();
     }
+
+    LOG.info("Staging PYTHON image using Dockerfile");
     stagePythonUsingDockerfile(imagePath, containerName);
 
     // Skip GCS spec file creation
@@ -797,7 +849,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           "--sdk-language",
           definition.getTemplateAnnotation().type().name(),
           "--metadata-file",
-          outputClassesDirectory.getAbsolutePath() + "/" + metadataFile.getName(),
+          outputClassesDirectory.getAbsolutePath() + "/" + metadataFile,
           "--additional-user-labels",
           "goog-dataflow-provided-template-name="
               + currentTemplateName.toLowerCase()
@@ -825,6 +877,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
       String cacheFolder = imagePath.substring(0, imagePath.lastIndexOf('/')) + "/cache";
+      String tarPath = "/workspace/" + yamlTemplateName + ".tar\n";
       writer.write(
           "steps:\n"
               + "- name: gcr.io/kaniko-project/executor\n"
@@ -838,9 +891,29 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --compressed-caching=false\n"
               + "  - --cache-copy-layers=true\n"
               + "  - --cache-repo="
-              + cacheFolder);
+              + cacheFolder
+              + (generateSBOM
+                  ? "\n"
+                      + "  - --no-push\n"
+                      + "  - --tar-path="
+                      + tarPath
+                      + "\n"
+                      + "- name: 'gcr.io/cloud-builders/docker'\n"
+                      + "  args:\n"
+                      + "  - load\n"
+                      + "  - --input="
+                      + tarPath
+                      + "\n"
+                      + "images: ['"
+                      + imagePath
+                      + "']\n"
+                      + "options:\n"
+                      + "  requestedVerifyOption: VERIFIED"
+                  : ""));
     }
 
+    LOG.info("Submitting Cloud Build job with config: " + cloudbuildFile.getAbsolutePath());
+    StringBuilder cloudBuildLogs = new StringBuilder();
     Process stageProcess =
         runCommand(
             new String[] {
@@ -856,12 +929,15 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               "--project",
               projectId
             },
-            directory);
+            directory,
+            cloudBuildLogs);
 
     // Ideally this should raise an exception, but in GitHub Actions this returns NZE even for
     // successful runs.
     if (stageProcess.waitFor() != 0) {
-      LOG.warn("Possible error building container image using gcloud. Check logs for details.");
+      LOG.warn(
+          "Possible error building container image using gcloud. Check logs for details. {}",
+          cloudBuildLogs);
     }
   }
 
@@ -872,6 +948,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
       String cacheFolder = imagePath.substring(0, imagePath.lastIndexOf('/')) + "/cache";
+      String tarPath = "/workspace/" + containerName + ".tar\n";
       writer.write(
           "steps:\n"
               + "- name: gcr.io/kaniko-project/executor\n"
@@ -884,9 +961,29 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --compressed-caching=false\n"
               + "  - --cache-copy-layers=true\n"
               + "  - --cache-repo="
-              + cacheFolder);
+              + cacheFolder
+              + (generateSBOM
+                  ? "\n"
+                      + "  - --no-push\n"
+                      + "  - --tar-path="
+                      + tarPath
+                      + "\n"
+                      + "- name: 'gcr.io/cloud-builders/docker'\n"
+                      + "  args:\n"
+                      + "  - load\n"
+                      + "  - --input="
+                      + tarPath
+                      + "\n"
+                      + "images: ['"
+                      + imagePath
+                      + "']\n"
+                      + "options:\n"
+                      + "  requestedVerifyOption: VERIFIED"
+                  : ""));
     }
 
+    LOG.info("Submitting Cloud Build job with config: " + cloudbuildFile.getAbsolutePath());
+    StringBuilder cloudBuildLogs = new StringBuilder();
     Process stageProcess =
         runCommand(
             new String[] {
@@ -902,12 +999,15 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               "--project",
               projectId
             },
-            directory);
+            directory,
+            cloudBuildLogs);
 
     // Ideally this should raise an exception, but in GitHub Actions this returns NZE even for
     // successful runs.
     if (stageProcess.waitFor() != 0) {
-      LOG.warn("Possible error building container image using gcloud. Check logs for details.");
+      LOG.warn(
+          "Possible error building container image using gcloud. Check logs for details. {}",
+          cloudBuildLogs);
     }
   }
 
@@ -954,12 +1054,59 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
   }
 
+  private void stageFlexTemplateUsingCloudBuild(File tarFile, String imagePath)
+      throws IOException, InterruptedException {
+    File directory = tarFile.getParentFile();
+
+    File cloudbuildFile = File.createTempFile(directory + "/cloudbuild", ".yaml");
+    try (FileWriter writer = new FileWriter(cloudbuildFile)) {
+      writer.write(
+          "steps:\n"
+              + "- name: 'gcr.io/cloud-builders/docker'\n"
+              + "  args:\n"
+              + "  - load\n"
+              + "  - --input="
+              + tarFile.getName()
+              + "\n"
+              + "images: ['"
+              + imagePath
+              + "']\n"
+              + "options:\n"
+              + "  requestedVerifyOption: VERIFIED");
+    }
+
+    LOG.info("Submitting Cloud Build job with config: " + cloudbuildFile.getAbsolutePath());
+    StringBuilder cloudBuildLogs = new StringBuilder();
+    Process stageProcess =
+        runCommand(
+            new String[] {
+              "gcloud",
+              "builds",
+              "submit",
+              "--config",
+              cloudbuildFile.getAbsolutePath(),
+              "--project",
+              projectId
+            },
+            directory,
+            cloudBuildLogs);
+
+    // Ideally this should raise an exception, but in GitHub Actions this returns NZE even for
+    // successful runs.
+    if (stageProcess.waitFor() != 0) {
+      LOG.warn(
+          "Possible error building container image using gcloud. Check logs for details. {}",
+          cloudBuildLogs);
+    }
+  }
+
   private void stageXlangUsingDockerfile(String imagePath, String containerName)
       throws IOException, InterruptedException {
     String dockerfile = containerName + "/Dockerfile";
     File directory = new File(outputClassesDirectory.getAbsolutePath());
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
+    String tarPath = "/workspace/" + containerName + ".tar\n";
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
       String cacheFolder = imagePath.substring(0, imagePath.lastIndexOf('/')) + "/cache";
       writer.write(
@@ -977,9 +1124,29 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --compressed-caching=false\n"
               + "  - --cache-copy-layers=true\n"
               + "  - --cache-repo="
-              + cacheFolder);
+              + cacheFolder
+              + (generateSBOM
+                  ? "\n"
+                      + "  - --no-push\n"
+                      + "  - --tar-path="
+                      + tarPath
+                      + "\n"
+                      + "- name: 'gcr.io/cloud-builders/docker'\n"
+                      + "  args:\n"
+                      + "  - load\n"
+                      + "  - --input="
+                      + tarPath
+                      + "\n"
+                      + "images: ['"
+                      + imagePath
+                      + "']\n"
+                      + "options:\n"
+                      + "  requestedVerifyOption: VERIFIED"
+                  : ""));
     }
-    LOG.info("Submitting cloudbuild job with config: " + cloudbuildFile.getAbsolutePath());
+
+    LOG.info("Submitting Cloud Build job with config: " + cloudbuildFile.getAbsolutePath());
+    StringBuilder cloudBuildLogs = new StringBuilder();
     Process stageProcess =
         runCommand(
             new String[] {
@@ -995,12 +1162,15 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               "--project",
               projectId
             },
-            directory);
+            directory,
+            cloudBuildLogs);
 
-    // Ideally this should raise an exception, but in GitHub Actions this returns NZE even for
+    // Ideally this should raise an exception, but this returns NZE even for
     // successful runs.
     if (stageProcess.waitFor() != 0) {
-      LOG.warn("Possible error building container image using gcloud. Check logs for details.");
+      LOG.warn(
+          "Possible error building container image using gcloud. Check logs for details. {}",
+          cloudBuildLogs);
     }
   }
 
@@ -1042,12 +1212,99 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
   }
 
-  private static Process runCommand(String[] gcloudBuildsCmd, File directory) throws IOException {
+  private static void performVulnerabilityScanAndGenerateUserSBOM(
+      String imagePath, String projectId, File buildDir) throws IOException, InterruptedException {
+    LOG.info("Generating user SBOM and Performing security scan for {}...", imagePath);
+
+    File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
+    try (FileWriter writer = new FileWriter(cloudbuildFile)) {
+      writer.write(
+          "steps:\n"
+              + "- name: 'gcr.io/cloud-builders/docker:24.0.9'\n"
+              + "  entrypoint: bash\n"
+              + "  args:\n"
+              + "  - -c\n"
+              + "  - |-\n"
+              + "    mkdir -p ~/.docker/cli-plugins\n"
+              + "    curl -sSfL https://raw.githubusercontent.com/docker/sbom-cli-plugin/main/install.sh | sh -s --\n"
+              + "    docker sbom "
+              + imagePath
+              + " --format=spdx-json --output=/workspace/user-sbom.json\n"
+              + "- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'\n"
+              + "  entrypoint: gcloud\n"
+              + "  args:\n"
+              + "  - artifacts\n"
+              + "  - sbom\n"
+              + "  - load\n"
+              + "  - --source=/workspace/user-sbom.json\n"
+              + "  - --uri="
+              + imagePath
+              + "\n"
+              + "- name: 'us-docker.pkg.dev/scaevola-builder-integration/release/scanvola/scanvola'\n"
+              + "  args:\n"
+              + "  - --image="
+              + imagePath
+              + ":latest");
+    }
+
+    LOG.info("Submitting Cloud Build job with config: " + cloudbuildFile.getAbsolutePath());
+    StringBuilder cloudBuildLogs = new StringBuilder();
+    Process stageProcess =
+        runCommand(
+            new String[] {
+              "gcloud",
+              "builds",
+              "submit",
+              "--config",
+              cloudbuildFile.getAbsolutePath(),
+              "--project",
+              projectId
+            },
+            buildDir,
+            cloudBuildLogs);
+
+    // Ideally this should raise an exception, but this returns NZE even for
+    // successful runs.
+    if (stageProcess.waitFor() != 0) {
+      LOG.warn("Error scanning container. Check logs for details. " + cloudBuildLogs);
+    }
+  }
+
+  private static void generateSystemSBOM(String imagePath)
+      throws InterruptedException, IOException {
+    LOG.info("Generating system SBOM for {}...", imagePath);
+    Process sbomCommand =
+        runCommand(
+            new String[] {"gcloud", "artifacts", "sbom", "export", "--uri", imagePath + ":latest"},
+            null);
+
+    if (sbomCommand.waitFor() != 0) {
+      throw new IllegalStateException("Error generating SBOM. Check logs for details.");
+    }
+  }
+
+  private static <T> RetryPolicy<T> sbomRetryPolicy() {
+    return RetryPolicy.<T>builder()
+        .handleIf(
+            throwable ->
+                throwable.getMessage() != null
+                    && throwable.getMessage().contains("Error generating SBOM."))
+        .withBackoff(Duration.ofSeconds(10), Duration.ofSeconds(60))
+        .withMaxRetries(5)
+        .build();
+  }
+
+  private static Process runCommand(
+      String[] gcloudBuildsCmd, File directory, StringBuilder cloudBuildLogs) throws IOException {
     LOG.info("Running: {}", String.join(" ", gcloudBuildsCmd));
 
     Process process = Runtime.getRuntime().exec(gcloudBuildsCmd, null, directory);
-    TemplatePluginUtils.redirectLinesLog(process.getInputStream(), LOG);
-    TemplatePluginUtils.redirectLinesLog(process.getErrorStream(), LOG);
+    TemplatePluginUtils.redirectLinesLog(process.getInputStream(), LOG, cloudBuildLogs);
+    TemplatePluginUtils.redirectLinesLog(process.getErrorStream(), LOG, cloudBuildLogs);
     return process;
+  }
+
+  private static Process runCommand(String[] gcloudBuildsCmd, File directory) throws IOException {
+    return runCommand(gcloudBuildsCmd, directory, null);
   }
 }

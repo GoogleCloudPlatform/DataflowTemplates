@@ -198,6 +198,50 @@ public final class SpannerResourceManagerTest {
   }
 
   @Test
+  public void testExecuteDdlStatementShouldRetryOnResourceExhaustedError()
+      throws ExecutionException, InterruptedException {
+    //   arrange
+    prepareCreateInstanceMock();
+    prepareCreateDatabaseMock();
+    String statement =
+        "CREATE TABLE Singers (\n"
+            + "  SingerId   INT64 NOT NULL,\n"
+            + "  FirstName  STRING(1024),\n"
+            + "  LastName   STRING(1024),\n"
+            + ") PRIMARY KEY (SingerId)";
+
+    RuntimeException resourceExhaustedException =
+        new RuntimeException(
+            "com.google.cloud.spanner.SpannerException: RESOURCE_EXHAUSTED: io.grpc.StatusRuntimeException: RESOURCE_EXHAUSTED: CPU overload detected");
+    when(spanner.getDatabaseAdminClient().updateDatabaseDdl(any(), any(), any(), any()).get())
+        .thenThrow(resourceExhaustedException)
+        .thenReturn(null);
+
+    // act
+    testManager.executeDdlStatement(statement);
+
+    // assert
+    // verify createInstance, createDatabase, and updateDatabaseDdl were called.
+    verify(spanner.getInstanceAdminClient(), times(2)).createInstance(any());
+    verify(spanner.getDatabaseAdminClient(), times(2)).createDatabase(any(), any());
+    verify(spanner.getDatabaseAdminClient(), times(3))
+        .updateDatabaseDdl(
+            instanceIdCaptor.capture(),
+            databaseIdCaptor.capture(),
+            statementCaptor.capture(),
+            any());
+
+    String actualInstanceId = instanceIdCaptor.getValue();
+    String actualDatabaseId = databaseIdCaptor.getValue();
+    Iterable<String> actualStatement = statementCaptor.getValue();
+
+    assertThat(actualInstanceId).matches(TEST_ID + "-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}");
+
+    assertThat(actualDatabaseId).matches(TEST_ID + "_\\d{8}_\\d{6}_[a-zA-Z0-9]{6}");
+    assertThat(actualStatement).containsExactlyElementsIn(ImmutableList.of(statement));
+  }
+
+  @Test
   public void testWriteSingleRecordShouldWorkWhenSpannerWriteSucceeds()
       throws ExecutionException, InterruptedException {
     // arrange

@@ -133,6 +133,9 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${parameters}", readonly = true, required = true)
   protected String parameters;
 
+  @Parameter(defaultValue = "false", property = "generateSBOM", readonly = true, required = false)
+  protected boolean generateSBOM;
+
   public void execute() throws MojoExecutionException {
 
     try {
@@ -191,7 +194,8 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
               javaTemplateLauncherEntryPoint,
               pythonVersion,
               beamVersion,
-              unifiedWorker);
+              unifiedWorker,
+              generateSBOM);
 
       String useJobName =
           StringUtils.isNotEmpty(jobName)

@@ -161,6 +161,12 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
     // Assert Conditions
     assertThatResult(result).meetsConditions();
 
+    // Sleep for cutover time to wait till all CDCs propagate.
+    // A real world customer also has a small cut over time to reach consistency.
+    try {
+      Thread.sleep(CUTOVER_MILLIS);
+    } catch (InterruptedException e) {
+    }
     assertCategoryTableCdcContents();
   }
 

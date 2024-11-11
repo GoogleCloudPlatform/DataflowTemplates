@@ -23,6 +23,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.ImageSpecMetadata;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
+import com.google.cloud.teleport.plugin.sample.AtoBNestedFlex;
 import com.google.cloud.teleport.plugin.sample.AtoBOk;
 import com.google.common.io.Files;
 import com.google.gson.Gson;
@@ -90,6 +91,22 @@ public class TemplateSpecsGeneratorTest {
               new String(fis.readAllBytes(), StandardCharsets.UTF_8), ImageSpecMetadata.class);
       assertEquals(metadata.getName(), read.getName());
     }
+  }
+
+  @Test
+  public void saveMetadataNestedFlex() {
+    TemplateDefinitions nestedFlexDefinition =
+        new TemplateDefinitions(
+            AtoBNestedFlex.class, AtoBNestedFlex.class.getAnnotation(Template.class));
+    ImageSpec nestedFlexImageSpec = definitions.buildSpecModel(false);
+    ImageSpecMetadata metadata = nestedFlexImageSpec.getMetadata();
+
+    File saveMetadata = generator.saveMetadata(nestedFlexDefinition, metadata, outputFolder);
+    assertNotNull(saveMetadata);
+    assertTrue(saveMetadata.exists());
+    assertEquals(
+        saveMetadata.getPath(),
+        outputFolder.toPath().resolve("AtoBNestedFlex-generated-metadata.json").toString());
   }
 
   @Test

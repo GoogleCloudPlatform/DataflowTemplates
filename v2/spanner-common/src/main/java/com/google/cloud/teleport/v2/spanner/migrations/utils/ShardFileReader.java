@@ -31,6 +31,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.commons.io.IOUtils;
@@ -218,6 +219,8 @@ public class ShardFileReader {
                 + "  for host "
                 + host);
       }
+      String namespace =
+          Optional.ofNullable(dataShard.get("namespace")).map(Object::toString).orElse(null);
 
       Shard shard =
           new Shard(
@@ -227,6 +230,7 @@ public class ShardFileReader {
               (String) (dataShard.get("user")),
               password,
               "",
+              namespace,
               (String) (dataShard.get("secretManagerUri")),
               dataShard.getOrDefault("connectionProperties", "").toString());
 

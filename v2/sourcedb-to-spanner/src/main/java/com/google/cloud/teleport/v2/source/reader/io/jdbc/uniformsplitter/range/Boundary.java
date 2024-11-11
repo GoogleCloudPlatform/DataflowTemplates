@@ -146,7 +146,7 @@ public abstract class Boundary<T extends Serializable>
    */
   public boolean isSplittable(@Nullable ProcessContext processContext) {
     T mid = splitPoint(processContext);
-    return !(end().equals(mid)) && !(start().equals(mid));
+    return !(Objects.equal(end(), mid)) && !(Objects.equal(start(), mid));
   }
 
   /**

@@ -1,0 +1,14 @@
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+  categories:
+    - title: New Templates
+      labels:
+        - new-template
+    - title: Improvements
+      labels:
+        - improvement
+    - title: Bug fixes
+      labels:
+        - bug-fix

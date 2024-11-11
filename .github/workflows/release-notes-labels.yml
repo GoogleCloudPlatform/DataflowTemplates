@@ -1,0 +1,21 @@
+name: Enforce labels for release notes
+on:
+  pull_request:
+    types: [opened, labeled, unlabeled, synchronize]
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: mheap/github-action-required-labels@d25134c992b943fb6ad00c25ea00eb5988c0a9dd
+        with:
+          mode: minimum
+          count: 1
+          labels: |
+            ignore-for-release
+            new-template
+            improvement
+            bug-fix
+          message: "This PR is being prevented from merging because you have not added any of the following labels: [ignore-for-release, new-template, improvement, bug-fix]. You'll need to add one before this PR can be merged so that these can be used for release notes. For more information, see https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#release-notes"

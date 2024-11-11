@@ -43,7 +43,6 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
-import org.apache.commons.lang3.StringUtils;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
@@ -62,7 +61,7 @@ public class DeadLetterQueue implements Serializable {
 
   private final PTransform<PCollection<String>, PDone> dlqTransform;
 
-  private final String shardIdColumn;
+  private Map<String, String> srcTableToShardIdColumnMap;
 
   private final SQLDialect sqlDialect;
 
@@ -70,8 +69,11 @@ public class DeadLetterQueue implements Serializable {
       Metrics.counter(SpannerWriter.class, MetricCounters.FAILED_MUTATION_ERRORS);
 
   public static DeadLetterQueue create(
-      String dlqDirectory, Ddl ddl, String shardIdColumn, SQLDialect sqlDialect) {
-    return new DeadLetterQueue(dlqDirectory, ddl, shardIdColumn, sqlDialect);
+      String dlqDirectory,
+      Ddl ddl,
+      Map<String, String> srcTableToShardIdColumnMap,
+      SQLDialect sqlDialect) {
+    return new DeadLetterQueue(dlqDirectory, ddl, srcTableToShardIdColumnMap, sqlDialect);
   }
 
   public String getDlqDirectory() {
@@ -83,11 +85,14 @@ public class DeadLetterQueue implements Serializable {
   }
 
   private DeadLetterQueue(
-      String dlqDirectory, Ddl ddl, String shardIdColumn, SQLDialect sqlDialect) {
+      String dlqDirectory,
+      Ddl ddl,
+      Map<String, String> srcTableToShardIdColumnMap,
+      SQLDialect sqlDialect) {
     this.dlqDirectory = dlqDirectory;
     this.dlqTransform = createDLQTransform(dlqDirectory);
     this.ddl = ddl;
-    this.shardIdColumn = shardIdColumn;
+    this.srcTableToShardIdColumnMap = srcTableToShardIdColumnMap;
     this.sqlDialect = sqlDialect;
   }
 
@@ -185,8 +190,11 @@ public class DeadLetterQueue implements Serializable {
       Object value = record.get(f.name());
       json.put(f.name(), value == null ? null : value.toString());
     }
-    if (StringUtils.isNotBlank(this.shardIdColumn)) {
-      json.put(this.shardIdColumn, r.row().shardId());
+    if (r.row().shardId() != null) {
+      // Added default to not fail in the DLQ flow if the src table is not found in map
+      json.put(
+          srcTableToShardIdColumnMap.getOrDefault(r.row().tableName(), "migration_shard_id"),
+          r.row().shardId());
     }
     FailsafeElement<String, String> dlqElement =
         FailsafeElement.of(json.toString(), json.toString());

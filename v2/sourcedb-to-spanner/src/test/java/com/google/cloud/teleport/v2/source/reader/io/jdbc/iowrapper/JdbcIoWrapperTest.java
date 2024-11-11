@@ -466,4 +466,10 @@ public class JdbcIoWrapperTest {
                     .setIsUnique(true)
                     .build()));
   }
+
+  @Test
+  public void testIdentifierEscaping() {
+    assertThat(JdbcIoWrapper.delimitIdentifier("key")).isEqualTo("\"key\"");
+    assertThat(JdbcIoWrapper.delimitIdentifier("ke\"y")).isEqualTo("\"ke\"\"y\"");
+  }
 }

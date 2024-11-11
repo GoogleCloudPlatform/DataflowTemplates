@@ -43,6 +43,8 @@ public class FormatDatastreamRecordToJsonTest {
 
   private static final String EVENT_UUID_KEY = "_metadata_uuid";
 
+  private static final String EVENT_DATAFLOW_TIMESTAMP_KEY = "_metadata_dataflow_timestamp";
+
   private static final String EXPECTED_FIRST_RECORD =
       "{\"LOCATION_ID\":1000.0,\"STREET_ADDRESS\":\"1297 Via Cola di Rie\","
           + "\"POSTAL_CODE\":\"00989\",\"CITY\":\"Roma\",\"STATE_PROVINCE\":null,"
@@ -126,6 +128,7 @@ public class FormatDatastreamRecordToJsonTest {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode changeEvent = mapper.readTree(jsonData);
     ((ObjectNode) changeEvent).remove(EVENT_UUID_KEY);
+    ((ObjectNode) changeEvent).remove(EVENT_DATAFLOW_TIMESTAMP_KEY);
     assertEquals(EXPECTED_FIRST_RECORD, changeEvent.toString());
     while (dataFileReader.hasNext()) {
       record = dataFileReader.next();
@@ -147,6 +150,7 @@ public class FormatDatastreamRecordToJsonTest {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode changeEvent = mapper.readTree(jsonData);
     ((ObjectNode) changeEvent).remove(EVENT_UUID_KEY);
+    ((ObjectNode) changeEvent).remove(EVENT_DATAFLOW_TIMESTAMP_KEY);
     assertEquals(EXPECTED_MYSQL_PEOPLE, changeEvent.toString());
 
     while (dataFileReader.hasNext()) {
@@ -170,6 +174,7 @@ public class FormatDatastreamRecordToJsonTest {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode changeEvent = mapper.readTree(jsonData);
     ((ObjectNode) changeEvent).remove(EVENT_UUID_KEY);
+    ((ObjectNode) changeEvent).remove(EVENT_DATAFLOW_TIMESTAMP_KEY);
     assertEquals(EXPECTED_NUMERIC_RECORD, changeEvent.toString());
   }
 
