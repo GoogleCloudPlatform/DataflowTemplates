@@ -427,7 +427,7 @@
         "c17"
       ],
       "ColDefs": {
-        "c15": {
+        "c13": {
           "Name": "name",
           "Type": {
             "Name": "varchar",
@@ -445,9 +445,9 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c15"
+          "Id": "c13"
         },
-        "c16": {
+        "c14": {
           "Name": "member",
           "Type": {
             "Name": "varchar",
@@ -465,9 +465,9 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c16"
+          "Id": "c14"
         },
-        "c17": {
+        "c15": {
           "Name": "age",
           "Type": {
             "Name": "decimal",
@@ -485,9 +485,9 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c17"
+          "Id": "c15"
         },
-        "c18": {
+        "c16": {
           "Name": "row_id",
           "Type": {
             "Name": "decimal",
@@ -505,9 +505,9 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c18"
+          "Id": "c16"
         },
-        "c19": {
+        "c17": {
           "Name": "entry_added",
           "Type": {
             "Name": "varchar",
@@ -525,12 +525,12 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c19"
+          "Id": "c17"
         }
       },
       "PrimaryKeys": [
         {
-          "ColId": "c18",
+          "ColId": "c16",
           "Desc": false,
           "Order": 1
         }
@@ -546,6 +546,10 @@
       "TableLevelIssues": null
     },
     "t2": {
+      "ColumnLevelIssues": {},
+      "TableLevelIssues": null
+    },
+    "t3": {
       "ColumnLevelIssues": {},
       "TableLevelIssues": null
     }
