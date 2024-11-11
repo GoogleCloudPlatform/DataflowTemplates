@@ -163,30 +163,30 @@ public class DataStreamToSpannerEndToEndIT extends DataStreamToSpannerITBase {
   }
 
   private void assertAuthorsTableContents() {
-    List<Map<String, Object>> author_events = new ArrayList<>();
+    List<Map<String, Object>> authorEvents = new ArrayList<>();
 
-    Map<String, Object> author_row1 = new HashMap<>();
-    author_row1.put("author_id", 4);
-    author_row1.put("full_name", "Stephen King");
+    Map<String, Object> authorRow1 = new HashMap<>();
+    authorRow1.put("author_id", 4);
+    authorRow1.put("full_name", "Stephen King");
 
-    Map<String, Object> author_row2 = new HashMap<>();
-    author_row2.put("author_id", 1);
-    author_row2.put("full_name", "Jane Austen");
+    Map<String, Object> authorRow2 = new HashMap<>();
+    authorRow2.put("author_id", 1);
+    authorRow2.put("full_name", "Jane Austen");
 
-    Map<String, Object> author_row3 = new HashMap<>();
-    author_row3.put("author_id", 2);
-    author_row3.put("full_name", "Charles Dickens");
+    Map<String, Object> authorRow3 = new HashMap<>();
+    authorRow3.put("author_id", 2);
+    authorRow3.put("full_name", "Charles Dickens");
 
-    Map<String, Object> author_row4 = new HashMap<>();
-    author_row4.put("author_id", 3);
-    author_row4.put("full_name", "Leo Tolstoy");
+    Map<String, Object> authorRow4 = new HashMap<>();
+    authorRow4.put("author_id", 3);
+    authorRow4.put("full_name", "Leo Tolstoy");
 
-    author_events.add(author_row1);
-    author_events.add(author_row2);
-    author_events.add(author_row3);
-    author_events.add(author_row4);
+    authorEvents.add(authorRow1);
+    authorEvents.add(authorRow2);
+    authorEvents.add(authorRow3);
+    authorEvents.add(authorRow4);
 
     SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Authors"))
-        .hasRecordsUnorderedCaseInsensitiveColumns(author_events);
+        .hasRecordsUnorderedCaseInsensitiveColumns(authorEvents);
   }
 }
