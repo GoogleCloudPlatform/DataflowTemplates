@@ -415,6 +415,129 @@
       "ForeignKeys": null,
       "Indexes": null,
       "Id": "t2"
+    },
+    "t3": {
+      "Name": "TABLE3",
+      "Schema": "SRC_DATABASE",
+      "ColIds": [
+        "c13",
+        "c14",
+        "c15",
+        "c16",
+        "c17"
+      ],
+      "ColDefs": {
+        "c15": {
+          "Name": "name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c15"
+        },
+        "c16": {
+          "Name": "member",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c16"
+        },
+        "c17": {
+          "Name": "age",
+          "Type": {
+            "Name": "decimal",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c17"
+        },
+        "c18": {
+          "Name": "row_id",
+          "Type": {
+            "Name": "decimal",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c18"
+        },
+        "c19": {
+          "Name": "entry_added",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c19"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c18",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t3"
     }
   },
   "SchemaIssues": {
