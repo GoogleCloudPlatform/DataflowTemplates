@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.common;
+package com.google.cloud.teleport.v2.templates.source.common;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -23,8 +23,8 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.mysql.MySQLDMLGenerator;
-import com.google.cloud.teleport.v2.templates.mysql.MySqlDao;
+import com.google.cloud.teleport.v2.templates.source.sql.SqlDao;
+import com.google.cloud.teleport.v2.templates.source.sql.mysql.MySQLDMLGenerator;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -76,15 +76,15 @@ public class SourceProcessorFactoryTest {
     assertNotNull(sourceDaoMap);
     assertEquals(2, sourceDaoMap.size());
 
-    ISourceDao mySqlDao1 = sourceDaoMap.get("shard1");
-    assertTrue(mySqlDao1 instanceof MySqlDao);
+    ISourceDao sqlDao1 = sourceDaoMap.get("shard1");
+    assertTrue(sqlDao1 instanceof SqlDao);
     assertEquals(
-        "jdbc:mysql://localhost:3306/test_db", ((MySqlDao) mySqlDao1).getSourceConnectionUrl());
+        "jdbc:mysql://localhost:3306/test_db", ((SqlDao) sqlDao1).getSourceConnectionUrl());
 
-    ISourceDao mySqlDao2 = sourceDaoMap.get("shard2");
-    assertTrue(mySqlDao2 instanceof MySqlDao);
+    ISourceDao sqlDao2 = sourceDaoMap.get("shard2");
+    assertTrue(sqlDao2 instanceof SqlDao);
     assertEquals(
-        "jdbc:mysql://localhost:3307/test_db_2", ((MySqlDao) mySqlDao2).getSourceConnectionUrl());
+        "jdbc:mysql://localhost:3307/test_db_2", ((SqlDao) sqlDao2).getSourceConnectionUrl());
   }
 
   @Test

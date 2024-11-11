@@ -17,10 +17,9 @@ package com.google.cloud.teleport.v2.templates.utils;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
-import com.google.cloud.teleport.v2.templates.common.DMLGeneratorRequest;
-import com.google.cloud.teleport.v2.templates.common.IDMLGenerator;
-import com.google.cloud.teleport.v2.templates.common.ISourceDao;
-import com.google.cloud.teleport.v2.templates.common.SourceProcessorFactory;
+import com.google.cloud.teleport.v2.templates.source.common.DMLGeneratorRequest;
+import com.google.cloud.teleport.v2.templates.source.common.IDMLGenerator;
+import com.google.cloud.teleport.v2.templates.source.common.ISourceDao;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.apache.beam.sdk.metrics.Counter;
@@ -42,7 +41,8 @@ public class InputRecordProcessor {
       ISourceDao dao,
       String shardId,
       String sourceDbTimezoneOffset,
-      String source)
+      String source,
+      IDMLGenerator dmlGenerator)
       throws Exception {
 
     try {
@@ -58,7 +58,6 @@ public class InputRecordProcessor {
           new DMLGeneratorRequest(
               modType, tableName, schema, newValuesJson, keysJson, sourceDbTimezoneOffset);
 
-      IDMLGenerator dmlGenerator = SourceProcessorFactory.getDMLGenerator(source);
       String dmlStatement = dmlGenerator.getDMLStatement(dmlGeneratorRequest);
       if (dmlStatement.isEmpty()) {
         LOG.warn("DML statement is empty for table: " + tableName);

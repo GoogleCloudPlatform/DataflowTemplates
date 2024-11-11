@@ -13,20 +13,20 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.mysql;
+package com.google.cloud.teleport.v2.templates.source.sql;
 
-import com.google.cloud.teleport.v2.templates.common.ISourceDao;
+import com.google.cloud.teleport.v2.templates.source.common.ISourceDao;
 import com.google.cloud.teleport.v2.templates.utils.ConnectionException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class MySqlDao implements ISourceDao {
+public class SqlDao implements ISourceDao {
   private String sqlUrl;
   private String sqlUser;
   private String sqlPasswd;
 
-  public MySqlDao(String sqlUrl, String sqlUser, String sqlPasswd) {
+  public SqlDao(String sqlUrl, String sqlUser, String sqlPasswd) {
     this.sqlUrl = sqlUrl;
     this.sqlUser = sqlUser;
     this.sqlPasswd = sqlPasswd;
@@ -42,7 +42,7 @@ public class MySqlDao implements ISourceDao {
 
     try {
 
-      connObj = MySQLConnectionHelper.getConnection(this.sqlUrl, this.sqlUser, this.sqlPasswd);
+      connObj = SQLConnectionHelper.getConnection(this.sqlUrl, this.sqlUser, this.sqlPasswd);
       if (connObj == null) {
         throw new ConnectionException("Connection is null");
       }

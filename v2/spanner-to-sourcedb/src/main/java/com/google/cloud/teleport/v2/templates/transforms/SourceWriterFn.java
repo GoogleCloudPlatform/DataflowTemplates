@@ -29,9 +29,10 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
-import com.google.cloud.teleport.v2.templates.common.ISourceDao;
-import com.google.cloud.teleport.v2.templates.common.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.source.common.IDMLGenerator;
+import com.google.cloud.teleport.v2.templates.source.common.ISourceDao;
+import com.google.cloud.teleport.v2.templates.source.common.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.utils.ConnectionException;
 import com.google.cloud.teleport.v2.templates.utils.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
@@ -86,7 +87,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final String skipDirName;
   private final int maxThreadPerDataflowWorker;
   private final String source;
-  private final String shardingMode;
+  private transient IDMLGenerator dmlGenerator;
 
   public SourceWriterFn(
       List<Shard> shards,
@@ -97,8 +98,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       String shadowTablePrefix,
       String skipDirName,
       int maxThreadPerDataflowWorker,
-      String source,
-      String shardingMode) {
+      String source) {
 
     this.schema = schema;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
@@ -109,7 +109,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.skipDirName = skipDirName;
     this.maxThreadPerDataflowWorker = maxThreadPerDataflowWorker;
     this.source = source;
-    this.shardingMode = shardingMode;
   }
 
   // for unit testing purposes
@@ -135,6 +134,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     sourceDaoMap =
         SourceProcessorFactory.getSourceDaoMap(source, shards, maxThreadPerDataflowWorker);
     spannerDao = new SpannerDao(spannerConfig);
+    dmlGenerator = SourceProcessorFactory.getDMLGenerator(source);
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
@@ -153,7 +153,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       // no shard found, move to permanent error
       outputWithTag(
           c, Constants.PERMANENT_ERROR_TAG, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE, spannerRec);
-    } else if (shardId != null && shardId.equals(skipDirName)) {
+    } else if (shardId.equals(skipDirName)) {
       // the record is skipped
       skippedRecordCountMetric.inc();
       outputWithTag(c, Constants.SKIPPED_TAG, Constants.SKIPPED_TAG_MESSAGE, spannerRec);
@@ -189,7 +189,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
           InputRecordProcessor inputRecordProcessor = new InputRecordProcessor();
           inputRecordProcessor.processRecord(
-              spannerRec, schema, sourceDao, shardId, sourceDbTimezoneOffset, source);
+              spannerRec, schema, sourceDao, shardId, sourceDbTimezoneOffset, source, dmlGenerator);
 
           spannerDao.updateShadowTable(
               getShadowTableMutation(

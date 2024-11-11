@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.mysql;
+package com.google.cloud.teleport.v2.templates.source.sql.mysql;
 
 import static org.junit.Assert.assertTrue;
 
@@ -29,7 +29,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
-import com.google.cloud.teleport.v2.templates.common.DMLGeneratorRequest;
+import com.google.cloud.teleport.v2.templates.source.common.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.utils.InputRecordProcessor;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;

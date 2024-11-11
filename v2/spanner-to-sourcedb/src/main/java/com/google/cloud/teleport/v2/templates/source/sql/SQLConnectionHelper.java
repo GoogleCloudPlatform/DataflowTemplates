@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.mysql;
+package com.google.cloud.teleport.v2.templates.source.sql;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.zaxxer.hikari.HikariConfig;
@@ -29,13 +29,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** This is a per Dataflow worker singleton that holds connection pool. */
-public class MySQLConnectionHelper {
+public class SQLConnectionHelper {
 
-  private static final Logger LOG = LoggerFactory.getLogger(MySQLConnectionHelper.class);
-  private static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
+  private static final Logger LOG = LoggerFactory.getLogger(SQLConnectionHelper.class);
   private static Map<String, HikariDataSource> connectionPoolMap = null;
 
-  public static synchronized void init(List<Shard> shards, String properties, int maxConnections) {
+  public static synchronized void init(
+      List<Shard> shards, String properties, int maxConnections, String source, String jdbcDriver) {
     if (connectionPoolMap != null) {
       return;
     }
@@ -43,12 +43,19 @@ public class MySQLConnectionHelper {
     connectionPoolMap = new HashMap<>();
     for (Shard shard : shards) {
       String sourceConnectionUrl =
-          "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
+          "jdbc:"
+              + source
+              + "://"
+              + shard.getHost()
+              + ":"
+              + shard.getPort()
+              + "/"
+              + shard.getDbName();
       HikariConfig config = new HikariConfig();
       config.setJdbcUrl(sourceConnectionUrl);
       config.setUsername(shard.getUserName());
       config.setPassword(shard.getPassword());
-      config.setDriverClassName(JDBC_DRIVER);
+      config.setDriverClassName(jdbcDriver);
       config.setMaximumPoolSize(maxConnections);
       config.setConnectionInitSql(
           "SET SESSION net_read_timeout=1200"); // to avoid timeouts at network level layer

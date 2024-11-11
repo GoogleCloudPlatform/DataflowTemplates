@@ -15,4 +15,4 @@
  */
 
 /** Package info for common module. */
-package com.google.cloud.teleport.v2.templates.common;
+package com.google.cloud.teleport.v2.templates.source.common;

@@ -13,15 +13,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.mysql;
+package com.google.cloud.teleport.v2.templates.source.sql.mysql;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
-import com.google.cloud.teleport.v2.templates.common.DMLGeneratorRequest;
-import com.google.cloud.teleport.v2.templates.common.IDMLGenerator;
+import com.google.cloud.teleport.v2.templates.source.common.DMLGeneratorRequest;
+import com.google.cloud.teleport.v2.templates.source.common.IDMLGenerator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;

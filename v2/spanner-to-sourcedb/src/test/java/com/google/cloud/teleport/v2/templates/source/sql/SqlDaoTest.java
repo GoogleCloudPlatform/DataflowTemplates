@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.mysql;
+package com.google.cloud.teleport.v2.templates.source.sql;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -34,7 +34,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-public final class MySqlDaoTest {
+public final class SqlDaoTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Mock private HikariDataSource mockHikariDataSource;
@@ -52,17 +52,17 @@ public final class MySqlDaoTest {
 
   @Test(expected = ConnectionException.class)
   public void testNullConnection() throws java.sql.SQLException, ConnectionException {
-    MySqlDao mySqlDao = new MySqlDao("url", "user", "pass");
-    mySqlDao.write("sql");
+    SqlDao sqlDao = new SqlDao("url", "user", "pass");
+    sqlDao.write("sql");
   }
 
   @Test
   public void testSuccess() throws java.sql.SQLException, ConnectionException {
     Map<String, HikariDataSource> connectionPoolMap = new HashMap<>();
     connectionPoolMap.put("urluserpass", mockHikariDataSource);
-    MySQLConnectionHelper.setConnectionPoolMap(connectionPoolMap);
-    MySqlDao mySqlDao = new MySqlDao("url", "user", "pass");
-    mySqlDao.write("sql");
+    SQLConnectionHelper.setConnectionPoolMap(connectionPoolMap);
+    SqlDao sqlDao = new SqlDao("url", "user", "pass");
+    sqlDao.write("sql");
     verify(mockStatement).executeUpdate(eq("sql"));
   }
 }

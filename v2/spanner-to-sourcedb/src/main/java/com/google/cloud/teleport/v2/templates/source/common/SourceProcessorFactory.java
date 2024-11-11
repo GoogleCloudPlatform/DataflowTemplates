@@ -13,13 +13,13 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.common;
+package com.google.cloud.teleport.v2.templates.source.common;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.mysql.MySQLConnectionHelper;
-import com.google.cloud.teleport.v2.templates.mysql.MySQLDMLGenerator;
-import com.google.cloud.teleport.v2.templates.mysql.MySqlDao;
+import com.google.cloud.teleport.v2.templates.source.sql.SQLConnectionHelper;
+import com.google.cloud.teleport.v2.templates.source.sql.SqlDao;
+import com.google.cloud.teleport.v2.templates.source.sql.mysql.MySQLDMLGenerator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,13 +36,13 @@ public class SourceProcessorFactory {
       String source, List<Shard> shards, int maxConnections) throws Exception {
     if (source.equalsIgnoreCase(Constants.SOURCE_MYSQL)) {
       Map<String, ISourceDao> sourceDaoMap = new HashMap<>();
-      MySQLConnectionHelper.init(shards, null, maxConnections);
+      SQLConnectionHelper.init(shards, null, maxConnections, source, "com.mysql.cj.jdbc.Driver");
       for (Shard shard : shards) {
         String sourceConnectionUrl =
             "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
-        ISourceDao mySqlDao =
-            new MySqlDao(sourceConnectionUrl, shard.getUserName(), shard.getPassword());
-        sourceDaoMap.put(shard.getLogicalShardId(), mySqlDao);
+        ISourceDao sqlDao =
+            new SqlDao(sourceConnectionUrl, shard.getUserName(), shard.getPassword());
+        sourceDaoMap.put(shard.getLogicalShardId(), sqlDao);
       }
       return sourceDaoMap;
     }

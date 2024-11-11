@@ -357,10 +357,11 @@ public class SpannerToSourceDb {
 
     void setDlqRetryMinutes(Integer value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Enum(
         order = 24,
         optional = true,
         description = "Source database type, ex: mysql",
+        enumOptions = {@TemplateEnumOption("mysql")},
         helpText = "The type of source database to reverse replicate to.")
     @Default.String("mysql")
     String getSourceType();
@@ -471,6 +472,8 @@ public class SpannerToSourceDb {
       Shard singleShard = shards.get(0);
       if (singleShard.getLogicalShardId() == null) {
         singleShard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
+        LOG.info(
+            "Logical shard id was not found, hence setting it to : " + Constants.DEFAULT_SHARD_ID);
       }
     }
     boolean isRegularMode = "regular".equals(options.getRunMode());
@@ -575,8 +578,7 @@ public class SpannerToSourceDb {
                     options.getShadowTablePrefix(),
                     options.getSkipDirectoryName(),
                     connectionPoolSizePerWorker,
-                    options.getSourceType(),
-                    shardingMode));
+                    options.getSourceType()));
 
     PCollection<FailsafeElement<String, String>> dlqPermErrorRecords =
         reconsumedElements
