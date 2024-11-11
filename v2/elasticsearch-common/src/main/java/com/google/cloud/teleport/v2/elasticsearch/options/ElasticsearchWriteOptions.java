@@ -245,7 +245,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Trust self-signed certificate",
       helpText =
-          "Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate. To bypass validation for the certificate, set to `true`. Defaults to `false`.")
+          "Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate, Enable this to true to by-pass the validation on SSL certificate. (Defaults to: `false`)")
   @Default.Boolean(false)
   Boolean getTrustSelfSignedCerts();
 
@@ -310,7 +310,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
               + "is required when you use Secret Manager or KMS. If `apiKeySource` is set to `KMS`, "
               + "`apiKeyKMSEncryptionKey` and encrypted apiKey must be provided. If `apiKeySource` is set to "
               + "`SECRET_MANAGER`, `apiKeySecretId` must be provided. If `apiKeySource` is set to `PLAINTEXT`, "
-              + "apiKey must be provided.")
+              + "`apiKey` must be provided.")
   @Default.String("PLAINTEXT")
   String getApiKeySource();
 

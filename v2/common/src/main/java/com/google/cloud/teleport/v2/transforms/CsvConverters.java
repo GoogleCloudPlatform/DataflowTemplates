@@ -184,7 +184,7 @@ public class CsvConverters {
         order = 1,
         description = "The input filepattern to read from.",
         helpText =
-            "The Cloud Storage file pattern to search for CSV files. Example: `gs://mybucket/test-*.csv`.")
+            "The Cloud Storage file pattern to search for CSV files. For example, `gs://mybucket/test-*.csv`.")
     String getInputFileSpec();
 
     void setInputFileSpec(String inputFileSpec);
@@ -214,7 +214,7 @@ public class CsvConverters {
         order = 4,
         optional = true,
         description = "Column delimiter of the data files.",
-        helpText = "The column delimiter of the input text files. Defaults to `,`",
+        helpText = "The column delimiter of the input text files. Default: `,`",
         example = ",")
     @Default.InstanceFactory(DelimiterFactory.class)
     String getDelimiter();
@@ -226,7 +226,7 @@ public class CsvConverters {
         optional = true,
         description = "CSV Format to use for parsing records.",
         helpText =
-            "The CSV format specification to use for parsing records. Defaults to `Default`. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: "
+            "CSV format specification to use for parsing records. Default is: `Default`. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: "
                 + "https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html")
     @Default.String("Default")
     String getCsvFormat();
@@ -271,7 +271,8 @@ public class CsvConverters {
         optional = true,
         description = "Log detailed CSV conversion errors",
         helpText =
-            "Set to `true` to enable detailed error logging when CSV parsing fails. This setting might expose sensitive data in the logs, such as password contained in the CSV file. Defaults to `false`.")
+            "Set to `true` to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords)."
+                + " Default: `false`.")
     @Default.Boolean(false)
     Boolean getLogDetailedCsvConversionErrors();
 

@@ -220,7 +220,7 @@ public class DataStreamToSpanner {
         description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
         helpText =
             "The Pub/Sub subscription being used in a Cloud Storage notification policy. For the name,"
-                + " use the format of `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.")
+                + " use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.")
     String getGcsPubSubSubscription();
 
     void setGcsPubSubSubscription(String value);

@@ -49,11 +49,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **inputFileFormat** : The format of the output file produced by Datastream. For example `avro,json`. Defaults to: `avro`.
+* **inputFileFormat** : The format of the output file produced by Datastream. For example `avro,json`. Defaults to `avro`.
 * **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from HarbourBridge.
 * **projectId** : The Spanner project ID.
 * **spannerHost** : The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
-* **gcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy. For the name, use the format of `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.
+* **gcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy. For the name, use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.
 * **shadowTablePrefix** : The prefix used to name shadow tables. Default: `shadow_`.
 * **shouldCreateShadowTables** : This flag indicates whether shadow tables must be created in Cloud Spanner database. Defaults to: true.
 * **rfcStartDateTime** : The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z.
