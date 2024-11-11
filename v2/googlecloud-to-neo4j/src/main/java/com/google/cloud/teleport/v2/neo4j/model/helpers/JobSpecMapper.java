@@ -29,7 +29,6 @@ import org.neo4j.importer.v1.sources.Source;
 import org.neo4j.importer.v1.validation.SpecificationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
 
 /**
  * Helper class for parsing import specification files, accepts file URI as entry point. Delegates
@@ -39,25 +38,14 @@ public class JobSpecMapper {
   private static final Logger LOG = LoggerFactory.getLogger(JobSpecMapper.class);
 
   public static ImportSpecification parse(String jobSpecUri, OptionsParams options) {
-    String content = fetchContent(jobSpecUri);
-    JSONObject spec;
-
-    try {
-      spec = new JSONObject(content);
-    } catch (Exception jsonException) {
-      Yaml yaml = new Yaml();
-      Map<String, Object> yamlMap = yaml.load(content);
-
-      spec = new JSONObject(yamlMap);
-    }
-
+    var json = fetchContent(jobSpecUri);
+    var spec = new JSONObject(json);
     if (!spec.has("version")) {
       return parseLegacyJobSpec(options, spec);
     }
-
     try {
       // TODO: interpolate runtime tokens into new spec elements
-      return ImportSpecificationDeserializer.deserialize(new StringReader(content));
+      return ImportSpecificationDeserializer.deserialize(new StringReader(json));
     } catch (SpecificationException e) {
       throw validationFailure(e);
     }
