@@ -87,6 +87,8 @@ public class SourceRowToMutationDoFnTest {
         .thenReturn(Type.string());
     when(mockIschemaMapper.getSpannerColumns(anyString(), anyString()))
         .thenReturn(List.of("spFirstName", "spLastName"));
+    when(mockIschemaMapper.colExistsAtSource(anyString(), anyString(), anyString()))
+        .thenReturn(true);
 
     PCollection<Mutation> mutations =
         transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, null));
@@ -131,7 +133,8 @@ public class SourceRowToMutationDoFnTest {
         .thenReturn(Type.string());
     when(mockIschemaMapper.getSpannerColumns(anyString(), anyString()))
         .thenReturn(List.of("spFirstName", "spLastName"));
-
+    when(mockIschemaMapper.colExistsAtSource(anyString(), anyString(), anyString()))
+        .thenReturn(true);
     // Create custom transformer.
     Map<String, Object> spannerRecord = Map.of("age", 10);
     MigrationTransformationResponse migrationTransformationResponse =
@@ -179,7 +182,7 @@ public class SourceRowToMutationDoFnTest {
   }
 
   @Test
-  public void testCustomTranformationFilteredEvents() throws InvalidTransformationException {
+  public void testCustomTransformationFilteredEvents() throws InvalidTransformationException {
     final String testTable = "srcTable";
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     var schema = SchemaTestUtils.generateTestTableSchema(testTable);

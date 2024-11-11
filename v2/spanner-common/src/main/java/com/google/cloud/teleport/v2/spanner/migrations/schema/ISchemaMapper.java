@@ -85,4 +85,18 @@ public interface ISchemaMapper extends Serializable {
    * @param namespace is currently not operational.
    */
   String getShardIdColumnName(String namespace, String spannerTableName);
+
+  /**
+   * Retrieves the name of the synthetic primary key column for a Spanner table.
+   *
+   * @param namespace is currently not operational.
+   */
+  String getSyntheticPrimaryKeyColName(String namespace, String spannerTableName);
+
+  /**
+   * Returns true if a corresponding source column exists for the provided Spanner column.
+   *
+   * @param namespace is currently not operational.
+   */
+  boolean colExistsAtSource(String namespace, String spannerTable, String spannerColumn);
 }

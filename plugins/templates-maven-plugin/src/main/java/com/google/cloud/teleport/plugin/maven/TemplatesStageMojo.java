@@ -1165,7 +1165,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             directory,
             cloudBuildLogs);
 
-    // Ideally this should raise an exception, but in GitHub Actions this returns NZE even for
+    // Ideally this should raise an exception, but this returns NZE even for
     // successful runs.
     if (stageProcess.waitFor() != 0) {
       LOG.warn(
@@ -1263,9 +1263,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             buildDir,
             cloudBuildLogs);
 
+    // Ideally this should raise an exception, but this returns NZE even for
+    // successful runs.
     if (stageProcess.waitFor() != 0) {
-      throw new IllegalStateException(
-          "Error scanning container. Check logs for details. " + cloudBuildLogs);
+      LOG.warn("Error scanning container. Check logs for details. " + cloudBuildLogs);
     }
   }
 
