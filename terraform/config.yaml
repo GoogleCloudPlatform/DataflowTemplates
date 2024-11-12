@@ -1,0 +1,74 @@
+global:
+  region: "asia-south1"
+  state_bucket: "reverse-replication-tf-state"
+  project_id: "daring-fiber-439305-v4"
+
+dataflow-bucket:
+  name: "reverse-replication-dataflow-templates" 
+
+pubsub:
+  topic: "spanner-reverse-replication"   
+  sub: "spanner-reverse-replication-sub"
+
+spanner:
+  name: "spanner-reverse-replication"  
+  display_name: "Spanner Reverse Replication"
+  num_nodes: 1
+  edition: "STANDARD"
+  config: "regional-asia-south1"  
+
+network:
+  vpc_name: "reverse-replication" 
+  auto_create_subnetworks: false
+  description: "Reverse Replication"
+  subnet_name: "reverse-replication-asia-south1"
+  subnet_ip: "10.0.0.0/16"
+  subnet_description: "reverse replication asia south 1"
+
+cassandra:
+  instance_name: "cassandra-1"
+  zone: "asia-south1-a"
+  instance: "linux"
+  instance_type: "n2-standard-2"
+  disk_size_gb: 100
+  disk_type: "pd-balanced"
+  image: "ubuntu-os-cloud/ubuntu-2204-lts"
+  create_internal_static_ip: true
+  create_external_static_ip: true
+  allow_stopping_for_update: true  
+
+mysql:
+  instance_name: "mysql-1"
+  zone: "asia-south1-a"
+  instance: "linux"
+  instance_type: "n2-standard-2"
+  disk_size_gb: 100
+  disk_type: "pd-balanced"
+  image: "ubuntu-os-cloud/ubuntu-2204-lts"
+  create_internal_static_ip: true
+  create_external_static_ip: true
+  allow_stopping_for_update: true    
+
+firewall-cassandra:
+  name: "allow-cassandra"
+  description: "allow cassandra"
+  protocol: "tcp"
+  ports: ["7000", "7001", "9042", "7199"]
+  source_ranges: ["10.0.0.0/16","52.220.17.199/32","13.234.0.44/32"]
+  target_tags: ["cassandra-1"]
+
+firewall-mysql:
+  name: "allow-mysql"
+  description: "allow mysql"
+  protocol: "tcp"
+  ports: ["3306"]
+  source_ranges: ["10.0.0.0/16", "52.220.17.199/32", "13.234.0.44/32"]
+  target_tags: ["mysql-1"]
+
+firewall-ssh:
+  name: "allow-ssh"
+  description: "allow ssh"
+  protocol: "tcp"
+  ports: ["22"]
+  source_ranges: ["0.0.0.0/0"]
+  target_tags: ["cassandra-1", "mysql-1"]  
