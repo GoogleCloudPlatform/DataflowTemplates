@@ -21,8 +21,6 @@ import java.io.StringReader;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
-import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.neo4j.importer.v1.ImportSpecification;
@@ -68,9 +66,13 @@ public class JobSpecMapper {
         spec = new JSONObject(yamlMap);
 
       } catch (Exception yamlException) {
-        throw new IllegalArgumentException("Parsing failed: content is neither valid JSON nor valid YAML." +
-                "\nJSON parse error: " + jsonException.getMessage() +
-                "\nYAML parse error: " + yamlException.getMessage(), yamlException);
+        throw new IllegalArgumentException(
+            "Parsing failed: content is neither valid JSON nor valid YAML."
+                + "\nJSON parse error: "
+                + jsonException.getMessage()
+                + "\nYAML parse error: "
+                + yamlException.getMessage(),
+            yamlException);
       }
     }
     return spec;
