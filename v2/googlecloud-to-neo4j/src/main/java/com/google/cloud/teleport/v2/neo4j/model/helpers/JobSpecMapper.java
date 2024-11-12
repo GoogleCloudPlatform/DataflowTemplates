@@ -21,6 +21,8 @@ import java.io.StringReader;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.neo4j.importer.v1.ImportSpecification;
@@ -40,16 +42,7 @@ public class JobSpecMapper {
 
   public static ImportSpecification parse(String jobSpecUri, OptionsParams options) {
     String content = fetchContent(jobSpecUri);
-    JSONObject spec;
-
-    try {
-      spec = new JSONObject(content);
-    } catch (Exception jsonException) {
-      Yaml yaml = new Yaml();
-      Map<String, Object> yamlMap = yaml.load(content);
-
-      spec = new JSONObject(yamlMap);
-    }
+    JSONObject spec = getJsonObject(content);
 
     if (!spec.has("version")) {
       return parseLegacyJobSpec(options, spec);
@@ -61,6 +54,26 @@ public class JobSpecMapper {
     } catch (SpecificationException e) {
       throw validationFailure(e);
     }
+  }
+
+  private static JSONObject getJsonObject(String content) {
+    JSONObject spec;
+
+    try {
+      spec = new JSONObject(content);
+    } catch (Exception jsonException) {
+      Yaml yaml = new Yaml();
+      try {
+        Map<String, Object> yamlMap = yaml.load(content);
+        spec = new JSONObject(yamlMap);
+
+      } catch (Exception yamlException) {
+        throw new IllegalArgumentException("Parsing failed: content is neither valid JSON nor valid YAML." +
+                "\nJSON parse error: " + jsonException.getMessage() +
+                "\nYAML parse error: " + yamlException.getMessage(), yamlException);
+      }
+    }
+    return spec;
   }
 
   private static String fetchContent(String jobSpecUri) {
