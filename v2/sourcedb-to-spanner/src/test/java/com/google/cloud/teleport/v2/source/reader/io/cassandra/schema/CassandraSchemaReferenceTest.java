@@ -34,4 +34,11 @@ public class CassandraSchemaReferenceTest extends TestCase {
     assertThat(ref.keyspaceName()).isEqualTo(testKeySpace);
     assertThat(ref.getName()).isEqualTo("KeySpace." + testKeySpace);
   }
+
+  @Test
+  public void testCassandraSchemaReferenceNullKeyspace() {
+    CassandraSchemaReference ref = CassandraSchemaReference.builder().build();
+    assertThat(ref.keyspaceName()).isNull();
+    assertThat(ref.getName()).isEqualTo("KeySpace." + null);
+  }
 }

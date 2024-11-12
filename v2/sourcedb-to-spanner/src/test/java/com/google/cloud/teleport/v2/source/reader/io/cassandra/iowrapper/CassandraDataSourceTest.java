@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
 import java.net.InetSocketAddress;
 import java.util.List;
 import org.junit.Test;
@@ -36,9 +37,16 @@ public class CassandraDataSourceTest {
         CassandraDataSource.builder()
             .setClusterName(testCluster)
             .setContactPoints(List.of(new InetSocketAddress(testHost, testPort)))
+            .setDbAuth(
+                LocalCredentialsProvider.builder()
+                    .setUserName("test-user-name")
+                    .setPassword("test")
+                    .build())
             .build();
     assertThat(cassandraDataSource.clusterName()).isEqualTo(testCluster);
     assertThat(cassandraDataSource.contactPoints())
         .isEqualTo(ImmutableList.of(new InetSocketAddress(testHost, testPort)));
+    assertThat(cassandraDataSource.dbAuth().getUserName().get()).isEqualTo("test-user-name");
+    assertThat(cassandraDataSource.dbAuth().getPassword().get()).isEqualTo("test");
   }
 }
