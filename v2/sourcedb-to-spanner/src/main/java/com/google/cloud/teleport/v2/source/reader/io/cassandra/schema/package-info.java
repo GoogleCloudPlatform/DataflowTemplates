@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** IoWrapper for various sources. */
-package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
+/** Schema Discovery and Mapping for Cassandra Source. */
+package com.google.cloud.teleport.v2.source.reader.io.cassandra.schema;

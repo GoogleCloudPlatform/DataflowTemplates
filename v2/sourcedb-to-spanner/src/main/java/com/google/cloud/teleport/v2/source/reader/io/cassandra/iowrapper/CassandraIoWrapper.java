@@ -13,8 +13,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.source.reader.io;
+package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 
+import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
@@ -23,12 +24,21 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 
-/** IO Wrapper Interface for adding new IO sources. */
-public interface IoWrapper {
+/** IOWrapper for Cassandra Source. */
+public class CassandraIoWrapper implements IoWrapper {
 
-  /** Get a list of reader transforms. */
-  ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> getTableReaders();
+  /** Get a list of reader transforms for Cassandra source. */
+  @Override
+  public ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
+      getTableReaders() {
+    // TODO(vardhanvthigle)
+    return null;
+  }
 
-  /** Discover source schema. */
-  SourceSchema discoverTableSchema();
+  /** Discover source schema for Cassandra. */
+  @Override
+  public SourceSchema discoverTableSchema() {
+    // TODO(vardhanvthigle)
+    return null;
+  }
 }

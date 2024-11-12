@@ -13,6 +13,5 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
-/** IoWrapper for various sources. */
-package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
+/** IoWrapper for cassandra source. */
+package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
