@@ -263,6 +263,138 @@
       "ParentId": "",
       "Comment": "Spanner schema for source table employee_attribute",
       "Id": "t3"
+    },
+    "t4": {
+      "Name": "vendor",
+      "ColIds": [
+        "c11",
+        "c12",
+        "c13",
+        "c14",
+        "c15"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c11": {
+          "Name": "email",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: email varchar(255)",
+          "Id": "c11",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c12": {
+          "Name": "full_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 512,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: full_name varchar(512)",
+          "Id": "c12",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c13": {
+          "Name": "vendor_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: vendor_id int(10)",
+          "Id": "c13",
+          "AutoGen": {
+            "Name": "Sequence7",
+            "GenerationType": "Sequence"
+          }
+        },
+        "c14": {
+          "Name": "first_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: first_name varchar(255)",
+          "Id": "c14",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c15": {
+          "Name": "last_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: last_name varchar(255)",
+          "Id": "c15",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c12",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": [
+        {
+          "Name": "full_name_idx",
+          "TableId": "t4",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c12",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i15",
+          "StoredColumnIds": null
+        },
+        {
+          "Name": "email_idx",
+          "TableId": "t4",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c11",
+              "Desc": true,
+              "Order": 1
+            }
+          ],
+          "Id": "i16",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": ""
+      },
+      "Comment": "Spanner schema for source table vendor",
+      "Id": "t4"
     }
   },
   "SyntheticPKeys": {},
@@ -571,8 +703,178 @@
       "ForeignKeys": null,
       "Indexes": null,
       "Id": "t3"
+    },
+    "t4": {
+      "Name": "vendor",
+      "Schema": "company",
+      "ColIds": [
+        "c11",
+        "c12",
+        "c13",
+        "c14",
+        "c15"
+      ],
+      "ColDefs": {
+        "c11": {
+          "Name": "email",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c11",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c12": {
+          "Name": "full_name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              512
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c12",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c13": {
+          "Name": "vendor_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c13",
+          "AutoGen": {
+            "Name": "Sequence7",
+            "GenerationType": "Auto Increment"
+          }
+        },
+        "c14": {
+          "Name": "first_name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c14",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c15": {
+          "Name": "last_name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c15",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c11",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": [
+        {
+          "Name": "email",
+          "Unique": true,
+          "Keys": [
+            {
+              "ColId": "c11",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i14",
+          "StoredColumnIds": null
+        },
+        {
+          "Name": "full_name_idx",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c12",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i15",
+          "StoredColumnIds": null
+        }
+      ],
+      "Id": "t4"
     }
-  },
+},
   "SchemaIssues": {
     "t1": {
       "ColumnLevelIssues": {
@@ -633,6 +935,34 @@
   "SpRegion": "",
   "ResourceValidation": false,
   "UI": false,
-  "SpSequences": {},
-  "SrcSequences": {}
+  "SpSequences": {
+    "s7": {
+      "Id": "s7",
+      "Name": "Sequence7",
+      "SequenceKind": "BIT REVERSED POSITIVE",
+      "SkipRangeMin": "",
+      "SkipRangeMax": "",
+      "StartWithCounter": "",
+      "ColumnsUsingSeq": {
+        "t2": [
+          "c6"
+        ]
+      }
+    }
+  },
+  "SrcSequences": {
+    "s7": {
+      "Id": "s7",
+      "Name": "Sequence7",
+      "SequenceKind": "BIT REVERSED SEQUENCE",
+      "SkipRangeMin": "",
+      "SkipRangeMax": "",
+      "StartWithCounter": "",
+      "ColumnsUsingSeq": {
+        "t2": [
+          "c6"
+        ]
+      }
+    }
+  }
 }

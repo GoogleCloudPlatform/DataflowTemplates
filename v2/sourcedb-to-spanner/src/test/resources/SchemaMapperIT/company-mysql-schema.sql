@@ -37,6 +37,20 @@ INSERT INTO `employee_attribute` VALUES
                                      (102,'iq','20','2024-06-10'),
                                      (300,'endurance','20','2024-06-10');
 
+CREATE TABLE `vendor` (
+                      `vendor_id` INT AUTO_INCREMENT PRIMARY KEY,
+                      `first_name` VARCHAR(255) NOT NULL,
+                      `last_name` VARCHAR(255) NOT NULL,
+                      `email` VARCHAR(255) UNIQUE NOT NULL,
+                      `full_name` VARCHAR(512) GENERATED ALWAYS AS (CONCAT(first_name, ' ', last_name)),
+                      INDEX full_name_idx (full_name)
+);
+
+INSERT INTO vendor (id, first_name, last_name, email, full_name) VALUES
+                                     (1, 'David', 'Lee', 'david.lee@example.com', 'David Lee'),
+                                     (2, 'Sarah', 'Jones', 'sarah.jones@example.com', 'Sarah Jones'),
+                                     (3, 'Michael', 'Brown', 'michael.brown@example.com', 'Michael Brown');
+
 CREATE TABLE `mysql_extra` (
                            `test_id` int(11) PRIMARY KEY NOT NULL,
                            `test_name` varchar(100) DEFAULT NULL

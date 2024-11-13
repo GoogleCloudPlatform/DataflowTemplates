@@ -109,5 +109,10 @@ public class MySQLSessionSchemaMapperIT extends SourceDbToSpannerITBase {
             "employee_attribute", "employee_id", "attribute_name", "value");
 
     SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(4); // Supports composite keys
+
+    ImmutableList<Struct> vendor =
+        spannerResourceManager.readTableRecords("vendor", "vendor_id", "full_name");
+
+    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(3);
   }
 }
