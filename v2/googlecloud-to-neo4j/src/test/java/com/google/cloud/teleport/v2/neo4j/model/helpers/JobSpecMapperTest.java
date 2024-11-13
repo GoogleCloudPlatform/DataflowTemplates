@@ -27,7 +27,7 @@ public class JobSpecMapperTest {
   private static final String SPEC_PATH = "src/test/resources/testing-specs/job-spec-mapper-test";
 
   @Test
-  public void valid_json_legacy_spec() {
+  public void parses_valid_json_legacy_spec() {
     var importSpecification =
         JobSpecMapper.parse(SPEC_PATH + "/valid-json-legacy-spec.json", new OptionsParams());
 
@@ -90,7 +90,7 @@ public class JobSpecMapperTest {
   }
 
   @Test
-  public void valid_json_import_spec() {
+  public void parses_valid_json_import_spec() {
     var importSpecification =
         JobSpecMapper.parse(SPEC_PATH + "/valid-json-import-spec.json", new OptionsParams());
 
@@ -165,7 +165,7 @@ public class JobSpecMapperTest {
   }
 
   @Test
-  public void valid_yaml_import_spec() {
+  public void parses_valid_yaml_import_spec() {
     var importSpecification =
         JobSpecMapper.parse(SPEC_PATH + "/valid-yaml-import-spec.yaml", new OptionsParams());
 
@@ -240,7 +240,7 @@ public class JobSpecMapperTest {
   }
 
   @Test
-  public void invalid_json() {
+  public void throws_exception_invalid_json() {
     assertThrows(
         "Parsing failed: content is neither valid JSON nor valid YAML.\n"
             + "JSON parse error: Unterminated string at 21 [character 0 line 3]\n"
@@ -257,7 +257,7 @@ public class JobSpecMapperTest {
   }
 
   @Test
-  public void invalid_yaml() {
+  public void throws_exception_invalid_yaml() {
     assertThrows(
         "Parsing failed: content is neither valid JSON nor valid YAML.\n"
             + "JSON parse error: A JSONObject text must begin with '{' at 1 [character 2 line 1]\n"
@@ -274,7 +274,7 @@ public class JobSpecMapperTest {
   }
 
   @Test
-  public void valid_json_wrong_format_legacy_spec() {
+  public void throws_exception_valid_json_wrong_format_legacy_spec() {
     assertThrows(
         "Unable to process Neo4j job specification",
         RuntimeException.class,
@@ -284,7 +284,7 @@ public class JobSpecMapperTest {
   }
 
   @Test
-  public void valid_json_wrong_format_import_spec() {
+  public void throws_exception_valid_json_wrong_format_import_spec() {
     assertThrows(
         "Unable to process Neo4j job specification",
         RuntimeException.class,
@@ -294,7 +294,7 @@ public class JobSpecMapperTest {
   }
 
   @Test
-  public void valid_yaml_wrong_format_import_spec() {
+  public void throws_exception_valid_yaml_wrong_format_import_spec() {
     assertThrows(
         "Unable to process Neo4j job specification",
         RuntimeException.class,
