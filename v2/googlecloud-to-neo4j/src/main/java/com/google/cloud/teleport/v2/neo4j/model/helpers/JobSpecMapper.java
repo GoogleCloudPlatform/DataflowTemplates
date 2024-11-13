@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.neo4j.importer.v1.ImportSpecification;
 import org.neo4j.importer.v1.ImportSpecificationDeserializer;
@@ -30,6 +31,7 @@ import org.neo4j.importer.v1.validation.SpecificationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.error.YAMLException;
 
 /**
  * Helper class for parsing import specification files, accepts file URI as entry point. Delegates
@@ -55,17 +57,14 @@ public class JobSpecMapper {
   }
 
   private static JSONObject getJsonObject(String content) {
-    JSONObject spec;
-
     try {
-      spec = new JSONObject(content);
-    } catch (Exception jsonException) {
+      return new JSONObject(content);
+    } catch (JSONException jsonException) {
       Yaml yaml = new Yaml();
       try {
         Map<String, Object> yamlMap = yaml.load(content);
-        spec = new JSONObject(yamlMap);
-
-      } catch (Exception yamlException) {
+        return new JSONObject(yamlMap);
+      } catch (YAMLException yamlException) {
         throw new IllegalArgumentException(
             "Parsing failed: content is neither valid JSON nor valid YAML."
                 + "\nJSON parse error: "
@@ -75,7 +74,6 @@ public class JobSpecMapper {
             yamlException);
       }
     }
-    return spec;
   }
 
   private static String fetchContent(String jobSpecUri) {

@@ -1,0 +1,104 @@
+{
+    "version": "1",
+    "sources": [
+        {
+            "type": "bigquery",
+            "name": "a-source",
+            "query": "SELECT field_1, field_2, non_existent_field FROM my.table"
+        },
+        {
+            "type": "not_supported_type",
+            "name": "b-source",
+            "query": "SELECT field_1, field_2 FROM my.table"
+        }
+    ],
+    "targets": {
+        "nodes": [
+            {
+                "source": "unknown-source",
+                "name": "a-node-target",
+                "write_mode": "unknown_mode",
+                "labels": [
+                    "LabelA",
+                    "LabelA"
+                ],
+                "properties": [
+                    {
+                        "source_field": "nonexistent_field",
+                        "target_property": "property1"
+                    },
+                    {
+                        "source_field": "field_2"
+                    }
+                ],
+                "schema": {
+                    "key_constraints": [
+                        {
+                            "name": "LabelA key constraint",
+                            "label": "LabelA",
+                            "properties": [
+                                "non_existent_property"
+                            ]
+                        }
+                    ]
+                }
+            },
+            {
+                "source": "b-source",
+                "name": "b-node-target",
+                "write_mode": "merge",
+                "labels": [
+                    "LabelB"
+                ],
+                "properties": [
+                    {
+                        "source_field": "field_1",
+                        "target_property": "property1"
+                    },
+                    {
+                        "source_field": "field_2",
+                        "target_property": "property2"
+                    }
+                ],
+                "schema": {
+                    "key_constraints": [
+                        {
+                            "name": "LabelB key constraint",
+                            "label": "LabelX",
+                            "properties": [
+                                "property1"
+                            ]
+                        }
+                    ]
+                }
+            }
+        ],
+        "relationships": [
+            {
+                "name": "a-target",
+                "source": "a-source",
+                "type": "UNSUPPORTED_TYPE",
+                "write_mode": "append",
+                "node_match_mode": "unknown_match_mode",
+                "start_node_reference": "missing-node-target",
+                "end_node_reference": "b-node-target",
+                "properties": [
+                    {
+                        "source_field": "nonexistent_field",
+                        "target_property": "id"
+                    }
+                ],
+                "schema": {
+                    "key_constraints": [
+                        {
+                            "name": "rel key constraint",
+                            "properties": [
+                                "nonexistent_id"
+                            ]
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+}
