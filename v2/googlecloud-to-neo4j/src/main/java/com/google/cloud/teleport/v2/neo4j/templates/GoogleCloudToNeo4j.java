@@ -274,7 +274,10 @@ public class GoogleCloudToNeo4j {
                     Entry::getKey, mapping(Entry::getValue, Collectors.<PCollection<?>>toList())));
     var sourceRows = new ArrayList<PCollection<?>>(importSpecification.getSources().size());
     var targetRows = new HashMap<TargetType, List<PCollection<?>>>(targetCount());
-    var allActiveNodeTargets = importSpecification.getTargets().getNodes();
+    var allActiveNodeTargets =
+        importSpecification.getTargets().getNodes().stream()
+            .filter(Target::isActive)
+            .collect(toList());
 
     ////////////////////////////
     // Process sources
