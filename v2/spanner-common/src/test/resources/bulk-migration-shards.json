@@ -17,6 +17,7 @@
         "password": "pass1",
         "port": "3306",
         "dbName": "",
+        "namespace": "namespace1",
         "connectionProperties": "useUnicode=yes&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull",
         "databases": [
           {

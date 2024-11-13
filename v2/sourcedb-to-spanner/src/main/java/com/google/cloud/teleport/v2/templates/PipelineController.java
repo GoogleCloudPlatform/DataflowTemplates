@@ -15,30 +15,24 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants.MAX_RECOMMENDED_TABLES_PER_JOB;
-
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.Pipeline;
@@ -48,9 +42,11 @@ import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Wait;
+import org.apache.beam.sdk.transforms.Wait.OnSignal;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
-import org.jetbrains.annotations.NotNull;
+import org.checkerframework.checker.initialization.qual.Initialized;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,132 +59,21 @@ public class PipelineController {
 
   static PipelineResult executeSingleInstanceMigration(
       SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
-
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(options, ddl);
+    TableSelector tableSelector = new TableSelector(options.getTables(), ddl, schemaMapper);
 
-    List<String> srcTablesToMigrate = listTablesToMigrate(options.getTables(), schemaMapper, ddl);
-    Set<String> tablesToMigrateSet = new HashSet<>(srcTablesToMigrate);
-
-    List<String> spannerTablesToMigrate =
-        listSpannerTablesToMigrate(ddl, schemaMapper, tablesToMigrateSet);
-
-    Map<String, PCollection<Void>> outputs = new HashMap<>();
-    for (String spTable : spannerTablesToMigrate) {
-      String srcTable = schemaMapper.getSourceTableName("", spTable);
-      List<PCollection<?>> parentOutputs = new ArrayList<>();
-      for (String parentSpTable : ddl.tablesReferenced(spTable)) {
-        String parentSrcName;
-        try {
-          parentSrcName = schemaMapper.getSourceTableName("", parentSpTable);
-        } catch (NoSuchElementException e) {
-          // This will occur when the spanner table name does not exist in source for
-          // sessionBasedMapper.
-          LOG.warn(
-              spTable
-                  + " references table "
-                  + parentSpTable
-                  + " which does not have an equivalent source table. Writes to "
-                  + spTable
-                  + " could fail, check DLQ for failed records.");
-          continue;
-        }
-        // This parent is not in tables selected for migration.
-        if (!tablesToMigrateSet.contains(parentSrcName)) {
-          LOG.warn(
-              spTable
-                  + " references table "
-                  + parentSpTable
-                  + " which is not selected for migration (Provide the source table name "
-                  + parentSrcName
-                  + " via the 'tables' option if this is a mistake!). Writes to "
-                  + spTable
-                  + " could fail, check DLQ for failed records.");
-          continue;
-        }
-        PCollection<Void> parentOutputPcollection = outputs.get(parentSrcName);
-        // Since we are iterating the tables topologically, all parents should have been
-        // processed.
-        Preconditions.checkState(
-            parentOutputPcollection != null,
-            "Output PCollection for parent table should not be null.");
-        parentOutputs.add(parentOutputPcollection);
-      }
-      JdbcIoWrapper jdbcIoWrapper =
-          JdbcIoWrapper.of(
-              OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
-                  options, List.of(srcTable), null, Wait.on(parentOutputs)));
-      if (jdbcIoWrapper.getTableReaders().isEmpty()) {
-        LOG.info("not creating reader as table is not found at source: {}", srcTable);
-        continue;
-      }
-      ReaderImpl reader = ReaderImpl.of(jdbcIoWrapper);
-      String suffix = generateSuffix("", srcTable);
-      String shardIdColumn = "";
-      PCollection<Void> output =
-          pipeline.apply(
-              "Migrate" + suffix,
-              new MigrateTableTransform(
-                  options, spannerConfig, ddl, schemaMapper, reader, "", shardIdColumn));
-      outputs.put(srcTable, output);
-    }
-
-    // Add transform to increment table counter
-    Map<String, Wait.OnSignal<?>> waitOnsMap =
-        outputs.entrySet().stream()
-            .collect(Collectors.toMap(Map.Entry::getKey, entry -> Wait.on(entry.getValue())));
-    pipeline.apply("Increment_table_counters", new IncrementTableCounter(waitOnsMap, ""));
+    Map<Integer, List<String>> levelToSpannerTableList = tableSelector.levelOrderedSpannerTables();
+    DbConfigContainer dbConfigContainer = new SingleInstanceDbConfigContainer(options);
+    setupLogicalDbMigration(
+        options,
+        pipeline,
+        spannerConfig,
+        tableSelector,
+        levelToSpannerTableList,
+        dbConfigContainer);
 
     return pipeline.run();
-  }
-
-  @NotNull
-  /**
-   * This list will contain the final list of tables that actually get migrated, which will be the
-   * intersection of Spanner and source tables.
-   */
-  static List<String> listSpannerTablesToMigrate(
-      Ddl ddl, ISchemaMapper schemaMapper, Set<String> tablesToMigrateSet) {
-    // This list is all Spanner tables topologically ordered.
-    List<String> orderedSpTables = ddl.getTablesOrderedByReference();
-
-    // This list will contain the final list of tables that actually get migrated, which will be the
-    // intersection of Spanner and source tables.
-    List<String> finalTablesToMigrate = new ArrayList<>();
-    for (String spTable : orderedSpTables) {
-      try {
-        String srcTable = schemaMapper.getSourceTableName("", spTable);
-        if (!tablesToMigrateSet.contains(srcTable)) {
-          LOG.info("ignoring table as no source maps to this spanner table: {}", spTable);
-          continue;
-        }
-        finalTablesToMigrate.add(spTable);
-      } catch (NoSuchElementException e) {
-        LOG.info("ignoring table not identified by schema mapper: {}", spTable);
-      }
-    }
-    LOG.info(
-        "{} Spanner tables in final selection for migration: {}",
-        finalTablesToMigrate.size(),
-        finalTablesToMigrate);
-    if (finalTablesToMigrate.size() > MAX_RECOMMENDED_TABLES_PER_JOB) {
-      LOG.warn(
-          "Migrating {} tables in a single job (max recommended: {}). Consider splitting tables across jobs to avoid launch issues.",
-          finalTablesToMigrate.size(),
-          MAX_RECOMMENDED_TABLES_PER_JOB);
-    }
-    return finalTablesToMigrate;
-  }
-
-  private static String generateSuffix(String shardId, String tableName) {
-    String suffix = "";
-    if (!StringUtils.isEmpty(shardId)) {
-      suffix += "_" + shardId;
-    }
-    if (!StringUtils.isEmpty(tableName)) {
-      suffix += "_" + tableName;
-    }
-    return suffix;
   }
 
   static PipelineResult executeShardedMigration(
@@ -202,100 +87,135 @@ public class PipelineController {
     // Take connection properties map
     // Write to common DLQ ?
 
-    SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(options, ddl);
+    TableSelector tableSelector = new TableSelector(options.getTables(), ddl, schemaMapper);
 
-    List<String> srcTablesToMigrate = listTablesToMigrate(options.getTables(), schemaMapper, ddl);
-    Set<String> tablesToMigrateSet = new HashSet<>(srcTablesToMigrate);
+    Map<Integer, List<String>> levelToSpannerTableList = tableSelector.levelOrderedSpannerTables();
 
-    List<String> spannerTablesToMigrate =
-        listSpannerTablesToMigrate(ddl, schemaMapper, tablesToMigrateSet);
+    SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
 
     LOG.info(
         "running migration for shards: {}",
-        shards.stream().map(s -> s.getHost()).collect(Collectors.toList()));
+        shards.stream().map(Shard::getHost).collect(Collectors.toList()));
     for (Shard shard : shards) {
       for (Map.Entry<String, String> entry : shard.getDbNameToLogicalShardIdMap().entrySet()) {
         // Read data from source
         String shardId = entry.getValue();
-        Map<String, PCollection<Void>> outputs = new HashMap<>();
-        for (String spTable : spannerTablesToMigrate) {
-          String srcTable = schemaMapper.getSourceTableName("", spTable);
-          List<PCollection<?>> parentOutputs = new ArrayList<>();
-          for (String parentSpTable : ddl.tablesReferenced(spTable)) {
-            String parentSrcName;
-            try {
-              parentSrcName = schemaMapper.getSourceTableName("", parentSpTable);
-            } catch (NoSuchElementException e) {
-              // This will occur when the spanner table name does not exist in source for
-              // sessionBasedMapper.
-              continue;
-            }
-            // This parent is not in tables selected for migration.
-            if (!tablesToMigrateSet.contains(parentSrcName)) {
-              continue;
-            }
-            PCollection<Void> parentOutputPcollection = outputs.get(parentSrcName);
-            // Since we are iterating the tables topologically, all parents should have been
-            // processed.
-            Preconditions.checkState(
-                parentOutputPcollection != null,
-                "Output PCollection for parent table should not be null.");
-            parentOutputs.add(parentOutputPcollection);
-          }
-          JdbcIoWrapper jdbcIoWrapper =
-              JdbcIoWrapper.of(
-                  OptionsToConfigBuilder.getJdbcIOWrapperConfig(
-                      sqlDialect,
-                      List.of(srcTable),
-                      null,
-                      shard.getHost(),
-                      shard.getConnectionProperties(),
-                      Integer.parseInt(shard.getPort()),
-                      shard.getUserName(),
-                      shard.getPassword(),
-                      entry.getKey(),
-                      shardId,
-                      options.getJdbcDriverClassName(),
-                      options.getJdbcDriverJars(),
-                      options.getMaxConnections(),
-                      options.getNumPartitions(),
-                      Wait.on(parentOutputs)));
-          if (jdbcIoWrapper.getTableReaders().isEmpty()) {
-            LOG.info(
-                "not creating reader as table is not found at source: {} shard: {}",
-                srcTable,
-                shard.getLogicalShardId());
-            continue;
-          }
-          ReaderImpl reader = ReaderImpl.of(jdbcIoWrapper);
-          String suffix = generateSuffix(shardId, srcTable);
-          String shardIdColumn =
-              schemaMapper.getShardIdColumnName(
-                  reader.getSourceSchema().schemaReference().namespace(), srcTable);
-          PCollection<Void> output =
-              pipeline.apply(
-                  "Migrate" + suffix,
-                  new MigrateTableTransform(
-                      options, spannerConfig, ddl, schemaMapper, reader, shardId, shardIdColumn));
-          outputs.put(srcTable, output);
-        }
-        // Add transform to increment table counter
-        Map<String, Wait.OnSignal<?>> waitOnsMap =
-            outputs.entrySet().stream()
-                .collect(
-                    Collectors.toMap(Map.Entry::getKey, mapEntry -> Wait.on(mapEntry.getValue())));
-        pipeline.apply(
-            "Increment_table_counters_" + shardId, new IncrementTableCounter(waitOnsMap, shardId));
+
+        // If a namespace is configured for a shard uses that, otherwise uses the namespace
+        // configured in the options if there is one.
+        String namespace = Optional.ofNullable(shard.getNamespace()).orElse(options.getNamespace());
+
+        ShardedDbConfigContainer dbConfigContainer =
+            new ShardedDbConfigContainer(
+                shard, sqlDialect, namespace, shardId, entry.getKey(), options);
+        setupLogicalDbMigration(
+            options,
+            pipeline,
+            spannerConfig,
+            tableSelector,
+            levelToSpannerTableList,
+            dbConfigContainer);
       }
     }
     return pipeline.run();
   }
 
-  // Calculate the total number of logical shards in the list of physical shards.
-  private static long findNumLogicalshards(List<Shard> shards) {
-    return shards.stream().mapToLong(shard -> shard.getDbNameToLogicalShardIdMap().size()).sum();
+  private static void setupLogicalDbMigration(
+      SourceDbToSpannerOptions options,
+      Pipeline pipeline,
+      SpannerConfig spannerConfig,
+      TableSelector tableSelector,
+      Map<Integer, List<String>> levelToSpannerTableList,
+      DbConfigContainer configContainer) {
+    Map<Integer, PCollection<Void>> levelVsOutputMap = new HashMap<>();
+    for (int currentLevel = 0; currentLevel < levelToSpannerTableList.size(); currentLevel++) {
+      List<String> spannerTables = levelToSpannerTableList.get(currentLevel);
+      LOG.info("processing level: {} spanner tables: {}", currentLevel, spannerTables);
+      List<String> sourceTables =
+          spannerTables.stream()
+              .map(t -> tableSelector.getSchemaMapper().getSourceTableName("", t))
+              .collect(Collectors.toList());
+      LOG.info("level: {} source tables: {}", currentLevel, spannerTables);
+      PCollection<Void> previousLevelPCollection = levelVsOutputMap.get(currentLevel - 1);
+      if (currentLevel > 0 && previousLevelPCollection == null) {
+        LOG.warn(
+            "proceeding without waiting for parent. current level: {}  tables: {}",
+            currentLevel,
+            spannerTables);
+      }
+      OnSignal<@UnknownKeyFor @Nullable @Initialized Object> waitOnSignal =
+          previousLevelPCollection != null ? Wait.on(previousLevelPCollection) : null;
+      JdbcIoWrapper jdbcIoWrapper =
+          JdbcIoWrapper.of(configContainer.getJDBCIOWrapperConfig(sourceTables, waitOnSignal));
+      if (jdbcIoWrapper.getTableReaders().isEmpty()) {
+        LOG.info("not creating reader as tables are not found at source: {}", sourceTables);
+        // If tables of 1 level are ignored in middle, then the subsequent level will not wait to
+        // begin processing.
+        continue;
+      }
+      ReaderImpl reader = ReaderImpl.of(jdbcIoWrapper);
+      String suffix = generateSuffix(configContainer.getShardId(), currentLevel + "");
+
+      Map<String, String> srcTableToShardIdColumnMap =
+          getSrcTableToShardIdColumnMap(
+              tableSelector.getSchemaMapper(), configContainer.getNamespace(), spannerTables);
+
+      PCollection<Void> output =
+          pipeline.apply(
+              "Migrate" + suffix,
+              new MigrateTableTransform(
+                  options,
+                  spannerConfig,
+                  tableSelector.getDdl(),
+                  tableSelector.getSchemaMapper(),
+                  reader,
+                  configContainer.getShardId(),
+                  srcTableToShardIdColumnMap));
+      levelVsOutputMap.put(currentLevel, output);
+    }
+
+    // Add transform to increment table counter
+    Map<Integer, OnSignal<?>> tableCompletionMap =
+        levelVsOutputMap.entrySet().stream()
+            .collect(Collectors.toMap(e -> e.getKey(), e -> Wait.on(e.getValue())));
+    pipeline.apply(
+        "Increment_table_counters" + generateSuffix(configContainer.getShardId(), null),
+        new IncrementTableCounter(tableCompletionMap, "", levelToSpannerTableList));
+  }
+
+  /**
+   * For the spanner tables that contain the shard id column, returns the source table to
+   * shardColumn.
+   *
+   * @param schemaMapper
+   * @param namespace
+   * @param spannerTables
+   * @return
+   */
+  static Map<String, String> getSrcTableToShardIdColumnMap(
+      ISchemaMapper schemaMapper, String namespace, List<String> spannerTables) {
+    Map<String, String> srcTableToShardIdMap = new HashMap<>();
+    for (String spTable : spannerTables) {
+      String shardIdColumn = schemaMapper.getShardIdColumnName(namespace, spTable);
+      if (shardIdColumn != null) {
+        String srcTable = schemaMapper.getSourceTableName(namespace, spTable);
+        srcTableToShardIdMap.put(srcTable, shardIdColumn);
+      }
+    }
+    return srcTableToShardIdMap;
+  }
+
+  private static String generateSuffix(String shardId, String tableName) {
+    String suffix = "";
+    if (!StringUtils.isEmpty(shardId)) {
+      suffix += "_" + shardId;
+    }
+    if (!StringUtils.isEmpty(tableName)) {
+      suffix += "_" + tableName;
+    }
+    return suffix;
   }
 
   @VisibleForTesting
@@ -317,54 +237,97 @@ public class PipelineController {
     return schemaMapper;
   }
 
-  /*
-   * Return the available tables to migrate based on the following.
-   * 1. Fetch tables from schema mapper. Override with tables from options if present
-   * 2. Mark for migration if tables have corresponding spanner tables.
-   * Err on the side of being lenient with configuration
-   */
-  static List<String> listTablesToMigrate(String tableList, ISchemaMapper mapper, Ddl ddl) {
-    List<String> tablesFromOptions =
-        StringUtils.isNotBlank(tableList)
-            ? Arrays.stream(tableList.split("\\:|,")).collect(Collectors.toList())
-            : new ArrayList<String>();
+  interface DbConfigContainer {
 
-    List<String> sourceTablesConfigured = null;
-    if (tablesFromOptions.isEmpty()) {
-      sourceTablesConfigured = mapper.getSourceTablesToMigrate("");
-      LOG.info("using tables from mapper as no overrides provided: {}", sourceTablesConfigured);
-    } else {
-      LOG.info("table overrides configured: {}", tablesFromOptions);
-      sourceTablesConfigured = tablesFromOptions;
+    JdbcIOWrapperConfig getJDBCIOWrapperConfig(
+        List<String> sourceTables, Wait.OnSignal<?> waitOnSignal);
+
+    String getNamespace();
+
+    String getShardId();
+  }
+
+  static class ShardedDbConfigContainer implements DbConfigContainer {
+
+    private Shard shard;
+
+    private SQLDialect sqlDialect;
+
+    private String namespace;
+
+    private String shardId;
+
+    private String dbName;
+
+    private SourceDbToSpannerOptions options;
+
+    public ShardedDbConfigContainer(
+        Shard shard,
+        SQLDialect sqlDialect,
+        String namespace,
+        String shardId,
+        String dbName,
+        SourceDbToSpannerOptions options) {
+      this.shard = shard;
+      this.sqlDialect = sqlDialect;
+      this.namespace = namespace;
+      this.shardId = shardId;
+      this.dbName = dbName;
+      this.options = options;
     }
 
-    List<String> tablesToMigrate = new ArrayList<>();
-    for (String srcTable : sourceTablesConfigured) {
-      String spannerTable = null;
-      try {
-        spannerTable = mapper.getSpannerTableName("", srcTable);
-      } catch (NoSuchElementException e) {
-        LOG.info("could not fetch spanner table from mapper: {}", srcTable);
-        continue;
-      }
-
-      if (spannerTable == null) {
-        LOG.warn("skipping source table as there is no mapped spanner table: {} ", spannerTable);
-      } else if (ddl.table(spannerTable) == null) {
-        LOG.warn(
-            "skipping source table: {} as there is no matching spanner table: {} ",
-            srcTable,
-            spannerTable);
-      } else {
-        // source table has matching spanner table on current spanner instance
-        tablesToMigrate.add(srcTable);
-      }
+    public JdbcIOWrapperConfig getJDBCIOWrapperConfig(
+        List<String> sourceTables, Wait.OnSignal<?> waitOnSignal) {
+      return OptionsToConfigBuilder.getJdbcIOWrapperConfig(
+          sqlDialect,
+          sourceTables,
+          null,
+          shard.getHost(),
+          shard.getConnectionProperties(),
+          Integer.parseInt(shard.getPort()),
+          shard.getUserName(),
+          shard.getPassword(),
+          dbName,
+          namespace,
+          shardId,
+          options.getJdbcDriverClassName(),
+          options.getJdbcDriverJars(),
+          options.getMaxConnections(),
+          options.getNumPartitions(),
+          waitOnSignal);
     }
 
-    if (tablesToMigrate.isEmpty()) {
-      LOG.error("aborting migration as no tables found to migrate");
-      throw new InvalidOptionsException("no configured tables can be migrated");
+    @Override
+    public String getNamespace() {
+      return namespace;
     }
-    return tablesToMigrate;
+
+    @Override
+    public String getShardId() {
+      return shardId;
+    }
+  }
+
+  static class SingleInstanceDbConfigContainer implements DbConfigContainer {
+    private SourceDbToSpannerOptions options;
+
+    public SingleInstanceDbConfigContainer(SourceDbToSpannerOptions options) {
+      this.options = options;
+    }
+
+    public JdbcIOWrapperConfig getJDBCIOWrapperConfig(
+        List<String> sourceTables, Wait.OnSignal<?> waitOnSignal) {
+      return OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
+          options, sourceTables, null, waitOnSignal);
+    }
+
+    @Override
+    public String getNamespace() {
+      return options.getNamespace();
+    }
+
+    public String getShardId() {
+      return null;
+    }
   }
 }

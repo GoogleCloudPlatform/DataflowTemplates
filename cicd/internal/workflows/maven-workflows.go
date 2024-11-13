@@ -58,6 +58,7 @@ type MavenFlags interface {
 	StaticBigtableInstance(string) string
 	StaticSpannerInstance(string) string
 	SpannerHost(string) string
+	InternalMaven() string
 }
 
 type mvnFlags struct{}
@@ -143,6 +144,10 @@ func (*mvnFlags) StaticSpannerInstance(instanceID string) string {
 
 func (*mvnFlags) SpannerHost(host string) string {
 	return "-DspannerHost=" + host
+}
+
+func (*mvnFlags) InternalMaven() string {
+	return "--settings=.mvn/settings.xml"
 }
 
 func NewMavenFlags() MavenFlags {

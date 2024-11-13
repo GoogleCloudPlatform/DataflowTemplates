@@ -20,6 +20,7 @@ package org.apache.beam.it.gcp.spanner;
 import static com.google.cloud.spanner.Value.int64;
 import static com.google.cloud.spanner.Value.string;
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -42,7 +43,10 @@ import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Struct;
 import com.google.common.collect.ImmutableList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import org.apache.beam.it.gcp.monitoring.MonitoringClient;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -69,6 +73,7 @@ public final class SpannerResourceManagerTest {
   @Mock private InstanceAdminClient instanceAdminClient;
   @Mock private DatabaseAdminClient databaseAdminClient;
   @Mock private ResultSet resultSet;
+  @Mock private MonitoringClient monitoringClient;
 
   private static final String TEST_ID = "test";
   private static final String PROJECT_ID = "test-project";
@@ -80,6 +85,7 @@ public final class SpannerResourceManagerTest {
   @Captor private ArgumentCaptor<Iterable<String>> statementCaptor;
   @Captor private ArgumentCaptor<String> instanceIdCaptor;
   @Captor private ArgumentCaptor<String> databaseIdCaptor;
+  @Captor private ArgumentCaptor<String> projectIdCaptor;
 
   @Before
   public void setUp() {
@@ -175,6 +181,50 @@ public final class SpannerResourceManagerTest {
     verify(spanner.getInstanceAdminClient(), times(2)).createInstance(any());
     verify(spanner.getDatabaseAdminClient(), times(2)).createDatabase(any(), any());
     verify(spanner.getDatabaseAdminClient(), times(2))
+        .updateDatabaseDdl(
+            instanceIdCaptor.capture(),
+            databaseIdCaptor.capture(),
+            statementCaptor.capture(),
+            any());
+
+    String actualInstanceId = instanceIdCaptor.getValue();
+    String actualDatabaseId = databaseIdCaptor.getValue();
+    Iterable<String> actualStatement = statementCaptor.getValue();
+
+    assertThat(actualInstanceId).matches(TEST_ID + "-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}");
+
+    assertThat(actualDatabaseId).matches(TEST_ID + "_\\d{8}_\\d{6}_[a-zA-Z0-9]{6}");
+    assertThat(actualStatement).containsExactlyElementsIn(ImmutableList.of(statement));
+  }
+
+  @Test
+  public void testExecuteDdlStatementShouldRetryOnResourceExhaustedError()
+      throws ExecutionException, InterruptedException {
+    //   arrange
+    prepareCreateInstanceMock();
+    prepareCreateDatabaseMock();
+    String statement =
+        "CREATE TABLE Singers (\n"
+            + "  SingerId   INT64 NOT NULL,\n"
+            + "  FirstName  STRING(1024),\n"
+            + "  LastName   STRING(1024),\n"
+            + ") PRIMARY KEY (SingerId)";
+
+    RuntimeException resourceExhaustedException =
+        new RuntimeException(
+            "com.google.cloud.spanner.SpannerException: RESOURCE_EXHAUSTED: io.grpc.StatusRuntimeException: RESOURCE_EXHAUSTED: CPU overload detected");
+    when(spanner.getDatabaseAdminClient().updateDatabaseDdl(any(), any(), any(), any()).get())
+        .thenThrow(resourceExhaustedException)
+        .thenReturn(null);
+
+    // act
+    testManager.executeDdlStatement(statement);
+
+    // assert
+    // verify createInstance, createDatabase, and updateDatabaseDdl were called.
+    verify(spanner.getInstanceAdminClient(), times(2)).createInstance(any());
+    verify(spanner.getDatabaseAdminClient(), times(2)).createDatabase(any(), any());
+    verify(spanner.getDatabaseAdminClient(), times(3))
         .updateDatabaseDdl(
             instanceIdCaptor.capture(),
             databaseIdCaptor.capture(),
@@ -524,6 +574,53 @@ public final class SpannerResourceManagerTest {
     verify(spanner.getDatabaseAdminClient()).dropDatabase(eq("existing-instance"), any());
     verify(spanner.getInstanceAdminClient(), never()).deleteInstance(any());
     verify(spanner).close();
+  }
+
+  @Test
+  public void testCollectMetricsThrowsExceptionWhenMonitoringClientIsNotInitialized() {
+    assertThrows(
+        SpannerResourceManagerException.class, () -> testManager.collectMetrics(new HashMap<>()));
+  }
+
+  @Test
+  public void testCollectMetricsShouldThrowExceptionWhenDatabaseIsNotCreated() {
+    when(monitoringClient.getAggregatedMetric(any(), any(), any(), any())).thenReturn(1.1);
+    SpannerResourceManager testManagerWithMonitoringClient =
+        new SpannerResourceManager(
+            SpannerResourceManager.builder(TEST_ID, PROJECT_ID, REGION, DIALECT)
+                .setMonitoringClient(monitoringClient),
+            spanner);
+    assertThrows(
+        IllegalStateException.class,
+        () -> testManagerWithMonitoringClient.collectMetrics(new HashMap<>()));
+  }
+
+  @Test
+  public void testCollectMetricsShouldWorkWhenMonitoringClientAndDatabaseIsInitialized()
+      throws ExecutionException, InterruptedException {
+    when(monitoringClient.getAggregatedMetric(any(), any(), any(), any())).thenReturn(1.1);
+    SpannerResourceManager testManagerWithMonitoringClient =
+        new SpannerResourceManager(
+            SpannerResourceManager.builder(TEST_ID, PROJECT_ID, REGION, DIALECT)
+                .setMonitoringClient(monitoringClient),
+            spanner);
+    prepareCreateInstanceMock();
+    prepareCreateDatabaseMock();
+    testManagerWithMonitoringClient.executeDdlStatement("");
+
+    Map<String, Double> metrics = new HashMap<>();
+    testManagerWithMonitoringClient.collectMetrics(metrics);
+
+    assertEquals(2, metrics.size());
+    assertEquals(1.1, metrics.get("Spanner_AverageCpuUtilization"), 0.0);
+    assertEquals(1.1, metrics.get("Spanner_MaxCpuUtilization"), 0.0);
+    ArgumentCaptor<String> filterCaptor = ArgumentCaptor.forClass(String.class);
+
+    verify(monitoringClient, times(2))
+        .getAggregatedMetric(projectIdCaptor.capture(), filterCaptor.capture(), any(), any());
+    assertThat(projectIdCaptor.getValue()).isEqualTo(PROJECT_ID);
+    assertThat(filterCaptor.getValue())
+        .contains("metric.type=\"spanner.googleapis.com/instance/cpu/utilization\"");
   }
 
   private void prepareCreateDatabaseMock() throws ExecutionException, InterruptedException {

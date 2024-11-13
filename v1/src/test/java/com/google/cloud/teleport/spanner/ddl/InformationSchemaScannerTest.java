@@ -89,7 +89,7 @@ public class InformationSchemaScannerTest {
                 + " FROM information_schema.indexes AS t"
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') AND"
-                + " (t.index_type='INDEX' OR t.index_type='SEARCH') AND t.spanner_is_managed = FALSE"
+                + " (t.index_type='INDEX' OR t.index_type='SEARCH' OR t.index_type='VECTOR') AND t.spanner_is_managed = FALSE"
                 + " ORDER BY t.table_name, t.index_name"));
 
     assertThat(

@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.metrics.MetricResult;
@@ -38,11 +39,15 @@ public class IncrementTableCounterTest {
     PCollection<Integer> t1 = pipeline.apply("t1", Create.of(1));
     PCollection<Integer> t2 = pipeline.apply("t2", Create.of(1));
     PCollection<Integer> t3 = pipeline.apply("t3", Create.of(1));
-    Map<String, Wait.OnSignal<?>> tableWaits = new HashMap<>();
-    tableWaits.put("t1", Wait.on(t1));
-    tableWaits.put("t2", Wait.on(t2));
-    tableWaits.put("t3", Wait.on(t3));
-    pipeline.apply(new IncrementTableCounter(tableWaits, "test-shard"));
+    Map<Integer, Wait.OnSignal<?>> tableWaits = new HashMap<>();
+    tableWaits.put(0, Wait.on(t1));
+    tableWaits.put(1, Wait.on(t2));
+    tableWaits.put(2, Wait.on(t3));
+    Map<Integer, List<String>> levelVsTableMap = new HashMap<>();
+    levelVsTableMap.put(0, List.of("t1"));
+    levelVsTableMap.put(1, List.of("t2"));
+    levelVsTableMap.put(2, List.of("t3"));
+    pipeline.apply(new IncrementTableCounter(tableWaits, "test-shard", levelVsTableMap));
     PipelineResult result = pipeline.run();
     result.waitUntilFinish();
     for (MetricResult c :

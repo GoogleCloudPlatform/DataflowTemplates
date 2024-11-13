@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range
 
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -96,10 +97,12 @@ public class BoundaryExtractorFactory {
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(BigInteger.class));
     resultSet.next();
+    BigDecimal start = resultSet.getBigDecimal(1);
+    BigDecimal end = resultSet.getBigDecimal(2);
     return Boundary.<java.math.BigInteger>builder()
         .setPartitionColumn(partitionColumn)
-        .setStart(resultSet.getBigDecimal(1).toBigInteger())
-        .setEnd(resultSet.getBigDecimal(2).toBigInteger())
+        .setStart(start == null ? null : start.toBigInteger())
+        .setEnd(end == null ? null : end.toBigInteger())
         .setBoundarySplitter(BoundarySplitterFactory.create(BigInteger.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();

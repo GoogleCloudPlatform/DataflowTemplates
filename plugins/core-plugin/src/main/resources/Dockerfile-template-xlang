@@ -17,6 +17,9 @@ WORKDIR $WORKDIR
 # Throw if requirements.txt file not provided
 RUN if ! [ -f requirements.txt ] ; then >&2 echo "error: no requirements.txt file found" && exit 1 ; fi
 
+# Set up custom PyPi repository, if applicable
+${airlockConfig}
+
 # Install dependencies to launch the pipeline and download to reduce startup time
 RUN python -m venv /venv \
     && /venv/bin/python -m ensurepip --upgrade \

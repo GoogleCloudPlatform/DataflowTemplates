@@ -129,7 +129,10 @@ public @interface Template {
    */
   boolean testOnly() default false;
 
-  /** Set to true to stage the template image without creating a spec file in GCS. */
+  /**
+   * Set to true to stage the template image without creating a spec file in GCS or generate any
+   * documentation.
+   */
   boolean stageImageOnly() default false;
 
   /** Override the entry point for the image. */

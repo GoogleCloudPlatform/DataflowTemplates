@@ -25,8 +25,6 @@ import com.google.common.collect.ImmutableList;
 import org.apache.beam.sdk.util.FluentBackoff;
 import org.joda.time.Duration;
 
-// TODO(thiagotnunes): Fine-tune the defaults based on benchmarking.
-
 /**
  * PostgreSQL Default Configuration for {@link
  * com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper JdbcIoWrapper}.

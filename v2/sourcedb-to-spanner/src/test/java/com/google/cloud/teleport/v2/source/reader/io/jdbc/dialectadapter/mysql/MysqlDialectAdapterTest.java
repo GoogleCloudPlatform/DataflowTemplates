@@ -666,41 +666,6 @@ public class MysqlDialectAdapterTest {
         .isFalse();
   }
 
-  @Test
-  public void testPrepareCollationsOrderQuery() {
-    String originalQuery =
-        "SET @db_charset = 'charset_replacement_tag';\n"
-            + " -- You have a blank line below and a comment here.\n"
-            + "SET @db_collation = 'collation_replacement_tag';\n\n"
-            + "  \n"
-            + "SELECT * FROM my_table1;\n"
-            + "-- This is another comment\n"
-            + " -- This is uet another comment!\n"
-            + "SELECT * FROM my_table2;";
-    String expectedQuery =
-        "SET @db_charset = 'utf8mb4';\n"
-            + "SET @db_collation = 'utf8mb4_general_ci';\n"
-            + "SELECT * FROM my_table1;\n"
-            + "SELECT * FROM my_table2;";
-
-    String dbCharset = "utf8mb4";
-    String dbCollation = "utf8mb4_general_ci";
-
-    String processedQuery =
-        (new MysqlDialectAdapter(MySqlVersion.DEFAULT))
-            .prepareCollationsOrderQuery(originalQuery, dbCharset, dbCollation);
-
-    assertThat(processedQuery).isEqualTo(expectedQuery);
-  }
-
-  @Test
-  public void testResourceAsString() {
-    String query = MysqlDialectAdapter.resourceAsString("sql/mysql_collation_oder_query.sql");
-    assertThat(query).isNotEmpty();
-    assertThrows(
-        RuntimeException.class, () -> MysqlDialectAdapter.resourceAsString("no_such_file.sql"));
-  }
-
   private static ResultSet getMockInfoSchemaRs() throws SQLException {
     return new MockRSBuilder(
             MockInformationSchema.builder()
