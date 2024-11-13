@@ -144,16 +144,20 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
 
   private void writeRowInSpanner() {
     // Write a single record to Spanner
-    Mutation m =
+    Mutation m1 =
         Mutation.newInsertOrUpdateBuilder("Users")
             .set("id")
             .to(1)
-            .set("name")
+            .set("full_name")
             .to("FF")
             .set("from")
             .to("AA")
             .build();
-    spannerResourceManager.write(m);
+    spannerResourceManager.write(m1);
+
+    Mutation m2 =
+        Mutation.newInsertOrUpdateBuilder("Users2").set("id").to(2).set("name").to("B").build();
+    spannerResourceManager.write(m2);
 
     // Write a single record to Spanner for the given logical shard
     // Add the record with the transaction tag as txBy=
@@ -171,14 +175,14 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
         .run(
             (TransactionCallable<Void>)
                 transaction -> {
-                  Mutation m2 =
+                  Mutation m3 =
                       Mutation.newInsertOrUpdateBuilder("Users")
                           .set("id")
                           .to(2)
-                          .set("name")
+                          .set("full_name")
                           .to("GG")
                           .build();
-                  transaction.buffer(m2);
+                  transaction.buffer(m3);
                   return null;
                 });
   }
