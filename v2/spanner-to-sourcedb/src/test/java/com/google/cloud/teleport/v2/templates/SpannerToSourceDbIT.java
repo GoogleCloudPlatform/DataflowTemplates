@@ -27,6 +27,9 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
@@ -134,12 +137,14 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
   }
 
   @Test
-  public void spannerToSourceDbBasic() throws InterruptedException {
+  public void spannerToSourceDbBasic() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();
     // Write row in Spanner
     writeRowInSpanner();
     // Assert events on Mysql
     assertRowInMySQL();
+    // Assert that a file exists in the 'skip' subdirectory of the DLQ directory
+    assertSkipFileExists();
   }
 
   private void writeRowInSpanner() {
@@ -199,5 +204,12 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     assertThat(rows.get(0).get("id")).isEqualTo(1);
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
     assertThat(rows.get(0).get("from")).isEqualTo("AA");
+  }
+
+  private void assertSkipFileExists() throws IOException {
+    String dlqDir = getGcsPath("dlq", gcsResourceManager);
+    Path skipDirPath = Paths.get(dlqDir, "skip");
+    assertThat(Files.exists(skipDirPath)).isTrue();
+    assertThat(Files.list(skipDirPath).count()).isGreaterThan(0);
   }
 }
