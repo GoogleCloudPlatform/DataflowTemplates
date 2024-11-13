@@ -13,11 +13,13 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.templates.loadtesting;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
 import com.google.common.collect.ImmutableList;
 import java.util.HashSet;
 import java.util.List;
@@ -44,17 +46,17 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class MySQLSessionSchemaMapperIT extends SourceDbToSpannerITBase {
-  private static final Logger LOG = LoggerFactory.getLogger(MySQLSessionSchemaMapperIT.class);
-  private static final HashSet<MySQLSessionSchemaMapperIT> testInstances = new HashSet<>();
+public class MySQLDDLIT extends SourceDbToSpannerITBase {
+  private static final Logger LOG = LoggerFactory.getLogger(MySQLDDLIT.class);
+  private static final HashSet<MySQLDDLIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final String SESSION_FILE_RESOURCE = "SchemaMapperIT/company-session.json";
-  private static final String MYSQL_DDL_RESOURCE = "SchemaMapperIT/company-mysql-schema.sql";
-  private static final String SPANNER_DDL_RESOURCE = "SchemaMapperIT/company-spanner-schema.sql";
+  private static final String SESSION_FILE_RESOURCE = "DDLIT/company-session.json";
+  private static final String MYSQL_DDL_RESOURCE = "DDLIT/company-mysql-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE = "DDLIT/company-spanner-schema.sql";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class. \
@@ -72,7 +74,7 @@ public class MySQLSessionSchemaMapperIT extends SourceDbToSpannerITBase {
   }
 
   @Test
-  public void noTransformationTest() throws Exception {
+  public void ddlModificationTest() throws Exception {
     loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =
@@ -109,5 +111,10 @@ public class MySQLSessionSchemaMapperIT extends SourceDbToSpannerITBase {
             "employee_attribute", "employee_id", "attribute_name", "value");
 
     SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(4); // Supports composite keys
+
+    ImmutableList<Struct> vendor =
+        spannerResourceManager.readTableRecords("vendor", "vendor_id", "full_name");
+
+    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(3);
   }
 }
