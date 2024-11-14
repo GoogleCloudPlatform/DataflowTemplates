@@ -1,0 +1,86 @@
+name: Spanner to Source DB Unit Test
+
+on:
+  push:
+    paths:
+      - 'v2/spanner-to-sourcedb/**'
+      - '.github/workflows/spanner-sourcedb.yml'
+    # branches: [ main ]
+  pull_request:
+    paths:
+      - 'v2/spanner-to-sourcedb/**'
+    # branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Cache Maven packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Run Tests
+      run: |
+        cd v2/spanner-to-sourcedb
+        mvn test
+
+    - name: Generate Test Report
+      if: success() || failure()
+      run: |
+        cd v2/spanner-to-sourcedb
+        mvn surefire-report:report-only
+        
+    - name: Upload Test Results
+      if: success() || failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: v2/spanner-to-sourcedb/target/site/surefire-report.html
+
+    - name: Upload Coverage Results
+      if: success() || failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-results
+        path: v2/spanner-to-sourcedb/target/site/jacoco/
+
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: SpotBugs Analysis
+      run: |
+        cd v2/spanner-to-sourcedb
+        mvn com.github.spotbugs:spotbugs-maven-plugin:check
+
+    - name: PMD Analysis
+      run: |
+        cd v2/spanner-to-sourcedb
+        mvn pmd:check
+
+    - name: Checkstyle
+      run: |
+        cd v2/spanner-to-sourcedb
+        mvn checkstyle:check
