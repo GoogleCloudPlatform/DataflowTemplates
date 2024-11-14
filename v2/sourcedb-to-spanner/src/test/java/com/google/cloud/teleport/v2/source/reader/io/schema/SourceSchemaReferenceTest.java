@@ -17,31 +17,40 @@ package com.google.cloud.teleport.v2.source.reader.io.schema;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference.Kind;
+import junit.framework.TestCase;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 
+/** Test class for {@link SourceSchemaReference}. */
 @RunWith(MockitoJUnitRunner.class)
-public class SourceSchemaReferenceTest {
+public class SourceSchemaReferenceTest extends TestCase {
+
   @Test
-  public void testSourceSchemaReferenceBasic() {
-    JdbcSchemaReference jdbcSchemaReference =
-        JdbcSchemaReference.builder().setDbName("testDB").build();
-    CassandraSchemaReference cassandraSchemaReference =
-        CassandraSchemaReference.builder().setKeyspaceName("testKeySpace").build();
-    assertThat(SourceSchemaReference.ofJdbc(jdbcSchemaReference).getName())
-        .isEqualTo(jdbcSchemaReference.getName());
-    assertThat(SourceSchemaReference.ofJdbc(jdbcSchemaReference).getKind()).isEqualTo(Kind.JDBC);
-    assertThat(SourceSchemaReference.ofJdbc(jdbcSchemaReference).jdbc())
-        .isEqualTo(jdbcSchemaReference);
-    assertThat(SourceSchemaReference.ofCassandra(cassandraSchemaReference).getKind())
-        .isEqualTo(Kind.CASSANDRA);
-    assertThat(SourceSchemaReference.ofCassandra(cassandraSchemaReference).getName())
-        .isEqualTo(cassandraSchemaReference.getName());
-    assertThat(SourceSchemaReference.ofCassandra(cassandraSchemaReference).cassandra())
-        .isEqualTo(cassandraSchemaReference);
+  public void testDbNameWithNullNamespaceBuilds() {
+    final String testDB = "testDb";
+    SourceSchemaReference ref = SourceSchemaReference.builder().setDbName(testDB).build();
+    assertThat(ref.namespace()).isNull();
+    assertThat(ref.dbName()).isEqualTo(testDB);
+    assertThat(ref.getName()).isEqualTo("Db." + testDB);
+  }
+
+  @Test
+  public void testDbNameWithNamespaceBuilds() {
+    final String testDB = "testDb";
+    final String testNamespace = "testNamespace";
+    SourceSchemaReference ref =
+        SourceSchemaReference.builder().setDbName(testDB).setNamespace(testNamespace).build();
+    assertThat(ref.dbName()).isEqualTo(testDB);
+    assertThat(ref.namespace()).isEqualTo(testNamespace);
+    assertThat(ref.getName()).isEqualTo("Db." + testDB + ".Namespace." + testNamespace);
+  }
+
+  @Test
+  public void testNullDbNameThrowsIllegalStateException() {
+    // As dbName is a required property, we expect "java.lang.IllegalStateException"
+    Assert.assertThrows(
+        java.lang.IllegalStateException.class, () -> SourceSchemaReference.builder().build());
   }
 }

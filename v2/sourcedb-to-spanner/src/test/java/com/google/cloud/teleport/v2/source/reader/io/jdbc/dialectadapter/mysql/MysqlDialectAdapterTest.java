@@ -27,7 +27,6 @@ import static org.mockito.Mockito.when;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.InformationSchemaCols;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.InformationSchemaStatsCols;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
@@ -66,8 +65,8 @@ public class MysqlDialectAdapterTest {
   @Test
   public void testDiscoverTableSchema() throws SQLException, RetriableSchemaDiscoveryException {
     final String testTable = "testTable";
-    final JdbcSchemaReference sourceSchemaReference =
-        JdbcSchemaReference.builder().setDbName("testDB").build();
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
     final ResultSet mockResultSet = getMockInfoSchemaRs();
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
@@ -78,18 +77,15 @@ public class MysqlDialectAdapterTest {
     assertThat(
             new MysqlDialectAdapter(MySqlVersion.DEFAULT)
                 .discoverTableSchema(
-                    com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource.ofJdbc(
-                        mockDataSource),
-                    SourceSchemaReference.ofJdbc(sourceSchemaReference),
-                    ImmutableList.of(testTable)))
+                    mockDataSource, sourceSchemaReference, ImmutableList.of(testTable)))
         .isEqualTo(getExpectedColumnMapping(testTable));
   }
 
   @Test
   public void testDiscoverTableSchemaGetConnectionException() throws SQLException {
     final String testTable = "testTable";
-    final JdbcSchemaReference sourceSchemaReference =
-        JdbcSchemaReference.builder().setDbName("testDB").build();
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
 
     when(mockDataSource.getConnection())
         .thenThrow(new SQLTransientConnectionException("test"))
@@ -113,8 +109,8 @@ public class MysqlDialectAdapterTest {
   @Test
   public void testDiscoverTableSchemaPrepareStatementException() throws SQLException {
     final String testTable = "testTable";
-    final JdbcSchemaReference sourceSchemaReference =
-        JdbcSchemaReference.builder().setDbName("testDB").build();
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
 
     when(mockConnection.prepareStatement(anyString())).thenThrow(new SQLException("test"));
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
@@ -130,8 +126,8 @@ public class MysqlDialectAdapterTest {
   @Test
   public void testDiscoverTableSchemaSetStringException() throws SQLException {
     final String testTable = "testTable";
-    final JdbcSchemaReference sourceSchemaReference =
-        JdbcSchemaReference.builder().setDbName("testDB").build();
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
@@ -149,8 +145,8 @@ public class MysqlDialectAdapterTest {
   public void testDiscoverTableSchemaExecuteQueryException() throws SQLException {
 
     final String testTable = "testTable";
-    final JdbcSchemaReference sourceSchemaReference =
-        JdbcSchemaReference.builder().setDbName("testDB").build();
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
@@ -169,8 +165,8 @@ public class MysqlDialectAdapterTest {
   public void testDiscoverTableSchemaRsException() throws SQLException {
 
     final String testTable = "testTable";
-    final JdbcSchemaReference sourceSchemaReference =
-        JdbcSchemaReference.builder().setDbName("testDB").build();
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
     ResultSet mockResultSet = mock(ResultSet.class);
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
@@ -191,7 +187,7 @@ public class MysqlDialectAdapterTest {
   public void testGetSchemaDiscoveryQuery() {
     assertThat(
             MysqlDialectAdapter.getSchemaDiscoveryQuery(
-                JdbcSchemaReference.builder().setDbName("testDB").build()))
+                SourceSchemaReference.builder().setDbName("testDB").build()))
         .isEqualTo(
             "SELECT COLUMN_NAME,COLUMN_TYPE,CHARACTER_MAXIMUM_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE FROM INFORMATION_SCHEMA.Columns WHERE TABLE_SCHEMA = 'testDB' AND TABLE_NAME = ?");
   }
@@ -201,8 +197,8 @@ public class MysqlDialectAdapterTest {
     ImmutableList<String> testTables =
         ImmutableList.of("testTable1", "testTable2", "testTable3", "testTable4");
 
-    final JdbcSchemaReference sourceSchemaReference =
-        JdbcSchemaReference.builder().setDbName("testDB").build();
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.createStatement()).thenReturn(mockStatement);
@@ -223,10 +219,7 @@ public class MysqlDialectAdapterTest {
 
     ImmutableList<String> tables =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
-            .discoverTables(
-                com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource.ofJdbc(
-                    mockDataSource),
-                SourceSchemaReference.ofJdbc(sourceSchemaReference));
+            .discoverTables(mockDataSource, sourceSchemaReference);
 
     assertThat(tables).isEqualTo(testTables);
   }
@@ -234,8 +227,8 @@ public class MysqlDialectAdapterTest {
   @Test
   public void testDiscoverTablesGetConnectionException() throws SQLException {
 
-    final JdbcSchemaReference sourceSchemaReference =
-        JdbcSchemaReference.builder().setDbName("testDB").build();
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
 
     when(mockDataSource.getConnection())
         .thenThrow(new SQLTransientConnectionException("test"))
@@ -257,8 +250,8 @@ public class MysqlDialectAdapterTest {
   @Test
   public void testDiscoverTablesRsException() throws SQLException {
 
-    final JdbcSchemaReference sourceSchemaReference =
-        JdbcSchemaReference.builder().setDbName("testDB").build();
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.createStatement()).thenReturn(mockStatement);
@@ -350,8 +343,8 @@ public class MysqlDialectAdapterTest {
                 .setStringMaxLength(255)
                 .build());
 
-    final JdbcSchemaReference sourceSchemaReference =
-        JdbcSchemaReference.builder().setDbName("testDB").build();
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
     ResultSet mockResultSet = mock(ResultSet.class);
     ResultSetMetaData mockMetadata = mock(ResultSetMetaData.class);
 
@@ -371,11 +364,7 @@ public class MysqlDialectAdapterTest {
 
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoveredIndexes =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
-            .discoverTableIndexes(
-                com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource.ofJdbc(
-                    mockDataSource),
-                SourceSchemaReference.ofJdbc(sourceSchemaReference),
-                testTables);
+            .discoverTableIndexes(mockDataSource, sourceSchemaReference, testTables);
 
     assertThat(discoveredIndexes)
         .isEqualTo(ImmutableMap.of(testTables.get(0), expectedSourceColumnIndexInfos));
@@ -429,8 +418,8 @@ public class MysqlDialectAdapterTest {
                 .setStringMaxLength(100)
                 .build());
 
-    final JdbcSchemaReference sourceSchemaReference =
-        JdbcSchemaReference.builder().setDbName("testDB").build();
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
     ResultSet mockResultSet = mock(ResultSet.class);
     ResultSetMetaData mockMetadata = mock(ResultSetMetaData.class);
     when(mockResultSet.getMetaData()).thenReturn(mockMetadata);
@@ -556,7 +545,7 @@ public class MysqlDialectAdapterTest {
   public void testGetIndexDiscoveryQuery() {
     assertThat(
             MysqlDialectAdapter.getIndexDiscoveryQuery(
-                JdbcSchemaReference.builder().setDbName("testDB").build()))
+                SourceSchemaReference.builder().setDbName("testDB").build()))
         .isEqualTo(
             "SELECT * FROM INFORMATION_SCHEMA.STATISTICS stats JOIN INFORMATION_SCHEMA.COLUMNS cols ON stats.table_schema = cols.table_schema AND stats.table_name = cols.table_name AND stats.column_name = cols.column_name LEFT JOIN INFORMATION_SCHEMA.COLLATIONS collations ON cols.COLLATION_NAME = collations.COLLATION_NAME WHERE stats.TABLE_SCHEMA = 'testDB' AND stats.TABLE_NAME = ?");
   }
@@ -564,8 +553,8 @@ public class MysqlDialectAdapterTest {
   @Test
   public void testDiscoverTableIndexesGetConnectionException() throws SQLException {
     final String testTable = "testTable";
-    final JdbcSchemaReference sourceSchemaReference =
-        JdbcSchemaReference.builder().setDbName("testDB").build();
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
 
     when(mockDataSource.getConnection())
         .thenThrow(new SQLTransientConnectionException("test"))
@@ -592,8 +581,8 @@ public class MysqlDialectAdapterTest {
     ImmutableList<String> testTables = ImmutableList.of("testTable1");
     long exceptionCount = 0;
 
-    final JdbcSchemaReference sourceSchemaReference =
-        JdbcSchemaReference.builder().setDbName("testDB").build();
+    final SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString()))

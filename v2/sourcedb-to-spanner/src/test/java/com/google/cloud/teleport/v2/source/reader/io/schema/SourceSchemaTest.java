@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.source.reader.io.schema;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import junit.framework.TestCase;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,12 +33,10 @@ public class SourceSchemaTest extends TestCase {
 
     SourceSchema testSchema =
         SourceSchema.builder()
-            .setSchemaReference(
-                SourceSchemaReference.ofJdbc(
-                    JdbcSchemaReference.builder().setDbName(testDb).build()))
+            .setSchemaReference(SourceSchemaReference.builder().setDbName(testDb).build())
             .addTableSchema(SchemaTestUtils.generateTestTableSchema(testTable))
             .build();
-    assertThat(testSchema.schemaReference().jdbc().dbName()).isEqualTo(testDb);
+    assertThat(testSchema.schemaReference().dbName()).isEqualTo(testDb);
     assertThat(testSchema.tableSchemas()).hasSize(1);
     assertThat(testSchema.tableSchemas().get(0).avroSchema().getFields()).hasSize(2);
   }

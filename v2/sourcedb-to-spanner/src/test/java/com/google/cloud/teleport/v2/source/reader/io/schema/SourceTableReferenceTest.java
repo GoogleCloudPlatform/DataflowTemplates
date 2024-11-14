@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.source.reader.io.schema;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -32,14 +31,12 @@ public class SourceTableReferenceTest {
     final String testTableUUID = "10a03145-47bd-4d6c-8168-3eab0f9f847b";
     SourceTableReference ref =
         SourceTableReference.builder()
-            .setSourceSchemaReference(
-                SourceSchemaReference.ofJdbc(
-                    JdbcSchemaReference.builder().setDbName(testDB).build()))
+            .setSourceSchemaReference(SourceSchemaReference.builder().setDbName(testDB).build())
             .setSourceTableName(testTable)
             .setSourceTableSchemaUUID(testTableUUID)
             .build();
-    assertThat(ref.sourceSchemaReference().jdbc().namespace()).isNull();
-    assertThat(ref.sourceSchemaReference().jdbc().dbName()).isEqualTo(testDB);
+    assertThat(ref.sourceSchemaReference().namespace()).isNull();
+    assertThat(ref.sourceSchemaReference().dbName()).isEqualTo(testDB);
     assertThat(ref.sourceTableName()).isEqualTo(testTable);
     assertThat(ref.sourceTableSchemaUUID()).isEqualTo(testTableUUID);
     assertThat(ref.getName()).isEqualTo("Db.testDb.Table.testTable");
