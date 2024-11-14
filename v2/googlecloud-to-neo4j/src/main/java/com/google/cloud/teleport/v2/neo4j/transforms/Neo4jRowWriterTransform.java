@@ -26,10 +26,12 @@ import com.google.cloud.teleport.v2.neo4j.utils.SerializableSupplier;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -119,7 +121,9 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
             connectionSupplier);
 
     return input
-        .apply("Create KV pairs", CreateKvTransform.of(parallelismFactor(targetType, config)))
+        .apply(
+            "Create KV pairs",
+            WithKeys.of(ThreadLocalRandomInt.of(parallelismFactor(targetType, config))))
         .apply("Group into batches", GroupIntoBatches.ofSize(batchSize(targetType, config)))
         .apply(
             targetSequence.getSequenceNumber(target) + ": Neo4j write " + target.getName(),
@@ -223,6 +227,24 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
             .orElse(DEFAULT_QUERY_PARALLELISM_FACTOR);
       default:
         throw new IllegalStateException(String.format("Unsupported target type: %s", targetType));
+    }
+  }
+
+  private static class ThreadLocalRandomInt implements SerializableFunction<Row, Integer> {
+
+    private final int bound;
+
+    private ThreadLocalRandomInt(int bound) {
+      this.bound = bound;
+    }
+
+    public static SerializableFunction<Row, Integer> of(int bound) {
+      return new ThreadLocalRandomInt(bound);
+    }
+
+    @Override
+    public Integer apply(Row input) {
+      return ThreadLocalRandom.current().nextInt(bound);
     }
   }
 }
