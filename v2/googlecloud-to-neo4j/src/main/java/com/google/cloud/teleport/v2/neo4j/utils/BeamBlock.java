@@ -32,59 +32,20 @@ import org.slf4j.LoggerFactory;
 public class BeamBlock {
 
   private static final Logger LOG = LoggerFactory.getLogger(BeamBlock.class);
-  private final List<PCollection<Row>> sourceQueue = new ArrayList<>();
-  private final List<PCollection<Row>> preloadActionQueue = new ArrayList<>();
-  private final List<PCollection<Row>> processActionQueue = new ArrayList<>();
-  private final List<PCollection<Row>> nodeQueue = new ArrayList<>();
-  private final List<PCollection<Row>> edgeQueue = new ArrayList<>();
-  private final List<PCollection<Row>> customQueue = new ArrayList<>();
-  private final Map<String, PCollection<Row>> executeAfterNamedQueue = new HashMap<>();
-  private final Map<String, PCollection<Row>> executionContexts = new HashMap<>();
-  private PCollection<Row> defaultCollection;
+  private final Map<String, PCollection<Row>> outputs = new HashMap<>();
+  private final PCollection<Row> defaultCollection;
 
   public BeamBlock(PCollection<Row> defaultCollection) {
     this.defaultCollection = defaultCollection;
   }
 
-  public void addToQueue(
-      ArtifactType artifactType, boolean preload, String name, PCollection<Row> blockingReturn) {
-    addToQueue(artifactType, preload, name, blockingReturn, defaultCollection);
+  public void addToQueue(ArtifactType artifactType, String name, PCollection<Row> output) {
+    outputs.put(artifactType.name() + ":" + name, output);
   }
 
-  public void addToQueue(
-      ArtifactType artifactType,
-      boolean preload,
-      String name,
-      PCollection<Row> blockingReturn,
-      PCollection<Row> executionContext) {
-    switch (artifactType) {
-      case action:
-        if (preload) {
-          preloadActionQueue.add(blockingReturn);
-        } else {
-          processActionQueue.add(blockingReturn);
-        }
-        break;
-      case source:
-        sourceQueue.add(blockingReturn);
-        break;
-      case node:
-        nodeQueue.add(blockingReturn);
-        break;
-      case edge:
-        edgeQueue.add(blockingReturn);
-        break;
-      case custom_query:
-        customQueue.add(blockingReturn);
-        break;
-    }
-    executeAfterNamedQueue.put(artifactType.name() + ":" + name, blockingReturn);
-    executionContexts.put(artifactType.name() + ":" + name, executionContext);
-  }
-
-  public PCollection<Row> waitOnCollections(
+  public PCollection<Row> resolveOutputs(
       Collection<String> dependencies, String queuingDescription) {
-    List<PCollection<Row>> waitOnQueues = populateQueueForTargets(dependencies);
+    List<PCollection<Row>> waitOnQueues = resolveOutputs(dependencies);
     if (waitOnQueues.isEmpty()) {
       waitOnQueues.add(defaultCollection);
     }
@@ -103,15 +64,16 @@ public class BeamBlock {
             Flatten.pCollections());
   }
 
-  private List<PCollection<Row>> populateQueueForTargets(Collection<String> dependencies) {
-    List<PCollection<Row>> waitOnQueues = new ArrayList<>();
+  private List<PCollection<Row>> resolveOutputs(Collection<String> dependencies) {
+    List<PCollection<Row>> outputs = new ArrayList<>();
     for (String dependency : dependencies) {
       for (ArtifactType type : ArtifactType.values()) {
-        if (executeAfterNamedQueue.containsKey(type + ":" + dependency)) {
-          waitOnQueues.add(executeAfterNamedQueue.get(type + ":" + dependency));
+        if (this.outputs.containsKey(type + ":" + dependency)) {
+          outputs.add(this.outputs.get(type + ":" + dependency));
+          break;
         }
       }
     }
-    return waitOnQueues;
+    return outputs;
   }
 }
