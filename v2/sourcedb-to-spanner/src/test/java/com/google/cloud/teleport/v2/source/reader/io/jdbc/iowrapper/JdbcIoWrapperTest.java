@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SuitableIndexNotFoundException;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
@@ -80,11 +81,12 @@ public class JdbcIoWrapperTest {
   @Test
   public void testJdbcIoWrapperBasic() throws RetriableSchemaDiscoveryException {
     SourceSchemaReference testSourceSchemaReference =
-        SourceSchemaReference.builder().setDbName("testDB").build();
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
     String testCol = "ID";
     SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
-    when(mockDialectAdapter.discoverTables(any(), any())).thenReturn(ImmutableList.of("testTable"));
-    when(mockDialectAdapter.discoverTableIndexes(any(), any(), any()))
+    when(mockDialectAdapter.discoverTables(any(), (SourceSchemaReference) any()))
+        .thenReturn(ImmutableList.of("testTable"));
+    when(mockDialectAdapter.discoverTableIndexes(any(), (SourceSchemaReference) any(), any()))
         .thenReturn(
             ImmutableMap.of(
                 "testTable",
@@ -98,7 +100,7 @@ public class JdbcIoWrapperTest {
                         .setIsUnique(true)
                         .setOrdinalPosition(1)
                         .build())));
-    when(mockDialectAdapter.discoverTableSchema(any(), any(), any()))
+    when(mockDialectAdapter.discoverTableSchema(any(), (SourceSchemaReference) any(), any()))
         .thenReturn(ImmutableMap.of("testTable", ImmutableMap.of(testCol, testColType)));
     JdbcIoWrapper jdbcIoWrapper =
         JdbcIoWrapper.of(
@@ -130,11 +132,12 @@ public class JdbcIoWrapperTest {
   @Test
   public void testJdbcIoWrapperWithoutInference() throws RetriableSchemaDiscoveryException {
     SourceSchemaReference testSourceSchemaReference =
-        SourceSchemaReference.builder().setDbName("testDB").build();
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
     String testCol = "ID";
     SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
-    when(mockDialectAdapter.discoverTables(any(), any())).thenReturn(ImmutableList.of("testTable"));
-    when(mockDialectAdapter.discoverTableIndexes(any(), any(), any()))
+    when(mockDialectAdapter.discoverTables(any(), (SourceSchemaReference) any()))
+        .thenReturn(ImmutableList.of("testTable"));
+    when(mockDialectAdapter.discoverTableIndexes(any(), (SourceSchemaReference) any(), any()))
         .thenReturn(
             ImmutableMap.of(
                 "testTable",
@@ -148,7 +151,7 @@ public class JdbcIoWrapperTest {
                         .setIsUnique(true)
                         .setOrdinalPosition(1)
                         .build())));
-    when(mockDialectAdapter.discoverTableSchema(any(), any(), any()))
+    when(mockDialectAdapter.discoverTableSchema(any(), (SourceSchemaReference) any(), any()))
         .thenReturn(ImmutableMap.of("testTable", ImmutableMap.of(testCol, testColType)));
     JdbcIoWrapper jdbcIoWrapper =
         JdbcIoWrapper.of(
@@ -181,11 +184,12 @@ public class JdbcIoWrapperTest {
   @Test
   public void testJdbcIoWrapperNoIndexException() throws RetriableSchemaDiscoveryException {
     SourceSchemaReference testSourceSchemaReference =
-        SourceSchemaReference.builder().setDbName("testDB").build();
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
     String testCol = "ID";
     SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
-    when(mockDialectAdapter.discoverTables(any(), any())).thenReturn(ImmutableList.of("testTable"));
-    when(mockDialectAdapter.discoverTableIndexes(any(), any(), any()))
+    when(mockDialectAdapter.discoverTables(any(), (SourceSchemaReference) any()))
+        .thenReturn(ImmutableList.of("testTable"));
+    when(mockDialectAdapter.discoverTableIndexes(any(), (SourceSchemaReference) any(), any()))
         .thenReturn(ImmutableMap.of(/* No Index on testTable */ ))
         .thenReturn(
             ImmutableMap.of(
@@ -244,11 +248,12 @@ public class JdbcIoWrapperTest {
   public void testJdbcIoWrapperDifferentTables() throws RetriableSchemaDiscoveryException {
     // Test to check what happens if config passes tables not present in source
     SourceSchemaReference testSourceSchemaReference =
-        SourceSchemaReference.builder().setDbName("testDB").build();
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
     String testCol = "ID";
     SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
-    when(mockDialectAdapter.discoverTables(any(), any())).thenReturn(ImmutableList.of("testTable"));
-    when(mockDialectAdapter.discoverTableIndexes(any(), any(), any()))
+    when(mockDialectAdapter.discoverTables(any(), (SourceSchemaReference) any()))
+        .thenReturn(ImmutableList.of("testTable"));
+    when(mockDialectAdapter.discoverTableIndexes(any(), (SourceSchemaReference) any(), any()))
         .thenReturn(
             ImmutableMap.of(
                 "testTable",
@@ -262,7 +267,7 @@ public class JdbcIoWrapperTest {
                         .setIsUnique(true)
                         .setOrdinalPosition(1)
                         .build())));
-    when(mockDialectAdapter.discoverTableSchema(any(), any(), any()))
+    when(mockDialectAdapter.discoverTableSchema(any(), (SourceSchemaReference) any(), any()))
         .thenReturn(ImmutableMap.of("testTable", ImmutableMap.of(testCol, testColType)));
     JdbcIoWrapper jdbcIoWrapper =
         JdbcIoWrapper.of(
@@ -317,8 +322,9 @@ public class JdbcIoWrapperTest {
 
     String testCol = "ID";
     SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
-    when(mockDialectAdapter.discoverTables(any(), any())).thenReturn(ImmutableList.of("testTable"));
-    when(mockDialectAdapter.discoverTableIndexes(any(), any(), any()))
+    when(mockDialectAdapter.discoverTables(any(), (SourceSchemaReference) any()))
+        .thenReturn(ImmutableList.of("testTable"));
+    when(mockDialectAdapter.discoverTableIndexes(any(), (SourceSchemaReference) any(), any()))
         .thenReturn(
             ImmutableMap.of(
                 "testTable",
@@ -332,11 +338,11 @@ public class JdbcIoWrapperTest {
                         .setIsUnique(true)
                         .setOrdinalPosition(1)
                         .build())));
-    when(mockDialectAdapter.discoverTableSchema(any(), any(), any()))
+    when(mockDialectAdapter.discoverTableSchema(any(), (SourceSchemaReference) any(), any()))
         .thenReturn(ImmutableMap.of("testTable", ImmutableMap.of(testCol, testColType)));
 
     SourceSchemaReference testSourceSchemaReference =
-        SourceSchemaReference.builder().setDbName("testDB").build();
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
 
     JdbcIOWrapperConfig configWithFeatureEnabled =
         JdbcIOWrapperConfig.builderWithMySqlDefaults()
@@ -392,7 +398,7 @@ public class JdbcIoWrapperTest {
         .addConnectionProperty("loginTimeout", String.valueOf(testLoginTimeoutSeconds));
 
     SourceSchemaReference testSourceSchemaReference =
-        SourceSchemaReference.builder().setDbName("testDB").build();
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
 
     JdbcIOWrapperConfig config =
         JdbcIOWrapperConfig.builderWithMySqlDefaults()

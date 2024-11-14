@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.neo4j.importer.v1.ImportSpecification;
 import org.neo4j.importer.v1.ImportSpecificationDeserializer;
@@ -29,6 +30,8 @@ import org.neo4j.importer.v1.sources.Source;
 import org.neo4j.importer.v1.validation.SpecificationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.error.YAMLException;
 
 /**
  * Helper class for parsing import specification files, accepts file URI as entry point. Delegates
@@ -38,16 +41,38 @@ public class JobSpecMapper {
   private static final Logger LOG = LoggerFactory.getLogger(JobSpecMapper.class);
 
   public static ImportSpecification parse(String jobSpecUri, OptionsParams options) {
-    var json = fetchContent(jobSpecUri);
-    var spec = new JSONObject(json);
+    String content = fetchContent(jobSpecUri);
+    JSONObject spec = getJsonObject(content);
+
     if (!spec.has("version")) {
       return parseLegacyJobSpec(options, spec);
     }
+
     try {
       // TODO: interpolate runtime tokens into new spec elements
-      return ImportSpecificationDeserializer.deserialize(new StringReader(json));
+      return ImportSpecificationDeserializer.deserialize(new StringReader(content));
     } catch (SpecificationException e) {
       throw validationFailure(e);
+    }
+  }
+
+  private static JSONObject getJsonObject(String content) {
+    try {
+      return new JSONObject(content);
+    } catch (JSONException jsonException) {
+      Yaml yaml = new Yaml();
+      try {
+        Map<String, Object> yamlMap = yaml.load(content);
+        return new JSONObject(yamlMap);
+      } catch (YAMLException yamlException) {
+        throw new IllegalArgumentException(
+            "Parsing failed: content is neither valid JSON nor valid YAML."
+                + "\nJSON parse error: "
+                + jsonException.getMessage()
+                + "\nYAML parse error: "
+                + yamlException.getMessage(),
+            yamlException);
+      }
     }
   }
 
