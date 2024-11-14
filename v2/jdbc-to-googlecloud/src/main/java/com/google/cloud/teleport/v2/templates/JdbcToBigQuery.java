@@ -64,8 +64,7 @@ import org.apache.beam.sdk.values.PCollection;
     preview = true,
     requirements = {
       "The JDBC drivers for the relational database must be available.",
-      "The BigQuery table must exist before pipeline execution.",
-      "The BigQuery table must have a compatible schema.",
+      "If BigQuery table already exist before pipeline execution, it must have a compatible schema.",
       "The relational database must be accessible from the subnet where Dataflow runs."
     })
 public class JdbcToBigQuery {
