@@ -303,8 +303,7 @@ public class GoogleCloudToNeo4j {
               String.format("Metadata for source %s", sourceName), provider.queryMetadata());
       sourceRows.add(sourceMetadata);
       Schema sourceBeamSchema = sourceMetadata.getSchema();
-      processingQueue.addToQueue(
-          ArtifactType.source, false, sourceName, defaultActionContext, sourceMetadata);
+      processingQueue.addToQueue(ArtifactType.source, sourceName, defaultActionContext);
 
       ////////////////////////////
       // Optimization: if some of the current source's targets either
@@ -343,7 +342,7 @@ public class GoogleCloudToNeo4j {
         List<PCollection<?>> dependencies =
             new ArrayList<>(preActionRows.getOrDefault(ActionStage.PRE_NODES, List.of()));
         dependencies.add(
-            processingQueue.waitOnCollections(target.getDependencies(), nodeStepDescription));
+            processingQueue.resolveOutputs(target.getDependencies(), nodeStepDescription));
 
         PCollection<Row> blockingReturn =
             preInsertBeamRows
@@ -369,8 +368,7 @@ public class GoogleCloudToNeo4j {
             .computeIfAbsent(TargetType.NODE, (type) -> new ArrayList<>(nodeTargets.size()))
             .add(blockingReturn);
 
-        processingQueue.addToQueue(
-            ArtifactType.node, false, target.getName(), blockingReturn, preInsertBeamRows);
+        processingQueue.addToQueue(ArtifactType.node, target.getName(), blockingReturn);
       }
 
       ////////////////////////////
@@ -411,7 +409,7 @@ public class GoogleCloudToNeo4j {
         dependencyNames.add(target.getStartNodeReference());
         dependencyNames.add(target.getEndNodeReference());
         dependencies.add(
-            processingQueue.waitOnCollections(dependencyNames, relationshipStepDescription));
+            processingQueue.resolveOutputs(dependencyNames, relationshipStepDescription));
 
         PCollection<Row> blockingReturn =
             preInsertBeamRows
@@ -438,8 +436,7 @@ public class GoogleCloudToNeo4j {
                 TargetType.RELATIONSHIP, (type) -> new ArrayList<>(relationshipTargets.size()))
             .add(blockingReturn);
         // serialize relationships
-        processingQueue.addToQueue(
-            ArtifactType.edge, false, target.getName(), blockingReturn, preInsertBeamRows);
+        processingQueue.addToQueue(ArtifactType.edge, target.getName(), blockingReturn);
       }
       ////////////////////////////
       // Custom query targets
@@ -457,8 +454,7 @@ public class GoogleCloudToNeo4j {
         List<PCollection<?>> dependencies =
             new ArrayList<>(preActionRows.getOrDefault(ActionStage.PRE_QUERIES, List.of()));
         dependencies.add(
-            processingQueue.waitOnCollections(
-                target.getDependencies(), customQueryStepDescription));
+            processingQueue.resolveOutputs(target.getDependencies(), customQueryStepDescription));
 
         // note: nullableSourceBeamRows is guaranteed to be non-null here since custom query targets
         // cannot define source transformations
@@ -485,12 +481,7 @@ public class GoogleCloudToNeo4j {
         targetRows
             .computeIfAbsent(TargetType.QUERY, (type) -> new ArrayList<>(customQueryTargets.size()))
             .add(blockingReturn);
-        processingQueue.addToQueue(
-            ArtifactType.custom_query,
-            false,
-            target.getName(),
-            blockingReturn,
-            nullableSourceBeamRows);
+        processingQueue.addToQueue(ArtifactType.custom_query, target.getName(), blockingReturn);
       }
     }
 
