@@ -13,13 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.loadtesting;
+package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
-import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
 import com.google.common.collect.ImmutableList;
 import java.util.HashSet;
 import java.util.List;

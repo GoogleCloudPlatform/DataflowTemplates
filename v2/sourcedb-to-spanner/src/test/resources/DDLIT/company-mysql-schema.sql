@@ -46,7 +46,7 @@ CREATE TABLE `vendor` (
                       INDEX full_name_idx (full_name)
 );
 
-INSERT INTO vendor (id, first_name, last_name, email, full_name) VALUES
+INSERT INTO vendor (vendor_id, first_name, last_name, email, full_name) VALUES
                                      (1, 'David', 'Lee', 'david.lee@example.com', 'David Lee'),
                                      (2, 'Sarah', 'Jones', 'sarah.jones@example.com', 'Sarah Jones'),
                                      (3, 'Michael', 'Brown', 'michael.brown@example.com', 'Michael Brown');
