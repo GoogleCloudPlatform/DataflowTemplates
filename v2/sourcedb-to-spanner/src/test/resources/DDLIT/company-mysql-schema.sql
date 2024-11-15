@@ -42,14 +42,14 @@ CREATE TABLE `vendor` (
                       `first_name` VARCHAR(255) NOT NULL,
                       `last_name` VARCHAR(255) NOT NULL,
                       `email` VARCHAR(255) UNIQUE NOT NULL,
-                      `full_name` VARCHAR(512),
+                      `full_name` VARCHAR(512) GENERATED ALWAYS AS (CONCAT(first_name, ' ', last_name)),
                       INDEX full_name_idx (full_name)
 );
 
-INSERT INTO vendor (vendor_id, first_name, last_name, email, full_name) VALUES
-                                     (1, 'David', 'Lee', 'david.lee@example.com', 'David Lee'),
-                                     (2, 'Sarah', 'Jones', 'sarah.jones@example.com', 'Sarah Jones'),
-                                     (3, 'Michael', 'Brown', 'michael.brown@example.com', 'Michael Brown');
+INSERT INTO vendor (vendor_id, first_name, last_name, email) VALUES
+                                     (1, 'David', 'Lee', 'david.lee@example.com'),
+                                     (2, 'Sarah', 'Jones', 'sarah.jones@example.com'),
+                                     (3, 'Michael', 'Brown', 'michael.brown@example.com');
 
 CREATE TABLE `mysql_extra` (
                            `test_id` int(11) PRIMARY KEY NOT NULL,
