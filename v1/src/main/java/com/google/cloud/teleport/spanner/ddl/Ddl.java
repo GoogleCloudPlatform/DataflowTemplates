@@ -160,6 +160,7 @@ public class Ddl implements Serializable {
   public Collection<PropertyGraph> propertyGraphs() {
     return propertyGraphs.values();
   }
+
   public PropertyGraph propertyGraph(String propertyGraphName) {
     return propertyGraphs.get(propertyGraphName.toLowerCase());
   }
@@ -565,6 +566,7 @@ public class Ddl implements Serializable {
     public void addPropertyGraph(PropertyGraph graph) {
       propertyGraphs.put(graph.name().toLowerCase(), graph);
     }
+
     public boolean hasPropertyGraph(String name) {
       return propertyGraphs.containsKey(name.toLowerCase());
     }

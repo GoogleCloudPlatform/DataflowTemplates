@@ -1,4 +1,20 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.spanner.ddl;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
@@ -8,13 +24,16 @@ import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+
 @AutoValue
 public abstract class PropertyGraph implements Serializable {
   private static final long serialVersionUID = 1L;
 
   @Nullable
   public abstract String name();
+
   public abstract ImmutableList<GraphElementTable> nodeTables();
+
   public abstract ImmutableList<GraphElementTable> edgeTables();
 
   public static class PropertyDeclaration {
@@ -22,9 +41,11 @@ public abstract class PropertyGraph implements Serializable {
       this.name = name;
       this.type = type;
     }
+
     public String name;
     public String type;
   }
+
   public abstract ImmutableList<PropertyDeclaration> propertyDeclarations();
 
   public static class GraphElementLabel {
@@ -32,10 +53,12 @@ public abstract class PropertyGraph implements Serializable {
       this.name = name;
       this.properties = properties;
     }
+
     public String name;
     // public Set<String> properties;
     public ImmutableList<String> properties;
   }
+
   public abstract ImmutableList<GraphElementLabel> labels();
 
   public abstract Dialect dialect();
@@ -43,9 +66,11 @@ public abstract class PropertyGraph implements Serializable {
   public static PropertyGraph.Builder builder() {
     return builder(Dialect.GOOGLE_STANDARD_SQL);
   }
+
   public static PropertyGraph.Builder builder(Dialect dialect) {
     return new AutoValue_PropertyGraph.Builder().dialect(dialect);
   }
+
   public abstract PropertyGraph.Builder autoToBuilder();
 
   @Override
@@ -56,14 +81,20 @@ public abstract class PropertyGraph implements Serializable {
   public void prettyPrint(Appendable appendable) throws IOException {
     appendable.append("CREATE PROPERTY GRAPH ").append(name());
     appendable.append("\nNODE TABLES(\n");
-    appendable.append(String.join(", ", nodeTables().stream()
-        .map(GraphElementTable::prettyPrint)
-        .collect(Collectors.toList())));
+    appendable.append(
+        String.join(
+            ", ",
+            nodeTables().stream()
+                .map(GraphElementTable::prettyPrint)
+                .collect(Collectors.toList())));
     appendable.append(")"); // End NODE TABLES()
     appendable.append("\nEDGE TABLES(\n");
-    appendable.append(String.join(", ", edgeTables().stream()
-        .map(GraphElementTable::prettyPrint)
-        .collect(Collectors.toList())));
+    appendable.append(
+        String.join(
+            ", ",
+            edgeTables().stream()
+                .map(GraphElementTable::prettyPrint)
+                .collect(Collectors.toList())));
     appendable.append(");"); // End EDGE TABLES()
   }
 
@@ -76,13 +107,15 @@ public abstract class PropertyGraph implements Serializable {
     }
     return sb.toString();
   }
+
   @AutoValue.Builder
   public abstract static class Builder {
     private Ddl.Builder ddlBuilder;
 
     private LinkedHashMap<String, GraphElementTable> nodeTables = Maps.newLinkedHashMap();
     private LinkedHashMap<String, GraphElementTable> edgeTables = Maps.newLinkedHashMap();
-    private LinkedHashMap<String, PropertyDeclaration> propertyDeclarations = Maps.newLinkedHashMap();
+    private LinkedHashMap<String, PropertyDeclaration> propertyDeclarations =
+        Maps.newLinkedHashMap();
     private LinkedHashMap<String, GraphElementLabel> labels = Maps.newLinkedHashMap();
 
     public PropertyGraph.Builder ddlBuilder(Ddl.Builder ddlBuilder) {
@@ -91,16 +124,24 @@ public abstract class PropertyGraph implements Serializable {
     }
 
     abstract PropertyGraph.Builder nodeTables(ImmutableList<GraphElementTable> nodeTables);
+
     abstract PropertyGraph.Builder edgeTables(ImmutableList<GraphElementTable> edgeTables);
-    abstract PropertyGraph.Builder propertyDeclarations(ImmutableList<PropertyDeclaration> propertyDeclarations);
+
+    abstract PropertyGraph.Builder propertyDeclarations(
+        ImmutableList<PropertyDeclaration> propertyDeclarations);
+
     abstract PropertyGraph.Builder labels(ImmutableList<GraphElementLabel> labels);
 
     public abstract PropertyGraph.Builder name(String name);
+
     public abstract String name();
+
     public abstract PropertyGraph.Builder dialect(Dialect dialect);
+
     public abstract Dialect dialect();
 
     abstract PropertyGraph autoBuild();
+
     public PropertyGraph build() {
       return nodeTables(ImmutableList.copyOf(nodeTables.values()))
           .edgeTables(ImmutableList.copyOf(edgeTables.values()))
@@ -113,19 +154,22 @@ public abstract class PropertyGraph implements Serializable {
       nodeTables.put(elementTable.name().toLowerCase(), elementTable);
       return this;
     }
+
     public PropertyGraph.Builder addEdgeTable(GraphElementTable elementTable) {
       edgeTables.put(elementTable.name().toLowerCase(), elementTable);
       return this;
     }
-    public PropertyGraph.Builder addPropertyDeclaration(
-        PropertyDeclaration propertyDeclaration) {
+
+    public PropertyGraph.Builder addPropertyDeclaration(PropertyDeclaration propertyDeclaration) {
       propertyDeclarations.put(propertyDeclaration.name.toLowerCase(), propertyDeclaration);
       return this;
     }
+
     public PropertyGraph.Builder addLabel(GraphElementLabel label) {
       labels.put(label.name.toLowerCase(), label);
       return this;
     }
+
     public Ddl.Builder endPropertyGraph() {
       ddlBuilder.addPropertyGraph(build());
       return ddlBuilder;
