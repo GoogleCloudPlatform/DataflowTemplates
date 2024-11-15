@@ -15,28 +15,45 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.transforms.BigQueryConverters.wrapBigQueryInsertError;
 import static com.google.cloud.teleport.v2.utils.GCSUtils.getGcsFileAsString;
 import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
 
+import com.google.api.services.bigquery.model.ErrorProto;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.JdbcToBigQueryOptions;
+import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.GCSAwareValueProvider;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
+import com.google.cloud.teleport.v2.utils.ResourceUtils;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
+import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
+import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 
 /**
@@ -69,6 +86,10 @@ import org.apache.beam.sdk.values.PCollection;
     })
 public class JdbcToBigQuery {
 
+  /** Coder for FailsafeElement. */
+  private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
+      FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
    * blocking execution is required, use the {@link JdbcToBigQuery#run} method to start the pipeline
@@ -97,6 +118,12 @@ public class JdbcToBigQuery {
   static PipelineResult run(JdbcToBigQueryOptions options, Write<TableRow> writeToBQ) {
     // Validate BQ STORAGE_WRITE_API options
     BigQueryIOUtils.validateBQStorageApiOptionsBatch(options);
+    if (!options.getUseStorageWriteApi()
+        && !options.getUseStorageWriteApiAtLeastOnce()
+        && !Strings.isNullOrEmpty(options.getOutputDeadletterTable())) {
+      throw new IllegalArgumentException(
+          "outputDeadletterTable can only be specified if BigQuery Storage Write API is enabled either with useStorageWriteApi or useStorageWriteApiAtLeastOnce.");
+    }
 
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
@@ -175,10 +202,69 @@ public class JdbcToBigQuery {
     /*
      * Step 2: Append TableRow to an existing BigQuery table
      */
-    rows.apply("Write to BigQuery", writeToBQ);
+    WriteResult writeResult = rows.apply("Write to BigQuery", writeToBQ);
+
+    /*
+     * Step 3.
+     * If using Storage Write API, capture failed inserts and either
+     *   a) write error rows to DLQ
+     *   b) fail the pipeline
+     */
+    if (options.getUseStorageWriteApi() || options.getUseStorageWriteApiAtLeastOnce()) {
+      PCollection<BigQueryInsertError> insertErrors =
+          BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options);
+
+      if (!Strings.isNullOrEmpty(options.getOutputDeadletterTable())) {
+        /*
+         * Step 3a.
+         * Elements that failed inserts into BigQuery are extracted and converted to FailsafeElement
+         */
+        PCollection<FailsafeElement<String, String>> failedInserts =
+            insertErrors
+                .apply(
+                    "WrapInsertionErrors",
+                    MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                        .via((BigQueryInsertError e) -> wrapBigQueryInsertError(e)))
+                .setCoder(FAILSAFE_ELEMENT_CODER);
+
+        /*
+         * Step 3a Contd.
+         * Insert records that failed insert into deadletter table
+         */
+        failedInserts.apply(
+            "WriteFailedRecords",
+            ErrorConverters.WriteStringMessageErrors.newBuilder()
+                .setErrorRecordsTable(options.getOutputDeadletterTable())
+                .setErrorRecordsTableSchema(ResourceUtils.getDeadletterTableSchemaJson())
+                .setUseWindowedTimestamp(false)
+                .build());
+      } else {
+        /*
+         * Step 3b.
+         * Fail pipeline upon write errors if no DLQ was specified
+         */
+        insertErrors.apply(ParDo.of(new ThrowWriteErrorsDoFn()));
+      }
+    }
 
     // Execute the pipeline and return the result.
     return pipeline.run();
+  }
+
+  static class ThrowWriteErrorsDoFn extends DoFn<BigQueryInsertError, Void> {
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      BigQueryInsertError insertError = Objects.requireNonNull(c.element());
+      List<String> errorMessages =
+          insertError.getError().getErrors().stream()
+              .map(ErrorProto::getMessage)
+              .collect(Collectors.toList());
+      String stackTrace = String.join("\nCaused by:", errorMessages);
+
+      throw new IllegalStateException(
+          String.format(
+              "Failed to insert row %s.\nCaused by: %s", insertError.getRow(), stackTrace));
+    }
   }
 
   /**
@@ -198,11 +284,15 @@ public class JdbcToBigQuery {
                     : Write.WriteDisposition.WRITE_APPEND)
             .withCustomGcsTempLocation(
                 StaticValueProvider.of(options.getBigQueryLoadingTemporaryDirectory()))
+            .withExtendedErrorInfo()
             .to(options.getOutputTable());
 
     if (Write.CreateDisposition.valueOf(options.getCreateDisposition())
         != Write.CreateDisposition.CREATE_NEVER) {
       write = write.withJsonSchema(getGcsFileAsString(options.getBigQuerySchemaPath()));
+    }
+    if (options.getUseStorageWriteApi() || options.getUseStorageWriteApiAtLeastOnce()) {
+      write = write.withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors());
     }
 
     return write;

@@ -59,6 +59,7 @@ import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Ascii;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
@@ -83,11 +84,15 @@ public class ErrorConverters {
 
     public abstract String getErrorRecordsTableSchema();
 
+    public abstract boolean getUseWindowedTimestamp();
+
     @Override
     public WriteResult expand(PCollection<FailsafeElement<String, String>> failedRecords) {
 
       return failedRecords
-          .apply("FailedRecordToTableRow", ParDo.of(new FailedStringToTableRowFn()))
+          .apply(
+              "FailedRecordToTableRow",
+              ParDo.of(new FailedStringToTableRowFn(getUseWindowedTimestamp())))
           .apply(
               "WriteFailedRecordsToBigQuery",
               BigQueryIO.writeTableRows()
@@ -104,6 +109,8 @@ public class ErrorConverters {
 
       public abstract Builder setErrorRecordsTableSchema(String errorRecordsTableSchema);
 
+      public abstract Builder setUseWindowedTimestamp(boolean useWindowedTimestamp);
+
       public abstract WriteStringMessageErrors build();
     }
   }
@@ -114,6 +121,16 @@ public class ErrorConverters {
    */
   public static class FailedStringToTableRowFn
       extends DoFn<FailsafeElement<String, String>, TableRow> {
+
+    private boolean useWindowedTimestamp;
+
+    public FailedStringToTableRowFn() {
+      this(true);
+    }
+
+    public FailedStringToTableRowFn(boolean useWindowedTimestamp) {
+      this.useWindowedTimestamp = useWindowedTimestamp;
+    }
 
     /**
      * The formatter used to convert timestamps into a BigQuery compatible <a
@@ -129,7 +146,9 @@ public class ErrorConverters {
 
       // Format the timestamp for insertion
       String timestamp =
-          TIMESTAMP_FORMATTER.print(context.timestamp().toDateTime(DateTimeZone.UTC));
+          TIMESTAMP_FORMATTER.print(
+              (useWindowedTimestamp ? context.timestamp() : Instant.now())
+                  .toDateTime(DateTimeZone.UTC));
 
       // Build the table row
       TableRow failedRow =

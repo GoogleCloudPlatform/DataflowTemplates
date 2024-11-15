@@ -256,4 +256,19 @@ public interface JdbcToBigQueryOptions
   String getBigQuerySchemaPath();
 
   void setBigQuerySchemaPath(String path);
+
+  @TemplateParameter.BigQueryTable(
+      order = 21,
+      optional = true,
+      description =
+          "Table for messages that failed to reach the output table (i.e., Deadletter table) when using Storage Write API",
+      helpText =
+          "The BigQuery table to use for messages that failed to reach the output table, "
+              + "formatted as `\"PROJECT_ID:DATASET_NAME.TABLE_NAME\"`. If the table "
+              + "doesn't exist, it is created when the pipeline runs. "
+              + "If this parameter is not specified, the pipeline will fail on write errors."
+              + "This parameter can only be specified if `useStorageWriteApi` or `useStorageWriteApiAtLeastOnce` is set to true.")
+  String getOutputDeadletterTable();
+
+  void setOutputDeadletterTable(String value);
 }
