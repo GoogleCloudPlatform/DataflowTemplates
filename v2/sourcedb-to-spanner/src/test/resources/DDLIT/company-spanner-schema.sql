@@ -37,7 +37,7 @@ CREATE TABLE vendor (
     full_name STRING(512),
 ) PRIMARY KEY (full_name);
 
-CREATE INDEX full_name_idx ON User (full_name);
-CREATE INDEX email_idx ON User (email DESC);
+CREATE INDEX full_name_idx ON vendor (full_name);
+CREATE INDEX email_idx ON vendor (email DESC);
 
 CREATE VIEW company_view SQL SECURITY DEFINER AS SELECT company.company_id FROM  company;
