@@ -104,6 +104,7 @@ public class InputRecordProcessor {
               keysJson,
               sourceDbTimezoneOffset,
               customTransformationResponse);
+      LOG.info("DML statement: " + dmlStatement);
       if (dmlStatement.isEmpty()) {
         LOG.warn("DML statement is empty for table: " + tableName);
         return;

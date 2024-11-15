@@ -115,11 +115,11 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
     if (request.getTableName().equals("AllDatatypeTransformation")) {
       Map<String, Object> responseRow = new HashMap<>();
       Map<String, Object> requestRow = request.getRequestRow();
+      LOG.info("Event type" + request.getEventType());
       // Filter event in case "varchar_column" = "example1"
       if (requestRow.get("varchar_column").equals("example1")) {
         return new MigrationTransformationResponse(null, true);
       }
-      // In case of update/delete events, return request as response without any transformation
       if (request.getEventType().equals("UPDATE")) {
         return new MigrationTransformationResponse(null, false);
       }
@@ -131,7 +131,11 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       Long tinyIntColumn = Long.parseLong((String) requestRow.get("tinyint_column")) + 1;
       Long intColumn = Long.parseLong((String) requestRow.get("int_column")) + 1;
       Long bigIntColumn = Long.parseLong((String) requestRow.get("bigint_column")) + 1;
-      Long timeColumn = Long.parseLong((String) requestRow.get("time_column")) + 1000;
+      DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+      LocalTime time = LocalTime.parse((String) requestRow.get("time_column"), formatter);
+
+      LocalTime newTime = time.plusMinutes(10);
+      responseRow.put("time_column", newTime.format(formatter));
       Long yearColumn = Long.parseLong((String) requestRow.get("year_column")) + 1;
       BigDecimal floatColumn = (BigDecimal) requestRow.get("float_column");
       BigDecimal doubleColumn = (BigDecimal) requestRow.get("double_column");
@@ -143,7 +147,6 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       responseRow.put("double_column", doubleColumn.add(BigDecimal.ONE).toString());
       Double value = Double.parseDouble((String) requestRow.get("decimal_column"));
       responseRow.put("decimal_column", String.valueOf(value - 1));
-      responseRow.put("time_column", "\'" + timeColumn + "\'");
       responseRow.put("bool_column", "false");
       responseRow.put("enum_column", "\'3\'");
       responseRow.put(
