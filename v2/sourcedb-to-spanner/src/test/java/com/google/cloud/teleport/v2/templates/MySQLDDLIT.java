@@ -113,6 +113,6 @@ public class MySQLDDLIT extends SourceDbToSpannerITBase {
     ImmutableList<Struct> vendor =
         spannerResourceManager.readTableRecords("vendor", "vendor_id", "full_name");
 
-    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(3);
+    SpannerAsserts.assertThatStructs(vendor).hasRows(3);
   }
 }
