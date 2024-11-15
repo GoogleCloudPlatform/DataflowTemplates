@@ -42,7 +42,7 @@ CREATE TABLE `vendor` (
                       `first_name` VARCHAR(255) NOT NULL,
                       `last_name` VARCHAR(255) NOT NULL,
                       `email` VARCHAR(255) UNIQUE NOT NULL,
-                      `full_name` VARCHAR(512) GENERATED ALWAYS AS (CONCAT(first_name, ' ', last_name)),
+                      `full_name` VARCHAR(512),
                       INDEX full_name_idx (full_name)
 );
 
