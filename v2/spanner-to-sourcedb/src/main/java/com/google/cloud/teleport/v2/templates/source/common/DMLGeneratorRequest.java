@@ -18,6 +18,10 @@ package com.google.cloud.teleport.v2.templates.source.common;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import org.json.JSONObject;
 
+/**
+ * A request object representing the data necessary to generate DML
+ * statements for interacting with a source database.
+ */
 public class DMLGeneratorRequest {
   private String modType;
   private String spannerTableName;

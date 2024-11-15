@@ -38,7 +38,7 @@ public class SourceProcessorFactoryTest {
 
   @Test
   public void testGetDMLGenerator_MySQLSource() throws Exception {
-    IDMLGenerator dmlGenerator = SourceProcessorFactory.getDMLGenerator(Constants.SOURCE_MYSQL);
+    IDMLGenerator dmlGenerator = SourceProcessorFactory.getSourceDMLGenerator(Constants.SOURCE_MYSQL);
     assertNotNull(dmlGenerator);
     assertTrue(dmlGenerator instanceof MySQLDMLGenerator);
   }
@@ -47,7 +47,7 @@ public class SourceProcessorFactoryTest {
   public void testGetDMLGenerator_InvalidSource() throws Exception {
     expectedEx.expect(Exception.class);
     expectedEx.expectMessage("Invalid source type: invalidSource");
-    SourceProcessorFactory.getDMLGenerator("invalidSource");
+    SourceProcessorFactory.getSourceDMLGenerator("invalidSource");
   }
 
   @Test

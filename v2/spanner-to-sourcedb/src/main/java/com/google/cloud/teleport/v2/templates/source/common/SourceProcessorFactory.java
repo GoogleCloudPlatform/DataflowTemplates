@@ -1,18 +1,3 @@
-/*
- * Copyright (C) 2024 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
- */
 package com.google.cloud.teleport.v2.templates.source.common;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
@@ -23,29 +8,72 @@ import com.google.cloud.teleport.v2.templates.source.sql.mysql.MySQLDMLGenerator
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
 
 public class SourceProcessorFactory {
-  public static IDMLGenerator getDMLGenerator(String source) throws Exception {
-    if (source.equalsIgnoreCase(Constants.SOURCE_MYSQL)) {
-      return new MySQLDMLGenerator();
-    }
-    throw new Exception("Invalid source type: " + source);
+  private static final Map<String, IDMLGenerator> DML_GENERATOR_MAP = Map.of(
+          Constants.SOURCE_MYSQL, new MySQLDMLGenerator()
+  );
+
+  private static final Map<String, String> DRIVER_MAP = Map.of(
+          Constants.SOURCE_MYSQL, "com.mysql.cj.jdbc.Driver"
+  );
+
+  private static final Map<String, Function<Shard, String>> CONNECTION_URL_GENERATORS = Map.of(
+          Constants.SOURCE_MYSQL, shard ->
+                  "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName()
+  );
+
+  /**
+   * Creates a SourceProcessor instance for the specified source type.
+   *
+   * @param source the type of the source database
+   * @param shards the list of shards for the source
+   * @param maxConnections the maximum number of connections
+   * @return a configured SourceProcessor instance
+   * @throws Exception if the source type is invalid
+   */
+  public static SourceProcessor createSourceProcessor(String source, List<Shard> shards, int maxConnections) throws Exception {
+    IDMLGenerator dmlGenerator = getDMLGenerator(source);
+    String driver = getDriver(source);
+    SQLConnectionHelper connectionHelper = initializeConnectionHelper(source, shards, maxConnections, driver);
+    Map<String, ISourceDao> sourceDaoMap = createSourceDaoMap(source, shards);
+
+    return SourceProcessor.builder()
+            .dmlGenerator(dmlGenerator)
+            .sourceDaoMap(sourceDaoMap)
+            .connectionHelper(connectionHelper)
+            .build();
   }
 
-  public static Map<String, ISourceDao> getSourceDaoMap(
-      String source, List<Shard> shards, int maxConnections) throws Exception {
-    if (source.equalsIgnoreCase(Constants.SOURCE_MYSQL)) {
-      Map<String, ISourceDao> sourceDaoMap = new HashMap<>();
-      SQLConnectionHelper.init(shards, null, maxConnections, source, "com.mysql.cj.jdbc.Driver");
-      for (Shard shard : shards) {
-        String sourceConnectionUrl =
-            "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
-        ISourceDao sqlDao =
-            new SqlDao(sourceConnectionUrl, shard.getUserName(), shard.getPassword());
-        sourceDaoMap.put(shard.getLogicalShardId(), sqlDao);
-      }
-      return sourceDaoMap;
+  private static IDMLGenerator getDMLGenerator(String source) throws Exception {
+    return Optional.ofNullable(DML_GENERATOR_MAP.get(source))
+            .orElseThrow(() -> new Exception("Invalid source type for DML generator: " + source));
+  }
+
+  private static String getDriver(String source) throws Exception {
+    return Optional.ofNullable(DRIVER_MAP.get(source))
+            .orElseThrow(() -> new Exception("Invalid source type for driver: " + source));
+  }
+
+  private static SQLConnectionHelper initializeConnectionHelper(
+          String source, List<Shard> shards, int maxConnections, String driver) throws Exception {
+    SQLConnectionHelper connectionHelper = new SQLConnectionHelper();
+    connectionHelper.init(shards, null, maxConnections, source, driver);
+    return connectionHelper;
+  }
+
+  private static Map<String, ISourceDao> createSourceDaoMap(String source, List<Shard> shards) throws Exception {
+    Function<Shard, String> urlGenerator = Optional.ofNullable(CONNECTION_URL_GENERATORS.get(source))
+            .orElseThrow(() -> new Exception("Invalid source type for URL generation: " + source));
+
+    Map<String, ISourceDao> sourceDaoMap = new HashMap<>();
+    for (Shard shard : shards) {
+      String connectionUrl = urlGenerator.apply(shard);
+      ISourceDao sqlDao = new SqlDao(connectionUrl, shard.getUserName(), shard.getPassword());
+      sourceDaoMap.put(shard.getLogicalShardId(), sqlDao);
     }
-    throw new Exception("Invalid source type: " + source);
+    return sourceDaoMap;
   }
 }
