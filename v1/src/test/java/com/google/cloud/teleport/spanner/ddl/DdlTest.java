@@ -813,23 +813,23 @@ public class DdlTest {
     PropertyGraph.GraphElementLabel label1 =
         new PropertyGraph.GraphElementLabel("dummy-label-name1", propertyDeclsLabel1);
     GraphElementTable.PropertyDefinition propertyDefinition1 =
-        new PropertyDefinition("dummy-prop-name",  "dummy-prop-name");
+        new PropertyDefinition("dummy-prop-name", "dummy-prop-name");
     GraphElementTable.PropertyDefinition propertyDefinition2 =
-        new PropertyDefinition("aliased-prop-name",
-            "CONCAT(CAST(test_col AS STRING), \":\", \"dummy-column\")");
+        new PropertyDefinition(
+            "aliased-prop-name", "CONCAT(CAST(test_col AS STRING), \":\", \"dummy-column\")");
     GraphElementTable.LabelToPropertyDefinitions labelToPropertyDefinitions1 =
-        new LabelToPropertyDefinitions(label1.name,
-            ImmutableList.of(propertyDefinition1, propertyDefinition2));
+        new LabelToPropertyDefinitions(
+            label1.name, ImmutableList.of(propertyDefinition1, propertyDefinition2));
 
     PropertyGraph.GraphElementLabel label2 =
         new PropertyGraph.GraphElementLabel("dummy-label-name2", ImmutableList.of());
     GraphElementTable.LabelToPropertyDefinitions labelToPropertyDefinitions2 =
-        new LabelToPropertyDefinitions(label2.name,  ImmutableList.of());
+        new LabelToPropertyDefinitions(label2.name, ImmutableList.of());
 
     PropertyGraph.GraphElementLabel label3 =
         new PropertyGraph.GraphElementLabel("dummy-label-name3", ImmutableList.of());
     GraphElementTable.LabelToPropertyDefinitions labelToPropertyDefinitions3 =
-        new LabelToPropertyDefinitions(label3.name,  ImmutableList.of());
+        new LabelToPropertyDefinitions(label3.name, ImmutableList.of());
 
     // Craft Node table
     GraphElementTable.Builder testNodeTable =
@@ -838,8 +838,8 @@ public class DdlTest {
             .name("node-alias")
             .kind(GraphElementTable.Kind.NODE)
             .keyColumns(ImmutableList.of("primary-key"))
-            .labelToPropertyDefinitions(ImmutableList.of(labelToPropertyDefinitions1,
-                labelToPropertyDefinitions2));
+            .labelToPropertyDefinitions(
+                ImmutableList.of(labelToPropertyDefinitions1, labelToPropertyDefinitions2));
 
     // Craft Edge table
     GraphElementTable.Builder testEdgeTable =
@@ -848,14 +848,16 @@ public class DdlTest {
             .name("edge-alias")
             .kind(GraphElementTable.Kind.EDGE)
             .keyColumns(ImmutableList.of("edge-primary-key"))
-            .sourceNodeTable(new GraphNodeTableReference(
-                "base-table",
-                ImmutableList.of("node-key"),
-                ImmutableList.of("source-edge-key")))
-            .targetNodeTable(new GraphNodeTableReference(
-                "base-table",
-                ImmutableList.of("other-node-key"),
-                ImmutableList.of("dest-edge-key")))
+            .sourceNodeTable(
+                new GraphNodeTableReference(
+                    "base-table",
+                    ImmutableList.of("node-key"),
+                    ImmutableList.of("source-edge-key")))
+            .targetNodeTable(
+                new GraphNodeTableReference(
+                    "base-table",
+                    ImmutableList.of("other-node-key"),
+                    ImmutableList.of("dest-edge-key")))
             .labelToPropertyDefinitions(ImmutableList.of(labelToPropertyDefinitions3));
 
     // Build PropertyGraph
@@ -870,20 +872,22 @@ public class DdlTest {
             .addNodeTable(testNodeTable.autoBuild())
             .addEdgeTable(testEdgeTable.autoBuild());
 
-    assertThat(propertyGraph.build().prettyPrint(),
-        equalToCompressingWhiteSpace("CREATE PROPERTY GRAPH test-graph "
-            + "NODE TABLES(\n"
-            + "base-table AS node-alias\n"
-            + " KEY (primary-key)\n"
-            + "LABEL dummy-label-name1 "
-            + "PROPERTIES(dummy-prop-name, CONCAT(CAST(test_col AS STRING), \":\", \"dummy-column\") AS aliased-prop-name)\n"
-            + "LABEL dummy-label-name2 NO PROPERTIES)\n"
-            + "EDGE TABLES(\n"
-            + "edge-base-table AS edge-alias\n"
-            + " KEY (edge-primary-key)\n"
-            + "SOURCE KEY(source-edge-key) REFERENCES base-table DESTINATION KEY(dest-edge-key) REFERENCES base-table\n"
-            + "LABEL dummy-label-name3 NO PROPERTIES"
-            + ");"));
+    assertThat(
+        propertyGraph.build().prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE PROPERTY GRAPH test-graph "
+                + "NODE TABLES(\n"
+                + "base-table AS node-alias\n"
+                + " KEY (primary-key)\n"
+                + "LABEL dummy-label-name1 "
+                + "PROPERTIES(dummy-prop-name, CONCAT(CAST(test_col AS STRING), \":\", \"dummy-column\") AS aliased-prop-name)\n"
+                + "LABEL dummy-label-name2 NO PROPERTIES)\n"
+                + "EDGE TABLES(\n"
+                + "edge-base-table AS edge-alias\n"
+                + " KEY (edge-primary-key)\n"
+                + "SOURCE KEY(source-edge-key) REFERENCES base-table DESTINATION KEY(dest-edge-key) REFERENCES base-table\n"
+                + "LABEL dummy-label-name3 NO PROPERTIES"
+                + ");"));
   }
 
   @Test
