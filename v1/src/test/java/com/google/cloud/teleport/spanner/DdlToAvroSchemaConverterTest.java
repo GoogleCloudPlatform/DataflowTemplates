@@ -126,6 +126,11 @@ public class DdlToAvroSchemaConverterTest {
             .type(Type.array(Type.float32()))
             .arrayLength(Integer.valueOf(128))
             .endColumn()
+            .column("HiddenColumn")
+            .type(Type.string())
+            .max()
+            .isHidden(true)
+            .endColumn()
             .primaryKey()
             .asc("id")
             .asc("gen_id")
@@ -160,7 +165,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(7));
+    assertThat(fields, hasSize(8));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -220,6 +225,14 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(6).getProp(SQL_TYPE), equalTo("ARRAY<FLOAT32>(vector_length=>128)"));
     assertThat(fields.get(6).getProp(NOT_NULL), equalTo(null));
     assertThat(fields.get(6).getProp(STORED), equalTo(null));
+
+    assertThat(fields.get(7).name(), equalTo("HiddenColumn"));
+    assertThat(fields.get(7).schema(), equalTo(nullableUnion(Schema.Type.STRING)));
+    assertThat(fields.get(7).getProp(SQL_TYPE), equalTo("STRING(MAX)"));
+    assertThat(fields.get(7).getProp(NOT_NULL), equalTo(null));
+    assertThat(fields.get(7).getProp(GENERATION_EXPRESSION), equalTo(null));
+    assertThat(fields.get(7).getProp(STORED), equalTo(null));
+    assertThat(fields.get(7).getProp(HIDDEN), equalTo("true"));
 
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("`id` ASC"));

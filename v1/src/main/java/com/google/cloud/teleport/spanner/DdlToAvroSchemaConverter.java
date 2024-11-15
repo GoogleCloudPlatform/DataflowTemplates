@@ -152,6 +152,7 @@ public class DdlToAvroSchemaConverter {
       for (Column cm : table.columns()) {
         SchemaBuilder.FieldBuilder<Schema> fieldBuilder = fieldsAssembler.name(cm.name());
         fieldBuilder.prop(SQL_TYPE, cm.typeString());
+        fieldBuilder.prop(HIDDEN, Boolean.toString(cm.isHidden()));
         for (int i = 0; i < cm.columnOptions().size(); i++) {
           fieldBuilder.prop(SPANNER_OPTION + i, cm.columnOptions().get(i));
         }
@@ -162,7 +163,6 @@ public class DdlToAvroSchemaConverter {
           fieldBuilder.prop(NOT_NULL, Boolean.toString(cm.notNull()));
           fieldBuilder.prop(GENERATION_EXPRESSION, cm.generationExpression());
           fieldBuilder.prop(STORED, Boolean.toString(cm.isStored()));
-          fieldBuilder.prop(HIDDEN, Boolean.toString(cm.isHidden()));
           // Make the type null to allow us not export the generated column values,
           // which are semantically logical entities.
           fieldBuilder.type(SchemaBuilder.builder().nullType()).withDefault(null);
