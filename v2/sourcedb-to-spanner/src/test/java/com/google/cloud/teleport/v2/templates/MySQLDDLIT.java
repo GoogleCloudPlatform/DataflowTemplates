@@ -19,7 +19,6 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -34,19 +33,16 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * An integration test for {@link SourceDbToSpanner} Flex template which tests a basic migration on
- * a simple schema.
+ * An integration test for {@link SourceDbToSpanner} Flex template which tests a migration with DDL
+ * changes to schema. Changes include Index changes, Primary key transformations and Generated
+ * columns migration.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class MySQLDDLIT extends SourceDbToSpannerITBase {
-  private static final Logger LOG = LoggerFactory.getLogger(MySQLDDLIT.class);
-  private static final HashSet<MySQLDDLIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   public static MySQLResourceManager mySQLResourceManager;
