@@ -77,7 +77,7 @@ public final class YAMLTemplateIT extends TemplateTestBase {
     runYamlTemplateTest(paramsAdder);
 
     // Assert
-    List<Artifact> goodArtifacts = gcsClient.listArtifacts("output/good-", Pattern.compile(".*"));
+    List<Artifact> goodArtifacts = gcsClient.listArtifacts("output/good", Pattern.compile(".*"));
     assertThat(goodArtifacts).hasSize(1);
 
     List<Artifact> badArtifacts = gcsClient.listArtifacts("output/bad-", Pattern.compile(".*"));

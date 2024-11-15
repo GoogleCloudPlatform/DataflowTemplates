@@ -22,9 +22,12 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter.PostgreSQLVersion;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -54,12 +57,13 @@ public class PostgreSQLDialectAdapterTest {
 
   @Mock ResultSet mockResultSet;
 
-  private SourceSchemaReference sourceSchemaReference;
+  private JdbcSchemaReference sourceSchemaReference;
   private PostgreSQLDialectAdapter adapter;
 
   @Before
   public void setUp() throws Exception {
-    sourceSchemaReference = SourceSchemaReference.builder().setDbName("testDB").build();
+    sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").setNamespace("public").build();
     adapter = new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT);
   }
 
@@ -78,8 +82,8 @@ public class PostgreSQLDialectAdapterTest {
 
   @Test
   public void testDiscoverTableExceptions() throws SQLException {
-    final SourceSchemaReference sourceSchemaReference =
-        SourceSchemaReference.builder().setDbName("testDB").build();
+    final JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
 
     when(mockDataSource.getConnection())
         .thenThrow(new SQLTransientConnectionException("test"))
@@ -154,8 +158,8 @@ public class PostgreSQLDialectAdapterTest {
   @Test
   public void testDiscoverTableSchemaExceptions() throws SQLException {
     final String testTable = "testTable";
-    final SourceSchemaReference sourceSchemaReference =
-        SourceSchemaReference.builder().setDbName("testDB").build();
+    final JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
 
     when(mockDataSource.getConnection())
         .thenThrow(new SQLTransientConnectionException("test"))
@@ -207,7 +211,12 @@ public class PostgreSQLDialectAdapterTest {
     when(mockResultSet.getBoolean("is_primary")).thenReturn(true, false, false, false);
     when(mockResultSet.getLong("cardinality")).thenReturn(1L, 1L, 2L, 2L);
     when(mockResultSet.getLong("ordinal_position")).thenReturn(1L, 1L, 1L, 2L);
-    when(mockResultSet.getString("type_category")).thenReturn("N", "S", "N", "D");
+    when(mockResultSet.getString("type_category")).thenReturn("N", "S", "S", "D");
+    when(mockResultSet.getString("collation")).thenReturn(null, "en_US", "en_US", null);
+    when(mockResultSet.getInt("type_length")).thenReturn(100, 0);
+    when(mockResultSet.wasNull()).thenReturn(false, true);
+    when(mockResultSet.getString("type_name")).thenReturn("char", "text");
+    when(mockResultSet.getString("charset")).thenReturn("UTF8", "UTF8");
 
     assertThat(adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables))
         .containsExactly(
@@ -229,7 +238,14 @@ public class PostgreSQLDialectAdapterTest {
                     .setIsPrimary(false)
                     .setCardinality(1L)
                     .setOrdinalPosition(1L)
-                    .setIndexType(SourceColumnIndexInfo.IndexType.STRING)
+                    .setIndexType(IndexType.STRING)
+                    .setCollationReference(
+                        CollationReference.builder()
+                            .setDbCharacterSet("UTF8")
+                            .setDbCollation("en_US")
+                            .setPadSpace(true)
+                            .build())
+                    .setStringMaxLength(100)
                     .build(),
                 SourceColumnIndexInfo.builder()
                     .setColumnName("col2")
@@ -238,7 +254,14 @@ public class PostgreSQLDialectAdapterTest {
                     .setIsPrimary(false)
                     .setCardinality(2L)
                     .setOrdinalPosition(1L)
-                    .setIndexType(SourceColumnIndexInfo.IndexType.NUMERIC)
+                    .setIndexType(IndexType.STRING)
+                    .setCollationReference(
+                        CollationReference.builder()
+                            .setDbCharacterSet("UTF8")
+                            .setDbCollation("en_US")
+                            .setPadSpace(false)
+                            .build())
+                    .setStringMaxLength(65535)
                     .build(),
                 SourceColumnIndexInfo.builder()
                     .setColumnName("col3")
@@ -254,8 +277,8 @@ public class PostgreSQLDialectAdapterTest {
   @Test
   public void testDiscoverTableIndexesExceptions() throws SQLException {
     final String testTable = "testTable";
-    final SourceSchemaReference sourceSchemaReference =
-        SourceSchemaReference.builder().setDbName("testDB").build();
+    final JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
 
     when(mockDataSource.getConnection())
         .thenThrow(new SQLTransientConnectionException("test"))
@@ -340,5 +363,30 @@ public class PostgreSQLDialectAdapterTest {
     // SQLState: Lock timeout
     assertThat(adapter.checkForTimeout(new SQLException("Expected test timeout error", "55P03")))
         .isTrue();
+  }
+
+  @Test
+  public void testCollationsOrderQueryWithPadSpace() {
+    String collationsOrderQuery = adapter.getCollationsOrderQuery("myCharset", "myCollation", true);
+
+    assertThat(collationsOrderQuery).contains("myCharset");
+    assertThat(collationsOrderQuery).contains("myCollation");
+    assertThat(collationsOrderQuery).contains("CHAR(5)");
+    assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.CHARSET_REPLACEMENT_TAG);
+    assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.COLLATION_REPLACEMENT_TAG);
+    assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.RETURN_TYPE_REPLACEMENT_TAG);
+  }
+
+  @Test
+  public void testCollationsOrderQueryWithoutPadSpace() {
+    String collationsOrderQuery =
+        adapter.getCollationsOrderQuery("myCharset", "myCollation", false);
+
+    assertThat(collationsOrderQuery).contains("myCharset");
+    assertThat(collationsOrderQuery).contains("myCollation");
+    assertThat(collationsOrderQuery).contains("TEXT");
+    assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.CHARSET_REPLACEMENT_TAG);
+    assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.COLLATION_REPLACEMENT_TAG);
+    assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.RETURN_TYPE_REPLACEMENT_TAG);
   }
 }

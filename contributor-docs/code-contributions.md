@@ -439,3 +439,9 @@ keep [Google-provided Templates](https://cloud.google.com/dataflow/docs/guides/t
 updated with latest fixes and improvements.
 
 To learn more about this process, or how you can stage your own changes, see [Release Process](./release-process.md).
+
+### Release Notes
+
+Release notes are [automatically generated](https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes)
+based on the PR labels defined in [release.yml](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/release.yml).
+Before submitting your PR, a repo maintainer must add one of the following labels in order for all checks to pass: `ignore-for-release`, `new-template`, `improvement`, or `bug-fix`.

@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ChangeEventUtils;
 import com.google.common.collect.ImmutableList;
@@ -37,10 +38,10 @@ public class ChangeEventConvertor {
   private ChangeEventConvertor() {}
 
   static void verifySpannerSchema(Ddl ddl, JsonNode changeEvent)
-      throws ChangeEventConvertorException, InvalidChangeEventException {
+      throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
     String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     if (ddl.table(tableName) == null) {
-      throw new ChangeEventConvertorException(
+      throw new DroppedTableException(
           "Table from change event does not exist in Spanner. table=" + tableName);
     }
     List<String> changeEventColumns = ChangeEventUtils.getEventColumnKeys(changeEvent);

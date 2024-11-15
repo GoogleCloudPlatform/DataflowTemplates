@@ -138,7 +138,7 @@ public class DMLGenerator {
       String colName = entry.getKey();
       String colValue = entry.getValue();
 
-      allColumns += colName + ",";
+      allColumns += "`" + colName + "`,";
       allValues += colValue + ",";
     }
 
@@ -148,7 +148,7 @@ public class DMLGenerator {
       allValues = allValues.substring(0, allValues.length() - 1);
 
       String returnVal =
-          "INSERT INTO " + tableName + "(" + allColumns + ")" + " VALUES (" + allValues + ") ";
+          "INSERT INTO `" + tableName + "`(" + allColumns + ")" + " VALUES (" + allValues + ") ";
       return returnVal;
     }
     int index = 0;
@@ -156,10 +156,10 @@ public class DMLGenerator {
     for (Map.Entry<String, String> entry : columnNameValues.entrySet()) {
       String colName = entry.getKey();
       String colValue = entry.getValue();
-      allColumns += colName;
+      allColumns += "`" + colName + "`";
       allValues += colValue;
       if (!primaryKeys.contains(colName)) {
-        updateValues += " " + colName + " = " + colValue;
+        updateValues += " `" + colName + "` = " + colValue;
       }
 
       if (index + 1 < columnNameValues.size()) {
@@ -170,9 +170,9 @@ public class DMLGenerator {
       index++;
     }
     String returnVal =
-        "INSERT INTO "
+        "INSERT INTO `"
             + tableName
-            + "("
+            + "`("
             + allColumns
             + ")"
             + " VALUES ("
@@ -193,13 +193,13 @@ public class DMLGenerator {
       String colName = entry.getKey();
       String colValue = entry.getValue();
 
-      deleteValues += " " + colName + " = " + colValue;
+      deleteValues += " `" + colName + "` = " + colValue;
       if (index + 1 < pkcolumnNameValues.size()) {
         deleteValues += " AND ";
       }
       index++;
     }
-    String returnVal = "DELETE FROM " + tableName + " WHERE " + deleteValues;
+    String returnVal = "DELETE FROM `" + tableName + "` WHERE " + deleteValues;
 
     return returnVal;
   }

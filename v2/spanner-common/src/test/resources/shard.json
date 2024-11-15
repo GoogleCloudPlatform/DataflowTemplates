@@ -5,7 +5,8 @@
   "user":"test",
   "password":"test",
   "port":"3306",
-  "dbName":"test"
+  "dbName":"test",
+  "namespace": "namespaceA"
   },
  {
   "logicalShardId":"shardB",

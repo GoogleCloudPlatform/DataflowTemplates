@@ -229,7 +229,9 @@ public abstract class CollationMapper implements Serializable {
       throws SQLException {
     String query =
         dbAdapter.getCollationsOrderQuery(
-            collationReference.dbCharacterSet(), collationReference.dbCollation());
+            collationReference.dbCharacterSet(),
+            collationReference.dbCollation(),
+            collationReference.padSpace());
     CollationMapper mapper = null;
     try (Statement statement = connection.createStatement()) {
       statement.setEscapeProcessing(false);

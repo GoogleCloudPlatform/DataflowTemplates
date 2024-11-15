@@ -28,6 +28,7 @@ public class Shard implements Serializable {
   private String user;
   private String password;
   private String dbName;
+  private String namespace;
   private String secretManagerUri;
   private String connectionProperties;
 
@@ -40,6 +41,7 @@ public class Shard implements Serializable {
       String user,
       String password,
       String dbName,
+      String namespace,
       String secretManagerUri,
       String connectionProperties) {
     this.logicalShardId = logicalShardId;
@@ -48,6 +50,7 @@ public class Shard implements Serializable {
     this.user = user;
     this.password = password;
     this.dbName = dbName;
+    this.namespace = namespace;
     this.secretManagerUri = secretManagerUri;
     this.connectionProperties = connectionProperties;
   }
@@ -102,6 +105,14 @@ public class Shard implements Serializable {
     this.dbName = input;
   }
 
+  public String getNamespace() {
+    return namespace;
+  }
+
+  public void setNamespace(String namespace) {
+    this.namespace = namespace;
+  }
+
   public String getSecretManagerUri() {
     return secretManagerUri;
   }
@@ -140,6 +151,9 @@ public class Shard implements Serializable {
         + ", dbName='"
         + dbName
         + '\''
+        + ", namespace='"
+        + namespace
+        + '\''
         + ", connectionProperties='"
         + connectionProperties
         + '\''
@@ -163,6 +177,7 @@ public class Shard implements Serializable {
         && Objects.equals(user, shard.user)
         && Objects.equals(password, shard.password)
         && Objects.equals(dbName, shard.dbName)
+        && Objects.equals(namespace, shard.namespace)
         && Objects.equals(connectionProperties, shard.connectionProperties)
         && Objects.equals(secretManagerUri, shard.secretManagerUri)
         && Objects.equals(dbNameToLogicalShardIdMap, shard.dbNameToLogicalShardIdMap);
@@ -177,6 +192,7 @@ public class Shard implements Serializable {
         user,
         password,
         dbName,
+        namespace,
         connectionProperties,
         secretManagerUri,
         dbNameToLogicalShardIdMap);

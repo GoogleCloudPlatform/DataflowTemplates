@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.confi
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig.builderWithPostgreSQLDefaults;
 
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
@@ -37,7 +38,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class OptionsToConfigBuilder {
+
   private static final Logger LOG = LoggerFactory.getLogger(OptionsToConfigBuilder.class);
+  public static final String DEFAULT_POSTGRESQL_NAMESPACE = "public";
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfigWithDefaults(
       SourceDbToSpannerOptions options,
@@ -49,6 +52,7 @@ public final class OptionsToConfigBuilder {
     String dbName = extractDbFromURL(sourceDbURL);
     String username = options.getUsername();
     String password = options.getPassword();
+    String namespace = options.getNamespace();
 
     String jdbcDriverClassName = options.getJdbcDriverClassName();
     String jdbcDriverJars = options.getJdbcDriverJars();
@@ -66,6 +70,7 @@ public final class OptionsToConfigBuilder {
         username,
         password,
         dbName,
+        namespace,
         shardId,
         jdbcDriverClassName,
         jdbcDriverJars,
@@ -84,6 +89,7 @@ public final class OptionsToConfigBuilder {
       String username,
       String password,
       String dbName,
+      String namespace,
       String shardId,
       String jdbcDriverClassName,
       String jdbcDriverJars,
@@ -91,9 +97,11 @@ public final class OptionsToConfigBuilder {
       Integer numPartitions,
       Wait.OnSignal<?> waitOn) {
     JdbcIOWrapperConfig.Builder builder = builderWithDefaultsFor(sqlDialect);
+    SourceSchemaReference sourceSchemaReference =
+        sourceSchemaReferenceFrom(sqlDialect, dbName, namespace);
     builder =
         builder
-            .setSourceSchemaReference(SourceSchemaReference.builder().setDbName(dbName).build())
+            .setSourceSchemaReference(sourceSchemaReference)
             .setDbAuth(
                 LocalCredentialsProvider.builder()
                     .setUserName(
@@ -123,8 +131,9 @@ public final class OptionsToConfigBuilder {
         if (sourceDbURL == null) {
           sourceDbURL = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
         }
+        sourceDbURL = sourceDbURL + "?currentSchema=" + sourceSchemaReference.jdbc().namespace();
         if (StringUtils.isNotBlank(connectionProperties)) {
-          sourceDbURL = sourceDbURL + "?" + connectionProperties;
+          sourceDbURL = sourceDbURL + "&" + connectionProperties;
         }
         break;
     }
@@ -226,6 +235,21 @@ public final class OptionsToConfigBuilder {
       return builderWithPostgreSQLDefaults();
     }
     return builderWithMySqlDefaults();
+  }
+
+  // TODO(vardhanvthigle): Standardize for Css.
+  private static SourceSchemaReference sourceSchemaReferenceFrom(
+      SQLDialect dialect, String dbName, String namespace) {
+    JdbcSchemaReference.Builder builder = JdbcSchemaReference.builder();
+    // Namespaces are not supported for MySQL
+    if (dialect == SQLDialect.POSTGRESQL) {
+      if (StringUtils.isBlank(namespace)) {
+        builder.setNamespace(DEFAULT_POSTGRESQL_NAMESPACE);
+      } else {
+        builder.setNamespace(namespace);
+      }
+    }
+    return SourceSchemaReference.ofJdbc(builder.setDbName(dbName).build());
   }
 
   private OptionsToConfigBuilder() {}

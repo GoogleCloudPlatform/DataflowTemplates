@@ -1,3 +1,12 @@
+<div style="border:1px solid #ebccd1; padding:10px; border-radius:5px;">
+  ⚠️ <b>Important:</b>
+
+If you're using the same metadata database for multiple migration runs, **you must manually delete the change stream metadata table before each re-run**. This is due to a known issue in Apache Beam ([details](https://github.com/apache/beam/issues/32509)).
+
+The table name follows this pattern: `Metadata_<metadata database name>_<uuid>`.
+
+A fix is in progress ([see here](https://github.com/apache/beam/pull/32689)).
+</div>
 
 # Cloud Spanner Reverse Replication User Guide
 
@@ -297,7 +306,8 @@ When running to reprocess the 'severe' DLQ directory, run the Dataflow job with 
   1. Currently only MySQL source database is supported.
   2. If forward migration and reverse replication are running in parallel, there is no mechanism to prevent the forward migration of data that was written to source via the reverse replication flow. The impact of this is unnecessary processing of redundant data. The best practice is to start reverse replication post cutover when forward migration has ended.
   3. Schema changes are not supported.
-  4. Certain transformations are not supported, below section lists those:
+  4. Session file modifications to add backticks in table or column names is not supported.
+  5. Certain transformations are not supported, below section lists those:
 
 ### Reverse transformations
 Reverse transformation can not be supported for following scenarios out of the box:
@@ -314,6 +324,47 @@ Reverse transformation can not be supported for following scenarios out of the b
 10. Primary key of the source table cannot be determined - such records will be dropped
 
 In the above cases, custom code will need to be written to perform reverse transformation.Refer the [customization](#customize) section for the source code to extended and write these custom transforms.
+
+## When to perform cut-back
+
+In the event that cut-back is needed to start serving from the original database instead for Spanner, following should be taken care:
+
+1. Ensure that there is a validation solution to place to validate the Spanner and source database records.
+2. There should bo no severe errors.
+3. There should be no retryable errors.
+4. The success_record_count which reflects the total successful records should match the data_record_count metric which reflects the count of data records read by SpannerIO. If these match - it is an indication that all records have been successfully reverse replicated.
+Note that for these metrics to be reliable - there should be no Dataflow worker restarts. If there are worker restarts, there is a possibility that the same record was re-processed by a certain stage.
+To check if there are worker restarts - in the Dataflow UI, navigate to the Job metrics -> CPU utilization.
+
+### What to do when there are worker restarts or the metrics do not match
+
+1. Count the number of rows in Spanner and source databae - this may take long, but is it the only definitive way. If the reverse replication is still going on - the counts would not match due to replication lag - and an acceptable RPO should be considered to cut-back.
+
+2. If the count of records is not possible - check the DataWatermark of the Write to SourceDb stage. This gives a rough estimate of the lag between Spanner and Source. Consider taking some buffer - say 5 minutes and add this to the lag. If this lag is acceptable - perform the cutback else wait for the pipeline to catchup. In addition to the DataWatermark, also check the DataFreshness and the mean replication lag for the shards, and once it is under acceptable RPO, cut-back can be done. Querying these metrics is listed in the [metrics](#metrics-for-dataflow-job) section.
+Also, [alerts](https://cloud.google.com/monitoring/alerts) can be set up when the replciation lag, DataFreshness or DataWatermarks cross a threshold to take debugging actions.
+
+### What to do in case of pause and resume scenarios
+
+While it should be rare to pause a running template and start it again, in case a need arises, follow these instructions:
+
+1. Always give a startTimestamp when launching the template in regular mode. Use the same startTimestamp when re-running the template. This will ensure no change stream records are lost and de-duplication is handled by checking the shadow tables.
+2. In case of re-run, use the same metadata database so the shadow tables are present with data of committed timestamps.
+3. The change streams only have 7 days of maximum retention, ensure that the rerun does not cross this retention period. Meaning, the startTimestamp should not be less that the retention period.
+4. Due to a current Beam bug, ensure that the change stream metadata table is deleted from the metadata database before re-run. This table will be of naming format ```Metadata_<metadata database name>_<uuid>```
+5. The template does not Drain due to change stream constant polling, hence it will need to be forcefully cancelled. However, upon re-run, since the startTimestamp is the same, it would re-read the change streams and there will not be data-loss.
+
+#### What to do when job has been running for duration longer than change stream retention
+If the job has been running for longer than the change stream retention period, then:
+1. Set the startTimestamp to current date - change stream retention period.
+2. To avoid data-loss, ensure that the DataFreshness for the Write to SourceDb stage has not crossed the change stream retention period, meaning it should not cross 7 days - this would be an unlikey event and if alerts are set-up, it should be caught early on.
+3. If there are any records on the retry directory, do the below:
+- Before pausing the job,remove the [GCS notification](https://cloud.google.com/storage/docs/reporting-changes#removing)
+- Stop the job
+- Recursively [copy](https://cloud.google.com/sdk/gcloud/reference/storage/cp) the retry files to a different bucket
+- Delete and re-create the retry directory in GCS
+- [Create](https://cloud.google.com/storage/docs/reporting-changes#enabling) the notification again on the retry directory
+- Recursively copy the files back to the retry directory - from the bucket it was copied to in earlier step. This step will create PubSub notifications for the retry files which the re-run job will process. This ensures that any retry records, even with commit timestamp less than the change stream retntion - will be preserved for re-run.
+
 
 ## Best practices
 

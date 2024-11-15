@@ -53,9 +53,12 @@ public class DockerfileGenerator {
   public static final String JAVA_LAUNCHER_ENTRYPOINT =
       "/opt/google/dataflow/java_template_launcher";
 
-  // Keep pythonVersion below in sync with version in image
+  // Keep pythonVersion below in sync with version in base image
   public static final String PYTHON_VERSION = "3.11";
   public static final String DEFAULT_WORKING_DIRECTORY = "/template";
+
+  private static final String SA_SECRET_NAME_KEY = "saSecretName";
+  private static final String AIRLOCK_PYTHON_REPO_KEY = "airlockPythonRepo";
 
   private static final Logger LOG = Logger.getLogger(DockerfileGenerator.class.getName());
 
@@ -121,6 +124,8 @@ public class DockerfileGenerator {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     OutputStreamWriter writer = new OutputStreamWriter(baos);
 
+    configureAirlock(parameters);
+
     try {
       template.process(parameters, writer);
       writer.flush();
@@ -133,6 +138,41 @@ public class DockerfileGenerator {
       LOG.warning("Unable to generate Dockerfile for " + containerName);
       throw e;
     }
+  }
+
+  private static void configureAirlock(Map<String, Object> parameters) {
+    String baseConfig = "";
+    if (parameters.containsKey(SA_SECRET_NAME_KEY)
+        && parameters.containsKey(AIRLOCK_PYTHON_REPO_KEY)) {
+      baseConfig =
+          "RUN mkdir -p $HOME/.pip\n"
+              + "RUN mkdir -p $HOME/.config/pip"
+              + "\n"
+              + "RUN printf \""
+              + "[distutils]\\n"
+              + "index-servers =\\n"
+              + "    AIRLOCK_PYTHON_REPO_KEY"
+              + "\\n\\n"
+              + "[AIRLOCK_PYTHON_REPO_KEY]\\n"
+              + "repository: https://us-python.pkg.dev/artifact-foundry-prod/AIRLOCK_PYTHON_REPO_KEY/\\n"
+              + "username: _json_key_base64\\n"
+              + "password: $(gcloud secrets versions access latest --secret=SA_SECRET_NAME_KEY | base64 -w 0)\""
+              + " > $HOME/.pip/.pypirc"
+              + "\n"
+              + "RUN printf \""
+              + "[global]\\n"
+              + "index-url = "
+              + "https://_json_key_base64:"
+              + "$(gcloud secrets versions access latest --secret=SA_SECRET_NAME_KEY | base64 -w 0)"
+              + "@us-python.pkg.dev/artifact-foundry-prod/AIRLOCK_PYTHON_REPO_KEY/simple/\""
+              + " > $HOME/.config/pip/pip.conf";
+      baseConfig =
+          baseConfig
+              .replaceAll(
+                  "AIRLOCK_PYTHON_REPO_KEY", parameters.get(AIRLOCK_PYTHON_REPO_KEY).toString())
+              .replaceAll("SA_SECRET_NAME_KEY", parameters.get(SA_SECRET_NAME_KEY).toString());
+    }
+    parameters.put("airlockConfig", baseConfig);
   }
 
   /** Builder for {@link DockerfileGenerator}. */
@@ -251,7 +291,7 @@ public class DockerfileGenerator {
      * <p><b>Note</b>: Make sure when using wildcards, to specify an existing file first.
      *
      * <p>For example, if copying in a file, main.py, and an optional requirements.txt, pass the
-     * list {@code {"main.py", "requirements.txt*"} }.
+     * list {@code {"main.py", "requirements.txt"} }.
      *
      * @param filesToCopy list of files to copy into image.
      * @return this {@link Builder}.
@@ -330,6 +370,21 @@ public class DockerfileGenerator {
       Preconditions.checkArgument(!Strings.isNullOrEmpty(value));
 
       return addParameter(parameter, value);
+    }
+
+    public Builder setAirlockPythonRepo(String airlockPythonRepo) {
+      this.parameters.put(AIRLOCK_PYTHON_REPO_KEY, airlockPythonRepo);
+      return this;
+    }
+
+    public Builder setAirlockJavaRepo(String airlockJavaRepo) {
+      this.parameters.put("airlockJavaRepo", airlockJavaRepo);
+      return this;
+    }
+
+    public Builder setServiceAccountSecretName(String secretName) {
+      this.parameters.put(SA_SECRET_NAME_KEY, secretName);
+      return this;
     }
 
     /**

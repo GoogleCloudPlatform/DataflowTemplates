@@ -63,8 +63,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("FirstName = 'kk'"));
-    assertTrue(sql.contains("LastName = 'll'"));
+    assertTrue(sql.contains("`FirstName` = 'kk'"));
+    assertTrue(sql.contains("`LastName` = 'll'"));
   }
 
   @Test
@@ -84,8 +84,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("FirstName = 'kk'"));
-    assertTrue(sql.contains("LastName = 'll'"));
+    assertTrue(sql.contains("`FirstName` = 'kk'"));
+    assertTrue(sql.contains("`LastName` = 'll'"));
   }
 
   @Test
@@ -104,8 +104,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("FirstName = 222"));
-    assertTrue(sql.contains("LastName = 'll'"));
+    assertTrue(sql.contains("`FirstName` = 222"));
+    assertTrue(sql.contains("`LastName` = 'll'"));
   }
 
   @Test
@@ -126,8 +126,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("FirstName = 'kk'"));
-    assertTrue(sql.contains("LastName = 'll'"));
+    assertTrue(sql.contains("`FirstName` = 'kk'"));
+    assertTrue(sql.contains("`LastName` = 'll'"));
   }
 
   @Test
@@ -149,8 +149,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("FirstName = 'kk'"));
-    assertTrue(sql.contains("LastName = 'll'"));
+    assertTrue(sql.contains("`FirstName` = 'kk'"));
+    assertTrue(sql.contains("`LastName` = 'll'"));
   }
 
   @Test
@@ -209,7 +209,7 @@ public final class DMLGeneratorTest {
             modType, tableName, schema, newValuesJson, keyValuesJson, "+10:00", null);
 
     assertTrue(
-        sql.contains("Bday =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00'"));
+        sql.contains("`Bday` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00'"));
   }
 
   @Test
@@ -229,8 +229,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("FirstName = 'kk'"));
-    assertTrue(sql.contains("LastName = 'll'"));
+    assertTrue(sql.contains("`FirstName` = 'kk'"));
+    assertTrue(sql.contains("`LastName` = 'll'"));
   }
 
   @Test
@@ -282,47 +282,47 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("mediumint_column = 333"));
-    assertTrue(sql.contains("tinyblob_column = FROM_BASE64('YWJj')"));
+    assertTrue(sql.contains("`mediumint_column` = 333"));
+    assertTrue(sql.contains("`tinyblob_column` = FROM_BASE64('YWJj')"));
     boolean datetimeFlag =
         sql.contains(
-            "datetime_column =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'");
+            "`datetime_column` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'");
     assertTrue(datetimeFlag);
     // The same assert below fails to run hence as a workaround we are using the above boolean
     // flag
     /*  assertTrue(
     sql.contains(
         "datetime_column = CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')"));*/
-    assertTrue(sql.contains("enum_column = '1'"));
-    assertTrue(sql.contains("longtext_column = '<longtext_column>'"));
-    assertTrue(sql.contains("mediumblob_column = FROM_BASE64('YWJjbGFyZ2U=')"));
-    assertTrue(sql.contains("text_column = 'aaaaaddd'"));
-    assertTrue(sql.contains("tinyint_column = 1"));
+    assertTrue(sql.contains("`enum_column` = '1'"));
+    assertTrue(sql.contains("`longtext_column` = '<longtext_column>'"));
+    assertTrue(sql.contains("`mediumblob_column` = FROM_BASE64('YWJjbGFyZ2U=')"));
+    assertTrue(sql.contains("`text_column` = 'aaaaaddd'"));
+    assertTrue(sql.contains("`tinyint_column` = 1"));
     boolean timestampFlag =
         sql.contains(
-            "timestamp_column =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')");
+            "`timestamp_column` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')");
     assertTrue(timestampFlag);
     // The same assert below fails to run hence as a workaround we are using the above boolean
     // flag
     /* assertTrue(
     sql.contains(
         "timestamp_column = CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')"));*/
-    assertTrue(sql.contains("float_column = 4.2"));
-    assertTrue(sql.contains("varbinary_column = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
-    assertTrue(sql.contains("binary_column = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
-    assertTrue(sql.contains("bigint_column = 4444"));
-    assertTrue(sql.contains("time_column = '10:10:10'"));
-    assertTrue(sql.contains("tinytext_column = '<tinytext_column>'"));
-    assertTrue(sql.contains("set_column = '1,2'"));
-    assertTrue(sql.contains("longblob_column = FROM_BASE64('YWJsb25nYmxvYmM=')"));
-    assertTrue(sql.contains("mediumtext_column = '<mediumtext_column>'"));
-    assertTrue(sql.contains("year_column = '2023'"));
-    assertTrue(sql.contains("blob_column = FROM_BASE64('YWJiaWdj')"));
-    assertTrue(sql.contains("decimal_column = 444.222"));
-    assertTrue(sql.contains("bool_column = false"));
-    assertTrue(sql.contains("char_column = '<char_c'"));
-    assertTrue(sql.contains("date_column = '2023-05-18'"));
-    assertTrue(sql.contains("double_column = 42.42"));
+    assertTrue(sql.contains("`float_column` = 4.2"));
+    assertTrue(sql.contains("`varbinary_column` = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
+    assertTrue(sql.contains("`binary_column` = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
+    assertTrue(sql.contains("`bigint_column` = 4444"));
+    assertTrue(sql.contains("`time_column` = '10:10:10'"));
+    assertTrue(sql.contains("`tinytext_column` = '<tinytext_column>'"));
+    assertTrue(sql.contains("`set_column` = '1,2'"));
+    assertTrue(sql.contains("`longblob_column` = FROM_BASE64('YWJsb25nYmxvYmM=')"));
+    assertTrue(sql.contains("`mediumtext_column` = '<mediumtext_column>'"));
+    assertTrue(sql.contains("`year_column` = '2023'"));
+    assertTrue(sql.contains("`blob_column` = FROM_BASE64('YWJiaWdj')"));
+    assertTrue(sql.contains("`decimal_column` = 444.222"));
+    assertTrue(sql.contains("`bool_column` = false"));
+    assertTrue(sql.contains("`char_column` = '<char_c'"));
+    assertTrue(sql.contains("`date_column` = '2023-05-18'"));
+    assertTrue(sql.contains("`double_column` = 42.42"));
   }
 
   @Test
@@ -342,8 +342,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("FirstName = 'kk'"));
-    assertTrue(sql.contains("LastName = NULL"));
+    assertTrue(sql.contains("`FirstName` = 'kk'"));
+    assertTrue(sql.contains("`LastName` = NULL"));
   }
 
   @Test
@@ -362,9 +362,9 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("FirstName = 'kk'"));
-    assertTrue(sql.contains("SingerId = 999"));
-    assertTrue(sql.contains("DELETE FROM Singers WHERE"));
+    assertTrue(sql.contains("`FirstName` = 'kk'"));
+    assertTrue(sql.contains("`SingerId` = 999"));
+    assertTrue(sql.contains("DELETE FROM `Singers` WHERE"));
   }
 
   @Test
@@ -384,8 +384,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("FirstName = 'k''k'"));
-    assertTrue(sql.contains("LastName = 'll'"));
+    assertTrue(sql.contains("`FirstName` = 'k''k'"));
+    assertTrue(sql.contains("`LastName` = 'll'"));
   }
 
   @Test
@@ -410,8 +410,8 @@ public final class DMLGeneratorTest {
     String sql =
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
-    assertTrue(sql.contains("varchar_column = '''"));
-    assertTrue(sql.contains("blob_column = FROM_BASE64('Jw==')"));
+    assertTrue(sql.contains("`varchar_column` = '''"));
+    assertTrue(sql.contains("`blob_column` = FROM_BASE64('Jw==')"));
   }
 
   @Test
@@ -437,8 +437,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("varchar_column = '''''"));
-    assertTrue(sql.contains("blob_column = FROM_BASE64('Jyc=')"));
+    assertTrue(sql.contains("`varchar_column` = '''''"));
+    assertTrue(sql.contains("`blob_column` = FROM_BASE64('Jyc=')"));
   }
 
   @Test
@@ -464,8 +464,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("varchar_column = '\\\\'"));
-    assertTrue(sql.contains("blob_column = FROM_BASE64('XCc=')"));
+    assertTrue(sql.contains("`varchar_column` = '\\\\'"));
+    assertTrue(sql.contains("`blob_column` = FROM_BASE64('XCc=')"));
   }
 
   @Test
@@ -492,8 +492,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("varchar_column = '\t'"));
-    assertTrue(sql.contains("blob_column = FROM_BASE64('CQ==')"));
+    assertTrue(sql.contains("`varchar_column` = '\t'"));
+    assertTrue(sql.contains("`blob_column` = FROM_BASE64('CQ==')"));
   }
 
   @Test
@@ -520,8 +520,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("varchar_column = '\b'"));
-    assertTrue(sql.contains("blob_column = FROM_BASE64('CA==')"));
+    assertTrue(sql.contains("`varchar_column` = '\b'"));
+    assertTrue(sql.contains("`blob_column` = FROM_BASE64('CA==')"));
   }
 
   @Test
@@ -548,8 +548,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("varchar_column = '\n'"));
-    assertTrue(sql.contains("blob_column = FROM_BASE64('Cg==')"));
+    assertTrue(sql.contains("`varchar_column` = '\n'"));
+    assertTrue(sql.contains("`blob_column` = FROM_BASE64('Cg==')"));
   }
 
   @Test
@@ -576,8 +576,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("varchar_column = '\r'"));
-    assertTrue(sql.contains("blob_column = FROM_BASE64('DQ==')"));
+    assertTrue(sql.contains("`varchar_column` = '\r'"));
+    assertTrue(sql.contains("`blob_column` = FROM_BASE64('DQ==')"));
   }
 
   @Test
@@ -604,8 +604,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("varchar_column = '\f'"));
-    assertTrue(sql.contains("blob_column = FROM_BASE64('DA==')"));
+    assertTrue(sql.contains("`varchar_column` = '\f'"));
+    assertTrue(sql.contains("`blob_column` = FROM_BASE64('DA==')"));
   }
 
   @Test
@@ -632,8 +632,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("varchar_column = '\"'"));
-    assertTrue(sql.contains("blob_column = FROM_BASE64('Ig==')"));
+    assertTrue(sql.contains("`varchar_column` = '\"'"));
+    assertTrue(sql.contains("`blob_column` = FROM_BASE64('Ig==')"));
   }
 
   @Test
@@ -660,8 +660,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("varchar_column = '\\\\'"));
-    assertTrue(sql.contains("blob_column = FROM_BASE64('XA==')"));
+    assertTrue(sql.contains("`varchar_column` = '\\\\'"));
+    assertTrue(sql.contains("`blob_column` = FROM_BASE64('XA==')"));
   }
 
   @Test
@@ -682,7 +682,7 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("LastName = BINARY(FROM_BASE64('YmlsX2NvbA=='))"));
+    assertTrue(sql.contains("`LastName` = BINARY(FROM_BASE64('YmlsX2NvbA=='))"));
   }
 
   @Test
@@ -717,7 +717,8 @@ public final class DMLGeneratorTest {
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(
-        sql.contains("INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (NULL,'kk','ll')"));
+        sql.contains(
+            "INSERT INTO `Singers`(`SingerId`,`FirstName`,`LastName`) VALUES (NULL,'kk','ll')"));
   }
 
   @Test
@@ -734,7 +735,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
     assertTrue(
-        sql.contains("INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (NULL,'kk','ll')"));
+        sql.contains(
+            "INSERT INTO `Singers`(`SingerId`,`FirstName`,`LastName`) VALUES (NULL,'kk','ll')"));
   }
 
   @Test
@@ -771,7 +773,7 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("FirstName = NULL"));
+    assertTrue(sql.contains("`FirstName` = NULL"));
   }
 
   @Test
@@ -808,8 +810,8 @@ public final class DMLGeneratorTest {
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
-    assertTrue(sql.contains("FirstName = 'kk'"));
-    assertTrue(sql.contains("LastName = 'll'"));
+    assertTrue(sql.contains("`FirstName` = 'kk'"));
+    assertTrue(sql.contains("`LastName` = 'll'"));
   }
 
   @Test

@@ -13,10 +13,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **readBootstrapServerAndTopic** : Kafka Topic to read the input from.
-* **kafkaReadAuthenticationMode** : The mode of authentication to use with the Kafka cluster. Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, and TLS for certificate-based authentication. Apache Kafka for BigQuery only supports the SASL_PLAIN authentication mode. Defaults to: SASL_PLAIN.
+* **readBootstrapServerAndTopic** : Kafka Bootstrap server and topic to read the input from. (Example: localhost:9092;topic1,topic2).
+* **kafkaReadAuthenticationMode** : The mode of authentication to use with the Kafka cluster. Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, TLSfor certificate-based authentication. APPLICATION_DEFAULT_CREDENTIALS should be used only for Google Cloud Apache Kafka for BigQuery cluster since This allow you to authenticate with Google Cloud Apache Kafka for BigQuery using application default credentials.
 * **writeBootstrapServerAndTopic** : Kafka topic to write the output to.
-* **kafkaWriteAuthenticationMethod** : The mode of authentication to use with the Kafka cluster. Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, and TLS for certificate-based authentication. Defaults to: NONE.
+* **kafkaWriteAuthenticationMethod** : The mode of authentication to use with the Kafka cluster. Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, and TLS for certificate-based authentication. Defaults to: APPLICATION_DEFAULT_CREDENTIALS.
 
 ### Optional parameters
 
@@ -116,9 +116,9 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Kafka_to_Kafka"
 
 ### Required
 export READ_BOOTSTRAP_SERVER_AND_TOPIC=<readBootstrapServerAndTopic>
-export KAFKA_READ_AUTHENTICATION_MODE=SASL_PLAIN
+export KAFKA_READ_AUTHENTICATION_MODE=APPLICATION_DEFAULT_CREDENTIALS
 export WRITE_BOOTSTRAP_SERVER_AND_TOPIC=<writeBootstrapServerAndTopic>
-export KAFKA_WRITE_AUTHENTICATION_METHOD=NONE
+export KAFKA_WRITE_AUTHENTICATION_METHOD=APPLICATION_DEFAULT_CREDENTIALS
 
 ### Optional
 export ENABLE_COMMIT_OFFSETS=false
@@ -183,9 +183,9 @@ export REGION=us-central1
 
 ### Required
 export READ_BOOTSTRAP_SERVER_AND_TOPIC=<readBootstrapServerAndTopic>
-export KAFKA_READ_AUTHENTICATION_MODE=SASL_PLAIN
+export KAFKA_READ_AUTHENTICATION_MODE=APPLICATION_DEFAULT_CREDENTIALS
 export WRITE_BOOTSTRAP_SERVER_AND_TOPIC=<writeBootstrapServerAndTopic>
-export KAFKA_WRITE_AUTHENTICATION_METHOD=NONE
+export KAFKA_WRITE_AUTHENTICATION_METHOD=APPLICATION_DEFAULT_CREDENTIALS
 
 ### Optional
 export ENABLE_COMMIT_OFFSETS=false
@@ -258,10 +258,10 @@ resource "google_dataflow_flex_template_job" "kafka_to_kafka" {
   name              = "kafka-to-kafka"
   region            = var.region
   parameters        = {
-    readBootstrapServerAndTopic = "<readBootstrapServerAndTopic>"
-    kafkaReadAuthenticationMode = "SASL_PLAIN"
+    readBootstrapServerAndTopic = "localhost:9092;topic1,topic2"
+    kafkaReadAuthenticationMode = "APPLICATION_DEFAULT_CREDENTIALS"
     writeBootstrapServerAndTopic = "<writeBootstrapServerAndTopic>"
-    kafkaWriteAuthenticationMethod = "NONE"
+    kafkaWriteAuthenticationMethod = "APPLICATION_DEFAULT_CREDENTIALS"
     # enableCommitOffsets = "false"
     # consumerGroupId = ""
     # kafkaReadOffset = "latest"

@@ -18,12 +18,9 @@ package com.google.cloud.teleport.v2.spanner.type;
 import com.google.cloud.spanner.Dialect;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
@@ -43,6 +40,7 @@ public final class Type implements Serializable {
   private static final Type TYPE_NUMERIC = new Type(Type.Code.NUMERIC, null, null);
   private static final Type TYPE_STRING = new Type(Type.Code.STRING, null, null);
   private static final Type TYPE_JSON = new Type(Type.Code.JSON, null, null);
+  private static final Type TYPE_TOKENLIST = new Type(Code.TOKENLIST, null, null);
   private static final Type TYPE_BYTES = new Type(Type.Code.BYTES, null, null);
   private static final Type TYPE_TIMESTAMP = new Type(Type.Code.TIMESTAMP, null, null);
   private static final Type TYPE_DATE = new Type(Type.Code.DATE, null, null);
@@ -134,6 +132,11 @@ public final class Type implements Serializable {
   /** Returns the descriptor for the {@code JSON} type. */
   public static Type json() {
     return TYPE_JSON;
+  }
+
+  /** Returns the descriptor for the {@code TOKENLIST} type. */
+  public static Type tokenlist() {
+    return TYPE_TOKENLIST;
   }
 
   /** Returns the descriptor for the {@code BYTES} type: a variable-length byte string. */
@@ -309,6 +312,8 @@ public final class Type implements Serializable {
     FLOAT64("FLOAT64", Dialect.GOOGLE_STANDARD_SQL),
     STRING("STRING", Dialect.GOOGLE_STANDARD_SQL),
     JSON("JSON", Dialect.GOOGLE_STANDARD_SQL),
+    // This type is not supported on PG Spanner.
+    TOKENLIST("TOKENLIST", Dialect.GOOGLE_STANDARD_SQL),
     BYTES("BYTES", Dialect.GOOGLE_STANDARD_SQL),
     TIMESTAMP("TIMESTAMP", Dialect.GOOGLE_STANDARD_SQL),
     DATE("DATE", Dialect.GOOGLE_STANDARD_SQL),
@@ -401,54 +406,6 @@ public final class Type implements Serializable {
     Preconditions.checkState(
         code == Type.Code.ARRAY || code == Type.Code.PG_ARRAY, "Illegal call for non-ARRAY type");
     return arrayElementType;
-  }
-
-  /**
-   * Returns the fields of this {@code STRUCT} type.
-   *
-   * @return an immutable list of the fields
-   * @throws IllegalStateException if {@code code() != Code.STRUCT}
-   */
-  public List<Type.StructField> getStructFields() {
-    Preconditions.checkState(code == Type.Code.STRUCT, "Illegal call for non-STRUCT type");
-    return structFields;
-  }
-
-  /**
-   * Returns the index of the field named {@code fieldName} in this {@code STRUCT} type.
-   *
-   * @throws IllegalArgumentException if there is not exactly one element of {@link
-   *     #getStructFields()} with {@link Type.StructField#getName()} equal to {@code fieldName}
-   * @throws IllegalStateException if {@code code() != Code.STRUCT}
-   */
-  public int getFieldIndex(String fieldName) {
-    Preconditions.checkState(code == Type.Code.STRUCT, "Illegal call for non-STRUCT type");
-
-    if (fieldsByName == null) {
-      Map<String, Integer> tmp = new TreeMap<>();
-      for (int i = 0; i < getStructFields().size(); ++i) {
-        Type.StructField field = getStructFields().get(i);
-        if (tmp.put(field.getName(), i) != null) {
-          // Column name appears more than once: mark as ambiguous.
-          tmp.put(field.getName(), AMBIGUOUS_FIELD);
-        }
-      }
-      // Benign race: Java's final field semantics mean that if we see a non-null "fieldsByName",
-      // we are guaranteed to see it in a fully initialized state.  It is thus important that we
-      // use an ImmutableMap here, which necessarily uses final fields or equivalent reasoning.
-      // Since all computations of "fieldsByName" produce the same value, there is no risk of
-      // inconsistency.
-      fieldsByName = ImmutableMap.copyOf(tmp);
-    }
-
-    Integer index = fieldsByName.get(fieldName);
-    if (index == null) {
-      throw new IllegalArgumentException("Field not found: " + fieldName);
-    }
-    if (index == AMBIGUOUS_FIELD) {
-      throw new IllegalArgumentException("Ambiguous field name: " + fieldName);
-    }
-    return index;
   }
 
   void toString(StringBuilder b) {

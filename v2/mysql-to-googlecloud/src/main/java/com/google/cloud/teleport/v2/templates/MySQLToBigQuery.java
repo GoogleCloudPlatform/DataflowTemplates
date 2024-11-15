@@ -42,8 +42,7 @@ import com.google.cloud.teleport.v2.options.MySQLToBigQueryOptions;
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/mysql-to-bigquery",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
-      "The BigQuery table must exist before pipeline execution.",
-      "The BigQuery table must have a compatible schema.",
+      "If BigQuery table already exist before pipeline execution, it must have a compatible schema.",
       "The MySQL database must be accessible from the subnetwork where Dataflow runs."
     })
 public class MySQLToBigQuery extends JdbcToBigQuery {}

@@ -15,27 +15,28 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql;
 
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.CHARSET_REPLACEMENT_TAG;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.COLLATION_REPLACEMENT_TAG;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.replaceTagsAndSanitize;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.resourceAsString;
 import static org.apache.curator.shaded.com.google.common.collect.Sets.newHashSet;
 
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -44,7 +45,9 @@ import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.metrics.Counter;
@@ -96,7 +99,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   private final Counter schemaDiscoveryErrors =
       Metrics.counter(JdbcSourceRowMapper.class, MetricCounters.READER_SCHEMA_DISCOVERY_ERRORS);
 
-  private static final String COLLATIONS_QUERY_RESOURCE_PATH = "sql/mysql_collation_oder_query.sql";
+  private static final String COLLATIONS_QUERY_RESOURCE_PATH =
+      "sql/mysql_collation_order_query.sql";
 
   public MysqlDialectAdapter(MySqlVersion mySqlVersion) {
     this.mySqlVersion = mySqlVersion;
@@ -115,7 +119,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    */
   @Override
   public ImmutableList<String> discoverTables(
-      DataSource dataSource, SourceSchemaReference sourceSchemaReference)
+      DataSource dataSource, JdbcSchemaReference sourceSchemaReference)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
 
     logger.info(String.format("Discovering tables for DataSource: %s", dataSource));
@@ -180,12 +184,12 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   @Override
   public ImmutableMap<String, ImmutableMap<String, SourceColumnType>> discoverTableSchema(
       DataSource dataSource,
-      SourceSchemaReference sourceSchemaReference,
+      JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
     logger.info(
         String.format(
-            "Discovering table schema for Datasource: %s, SourceSchemaReference: %s, tables: %s",
+            "Discovering table schema for Datasource: %s, JdbcSchemaReference: %s, tables: %s",
             dataSource, sourceSchemaReference, tables));
 
     String discoveryQuery = getSchemaDiscoveryQuery(sourceSchemaReference);
@@ -225,7 +229,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         tableSchemaBuilder.build();
     logger.info(
         String.format(
-            "Discovered table schema for Datasource: %s, SourceSchemaReference: %s, tables: %s, schema: %s",
+            "Discovered table schema for Datasource: %s, JdbcSchemaReference: %s, tables: %s, schema: %s",
             dataSource, sourceSchemaReference, tables, tableSchema));
 
     return tableSchema;
@@ -244,12 +248,12 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   @Override
   public ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoverTableIndexes(
       DataSource dataSource,
-      SourceSchemaReference sourceSchemaReference,
+      JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
     logger.info(
         String.format(
-            "Discovering Indexes for DataSource: %s, SourceSchemaReference: %s, Tables: %s",
+            "Discovering Indexes for DataSource: %s, JdbcSchemaReference: %s, Tables: %s",
             dataSource, sourceSchemaReference, tables));
     String discoveryQuery = getIndexDiscoveryQuery(sourceSchemaReference);
     ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> tableIndexesBuilder =
@@ -288,12 +292,12 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         tableIndexesBuilder.build();
     logger.info(
         String.format(
-            "Discovered Indexes for DataSource: %s, SourceSchemaReference: %s, Tables: %s.\nIndexes: %s",
+            "Discovered Indexes for DataSource: %s, JdbcSchemaReference: %s, Tables: %s.\nIndexes: %s",
             dataSource, sourceSchemaReference, tables, tableIndexes));
     return tableIndexes;
   }
 
-  protected static String getSchemaDiscoveryQuery(SourceSchemaReference sourceSchemaReference) {
+  protected static String getSchemaDiscoveryQuery(JdbcSchemaReference sourceSchemaReference) {
     return "SELECT "
         + String.join(",", InformationSchemaCols.colList())
         + " FROM INFORMATION_SCHEMA.Columns WHERE TABLE_SCHEMA = "
@@ -311,7 +315,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    * @param sourceSchemaReference
    * @return
    */
-  protected static String getIndexDiscoveryQuery(SourceSchemaReference sourceSchemaReference) {
+  protected static String getIndexDiscoveryQuery(JdbcSchemaReference sourceSchemaReference) {
     return "SELECT *"
         + " FROM INFORMATION_SCHEMA.STATISTICS stats"
         + " JOIN "
@@ -378,7 +382,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   /**
    * Get the PadSpace attribute from {@link ResultSet} for index discovery query {@link
-   * #getIndexDiscoveryQuery(SourceSchemaReference)}. This method takes care of the fact that older
+   * #getIndexDiscoveryQuery(JdbcSchemaReference)}. This method takes care of the fact that older
    * versions of MySQL notably Mysql5.7 don't have a {@link
    * InformationSchemaStatsCols#PAD_SPACE_COL} column and default to PAD SPACE comparisons.
    */
@@ -641,62 +645,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   }
 
   /**
-   * Replace tags for collations and character set as needed in run-time, and, Remove blank lines
-   * and comments from the collations query. Queries with size > max_allowed_packet get rejected by
-   * the db. max_allowed_packet is generally around 16Mb which is a lot for our use case.
-   *
-   * @param query query to prepare.
-   * @param dbCharset character set used by the database for which collation ordering has to be
-   *     found.
-   * @param dbCollation collation set used by the database for which collation ordering has to be
-   *     found.
-   * @return
-   */
-  @VisibleForTesting
-  protected String prepareCollationsOrderQuery(String query, String dbCharset, String dbCollation) {
-    // Replace tags
-    String processedQuery =
-        query
-            .replace("'charset_replacement_tag'", "'" + dbCharset + "'")
-            .replace("'collation_replacement_tag'", "'" + dbCollation + "'");
-
-    // Remove MySQL comments and blank lines.
-
-    // Remove MySql Comments.
-    // Note we don't remove block comments for sake of simplicity.
-    Pattern commentPattern = Pattern.compile("(?m)^[ \\t]?--.*$");
-    Matcher matcher = commentPattern.matcher(processedQuery);
-    processedQuery = matcher.replaceAll("");
-
-    // Remove blank lines
-    processedQuery = processedQuery.replaceAll("(?m)^\\s*\\r?\\n", "");
-    return processedQuery;
-  }
-
-  /**
-   * Load a resource file as string.
-   *
-   * @param resource path of the resource file.
-   * @return resource file as string.
-   */
-  @VisibleForTesting
-  protected static String resourceAsString(String resource) {
-    try {
-      URL url = com.google.common.io.Resources.getResource(resource);
-      return com.google.common.io.Resources.toString(url, StandardCharsets.UTF_8);
-    } catch (Exception e) {
-      // This exception should not happen in production as it really means we don't have the
-      // expected resource
-      // file in bundled in the build or a fatal IO failure in reading one.
-      logger.error(
-          "Exception {} while trying to load the SQL file {} for collation discovery.",
-          e,
-          resource);
-      throw new RuntimeException(e);
-    }
-  }
-
-  /**
    * Get Query that returns order of collation. The query must return all the characters in the
    * character set with the columns listed in {@link CollationsOrderQueryColumns}.
    *
@@ -704,11 +652,17 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    *     found.
    * @param dbCollation collation set used by the database for which collation ordering has to be
    *     found.
+   * @param padSpace pad space used by the database for which collation ordering has to be found.
    */
   @Override
-  public String getCollationsOrderQuery(String dbCharset, String dbCollation) {
-    return prepareCollationsOrderQuery(
-        resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH), dbCharset, dbCollation);
+  public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
+    String query = resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH);
+    Map<String, String> tags = new HashMap<>();
+    tags.put("'" + CHARSET_REPLACEMENT_TAG + "'", "'" + dbCharset + "'");
+    tags.put("'" + COLLATION_REPLACEMENT_TAG + "'", "'" + dbCollation + "'");
+    // Queries with size > max_allowed_packet get rejected by
+    // the db. max_allowed_packet is generally around 16Mb which is a lot for our use case.
+    return replaceTagsAndSanitize(query, tags);
   }
 
   /**

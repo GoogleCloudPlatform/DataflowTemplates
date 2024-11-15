@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.source.reader.io.transform;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -30,7 +31,7 @@ public class ReaderTransformTest {
   public void testReaderTransformBuilds() {
     final String dbName = "testDB";
     final SourceSchemaReference sourceSchemaReference =
-        SourceSchemaReference.builder().setDbName(dbName).build();
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName(dbName).build());
     final long rowCountPerTable = 10;
     final long tableCount = 1;
     ReaderTransformTestUtils readerTransformTestUtils =
