@@ -44,15 +44,7 @@ public class InputRecordProcessor {
 
   private static boolean isEventFiltered = false;
 
-  public static boolean isEventFiltered() {
-    return isEventFiltered;
-  }
-
-  public static void setEventFiltered() {
-    isEventFiltered = true;
-  }
-
-  public static void processRecord(
+  public static boolean processRecord(
       TrimmedShardedDataChangeRecord spannerRecord,
       Schema schema,
       MySqlDao dao,
@@ -89,7 +81,7 @@ public class InputRecordProcessor {
             new Duration(startTimestamp, endTimestamp).getMillis());
         if (migrationTransformationResponse.isEventFiltered()) {
           Metrics.counter(InputRecordProcessor.class, "filtered_events_" + shardId).inc();
-          setEventFiltered();
+          return true;
         }
         if (migrationTransformationResponse != null) {
           customTransformationResponse = migrationTransformationResponse.getResponseRow();
@@ -107,7 +99,7 @@ public class InputRecordProcessor {
       LOG.info("DML statement: " + dmlStatement);
       if (dmlStatement.isEmpty()) {
         LOG.warn("DML statement is empty for table: " + tableName);
-        return;
+        return false;
       }
 
       dao.write(dmlStatement);
@@ -124,6 +116,7 @@ public class InputRecordProcessor {
       long replicationLag = ChronoUnit.SECONDS.between(commitTsInst, instTime);
 
       lagMetric.update(replicationLag); // update the lag metric
+      return false;
 
     } catch (Exception e) {
       LOG.error(

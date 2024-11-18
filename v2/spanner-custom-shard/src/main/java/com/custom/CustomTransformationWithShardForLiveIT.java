@@ -135,7 +135,7 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       LocalTime time = LocalTime.parse((String) requestRow.get("time_column"), formatter);
 
       LocalTime newTime = time.plusMinutes(10);
-      responseRow.put("time_column", newTime.format(formatter));
+      responseRow.put("time_column", "\'" + newTime.format(formatter) + "\'");
       Long yearColumn = Long.parseLong((String) requestRow.get("year_column")) + 1;
       BigDecimal floatColumn = (BigDecimal) requestRow.get("float_column");
       BigDecimal doubleColumn = (BigDecimal) requestRow.get("double_column");

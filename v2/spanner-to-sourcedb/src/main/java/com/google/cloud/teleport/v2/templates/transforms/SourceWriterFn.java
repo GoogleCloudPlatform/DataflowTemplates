@@ -205,14 +205,15 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         if (!isSourceAhead) {
           MySqlDao mySqlDao = mySqlDaoMap.get(shardId);
 
-          InputRecordProcessor.processRecord(
-              spannerRec,
-              schema,
-              mySqlDao,
-              shardId,
-              sourceDbTimezoneOffset,
-              spannerToSourceTransformer);
-          if (InputRecordProcessor.isEventFiltered()) {
+          boolean isEventFiltered =
+              InputRecordProcessor.processRecord(
+                  spannerRec,
+                  schema,
+                  mySqlDao,
+                  shardId,
+                  sourceDbTimezoneOffset,
+                  spannerToSourceTransformer);
+          if (isEventFiltered) {
             outputWithTag(c, Constants.FILTERED_TAG, Constants.FILTERED_TAG_MESSAGE, spannerRec);
           }
           spannerDao.updateShadowTable(

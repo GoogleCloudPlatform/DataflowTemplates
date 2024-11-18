@@ -255,7 +255,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
             .set("binary_column")
             .to(Value.bytes(ByteArray.copyFrom("examplebinary1")))
             .set("bit_column")
-            .to(Value.bytes(ByteArray.copyFrom("examplebit1")))
+            .to(Value.bytes(ByteArray.copyFrom("1")))
             .set("blob_column")
             .to(Value.bytes(ByteArray.copyFrom("exampleblob1")))
             .set("bool_column")
