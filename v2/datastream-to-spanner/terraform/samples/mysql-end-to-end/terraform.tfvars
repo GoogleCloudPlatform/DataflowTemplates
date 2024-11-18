@@ -14,6 +14,7 @@ datastream_params = {
   target_gcs_bucket_name        = "live-migration" # Or provide a custom bucket name
   pubsub_topic_name             = "live-migration" # Or provide a custom topic name
   stream_id                     = "mysql-stream"   # Or provide a custom stream ID
+  enable_backfill               = true             # This should always be enabled unless using sourcedb-to-spanner template for bulk migrations.
   max_concurrent_cdc_tasks      = 50               # Adjust as needed
   max_concurrent_backfill_tasks = 50               # Adjust as needed
   mysql_host                    = "<YOUR_MYSQL_HOST_IP_ADDRESS>"
