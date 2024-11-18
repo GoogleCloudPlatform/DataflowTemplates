@@ -27,6 +27,8 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,23 +49,55 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 /**
  * Integration test for {@link SpannerChangeStreamsToGcs Spanner Change Streams to GCS} template.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerChangeStreamsToGcs.class)
-@RunWith(JUnit4.class)
+@RunWith(Parameterized.class)
 public class SpannerChangeStreamsToGcsIT extends TemplateTestBase {
+
+  private String spannerHost;
+  private String spannerHostName;
+
+  public SpannerChangeStreamsToGcsIT(String spannerHost, String spannerHostName) {
+    this.spannerHost = spannerHost;
+    this.spannerHostName = spannerHostName;
+  }
+
+  @Parameters(name = "{1}")
+  public static Collection primeNumbers() {
+    if (System.getProperty("spannerHost") != null) {
+      return Arrays.asList(new Object[][] {{System.getProperty("spannerHost"), "Custom"}});
+    }
+    return Arrays.asList(
+        new Object[][] {
+          {SpannerResourceManager.STAGING_SPANNER_HOST, "Staging"},
+          {SpannerResourceManager.DEFAULT_SPANNER_HOST, "Default"}
+        });
+  }
 
   private static final int MESSAGES_COUNT = 20;
   private static final Pattern RESULT_REGEX = Pattern.compile(".*result-.*");
 
   private SpannerResourceManager spannerResourceManager;
+
+  private static Pattern subscriptPattern = Pattern.compile("\\[.+\\]");
+
+  @Before
+  public void setup() {
+    // Due to parameterization the testName would contain subscript like testName[paramName]
+    // Converting testName from testName[paramName] to testName_paramName since it is used to
+    // create many resources and it cannot contain subscript.
+    testName = subscriptPattern.matcher(testName).replaceAll("_" + spannerHostName);
+  }
 
   @After
   public void teardown() {
@@ -73,16 +107,9 @@ public class SpannerChangeStreamsToGcsIT extends TemplateTestBase {
   @Test
   public void testSpannerChangeStreamsToGcs() throws IOException {
     spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
-    testSpannerChangeStreamsToGcsBase(Function.identity());
-  }
-
-  @Test
-  public void testSpannerChangeStreamsToGcsStaging() throws IOException {
-    spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION)
             .maybeUseStaticInstance()
-            .maybeUseCustomHost()
+            .useCustomHost(spannerHost)
             .build();
     testSpannerChangeStreamsToGcsBase(
         paramAdder ->
@@ -191,16 +218,9 @@ public class SpannerChangeStreamsToGcsIT extends TemplateTestBase {
   @Test
   public void testSpannerChangeStreamsToGcsAvro() throws IOException {
     spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
-    testSpannerChangeStreamsToGcsAvroBase(Function.identity());
-  }
-
-  @Test
-  public void testSpannerChangeStreamsToGcsAvroStaging() throws IOException {
-    spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION)
             .maybeUseStaticInstance()
-            .maybeUseCustomHost()
+            .useCustomHost(spannerHost)
             .build();
     testSpannerChangeStreamsToGcsAvroBase(
         paramAdder ->

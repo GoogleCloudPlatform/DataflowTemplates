@@ -28,26 +28,51 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 /** Integration test for {@link ImportPipeline} classic template. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(ImportPipeline.class)
-@RunWith(JUnit4.class)
+@RunWith(Parameterized.class)
 public class ImportPipelineIT extends TemplateTestBase {
+
+  private String spannerHost;
+  private String spannerHostName;
+
+  public ImportPipelineIT(String spannerHost, String spannerHostName) {
+    this.spannerHost = spannerHost;
+    this.spannerHostName = spannerHostName;
+  }
+
+  @Parameters(name = "{1}")
+  public static Collection primeNumbers() {
+    if (System.getProperty("spannerHost") != null) {
+      return Arrays.asList(new Object[][] {{System.getProperty("spannerHost"), "Custom"}});
+    }
+    return Arrays.asList(
+        new Object[][] {
+          {SpannerResourceManager.STAGING_SPANNER_HOST, "Staging"},
+          {SpannerResourceManager.DEFAULT_SPANNER_HOST, "Default"}
+        });
+  }
 
   private SpannerResourceManager spannerResourceManager;
 
@@ -117,6 +142,16 @@ public class ImportPipelineIT extends TemplateTestBase {
     return expectedRows;
   }
 
+  private static Pattern subscriptPattern = Pattern.compile("\\[.+\\]");
+
+  @Before
+  public void setup() {
+    // Due to parameterization the testName would contain subscript like testName[paramName]
+    // Converting testName from testName[paramName] to testName_paramName since it is used to
+    // create many resources and it cannot contain subscript.
+    testName = subscriptPattern.matcher(testName).replaceAll("_" + spannerHostName);
+  }
+
   @After
   public void tearDown() {
     ResourceManagerUtils.cleanResources(spannerResourceManager);
@@ -127,16 +162,7 @@ public class ImportPipelineIT extends TemplateTestBase {
     spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
             .maybeUseStaticInstance()
-            .build();
-    testGoogleSqlImportPipelineBase(Function.identity());
-  }
-
-  @Test
-  public void testGoogleSqlImportPipelineStaging() throws IOException {
-    spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
-            .maybeUseStaticInstance()
-            .maybeUseCustomHost()
+            .useCustomHost(spannerHost)
             .build();
     testGoogleSqlImportPipelineBase(
         paramAdder ->
@@ -209,16 +235,7 @@ public class ImportPipelineIT extends TemplateTestBase {
     spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
             .maybeUseStaticInstance()
-            .build();
-    testPostgresImportPipelineBase(Function.identity());
-  }
-
-  @Test
-  public void testPostgresImportPipelineStaging() throws IOException {
-    spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
-            .maybeUseStaticInstance()
-            .maybeUseCustomHost()
+            .useCustomHost(spannerHost)
             .build();
     testPostgresImportPipelineBase(
         paramAdder ->

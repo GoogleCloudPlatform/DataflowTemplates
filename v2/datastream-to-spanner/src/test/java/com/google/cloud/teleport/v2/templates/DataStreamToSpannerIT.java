@@ -33,12 +33,15 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineOperator;
@@ -65,13 +68,34 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 /** Integration test for {@link DataStreamToSpanner} Flex template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
-@RunWith(JUnit4.class)
+@RunWith(Parameterized.class)
 public class DataStreamToSpannerIT extends TemplateTestBase {
+
+  private String spannerHost;
+  private String spannerHostName;
+
+  public DataStreamToSpannerIT(String spannerHost, String spannerHostName) {
+    this.spannerHost = spannerHost;
+    this.spannerHostName = spannerHostName;
+  }
+
+  @Parameters(name = "{1}")
+  public static Collection primeNumbers() {
+    if (System.getProperty("spannerHost") != null) {
+      return Arrays.asList(new Object[][] {{System.getProperty("spannerHost"), "Custom"}});
+    }
+    return Arrays.asList(
+        new Object[][] {
+          {SpannerResourceManager.STAGING_SPANNER_HOST, "Staging"},
+          {SpannerResourceManager.DEFAULT_SPANNER_HOST, "Default"}
+        });
+  }
 
   enum JDBCType {
     MYSQL,
@@ -99,8 +123,14 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
   private SpannerResourceManager spannerResourceManager;
   private PubsubResourceManager pubsubResourceManager;
 
+  private static Pattern subscriptPattern = Pattern.compile("\\[.+\\]");
+
   @Before
   public void setUp() throws IOException {
+    // Due to parameterization the testName would contain subscript like testName[paramName]
+    // Converting testName from testName[paramName] to testName_paramName since it is used to
+    // create many resources and it cannot contain subscript.
+    testName = subscriptPattern.matcher(testName).replaceAll("_" + spannerHostName);
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
@@ -126,7 +156,6 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     simpleMySqlToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
         Dialect.GOOGLE_STANDARD_SQL,
-        false,
         Function.identity());
   }
 
@@ -136,27 +165,6 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     simpleOracleToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
         Dialect.GOOGLE_STANDARD_SQL,
-        false,
-        Function.identity());
-  }
-
-  @Test
-  public void testDataStreamMySqlToSpannerStaging() throws IOException {
-    // Run a simple IT
-    simpleMySqlToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
-        Dialect.GOOGLE_STANDARD_SQL,
-        true,
-        Function.identity());
-  }
-
-  @Test
-  public void testDataStreamOracleToSpannerStaging() throws IOException {
-    // Run a simple IT
-    simpleOracleToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
-        Dialect.GOOGLE_STANDARD_SQL,
-        true,
         Function.identity());
   }
 
@@ -166,17 +174,6 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     simpleMySqlToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
         Dialect.POSTGRESQL,
-        false,
-        Function.identity());
-  }
-
-  @Test
-  public void testDataStreamMySqlToPostgresSpannerStaging() throws IOException {
-    // Run a simple IT
-    simpleMySqlToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
-        Dialect.POSTGRESQL,
-        true,
         Function.identity());
   }
 
@@ -186,7 +183,6 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     simpleMySqlToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
         Dialect.GOOGLE_STANDARD_SQL,
-        false,
         config -> config.addEnvironment("enableStreamingEngine", true));
   }
 
@@ -196,7 +192,6 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     simpleMySqlToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT,
         Dialect.GOOGLE_STANDARD_SQL,
-        false,
         Function.identity());
   }
 
@@ -206,34 +201,12 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     simpleOracleToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT,
         Dialect.GOOGLE_STANDARD_SQL,
-        false,
-        Function.identity());
-  }
-
-  @Test
-  public void testDataStreamMySqlToSpannerJsonStaging() throws IOException {
-    // Run a simple IT
-    simpleMySqlToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT,
-        Dialect.GOOGLE_STANDARD_SQL,
-        true,
-        Function.identity());
-  }
-
-  @Test
-  public void testDataStreamOracleToSpannerJsonStaging() throws IOException {
-    // Run a simple IT
-    simpleOracleToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT,
-        Dialect.GOOGLE_STANDARD_SQL,
-        true,
         Function.identity());
   }
 
   private void simpleMySqlToSpannerTest(
       DatastreamResourceManager.DestinationOutputFormat fileFormat,
       Dialect spannerDialect,
-      boolean isStaging,
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException {
 
@@ -241,7 +214,6 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
         JDBCType.MYSQL,
         fileFormat,
         spannerDialect,
-        isStaging,
         config ->
             paramsAdder.apply(
                 config.addParameter("sessionFilePath", getGcsPath("input/mysql-session.json"))));
@@ -250,23 +222,17 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
   private void simpleOracleToSpannerTest(
       DatastreamResourceManager.DestinationOutputFormat fileFormat,
       Dialect spannerDialect,
-      boolean isStaging,
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException {
 
     simpleJdbcToSpannerTest(
-        JDBCType.ORACLE,
-        fileFormat,
-        spannerDialect,
-        isStaging,
-        config -> paramsAdder.apply(config));
+        JDBCType.ORACLE, fileFormat, spannerDialect, config -> paramsAdder.apply(config));
   }
 
   private void simpleJdbcToSpannerTest(
       JDBCType jdbcType,
       DatastreamResourceManager.DestinationOutputFormat fileFormat,
       Dialect spannerDialect,
-      boolean isStaging,
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException {
 
@@ -280,10 +246,8 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     SpannerResourceManager.Builder spannerResourceManagerBuilder =
         SpannerResourceManager.builder(testName, PROJECT, REGION, spannerDialect)
             .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
             .setCredentials(credentials);
-    if (isStaging) {
-      spannerResourceManagerBuilder.maybeUseCustomHost();
-    }
     spannerResourceManager = spannerResourceManagerBuilder.build();
 
     // Generate table names

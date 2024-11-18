@@ -25,6 +25,8 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -37,20 +39,52 @@ import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 /** Integration test for {@link SpannerToText Spanner to GCS Text} template. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(SpannerToText.class)
-@RunWith(JUnit4.class)
+@RunWith(Parameterized.class)
 public class SpannerToTextIT extends TemplateTestBase {
+
+  private String spannerHost;
+  private String spannerHostName;
+
+  public SpannerToTextIT(String spannerHost, String spannerHostName) {
+    this.spannerHost = spannerHost;
+    this.spannerHostName = spannerHostName;
+  }
+
+  @Parameters(name = "{1}")
+  public static Collection primeNumbers() {
+    if (System.getProperty("spannerHost") != null) {
+      return Arrays.asList(new Object[][] {{System.getProperty("spannerHost"), "Custom"}});
+    }
+    return Arrays.asList(
+        new Object[][] {
+          {SpannerResourceManager.STAGING_SPANNER_HOST, "Staging"},
+          {SpannerResourceManager.DEFAULT_SPANNER_HOST, "Default"}
+        });
+  }
 
   private static final int MESSAGES_COUNT = 100;
 
   private SpannerResourceManager spannerResourceManager;
+
+  private static Pattern subscriptPattern = Pattern.compile("\\[.+\\]");
+
+  @Before
+  public void setup() {
+    // Due to parameterization the testName would contain subscript like testName[paramName]
+    // Converting testName from testName[paramName] to testName_paramName since it is used to
+    // create many resources and it cannot contain subscript.
+    testName = subscriptPattern.matcher(testName).replaceAll("_" + spannerHostName);
+  }
 
   @After
   public void teardown() {
@@ -62,16 +96,7 @@ public class SpannerToTextIT extends TemplateTestBase {
     spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
             .maybeUseStaticInstance()
-            .build();
-    testSpannerToGCSTextBase(Function.identity());
-  }
-
-  @Test
-  public void testSpannerToGCSTextStaging() throws IOException {
-    spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
-            .maybeUseStaticInstance()
-            .maybeUseCustomHost()
+            .useCustomHost(spannerHost)
             .build();
     testSpannerToGCSTextBase(
         paramAdder ->
@@ -145,16 +170,7 @@ public class SpannerToTextIT extends TemplateTestBase {
     spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
             .maybeUseStaticInstance()
-            .build();
-    testPostgresSpannerToGCSTextBase(Function.identity());
-  }
-
-  @Test
-  public void testPostgresSpannerToGCSTextStaging() throws IOException {
-    spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
-            .maybeUseStaticInstance()
-            .maybeUseCustomHost()
+            .useCustomHost(spannerHost)
             .build();
     testPostgresSpannerToGCSTextBase(
         paramAdder ->
