@@ -1,0 +1,17 @@
+{
+  "SessionName": "NewSession",
+  "Source": {
+    "Type": "cassandra", // Change to cassandra
+    "Properties": {
+      "contactPoints": ["10.0.0.2"], // Use the IP for Cassandra cluster
+      "keyspace": "ecommerce", // Keyspace in Cassandra
+      "user": "ollion", // If authentication is required
+      "password": "Ollion@2023" // If authentication is required
+    }
+  },
+  "SyntheticPKeys": {},
+  "DatabaseType": "CASSANDRA", // Update to reflect Cassandra specifics
+  "SessionType": "ONLINE",
+  "SpSchema": {},
+  "SrcSchema": {}
+}
