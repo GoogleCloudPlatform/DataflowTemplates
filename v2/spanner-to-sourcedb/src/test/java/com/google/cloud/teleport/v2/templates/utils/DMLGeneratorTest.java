@@ -932,7 +932,7 @@ public final class DMLGeneratorTest {
             "+00:00",
             customTransformation);
 
-    assertTrue(sql.contains("FullName = 'kk ll'"));
+    assertTrue(sql.contains("`FullName` = 'kk ll'"));
     assertTrue(sql.contains("VALUES (1,'kk ll')"));
   }
 
