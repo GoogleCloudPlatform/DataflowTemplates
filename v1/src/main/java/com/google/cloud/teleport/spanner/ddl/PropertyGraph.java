@@ -55,7 +55,6 @@ public abstract class PropertyGraph implements Serializable {
     }
 
     public String name;
-    // public Set<String> properties;
     public ImmutableList<String> properties;
   }
 
@@ -72,6 +71,25 @@ public abstract class PropertyGraph implements Serializable {
   }
 
   public abstract PropertyGraph.Builder autoToBuilder();
+
+  public PropertyGraph.Builder toBuilder() {
+    PropertyGraph.Builder builder = autoToBuilder();
+    builder = builder.dialect(dialect());
+
+    for (GraphElementLabel label : labels()) {
+      builder.addLabel(label);
+    }
+    for (PropertyDeclaration declaration : propertyDeclarations()) {
+      builder.addPropertyDeclaration(declaration);
+    }
+    for (GraphElementTable nodeTable : nodeTables()) {
+      builder.addNodeTable(nodeTable);
+    }
+    for (GraphElementTable edgeTable : edgeTables()) {
+      builder.addEdgeTable(edgeTable);
+    }
+    return builder;
+  }
 
   @Override
   public String toString() {

@@ -35,6 +35,7 @@ public class AvroUtil {
   public static final String SPANNER_CHANGE_STREAM_FOR_CLAUSE = "spannerChangeStreamForClause";
   public static final String SPANNER_ENTITY = "spannerEntity";
   public static final String SPANNER_ENTITY_MODEL = "Model";
+  public static final String SPANNER_ENTITY_PROPERTY_GRAPH = "PropertyGraph";
   public static final String SPANNER_ENTITY_PLACEMENT = "Placement";
   public static final String SPANNER_FOREIGN_KEY = "spannerForeignKey_";
   public static final String SPANNER_INDEX = "spannerIndex_";
@@ -51,6 +52,12 @@ public class AvroUtil {
   public static final String SPANNER_VIEW_QUERY = "spannerViewQuery";
   public static final String SPANNER_VIEW_SECURITY = "spannerViewSecurity";
   public static final String SPANNER_NAMED_SCHEMA = "spannerNamedSchema";
+
+  public static final String SPANNER_NODE_TABLE = "spannerGraphNodeTable";
+  public static final String SPANNER_EDGE_TABLE = "spannerGraphEdgeTable";
+  public static final String SPANNER_PROPERTY_DECLARATION = "spannerGraphPropertyDeclaration";
+  public static final String SPANNER_LABEL = "spannerGraphLabel";
+
   public static final String SPANNER_NAME = "spannerName";
   public static final String STORED = "stored";
   public static final String SPANNER_PLACEMENT_KEY = "spannerPlacementKey";
