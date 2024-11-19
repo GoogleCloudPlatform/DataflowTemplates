@@ -123,14 +123,9 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
   private SpannerResourceManager spannerResourceManager;
   private PubsubResourceManager pubsubResourceManager;
 
-  private static Pattern subscriptPattern = Pattern.compile("\\[.+\\]");
 
   @Before
   public void setUp() throws IOException {
-    // Due to parameterization the testName would contain subscript like testName[paramName]
-    // Converting testName from testName[paramName] to testName_paramName since it is used to
-    // create many resources and it cannot contain subscript.
-    testName = subscriptPattern.matcher(testName).replaceAll("_" + spannerHostName);
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)

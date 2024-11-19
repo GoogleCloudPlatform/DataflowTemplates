@@ -142,16 +142,6 @@ public class ImportPipelineIT extends TemplateTestBase {
     return expectedRows;
   }
 
-  private static Pattern subscriptPattern = Pattern.compile("\\[.+\\]");
-
-  @Before
-  public void setup() {
-    // Due to parameterization the testName would contain subscript like testName[paramName]
-    // Converting testName from testName[paramName] to testName_paramName since it is used to
-    // create many resources and it cannot contain subscript.
-    testName = subscriptPattern.matcher(testName).replaceAll("_" + spannerHostName);
-  }
-
   @After
   public void tearDown() {
     ResourceManagerUtils.cleanResources(spannerResourceManager);
