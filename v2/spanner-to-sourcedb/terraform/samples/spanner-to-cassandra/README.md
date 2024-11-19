@@ -1,4 +1,4 @@
-## Sample Scenario: Spanner to Sharded MySQL reverse replication
+## Sample Scenario: Spanner to Cassandra reverse replication
 
 > **_SCENARIO:_** This Terraform example illustrates launching a reverse replication
 > jobs to replicate spanner writes for a sharded MySQL source, setting up all the required cloud infrastructure.

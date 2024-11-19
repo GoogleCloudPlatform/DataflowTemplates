@@ -146,7 +146,7 @@ resource "google_dataflow_flex_template_job" "reverse_replication_job" {
   ] # Launch the template once the stream is created.
   provider                = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Spanner_to_SourceDb"
-
+  # container_spec_gcs_path = "gs://reverse-replication-dataflow-templates/templates/flex/Spanner_to_SourceDb"
   # Parameters from Dataflow Template
   parameters = {
     changeStreamName         = var.dataflow_params.template_params.change_stream_name != null ? var.dataflow_params.template_params.change_stream_name : local.change_stream
