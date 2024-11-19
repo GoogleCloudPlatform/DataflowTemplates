@@ -563,6 +563,14 @@ public class Ddl implements Serializable {
       return models.containsKey(name.toLowerCase());
     }
 
+    public PropertyGraph.Builder createPropertyGraph(String name) {
+      PropertyGraph graph = propertyGraphs.get(name.toLowerCase());
+      if (graph == null) {
+        return PropertyGraph.builder(dialect).name(name).ddlBuilder(this);
+      }
+      return graph.toBuilder().ddlBuilder(this);
+    }
+
     public void addPropertyGraph(PropertyGraph graph) {
       propertyGraphs.put(graph.name().toLowerCase(), graph);
     }

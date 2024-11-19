@@ -66,6 +66,11 @@ public abstract class GraphElementTable implements Serializable {
     }
 
     public String labelName;
+
+    public ImmutableList<PropertyDefinition> propertyDefinitions() {
+      return propertyDefinitions;
+    }
+
     // A propertyDefinition is a <propertyName> and its <valueExpressionString>
     public ImmutableList<PropertyDefinition> propertyDefinitions;
 
@@ -191,24 +196,24 @@ public abstract class GraphElementTable implements Serializable {
     private LinkedHashMap<String, LabelToPropertyDefinitions> labelToPropertyDefinitions =
         Maps.newLinkedHashMap();
 
-    abstract GraphElementTable.Builder name(String name);
+    public abstract GraphElementTable.Builder name(String name);
 
-    abstract GraphElementTable.Builder baseTableName(String baseTableName);
+    public abstract GraphElementTable.Builder baseTableName(String baseTableName);
 
-    abstract GraphElementTable.Builder kind(Kind kind);
+    public abstract GraphElementTable.Builder kind(Kind kind);
 
     public abstract GraphElementTable.Builder dialect(Dialect dialect);
 
     public abstract Builder keyColumns(ImmutableList<String> keyColumns);
 
-    abstract Builder labelToPropertyDefinitions(
+    public abstract Builder labelToPropertyDefinitions(
         ImmutableList<LabelToPropertyDefinitions> labelToPropertyDefinitions);
 
-    abstract Builder sourceNodeTable(GraphNodeTableReference sourceNodeTable);
+    public abstract Builder sourceNodeTable(GraphNodeTableReference sourceNodeTable);
 
-    abstract Builder targetNodeTable(GraphNodeTableReference targetNodeTable);
+    public abstract Builder targetNodeTable(GraphNodeTableReference targetNodeTable);
 
-    abstract GraphElementTable autoBuild();
+    public abstract GraphElementTable autoBuild();
 
     public PropertyGraph.Builder endAddNodeTable() {
       propertyGraphBuilder.addNodeTable(this.autoBuild());
