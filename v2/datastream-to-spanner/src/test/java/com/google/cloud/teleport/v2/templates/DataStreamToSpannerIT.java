@@ -41,7 +41,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineOperator;
@@ -122,7 +121,6 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
   private DatastreamResourceManager datastreamResourceManager;
   private SpannerResourceManager spannerResourceManager;
   private PubsubResourceManager pubsubResourceManager;
-
 
   @Before
   public void setUp() throws IOException {

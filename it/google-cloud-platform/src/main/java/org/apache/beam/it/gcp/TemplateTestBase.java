@@ -42,7 +42,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.JobState;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -91,16 +90,13 @@ public abstract class TemplateTestBase {
   public TestRule watcher =
       new TestWatcher() {
         protected void starting(Description description) {
-          LOG.info(
-              "Starting integration test {}.{}",
-              description.getClassName(),
-              description.getMethodName());
           testName = description.getMethodName();
           // In case of parameterization the testName can contain subscript like testName[paramName]
           // Converting testName from testName[paramName] to testNameParamName since it is used to
           // create many resources and it cannot contain special characters.
           testName = testName.replaceAll("\\[", "");
           testName = testName.replaceAll("\\]", "");
+          LOG.info("Starting integration test {}.{}", description.getClassName(), testName);
         }
       };
 
