@@ -42,25 +42,26 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * An integration test for {@link DataStreamToSpanner} Flex template which tests use-cases where a
- * session file is required.
+ * An integration test for {@link DataStreamToSpanner} Flex template which multiple use-cases
+ * tested: 1. Foreign Keys. 2. Table Dropped. 3. Column Rename. 4. DLQ Retry. 5. Missing PK 6.
+ * Indexes
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerEndToEndIT extends DataStreamToSpannerITBase {
+public class DataStreamToSpannerMixedIT extends DataStreamToSpannerITBase {
 
   private static final String TABLE1 = "Authors";
   private static final String TABLE2 = "Books";
   private static final String TABLE3 = "Genre";
   private static PipelineLauncher.LaunchInfo jobInfo;
-  private static HashSet<DataStreamToSpannerEndToEndIT> testInstances = new HashSet<>();
+  private static HashSet<DataStreamToSpannerMixedIT> testInstances = new HashSet<>();
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   private static final String SPANNER_DDL_RESOURCE =
-      "DataStreamToSpannerEndToEndIT/spanner-schema.sql";
+      "DataStreamToSpannerMixedIT/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURCE =
-      "DataStreamToSpannerEndToEndIT/mysql-session.json";
+      "DataStreamToSpannerMixedIT/mysql-session.json";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -69,7 +70,7 @@ public class DataStreamToSpannerEndToEndIT extends DataStreamToSpannerITBase {
   public void setUp() throws IOException {
     // Prevent cleaning up of dataflow job after a test method is executed.
     skipBaseCleanup = true;
-    synchronized (DataStreamToSpannerEndToEndIT.class) {
+    synchronized (DataStreamToSpannerMixedIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         spannerResourceManager = setUpSpannerResourceManager();
@@ -80,7 +81,7 @@ public class DataStreamToSpannerEndToEndIT extends DataStreamToSpannerITBase {
                 getClass().getSimpleName(),
                 SESSION_FILE_RESOURCE,
                 null,
-                "EndToEndIT",
+                "MixedIT",
                 spannerResourceManager,
                 pubsubResourceManager,
                 new HashMap<>() {
@@ -97,14 +98,14 @@ public class DataStreamToSpannerEndToEndIT extends DataStreamToSpannerITBase {
   /** Cleanup dataflow job and all the resources and resource managers. */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (DataStreamToSpannerEndToEndIT instance : testInstances) {
+    for (DataStreamToSpannerMixedIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
   }
 
   @Test
-  public void endToEndMigrationTest() {
+  public void mixedMigrationTest() {
     // Construct a ChainedConditionCheck with 2 stages.
     // 1. Send initial wave of events
     // 2. Wait on Spanner to have events
@@ -115,11 +116,11 @@ public class DataStreamToSpannerEndToEndIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TABLE1,
                         "authors_1.avro",
-                        "DataStreamToSpannerEndToEndIT/Authors_1.avro"),
+                        "DataStreamToSpannerMixedIT/Authors_1.avro"),
                     uploadDataStreamFile(
-                        jobInfo, TABLE2, "books.avro", "DataStreamToSpannerEndToEndIT/Books.avro"),
+                        jobInfo, TABLE2, "books.avro", "DataStreamToSpannerMixedIT/Books.avro"),
                     uploadDataStreamFile(
-                        jobInfo, TABLE3, "genre.avro", "DataStreamToSpannerEndToEndIT/Genre.avro"),
+                        jobInfo, TABLE3, "genre.avro", "DataStreamToSpannerMixedIT/Genre.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(1)
                         .setMaxRows(1)
@@ -141,7 +142,7 @@ public class DataStreamToSpannerEndToEndIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TABLE1,
                         "authors_2.avro",
-                        "DataStreamToSpannerEndToEndIT/Authors_2.avro"),
+                        "DataStreamToSpannerMixedIT/Authors_2.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(4)
                         .setMaxRows(4)
@@ -160,6 +161,8 @@ public class DataStreamToSpannerEndToEndIT extends DataStreamToSpannerITBase {
     assertThatResult(result).meetsConditions();
 
     assertAuthorsTableContents();
+
+    assertBooksTableContents();
   }
 
   private void assertAuthorsTableContents() {
@@ -188,5 +191,28 @@ public class DataStreamToSpannerEndToEndIT extends DataStreamToSpannerITBase {
 
     SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Authors"))
         .hasRecordsUnorderedCaseInsensitiveColumns(authorEvents);
+  }
+
+  private void assertBooksTableContents() {
+    List<Map<String, Object>> bookEvents = new ArrayList<>();
+
+    Map<String, Object> bookRow1 = new HashMap<>();
+    bookRow1.put("id", 1);
+    bookRow1.put("title", "Pride and Prejudice");
+
+    Map<String, Object> bookRow2 = new HashMap<>();
+    bookRow2.put("id", 1);
+    bookRow2.put("title", "Pride and Prejudice");
+
+    Map<String, Object> bookRow3 = new HashMap<>();
+    bookRow3.put("id", 1);
+    bookRow3.put("title", "Pride and Prejudice");
+
+    bookEvents.add(bookRow1);
+    bookEvents.add(bookRow2);
+    bookEvents.add(bookRow3);
+
+    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select id, title from Books"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(bookEvents);
   }
 }
