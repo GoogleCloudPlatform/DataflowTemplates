@@ -579,6 +579,10 @@ public class Ddl implements Serializable {
       return propertyGraphs.containsKey(name.toLowerCase());
     }
 
+    public Collection<PropertyGraph> propertyGraphs() {
+      return propertyGraphs.values();
+    }
+
     public View.Builder createView(String name) {
       View view = views.get(name.toLowerCase());
       if (view == null) {

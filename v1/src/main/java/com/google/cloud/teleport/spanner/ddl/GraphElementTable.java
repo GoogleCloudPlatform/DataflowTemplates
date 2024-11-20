@@ -71,6 +71,15 @@ public abstract class GraphElementTable implements Serializable {
       return propertyDefinitions;
     }
 
+    public PropertyDefinition getPropertyDefinition(String givenPropertyDefinitionName) {
+      for (PropertyDefinition propertyDefinition : propertyDefinitions()) {
+        if (givenPropertyDefinitionName.equals(propertyDefinition.name)) {
+          return propertyDefinition;
+        }
+      }
+      return null;
+    }
+
     // A propertyDefinition is a <propertyName> and its <valueExpressionString>
     public ImmutableList<PropertyDefinition> propertyDefinitions;
 
@@ -95,6 +104,15 @@ public abstract class GraphElementTable implements Serializable {
   }
 
   public abstract ImmutableList<LabelToPropertyDefinitions> labelToPropertyDefinitions();
+
+  public LabelToPropertyDefinitions getLabelToPropertyDefinitions(String labelName) {
+    for (LabelToPropertyDefinitions labelToPropertyDefinitions : labelToPropertyDefinitions()) {
+      if (labelName.equals(labelToPropertyDefinitions.labelName)) {
+        return labelToPropertyDefinitions;
+      }
+    }
+    return null;
+  }
 
   public static class GraphNodeTableReference {
     public GraphNodeTableReference(
