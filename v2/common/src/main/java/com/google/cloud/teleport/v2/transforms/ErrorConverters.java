@@ -77,7 +77,8 @@ public class ErrorConverters {
       extends PTransform<PCollection<FailsafeElement<String, String>>, WriteResult> {
 
     public static Builder newBuilder() {
-      return new AutoValue_ErrorConverters_WriteStringMessageErrors.Builder();
+      return new AutoValue_ErrorConverters_WriteStringMessageErrors.Builder()
+          .setUseWindowedTimestamp(true);
     }
 
     public abstract String getErrorRecordsTable();
