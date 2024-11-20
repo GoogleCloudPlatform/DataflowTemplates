@@ -10,6 +10,20 @@
         {
             "name": "productName",
             "type": "string"
+        },
+        {
+            "name": "productUsage",
+            "type": {
+                "type": "enum",
+                "name": "Usage",
+                "symbols": [
+                    "N/A",
+                    "LOW",
+                    "MEDIUM",
+                    "HIGH"
+                ]
+            },
+            "default": "N/A"
         }
     ]
 }

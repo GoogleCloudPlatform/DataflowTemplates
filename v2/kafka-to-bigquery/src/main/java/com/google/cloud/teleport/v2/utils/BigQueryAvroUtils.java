@@ -77,6 +77,7 @@ public class BigQueryAvroUtils {
   static final ImmutableMultimap<String, Type> BIG_QUERY_TO_AVRO_TYPES =
       ImmutableMultimap.<String, Type>builder()
           .put("STRING", Type.STRING)
+          .put("STRING", Type.ENUM)
           .put("GEOGRAPHY", Type.STRING)
           .put("BYTES", Type.BYTES)
           .put("INTEGER", Type.LONG)
