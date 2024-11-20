@@ -76,48 +76,26 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       return new DMLGeneratorResponse("");
     }
 
+    Map<String, String> pkcolumnNameValues =
+        getPkColumnValues(
+            spannerTable,
+            sourceTable,
+            dmlGeneratorRequest.getNewValuesJson(),
+            dmlGeneratorRequest.getKeyValuesJson(),
+            dmlGeneratorRequest.getSourceDbTimezoneOffset());
+    if (pkcolumnNameValues == null) {
+      LOG.warn(
+          "Cannot reverse replicate for table {} without primary key, skipping the record",
+          sourceTable.getName());
+      return new DMLGeneratorResponse("");
+    }
+
     if ("INSERT".equals(dmlGeneratorRequest.getModType())
         || "UPDATE".equals(dmlGeneratorRequest.getModType())) {
-      Map<String, String> pkcolumnNameValues =
-          getPkColumnValues(
-              spannerTable,
-              sourceTable,
-              dmlGeneratorRequest.getNewValuesJson(),
-              dmlGeneratorRequest.getKeyValuesJson(),
-              dmlGeneratorRequest.getSourceDbTimezoneOffset());
-      if (pkcolumnNameValues == null) {
-        LOG.warn(
-            "Cannot reverse replicate for table {} without primary key, skipping the record",
-            sourceTable.getName());
-        return new DMLGeneratorResponse("");
-      }
-      Map<String, String> columnNameValues =
-          getColumnValues(
-              spannerTable,
-              sourceTable,
-              dmlGeneratorRequest.getNewValuesJson(),
-              dmlGeneratorRequest.getKeyValuesJson(),
-              dmlGeneratorRequest.getSourceDbTimezoneOffset());
-      return getUpsertStatement(
-          sourceTable.getName(),
-          sourceTable.getPrimaryKeySet(),
-          columnNameValues,
-          pkcolumnNameValues);
-    } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
+      return generateUpsertStatement(
+          spannerTable, sourceTable, dmlGeneratorRequest, pkcolumnNameValues);
 
-      Map<String, String> pkcolumnNameValues =
-          getPkColumnValues(
-              spannerTable,
-              sourceTable,
-              dmlGeneratorRequest.getNewValuesJson(),
-              dmlGeneratorRequest.getKeyValuesJson(),
-              dmlGeneratorRequest.getSourceDbTimezoneOffset());
-      if (pkcolumnNameValues == null) {
-        LOG.warn(
-            "Cannot reverse replicate for table {} without primary key, skipping the record",
-            sourceTable.getName());
-        return new DMLGeneratorResponse("");
-      }
+    } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
       return getDeleteStatement(sourceTable.getName(), pkcolumnNameValues);
     } else {
       LOG.warn("Unsupported modType: " + dmlGeneratorRequest.getModType());
@@ -203,6 +181,25 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     String returnVal = "DELETE FROM `" + tableName + "` WHERE " + deleteValues;
 
     return new DMLGeneratorResponse(returnVal);
+  }
+
+  private static DMLGeneratorResponse generateUpsertStatement(
+      SpannerTable spannerTable,
+      SourceTable sourceTable,
+      DMLGeneratorRequest dmlGeneratorRequest,
+      Map<String, String> pkcolumnNameValues) {
+    Map<String, String> columnNameValues =
+        getColumnValues(
+            spannerTable,
+            sourceTable,
+            dmlGeneratorRequest.getNewValuesJson(),
+            dmlGeneratorRequest.getKeyValuesJson(),
+            dmlGeneratorRequest.getSourceDbTimezoneOffset());
+    return getUpsertStatement(
+        sourceTable.getName(),
+        sourceTable.getPrimaryKeySet(),
+        columnNameValues,
+        pkcolumnNameValues);
   }
 
   private static Map<String, String> getColumnValues(

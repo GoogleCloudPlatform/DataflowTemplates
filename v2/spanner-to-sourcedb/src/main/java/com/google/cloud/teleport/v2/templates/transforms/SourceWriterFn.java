@@ -33,6 +33,7 @@ import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dao.spanner.SpannerDao;
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
+import com.google.cloud.teleport.v2.templates.exceptions.InvalidSourceException;
 import com.google.cloud.teleport.v2.templates.processor.SourceProcessor;
 import com.google.cloud.teleport.v2.templates.processor.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.utils.InputRecordProcessor;
@@ -84,7 +85,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final String skipDirName;
   private final int maxThreadPerDataflowWorker;
   private final String source;
-  private transient SourceProcessor sourceProcessor;
+  private SourceProcessor sourceProcessor;
 
   public SourceWriterFn(
       List<Shard> shards,
@@ -125,7 +126,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
   /** Setup function connects to Cloud Spanner. */
   @Setup
-  public void setup() throws Exception {
+  public void setup() throws InvalidSourceException {
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceProcessor =
@@ -182,8 +183,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         if (!isSourceAhead) {
           IDao sourceDao = sourceProcessor.getSourceDaoMap().get(shardId);
 
-          InputRecordProcessor inputRecordProcessor = new InputRecordProcessor();
-          inputRecordProcessor.processRecord(
+          InputRecordProcessor.processRecord(
               spannerRec,
               schema,
               sourceDao,

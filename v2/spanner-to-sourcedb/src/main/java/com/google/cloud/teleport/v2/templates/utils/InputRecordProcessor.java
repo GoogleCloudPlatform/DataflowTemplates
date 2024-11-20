@@ -36,7 +36,7 @@ public class InputRecordProcessor {
 
   private static final Logger LOG = LoggerFactory.getLogger(InputRecordProcessor.class);
 
-  public void processRecord(
+  public static void processRecord(
       TrimmedShardedDataChangeRecord spannerRecord,
       Schema schema,
       IDao dao,
