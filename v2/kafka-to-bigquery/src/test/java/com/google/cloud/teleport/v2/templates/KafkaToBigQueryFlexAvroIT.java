@@ -522,13 +522,11 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
           createOtherRecord(Integer.valueOf(i + "4"), "Dataflow", "dataflow");
       publish(kafkaProducer, topicName, i + "4", otherDataflow);
 
-      GenericRecord otherPubsub =
-          createOtherRecord(Integer.valueOf(i + "5"), "Pub/Sub", "pubsub");
+      GenericRecord otherPubsub = createOtherRecord(Integer.valueOf(i + "5"), "Pub/Sub", "pubsub");
       publish(kafkaProducer, topicName, i + "5", otherPubsub);
 
       GenericRecord otherInvalid =
-          createOtherRecord(
-              Integer.valueOf(i + "6"), "InvalidNameTooLong", "InvalidNameTooLong");
+          createOtherRecord(Integer.valueOf(i + "6"), "InvalidNameTooLong", "InvalidNameTooLong");
       publish(kafkaProducer, topicName, i + "6", otherInvalid);
 
       try {
