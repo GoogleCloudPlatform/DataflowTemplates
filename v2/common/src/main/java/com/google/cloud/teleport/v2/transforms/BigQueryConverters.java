@@ -244,7 +244,7 @@ public class BigQueryConverters {
     void setQueryTempDataset(String queryTempDataset);
 
     @TemplateParameter.KmsEncryptionKey(
-        order = 8,
+        order = 7,
         optional = true,
         description = "Google Cloud KMS key",
         helpText =
