@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Package info for mysql source module. */
-package com.google.cloud.teleport.v2.templates.source.sql.mysql;
+/** Package info for dao module. */
+package com.google.cloud.teleport.v2.templates.dao;

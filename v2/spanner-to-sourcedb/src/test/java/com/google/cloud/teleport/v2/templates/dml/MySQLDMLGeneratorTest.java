@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.source.sql.mysql;
+package com.google.cloud.teleport.v2.templates.dml;
 
 import static org.junit.Assert.assertTrue;
 
@@ -29,7 +29,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
-import com.google.cloud.teleport.v2.templates.source.common.DMLGeneratorRequest;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.utils.InputRecordProcessor;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
@@ -62,10 +63,13 @@ public final class MySQLDMLGeneratorTest {
     "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
         + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -85,10 +89,13 @@ public final class MySQLDMLGeneratorTest {
     "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
         + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -107,10 +114,13 @@ public final class MySQLDMLGeneratorTest {
     "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES ('999',222,'ll') ON DUPLICATE"
         + " KEY UPDATE  FirstName = 222, LastName = 'll'";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`FirstName` = 222"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -131,10 +141,13 @@ public final class MySQLDMLGeneratorTest {
     "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
         + " UPDATE  FirstName = 'kk', LastName = 'll'"; */
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -156,10 +169,13 @@ public final class MySQLDMLGeneratorTest {
     "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
         + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -177,10 +193,13 @@ public final class MySQLDMLGeneratorTest {
 
     /* The expected sql is: ""*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.isEmpty());
   }
@@ -197,10 +216,13 @@ public final class MySQLDMLGeneratorTest {
 
     /* The expected sql is: ""*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.isEmpty());
   }
@@ -220,10 +242,13 @@ public final class MySQLDMLGeneratorTest {
         + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')) ON DUPLICATE KEY"
         + " UPDATE  Bday =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+10:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+10:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(
         sql.contains("`Bday` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00'"));
@@ -243,10 +268,13 @@ public final class MySQLDMLGeneratorTest {
     "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
         + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -298,10 +326,13 @@ public final class MySQLDMLGeneratorTest {
         + " = '2023-05-18', double_column = 42.42, smallint_column = 22, varchar_column ="
         + " 'abc'"; */
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`mediumint_column` = 333"));
     assertTrue(sql.contains("`tinyblob_column` = FROM_BASE64('YWJj')"));
@@ -360,10 +391,13 @@ public final class MySQLDMLGeneratorTest {
     "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',NULL) ON DUPLICATE KEY"
         + " UPDATE  FirstName = 'kk', LastName = NULL";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`LastName` = NULL"));
@@ -382,10 +416,13 @@ public final class MySQLDMLGeneratorTest {
     /* The expected sql is:
     "DELETE FROM Singers WHERE  FirstName = 'kk' AND  SingerId = 999";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`SingerId` = 999"));
@@ -406,10 +443,13 @@ public final class MySQLDMLGeneratorTest {
     "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'k''k','ll') ON DUPLICATE KEY"
         + " UPDATE  FirstName = 'k''k', LastName = 'll'"; */
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`FirstName` = 'k''k'"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -435,10 +475,13 @@ public final class MySQLDMLGeneratorTest {
         + " VALUES (12,'''',FROM_BASE64('Jw=='))"
         + " ON DUPLICATE KEY UPDATE  varchar_column = '''', blob_column = FROM_BASE64('Jw==')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
     assertTrue(sql.contains("`varchar_column` = '''"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('Jw==')"));
   }
@@ -463,10 +506,13 @@ public final class MySQLDMLGeneratorTest {
         + " (12,'''''',FROM_BASE64('Jyc=')) ON DUPLICATE KEY UPDATE  varchar_column = '''''',"
         + " blob_column = FROM_BASE64('Jyc=')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`varchar_column` = '''''"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('Jyc=')"));
@@ -492,10 +538,13 @@ public final class MySQLDMLGeneratorTest {
         + " (12,'\\\\''',FROM_BASE64('XCc=')) ON DUPLICATE KEY UPDATE  varchar_column ="
         + " '\\\\''', blob_column = FROM_BASE64('XCc=')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`varchar_column` = '\\\\'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('XCc=')"));
@@ -522,10 +571,13 @@ public final class MySQLDMLGeneratorTest {
         + "\t',FROM_BASE64('CQ==')) ON DUPLICATE KEY UPDATE  varchar_column = '\t', blob_column"
         + " = FROM_BASE64('CQ==')"; */
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`varchar_column` = '\t'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('CQ==')"));
@@ -552,10 +604,13 @@ public final class MySQLDMLGeneratorTest {
         + " (12,'\b',FROM_BASE64('CA==')) ON DUPLICATE KEY UPDATE  varchar_column = '\b',"
         + " blob_column = FROM_BASE64('CA==')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`varchar_column` = '\b'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('CA==')"));
@@ -582,10 +637,13 @@ public final class MySQLDMLGeneratorTest {
         + "',FROM_BASE64('Cg==')) ON DUPLICATE KEY UPDATE  varchar_column = '\n"
         + "', blob_column = FROM_BASE64('Cg==')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`varchar_column` = '\n'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('Cg==')"));
@@ -612,10 +670,13 @@ public final class MySQLDMLGeneratorTest {
         + "',FROM_BASE64('DQ==')) ON DUPLICATE KEY UPDATE  varchar_column = '\r"
         + "', blob_column = FROM_BASE64('DQ==')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`varchar_column` = '\r'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('DQ==')"));
@@ -642,10 +703,13 @@ public final class MySQLDMLGeneratorTest {
         + " (12,'\f',FROM_BASE64('DA==')) ON DUPLICATE KEY UPDATE  varchar_column = '\f',"
         + " blob_column = FROM_BASE64('DA==')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`varchar_column` = '\f'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('DA==')"));
@@ -672,10 +736,13 @@ public final class MySQLDMLGeneratorTest {
         + " (12,'\"',FROM_BASE64('Ig==')) ON DUPLICATE KEY UPDATE  varchar_column = '\"',"
         + " blob_column = FROM_BASE64('Ig==')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`varchar_column` = '\"'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('Ig==')"));
@@ -702,10 +769,13 @@ public final class MySQLDMLGeneratorTest {
         + " (12,'\\\\',FROM_BASE64('XA==')) ON DUPLICATE KEY UPDATE  varchar_column = '\\\\',"
         + " blob_column = FROM_BASE64('XA==')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`varchar_column` = '\\\\'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('XA==')"));
@@ -726,10 +796,13 @@ public final class MySQLDMLGeneratorTest {
         + " (999,'kk',BINARY(FROM_BASE64('YmlsX2NvbA=='))) ON DUPLICATE KEY UPDATE  FirstName ="
         + " 'kk', LastName = BINARY(FROM_BASE64('YmlsX2NvbA=='))"; */
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`LastName` = BINARY(FROM_BASE64('YmlsX2NvbA=='))"));
   }
@@ -745,10 +818,13 @@ public final class MySQLDMLGeneratorTest {
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.isEmpty());
   }
@@ -764,10 +840,13 @@ public final class MySQLDMLGeneratorTest {
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(
         sql.contains(
@@ -785,10 +864,13 @@ public final class MySQLDMLGeneratorTest {
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
     assertTrue(
         sql.contains(
             "INSERT INTO `Singers`(`SingerId`,`FirstName`,`LastName`) VALUES (NULL,'kk','ll')"));
@@ -805,10 +887,13 @@ public final class MySQLDMLGeneratorTest {
     String modType = "DELETE";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.isEmpty());
   }
@@ -827,10 +912,13 @@ public final class MySQLDMLGeneratorTest {
     "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,NULL,'ll') ON DUPLICATE KEY"
         + " UPDATE  FirstName = NULL , LastName = 'll'";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`FirstName` = NULL"));
   }
@@ -846,10 +934,13 @@ public final class MySQLDMLGeneratorTest {
     String modType = "JUNK";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.isEmpty());
   }
@@ -868,10 +959,13 @@ public final class MySQLDMLGeneratorTest {
     "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
         + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -888,10 +982,13 @@ public final class MySQLDMLGeneratorTest {
     String modType = "DELETE";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.isEmpty());
   }
@@ -907,10 +1004,13 @@ public final class MySQLDMLGeneratorTest {
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.isEmpty());
   }
@@ -926,10 +1026,13 @@ public final class MySQLDMLGeneratorTest {
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.isEmpty());
   }
@@ -946,10 +1049,13 @@ public final class MySQLDMLGeneratorTest {
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.isEmpty());
   }
@@ -969,10 +1075,13 @@ public final class MySQLDMLGeneratorTest {
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    String sql =
+    DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00"));
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
     MySQLDMLGenerator test = new MySQLDMLGenerator(); // to add that last bit of code coverage
     InputRecordProcessor test2 =
         new InputRecordProcessor(); // to add that last bit of code coverage

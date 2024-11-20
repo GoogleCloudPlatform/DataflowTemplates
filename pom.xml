@@ -367,6 +367,7 @@
             <exclude>**/CustomTransformationImplFetcher.*</exclude>
             <exclude>**/JarFileReader.*</exclude>
             <exclude>**/CustomTransformationWithShardFor*IT.*</exclude>
+            <exclude>**/models/*</exclude>
           </excludes>
         </configuration>
         <executions>

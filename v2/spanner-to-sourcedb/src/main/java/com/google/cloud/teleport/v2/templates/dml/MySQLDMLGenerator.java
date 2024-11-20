@@ -13,15 +13,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.source.sql.mysql;
+package com.google.cloud.teleport.v2.templates.dml;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
-import com.google.cloud.teleport.v2.templates.source.common.DMLGeneratorRequest;
-import com.google.cloud.teleport.v2.templates.source.common.IDMLGenerator;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 public class MySQLDMLGenerator implements IDMLGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(MySQLDMLGenerator.class);
 
-  public String getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
+  public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
 
     if (dmlGeneratorRequest
             .getSchema()
@@ -45,7 +45,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       LOG.warn(
           "The spanner table {} was not found in session file, dropping the record",
           dmlGeneratorRequest.getSpannerTableName());
-      return "";
+      return new DMLGeneratorResponse("");
     }
 
     String spannerTableId =
@@ -60,20 +60,20 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       LOG.warn(
           "The spanner table {} was not found in session file, dropping the record",
           dmlGeneratorRequest.getSpannerTableName());
-      return "";
+      return new DMLGeneratorResponse("");
     }
 
     SourceTable sourceTable = dmlGeneratorRequest.getSchema().getSrcSchema().get(spannerTableId);
     if (sourceTable == null) {
       LOG.warn("The table {} was not found in source", dmlGeneratorRequest.getSpannerTableName());
-      return "";
+      return new DMLGeneratorResponse("");
     }
 
     if (sourceTable.getPrimaryKeys() == null || sourceTable.getPrimaryKeys().length == 0) {
       LOG.warn(
           "Cannot reverse replicate for table {} without primary key, skipping the record",
           sourceTable.getName());
-      return "";
+      return new DMLGeneratorResponse("");
     }
 
     if ("INSERT".equals(dmlGeneratorRequest.getModType())
@@ -89,7 +89,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         LOG.warn(
             "Cannot reverse replicate for table {} without primary key, skipping the record",
             sourceTable.getName());
-        return "";
+        return new DMLGeneratorResponse("");
       }
       Map<String, String> columnNameValues =
           getColumnValues(
@@ -116,16 +116,16 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         LOG.warn(
             "Cannot reverse replicate for table {} without primary key, skipping the record",
             sourceTable.getName());
-        return "";
+        return new DMLGeneratorResponse("");
       }
       return getDeleteStatement(sourceTable.getName(), pkcolumnNameValues);
     } else {
       LOG.warn("Unsupported modType: " + dmlGeneratorRequest.getModType());
-      return "";
+      return new DMLGeneratorResponse("");
     }
   }
 
-  private static String getUpsertStatement(
+  private static DMLGeneratorResponse getUpsertStatement(
       String tableName,
       Set<String> primaryKeys,
       Map<String, String> columnNameValues,
@@ -150,7 +150,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
 
       String returnVal =
           "INSERT INTO `" + tableName + "`(" + allColumns + ")" + " VALUES (" + allValues + ") ";
-      return returnVal;
+      return new DMLGeneratorResponse(returnVal);
     }
     int index = 0;
 
@@ -182,10 +182,10 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             + "ON DUPLICATE KEY UPDATE "
             + updateValues;
 
-    return returnVal;
+    return new DMLGeneratorResponse(returnVal);
   }
 
-  private static String getDeleteStatement(
+  private static DMLGeneratorResponse getDeleteStatement(
       String tableName, Map<String, String> pkcolumnNameValues) {
     String deleteValues = "";
 
@@ -202,7 +202,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     }
     String returnVal = "DELETE FROM `" + tableName + "` WHERE " + deleteValues;
 
-    return returnVal;
+    return new DMLGeneratorResponse(returnVal);
   }
 
   private static Map<String, String> getColumnValues(

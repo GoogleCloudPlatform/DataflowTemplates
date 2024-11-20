@@ -42,10 +42,12 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.source.common.ISourceDao;
-import com.google.cloud.teleport.v2.templates.source.sql.SqlDao;
+import com.google.cloud.teleport.v2.templates.dao.source.IDao;
+import com.google.cloud.teleport.v2.templates.dao.source.JdbcDao;
+import com.google.cloud.teleport.v2.templates.dao.spanner.SpannerDao;
+import com.google.cloud.teleport.v2.templates.dml.MySQLDMLGenerator;
+import com.google.cloud.teleport.v2.templates.processor.SourceProcessor;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
-import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.util.HashMap;
@@ -69,9 +71,9 @@ import org.mockito.junit.MockitoRule;
 public class SourceWriterFnTest {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   @Rule public final MockitoRule mocktio = MockitoJUnit.rule();
-  @Mock private SqlDao mockSqlDao;
+  @Mock private JdbcDao mockSqlDao;
   @Mock private SpannerDao mockSpannerDao;
-  @Mock HashMap<String, ISourceDao> mockSourceDaoMap;
+  @Mock HashMap<String, IDao> mockDaoMap;
   @Mock private SpannerConfig mockSpannerConfig;
   @Mock private DoFn.ProcessContext processContext;
   private static Gson gson = new Gson();
@@ -81,9 +83,11 @@ public class SourceWriterFnTest {
   private Ddl testDdl;
   private String testSourceDbTimezoneOffset;
 
+  private SourceProcessor sourceProcessor;
+
   @Before
   public void doBeforeEachTest() throws Exception {
-    when(mockSourceDaoMap.get(any())).thenReturn(mockSqlDao);
+    when(mockDaoMap.get(any())).thenReturn(mockSqlDao);
     when(mockSpannerDao.getShadowTableRecord(eq("shadow_parent1"), any())).thenReturn(null);
     when(mockSpannerDao.getShadowTableRecord(eq("shadow_tableName"), any())).thenReturn(null);
     when(mockSpannerDao.getShadowTableRecord(eq("shadow_parent2"), any()))
@@ -122,6 +126,11 @@ public class SourceWriterFnTest {
     testSchema = SessionFileReader.read("src/test/resources/sourceWriterUTSession.json");
     testSourceDbTimezoneOffset = "+00:00";
     testDdl = getTestDdl();
+    sourceProcessor =
+        SourceProcessor.builder()
+            .dmlGenerator(new MySQLDMLGenerator())
+            .sourceDaoMap(mockDaoMap)
+            .build();
   }
 
   @Test
@@ -144,7 +153,6 @@ public class SourceWriterFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockSqlDao, never()).write(any());
@@ -172,7 +180,6 @@ public class SourceWriterFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockSqlDao, never()).write(any());
@@ -198,8 +205,8 @@ public class SourceWriterFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockSqlDao, atLeast(1)).write(any());
@@ -225,7 +232,6 @@ public class SourceWriterFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
@@ -256,7 +262,6 @@ public class SourceWriterFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
@@ -285,7 +290,6 @@ public class SourceWriterFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
@@ -318,7 +322,6 @@ public class SourceWriterFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord = new ChangeStreamErrorRecord(jsonRec, "Test exception");
@@ -346,8 +349,8 @@ public class SourceWriterFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
@@ -376,8 +379,8 @@ public class SourceWriterFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
@@ -406,8 +409,8 @@ public class SourceWriterFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
@@ -436,8 +439,8 @@ public class SourceWriterFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord = new ChangeStreamErrorRecord(jsonRec, "generic exception");
@@ -466,7 +469,6 @@ public class SourceWriterFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.setSourceDaoMap(mockSourceDaoMap);
     sourceWriterFn.processElement(processContext);
     verify(mockSqlDao, never()).write(contains("567890"));
   }

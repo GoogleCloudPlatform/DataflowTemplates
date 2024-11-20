@@ -13,15 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.source.common;
+package com.google.cloud.teleport.v2.templates.dml;
 
-public interface ISourceDao {
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 
-  /**
-   * Executes a given write statement.
-   *
-   * @param statement The SQL or query statement.
-   * @throws Exception If there is an error executing the statement.
-   */
-  void write(String statement) throws Exception;
+public interface IDMLGenerator {
+  DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest);
 }

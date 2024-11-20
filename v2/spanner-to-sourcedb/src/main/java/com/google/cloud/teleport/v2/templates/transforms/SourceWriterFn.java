@@ -30,21 +30,18 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.source.common.IDMLGenerator;
-import com.google.cloud.teleport.v2.templates.source.common.ISourceDao;
-import com.google.cloud.teleport.v2.templates.source.common.SourceProcessor;
-import com.google.cloud.teleport.v2.templates.source.common.SourceProcessorFactory;
-import com.google.cloud.teleport.v2.templates.utils.ConnectionException;
+import com.google.cloud.teleport.v2.templates.dao.source.IDao;
+import com.google.cloud.teleport.v2.templates.dao.spanner.SpannerDao;
+import com.google.cloud.teleport.v2.templates.processor.SourceProcessor;
+import com.google.cloud.teleport.v2.templates.processor.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.utils.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
-import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
+import com.google.cloud.teleport.v2.templates.utils.connection.ConnectionException;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -116,10 +113,14 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.spannerDao = spannerDao;
   }
 
-
   // for unit testing purposes
   public void setObjectMapper(ObjectMapper mapper) {
     this.mapper = mapper;
+  }
+
+  // for unit testing purposes
+  public void setSourceProcessor(SourceProcessor sourceProcessor) {
+    this.sourceProcessor = sourceProcessor;
   }
 
   /** Setup function connects to Cloud Spanner. */
@@ -127,9 +128,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   public void setup() throws Exception {
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-    sourceProcessor= SourceProcessorFactory.createSourceProcessor(source, shards, maxThreadPerDataflowWorker);
+    sourceProcessor =
+        SourceProcessorFactory.createSourceProcessor(source, shards, maxThreadPerDataflowWorker);
     spannerDao = new SpannerDao(spannerConfig);
-
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
@@ -179,11 +180,16 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                             > Long.parseLong(spannerRec.getRecordSequence())));
 
         if (!isSourceAhead) {
-          ISourceDao sourceDao = sourceProcessor.getSourceDaoMap().get(shardId);
+          IDao sourceDao = sourceProcessor.getSourceDaoMap().get(shardId);
 
           InputRecordProcessor inputRecordProcessor = new InputRecordProcessor();
           inputRecordProcessor.processRecord(
-              spannerRec, schema, sourceDao, shardId, sourceDbTimezoneOffset, source, sourceProcessor.getDmlGenerator());
+              spannerRec,
+              schema,
+              sourceDao,
+              shardId,
+              sourceDbTimezoneOffset,
+              sourceProcessor.getDmlGenerator());
 
           spannerDao.updateShadowTable(
               getShadowTableMutation(

@@ -17,9 +17,10 @@ package com.google.cloud.teleport.v2.templates.utils;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
-import com.google.cloud.teleport.v2.templates.source.common.DMLGeneratorRequest;
-import com.google.cloud.teleport.v2.templates.source.common.IDMLGenerator;
-import com.google.cloud.teleport.v2.templates.source.common.ISourceDao;
+import com.google.cloud.teleport.v2.templates.dao.source.IDao;
+import com.google.cloud.teleport.v2.templates.dml.IDMLGenerator;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.apache.beam.sdk.metrics.Counter;
@@ -38,10 +39,9 @@ public class InputRecordProcessor {
   public void processRecord(
       TrimmedShardedDataChangeRecord spannerRecord,
       Schema schema,
-      ISourceDao dao,
+      IDao dao,
       String shardId,
       String sourceDbTimezoneOffset,
-      String source,
       IDMLGenerator dmlGenerator)
       throws Exception {
 
@@ -55,15 +55,17 @@ public class InputRecordProcessor {
       JSONObject keysJson = new JSONObject(keysJsonStr);
 
       DMLGeneratorRequest dmlGeneratorRequest =
-          new DMLGeneratorRequest(
-              modType, tableName, schema, newValuesJson, keysJson, sourceDbTimezoneOffset);
+          new DMLGeneratorRequest.Builder(
+                  modType, tableName, newValuesJson, keysJson, sourceDbTimezoneOffset)
+              .setSchema(schema)
+              .build();
 
-      String dmlStatement = dmlGenerator.getDMLStatement(dmlGeneratorRequest);
-      if (dmlStatement.isEmpty()) {
+      DMLGeneratorResponse dmlGeneratorResponse = dmlGenerator.getDMLStatement(dmlGeneratorRequest);
+      if (dmlGeneratorResponse.getDmlStatement().isEmpty()) {
         LOG.warn("DML statement is empty for table: " + tableName);
         return;
       }
-      dao.write(dmlStatement);
+      dao.write(dmlGeneratorResponse.getDmlStatement());
 
       Counter numRecProcessedMetric =
           Metrics.counter(shardId, "records_written_to_source_" + shardId);

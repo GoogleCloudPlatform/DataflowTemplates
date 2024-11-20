@@ -13,36 +13,38 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.source.sql;
+package com.google.cloud.teleport.v2.templates.dao.source;
 
-import com.google.cloud.teleport.v2.templates.source.common.ISourceDao;
-import com.google.cloud.teleport.v2.templates.utils.ConnectionException;
+import com.google.cloud.teleport.v2.templates.utils.connection.ConnectionException;
+import com.google.cloud.teleport.v2.templates.utils.connection.IConnectionHelper;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class SqlDao implements ISourceDao {
+public class JdbcDao implements IDao {
   private String sqlUrl;
   private String sqlUser;
-  private String sqlPasswd;
 
-  public SqlDao(String sqlUrl, String sqlUser, String sqlPasswd) {
+  private final IConnectionHelper connectionHelper;
+
+  public JdbcDao(String sqlUrl, String sqlUser, IConnectionHelper connectionHelper) {
     this.sqlUrl = sqlUrl;
     this.sqlUser = sqlUser;
-    this.sqlPasswd = sqlPasswd;
+    this.connectionHelper = connectionHelper;
   }
 
   public String getSourceConnectionUrl() {
     return sqlUrl;
   }
 
+  @Override
   public void write(String sqlStatement) throws SQLException, ConnectionException {
     Connection connObj = null;
     Statement statement = null;
 
     try {
 
-      connObj = SQLConnectionHelper.getConnection(this.sqlUrl, this.sqlUser, this.sqlPasswd);
+      connObj = (Connection) connectionHelper.getConnection(this.sqlUrl + "/" + this.sqlUser);
       if (connObj == null) {
         throw new ConnectionException("Connection is null");
       }
