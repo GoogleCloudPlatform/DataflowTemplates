@@ -15,13 +15,13 @@
  */
 package com.google.cloud.teleport.v2.templates.dao.source;
 
-import com.google.cloud.teleport.v2.templates.utils.connection.ConnectionException;
+import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.utils.connection.IConnectionHelper;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class JdbcDao implements IDao {
+public class JdbcDao implements IDao<String> {
   private String sqlUrl;
   private String sqlUser;
 
@@ -31,10 +31,6 @@ public class JdbcDao implements IDao {
     this.sqlUrl = sqlUrl;
     this.sqlUser = sqlUser;
     this.connectionHelper = connectionHelper;
-  }
-
-  public String getSourceConnectionUrl() {
-    return sqlUrl;
   }
 
   @Override

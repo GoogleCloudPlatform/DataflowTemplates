@@ -13,14 +13,19 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.dao.source;
+package com.google.cloud.teleport.v2.templates.exceptions;
 
-public interface IDao<T> {
-  /**
-   * Executes a given write statement against the data source.
-   *
-   * @param statement The SQL or query statement.
-   * @throws Exception If there is an error executing the statement.
-   */
-  void write(T statement) throws Exception;
+/** Exception when connecting to the source database. */
+public class ConnectionException extends Exception {
+  public ConnectionException(Exception e) {
+    super(e);
+  }
+
+  public ConnectionException(String message) {
+    super(message);
+  }
+
+  public ConnectionException(String message, Exception e) {
+    super(message, e);
+  }
 }

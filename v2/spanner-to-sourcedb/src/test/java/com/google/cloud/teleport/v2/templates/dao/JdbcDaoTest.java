@@ -22,7 +22,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.templates.dao.source.JdbcDao;
-import com.google.cloud.teleport.v2.templates.utils.connection.ConnectionException;
+import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.utils.connection.MySQLConnectionHelper;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;

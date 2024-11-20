@@ -13,19 +13,19 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.utils.connection;
+package com.google.cloud.teleport.v2.templates.exceptions;
 
-/** Exception when connecting to the source database. */
-public class ConnectionException extends Exception {
-  public ConnectionException(Exception e) {
+/** Exception in case of unsupported source database. */
+public class InvalidSourceException extends Exception {
+  public InvalidSourceException(Exception e) {
     super(e);
   }
 
-  public ConnectionException(String message) {
+  public InvalidSourceException(String message) {
     super(message);
   }
 
-  public ConnectionException(String message, Exception e) {
+  public InvalidSourceException(String message, Exception e) {
     super(message, e);
   }
 }

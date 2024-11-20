@@ -20,11 +20,21 @@ import com.google.cloud.teleport.v2.templates.dml.IDMLGenerator;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Represents a processor responsible for managing source database operations. This class
+ * encapsulates a DML generator and a map of DAOs for interacting with source databases.
+ */
 public class SourceProcessor {
 
   private final IDMLGenerator dmlGenerator;
   private final Map<String, IDao> sourceDaoMap;
 
+  /**
+   * Constructs a SourceProcessor with the specified DML generator and source DAO map.
+   *
+   * @param dmlGenerator the DML generator for the source
+   * @param sourceDaoMap the map of shard ID to DAO for the source
+   */
   private SourceProcessor(IDMLGenerator dmlGenerator, Map<String, IDao> sourceDaoMap) {
     this.dmlGenerator = dmlGenerator;
     this.sourceDaoMap = sourceDaoMap;
@@ -42,6 +52,7 @@ public class SourceProcessor {
     return new Builder();
   }
 
+  /** Builder class for constructing instances of {@link SourceProcessor}. */
   public static class Builder {
     private IDMLGenerator dmlGenerator;
     private Map<String, IDao> sourceDaoMap = new HashMap<>();

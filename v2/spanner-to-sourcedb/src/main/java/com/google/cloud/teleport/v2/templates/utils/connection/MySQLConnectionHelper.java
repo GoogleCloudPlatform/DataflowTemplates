@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.utils.connection;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -45,13 +46,7 @@ public class MySQLConnectionHelper implements IConnectionHelper<Connection> {
     connectionPoolMap = new HashMap<>();
     for (Shard shard : connectionHelperRequest.getShards()) {
       String sourceConnectionUrl =
-          "jdbc:mysql://"
-              + "://"
-              + shard.getHost()
-              + ":"
-              + shard.getPort()
-              + "/"
-              + shard.getDbName();
+          "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
       HikariConfig config = new HikariConfig();
       config.setJdbcUrl(sourceConnectionUrl);
       config.setUsername(shard.getUserName());

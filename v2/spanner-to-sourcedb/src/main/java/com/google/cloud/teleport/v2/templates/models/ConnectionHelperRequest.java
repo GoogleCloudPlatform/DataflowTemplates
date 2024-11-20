@@ -18,6 +18,18 @@ package com.google.cloud.teleport.v2.templates.models;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import java.util.List;
 
+/**
+ * Represents a request to initialize a connection helper with the necessary parameters.
+ *
+ * <p>This class encapsulates the essential information required for establishing connections to a
+ * database or a data source. It includes:
+ *
+ * <ul>
+ *   <li>A list of {@link Shard} objects representing the database shards.
+ *   <li>Optional connection properties as a {@link String}.
+ *   <li>The maximum number of connections allowed.
+ * </ul>
+ */
 public class ConnectionHelperRequest {
   private List<Shard> shards;
   private String properties;

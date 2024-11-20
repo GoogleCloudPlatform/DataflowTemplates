@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,14 +13,5 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.dao.source;
-
-public interface IDao<T> {
-  /**
-   * Executes a given write statement against the data source.
-   *
-   * @param statement The SQL or query statement.
-   * @throws Exception If there is an error executing the statement.
-   */
-  void write(T statement) throws Exception;
-}
+/** Package info for exceptions module. */
+package com.google.cloud.teleport.v2.templates.exceptions;

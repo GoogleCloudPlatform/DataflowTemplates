@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.utils.connection;
 
+import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
 
 public interface IConnectionHelper<T> {

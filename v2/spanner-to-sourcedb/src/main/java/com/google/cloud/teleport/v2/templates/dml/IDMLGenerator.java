@@ -18,6 +18,23 @@ package com.google.cloud.teleport.v2.templates.dml;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 
+/**
+ * Interface for generating DML statements.
+ *
+ * <p>This interface provides a contract for implementing classes to define the logic for generating
+ * DML statements, such as INSERT, UPDATE, and DELETE, based on a provided {@link
+ * DMLGeneratorRequest}.
+ *
+ * <p>Classes implementing this interface should handle the construction of DML statements tailored
+ * to the specific requirements of the target database.
+ */
 public interface IDMLGenerator {
+  /**
+   * Generates a DML statement based on the provided {@link DMLGeneratorRequest}.
+   *
+   * @param dmlGeneratorRequest the request containing necessary information to construct the DML
+   *     statement, including modification type, table schema, new values, and key values.
+   * @return a {@link DMLGeneratorResponse} object containing the generated DML statement.
+   */
   DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest);
 }

@@ -368,6 +368,7 @@
             <exclude>**/JarFileReader.*</exclude>
             <exclude>**/CustomTransformationWithShardFor*IT.*</exclude>
             <exclude>**/models/*</exclude>
+            <exclude>**/exceptions/*</exclude>
           </excludes>
         </configuration>
         <executions>

@@ -19,15 +19,36 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import org.json.JSONObject;
 
 /**
- * A request object representing the data necessary to generate DML statements for interacting with
- * a source database.
+ * Represents a request object containing the data required to generate DML (Data Manipulation
+ * Language) statements for interacting with a source database.
+ *
+ * <p>This class is immutable and is built using the {@link Builder} class. It includes:
+ *
+ * <ul>
+ *   <li>Modification type (e.g., INSERT, UPDATE, DELETE).
+ *   <li>The corresponding Spanner table name.
+ *   <li>The schema definition of the table.
+ *   <li>JSON objects for new values and key values.
+ *   <li>The timezone offset of the source database.
+ * </ul>
  */
 public class DMLGeneratorRequest {
+  // The type of DML operation (e.g., "INSERT", "UPDATE", "DELETE").
   private final String modType;
+
+  // The name of the Spanner table associated with the DML operation.
   private final String spannerTableName;
+
+  // The schema of the source and spanner table, providing details about the table's structure.
   private final Schema schema;
+
+  // JSON object containing the new values for the operation (e.g., updated or inserted values).
   private final JSONObject newValuesJson;
+
+  // JSON object containing the key values for identifying records .
   private final JSONObject keyValuesJson;
+
+  // The timezone offset of the source database, used for handling timezone-specific data.
   private final String sourceDbTimezoneOffset;
 
   public DMLGeneratorRequest(Builder builder) {
