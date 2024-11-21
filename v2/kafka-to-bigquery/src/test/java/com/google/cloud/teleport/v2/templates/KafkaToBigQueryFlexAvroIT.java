@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import net.jcip.annotations.NotThreadSafe;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -81,6 +82,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
   private TableId tableId;
   private Schema bqSchema;
   private org.apache.avro.Schema avroSchema;
+  private org.apache.avro.Schema avroSchemaUsageEnum;
   private org.apache.avro.Schema otherAvroSchema;
 
   @Before
@@ -99,6 +101,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
     URL avroSchemaResource = Resources.getResource("KafkaToBigQueryFlexAvroIT/avro_schema.avsc");
     gcsClient.uploadArtifact("avro_schema.avsc", avroSchemaResource.getPath());
     avroSchema = new org.apache.avro.Schema.Parser().parse(avroSchemaResource.openStream());
+    avroSchemaUsageEnum = avroSchema.getField("productUsage").schema();
 
     URL otherAvroSchemaResource =
         Resources.getResource("KafkaToBigQueryFlexAvroIT/other_avro_schema.avsc");
@@ -600,7 +603,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
     return new GenericRecordBuilder(avroSchema)
         .set("productId", id)
         .set("productName", productName)
-        .set("productUsage", productUsage)
+        .set("productUsage", new GenericData.EnumSymbol(avroSchemaUsageEnum, productUsage))
         .build();
   }
 
