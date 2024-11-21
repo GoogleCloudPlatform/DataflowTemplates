@@ -48,7 +48,7 @@ public abstract class GraphElementTable implements Serializable {
 
   public abstract ImmutableList<String> keyColumns();
 
-  public static class PropertyDefinition {
+  public static class PropertyDefinition implements Serializable {
     public PropertyDefinition(String name, String valueExpressionString) {
       this.name = name;
       this.valueExpressionString = valueExpressionString;
@@ -58,7 +58,7 @@ public abstract class GraphElementTable implements Serializable {
     public String valueExpressionString;
   }
 
-  public static class LabelToPropertyDefinitions {
+  public static class LabelToPropertyDefinitions implements Serializable {
     public LabelToPropertyDefinitions(
         String labelName, ImmutableList<PropertyDefinition> propertyDefinitions) {
       this.labelName = labelName;
@@ -114,7 +114,7 @@ public abstract class GraphElementTable implements Serializable {
     return null;
   }
 
-  public static class GraphNodeTableReference {
+  public static class GraphNodeTableReference implements Serializable {
     public GraphNodeTableReference(
         String nodeTableName,
         ImmutableList<String> nodeKeyColumns,

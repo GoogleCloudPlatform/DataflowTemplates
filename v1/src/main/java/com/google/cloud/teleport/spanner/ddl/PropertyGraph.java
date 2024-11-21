@@ -36,7 +36,7 @@ public abstract class PropertyGraph implements Serializable {
 
   public abstract ImmutableList<GraphElementTable> edgeTables();
 
-  public static class PropertyDeclaration {
+  public static class PropertyDeclaration implements Serializable {
     public PropertyDeclaration(String name, String type) {
       this.name = name;
       this.type = type;
@@ -84,7 +84,7 @@ public abstract class PropertyGraph implements Serializable {
     return null;
   }
 
-  public static class GraphElementLabel {
+  public static class GraphElementLabel implements Serializable {
     public GraphElementLabel(String name, ImmutableList<String> properties) {
       this.name = name;
       this.properties = properties;
@@ -142,14 +142,16 @@ public abstract class PropertyGraph implements Serializable {
                 .map(GraphElementTable::prettyPrint)
                 .collect(Collectors.toList())));
     appendable.append(")"); // End NODE TABLES()
-    appendable.append("\nEDGE TABLES(\n");
-    appendable.append(
-        String.join(
-            ", ",
-            edgeTables().stream()
-                .map(GraphElementTable::prettyPrint)
-                .collect(Collectors.toList())));
-    appendable.append(");"); // End EDGE TABLES()
+    if (edgeTables().size() > 0) {
+      appendable.append("\nEDGE TABLES(\n");
+      appendable.append(
+          String.join(
+              ", ",
+              edgeTables().stream()
+                  .map(GraphElementTable::prettyPrint)
+                  .collect(Collectors.toList())));
+      appendable.append(")"); // End EDGE TABLES()
+    }
   }
 
   public String prettyPrint() {

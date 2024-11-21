@@ -887,7 +887,7 @@ public class DdlTest {
                 + " KEY (edge-primary-key)\n"
                 + "SOURCE KEY(source-edge-key) REFERENCES base-table DESTINATION KEY(dest-edge-key) REFERENCES base-table\n"
                 + "LABEL dummy-label-name3 NO PROPERTIES"
-                + ");"));
+                + ")"));
   }
 
   @Test
