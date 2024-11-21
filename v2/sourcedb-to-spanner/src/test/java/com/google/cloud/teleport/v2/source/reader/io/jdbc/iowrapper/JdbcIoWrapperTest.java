@@ -372,6 +372,16 @@ public class JdbcIoWrapperTest {
     assertThat(
             jdbcIOWrapperWithFeatureEnabled.getTableReaders().values().stream().findFirst().get())
         .isInstanceOf(ReadWithUniformPartitions.class);
+    // We test that setting the fetch size works for both modes. The more detailed testing of the
+    // fetch size getting applied to JdbcIO is covered in {@link ReadWithUniformPartitionTest}
+    assertThat(
+            JdbcIoWrapper.of(configWithFeatureEnabled.toBuilder().setMaxFetchSize(42).build())
+                .getTableReaders())
+        .hasSize(1);
+    assertThat(
+            JdbcIoWrapper.of(configWithFeatureDisabled.toBuilder().setMaxFetchSize(42).build())
+                .getTableReaders())
+        .hasSize(1);
   }
 
   @Test

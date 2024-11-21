@@ -32,6 +32,12 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.trans
  */
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
@@ -44,6 +50,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Iterator;
 import javax.sql.DataSource;
+import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.RowMapper;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -231,6 +238,48 @@ public class ReadWithUniformPartitionsTest implements Serializable {
         getReadWithUniformPartitionsForTest(8_000_000_000L /* 1 billion */, null, null, null, null);
     assertThat(readWithUniformPartitionsSmallRowCount.maxPartitionsHint()).isEqualTo(1L);
     assertThat(readWithUniformPartitionsLargeRowCount.maxPartitionsHint()).isEqualTo(4472L);
+  }
+
+  @Test
+  public void testBuildJdbc() {
+    JdbcIO.ReadAll mockReadAll = mock(JdbcIO.ReadAll.class);
+    String testQuery = "Select *";
+    JdbcIO.PreparedStatementSetter<Range> mockRangePrepareator =
+        mock(JdbcIO.PreparedStatementSetter.class);
+    SerializableFunction<Void, DataSource> mockDataSourceProviderFn =
+        mock(SerializableFunction.class);
+    JdbcIO.RowMapper mockRowMapper = mock(RowMapper.class);
+    Integer testFetchSize = 42;
+
+    when(mockReadAll.withQuery(testQuery)).thenReturn(mockReadAll);
+    when(mockReadAll.withParameterSetter(mockRangePrepareator)).thenReturn(mockReadAll);
+    when(mockReadAll.withDataSourceProviderFn(mockDataSourceProviderFn)).thenReturn(mockReadAll);
+    when(mockReadAll.withOutputParallelization(false)).thenReturn(mockReadAll);
+    when(mockReadAll.withRowMapper(mockRowMapper)).thenReturn(mockReadAll);
+    when(mockReadAll.withFetchSize(testFetchSize)).thenReturn(mockReadAll);
+
+    ReadWithUniformPartitions.buildJdbcIO(
+        mockReadAll,
+        testQuery,
+        mockRangePrepareator,
+        mockDataSourceProviderFn,
+        mockRowMapper,
+        null);
+    // No fetch size set.
+    verify(mockReadAll, never()).withFetchSize(anyInt());
+    ReadWithUniformPartitions.buildJdbcIO(
+        mockReadAll,
+        testQuery,
+        mockRangePrepareator,
+        mockDataSourceProviderFn,
+        mockRowMapper,
+        testFetchSize);
+    verify(mockReadAll, times(1)).withFetchSize(testFetchSize);
+    verify(mockReadAll, times(2)).withQuery(testQuery);
+    verify(mockReadAll, times(2)).withParameterSetter(mockRangePrepareator);
+    verify(mockReadAll, times(2)).withDataSourceProviderFn(mockDataSourceProviderFn);
+    verify(mockReadAll, times(2)).withOutputParallelization(false);
+    verify(mockReadAll, times(2)).withRowMapper(mockRowMapper);
   }
 
   @Test
