@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.neo4j.utils;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.ArtifactType;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,7 +82,8 @@ public class BeamBlock {
     executionContexts.put(artifactType.name() + ":" + name, executionContext);
   }
 
-  public PCollection<Row> waitOnCollections(List<String> dependencies, String queuingDescription) {
+  public PCollection<Row> waitOnCollections(
+      Collection<String> dependencies, String queuingDescription) {
     List<PCollection<Row>> waitOnQueues = populateQueueForTargets(dependencies);
     if (waitOnQueues.isEmpty()) {
       waitOnQueues.add(defaultCollection);
@@ -101,7 +103,7 @@ public class BeamBlock {
             Flatten.pCollections());
   }
 
-  private List<PCollection<Row>> populateQueueForTargets(List<String> dependencies) {
+  private List<PCollection<Row>> populateQueueForTargets(Collection<String> dependencies) {
     List<PCollection<Row>> waitOnQueues = new ArrayList<>();
     for (String dependency : dependencies) {
       for (ArtifactType type : ArtifactType.values()) {

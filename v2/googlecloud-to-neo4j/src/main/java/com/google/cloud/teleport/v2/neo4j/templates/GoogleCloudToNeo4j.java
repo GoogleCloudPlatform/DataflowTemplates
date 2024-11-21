@@ -50,6 +50,7 @@ import com.google.cloud.teleport.v2.neo4j.utils.ProcessingCoder;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -401,9 +402,11 @@ public class GoogleCloudToNeo4j {
 
         List<PCollection<?>> dependencies =
             new ArrayList<>(preActionRows.getOrDefault(ActionStage.PRE_RELATIONSHIPS, List.of()));
+        Set<String> dependencyNames = new LinkedHashSet<>(target.getDependencies());
+        dependencyNames.add(target.getStartNodeReference());
+        dependencyNames.add(target.getEndNodeReference());
         dependencies.add(
-            processingQueue.waitOnCollections(
-                target.getDependencies(), relationshipStepDescription));
+            processingQueue.waitOnCollections(dependencyNames, relationshipStepDescription));
 
         PCollection<Row> blockingReturn =
             preInsertBeamRows
@@ -411,7 +414,7 @@ public class GoogleCloudToNeo4j {
                     "** Unblocking "
                         + relationshipStepDescription
                         + "(after "
-                        + String.join(", ", target.getDependencies())
+                        + String.join(", ", dependencyNames)
                         + " and pre-relationships actions)",
                     Wait.on(dependencies))
                 .setCoder(preInsertBeamRows.getCoder())
