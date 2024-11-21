@@ -487,7 +487,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
       GenericRecord pubsub = createRecord(Integer.valueOf(i + "2"), "Pub/Sub", "MEDIUM");
       publish(kafkaProducer, topicName, i + "2", pubsub);
 
-      GenericRecord invalid = createRecord(Integer.valueOf(i + "3"), "InvalidNameTooLong", "N/A");
+      GenericRecord invalid = createRecord(Integer.valueOf(i + "3"), "InvalidNameTooLong", "UNDEFINED");
       publish(kafkaProducer, topicName, i + "3", invalid);
 
       try {
@@ -515,7 +515,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
       GenericRecord pubsub = createRecord(Integer.valueOf(i + "2"), "Pub/Sub", "MEDIUM");
       publish(kafkaProducer, topicName, i + "2", pubsub);
 
-      GenericRecord invalid = createRecord(Integer.valueOf(i + "3"), "InvalidNameTooLong", "N/A");
+      GenericRecord invalid = createRecord(Integer.valueOf(i + "3"), "InvalidNameTooLong", "UNDEFINED");
       publish(kafkaProducer, topicName, i + "3", invalid);
 
       GenericRecord otherDataflow =
@@ -549,7 +549,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
       GenericRecord pubsub = createRecord(Integer.valueOf(i + "2"), "Pub/Sub", "MEDIUM");
       publishBinary(kafkaProducer, topicName, i + "2", pubsub);
 
-      GenericRecord invalid = createRecord(Integer.valueOf(i + "3"), "InvalidNameTooLong", "N/A");
+      GenericRecord invalid = createRecord(Integer.valueOf(i + "3"), "InvalidNameTooLong", "UNDEFINED");
       publishBinary(kafkaProducer, topicName, i + "3", invalid);
 
       try {

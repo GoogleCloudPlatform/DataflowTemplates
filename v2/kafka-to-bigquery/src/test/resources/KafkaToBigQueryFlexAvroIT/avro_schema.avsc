@@ -17,13 +17,13 @@
                 "type": "enum",
                 "name": "Usage",
                 "symbols": [
-                    "N/A",
+                    "UNDEFINED",
                     "LOW",
                     "MEDIUM",
                     "HIGH"
                 ]
             },
-            "default": "N/A"
+            "default": "UNDEFINED"
         }
     ]
 }
