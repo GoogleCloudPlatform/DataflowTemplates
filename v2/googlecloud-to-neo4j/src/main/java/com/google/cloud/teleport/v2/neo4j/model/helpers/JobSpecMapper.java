@@ -30,7 +30,9 @@ import org.neo4j.importer.v1.sources.Source;
 import org.neo4j.importer.v1.validation.SpecificationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
 import org.yaml.snakeyaml.error.YAMLException;
 
 /**
@@ -60,7 +62,7 @@ public class JobSpecMapper {
     try {
       return new JSONObject(content);
     } catch (JSONException jsonException) {
-      Yaml yaml = new Yaml();
+      Yaml yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
       try {
         Map<String, Object> yamlMap = yaml.load(content);
         return new JSONObject(yamlMap);
