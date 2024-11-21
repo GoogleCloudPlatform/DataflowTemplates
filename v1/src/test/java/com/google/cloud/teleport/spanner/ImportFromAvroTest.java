@@ -63,7 +63,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TemporaryFolder;
 
-
 /**
  * Tests import of Avro files. This requires an active GCP project with a Spanner instance. Hence
  * this test can only be run locally with a project set up using 'gcloud config'.
@@ -1378,7 +1377,8 @@ public class ImportFromAvroTest {
   //           + "NODE TABLES(\n"
   //           + "baseTable AS nodeAlias\n"
   //           + " KEY (primaryKey)\n"
-  //           + "LABEL dummyLabelName1 PROPERTIES(dummyPropName, CONCAT(CAST(test_col AS STRING), \":\", \"dummyColumn\") AS aliasedPropName)\n"
+  //           + "LABEL dummyLabelName1 PROPERTIES(dummyPropName, CONCAT(CAST(test_col AS STRING),
+  // \":\", \"dummyColumn\") AS aliasedPropName)\n"
   //           + "LABEL dummyLabelName2 NO PROPERTIES)";
   //   assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
   // }

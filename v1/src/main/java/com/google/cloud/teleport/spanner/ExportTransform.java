@@ -322,7 +322,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                 }));
 
     PCollection<String> allPropertyGraphNames =
-        ddl.apply("List all property graph names",
+        ddl.apply(
+            "List all property graph names",
             ParDo.of(
                 new DoFn<Ddl, String>() {
 
@@ -543,7 +544,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     // This file will contain the schema definition for the propertyGraph.
                     c.output(
                         KV.of(
-                            propertyGraphName, Collections.singleton(propertyGraphName + ".avro-00000-of-00001")));
+                            propertyGraphName,
+                            Collections.singleton(propertyGraphName + ".avro-00000-of-00001")));
                   }
                 }));
 

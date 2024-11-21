@@ -470,16 +470,12 @@ public class InformationSchemaScannerIT {
 
     // --- Assertions for Edge Table References ---
     assertThat(edgeTestTable.sourceNodeTable().nodeTableName, equalTo("NodeTest"));
-    // assertThat(edgeTestTable.sourceNodeTable().nodeKeyColumns, contains("Id"));
     assertIterableEquals(List.of("Id"), edgeTestTable.sourceNodeTable().nodeKeyColumns);
 
-    // assertThat(edgeTestTable.sourceNodeTable().edgeKeyColumns, contains("FromId"));
     assertIterableEquals(List.of("FromId"), edgeTestTable.sourceNodeTable().edgeKeyColumns);
 
     assertThat(edgeTestTable.targetNodeTable().nodeTableName, equalTo("NodeTest"));
-    // assertThat(edgeTestTable.targetNodeTable().nodeKeyColumns, contains("Id"));
     assertIterableEquals(List.of("Id"), edgeTestTable.targetNodeTable().nodeKeyColumns);
-    // assertThat(edgeTestTable.targetNodeTable().edgeKeyColumns, contains("ToId"));
     assertIterableEquals(List.of("ToId"), edgeTestTable.targetNodeTable().edgeKeyColumns);
   }
 

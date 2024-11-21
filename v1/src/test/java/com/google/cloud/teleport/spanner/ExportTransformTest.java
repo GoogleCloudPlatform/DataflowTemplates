@@ -223,8 +223,10 @@ public class ExportTransformTest {
 
                   assertThat(manifestProto.getTablesCount(), is(4));
                   for (Table table : manifestProto.getTablesList()) {
-                    assertThat(table.getName(), anyOf(startsWith("table"), startsWith("model"),
-                        startsWith("propertyGraph")));
+                    assertThat(
+                        table.getName(),
+                        anyOf(
+                            startsWith("table"), startsWith("model"), startsWith("propertyGraph")));
                     assertThat(table.getManifestFile(), is(table.getName() + "-manifest.json"));
                   }
 

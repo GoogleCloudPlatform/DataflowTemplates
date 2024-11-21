@@ -347,18 +347,6 @@ public class DdlToAvroSchemaConverter {
             String.format("%s %s", declaration.name, declaration.type));
       }
 
-      // // Encode labels
-      // for (int i = 0; i < propertyGraph.labels().size(); i++) {
-      //   PropertyGraph.GraphElementLabel label = propertyGraph.labels().get(i);
-      //   String labelString =
-      //       String.format(
-      //           "LABEL %s %s",
-      //           label.name,
-      //           label.properties.isEmpty()
-      //               ? "NO PROPERTIES"
-      //               : "PROPERTIES(" + String.join(", ", label.properties) + ")");
-      //   recordBuilder.prop(SPANNER_LABEL + i, labelString);
-      // }
       // Encode labels
       for (int i = 0; i < propertyGraph.labels().size(); i++) {
         PropertyGraph.GraphElementLabel label = propertyGraph.labels().get(i);
