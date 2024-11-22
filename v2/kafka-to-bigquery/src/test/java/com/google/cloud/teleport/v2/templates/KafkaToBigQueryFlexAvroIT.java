@@ -452,6 +452,8 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
                       11,
                       "productName",
                       "Dataflow",
+                      "productSize",
+                      2d,
                       "productUsage",
                       "HIGH",
                       "_key",
@@ -461,6 +463,8 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
                       12,
                       "productName",
                       "Pub/Sub",
+                      "productSize",
+                      123.125d,
                       "productUsage",
                       "MEDIUM",
                       "_key",
@@ -469,8 +473,24 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
       assertThatBigQueryRecords(tableRows)
           .hasRecordsUnordered(
               List.of(
-                  Map.of("productId", 11, "productName", "Dataflow", "productUsage", "HIGH"),
-                  Map.of("productId", 12, "productName", "Pub/Sub", "productUsage", "MEDIUM")));
+                  Map.of(
+                      "productId",
+                      11,
+                      "productName",
+                      "Dataflow",
+                      "productSize",
+                      2d,
+                      "productUsage",
+                      "HIGH"),
+                  Map.of(
+                      "productId",
+                      12,
+                      "productName",
+                      "Pub/Sub",
+                      "productSize",
+                      123.125d,
+                      "productUsage",
+                      "MEDIUM")));
     }
   }
 
@@ -484,14 +504,14 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             new StringSerializer(), new KafkaAvroSerializer(registryClient));
 
     for (int i = 1; i <= 10; i++) {
-      GenericRecord dataflow = createRecord(Integer.valueOf(i + "1"), "Dataflow", "HIGH");
+      GenericRecord dataflow = createRecord(Integer.valueOf(i + "1"), "Dataflow", 2f, "HIGH");
       publish(kafkaProducer, topicName, i + "1", dataflow);
 
-      GenericRecord pubsub = createRecord(Integer.valueOf(i + "2"), "Pub/Sub", "MEDIUM");
+      GenericRecord pubsub = createRecord(Integer.valueOf(i + "2"), "Pub/Sub", 123.125f, "MEDIUM");
       publish(kafkaProducer, topicName, i + "2", pubsub);
 
       GenericRecord invalid =
-          createRecord(Integer.valueOf(i + "3"), "InvalidNameTooLong", "UNDEFINED");
+          createRecord(Integer.valueOf(i + "3"), "InvalidNameTooLong", 0f, "UNDEFINED");
       publish(kafkaProducer, topicName, i + "3", invalid);
 
       try {
@@ -513,14 +533,14 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             new StringSerializer(), new KafkaAvroSerializer(registryClient));
 
     for (int i = 1; i <= 10; i++) {
-      GenericRecord dataflow = createRecord(Integer.valueOf(i + "1"), "Dataflow", "HIGH");
+      GenericRecord dataflow = createRecord(Integer.valueOf(i + "1"), "Dataflow", 2f, "HIGH");
       publish(kafkaProducer, topicName, i + "1", dataflow);
 
-      GenericRecord pubsub = createRecord(Integer.valueOf(i + "2"), "Pub/Sub", "MEDIUM");
+      GenericRecord pubsub = createRecord(Integer.valueOf(i + "2"), "Pub/Sub", 123.125f, "MEDIUM");
       publish(kafkaProducer, topicName, i + "2", pubsub);
 
       GenericRecord invalid =
-          createRecord(Integer.valueOf(i + "3"), "InvalidNameTooLong", "UNDEFINED");
+          createRecord(Integer.valueOf(i + "3"), "InvalidNameTooLong", 0f, "UNDEFINED");
       publish(kafkaProducer, topicName, i + "3", invalid);
 
       GenericRecord otherDataflow =
@@ -548,14 +568,14 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             new StringSerializer(), new BinaryAvroSerializer(avroSchema));
 
     for (int i = 1; i <= 10; i++) {
-      GenericRecord dataflow = createRecord(Integer.valueOf(i + "1"), "Dataflow", "HIGH");
+      GenericRecord dataflow = createRecord(Integer.valueOf(i + "1"), "Dataflow", 2f, "HIGH");
       publishBinary(kafkaProducer, topicName, i + "1", dataflow);
 
-      GenericRecord pubsub = createRecord(Integer.valueOf(i + "2"), "Pub/Sub", "MEDIUM");
+      GenericRecord pubsub = createRecord(Integer.valueOf(i + "2"), "Pub/Sub", 123.125f, "MEDIUM");
       publishBinary(kafkaProducer, topicName, i + "2", pubsub);
 
       GenericRecord invalid =
-          createRecord(Integer.valueOf(i + "3"), "InvalidNameTooLong", "UNDEFINED");
+          createRecord(Integer.valueOf(i + "3"), "InvalidNameTooLong", 0f, "UNDEFINED");
       publishBinary(kafkaProducer, topicName, i + "3", invalid);
 
       try {
@@ -599,10 +619,12 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
     }
   }
 
-  private GenericRecord createRecord(int id, String productName, String productUsage) {
+  private GenericRecord createRecord(
+      int id, String productName, float productSize, String productUsage) {
     return new GenericRecordBuilder(avroSchema)
         .set("productId", id)
         .set("productName", productName)
+        .set("productSize", productSize)
         .set("productUsage", new GenericData.EnumSymbol(avroSchemaUsageEnum, productUsage))
         .build();
   }

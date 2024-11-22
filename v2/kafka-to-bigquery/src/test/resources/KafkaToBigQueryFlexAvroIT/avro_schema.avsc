@@ -12,6 +12,10 @@
             "type": "string"
         },
         {
+            "name": "productSize",
+            "type": "float"
+        },
+        {
             "name": "productUsage",
             "type": {
                 "type": "enum",
