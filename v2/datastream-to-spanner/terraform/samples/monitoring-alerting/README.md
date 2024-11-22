@@ -1,11 +1,11 @@
-# Spanner Migration Tool Monitoring Dashboard - Terraform Module
+# Live Migration Monitoring Dashboard - Terraform Module
 
-This Terraform module creates a Google Cloud Monitoring dashboard to visualize key metrics related to the Spanner Migration Tool, including Cloud Storage, Pub/Sub, Dataflow, Spanner, and Datastream statistics. It includes log-based metrics and alert policies to monitor error thresholds, conversion errors, DLQ object counts, and throttling in various GCP services, ensuring a comprehensive view of the migration process.
+This Terraform module creates a Google Cloud Monitoring dashboard to visualize key metrics related to the Live migration template(s), including Cloud Storage, Pub/Sub, Dataflow, Spanner, and Datastream statistics. It includes log-based metrics and alert policies to monitor error thresholds, conversion errors, DLQ object counts, and throttling in various GCP services, ensuring a comprehensive view of the migration process.
 
 ## Overview
-The Terraform configuration is organized into two main folders: main/ and modules/. The `main/` folder contains the core configuration files, including `main.tf`, where the infrastructure resources are defined, and module calls are made. `input.tfvars` holds values for the variables defined in `variables.tf`, which are used throughout the configuration. The `provider.tf` file sets up the Google Cloud provider with necessary credentials and project details.
+The Terraform configuration is organized into two main folders: main/ and modules/. The `main/` folder contains the core configuration files, including `main.tf`, where the infrastructure resources are defined, and module calls are made. `terraform_simple.tfvars`  and `terraform.tfvars` holds values for the variables defined in `variables.tf`, which are used throughout the configuration. The `provider.tf` file sets up the Google Cloud provider with necessary credentials and project details.
 
-The `modules/` folder houses reusable Terraform modules. The `modules/dashboard` folder defines the Monitoring Dashboard resources, specifying how to visualize key metrics from various services used by spanner migration tool like Spanner, Dataflow, Pub/Sub, and Cloud Storage. The `modules/alerting` folder contains alert policies for various Google Cloud resources, with separate files for Google Cloud Storage, Pub/Sub, and Dataflow alerting. Finally, the `modules/notification_channels` folder configures the notification channels (email, SMS, etc.) that will be used to alert users when a condition is met.
+The `modules/` folder houses reusable Terraform modules. The `modules/dashboard` folder defines the Monitoring Dashboard resources, specifying how to visualize key metrics from various services used by the Live migration template(s) like Spanner, Dataflow, Pub/Sub, and Cloud Storage. The `modules/alerting` folder contains alert policies for various Google Cloud resources, with separate files for Google Cloud Storage, Pub/Sub, and Dataflow alerting. Finally, the `modules/notification_channels` folder configures the notification channels (email, SMS, etc.) that will be used to alert users when a condition is met.
 
 ## Requirements
 * **Terraform:** Install Terraform on your local machine with version 0.13 or later
@@ -52,12 +52,12 @@ cd <repository-directory>
 **5. Initialize and Apply:**
 ```hcl
 terraform init
-terraform plan -var-file="input.tfvars"
-terraform apply -var-file="input.tfvars"
+terraform plan -var-file="terraform_simple.tfvars" -var-file="terraform.tfvars"
+terraform apply -var-file="terraform_simple.tfvars" -var-file="terraform.tfvars"
 ```
 
 **5. Clean and destroy:**
 ```hcl
-terraform destroy -var-file="input.tfvars"
+terraform destroy -var-file="terraform_simple.tfvars" -var-file="terraform.tfvars"
 ```
 

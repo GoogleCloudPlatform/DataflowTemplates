@@ -1,6 +1,6 @@
 locals {
   dashboard_json = jsonencode({
-    "displayName": "${var.prefix} - SMT Monitoring Dashboard",
+    "displayName": "${var.prefix} - Live Migration Monitoring Dashboard",
     "gridLayout": {
       "columns": "2",
       "widgets": [
