@@ -60,7 +60,7 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
       config.setPassword(shard.getPassword());
       config.setDriverClassName(connectionHelperRequest.getDriver());
       config.setMaximumPoolSize(connectionHelperRequest.getMaxConnections());
-      config.setConnectionInitSql(connectionHelperRequest.getConnectionInitSQL());
+      config.setConnectionInitSql(connectionHelperRequest.getConnectionInitQuery());
       Properties jdbcProperties = new Properties();
       if (connectionHelperRequest.getProperties() != null
           && !connectionHelperRequest.getProperties().isEmpty()) {

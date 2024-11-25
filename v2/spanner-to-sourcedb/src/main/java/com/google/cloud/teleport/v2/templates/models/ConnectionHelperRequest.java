@@ -28,16 +28,16 @@ import java.util.List;
  *   <li>A list of {@link Shard} objects representing the database shards.
  *   <li>Optional connection properties as a {@link String}.
  *   <li>The maximum number of connections allowed.
+ *   <li>The name of the driver to connect to source.
+ *   <li>Optional connection initialisation queries as a {@link String}.
  * </ul>
  */
 public class ConnectionHelperRequest {
   private List<Shard> shards;
   private String properties;
   private int maxConnections;
-
   private String driver;
-
-  private String connectionInitSQL;
+  private String connectionInitQuery;
 
   public List<Shard> getShards() {
     return shards;
@@ -55,8 +55,8 @@ public class ConnectionHelperRequest {
     return driver;
   }
 
-  public String getConnectionInitSQL() {
-    return connectionInitSQL;
+  public String getConnectionInitQuery() {
+    return connectionInitQuery;
   }
 
   public ConnectionHelperRequest(
@@ -64,11 +64,11 @@ public class ConnectionHelperRequest {
       String properties,
       int maxConnections,
       String driver,
-      String connectionInitSQL) {
+      String connectionInitQuery) {
     this.shards = shards;
     this.properties = properties;
     this.maxConnections = maxConnections;
     this.driver = driver;
-    this.connectionInitSQL = connectionInitSQL;
+    this.connectionInitQuery = connectionInitQuery;
   }
 }

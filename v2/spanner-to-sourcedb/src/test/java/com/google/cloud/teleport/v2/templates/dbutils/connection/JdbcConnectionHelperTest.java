@@ -50,6 +50,7 @@ public class JdbcConnectionHelperTest {
   @Test
   public void testIsConnectionPoolInitialized() {
     // Connection pool not initialized
+    connectionHelper.setConnectionPoolMap(null);
     assertFalse(connectionHelper.isConnectionPoolInitialized());
 
     // Mock initialization
