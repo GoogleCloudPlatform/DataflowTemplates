@@ -30,13 +30,13 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.dao.source.IDao;
-import com.google.cloud.teleport.v2.templates.dao.spanner.SpannerDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
-import com.google.cloud.teleport.v2.templates.exceptions.InvalidSourceException;
-import com.google.cloud.teleport.v2.templates.processor.SourceProcessor;
-import com.google.cloud.teleport.v2.templates.processor.SourceProcessorFactory;
-import com.google.cloud.teleport.v2.templates.utils.InputRecordProcessor;
+import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
@@ -126,7 +126,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
   /** Setup function connects to Cloud Spanner. */
   @Setup
-  public void setup() throws InvalidSourceException {
+  public void setup() throws UnsupportedSourceException {
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceProcessor =
@@ -138,6 +138,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   @Teardown
   public void teardown() throws Exception {
     spannerDao.close();
+    sourceProcessor.getSourceDaoMap().clear();
   }
 
   @ProcessElement

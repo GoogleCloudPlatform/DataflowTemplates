@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,4 +13,19 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.constants;
+package com.google.cloud.teleport.v2.templates.exceptions;
+
+/** Exception in case of unsupported source database. */
+public class UnsupportedSourceException extends Exception {
+  public UnsupportedSourceException(Exception e) {
+    super(e);
+  }
+
+  public UnsupportedSourceException(String message) {
+    super(message);
+  }
+
+  public UnsupportedSourceException(String message, Exception e) {
+    super(message, e);
+  }
+}

@@ -35,6 +35,10 @@ public class ConnectionHelperRequest {
   private String properties;
   private int maxConnections;
 
+  private String driver;
+
+  private String connectionInitSQL;
+
   public List<Shard> getShards() {
     return shards;
   }
@@ -47,9 +51,24 @@ public class ConnectionHelperRequest {
     return maxConnections;
   }
 
-  public ConnectionHelperRequest(List<Shard> shards, String properties, int maxConnections) {
+  public String getDriver() {
+    return driver;
+  }
+
+  public String getConnectionInitSQL() {
+    return connectionInitSQL;
+  }
+
+  public ConnectionHelperRequest(
+      List<Shard> shards,
+      String properties,
+      int maxConnections,
+      String driver,
+      String connectionInitSQL) {
     this.shards = shards;
     this.properties = properties;
     this.maxConnections = maxConnections;
+    this.driver = driver;
+    this.connectionInitSQL = connectionInitSQL;
   }
 }
