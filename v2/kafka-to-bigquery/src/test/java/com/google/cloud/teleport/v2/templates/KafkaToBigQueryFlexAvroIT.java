@@ -93,6 +93,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
         Schema.of(
             Field.of("productId", StandardSQLTypeName.INT64),
             Field.newBuilder("productName", StandardSQLTypeName.STRING).setMaxLength(10L).build(),
+            Field.of("productSize", StandardSQLTypeName.FLOAT64),
             Field.of("productUsage", StandardSQLTypeName.STRING));
 
     kafkaResourceManager =
