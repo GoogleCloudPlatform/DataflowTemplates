@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.spanner.Dialect.GOOGLE_STANDARD_SQL;
 import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
 import static com.google.common.base.Strings.isNullOrEmpty;
 
@@ -137,7 +138,8 @@ public abstract class ForeignKey implements Serializable {
               "Foreign Key action not supported: " + action.get().getSqlString());
       }
     }
-    if (isEnforced() != null && !isEnforced()) {
+    if (dialect() == GOOGLE_STANDARD_SQL && isEnforced() != null && !isEnforced()) {
+      // TODO: Add Postgresql support for NOT ENFORCED foreign keys
       appendable.append(" NOT ENFORCED");
     }
   }
