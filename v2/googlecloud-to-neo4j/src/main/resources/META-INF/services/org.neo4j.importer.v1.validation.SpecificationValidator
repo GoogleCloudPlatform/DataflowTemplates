@@ -1,4 +1,5 @@
 # keep this sorted
+com.google.cloud.teleport.v2.neo4j.model.validation.BigQuerySourceProjectDatasetValidator
 com.google.cloud.teleport.v2.neo4j.model.validation.DuplicateAggregateFieldNameValidator
 com.google.cloud.teleport.v2.neo4j.model.validation.DuplicateTextHeaderValidator
 com.google.cloud.teleport.v2.neo4j.model.validation.InlineSourceDataValidator

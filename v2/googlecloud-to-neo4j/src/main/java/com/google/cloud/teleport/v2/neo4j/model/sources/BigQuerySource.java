@@ -22,11 +22,18 @@ public class BigQuerySource implements Source {
 
   private final String name;
   private final String query;
+  private final String tempProjectId;
+  private final String tempDatasetId;
 
   public BigQuerySource(String name, String query) {
+    this(name, query, null, null);
+  }
 
+  public BigQuerySource(String name, String query, String tempProjectId, String tempDatasetId) {
     this.name = name;
     this.query = query;
+    this.tempProjectId = tempProjectId;
+    this.tempDatasetId = tempDatasetId;
   }
 
   @Override
@@ -41,6 +48,14 @@ public class BigQuerySource implements Source {
 
   public String getQuery() {
     return query;
+  }
+
+  public String getTempProjectId() {
+    return tempDatasetId;
+  }
+
+  public String getTempDatasetId() {
+    return tempDatasetId;
   }
 
   @Override
@@ -62,6 +77,19 @@ public class BigQuerySource implements Source {
 
   @Override
   public String toString() {
-    return "BigQuerySource{" + "name='" + name + '\'' + ", query='" + query + '\'' + '}';
+    return "BigQuerySource{"
+        + "name='"
+        + name
+        + '\''
+        + ", query='"
+        + query
+        + '\''
+        + ", tempProjectId='"
+        + tempProjectId
+        + '\''
+        + ", tempDatasetId='"
+        + tempDatasetId
+        + '\''
+        + '}';
   }
 }
