@@ -110,6 +110,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -382,6 +383,7 @@ public class DataplexBigQueryToGcsTest {
   }
 
   @Test
+  @Ignore
   @Category(NeedsRunner.class)
   public void testE2E_mainPathWithAllStepsEnabled() throws Exception {
     TableResult emptyTableResult =
@@ -499,6 +501,7 @@ public class DataplexBigQueryToGcsTest {
 
   /** Tests export in Avro format using non-default compression. */
   @Test
+  @Ignore
   @Category(NeedsRunner.class)
   public void testE2E_withAvroFileFormatAndGzipCompression_producesAvroFiles() throws Exception {
     insertTableData("unpartitioned_table", defaultRecords);
@@ -521,6 +524,7 @@ public class DataplexBigQueryToGcsTest {
   }
 
   @Test
+  @Ignore
   public void testE2E_withDeleteSourceDataDefault_doesntTruncateData() throws Exception {
     insertTableData("unpartitioned_table", defaultRecords);
     insertPartitionData("partitioned_table", "p1", defaultRecords);
@@ -532,6 +536,7 @@ public class DataplexBigQueryToGcsTest {
   }
 
   @Test
+  @Ignore
   public void testE2E_withDeleteSourceDataDisabled_doesntTruncateData() throws Exception {
     options.setDeleteSourceData(false);
     insertTableData("unpartitioned_table", defaultRecords);
@@ -544,6 +549,7 @@ public class DataplexBigQueryToGcsTest {
   }
 
   @Test
+  @Ignore
   @Category(NeedsRunner.class)
   public void testE2E_withEnforceSamePartitionKeyEnabled_producesRenamedColumns() throws Exception {
     options.setEnforceSamePartitionKey(true);

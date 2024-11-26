@@ -32,6 +32,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <java.version>11</java.version>
+<!--    <os.detected.classifier>osx-x86_64</os.detected.classifier>-->
     <!-- Plugins -->
     <templates-maven-plugin.version>1.0-SNAPSHOT</templates-maven-plugin.version>
     <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
@@ -47,9 +48,9 @@
     <jacoco.version>0.8.8</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.60.0</beam.version>
-    <beam-python.version>2.60.0</beam-python.version>
-    <beam-maven-repo></beam-maven-repo>
+    <beam.version>2.61.0</beam.version>
+    <beam-python.version>2.61.0rc1</beam-python.version>
+    <beam-maven-repo>https://repository.apache.org/content/repositories/orgapachebeam-1389/</beam-maven-repo>
 
     <!-- Common dependency versions -->
     <autovalue.version>1.10.4</autovalue.version>
@@ -625,7 +626,7 @@
     <profile>
       <id>validateCandidate</id>
       <activation>
-        <activeByDefault>false</activeByDefault>
+        <jdk>[1.)</jdk>
       </activation>
       <repositories>
         <repository>

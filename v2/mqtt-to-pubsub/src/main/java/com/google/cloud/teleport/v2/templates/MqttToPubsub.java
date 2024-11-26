@@ -82,7 +82,7 @@ public class MqttToPubsub {
   public static PipelineResult run(MqttToPubsubOptions options) {
     validate(options);
     Pipeline pipeline = Pipeline.create(options);
-    MqttIO.Read mqttIo;
+    MqttIO.Read<byte[]> mqttIo;
     if (!options.getUsername().isEmpty() || !options.getPassword().isBlank()) {
       mqttIo =
           MqttIO.read()
