@@ -81,7 +81,8 @@ public final class SpannerToBigQuery {
     }
     if (Strings.isNullOrEmpty(options.getBigQuerySchemaPath())
             && CreateDisposition.valueOf(options.getCreateDisposition()) != CREATE_NEVER) {
-      throw new IllegalArgumentException("bigQuerySchemaPath is required if CreateDisposition is not CREATE_NEVER");
+      throw new IllegalArgumentException(
+              "bigQuerySchemaPath is required if CreateDisposition is not CREATE_NEVER");
     }
     pipeline
         .apply(read)
