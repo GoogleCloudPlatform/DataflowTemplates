@@ -82,6 +82,12 @@
             <artifactId>beam-it-jdbc</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport.v2</groupId>
+            <artifactId>spanner-custom-shard</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!--        TODO - Remove when https://github.com/apache/beam/pull/29732 is released. -->
         <dependency>
             <groupId>com.google.cloud.teleport</groupId>

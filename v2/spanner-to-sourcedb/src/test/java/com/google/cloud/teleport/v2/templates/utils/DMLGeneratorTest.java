@@ -61,7 +61,7 @@ public final class DMLGeneratorTest {
         + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -82,7 +82,7 @@ public final class DMLGeneratorTest {
         + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -102,7 +102,7 @@ public final class DMLGeneratorTest {
         + " KEY UPDATE  FirstName = 222, LastName = 'll'";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`FirstName` = 222"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -124,7 +124,7 @@ public final class DMLGeneratorTest {
         + " UPDATE  FirstName = 'kk', LastName = 'll'"; */
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -147,7 +147,7 @@ public final class DMLGeneratorTest {
         + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -166,7 +166,7 @@ public final class DMLGeneratorTest {
     /* The expected sql is: ""*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.isEmpty());
   }
@@ -185,7 +185,7 @@ public final class DMLGeneratorTest {
     String sql =
         sql =
             DMLGenerator.getDMLStatement(
-                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+                modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.isEmpty());
   }
@@ -206,7 +206,7 @@ public final class DMLGeneratorTest {
         + " UPDATE  Bday =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+10:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+10:00", null);
 
     assertTrue(
         sql.contains("`Bday` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00'"));
@@ -227,7 +227,7 @@ public final class DMLGeneratorTest {
         + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -280,7 +280,7 @@ public final class DMLGeneratorTest {
         + " 'abc'"; */
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`mediumint_column` = 333"));
     assertTrue(sql.contains("`tinyblob_column` = FROM_BASE64('YWJj')"));
@@ -340,7 +340,7 @@ public final class DMLGeneratorTest {
         + " UPDATE  FirstName = 'kk', LastName = NULL";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`LastName` = NULL"));
@@ -360,7 +360,7 @@ public final class DMLGeneratorTest {
     "DELETE FROM Singers WHERE  FirstName = 'kk' AND  SingerId = 999";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`SingerId` = 999"));
@@ -382,7 +382,7 @@ public final class DMLGeneratorTest {
         + " UPDATE  FirstName = 'k''k', LastName = 'll'"; */
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`FirstName` = 'k''k'"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -409,7 +409,7 @@ public final class DMLGeneratorTest {
         + " ON DUPLICATE KEY UPDATE  varchar_column = '''', blob_column = FROM_BASE64('Jw==')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
     assertTrue(sql.contains("`varchar_column` = '''"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('Jw==')"));
   }
@@ -435,7 +435,7 @@ public final class DMLGeneratorTest {
         + " blob_column = FROM_BASE64('Jyc=')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`varchar_column` = '''''"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('Jyc=')"));
@@ -462,7 +462,7 @@ public final class DMLGeneratorTest {
         + " '\\\\''', blob_column = FROM_BASE64('XCc=')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`varchar_column` = '\\\\'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('XCc=')"));
@@ -490,7 +490,7 @@ public final class DMLGeneratorTest {
         + " = FROM_BASE64('CQ==')"; */
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`varchar_column` = '\t'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('CQ==')"));
@@ -518,7 +518,7 @@ public final class DMLGeneratorTest {
         + " blob_column = FROM_BASE64('CA==')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`varchar_column` = '\b'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('CA==')"));
@@ -546,7 +546,7 @@ public final class DMLGeneratorTest {
         + "', blob_column = FROM_BASE64('Cg==')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`varchar_column` = '\n'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('Cg==')"));
@@ -574,7 +574,7 @@ public final class DMLGeneratorTest {
         + "', blob_column = FROM_BASE64('DQ==')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`varchar_column` = '\r'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('DQ==')"));
@@ -602,7 +602,7 @@ public final class DMLGeneratorTest {
         + " blob_column = FROM_BASE64('DA==')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`varchar_column` = '\f'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('DA==')"));
@@ -630,7 +630,7 @@ public final class DMLGeneratorTest {
         + " blob_column = FROM_BASE64('Ig==')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`varchar_column` = '\"'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('Ig==')"));
@@ -658,7 +658,7 @@ public final class DMLGeneratorTest {
         + " blob_column = FROM_BASE64('XA==')";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`varchar_column` = '\\\\'"));
     assertTrue(sql.contains("`blob_column` = FROM_BASE64('XA==')"));
@@ -680,7 +680,7 @@ public final class DMLGeneratorTest {
         + " 'kk', LastName = BINARY(FROM_BASE64('YmlsX2NvbA=='))"; */
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`LastName` = BINARY(FROM_BASE64('YmlsX2NvbA=='))"));
   }
@@ -697,7 +697,7 @@ public final class DMLGeneratorTest {
 
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.isEmpty());
   }
@@ -714,7 +714,7 @@ public final class DMLGeneratorTest {
 
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(
         sql.contains(
@@ -733,7 +733,7 @@ public final class DMLGeneratorTest {
 
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
     assertTrue(
         sql.contains(
             "INSERT INTO `Singers`(`SingerId`,`FirstName`,`LastName`) VALUES (NULL,'kk','ll')"));
@@ -751,7 +751,7 @@ public final class DMLGeneratorTest {
 
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.isEmpty());
   }
@@ -771,7 +771,7 @@ public final class DMLGeneratorTest {
         + " UPDATE  FirstName = NULL , LastName = 'll'";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`FirstName` = NULL"));
   }
@@ -788,7 +788,7 @@ public final class DMLGeneratorTest {
 
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.isEmpty());
   }
@@ -808,7 +808,7 @@ public final class DMLGeneratorTest {
         + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.contains("`FirstName` = 'kk'"));
     assertTrue(sql.contains("`LastName` = 'll'"));
@@ -826,7 +826,7 @@ public final class DMLGeneratorTest {
 
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.isEmpty());
   }
@@ -843,7 +843,7 @@ public final class DMLGeneratorTest {
 
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.isEmpty());
   }
@@ -860,7 +860,7 @@ public final class DMLGeneratorTest {
 
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.isEmpty());
   }
@@ -878,7 +878,7 @@ public final class DMLGeneratorTest {
 
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
 
     assertTrue(sql.isEmpty());
   }
@@ -899,11 +899,41 @@ public final class DMLGeneratorTest {
 
     String sql =
         DMLGenerator.getDMLStatement(
-            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00", null);
     DMLGenerator test = new DMLGenerator(); // to add that last bit of code coverage
     InputRecordProcessor test2 =
         new InputRecordProcessor(); // to add that last bit of code coverage
     assertTrue(sql.isEmpty());
+  }
+
+  @Test
+  public void customTransformationMatch() {
+    Schema schema = SessionFileReader.read("src/test/resources/customTransformation.json");
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SingerId\":\"999\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+    Map<String, Object> customTransformation = new HashMap<>();
+    customTransformation.put("FullName", "\'kk ll\'");
+    customTransformation.put("SingerId", "1");
+
+    /*The expected sql is:
+    "INSERT INTO Singers(SingerId,FullName) VALUES (1,'kk ll') ON DUPLICATE KEY"
+        + " UPDATE  FullName = 'kk ll'";*/
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType,
+            tableName,
+            schema,
+            newValuesJson,
+            keyValuesJson,
+            "+00:00",
+            customTransformation);
+
+    assertTrue(sql.contains("`FullName` = 'kk ll'"));
+    assertTrue(sql.contains("VALUES (1,'kk ll')"));
   }
 
   public static Schema getSchemaObject() {

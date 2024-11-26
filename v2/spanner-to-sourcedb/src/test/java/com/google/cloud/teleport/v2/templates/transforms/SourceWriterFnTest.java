@@ -137,7 +137,8 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -164,7 +165,8 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -190,7 +192,8 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -215,7 +218,8 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -245,7 +249,8 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -273,7 +278,8 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -305,7 +311,8 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -333,7 +340,8 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -362,7 +370,8 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -391,7 +400,8 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -420,7 +430,8 @@ public class SourceWriterFnTest {
             testDdl,
             "shadow_",
             "skip",
-            500);
+            500,
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -448,7 +459,8 @@ public class SourceWriterFnTest {
             testDdlForNullDML(),
             "shadow_",
             "skip",
-            500);
+            500,
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
