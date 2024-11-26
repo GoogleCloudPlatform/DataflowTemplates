@@ -454,7 +454,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
                       "productName",
                       "Dataflow",
                       "productSize",
-                      2d,
+                      2.5d,
                       "productUsage",
                       "HIGH",
                       "_key",
@@ -480,7 +480,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
                       "productName",
                       "Dataflow",
                       "productSize",
-                      2d,
+                      2.5d,
                       "productUsage",
                       "HIGH"),
                   Map.of(
@@ -505,7 +505,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             new StringSerializer(), new KafkaAvroSerializer(registryClient));
 
     for (int i = 1; i <= 10; i++) {
-      GenericRecord dataflow = createRecord(Integer.valueOf(i + "1"), "Dataflow", 2f, "HIGH");
+      GenericRecord dataflow = createRecord(Integer.valueOf(i + "1"), "Dataflow", 2.5f, "HIGH");
       publish(kafkaProducer, topicName, i + "1", dataflow);
 
       GenericRecord pubsub = createRecord(Integer.valueOf(i + "2"), "Pub/Sub", 123.125f, "MEDIUM");
@@ -534,7 +534,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             new StringSerializer(), new KafkaAvroSerializer(registryClient));
 
     for (int i = 1; i <= 10; i++) {
-      GenericRecord dataflow = createRecord(Integer.valueOf(i + "1"), "Dataflow", 2f, "HIGH");
+      GenericRecord dataflow = createRecord(Integer.valueOf(i + "1"), "Dataflow", 2.5f, "HIGH");
       publish(kafkaProducer, topicName, i + "1", dataflow);
 
       GenericRecord pubsub = createRecord(Integer.valueOf(i + "2"), "Pub/Sub", 123.125f, "MEDIUM");
@@ -569,7 +569,7 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
             new StringSerializer(), new BinaryAvroSerializer(avroSchema));
 
     for (int i = 1; i <= 10; i++) {
-      GenericRecord dataflow = createRecord(Integer.valueOf(i + "1"), "Dataflow", 2f, "HIGH");
+      GenericRecord dataflow = createRecord(Integer.valueOf(i + "1"), "Dataflow", 2.5f, "HIGH");
       publishBinary(kafkaProducer, topicName, i + "1", dataflow);
 
       GenericRecord pubsub = createRecord(Integer.valueOf(i + "2"), "Pub/Sub", 123.125f, "MEDIUM");
