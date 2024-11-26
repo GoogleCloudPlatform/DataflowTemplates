@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source.reader.io.cassandra.schema;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource;
 import java.io.Serializable;
+import javax.annotation.Nullable;
 
 @AutoValue
 public abstract class CassandraSchemaReference implements Serializable {
@@ -28,7 +29,7 @@ public abstract class CassandraSchemaReference implements Serializable {
    * <p>Note that Cassandra also has a clusterName, which is at the level of MySQL instance and
    * hence encapsulated in {@link CassandraDataSource DataSource}
    */
-  public abstract String keyspaceName();
+  public abstract @Nullable String keyspaceName();
 
   public static Builder builder() {
     return new AutoValue_CassandraSchemaReference.Builder();
@@ -46,7 +47,7 @@ public abstract class CassandraSchemaReference implements Serializable {
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setKeyspaceName(String value);
+    public abstract Builder setKeyspaceName(@Nullable String value);
 
     public abstract CassandraSchemaReference build();
   }
