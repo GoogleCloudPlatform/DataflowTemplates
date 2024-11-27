@@ -23,7 +23,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.spanner.SpannerTemplateITBase;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
