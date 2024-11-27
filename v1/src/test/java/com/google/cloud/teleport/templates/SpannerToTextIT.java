@@ -23,10 +23,9 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.spanner.SpannerTemplateITBase;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -34,42 +33,21 @@ import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 /** Integration test for {@link SpannerToText Spanner to GCS Text} template. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(SpannerToText.class)
 @RunWith(Parameterized.class)
-public class SpannerToTextIT extends TemplateTestBase {
-
-  private String spannerHost;
-  private String spannerHostName;
-
-  public SpannerToTextIT(String spannerHost, String spannerHostName) {
-    this.spannerHost = spannerHost;
-    this.spannerHostName = spannerHostName;
-  }
-
-  @Parameters(name = "{1}")
-  public static Collection primeNumbers() {
-    if (System.getProperty("spannerHost") != null) {
-      return Arrays.asList(new Object[][] {{System.getProperty("spannerHost"), "Custom"}});
-    }
-    return Arrays.asList(
-        new Object[][] {
-          {SpannerResourceManager.STAGING_SPANNER_HOST, "Staging"},
-          {SpannerResourceManager.DEFAULT_SPANNER_HOST, "Default"}
-        });
-  }
+public class SpannerToTextIT extends SpannerTemplateITBase {
 
   private static final int MESSAGES_COUNT = 100;
 

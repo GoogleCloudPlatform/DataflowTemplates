@@ -27,8 +27,6 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,11 +38,11 @@ import org.apache.avro.reflect.ReflectData;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.artifacts.utils.AvroTestUtil;
 import org.apache.beam.it.gcp.artifacts.utils.JsonTestUtil;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -53,7 +51,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 /**
  * Integration test for {@link SpannerChangeStreamsToGcs Spanner Change Streams to GCS} template.
@@ -61,27 +58,7 @@ import org.junit.runners.Parameterized.Parameters;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerChangeStreamsToGcs.class)
 @RunWith(Parameterized.class)
-public class SpannerChangeStreamsToGcsIT extends TemplateTestBase {
-
-  private String spannerHost;
-  private String spannerHostName;
-
-  public SpannerChangeStreamsToGcsIT(String spannerHost, String spannerHostName) {
-    this.spannerHost = spannerHost;
-    this.spannerHostName = spannerHostName;
-  }
-
-  @Parameters(name = "{1}")
-  public static Collection primeNumbers() {
-    if (System.getProperty("spannerHost") != null) {
-      return Arrays.asList(new Object[][] {{System.getProperty("spannerHost"), "Custom"}});
-    }
-    return Arrays.asList(
-        new Object[][] {
-          {SpannerResourceManager.STAGING_SPANNER_HOST, "Staging"},
-          {SpannerResourceManager.DEFAULT_SPANNER_HOST, "Default"}
-        });
-  }
+public class SpannerChangeStreamsToGcsIT extends SpannerTemplateITBase {
 
   private static final int MESSAGES_COUNT = 20;
   private static final Pattern RESULT_REGEX = Pattern.compile(".*result-.*");

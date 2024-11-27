@@ -33,8 +33,6 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +46,6 @@ import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
@@ -58,6 +55,7 @@ import org.apache.beam.it.gcp.datastream.MySQLSource;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
@@ -68,33 +66,12 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 /** Integration test for {@link DataStreamToSpanner} Flex template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(Parameterized.class)
-public class DataStreamToSpannerIT extends TemplateTestBase {
-
-  private String spannerHost;
-  private String spannerHostName;
-
-  public DataStreamToSpannerIT(String spannerHost, String spannerHostName) {
-    this.spannerHost = spannerHost;
-    this.spannerHostName = spannerHostName;
-  }
-
-  @Parameters(name = "{1}")
-  public static Collection primeNumbers() {
-    if (System.getProperty("spannerHost") != null) {
-      return Arrays.asList(new Object[][] {{System.getProperty("spannerHost"), "Custom"}});
-    }
-    return Arrays.asList(
-        new Object[][] {
-          {SpannerResourceManager.STAGING_SPANNER_HOST, "Staging"},
-          {SpannerResourceManager.DEFAULT_SPANNER_HOST, "Default"}
-        });
-  }
+public class DataStreamToSpannerIT extends SpannerTemplateITBase {
 
   enum JDBCType {
     MYSQL,
