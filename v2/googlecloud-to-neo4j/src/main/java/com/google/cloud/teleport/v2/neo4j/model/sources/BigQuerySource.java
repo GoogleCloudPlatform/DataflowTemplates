@@ -51,7 +51,7 @@ public class BigQuerySource implements Source {
   }
 
   public String getTempProjectId() {
-    return tempDatasetId;
+    return tempProjectId;
   }
 
   public String getTempDatasetId() {

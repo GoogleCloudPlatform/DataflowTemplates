@@ -129,7 +129,7 @@ public class BigQueryImpl implements Provider {
             targetSequence.getSequenceNumber(target) + ": Cast to BeamRow " + target.getName())
         .sql(sql)
         .tempProjectId(source.getTempProjectId())
-        .tempProjectId(source.getTempDatasetId())
+        .tempDatasetId(source.getTempDatasetId())
         .build();
   }
 }
