@@ -15,11 +15,11 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.cassandra.schema;
 
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.BASIC_TEST_TABLE_SCHEMA;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CONFIG;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CQLSH;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_KEYSPACE;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_TABLES;
-import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_TABLE_SCHEMA;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
@@ -102,8 +102,10 @@ public class CassandraSchemaDiscoveryTest {
     CassandraSchemaDiscovery cassandraSchemaDiscovery = new CassandraSchemaDiscovery();
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> schema =
         cassandraSchemaDiscovery.discoverTableSchema(
-            cassandraDataSource, cassandraSchemaReference, TEST_TABLES);
-    assertThat(schema).isEqualTo(TEST_TABLE_SCHEMA);
+            cassandraDataSource,
+            cassandraSchemaReference,
+            BASIC_TEST_TABLE_SCHEMA.keySet().asList());
+    assertThat(schema).isEqualTo(BASIC_TEST_TABLE_SCHEMA);
   }
 
   @Test
