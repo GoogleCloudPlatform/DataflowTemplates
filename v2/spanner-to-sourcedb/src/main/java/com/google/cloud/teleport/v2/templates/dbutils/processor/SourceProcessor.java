@@ -17,8 +17,10 @@ package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
+import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Represents a processor responsible for managing source database operations. This class
@@ -46,6 +48,16 @@ public class SourceProcessor {
 
   public Map<String, IDao> getSourceDaoMap() {
     return sourceDaoMap;
+  }
+
+  public IDao getSourceDao(String shardId) throws ConnectionException {
+    return Optional.ofNullable(sourceDaoMap.get(shardId))
+        .orElseThrow(
+            () -> new ConnectionException("Dao object not found for shard id: " + shardId));
+  }
+
+  public void close() {
+    sourceDaoMap.clear();
   }
 
   public static Builder builder() {

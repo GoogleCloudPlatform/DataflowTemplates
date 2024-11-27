@@ -138,7 +138,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   @Teardown
   public void teardown() throws Exception {
     spannerDao.close();
-    sourceProcessor.getSourceDaoMap().clear();
+    sourceProcessor.close();
   }
 
   @ProcessElement
@@ -182,7 +182,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                             > Long.parseLong(spannerRec.getRecordSequence())));
 
         if (!isSourceAhead) {
-          IDao sourceDao = sourceProcessor.getSourceDaoMap().get(shardId);
+          IDao sourceDao = sourceProcessor.getSourceDao(shardId);
 
           InputRecordProcessor.processRecord(
               spannerRec,
