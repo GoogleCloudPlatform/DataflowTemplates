@@ -40,7 +40,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **dlqMaxRetryCount** : The max number of times temporary errors can be retried through DLQ. Defaults to 500.
 * **runMode** : This is the run mode type, whether regular or with retryDLQ.Default is regular. retryDLQ is used to retry the severe DLQ records only.
 * **dlqRetryMinutes** : The number of minutes between dead letter queue retries. Defaults to 10.
-
+* **sourceType** : The type of source database to reverse replicate to. Defaults to mysql.
 
 
 ## Getting Started

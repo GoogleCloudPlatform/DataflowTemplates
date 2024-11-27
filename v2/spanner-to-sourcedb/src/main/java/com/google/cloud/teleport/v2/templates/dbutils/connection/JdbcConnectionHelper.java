@@ -13,48 +13,58 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.utils;
+package com.google.cloud.teleport.v2.templates.dbutils.connection;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
+import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.io.IOException;
 import java.io.StringReader;
 import java.sql.Connection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** This is a per Dataflow worker singleton that holds connection pool. */
-public class ConnectionHelper {
+public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ConnectionHelper.class);
-  private static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
+  private static final Logger LOG = LoggerFactory.getLogger(JdbcConnectionHelper.class);
   private static Map<String, HikariDataSource> connectionPoolMap = null;
 
-  public static synchronized void init(List<Shard> shards, String properties, int maxConnections) {
+  @Override
+  public synchronized boolean isConnectionPoolInitialized() {
+    if (connectionPoolMap != null) {
+      return true;
+    }
+    return false;
+  }
+
+  @Override
+  public synchronized void init(ConnectionHelperRequest connectionHelperRequest) {
     if (connectionPoolMap != null) {
       return;
     }
-    LOG.info("Initializing connection pool with size: ", maxConnections);
+    LOG.info(
+        "Initializing connection pool with size: ", connectionHelperRequest.getMaxConnections());
     connectionPoolMap = new HashMap<>();
-    for (Shard shard : shards) {
+    for (Shard shard : connectionHelperRequest.getShards()) {
       String sourceConnectionUrl =
           "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
       HikariConfig config = new HikariConfig();
       config.setJdbcUrl(sourceConnectionUrl);
       config.setUsername(shard.getUserName());
       config.setPassword(shard.getPassword());
-      config.setDriverClassName(JDBC_DRIVER);
-      config.setMaximumPoolSize(maxConnections);
-      config.setConnectionInitSql(
-          "SET SESSION net_read_timeout=1200"); // to avoid timeouts at network level layer
+      config.setDriverClassName(connectionHelperRequest.getDriver());
+      config.setMaximumPoolSize(connectionHelperRequest.getMaxConnections());
+      config.setConnectionInitSql(connectionHelperRequest.getConnectionInitQuery());
       Properties jdbcProperties = new Properties();
-      if (properties != null && !properties.isEmpty()) {
-        try (StringReader reader = new StringReader(properties)) {
+      if (connectionHelperRequest.getProperties() != null
+          && !connectionHelperRequest.getProperties().isEmpty()) {
+        try (StringReader reader = new StringReader(connectionHelperRequest.getProperties())) {
           jdbcProperties.load(reader);
         } catch (IOException e) {
           LOG.error("Error converting string to properties: {}", e.getMessage());
@@ -67,27 +77,31 @@ public class ConnectionHelper {
       }
       HikariDataSource ds = new HikariDataSource(config);
 
-      connectionPoolMap.put(sourceConnectionUrl + shard.getUserName() + shard.getPassword(), ds);
+      connectionPoolMap.put(sourceConnectionUrl + "/" + shard.getUserName(), ds);
     }
   }
 
-  public static Connection getConnection(String sourceConnectionUrl, String user, String password)
-      throws java.sql.SQLException {
-    if (connectionPoolMap == null) {
-      LOG.warn("Connection pool not initialized");
-      return null;
-    }
-    HikariDataSource ds = connectionPoolMap.get(sourceConnectionUrl + user + password);
-    if (ds == null) {
-      LOG.warn("Connection pool not found for source connection url: {}", sourceConnectionUrl);
-      return null;
-    }
+  @Override
+  public Connection getConnection(String connectionRequestKey) throws ConnectionException {
+    try {
+      if (connectionPoolMap == null) {
+        LOG.warn("Connection pool not initialized");
+        return null;
+      }
+      HikariDataSource ds = connectionPoolMap.get(connectionRequestKey);
+      if (ds == null) {
+        LOG.warn("Connection pool not found for source connection : {}", connectionRequestKey);
+        return null;
+      }
 
-    return ds.getConnection();
+      return ds.getConnection();
+    } catch (Exception e) {
+      throw new ConnectionException(e);
+    }
   }
 
   // for unit testing
-  public static void setConnectionPoolMap(Map<String, HikariDataSource> inputMap) {
+  public void setConnectionPoolMap(Map<String, HikariDataSource> inputMap) {
     connectionPoolMap = inputMap;
   }
 }
